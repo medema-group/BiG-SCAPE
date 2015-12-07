@@ -13,13 +13,9 @@ Usage:   place this script in the same folder as the antismash output files
 
 Status: development/testing
 
+
 Todo: 
--Figure out which part takes the most time, and could use optimization
 
--Make it possible for the program to skip certain parts (such as the hmmscan analysis)
-if the output files already exist
-
--Make the program able to output multiple 'network output files' with several bgc dist/sim cutoffs
 """
 
 import fileinput, pickle, sys, math
