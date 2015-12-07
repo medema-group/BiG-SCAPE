@@ -90,7 +90,10 @@ def timeit(f):
 
 @timeit
 def distout_parser(distout_file, exponent):
-    "returns similarity values"
+    """returns distance values, for domains in the following format  { ('specific_domain_name_1',
+    'specific_domain_name_2'): (sequence_identity, alignment_length), ... } 
+    The exponent is used to modify the distance value. Squaring this value"""
+    
     
     try:
         hat2_handle = open(distout_file, 'r')
@@ -136,7 +139,8 @@ def distout_parser(distout_file, exponent):
     for tupl in range(len(tuples)):
         ##    { ('specific_domain_name_1',
         ##    'specific_domain_name_2'): (sequence_identity, alignment_length), ... }
-        domain_pairs_dict[tuple(sorted([seqsdict[tuples[tupl][0]], seqsdict[tuples[tupl][1]]]))] = (float(distances[tupl])**exponent, 0)
+        #1-distance is a representation of the sequence_identity
+        domain_pairs_dict[tuple(sorted([seqsdict[tuples[tupl][0]], seqsdict[tuples[tupl][1]]]))] = (1-float(distances[tupl])**exponent, 0)
 
     return domain_pairs_dict
 
@@ -175,8 +179,7 @@ def generate_network(bgc_list, dist_threshold, group_dct, networkfilename, dist_
         networkfilename = output_folder + "/" + "networkfile_" + dist_method + "_" + \
         networkfilename
         
-        
-    #networkfile = open(networkfilename, 'w+')
+
     
     for cluster1 in bgc_list:
         cluster_queue.remove(cluster1)
@@ -670,18 +673,19 @@ def get_gbk_files():
     """Find .gbk files, and store the .gbk files in lists, separated by sample."""
     genbankfiles=[] #Will contain lists of gbk files
     dirpath = ""
+    file_counter = 0
     for dirpath, dirnames, filenames in os.walk(str(os.getcwd()) + "/"):
         genbankfilelist=[]
+        
         for fname in filenames:
             if fname.split(".")[-1] == "gbk" and "final" not in fname:
+                file_counter += 1
                 genbankfilelist.append(dirpath + "/" + fname)
                 if verbose == True:
                     print fname
-                    
                 
         if genbankfilelist != []:
             genbankfiles.append(genbankfilelist)
-
     
     return genbankfiles
 
@@ -826,7 +830,8 @@ def CMD_parser():
                       help="generate networks using multiple simmilarity cutoff values, example: \"2,1,0.5,0.1\"")
     
     parser.add_option("-e", "--exponent", dest="exponent", default=2,
-                      help="Exponent that modifies the sequence percent identity score")
+                      help="Exponent that modifies the sequence similarity score. Thereby exaggerating the the difference in sequences.")
+    
 
     (options, args) = parser.parse_args()
     return options, args
@@ -868,6 +873,7 @@ def main():
         pass
 
     timings_file = open(output_folder + "/" + "runtimes.txt", 'w')
+    
     
     gbk_files = get_gbk_files() #files will contain lists of gbk files per sample. Thus a matrix contains lists with gbk files by sample.
     #print options.pars
