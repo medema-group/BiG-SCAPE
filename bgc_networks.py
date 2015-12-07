@@ -57,6 +57,16 @@ mafft --retree 2 --maxiterate 0 --nofft input [> output]
 nwns input [> output]
 *NW-NS-PartTree-1 (recommended for ~10,000 to ~50,000 sequences; progressive method with the PartTree algorithm):
 mafft --retree 1 --maxiterate 0 --nofft --parttree input [> output]
+
+
+With FFT NS 1, a distance matrix is first generated using the 6 tuple score between each pair of sequences both sequences
+are scanned from the start for matching 6 tuples, and when a match is found the score is incremented and scanning continues
+from the next residue [4]. A guide tree is then constructed by clustering according to these distances, and the sequences 
+are then aligned using the branching order of the guide tree. With FFT NS 2, the alignment produced by the FFT NS 1 method
+is used to regenerate the distance matrix and the guide tree, and then do a second progressive alignment. In this paper,
+FFT NS 1 will be specified whenever distance measures are needed. If no distance measures are required, the default 
+FFTNS2 method will be used. 
+
 """
 
 def timeit(f):
@@ -79,8 +89,9 @@ def timeit(f):
 
 
 @timeit
-def distout_parser(distout_file):
+def distout_parser(distout_file, exponent):
     "returns similarity values"
+    
     try:
         hat2_handle = open(distout_file, 'r')
     except IOError:
@@ -125,7 +136,7 @@ def distout_parser(distout_file):
     for tupl in range(len(tuples)):
         ##    { ('specific_domain_name_1',
         ##    'specific_domain_name_2'): (sequence_identity, alignment_length), ... }
-        domain_pairs_dict[tuple(sorted([seqsdict[tuples[tupl][0]], seqsdict[tuples[tupl][1]]]))] = (float(distances[tupl])**2, 0)
+        domain_pairs_dict[tuple(sorted([seqsdict[tuples[tupl][0]], seqsdict[tuples[tupl][1]]]))] = (float(distances[tupl])**exponent, 0)
 
     return domain_pairs_dict
 
@@ -813,6 +824,9 @@ def CMD_parser():
 
     parser.add_option("--sim_cutoffs", dest="sim_cutoffs", default="0",
                       help="generate networks using multiple simmilarity cutoff values, example: \"2,1,0.5,0.1\"")
+    
+    parser.add_option("-e", "--exponent", dest="exponent", default=2,
+                      help="Exponent that modifies the sequence percent identity score")
 
     (options, args) = parser.parse_args()
     return options, args
@@ -949,7 +963,7 @@ def main():
         else:      
             print "#################################"
             print "using distout file from mafft to calculate cluster diversity with sequence sim"
-            DMS[domain.split("/")[-1]] = distout_parser(domain+".fasta" + ".hat2")
+            DMS[domain.split("/")[-1]] = distout_parser(domain+".fasta" + ".hat2", options.exponent)
         
         
     #Compare the gene clusters within one sample, and save them in tab delimited .txt files.
