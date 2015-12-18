@@ -95,7 +95,8 @@ def distout_parser(distout_file, exponent):
         hat2_handle = open(distout_file, 'r')
     except IOError:
         return {}
-        
+    
+    domain_pairs_dict = {}    
     linecounter = 0
     seqsdict = {}
     distances = [] #will be of length numberof_seqs * (numberof_seqs-1) / 2
@@ -106,7 +107,13 @@ def distout_parser(distout_file, exponent):
             numberof_seqs = int(line.replace(" ", "").strip())
             
         elif linecounter >= 4 and linecounter <= 3 + numberof_seqs:
-            seq_number = int(re.search(r' \d*\. ', str(line.split("=")[0])).group(0).replace(".", "").replace(" ", ""))
+            try:
+                #seq_number = int(re.search(r' \d*\. ', str(line.split("=")[0])).group(0).replace(".", "").replace(" ", ""))
+                seq_number = int(line.split("=")[0].replace(" ", "").replace(".", ""))
+            except AttributeError:
+                print "something went wrong during the import of distout file: ", str(distout_file)
+                return {('', ''): (0.000000001, 0)}
+            
             seqsdict[seq_number] = "".join(line.split("=")[1:]).strip()#in case the header contains an = sign
 
         elif linecounter > 3 + numberof_seqs:
@@ -130,7 +137,7 @@ def distout_parser(distout_file, exponent):
         for key_queue in keys_queue:
             tuples.append((key, key_queue))
 
-    domain_pairs_dict = {}
+    
 
     for tupl in range(len(tuples)):
         ##    { ('specific_domain_name_1',
@@ -169,13 +176,14 @@ def generate_network(bgc_list, dist_threshold, group_dct, networkfilename, dist_
         cluster_queue.append(bgc) #deep copy
     
     if networkfilename == "":
+    
         networkfilename = output_folder + "/" + "networkfile_" + dist_method + "_" + \
         str("".join(bgc_list[0].split(".")[0:-2]))
     else:
         networkfilename = output_folder + "/" + "networkfile_" + dist_method + "_" + \
         networkfilename
         
-
+    print "Generating network file with name:", networkfilename
     
     for cluster1 in bgc_list:
         cluster_queue.remove(cluster1)
@@ -220,9 +228,14 @@ def CompareTwoClusters(A,B):
     clusterB = BGCs[B]
     # a and b are lists of pfam domains
     
-    Jaccard = len(set(clusterA.keys()) & set(clusterB.keys())) / \
-          float( len(set(clusterA.keys())) + len(set(clusterB.keys())) \
-          - len(set(clusterA.keys()) & set(clusterB.keys())) )
+    try:
+        Jaccard = len(set(clusterA.keys()) & set(clusterB.keys())) / \
+              float( len(set(clusterA.keys())) + len(set(clusterB.keys())) \
+              - len(set(clusterA.keys()) & set(clusterB.keys())) )
+    except ZeroDivisionError:
+        print "Zerodivisionerror during the Jaccard distance calculation."
+        print "keys of clusterA", clusterA.keys()
+        print "keys of clusterB", clusterB.kes()
 
     DDS,S = 0,0
     for domain in set(clusterA.keys() + clusterB.keys()):
@@ -257,10 +270,29 @@ def CompareTwoClusters(A,B):
             SumDistance = sum([DistanceMatrix[bi] for bi in BestIndexes])
             S += max(len(seta),len(setb))
             DDS += SumDistance
-                
+            
+            #===================================================================
+            # if domain in anchor_domains: #anchor_domains = list of anchor domains
+            #     Sa += max(len(seta),len(setb))
+            #     DDSa += SumDistance #Also include similar code for the if/elif statements above
+            #     
+            #===================================================================
+   
     DDS /= float(S)
     DDS = math.exp(-DDS)
-    Distance = 1 - 0.36*Jaccard - 0.64*DDS
+    
+#===============================================================================
+#     if anchor domains present in both clusters:
+#         DDSa /= float(Sa)
+#          DDS = anchorweight * DDSa + (1 - anchorweight) * DDS #Recalculate DDS by giving preference to anchor domains
+# 
+#     
+#===============================================================================
+
+    
+    Distance = 1 - Jaccardw * Jaccard - DDSw * DDS #ADD GK    
+   # Distance = 1 - 0.36*Jaccard - 0.64*DDS 0.63
+        
     Similarity = 1-Distance
     lin = '%s\t%s\t%.4f\n' % (A,B,Similarity)
    # output = open("seqdist.txt", 'w')
@@ -786,6 +818,9 @@ def get_domain_list(filename):
 
 def CMD_parser():
     parser = OptionParser()
+    
+
+    
     parser.add_option("-o", "--outputdir", dest="outputdir", default="",
                       help="output directory, this contains your pfd,pfs,network and hmmscan output files")
     parser.add_option("-c", "--cores", dest="cores", default=8,
@@ -796,9 +831,9 @@ def CMD_parser():
                       help="input: True/False")
     parser.add_option("-d", "--domain_overlap_cutoff", dest="domain_overlap_cutoff", default=0.1,
                       help="Specify at which overlap percentage domains are considered to overlap")
-    parser.add_option("--Jaccardw", dest="Jaccardw", default=0.4,
+    parser.add_option("--Jaccardw", dest="Jaccardw", default=0.36,
                       help="SJaccard weight")
-    parser.add_option("--DDSw", dest="DDSw", default=0.2,
+    parser.add_option("--DDSw", dest="DDSw", default=0.64,
                       help="DDS weight")
     parser.add_option("--GKw", dest="GKw", default=0.4,
                       help="GK weight")
@@ -820,7 +855,8 @@ def CMD_parser():
                       Or use the distout scores from the mafft output? - default")
 
     parser.add_option("--skip_hmmscan", dest="skip_hmmscan", action="store_true", default=False,
-                      help="If you have already generated the domain tables with hmmscan, toggle this parameter to true.")
+                      help="If you have already generated the domain tables with hmmscan, toggle\
+                       this parameter to true.")
 
     parser.add_option("--sim_cutoffs", dest="sim_cutoffs", default="0",
                       help="generate networks using multiple simmilarity cutoff values, example: \"2,1,0.5,0.1\"")
@@ -838,6 +874,8 @@ def CMD_parser():
 def main():
     
     options, args = CMD_parser()
+    
+    #anchor_handle = open("anchor_doms.txt", 'r') 
     
     if options.outputdir == "":
         print "please provide a name for an output folder using parameter -o or --outputdir"
@@ -891,11 +929,10 @@ def main():
     for gbks in gbk_files:
         #samplefolder = "/".join(gbks[0].split("/")[0:-1])
         samplename = ".".join(gbks[0].split("/")[-1].split(".")[0:-2])
+        print "running hmmscan and or parsing the hmmscan output files on sample:", samplename 
         #outputdir = samplefolder + "/" + str(options.outputdir)         
         
         group_dct, fasta_dict = genbank_parser_hmmscan_call(gbks, output_folder, options.cores, group_dct, options.skip_hmmscan) #runs hammscan and returns the CDS in the cluster
-        
-        
         hmm_domtables = get_hmm_output_files() 
     
         hmms = [] 
@@ -928,7 +965,7 @@ def main():
         for cutoff in cutoff_list:
             write_network_matrix(network_matrix, cutoff, networkfilename + "_c" + cutoff + ".network")
         
-    print BGCs
+    print "BGCs:", BGCs
     
     """DMS -- dictionary of this structure: DMS = {'general_domain_name_x': { ('specific_domain_name_1',
     'specific_domain_name_2'): (sequence_identity, alignment_length), ... }   }
@@ -942,6 +979,7 @@ def main():
     fasta_domains = get_domain_fastas(options.domainsout)
     #Fill the DMS variable by using all 'domains.fasta'  files
     for domain_file in fasta_domains:
+        print "Running MAFFT and parsing the distout file for domain:", domain_file
         domain=domain_file.replace(".fasta", "")
         run_mafft(options.al_method, options.maxit, options.mafft_threads, options.mafft_pars, domain)
         
