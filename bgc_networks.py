@@ -112,7 +112,8 @@ def distout_parser(distout_file, exponent):
                 seq_number = int(line.split("=")[0].replace(" ", "").replace(".", ""))
             except AttributeError:
                 print "something went wrong during the import of distout file: ", str(distout_file)
-                return {('', ''): (0.000000001, 0)}
+                
+                #return {('', ''): (0.000000001, 0)}
             
             seqsdict[seq_number] = "".join(line.split("=")[1:]).strip()#in case the header contains an = sign
 
@@ -229,13 +230,14 @@ def CompareTwoClusters(A,B):
     # a and b are lists of pfam domains
     
     try:
+        #calculates the intersect
         Jaccard = len(set(clusterA.keys()) & set(clusterB.keys())) / \
               float( len(set(clusterA.keys())) + len(set(clusterB.keys())) \
-              - len(set(clusterA.keys()) & set(clusterB.keys())) )
+              - len(set(clusterA.keys()) & set(clusterB.keys())))
     except ZeroDivisionError:
-        print "Zerodivisionerror during the Jaccard distance calculation."
-        print "keys of clusterA", clusterA.keys()
-        print "keys of clusterB", clusterB.kes()
+        print "Zerodivisionerror during the Jaccard distance calculation. Can only happen when both clusters are empty"
+        print "keys of clusterA", A, clusterA.keys()
+        print "keys of clusterB", B, clusterB.keys()
 
     DDS,S = 0,0
     for domain in set(clusterA.keys() + clusterB.keys()):
@@ -290,7 +292,7 @@ def CompareTwoClusters(A,B):
 #===============================================================================
 
     
-    Distance = 1 - Jaccardw * Jaccard - DDSw * DDS #ADD GK    
+    Distance = 1 - (Jaccardw * Jaccard) - (DDSw * DDS) #ADD GK    
    # Distance = 1 - 0.36*Jaccard - 0.64*DDS 0.63
         
     Similarity = 1-Distance
@@ -385,7 +387,6 @@ def BGC_dic_gen(filtered_matrix):
     for row in filtered_matrix:
         try: #Should be faster than performing if key in dictionary.keys()
             bgc_dict[row[6]]
-            
             bgc_dict[row[6]].append(str(row[6]) + "_" + str(row[-1]) + "_" + str(row[3]) + "_" + str(row[4]))
         except KeyError: #In case of this error, this is the first occurrence of this domain in the cluster
             bgc_dict[row[6]]=[str(row[6]) + "_" + str(row[-1]) + "_" + str(row[3]) + "_" + str(row[4])]
@@ -688,7 +689,7 @@ def get_hmm_output_files():
     hmm_table_list = []
     for dirpath, dirnames, filenames in os.walk(str(output_folder) + "/"):
         for fname in filenames:
-            if "domtable.txt" in fname:
+            if "domtable.txt" in fname and open(output_folder + "/" + fname, "r").readlines()[3][0] != "#": #if this is false, hmmscan has not found any domains in the sequence
                 hmm_table_list.append(fname)
                 if verbose == True:
                     print fname
@@ -966,6 +967,10 @@ def main():
             write_network_matrix(network_matrix, cutoff, networkfilename + "_c" + cutoff + ".network")
         
     print "BGCs:", BGCs
+    BGC_handle = open("BGCs.txt", "w")
+    for item in BGCs.items():
+        BGC_handle.write(str(item)+"\n")
+    BGC_handle.close()
     
     """DMS -- dictionary of this structure: DMS = {'general_domain_name_x': { ('specific_domain_name_1',
     'specific_domain_name_2'): (sequence_identity, alignment_length), ... }   }
@@ -1004,6 +1009,11 @@ def main():
             print "#################################"
             print "using distout file from mafft to calculate cluster diversity with sequence sim"
             DMS[domain.split("/")[-1]] = distout_parser(domain+".fasta" + ".hat2", options.exponent)
+            
+    DMS_handle = open("DMS.txt", "w")
+    for item in DMS.items():
+        DMS_handle.write(str(item)+"\n")
+    DMS_handle.close()
         
         
     #Compare the gene clusters within one sample, and save them in tab delimited .txt files.
