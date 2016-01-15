@@ -85,11 +85,9 @@ def timeit(f):
 
 
 @timeit
-def distout_parser(distout_file, exponent):
+def distout_parser(distout_file):
     """returns distance values, for domains in the following format  { ('specific_domain_name_1',
-    'specific_domain_name_2'): (sequence_identity, alignment_length), ... } 
-    The exponent is used to modify the distance value. Squaring this value"""
-    
+    'specific_domain_name_2'): (sequence_identity, alignment_length), ... }"""
     
     try:
         hat2_handle = open(distout_file, 'r')
@@ -144,7 +142,7 @@ def distout_parser(distout_file, exponent):
         ##    { ('specific_domain_name_1',
         ##    'specific_domain_name_2'): (sequence_identity, alignment_length), ... }
         #1-distance is a representation of the sequence_identity
-        domain_pairs_dict[tuple(sorted([seqsdict[tuples[tupl][0]], seqsdict[tuples[tupl][1]]]))] = (1-float(distances[tupl])**exponent, 0)
+        domain_pairs_dict[tuple(sorted([seqsdict[tuples[tupl][0]], seqsdict[tuples[tupl][1]]]))] = (1-float(distances[tupl]), 0)
 
     return domain_pairs_dict
 
@@ -161,10 +159,19 @@ def iterFlatten(root):
 
 def write_network_matrix(matrix, cutoff, filename):
     networkfile = open(filename, 'w+')
-    networkfile.write("clustername1\tclustername2\tgroup1\tgroup2\t-log2score\traw distance\tsquared similarity\n")
+    networkfile.write("clustername1\tclustername2\tgroup1\tgroup2\t-log2score\traw distance\tsquared similarity\tshared group\n")
     for row in matrix:
-        if float(row[4]) > float(cutoff):
-            networkfile.write("\t".join(row) + "\n")
+        #if both clusters have the same group, this group will be annotated in the last column of the network file
+        #print "raw_distance", float(row[5]) 
+        #print "cutoff", float(cutoff)
+        temprow = row
+        if float(row[5]) <= float(cutoff):
+            if row[2] == row[3]:
+                temprow.append(row[2])
+            else:
+                temprow.append("")
+                
+            networkfile.write("\t".join(temprow) + "\n")
             
     
     networkfile.close()   
@@ -223,7 +230,6 @@ def generate_network(bgc_list, dist_threshold, group_dct, networkfilename, dist_
 def CompareTwoClusters(A,B): 
     anchor_domains = ["PF00668"]
  
-    global BGCs, DMS
     #key is name of GC, values is list of specific pfam domain names
     clusterA = BGCs[A] #will contain a dictionary where keys are pfam domains, and values are domains that map to a specific sequence in the DMS variable
     clusterB = BGCs[B]
@@ -243,20 +249,32 @@ def CompareTwoClusters(A,B):
     #S: Max occurence of each domain
     DDSa,Sa = 0,0
     DDS,S = 0,0
+    anchor = False
+    SumDistance = 0
     for domain in set(clusterA.keys() + clusterB.keys()):
         
         try: seta = clusterA[domain] #Get the specific domains
-        except KeyError: seta = []
+        except KeyError: 
+            seta = []
+          #  print "seta is empty"
+            
         try: setb = clusterB[domain]
-        except KeyError: setb = []
+        except KeyError: 
+            setb = []
+         #   print "setb is empty"
+        #print "seta", seta
+        #print "setb", setb
+            
+            
         if len(seta) == 1 and len(setb) == 1: #if both clusters only contain this domain once
             pair = tuple(sorted([seta[0],setb[0]]))
-            try: SumDistance = 1-DMS[domain][pair][0]
+            try: SumDistance = 1-float(DMS[domain][pair][0])
             except KeyError: 
+                print "Could not retrieve the distance metric for this cluster pair", pair
                 SumDistance = 1-0.1
-                print "NA"
                 
-            if domain in anchor_domains:
+            if domain.split(".")[0] in anchor_domains:
+                print "if", SumDistance
                 Sa += max(len(seta),len(setb))
                 DDSa += SumDistance #Also include similar code for the if/elif statements above
             else:
@@ -273,20 +291,27 @@ def CompareTwoClusters(A,B):
             for ja in xrange(0,len(seta)):
                 for jb in xrange(ja,len(setb)):
                     pair = tuple(sorted([seta[ja],setb[jb]]))
-                    try: Distance = 1-DMS[domain][pair][0] #DDS should become larger with an anchor domain, thus the seq distance should become smaller
-                    except KeyError: Distance = 1-0.1
+                    try: 
+                        Distance = 1-float(DMS[domain][pair][0]) 
+                    except KeyError: 
+                        Distance = 1-0.1
+                        print "KeyError when retrieving the distance score during the hungarian calculation"
+                    
+                    print "Distance", Distance
+                    
                     DistanceMatrix[ja,jb] = Distance
                     DistanceMatrix[jb,ja] = Distance
+                    
             Hungarian = Munkres()
             BestIndexes = Hungarian.compute(DistanceMatrix)
+            print "BestIndexes", BestIndexes
+            print "DistanceMatrix", DistanceMatrix
             SumDistance = sum([DistanceMatrix[bi] for bi in BestIndexes])
-           # S += max(len(seta),len(setb))
-           # DDS += SumDistance
-            
-            
-            if domain in anchor_domains:
+
+            if domain.split(".")[0] in anchor_domains:
+                #print "else", SumDistance
                 Sa += max(len(seta),len(setb))
-                DDSa += SumDistance #Also include similar code for the if/elif statements above
+                DDSa += SumDistance
             else:
                 S += max(len(seta),len(setb))
                 DDS += SumDistance
@@ -304,13 +329,17 @@ def CompareTwoClusters(A,B):
     Ar = [item for item in A]
     Ar.reverse()
     GK = max([calculate_GK(A, B, nbhood), calculate_GK(Ar, B, nbhood)])
-
+    
     if DDSa != 0:
         DDSa /= float(Sa)
-        DDS = anchorweight * DDSa + (1 - anchorweight) * DDS    #Recalculate DDS by giving preference to anchor domains
+        DDS = (anchorweight * DDSa) + (1 - anchorweight) * DDS    #Recalculate DDS by giving preference to anchor domains
+        print "DDSa", DDS
+        DDS /= float(S)
+        print "DDS", DDS
     else:
         DDS /= float(S) #A small value indicates low similarity
-        #DDS = math.exp(-DDS) #will 'flip' the DDS value 0.9 becomes 0.4, 0.1 becomes 0.9
+    
+    DDS = math.exp(-DDS) #will 'flip' the DDS value 0.9 becomes 0.4, 0.1 becomes 0.9 
     
 #===============================================================================
 #     if anchor domains present in both clusters:
@@ -416,9 +445,11 @@ def BGC_dic_gen(filtered_matrix):
     for row in filtered_matrix:
         try: #Should be faster than performing if key in dictionary.keys()
             bgc_dict[row[6]]
-            bgc_dict[row[6]].append(str(row[6]) + "_" + str(row[-1]) + "_" + str(row[3]) + "_" + str(row[4]))
+            bgc_dict[row[6]].append(str(row[0]) + "_" + str(row[-1]) + "_" + str(row[3]) + "_" + str(row[4]))
+            #bgc_dict[row[6]].append(str(row[6]) + "_" + str(row[-1]) + "_" + str(row[3]) + "_" + str(row[4]))
         except KeyError: #In case of this error, this is the first occurrence of this domain in the cluster
-            bgc_dict[row[6]]=[str(row[6]) + "_" + str(row[-1]) + "_" + str(row[3]) + "_" + str(row[4])]
+           bgc_dict[row[6]]=[str(row[0]) + "_" + str(row[-1]) + "_" + str(row[3]) + "_" + str(row[4])]
+            #bgc_dict[row[6]]=[str(row[6]) + "_" + str(row[-1]) + "_" + str(row[3]) + "_" + str(row[4])]
             
     return bgc_dict
 
@@ -609,7 +640,7 @@ def hmmscan(fastafile, outputdir, name, cores):
     #removed --noali par
 
     hmmscan_cmd = "hmmscan --cpu " + str(cores) + " --domtblout " + str(outputdir)\
-     + "/" +str(name) + "_domtable.txt --cut_tc Pfam-A.hmm " + str(fastafile) 
+     + "/" +str(name) + ".domtable --cut_tc Pfam-A.hmm " + str(fastafile) 
     if verbose == True:
         print hmmscan_cmd
         
@@ -650,7 +681,8 @@ def genbank_parser_hmmscan_call(gb_files, outputdir, cores, gbk_group, skip_hmms
                 
             if "/product" in line and in_cluster == True:
                 group= ""
-                group = line.strip().split(" ")[-1].replace("/product=", "").replace(" ", "").replace("\"", "")
+                #group = line.strip().split(" ")[-1].replace("/product=", "").replace(" ", "").replace("\"", "")
+                group = line.strip().split("=")[-1].replace("\"", "")
                 print outputbase, group
                 gbk_group[outputbase] = group
                 gb_handle.close()
@@ -717,10 +749,14 @@ def get_hmm_output_files():
     hmm_table_list = []
     for dirpath, dirnames, filenames in os.walk(str(output_folder) + "/"):
         for fname in filenames:
-            if "domtable.txt" in fname and open(output_folder + "/" + fname, "r").readlines()[3][0] != "#": #if this is false, hmmscan has not found any domains in the sequence
-                hmm_table_list.append(fname)
-                if verbose == True:
-                    print fname
+
+            if fname.split(".")[-1] == "domtable":
+                if open(output_folder + "/" + fname, "r").readlines()[3][0] != "#": #if this is false, hmmscan has not found any domains in the sequence
+                    hmm_table_list.append(fname)
+                    if verbose == True:
+                        print fname
+
+                
                     
     return hmm_table_list
 
@@ -855,8 +891,8 @@ def CMD_parser():
                       help="cores")
     parser.add_option("-l", "--limit", dest="limit", default=-1,
                       help="-limit- parameter of run_antismash")
-    parser.add_option("-v", "--verbose", dest="verbose", default=False,
-                      help="input: True/False")
+    parser.add_option("-v", "--verbose", dest="verbose", action="store_true", default=False,
+                      help="toggle to true")
     parser.add_option("-d", "--domain_overlap_cutoff", dest="domain_overlap_cutoff", default=0.1,
                       help="Specify at which overlap percentage domains are considered to overlap")
     parser.add_option("--Jaccardw", dest="Jaccardw", default=0.3,
@@ -883,11 +919,10 @@ def CMD_parser():
                       Or use the distout scores from the mafft output? - default")
 
     parser.add_option("--skip_hmmscan", dest="skip_hmmscan", action="store_true", default=False,
-                      help="If you have already generated the domain tables with hmmscan, toggle\
-                       this parameter to true.")
+                      help="When skipping hmmscan, the GBK files should be available, and the domain tables need to be in the output folder.")
 
     parser.add_option("--sim_cutoffs", dest="sim_cutoffs", default="0",
-                      help="generate networks using multiple simmilarity cutoff values, example: \"2,1,0.5,0.1\"")
+                      help="Generate networks using multiple simmilarity (raw distance) cutoff values, example: \"1,0.5,0.1\"")
     
     parser.add_option("-e", "--exponent", dest="exponent", default=2,
                       help="Exponent that modifies the sequence similarity score. Thereby exaggerating the the difference in sequences.")
@@ -915,6 +950,7 @@ def main():
     
     global verbose
     global BGCs
+    global DMS
     global output_folder
     global timings_file
     global Jaccardw
@@ -923,7 +959,7 @@ def main():
     global anchorweight
     global nbhood
     nbhood = int(options.nbhood)
-    anchorweight = int(options.anchorweight)
+    anchorweight = float(options.anchorweight)
     Jaccardw = options.Jaccardw
     DDSw = options.DDSw 
     GKw = options.GKw
@@ -946,6 +982,9 @@ def main():
     
     
     gbk_files = get_gbk_files() #files will contain lists of gbk files per sample. Thus a matrix contains lists with gbk files by sample.
+    if gbk_files == []:
+        print "No .gbk files were found"
+        
     #print options.pars
    # sys.exit("blaat")
     
@@ -974,7 +1013,7 @@ def main():
         hmms = [] 
         for hmm_file in hmm_domtables:
             if samplename in hmm_file:
-                hmms.append(hmm_file.replace("_domtable.txt", "")) 
+                hmms.append(hmm_file.replace(".domtable", "")) 
         
         clusters.append(hmms) #remember the clusters per sample        
         #loop over clusters
@@ -984,7 +1023,7 @@ def main():
             
             
             #pfd_matrix = hmm_table_parser(outputbase+".gbk", output_folder +"/"+ hmm_file)
-            pfd_matrix = domtable_parser(outputbase, output_folder + "/" + outputbase+"_domtable.txt")
+            pfd_matrix = domtable_parser(outputbase, output_folder + "/" + outputbase+".domtable")
             filtered_matrix, domains = check_overlap(pfd_matrix, options.domain_overlap_cutoff)  #removes overlapping domains, and keeps the highest scoring domain
             save_domain_seqs(filtered_matrix, fasta_dict, options.domainsout) #save the sequences for the found domains per pfam domain
             write_pfs(pfs_handle, domains)
@@ -1014,8 +1053,6 @@ def main():
         - ('specific_domain_name_1', 'specific_domain_name_2'): pair of specific domains, sorted alphabetically
         - (sequence_identity, alignment_length): sequence identity and alignment length of the domain pair"""
 
-    
-    global DMS 
     DMS = {}
     fasta_domains = get_domain_fastas(options.domainsout)
     #Fill the DMS variable by using all 'domains.fasta'  files
@@ -1044,14 +1081,9 @@ def main():
         else:      
             print "#################################"
             print "using distout file from mafft to calculate cluster diversity with sequence sim"
-            DMS[domain.split("/")[-1]] = distout_parser(domain+".fasta" + ".hat2", options.exponent)
+            DMS[domain.split("/")[-1]] = distout_parser(domain+".fasta" + ".hat2")
     
-    if verbose == True:
-        DMS_handle = open("DMS.txt", "w")
-        for item in DMS.items():
-            DMS_handle.write(str(item)+"\n")
-        DMS_handle.close()
-            
+
         
     #Compare the gene clusters within one sample, and save them in tab delimited .txt files.
     for clusters_per_sample in clusters:
@@ -1062,6 +1094,15 @@ def main():
     network_matrix, networkfilename = generate_network(list(iterFlatten(clusters)), options.dist_threshold, group_dct, "all_vs_all", "seqdist")
     for cutoff in cutoff_list:
         write_network_matrix(network_matrix, cutoff, networkfilename + "_c" + cutoff + ".network")
+        
+        
+    if verbose == True:
+        print "Saving the DMS variable to DMS.txt"
+        DMS_handle = open("DMS.txt", "w")
+        for item in DMS.items():
+            DMS_handle.write(str(item)+"\n")
+        DMS_handle.close()
+            
         
   
 main()
