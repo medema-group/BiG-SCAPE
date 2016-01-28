@@ -32,6 +32,7 @@ import math
 from Bio import SeqIO
 from Bio.Seq import Seq
 from Bio.Alphabet import generic_dna
+from site import setBEGINLIBPATH
 
 
 """
@@ -75,7 +76,9 @@ def timeit(f):
         
         runtime_string = '%s function took %0.3f s' % (f.func_name, runtime)
         #write_timings(runtime_string)
-        timings_file.write(runtime_string + "\n")
+        #=======================================================================
+        # timings_file.write(runtime_string + "\n")
+        #=======================================================================
         if runtime > insignificant_runtime:
             
             print runtime_string
@@ -159,13 +162,27 @@ def iterFlatten(root):
 
 def write_network_matrix(matrix, cutoff, filename):
     networkfile = open(filename, 'w+')
-    networkfile.write("clustername1\tclustername2\tgroup1\tgroup2\t-log2score\traw distance\tsquared similarity\tshared group\n")
+    
+    networkfile.write("clustername1\tclustername2\tgroup1\tgroup2\t-log2score\traw distance\tsquared similarity\tcombined group\tshared group\n")
     for row in matrix:
+        temprow = []
         #if both clusters have the same group, this group will be annotated in the last column of the network file
         #print "raw_distance", float(row[5]) 
         #print "cutoff", float(cutoff)
-        temprow = row
-        if float(row[5]) <= float(cutoff):
+        for i in row:
+            temprow.append(i)
+        
+        if float(temprow[5]) <= float(cutoff):
+            
+            if row[2] != "" and row[3] != "":
+                temprow.append(" - ".join(sorted([str(row[2]),str(row[3])])))
+            elif row[3] != "":
+                temprow.append(str(row[3]))
+            elif row[2] != "":
+                temprow.append(str(row[2]))
+            else:
+                 temprow.append(str("NA"))
+            
             if row[2] == row[3]:
                 temprow.append(row[2])
             else:
@@ -203,15 +220,20 @@ def generate_network(bgc_list, dist_threshold, group_dct, networkfilename, dist_
             cluster_file2 = output_folder + "/" + cluster2 + ".pfs"
             
             if dist_method == "seqdist":
-                dist = CompareTwoClusters(cluster1, cluster2)
+                dist = cluster_distance(cluster1, cluster2)
             elif dist_method == "domain_dist":
                 dist = Distance_modified(get_domain_list(cluster_file1), get_domain_list(cluster_file2), 0, 4)
-
+                
             if dist == 0:
                 logscore = float("inf")
             else:
-                logscore = -math.log(dist, 2)
-            
+                logscore =0
+                try:
+                    logscore = -math.log(dist, 2) #Write exception, ValueError
+                except ValueError:
+                    print "calculating the logscore with distance", dist, "failed in function generate_network, using distance method", dist_method, networkfilename
+                    
+                
             #clustername1 clustername2 group1, group2, -log2score, dist, squared similarity
             network_row = [str(cluster1), str(cluster2),group_dct[cluster1],\
             group_dct[cluster2], str(logscore), str(dist), str((1-dist)**2)]
@@ -225,16 +247,29 @@ def generate_network(bgc_list, dist_threshold, group_dct, networkfilename, dist_
     return sorted_network_matrix, networkfilename
     
     
-# --- compare two clusters using distance information between sequences of domains
-@timeit
-def CompareTwoClusters(A,B): 
+    
+    #===========================================================================
+    # 
+    # # calculate domain duplication index
+    # DDS = 0 #The difference in abundance of the domains per cluster
+    # S = 0 #Max occurence of each domain
+    # for p in set(A+B):
+    #     DDS += abs(A.count(p)-B.count(p))
+    #     S += max(A.count(p),B.count(p))
+    # DDS /= float(S) 
+    # DDS = math.exp(-DDS) #transforms the DDS to a value between 0 - 1
+    #===========================================================================
+    
+    
+
+def cluster_distance(A,B): 
     anchor_domains = ["PF00668"]
- 
+  
     #key is name of GC, values is list of specific pfam domain names
     clusterA = BGCs[A] #will contain a dictionary where keys are pfam domains, and values are domains that map to a specific sequence in the DMS variable
-    clusterB = BGCs[B]
+    clusterB = BGCs[B] #{ 'general_domain_name_x' : ['specific_domain_name_1', 'specific_domain_name_2'], etc }
     #A and B are lists of pfam domains
-    
+     
     try:
         #calculates the intersect
         Jaccard = len(set(clusterA.keys()) & set(clusterB.keys())) / \
@@ -244,7 +279,110 @@ def CompareTwoClusters(A,B):
         print "Zerodivisionerror during the Jaccard distance calculation. Can only happen when both clusters are empty"
         print "keys of clusterA", A, clusterA.keys()
         print "keys of clusterB", B, clusterB.keys()
+         
+    intersect = set(clusterA.keys() ).intersection(clusterB.keys()) #shared pfam domains
+    not_intersect = []
+    #DDS: The difference in abundance of the domains per cluster
+    #S: Max occurence of each domain
+    DDSa,Sa = 0,0
+    DDS,S = 0,0
+    SumDistance = 0
+    pair = ""
+
+    for domain in set(clusterA.keys() + clusterB.keys()):
+        if domain not in intersect:
+            not_intersect.append(domain)
+            
+    for unshared_domain in not_intersect: #no need to look at seq identity or anchors, since these domains are unshared
+        #for each occurence of an unshared domain do DDS += count of domain and S += count of domain
+        dom_set = []
+        try:
+            dom_set = clusterA[unshared_domain]
+        except KeyError:
+            dom_set = clusterB[unshared_domain]
+            
+        DDS += len(dom_set)
+        S += len(dom_set)
         
+        
+    for shared_domain in intersect:
+        seta = clusterA[shared_domain]
+        setb = clusterB[shared_domain]
+        
+        if len(seta+setb) == 2: #The domain occurs only once in both clusters
+            pair = tuple(sorted([seta[0],setb[0]]))
+            SumDistance = 1-DMS[shared_domain][pair][0] #1
+            if shared_domain.split(".")[0] in anchor_domains: 
+                Sa += max(len(seta),len(setb))
+                DDSa += SumDistance 
+            else:
+                S += max(len(seta),len(setb))
+                DDS += SumDistance
+        else:                   #The domain occurs more than once in both clusters
+            accumulated_distance = 0
+            for domsa in seta:
+                seq_dist = 1
+                for domsb in setb:
+                    pair = tuple(sorted([domsa,domsb]))
+                    Similarity = DMS[shared_domain][pair][0]
+                    
+                    if (1-Similarity) < seq_dist:
+                        seq_dist = 1-Similarity
+                
+                #Only use the best scoring pairs
+                accumulated_distance += seq_dist
+                         
+                    
+            SumDistance = (abs(len(seta)-len(setb)) + accumulated_distance) / 2 #diff in abundance + sequence distance / 2
+            
+            if shared_domain.split(".")[0] in anchor_domains: 
+                Sa += max(len(seta),len(setb))
+                DDSa += SumDistance 
+            else:
+                S += max(len(seta),len(setb))
+                DDS += SumDistance
+
+ 
+    #  calculate the Goodman-Kruskal gamma index
+    Ar = [item for item in A]
+    Ar.reverse()
+    GK = max([calculate_GK(A, B, nbhood), calculate_GK(Ar, B, nbhood)])
+     
+    if DDSa != 0:
+        DDSa /= float(Sa)
+        DDS = (anchorweight * DDSa) + (1 - anchorweight) * DDS    #Recalculate DDS by giving preference to anchor domains
+        DDS /= float(S)
+    else:
+        DDS /= float(S) 
+    
+    DDS = 1-DDS #transform into similarity
+    Distance = 1 - (Jaccardw * Jaccard) - (DDSw * DDS) - (GKw * GK) 
+    if Distance < 0:
+        print "negative distance", Distance, "DDS", DDS, pair
+    return Distance
+
+
+
+# --- compare two clusters using distance information between sequences of domains
+@timeit
+def CompareTwoClusters(A,B): 
+    anchor_domains = ["PF00668"]
+  
+    #key is name of GC, values is list of specific pfam domain names
+    clusterA = BGCs[A] #will contain a dictionary where keys are pfam domains, and values are domains that map to a specific sequence in the DMS variable
+    clusterB = BGCs[B] #{ 'general_domain_name_x' : ['specific_domain_name_1', 'specific_domain_name_2'], etc }
+    #A and B are lists of pfam domains
+     
+    try:
+        #calculates the intersect
+        Jaccard = len(set(clusterA.keys()) & set(clusterB.keys())) / \
+              float( len(set(clusterA.keys())) + len(set(clusterB.keys())) \
+              - len(set(clusterA.keys()) & set(clusterB.keys())))
+    except ZeroDivisionError:
+        print "Zerodivisionerror during the Jaccard distance calculation. Can only happen when both clusters are empty"
+        print "keys of clusterA", A, clusterA.keys()
+        print "keys of clusterB", B, clusterB.keys()
+         
     #DDS: The difference in abundance of the domains per cluster
     #S: Max occurence of each domain
     DDSa,Sa = 0,0
@@ -252,118 +390,100 @@ def CompareTwoClusters(A,B):
     anchor = False
     SumDistance = 0
     for domain in set(clusterA.keys() + clusterB.keys()):
-        
-        try: seta = clusterA[domain] #Get the specific domains
+         
+        try: seta = clusterA[domain] #Get the specific domains, that can be mapped to the sequence identity
         except KeyError: 
             seta = []
-          #  print "seta is empty"
-            
+             
         try: setb = clusterB[domain]
         except KeyError: 
             setb = []
-         #   print "setb is empty"
-        #print "seta", seta
-        #print "setb", setb
             
-            
+
+
         if len(seta) == 1 and len(setb) == 1: #if both clusters only contain this domain once
             pair = tuple(sorted([seta[0],setb[0]]))
-            try: SumDistance = 1-float(DMS[domain][pair][0])
+            try: SumDistance = 1-DMS[domain][pair][0] #1
             except KeyError: 
                 print "Could not retrieve the distance metric for this cluster pair", pair
                 SumDistance = 1-0.1
-                
+          #  print "if", SumDistance
             if domain.split(".")[0] in anchor_domains:
-                print "if", SumDistance
+                
                 Sa += max(len(seta),len(setb))
                 DDSa += SumDistance #Also include similar code for the if/elif statements above
             else:
                 S += max(len(seta),len(setb))
                 DDS += SumDistance
-
+ 
         elif len(seta) + len(setb)==1: #If one cluster does not contain this domain
             DDS += 1.
             S += 1.
-
+ 
         else:                           #if the domain occurs more than once in either or both of the clusters
+            print "seta", seta
+            print "setb", setb
             N = max(len(seta),len(setb))
             DistanceMatrix = np.zeros((N,N)) #creates a matrix of N by N dimensions filled with zeros
-            for ja in xrange(0,len(seta)):
+            for ja in xrange(len(seta)):
                 for jb in xrange(ja,len(setb)):
                     pair = tuple(sorted([seta[ja],setb[jb]]))
                     try: 
-                        Distance = 1-float(DMS[domain][pair][0]) 
+                        Distance = 1-DMS[domain][pair][0]
                     except KeyError: 
                         Distance = 1-0.1
-                        print "KeyError when retrieving the distance score during the hungarian calculation"
-                    
+                        print "KeyError when retrieving the distance score during the hungarian calculation", pair
+                      
                     print "Distance", Distance
-                    
+                      
                     DistanceMatrix[ja,jb] = Distance
                     DistanceMatrix[jb,ja] = Distance
-                    
+ 
+ 
+            print "DistanceMatrix", DistanceMatrix
             Hungarian = Munkres()
             BestIndexes = Hungarian.compute(DistanceMatrix)
-            print "BestIndexes", BestIndexes
-            print "DistanceMatrix", DistanceMatrix
             SumDistance = sum([DistanceMatrix[bi] for bi in BestIndexes])
-
+ 
             if domain.split(".")[0] in anchor_domains:
-                #print "else", SumDistance
                 Sa += max(len(seta),len(setb))
                 DDSa += SumDistance
             else:
                 S += max(len(seta),len(setb))
                 DDS += SumDistance
-
-
-            #===================================================================
-            # if domain in anchor_domains: #anchor_domains = list of anchor domains
-            #     Sa += max(len(seta),len(setb))
-            #     DDSa += SumDistance #Also include similar code for the if/elif statements above
-            #     
-            #===================================================================
-   
-   
+ 
     #  calculate the Goodman-Kruskal gamma index
     Ar = [item for item in A]
     Ar.reverse()
     GK = max([calculate_GK(A, B, nbhood), calculate_GK(Ar, B, nbhood)])
-    
+     
     if DDSa != 0:
         DDSa /= float(Sa)
         DDS = (anchorweight * DDSa) + (1 - anchorweight) * DDS    #Recalculate DDS by giving preference to anchor domains
-        print "DDSa", DDS
+        #print "DDSa", DDS
         DDS /= float(S)
-        print "DDS", DDS
+        #print "DDS", DDS
     else:
-        DDS /= float(S) #A small value indicates low similarity
-    
+        DDS /= float(S) 
+     
     DDS = math.exp(-DDS) #will 'flip' the DDS value 0.9 becomes 0.4, 0.1 becomes 0.9 
-    
-#===============================================================================
-#     if anchor domains present in both clusters:
-#         DDSa /= float(Sa)
-#          DDS = anchorweight * DDSa + (1 - anchorweight) * DDS #Recalculate DDS by giving preference to anchor domains
-# 
-#     
-#===============================================================================
-
-    
+     
     Distance = 1 - (Jaccardw * Jaccard) - (DDSw * DDS) - (GKw * GK) 
    # Distance = 1 - 0.36*Jaccard - 0.64*DDS 0.63
-        
-    Similarity = 1-Distance
-    lin = '%s\t%s\t%.4f\n' % (A,B,Similarity)
-   # output = open("seqdist.txt", 'w')
-   # output.write(lin)
-   
+         
+    #===========================================================================
+    # Similarity = 1-Distance
+    # lin = '%s\t%s\t%.4f\n' % (A,B,Similarity)
+    # output = open("seqdist.txt", 'w')
+    # output.write(lin)
+    #===========================================================================
+    
     return Distance
 
 
 @timeit
 def run_mafft(al_method, maxit, threads, mafft_pars, domain):
-    """Runs mafft program, as of now it only runs in using local alignment. This part should be made variable"""
+    """Runs mafft program"""
     alignment_file = domain + ".algn"
     
     
@@ -939,7 +1059,6 @@ def CMD_parser():
 #if __name__=="__main__":
 @timeit
 def main():
-    
     options, args = CMD_parser()
     
     #anchor_handle = open("anchor_doms.txt", 'r') 
@@ -1036,9 +1155,20 @@ def main():
         
     
         
-        network_matrix, networkfilename = generate_network(hmms, options.dist_threshold, group_dct, str(samplename), "domain_dist")
-        for cutoff in cutoff_list:
-            write_network_matrix(network_matrix, cutoff, networkfilename + "_c" + cutoff + ".network")
+        #=======================================================================
+        # network_matrix, networkfilename = generate_network(hmms, options.dist_threshold, group_dct, str(samplename), "domain_dist")
+        # for cutoff in cutoff_list:
+        #     write_network_matrix(network_matrix, cutoff, networkfilename + "_c" + cutoff + ".network")
+        #=======================================================================
+         
+    #===========================================================================
+    # print "Generating all_vs_all network with domain_dist"
+    # network_matrix, networkfilename = generate_network(list(iterFlatten(clusters)), options.dist_threshold, group_dct, "all_vs_all", "domain_dist")
+    # for cutoff in cutoff_list:
+    #     write_network_matrix(network_matrix, cutoff, networkfilename + "_c" + cutoff + ".network")
+    #===========================================================================
+        
+        
         
     if verbose == True:
         print "BGCs:", BGCs
@@ -1081,7 +1211,9 @@ def main():
         else:      
             print "#################################"
             print "using distout file from mafft to calculate cluster diversity with sequence sim"
-            DMS[domain.split("/")[-1]] = distout_parser(domain+".fasta" + ".hat2")
+            domain_pairs = distout_parser(domain+".fasta" + ".hat2")
+            if domain_pairs != {}:
+                DMS[domain.split("/")[-1]] = domain_pairs
     
 
         
@@ -1090,7 +1222,7 @@ def main():
         network_matrix, networkfilename = generate_network(clusters_per_sample, options.dist_threshold, group_dct, "", "seqdist")
         for cutoff in cutoff_list:
             write_network_matrix(network_matrix, cutoff, networkfilename + "_c" + cutoff + ".network")
-        
+          
     network_matrix, networkfilename = generate_network(list(iterFlatten(clusters)), options.dist_threshold, group_dct, "all_vs_all", "seqdist")
     for cutoff in cutoff_list:
         write_network_matrix(network_matrix, cutoff, networkfilename + "_c" + cutoff + ".network")
