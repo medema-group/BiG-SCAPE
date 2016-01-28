@@ -246,21 +246,6 @@ def generate_network(bgc_list, dist_threshold, group_dct, networkfilename, dist_
     sorted_network_matrix = sorted(network_matrix, key=lambda network_matrix_entry: network_matrix_entry[4]) #sort the matrix on the log2 scores
     return sorted_network_matrix, networkfilename
     
-    
-    
-    #===========================================================================
-    # 
-    # # calculate domain duplication index
-    # DDS = 0 #The difference in abundance of the domains per cluster
-    # S = 0 #Max occurence of each domain
-    # for p in set(A+B):
-    #     DDS += abs(A.count(p)-B.count(p))
-    #     S += max(A.count(p),B.count(p))
-    # DDS /= float(S) 
-    # DDS = math.exp(-DDS) #transforms the DDS to a value between 0 - 1
-    #===========================================================================
-    
-    
 
 def cluster_distance(A,B): 
     anchor_domains = ["PF00668"]
@@ -320,20 +305,26 @@ def cluster_distance(A,B):
                 DDS += SumDistance
         else:                   #The domain occurs more than once in both clusters
             accumulated_distance = 0
-            for domsa in seta:
-                seq_dist = 1
-                for domsb in setb:
-                    pair = tuple(sorted([domsa,domsb]))
+            
+            DistanceMatrix = [[1 for col in range(len(setb))] for row in range(len(seta))]
+            for domsa in range(len(seta)):
+                for domsb in range(domsa, len(setb)):
+                    pair = tuple(sorted([seta[domsa], setb[domsb]]))
                     Similarity = DMS[shared_domain][pair][0]
                     
-                    if (1-Similarity) < seq_dist:
-                        seq_dist = 1-Similarity
+                    seq_dist = 1-Similarity
+                    DistanceMatrix[domsa][domsb] = seq_dist
                 
-                #Only use the best scoring pairs
-                accumulated_distance += seq_dist
+            #Only use the best scoring pairs
+            Hungarian = Munkres()
+            #print "DistanceMatrix", DistanceMatrix
+            BestIndexes = Hungarian.compute(DistanceMatrix)
+            #print "BestIndexes", BestIndexes
+            accumulated_distance = sum([DistanceMatrix[bi[0]][bi[1]] for bi in BestIndexes])
+            #print "accumulated_distance", accumulated_distance
                          
                     
-            SumDistance = (abs(len(seta)-len(setb)) + accumulated_distance) / 2 #diff in abundance + sequence distance / 2
+            SumDistance = (abs(len(seta)-len(setb)) + accumulated_distance)  #diff in abundance + sequence distance
             
             if shared_domain.split(".")[0] in anchor_domains: 
                 Sa += max(len(seta),len(setb))
@@ -355,10 +346,14 @@ def cluster_distance(A,B):
     else:
         DDS /= float(S) 
     
+    
     DDS = 1-DDS #transform into similarity
     Distance = 1 - (Jaccardw * Jaccard) - (DDSw * DDS) - (GKw * GK) 
     if Distance < 0:
         print "negative distance", Distance, "DDS", DDS, pair
+        print "Probably a rounding issue"
+        print "Distance is set to 0 for these clusters" 
+        Distance = 0
     return Distance
 
 
