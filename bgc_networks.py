@@ -163,7 +163,7 @@ def iterFlatten(root):
 def write_network_matrix(matrix, cutoff, filename):
     networkfile = open(filename, 'w+')
     
-    networkfile.write("clustername1\tclustername2\tgroup1\tgroup2\t-log2score\traw distance\tsquared similarity\tcombined group\tshared group\n")
+    networkfile.write("clustername1\tclustername2\tgroup1\tdefinition\tgroup2\tdefinition\t-log2score\traw distance\tsquared similarity\tcombined group\tshared group\n")
     for row in matrix:
         temprow = []
         #if both clusters have the same group, this group will be annotated in the last column of the network file
@@ -172,7 +172,7 @@ def write_network_matrix(matrix, cutoff, filename):
         for i in row:
             temprow.append(i)
         
-        if float(temprow[5]) <= float(cutoff):
+        if float(temprow[7]) <= float(cutoff):
             
             if row[2] != "" and row[3] != "":
                 temprow.append(" - ".join(sorted([str(row[2]),str(row[3])])))
@@ -194,7 +194,7 @@ def write_network_matrix(matrix, cutoff, filename):
     networkfile.close()   
         
 @timeit
-def generate_network(bgc_list, dist_threshold, group_dct, networkfilename, dist_method):
+def generate_network(bgc_list, dist_threshold, group_dct, networkfilename, dist_method, anchor_domains):
     #Contents of the network file: clustername1 clustername2 group1, group2, -log2score, dist, squared similarity
     "saves the distances as the log2 of the similarity"
     network_matrix = []
@@ -220,7 +220,7 @@ def generate_network(bgc_list, dist_threshold, group_dct, networkfilename, dist_
             cluster_file2 = output_folder + "/" + cluster2 + ".pfs"
             
             if dist_method == "seqdist":
-                dist = cluster_distance(cluster1, cluster2)
+                dist = cluster_distance(cluster1, cluster2, anchor_domains)
             elif dist_method == "domain_dist":
                 dist = Distance_modified(get_domain_list(cluster_file1), get_domain_list(cluster_file2), 0, 4)
                 
@@ -235,8 +235,8 @@ def generate_network(bgc_list, dist_threshold, group_dct, networkfilename, dist_
                     
                 
             #clustername1 clustername2 group1, group2, -log2score, dist, squared similarity
-            network_row = [str(cluster1), str(cluster2),group_dct[cluster1],\
-            group_dct[cluster2], str(logscore), str(dist), str((1-dist)**2)]
+            network_row = [str(cluster1), str(cluster2),group_dct[cluster1][0],group_dct[cluster1][1],\
+            group_dct[cluster2][0],group_dct[cluster2][1], str(logscore), str(dist), str((1-dist)**2)]
             
             network_matrix.append(network_row)
         
@@ -247,8 +247,7 @@ def generate_network(bgc_list, dist_threshold, group_dct, networkfilename, dist_
     return sorted_network_matrix, networkfilename
     
 
-def cluster_distance(A,B): 
-    anchor_domains = ["PF00668"]
+def cluster_distance(A,B, anchor_domains): 
   
     #key is name of GC, values is list of specific pfam domain names
     clusterA = BGCs[A] #will contain a dictionary where keys are pfam domains, and values are domains that map to a specific sequence in the DMS variable
@@ -484,6 +483,7 @@ def run_mafft(al_method, maxit, threads, mafft_pars, domain):
     
     mafft_cmd_list = []
     mafft_cmd_list.append("mafft --distout")
+    mafft_cmd_list.append("--quiet")
     mafft_cmd_list.append(al_method)
     if maxit != 0:
         mafft_cmd_list.append("--maxiterate " + str(maxit))
@@ -497,6 +497,7 @@ def run_mafft(al_method, maxit, threads, mafft_pars, domain):
     mafft_cmd_list.append(str(domain) + ".fasta")
     mafft_cmd_list.append(">")
     mafft_cmd_list.append("alignment_file")
+    
     mafft_cmd = " ".join(mafft_cmd_list)
     
     print mafft_cmd
@@ -775,7 +776,7 @@ def get_domains(filename):
 def genbank_parser_hmmscan_call(gb_files, outputdir, cores, gbk_group, skip_hmmscan):
     """Extract the CDS from the antismash genbank clusters, and provide these coding regions to hmmscan"""
     
-    #gbk_group = {} #Will contain the gbk cluster as key, and the assigned group as a value
+    #gbk_group = {} #Will contain the gbk cluster as key, and the assigned group as a value together with the definition
     fasta_dict = {} #should make fasta headers more unique
     
     for gb_file in gb_files:
@@ -791,15 +792,20 @@ def genbank_parser_hmmscan_call(gb_files, outputdir, cores, gbk_group, skip_hmms
         in_cluster = False
 
         for line in gb_handle:
+            if "DEFINITION  " in line:
+                definition = line.strip().replace("DEFINITION  ", "")
             if "  cluster  " in line:
                 in_cluster = True
+                
+
+                
                 
             if "/product" in line and in_cluster == True:
                 group= ""
                 #group = line.strip().split(" ")[-1].replace("/product=", "").replace(" ", "").replace("\"", "")
                 group = line.strip().split("=")[-1].replace("\"", "")
                 print outputbase, group
-                gbk_group[outputbase] = group
+                gbk_group[outputbase] = [group, definition]
                 gb_handle.close()
                 break
         
@@ -824,12 +830,18 @@ def genbank_parser_hmmscan_call(gb_files, outputdir, cores, gbk_group, skip_hmms
                 protein_id =  feature.qualifiers['protein_id']
             except KeyError:
                 pass
-
-            fasta_header = ">" + "loc:" + str(feature.location)\
-            + ":gid:" + str(gene_id )\
-            + ":pid:" + str(protein_id)\
-            + ":loc_tag:" + str(feature.qualifiers['locus_tag'])
             
+            try:
+                fasta_header = ">" + "loc:" + str(feature.location)\
+                + ":gid:" + str(gene_id )\
+                + ":pid:" + str(protein_id)\
+                + ":loc_tag:" + str(feature.qualifiers['locus_tag'])
+            except KeyError:
+                print "no locus tag available in gbk file", gb_file
+                fasta_header = ">" + "loc:" + str(feature.location)\
+                + ":gid:" + str(gene_id )\
+                + ":pid:" + str(protein_id)
+                
             CDS_keys.append(fasta_header)
             
             
@@ -877,7 +889,7 @@ def get_hmm_output_files():
 
 
 @timeit
-def get_gbk_files():
+def get_gbk_files(gbksamples):
     """Find .gbk files, and store the .gbk files in lists, separated by sample."""
     genbankfiles=[] #Will contain lists of gbk files
     dirpath = ""
@@ -891,6 +903,9 @@ def get_gbk_files():
                 genbankfilelist.append(dirpath + "/" + fname)
                 if verbose == True:
                     print fname
+                if gbksamples == True:
+                    genbankfiles.append(genbankfilelist)
+                    genbankfilelist = []
                 
         if genbankfilelist != []:
             genbankfiles.append(genbankfilelist)
@@ -988,6 +1003,24 @@ def hmm_table_parser(gbk, hmm_table):
 
     return pfd_matrix
 
+def get_anchor_domains(filename):
+    domains = []
+    
+    try:
+        handle = open(filename, 'r')
+    except IOError:
+        print "You have not provided the anchor_domains.txt file."
+        print "if you want to make use of the anchor domains in the DDS distance metric,\
+        make a file that contains a Pfam domain on each line."
+        return []
+        
+    raw_domains = handle.readlines()
+    for line in raw_domains:
+        domains.append(line.strip())
+    handle.close()
+    return domains
+        
+
 @timeit
 def get_domain_list(filename):
     handle = open(filename, 'r')
@@ -1036,16 +1069,18 @@ def CMD_parser():
     parser.add_option("--skip_hmmscan", dest="skip_hmmscan", action="store_true", default=False,
                       help="When skipping hmmscan, the GBK files should be available, and the domain tables need to be in the output folder.")
 
-    parser.add_option("--sim_cutoffs", dest="sim_cutoffs", default="0",
+    parser.add_option("--sim_cutoffs", dest="sim_cutoffs", default="1,0.7,0.6,0.5,0.4,0.3,0.2,0.1",
                       help="Generate networks using multiple simmilarity (raw distance) cutoff values, example: \"1,0.5,0.1\"")
     
     parser.add_option("-e", "--exponent", dest="exponent", default=2,
                       help="Exponent that modifies the sequence similarity score. Thereby exaggerating the the difference in sequences.")
     
-    parser.add_option("-a", "--anchorweight", dest="anchorweight", default=0.7,
+    parser.add_option("-a", "--anchorweight", dest="anchorweight", default=0.5,
                       help="")
     parser.add_option("-n", "--nbhood", dest="nbhood", default=4,
                       help="")
+    parser.add_option("-s", "--gbksamples", dest="gbksamples", action="store_true", default=False,
+                      help="If each seperate gbk file represents a different sample, toggle to true.")
 
     (options, args) = parser.parse_args()
     return options, args
@@ -1062,6 +1097,8 @@ def main():
         print "please provide a name for an output folder using parameter -o or --outputdir"
         sys.exit(0)
     
+    anchor_domains = get_anchor_domains("anchor_domains.txt")
+    
     global verbose
     global BGCs
     global DMS
@@ -1072,6 +1109,7 @@ def main():
     global GKw
     global anchorweight
     global nbhood
+    gbksamples = options.gbksamples
     nbhood = int(options.nbhood)
     anchorweight = float(options.anchorweight)
     Jaccardw = options.Jaccardw
@@ -1095,7 +1133,7 @@ def main():
     timings_file = open(output_folder + "/" + "runtimes.txt", 'w')
     
     
-    gbk_files = get_gbk_files() #files will contain lists of gbk files per sample. Thus a matrix contains lists with gbk files by sample.
+    gbk_files = get_gbk_files(gbksamples) #files will contain lists of gbk files per sample. Thus a matrix contains lists with gbk files by sample.
     if gbk_files == []:
         print "No .gbk files were found"
         
@@ -1150,18 +1188,19 @@ def main():
         
     
         
-        #=======================================================================
-        # network_matrix, networkfilename = generate_network(hmms, options.dist_threshold, group_dct, str(samplename), "domain_dist")
-        # for cutoff in cutoff_list:
-        #     write_network_matrix(network_matrix, cutoff, networkfilename + "_c" + cutoff + ".network")
-        #=======================================================================
-         
-    #===========================================================================
-    # print "Generating all_vs_all network with domain_dist"
-    # network_matrix, networkfilename = generate_network(list(iterFlatten(clusters)), options.dist_threshold, group_dct, "all_vs_all", "domain_dist")
-    # for cutoff in cutoff_list:
-    #     write_network_matrix(network_matrix, cutoff, networkfilename + "_c" + cutoff + ".network")
-    #===========================================================================
+        network_matrix, networkfilename = generate_network(hmms, options.dist_threshold, group_dct, str(samplename), "domain_dist", anchor_domains)
+        for cutoff in cutoff_list:
+            write_network_matrix(network_matrix, cutoff, networkfilename + "_c" + cutoff + ".network")
+    
+    
+    print "Generating all_vs_all network with domain_dist"
+    network_matrix, networkfilename = generate_network(list(iterFlatten(clusters)), options.dist_threshold, group_dct, "all_vs_all", "domain_dist", anchor_domains)
+    
+    for line in network_matrix:
+        print line
+    
+    for cutoff in cutoff_list:
+        write_network_matrix(network_matrix, cutoff, networkfilename + "_c" + cutoff + ".network")
         
         
         
@@ -1188,7 +1227,6 @@ def main():
         
         
         if options.use_perc_id == True:
-            print "#################################"
             print "using percent identiy to calculate cluster diversity"
             fasta_handle = open(domain + ".algn", 'r')
             fasta_dict = fasta_parser(fasta_handle) #overwrites the fasta dictionary for each fasta file
@@ -1204,7 +1242,6 @@ def main():
             DMS[domain.split("/")[-1]] = spec_domains_dict
             
         else:      
-            print "#################################"
             print "using distout file from mafft to calculate cluster diversity with sequence sim"
             domain_pairs = distout_parser(domain+".fasta" + ".hat2")
             if domain_pairs != {}:
@@ -1214,11 +1251,11 @@ def main():
         
     #Compare the gene clusters within one sample, and save them in tab delimited .txt files.
     for clusters_per_sample in clusters:
-        network_matrix, networkfilename = generate_network(clusters_per_sample, options.dist_threshold, group_dct, "", "seqdist")
+        network_matrix, networkfilename = generate_network(clusters_per_sample, options.dist_threshold, group_dct, "", "seqdist", anchor_domains)
         for cutoff in cutoff_list:
             write_network_matrix(network_matrix, cutoff, networkfilename + "_c" + cutoff + ".network")
           
-    network_matrix, networkfilename = generate_network(list(iterFlatten(clusters)), options.dist_threshold, group_dct, "all_vs_all", "seqdist")
+    network_matrix, networkfilename = generate_network(list(iterFlatten(clusters)), options.dist_threshold, group_dct, "all_vs_all", "seqdist", anchor_domains)
     for cutoff in cutoff_list:
         write_network_matrix(network_matrix, cutoff, networkfilename + "_c" + cutoff + ".network")
         
@@ -1229,8 +1266,7 @@ def main():
         for item in DMS.items():
             DMS_handle.write(str(item)+"\n")
         DMS_handle.close()
-            
-        
+    
   
 main()
 timings_file.close()
