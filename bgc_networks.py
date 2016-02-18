@@ -28,6 +28,8 @@ import subprocess
 import time
 from optparse import OptionParser
 import math
+import urllib2 
+from multiprocessing.dummy import Pool
 
 from Bio import SeqIO
 from Bio.Seq import Seq
@@ -162,7 +164,7 @@ def iterFlatten(root):
 
 def write_network_matrix(matrix, cutoff, filename):
     networkfile = open(filename, 'w+')
-    
+    clusters = [] # will contain the names of clusters that have an edge value lower than the threshold
     networkfile.write("clustername1\tclustername2\tgroup1\tdefinition\tgroup2\tdefinition\t-log2score\traw distance\tsquared similarity\tcombined group\tshared group\n")
     for row in matrix:
         temprow = []
@@ -173,7 +175,9 @@ def write_network_matrix(matrix, cutoff, filename):
             temprow.append(i)
         
         if float(temprow[7]) <= float(cutoff):
-            
+            clusters.append(row[0])
+            clusters.append(row[1])
+
             if row[2] != "" and row[3] != "":
                 temprow.append(" - ".join(sorted([str(row[2]),str(row[3])])))
             elif row[3] != "":
@@ -189,61 +193,92 @@ def write_network_matrix(matrix, cutoff, filename):
                 temprow.append("")
                 
             networkfile.write("\t".join(temprow) + "\n")
+
             
-    
+    clusters = set(clusters)
+#clustername1    clustername2    group1    definition    group2    definition    #NAME?    raw distance    squared similarity    combined group    shared group
+    passed_clusters = []
+    for row in matrix:
+        if row[0] not in clusters and row[0] not in passed_clusters:
+            networkfile.write("\t".join([row[0],row[0],row[2],row[3],'','',str(0),str(0),str(0),'','']) + "\n")
+            passed_clusters.append(row[0])
+        elif row[1] not in clusters and row[1] not in passed_clusters:
+            networkfile.write("\t".join([row[1],row[1],row[4],row[5],'','',str(0),str(0),str(0),'','']) + "\n")
+            passed_clusters.append(row[1])
+            
     networkfile.close()   
+    
+    
         
 @timeit
-def generate_network(bgc_list, dist_threshold, group_dct, networkfilename, dist_method, anchor_domains):
+def generate_network(bgc_list, group_dct, networkfilename, networks_folder, dist_method, anchor_domains):
     #Contents of the network file: clustername1 clustername2 group1, group2, -log2score, dist, squared similarity
     "saves the distances as the log2 of the similarity"
-    network_matrix = []
-    cluster_queue = []
-    for bgc in bgc_list:
-        cluster_queue.append(bgc) #deep copy
+    network_matrix_conv = []
+
     
     if networkfilename == "":
     
-        networkfilename = output_folder + "/" + "networkfile_" + dist_method + "_" + \
+        networkfilename = output_folder + "/" + networks_folder + "/" + "networkfile_" + dist_method + "_" + \
         str("".join(bgc_list[0].split(".")[0:-2]))
     else:
-        networkfilename = output_folder + "/" + "networkfile_" + dist_method + "_" + \
+        networkfilename = output_folder + "/" + networks_folder + "/" + "networkfile_" + dist_method + "_" + \
         networkfilename
         
     print "Generating network file with name:", networkfilename
     
+    print "*************", bgc_list
+    
+
+    cluster_queue = []
+    cluster_pairs = []
+    
+    for bgc in bgc_list:
+        cluster_queue.append(bgc) #deep copy
+        
     for cluster1 in bgc_list:
         cluster_queue.remove(cluster1)
         
         for cluster2 in cluster_queue:
-            cluster_file1 = output_folder + "/" + cluster1 + ".pfs"
-            cluster_file2 = output_folder + "/" + cluster2 + ".pfs"
+            #addclusterpair
+            cluster_pairs.append([cluster1, cluster2])
+
             
-            if dist_method == "seqdist":
-                dist = cluster_distance(cluster1, cluster2, anchor_domains)
-            elif dist_method == "domain_dist":
-                dist = Distance_modified(get_domain_list(cluster_file1), get_domain_list(cluster_file2), 0, 4)
                 
-            if dist == 0:
-                logscore = float("inf")
-            else:
-                logscore =0
-                try:
-                    logscore = -math.log(dist, 2) #Write exception, ValueError
-                except ValueError:
-                    print "calculating the logscore with distance", dist, "failed in function generate_network, using distance method", dist_method, networkfilename
-                    
-                
-            #clustername1 clustername2 group1, group2, -log2score, dist, squared similarity
-            network_row = [str(cluster1), str(cluster2),group_dct[cluster1][0],group_dct[cluster1][1],\
-            group_dct[cluster2][0],group_dct[cluster2][1], str(logscore), str(dist), str((1-dist)**2)]
-            
-            network_matrix.append(network_row)
+    def generate_dist_matrix(cluster_pair):
         
+        cluster1 = cluster_pair[0]
+        cluster2 = cluster_pair[1]
+        
+        cluster_file1 = output_folder + "/" + cluster1 + ".pfs"
+        cluster_file2 = output_folder + "/" + cluster2 + ".pfs"
+        if dist_method == "seqdist":
+            dist = cluster_distance(cluster1, cluster2, anchor_domains)
+        elif dist_method == "domain_dist":
+            dist = Distance_modified(get_domain_list(cluster_file1), get_domain_list(cluster_file2), 0, 4)
+            
+        if dist == 0:
+            logscore = float("inf")
+        else:
+            logscore =0
+            try:
+                logscore = -math.log(dist, 2) #Write exception, ValueError
+            except ValueError:
+                print "calculating the logscore with distance", dist, "failed in function generate_network, using distance method", dist_method, networkfilename
+                
+            
+        #clustername1 clustername2 group1, group2, -log2score, dist, squared similarity
+        network_row = [str(cluster1), str(cluster2),group_dct[cluster1][0],group_dct[cluster1][1],\
+        group_dct[cluster2][0],group_dct[cluster2][1], str(logscore), str(dist), str((1-dist)**2)]
+        
+        return network_row
+    
+    p = Pool(threads) 
+    network_matrix = p.map(generate_dist_matrix, cluster_pairs)
 
     #networkfile.close()
     
-    sorted_network_matrix = sorted(network_matrix, key=lambda network_matrix_entry: network_matrix_entry[4]) #sort the matrix on the log2 scores
+    sorted_network_matrix = sorted(network_matrix, key=lambda network_matrix_entry: network_matrix_entry[5]) #sort the matrix on the log2 scores
     return sorted_network_matrix, networkfilename
     
 
@@ -1028,6 +1063,13 @@ def get_domain_list(filename):
     domains = domains_string.split(" ")
     return domains
 
+def make_domains_output_name(args):
+    foldername = "domains_" + "_".join(args)
+    return foldername  
+
+def make_network_output_name(args):
+    foldername = "networks_" + "_".join(args)
+    return foldername
 
 def CMD_parser():
     parser = OptionParser()
@@ -1043,14 +1085,14 @@ def CMD_parser():
                       help="toggle to true")
     parser.add_option("-d", "--domain_overlap_cutoff", dest="domain_overlap_cutoff", default=0.1,
                       help="Specify at which overlap percentage domains are considered to overlap")
+    parser.add_option("-t", "--threads", dest="threads", default=8,
+                      help="threads")
     parser.add_option("--Jaccardw", dest="Jaccardw", default=0.3,
                       help="SJaccard weight")
     parser.add_option("--DDSw", dest="DDSw", default=0.6,
                       help="DDS weight")
     parser.add_option("--GKw", dest="GKw", default=0.1,
                       help="GK weight")
-    parser.add_option("--dist_threshold", dest="dist_threshold", default=1,
-                      help="distance thresholds of BGCs")
     parser.add_option("--domainsout", dest="domainsout", default="domains",
                       help="outputfolder of the pfam domain fasta files")
     parser.add_option("--mafft_pars", dest="mafft_pars", default="",
@@ -1086,7 +1128,6 @@ def CMD_parser():
     return options, args
 
 
-#if __name__=="__main__":
 @timeit
 def main():
     options, args = CMD_parser()
@@ -1109,16 +1150,19 @@ def main():
     global GKw
     global anchorweight
     global nbhood
+    global threads
+    threads = int(options.threads)
     gbksamples = options.gbksamples
     nbhood = int(options.nbhood)
     anchorweight = float(options.anchorweight)
-    Jaccardw = options.Jaccardw
-    DDSw = options.DDSw 
-    GKw = options.GKw
+    Jaccardw = float(options.Jaccardw)
+    DDSw = float(options.DDSw) 
+    GKw = float(options.GKw)
     cutoff_list = options.sim_cutoffs.split(",")
-    
     output_folder = str(options.outputdir)
     verbose = options.verbose
+    networks_folder = make_network_output_name(sys.argv[1:])
+    domainsout = make_domains_output_name(sys.argv[1:])
     
     try:
         subprocess.check_output("mkdir " + output_folder, shell=True)
@@ -1126,7 +1170,11 @@ def main():
         pass
     
     try:
-        subprocess.check_output("mkdir " + output_folder + "/" + options.domainsout, shell=True)
+        subprocess.check_output("mkdir " + output_folder + "/" + networks_folder, shell=True)
+    except subprocess.CalledProcessError, e:
+        pass
+    try:
+        subprocess.check_output("mkdir " + output_folder + "/" + domainsout, shell=True)
     except subprocess.CalledProcessError, e:
         pass
 
@@ -1177,7 +1225,7 @@ def main():
             #pfd_matrix = hmm_table_parser(outputbase+".gbk", output_folder +"/"+ hmm_file)
             pfd_matrix = domtable_parser(outputbase, output_folder + "/" + outputbase+".domtable")
             filtered_matrix, domains = check_overlap(pfd_matrix, options.domain_overlap_cutoff)  #removes overlapping domains, and keeps the highest scoring domain
-            save_domain_seqs(filtered_matrix, fasta_dict, options.domainsout) #save the sequences for the found domains per pfam domain
+            save_domain_seqs(filtered_matrix, fasta_dict, domainsout) #save the sequences for the found domains per pfam domain
             write_pfs(pfs_handle, domains)
             
             BGC = BGC_dic_gen(filtered_matrix)
@@ -1187,18 +1235,16 @@ def main():
             write_pfd(pfd_handle, filtered_matrix)
         
     
-        
-        network_matrix, networkfilename = generate_network(hmms, options.dist_threshold, group_dct, str(samplename), "domain_dist", anchor_domains)
-        for cutoff in cutoff_list:
-            write_network_matrix(network_matrix, cutoff, networkfilename + "_c" + cutoff + ".network")
-    
-    
+         
+        #=======================================================================
+        # network_matrix, networkfilename = generate_network(hmms, group_dct, str(samplename), networks_folder, "domain_dist", anchor_domains)
+        # for cutoff in cutoff_list:
+        #     write_network_matrix(network_matrix, cutoff, networkfilename + "_c" + cutoff + ".network")
+        #=======================================================================
+     
+     
     print "Generating all_vs_all network with domain_dist"
-    network_matrix, networkfilename = generate_network(list(iterFlatten(clusters)), options.dist_threshold, group_dct, "all_vs_all", "domain_dist", anchor_domains)
-    
-    for line in network_matrix:
-        print line
-    
+    network_matrix, networkfilename = generate_network(list(iterFlatten(clusters)), group_dct, "all_vs_all", networks_folder, "domain_dist", anchor_domains)   
     for cutoff in cutoff_list:
         write_network_matrix(network_matrix, cutoff, networkfilename + "_c" + cutoff + ".network")
         
@@ -1211,6 +1257,8 @@ def main():
             BGC_handle.write(str(item)+"\n")
         BGC_handle.close()
         
+        
+        
     """DMS -- dictionary of this structure: DMS = {'general_domain_name_x': { ('specific_domain_name_1',
     'specific_domain_name_2'): (sequence_identity, alignment_length), ... }   }
         - general_domain_name_x: as above
@@ -1218,7 +1266,7 @@ def main():
         - (sequence_identity, alignment_length): sequence identity and alignment length of the domain pair"""
 
     DMS = {}
-    fasta_domains = get_domain_fastas(options.domainsout)
+    fasta_domains = get_domain_fastas(domainsout)
     #Fill the DMS variable by using all 'domains.fasta'  files
     for domain_file in fasta_domains:
         print "Running MAFFT and parsing the distout file for domain:", domain_file
@@ -1249,13 +1297,17 @@ def main():
     
 
         
-    #Compare the gene clusters within one sample, and save them in tab delimited .txt files.
-    for clusters_per_sample in clusters:
-        network_matrix, networkfilename = generate_network(clusters_per_sample, options.dist_threshold, group_dct, "", "seqdist", anchor_domains)
-        for cutoff in cutoff_list:
-            write_network_matrix(network_matrix, cutoff, networkfilename + "_c" + cutoff + ".network")
-          
-    network_matrix, networkfilename = generate_network(list(iterFlatten(clusters)), options.dist_threshold, group_dct, "all_vs_all", "seqdist", anchor_domains)
+    #===========================================================================
+    # #Compare the gene clusters within one sample, and save them in tab delimited .txt files.
+    # for clusters_per_sample in clusters:
+    #     network_matrix, networkfilename = generate_network(clusters_per_sample, group_dct, "", networks_folder, "seqdist", anchor_domains)
+    #     for cutoff in cutoff_list:
+    #         write_network_matrix(network_matrix, cutoff, networkfilename + "_c" + cutoff + ".network")
+    #===========================================================================
+    
+
+    
+    network_matrix, networkfilename = generate_network(list(iterFlatten(clusters)), group_dct, "all_vs_all", networks_folder, "seqdist", anchor_domains)
     for cutoff in cutoff_list:
         write_network_matrix(network_matrix, cutoff, networkfilename + "_c" + cutoff + ".network")
         
