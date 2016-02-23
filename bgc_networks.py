@@ -29,7 +29,8 @@ import time
 from optparse import OptionParser
 import math
 import urllib2 
-from multiprocessing.dummy import Pool
+import multiprocessing
+from functools import partial
 
 from Bio import SeqIO
 from Bio.Seq import Seq
@@ -207,7 +208,37 @@ def write_network_matrix(matrix, cutoff, filename):
             passed_clusters.append(row[1])
             
     networkfile.close()   
+
+def generate_dist_matrix(parms):
     
+    #Get the values from the parameters
+    cluster1 = parms[0]
+    cluster2 = parms[1]
+    dist_method = parms[2]
+    anchor_domains = parms[3]
+    
+    cluster_file1 = output_folder + "/" + cluster1 + ".pfs"
+    cluster_file2 = output_folder + "/" + cluster2 + ".pfs"
+    if dist_method == "seqdist":
+        dist = cluster_distance(cluster1, cluster2, anchor_domains)
+    elif dist_method == "domain_dist":
+        dist = Distance_modified(get_domain_list(cluster_file1), get_domain_list(cluster_file2), 0, 4)
+        
+    if dist == 0:
+        logscore = float("inf")
+    else:
+        logscore = 0
+        try:
+            logscore = -math.log(dist, 2) #Write exception, ValueError
+        except ValueError:
+            print "calculating the logscore with distance", dist, "failed in function generate_network, using distance method", dist_method, networkfilename
+            
+        
+    #clustername1 clustername2 group1, group2, -log2score, dist, squared similarity
+    network_row = [str(cluster1), str(cluster2),group_dct[cluster1][0],group_dct[cluster1][1],\
+    group_dct[cluster2][0],group_dct[cluster2][1], str(logscore), str(dist), str((1-dist)**2)]
+    
+    return network_row
     
         
 @timeit
@@ -228,7 +259,6 @@ def generate_network(bgc_list, group_dct, networkfilename, networks_folder, dist
     print "Generating network file with name:", networkfilename
     
     print "*************", bgc_list
-    
 
     cluster_queue = []
     cluster_pairs = []
@@ -241,43 +271,14 @@ def generate_network(bgc_list, group_dct, networkfilename, networks_folder, dist
         
         for cluster2 in cluster_queue:
             #addclusterpair
-            cluster_pairs.append([cluster1, cluster2])
-
+            cluster_pairs.append([cluster1, cluster2, dist_method, anchor_domains])    
             
-                
-    def generate_dist_matrix(cluster_pair):
-        
-        cluster1 = cluster_pair[0]
-        cluster2 = cluster_pair[1]
-        
-        cluster_file1 = output_folder + "/" + cluster1 + ".pfs"
-        cluster_file2 = output_folder + "/" + cluster2 + ".pfs"
-        if dist_method == "seqdist":
-            dist = cluster_distance(cluster1, cluster2, anchor_domains)
-        elif dist_method == "domain_dist":
-            dist = Distance_modified(get_domain_list(cluster_file1), get_domain_list(cluster_file2), 0, 4)
-            
-        if dist == 0:
-            logscore = float("inf")
-        else:
-            logscore =0
-            try:
-                logscore = -math.log(dist, 2) #Write exception, ValueError
-            except ValueError:
-                print "calculating the logscore with distance", dist, "failed in function generate_network, using distance method", dist_method, networkfilename
-                
-            
-        #clustername1 clustername2 group1, group2, -log2score, dist, squared similarity
-        network_row = [str(cluster1), str(cluster2),group_dct[cluster1][0],group_dct[cluster1][1],\
-        group_dct[cluster2][0],group_dct[cluster2][1], str(logscore), str(dist), str((1-dist)**2)]
-        
-        return network_row
     
-    p = Pool(threads) 
-    network_matrix = p.map(generate_dist_matrix, cluster_pairs)
-
-    #networkfile.close()
     
+    pool = multiprocessing.Pool(threads) #create the appropriate amount of pool instances
+    network_matrix = pool.map(generate_dist_matrix, cluster_pairs)  #Assigns the data to the different workers and pools the results
+                                                                    #back into the network_matrix variable   
+
     sorted_network_matrix = sorted(network_matrix, key=lambda network_matrix_entry: network_matrix_entry[5]) #sort the matrix on the log2 scores
     return sorted_network_matrix, networkfilename
     
@@ -512,7 +513,12 @@ def CompareTwoClusters(A,B):
 
 @timeit
 def run_mafft(al_method, maxit, threads, mafft_pars, domain):
-    """Runs mafft program"""
+    """Runs mafft program with the provided parameters.
+    The specific parameters used to run mafft with are actually very important for the final result.
+    Using mafft with the most progressive parameters does indeed affect the quality of the distance.
+    It is better to just use the domain information for the distance if more computationally intensive options
+    for mafft cannot be used. Setting maxiterate to anything higher than 10 did not make a difference in accuracy in the nrps testset"""
+    
     alignment_file = domain + ".algn"
     
     
@@ -1065,11 +1071,11 @@ def get_domain_list(filename):
 
 def make_domains_output_name(args):
     foldername = "domains_" + "_".join(args)
-    return foldername  
+    return foldername.replace(" ", "_")  
 
 def make_network_output_name(args):
     foldername = "networks_" + "_".join(args)
-    return foldername
+    return foldername.replace(" ", "_")
 
 def CMD_parser():
     parser = OptionParser()
@@ -1085,11 +1091,11 @@ def CMD_parser():
                       help="toggle to true")
     parser.add_option("-d", "--domain_overlap_cutoff", dest="domain_overlap_cutoff", default=0.1,
                       help="Specify at which overlap percentage domains are considered to overlap")
-    parser.add_option("-t", "--threads", dest="threads", default=8,
+    parser.add_option("-t", "--threads", dest="threads", default=16,
                       help="threads")
-    parser.add_option("--Jaccardw", dest="Jaccardw", default=0.3,
+    parser.add_option("--Jaccardw", dest="Jaccardw", default=0.4,
                       help="SJaccard weight")
-    parser.add_option("--DDSw", dest="DDSw", default=0.6,
+    parser.add_option("--DDSw", dest="DDSw", default=0.5,
                       help="DDS weight")
     parser.add_option("--GKw", dest="GKw", default=0.1,
                       help="GK weight")
@@ -1097,9 +1103,9 @@ def CMD_parser():
                       help="outputfolder of the pfam domain fasta files")
     parser.add_option("--mafft_pars", dest="mafft_pars", default="",
                       help="Add single/multiple parameters for mafft specific enclosed by quotation marks e.g. \"--nofft --parttree\"")
-    parser.add_option("--al_method", dest="al_method", default="--retree 1",
+    parser.add_option("--al_method", dest="al_method", default="--retree 2",
                       help="alignment method for mafft, if there's a space in the method's name, enclose by quotation marks. default: \"--retree 1\"")
-    parser.add_option("--maxiterate", dest="maxit", default=0,
+    parser.add_option("--maxiterate", dest="maxit", default=10,
                       help="maxiterate parameter in mafft, default is 0")
     parser.add_option("--mafft_threads", dest="mafft_threads", default=-1,
                       help="Set the number of threads in mafft, -1 sets the number of threads as the number of physical cores")
@@ -1111,13 +1117,13 @@ def CMD_parser():
     parser.add_option("--skip_hmmscan", dest="skip_hmmscan", action="store_true", default=False,
                       help="When skipping hmmscan, the GBK files should be available, and the domain tables need to be in the output folder.")
 
-    parser.add_option("--sim_cutoffs", dest="sim_cutoffs", default="1,0.7,0.6,0.5,0.4,0.3,0.2,0.1",
+    parser.add_option("--sim_cutoffs", dest="sim_cutoffs", default="1,0.7,0.65,0.6,0.5,0.4,0.3,0.2,0.1",
                       help="Generate networks using multiple simmilarity (raw distance) cutoff values, example: \"1,0.5,0.1\"")
     
     parser.add_option("-e", "--exponent", dest="exponent", default=2,
                       help="Exponent that modifies the sequence similarity score. Thereby exaggerating the the difference in sequences.")
     
-    parser.add_option("-a", "--anchorweight", dest="anchorweight", default=0.5,
+    parser.add_option("-a", "--anchorweight", dest="anchorweight", default=0.2,
                       help="")
     parser.add_option("-n", "--nbhood", dest="nbhood", default=4,
                       help="")
@@ -1161,18 +1167,29 @@ def main():
     cutoff_list = options.sim_cutoffs.split(",")
     output_folder = str(options.outputdir)
     verbose = options.verbose
-    networks_folder = make_network_output_name(sys.argv[1:])
-    domainsout = make_domains_output_name(sys.argv[1:])
+    args = sys.argv[1:]
+    args.remove("-o")
+    args.remove(output_folder)
+    networks_folder = make_network_output_name(args)
+    domainsout = make_domains_output_name(args)
     
+    
+    #print "$$$$$$$$$$$$$$", output_folder
+    #subprocess.check_output("mkdir " + output_folder, shell=True)
     try:
         subprocess.check_output("mkdir " + output_folder, shell=True)
     except subprocess.CalledProcessError, e:
         pass
     
+    #print "$$$$$$$$$$$$$$", output_folder + "/" + networks_folder
+    #subprocess.check_output("mkdir " + output_folder + "/" + networks_folder, shell=True)
     try:
         subprocess.check_output("mkdir " + output_folder + "/" + networks_folder, shell=True)
     except subprocess.CalledProcessError, e:
         pass
+    
+    #print "$$$$$$$$$$$$$$", output_folder + "/" + domainsout
+    #subprocess.check_output("mkdir " + output_folder + "/" + domainsout, shell=True)
     try:
         subprocess.check_output("mkdir " + output_folder + "/" + domainsout, shell=True)
     except subprocess.CalledProcessError, e:
@@ -1197,6 +1214,7 @@ def main():
      
      
     BGCs = {} #will contain the BGCs
+    global group_dct
     group_dct = {}
     clusters = []
     
