@@ -1,0 +1,2 @@
+git commit -a -m "commit message"
+git push
