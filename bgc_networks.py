@@ -300,8 +300,6 @@ def CompareTwoClusters(A,B):
         try: setb = clusterB[domain]
         except KeyError: 
             setb = []
-            
-
 
         if len(seta) == 1 and len(setb) == 1: #if both clusters only contain this domain once
             pair = tuple(sorted([seta[0],setb[0]]))

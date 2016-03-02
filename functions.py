@@ -83,10 +83,9 @@ def get_hmm_output_files(output_folder):
                     hmm_table_list.append(fname)
                     if verbose == True:
                         print fname
-
-                
                     
     return hmm_table_list
+
 
 def check_overlap(pfd_matrix, overlap_cutoff):
     """Check if domains overlap for a certain overlap_cutoff.
