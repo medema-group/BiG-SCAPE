@@ -231,7 +231,6 @@ def cluster_distance(A,B, anchor_domains):
             accumulated_distance = sum([DistanceMatrix[bi[0]][bi[1]] for bi in BestIndexes])
             #print "accumulated_distance", accumulated_distance
                          
-                    
             SumDistance = (abs(len(seta)-len(setb)) + accumulated_distance)  #diff in abundance + sequence distance
             
             if shared_domain.split(".")[0] in anchor_domains: 
