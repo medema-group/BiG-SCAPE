@@ -99,10 +99,20 @@ def generate_dist_matrix(parms):
     
     cluster_file1 = output_folder + "/" + cluster1 + ".pfs"
     cluster_file2 = output_folder + "/" + cluster2 + ".pfs"
+    
+    A = get_domain_list(cluster_file1)
+    B = get_domain_list(cluster_file2)
+    
+    if A == [] or B == []:
+        print "Regarding files", cluster_file1, cluster_file2
+        print "One or both of these clusters contain no pfam domains"
+        return [cluster1,cluster2,'','','','',str(1),str(1),str(1),'','']
+    
+
     if dist_method == "seqdist":
         dist = cluster_distance(cluster1, cluster2, anchor_domains)
     elif dist_method == "domain_dist":
-        dist = Distance_modified(get_domain_list(cluster_file1), get_domain_list(cluster_file2), 0, 4)
+        dist = Distance_modified(A, B, 0, 4)
         
     if dist == 0:
         logscore = float("inf")
@@ -175,7 +185,7 @@ def cluster_distance(A,B, anchor_domains):
               float( len(set(clusterA.keys())) + len(set(clusterB.keys())) \
               - len(set(clusterA.keys()) & set(clusterB.keys())))
     except ZeroDivisionError:
-        print "Zerodivisionerror during the Jaccard distance calculation. Can only happen when both clusters are empty"
+        print "Zerodivisionerror during the Jaccard distance calculation. Can only happen when one or more clusters contains no pfam domains."
         print "keys of clusterA", A, clusterA.keys()
         print "keys of clusterB", B, clusterB.keys()
          

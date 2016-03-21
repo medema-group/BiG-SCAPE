@@ -25,7 +25,7 @@ def frange(start, stop, step):
          
 
 def remove_values_from_list(the_list, val):
-   return [value for value in the_list if value != val]
+   return [value for value in the_list if value != val]
 
 def get_anchor_domains(filename):
     """Get the anchor/marker domains from a txt file.
@@ -51,7 +51,7 @@ def get_anchor_domains(filename):
 def get_domain_list(filename):
     """Convert the Pfam string in the .pfs files to a Pfam list"""
     handle = open(filename, 'r')
-    domains_string = handle.readline()
+    domains_string = handle.readline().strip()
     domains = domains_string.split(" ")
     return domains
 
