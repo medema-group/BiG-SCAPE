@@ -13,25 +13,24 @@ from optparse import OptionParser
 from subprocess import Popen
 from itertools import islice
 import os
-import bgc_functions
-
+from functions import frange
 
 def param_combinations(outputdir, steps):
     commands = []
-    for i in bgc_functions.frange(0,1,steps):
+    for i in frange(0,1,steps):
 
-        for j in bgc_functions.frange(0,1,steps):
+        for j in frange(0,1,steps):
 
-            for k in bgc_functions.frange(0,1,steps):
+            for k in frange(0,1,steps):
 
-                for l in bgc_functions.frange(0,1,steps):
+                for l in frange(0,1,steps):
                     if i+j+k == 1:
                         cmd = "python ~/bgc_networks/bgc_networks.py -o " + outputdir + " --sim_cutoffs \"0.25,0.3,0.35,0.4,0.45,0.5,0.55,0.6,0.65,0.7,0.75\" \
-                        --skip_hmmscan --Jaccardw " + str(i) + " --DDSw " + str(j) +" --GKw " + str(k) + " -a " + str(l) + " -s --al_method \"--retree 2\" --maxiterate 10"
+                        --skip_hmmscan --Jaccardw " + str(i) + " --DDSw " + str(j) +" --GKw " + str(k) + " -a " + str(l) + " -s --al_method \"--retree 2\" --maxiterate 10 --include_disc_nodes"
                         commands.append(cmd)
     
                 
-    max_workers = 8  # no more than 2 concurrent processes
+    max_workers = 8  # no more than 8 concurrent processes
     processes = (Popen(cmd, shell=True) for cmd in commands)
     running_processes = list(islice(processes, max_workers))  # start new processes
     while running_processes:
@@ -43,9 +42,6 @@ def param_combinations(outputdir, steps):
                     del running_processes[i]
                     break
                 
-
-
-
 
 #===============================================================================
 # def param_combinations(outputdir, steps):

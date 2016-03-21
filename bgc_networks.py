@@ -1,5 +1,6 @@
 #!/usr/bin/env python
 
+
 """
 Student/programmer: Marley Yeong
 marleyyeong@live.nl
@@ -14,6 +15,8 @@ Usage:   place this script in the same folder as the antismash output files
 Status: development/testing
 
 Todo: 
+
+Example runstring: python ~/bgc_networks/bgc_networks.py -o exclude_small_bgcs --mafft_threads 12 -m 5000 -c 12 --include_disc_nodes --skip_hmmscan
 
 """
 
@@ -31,7 +34,6 @@ import urllib2
 import multiprocessing
 from functools import partial
 import time
-
 from Bio import SeqIO
 from Bio.Seq import Seq
 from Bio.Alphabet import generic_dna
@@ -68,6 +70,7 @@ FFT NS 1 will be specified whenever distance measures are needed. If no distance
 FFTNS2 method will be used. 
 
 """
+
 def timeit(f):
     def wrap(*args):
         insignificant_runtime = 1 #prevents an overload 
@@ -84,6 +87,7 @@ def timeit(f):
             
         return ret
     return wrap
+
 
 def generate_dist_matrix(parms):
     
@@ -140,15 +144,17 @@ def generate_network(bgc_list, group_dct, networkfilename, networks_folder, dist
         cluster_queue.append(bgc) #deep copy
         
     for cluster1 in bgc_list:
-        cluster_queue.remove(cluster1)
+        cluster_queue = remove_values_from_list(cluster_queue, cluster1) # remove ALL instances of the bgc
         
         for cluster2 in cluster_queue:
             #addclusterpair
             cluster_pairs.append([cluster1, cluster2, dist_method, anchor_domains])    
             
     
+    #maxtasksperchild is the number of tasks a worker process can complete before it will exit and be replaced with a fresh worker process, to
+    #enable unused resources to be freed. The default maxtasksperchild is None, which means worker processes will live as long as the pool.
     
-    pool = multiprocessing.Pool(cores) #create the appropriate amount of pool instances
+    pool = multiprocessing.Pool(cores, maxtasksperchild=1000) #create the appropriate amount of pool instances, with a limited amount of tasks per child process
     network_matrix = pool.map(generate_dist_matrix, cluster_pairs)  #Assigns the data to the different workers and pools the results
                                                                     #back into the network_matrix variable   
 
@@ -485,7 +491,6 @@ def Distance_modified(clusterA, clusterB, repeat=0, nbhood=4):
     return Distance
 
 
-
 @timeit
 def genbank_parser_hmmscan_call(gb_files, outputdir, cores, gbk_group, skip_hmmscan):
     """Extract the CDS from the antismash genbank clusters, and provide these coding regions to hmmscan"""
@@ -560,7 +565,7 @@ def genbank_parser_hmmscan_call(gb_files, outputdir, cores, gbk_group, skip_hmms
             str(feature.qualifiers['translation'][0])
             
 
-        writeout(multifasta, fasta_dict, CDS_keys)
+        writeout(multifasta, fasta_dict, CDS_keys) #save the coding sequences in a fasta format
         multifasta.close()
         
         if skip_hmmscan == False:
@@ -569,7 +574,7 @@ def genbank_parser_hmmscan_call(gb_files, outputdir, cores, gbk_group, skip_hmms
             print "Skipping hmmscan"
         
     return gbk_group, fasta_dict
-
+            
 
 def CMD_parser():
     parser = OptionParser()
@@ -577,30 +582,38 @@ def CMD_parser():
     
     parser.add_option("-o", "--outputdir", dest="outputdir", default="",
                       help="output directory, this contains your pfd,pfs,network and hmmscan output files")
+    parser.add_option("-i", "--inputdir", dest="inputdir", default="",
+                      help="Input directory of gbk files, if left empty, all gbk files in current and lower directories will be used.")
     parser.add_option("-c", "--cores", dest="cores", default=8,
                       help="cores")
     parser.add_option("-l", "--limit", dest="limit", default=-1,
                       help="-limit- parameter of run_antismash")
     parser.add_option("-v", "--verbose", dest="verbose", action="store_true", default=False,
                       help="toggle to true")
-    
     parser.add_option("--include_disc_nodes", dest="include_disc_nodes", action="store_true", default=False,
-                      help="Exclude nodes that have no edges to other nodes from the network, default is false.")
-    
+                      help="Include nodes that have no edges to other nodes from the network, default is false.")
     parser.add_option("-d", "--domain_overlap_cutoff", dest="domain_overlap_cutoff", default=0.1,
                       help="Specify at which overlap percentage domains are considered to overlap")
-    #===========================================================================
-    # parser.add_option("-t", "--cores", dest="cores", default=12,
-    #                   help="cores")
-    #===========================================================================
-    parser.add_option("--Jaccardw", dest="Jaccardw", default=0.4,
+    parser.add_option("-m", "--min_bgc_size", dest="min_bgc_size", default=5000,
+                      help="Provide the minimum size of a bgc in base pairs, default is 5000bp")
+    parser.add_option("--seqdist_networks", dest="seqdist_networks", default="A",
+                      help="Mode A generates the all vs all networks with seqquence distance. Mode P generates the pairwise sample comparisons.\
+                       Sample input: \"P,A\" generates the pairwise and all vs all. Default is \"A\"")
+    parser.add_option("--domaindist_networks", dest="domaindist_networks", default="",
+                      help="Mode A generates the all vs all networks with domain distance. Mode P generates the pairwise sample comparisons.\
+                       Sample input: \"A\" only generates the all vs all. Default is \"\"")
+    parser.add_option("--Jaccardw", dest="Jaccardw", default=0.1,
                       help="SJaccard weight")
-    parser.add_option("--DDSw", dest="DDSw", default=0.5,
+    parser.add_option("--DDSw", dest="DDSw", default=0.7,
                       help="DDS weight")
-    parser.add_option("--GKw", dest="GKw", default=0.1,
+    parser.add_option("--GKw", dest="GKw", default=0.2,
                       help="GK weight")
     parser.add_option("--domainsout", dest="domainsout", default="domains",
                       help="outputfolder of the pfam domain fasta files")
+    parser.add_option("--anchorfile", dest="anchorfile", default="anchor_domains.txt",
+                      help="Provide a custom name for the anchor domains file")
+    parser.add_option("--exclude_gbk_str", dest="exclude_gbk_str", default="final",
+                      help="If this string occurs in the gbk filename, this will not be used for the analysis.")
     parser.add_option("--mafft_pars", dest="mafft_pars", default="",
                       help="Add single/multiple parameters for mafft specific enclosed by quotation marks e.g. \"--nofft --parttree\"")
     parser.add_option("--al_method", dest="al_method", default="--retree 2",
@@ -620,7 +633,7 @@ def CMD_parser():
     parser.add_option("--sim_cutoffs", dest="sim_cutoffs", default="1,0.7,0.65,0.6,0.5,0.4,0.3,0.2,0.1",
                       help="Generate networks using multiple simmilarity (raw distance) cutoff values, example: \"1,0.5,0.1\"")
     
-    parser.add_option("-a", "--anchorweight", dest="anchorweight", default=0.2,
+    parser.add_option("-a", "--anchorweight", dest="anchorweight", default=0.1,
                       help="")
     parser.add_option("-n", "--nbhood", dest="nbhood", default=4,
                       help="")
@@ -641,7 +654,7 @@ def main():
         print "please provide a name for an output folder using parameter -o or --outputdir"
         sys.exit(0)
     
-    anchor_domains = get_anchor_domains("anchor_domains.txt")
+    anchor_domains = get_anchor_domains(options.anchorfile)
     
     global verbose
     global BGCs
@@ -670,6 +683,8 @@ def main():
     args.remove(output_folder)
     networks_folder = make_network_output_name(args)
     domainsout = make_domains_output_name(args)
+    seqdist_networks = options.seqdist_networks.split(",")
+    domaindist_networks = options.domaindist_networks.split(",")
     
     
     try:
@@ -689,12 +704,11 @@ def main():
 
     timings_file = open(output_folder + "/" + "runtimes.txt", 'w') #open the file that will contain the timed functions
     
-    gbk_files = get_gbk_files(gbksamples) #files will contain lists of gbk files per sample. Thus a matrix contains lists with gbk files by sample.
-    if gbk_files == []:
-        print "No .gbk files were found"
-        
-    #print options.pars
-   # sys.exit("blaat")
+    
+    gbk_files = get_gbk_files(options.inputdir, gbksamples, int(options.min_bgc_size), options.exclude_gbk_str) #files will contain lists of gbk files per sample. Thus a matrix contains lists with gbk files by sample.
+    check_data_integrity(gbk_files)
+
+
     
     """BGCs -- dictionary of this structure:  BGCs = {'cluster_name_x': { 'general_domain_name_x' : ['specific_domain_name_1',
      'specific_domain_name_2'] } }
@@ -744,19 +758,19 @@ def main():
             write_pfd(pfd_handle, filtered_matrix)
         
     
+        if "P" in domaindist_networks:
+            print "Generating pairwise networks with domain_dist"
+            network_matrix, networkfilename = generate_network(hmms, group_dct, str(samplename), networks_folder, "domain_dist", anchor_domains, cores)
+            for cutoff in cutoff_list:
+                write_network_matrix(network_matrix, cutoff, networkfilename + "_c" + cutoff + ".network", include_disc_nodes)
+     
+     
+    if "A" in domaindist_networks:
+        print "Generating all_vs_all network with domain_dist"
+        network_matrix, networkfilename = generate_network(list(iterFlatten(clusters)), group_dct, "all_vs_all", networks_folder, "domain_dist", anchor_domains, cores)   
+        for cutoff in cutoff_list:
+            write_network_matrix(network_matrix, cutoff, networkfilename + "_c" + cutoff + ".network", include_disc_nodes)
          
-        #=======================================================================
-        # network_matrix, networkfilename = generate_network(hmms, group_dct, str(samplename), networks_folder, "domain_dist", anchor_domains, cores)
-        # for cutoff in cutoff_list:
-        #     write_network_matrix(network_matrix, cutoff, networkfilename + "_c" + cutoff + ".network", include_disc_nodes)
-        #=======================================================================
-     
-     
-    print "Generating all_vs_all network with domain_dist"
-    network_matrix, networkfilename = generate_network(list(iterFlatten(clusters)), group_dct, "all_vs_all", networks_folder, "domain_dist", anchor_domains, cores)   
-    for cutoff in cutoff_list:
-        write_network_matrix(network_matrix, cutoff, networkfilename + "_c" + cutoff + ".network", include_disc_nodes)
-        
         
         
     if verbose == True:
@@ -804,22 +818,20 @@ def main():
             if domain_pairs != {}:
                 DMS[domain.split("/")[-1]] = domain_pairs
     
-
-        
-    #===========================================================================
-    # #Compare the gene clusters within one sample, and save them in tab delimited .txt files.
-    # for clusters_per_sample in clusters:
-    #     network_matrix, networkfilename = generate_network(clusters_per_sample, group_dct, "", networks_folder, "seqdist", anchor_domains, cores)
-    #     for cutoff in cutoff_list:
-    #         write_network_matrix(network_matrix, cutoff, networkfilename + "_c" + cutoff + ".network", include_disc_nodes)
-    #===========================================================================
     
+    if "P" in seqdist_networks:     
+        #Compare the gene clusters within one sample, and save them in tab delimited .txt files.
+        for clusters_per_sample in clusters:
+            network_matrix, networkfilename = generate_network(clusters_per_sample, group_dct, "", networks_folder, "seqdist", anchor_domains, cores)
+            for cutoff in cutoff_list:
+                write_network_matrix(network_matrix, cutoff, networkfilename + "_c" + cutoff + ".network", include_disc_nodes)
+         
 
-    
-    network_matrix, networkfilename = generate_network(list(iterFlatten(clusters)), group_dct, "all_vs_all", networks_folder, "seqdist", anchor_domains, cores)
-    for cutoff in cutoff_list:
-        write_network_matrix(network_matrix, cutoff, networkfilename + "_c" + cutoff + ".network", include_disc_nodes)
-        
+    if "A" in seqdist_networks:
+        network_matrix, networkfilename = generate_network(list(iterFlatten(clusters)), group_dct, "all_vs_all", networks_folder, "seqdist", anchor_domains, cores)
+        for cutoff in cutoff_list:
+            write_network_matrix(network_matrix, cutoff, networkfilename + "_c" + cutoff + ".network", include_disc_nodes)
+         
         
     if verbose == True:
         print "Saving the DMS variable to DMS.txt"

@@ -10,19 +10,27 @@ Usage: score a network
 """
 
 import os
-
+import subprocess
 
 global verbose
 verbose = False
 
 def frange(start, stop, step):
-     i = start
-     while i < stop:
-         yield i
-         i += step
+    """Range function with float increments"""
+    
+    i = start
+    while i < stop:
+        yield i
+        i += step
          
-         
+
+def remove_values_from_list(the_list, val):
+   return [value for value in the_list if value != val]
+
 def get_anchor_domains(filename):
+    """Get the anchor/marker domains from a txt file.
+    This text file should contain one Pfam id per line"""
+
     domains = []
     
     try:
@@ -41,27 +49,23 @@ def get_anchor_domains(filename):
         
 
 def get_domain_list(filename):
+    """Convert the Pfam string in the .pfs files to a Pfam list"""
     handle = open(filename, 'r')
     domains_string = handle.readline()
     domains = domains_string.split(" ")
     return domains
 
+
 def make_domains_output_name(args):
     foldername = "domains_" + "_".join(args)
-    return foldername.replace(" ", "_")  
+    return foldername.replace(" ", "_") 
+ 
 
 def make_network_output_name(args):
     foldername = "networks_" + "_".join(args)
     return foldername.replace(" ", "_")
 
-def get_feature(string):
-    feature = ""
-    
-    if re.search(r' {2,}\S* {2,}', string):
-        feature = re.search(r' {2,}\S* {2,}', string).group(0)
-        
-    return feature
-     
+
 def get_all_features_of_type(seq_record, types):
     "Return all features of the specified types for a seq_record"
     if isinstance(types, str):
@@ -74,16 +78,22 @@ def get_all_features_of_type(seq_record, types):
     return features
 
 def get_hmm_output_files(output_folder):
+    """Finds all .domtable files in the output folder and its child folders"""
+    
     hmm_table_list = []
     for dirpath, dirnames, filenames in os.walk(str(output_folder) + "/"):
         for fname in filenames:
 
             if fname.split(".")[-1] == "domtable":
-                if open(output_folder + "/" + fname, "r").readlines()[3][0] != "#": #if this is false, hmmscan has not found any domains in the sequence
-                    hmm_table_list.append(fname)
-                    if verbose == True:
-                        print fname
+                try:
+                    if open(output_folder + "/" + fname, "r").readlines()[3][0] != "#": #if this is false, hmmscan has not found any domains in the sequence
+                        hmm_table_list.append(fname)
+                        if verbose == True:
+                            print fname
                     
+                except IndexError:
+                    print "IndexError on file", output_folder + "/" + fname
+
     return hmm_table_list
 
 
@@ -91,11 +101,6 @@ def check_overlap(pfd_matrix, overlap_cutoff):
     """Check if domains overlap for a certain overlap_cutoff.
      If so, remove the domain(s) with the lower score."""
      
-##pfd example row:
-##AB050629.gbk    score   yxjC    1    1167    +    PF03600    CitMHS
-
-    #pfd_matrix = sorted(pfd_matrix, key=lambda pfd_matrix_entry: pfd_matrix_entry[3]) #sort the domains in the cluster by their first coordinate in the 4th col
-
     row1_count = 0
     delete_list = []
     for row1 in pfd_matrix:
@@ -150,8 +155,36 @@ def writeout(handle, dct, keys):
         handle.write(key+"\n"+dct[key]+"\n")
     handle.close()
 
-def hmmscan(fastafile, outputdir, name, cores):
 
+def check_data_integrity(gbk_files):
+    """Perform some integrity checks on the input gbk files."""
+    duplication = False
+    if gbk_files == []:
+        print "No .gbk files were found"
+        sys.exit()
+    
+    gbk_files = list(iterFlatten(gbk_files))
+    for file in gbk_files:
+        name = file.split("/")[-1]
+        file_occ = 0
+        for cfile in gbk_files:
+            
+            cname = cfile.split("/")[-1]
+            if name == cname:
+                file_occ += 1
+                if file_occ > 1:
+                    duplication = True
+                    print "duplicated file at:", cfile 
+    
+    if duplication == True:
+        print "There was duplication in the input files, if this is not intended remove them."
+        cont = raw_input("Continue anyway? Y/N ")
+        if cont.lower() == "n":
+            sys.exit()
+            
+
+def hmmscan(fastafile, outputdir, name, cores):
+    """Runs hmmscan"""
     #removed --noali par
 
     hmmscan_cmd = "hmmscan --cpu " + str(cores) + " --domtblout " + str(outputdir)\
@@ -184,6 +217,7 @@ def overlap_perc(overlap, len_seq):
     
 
 def overlap(locA1, locA2, locB1, locB2):
+    """Returns the amount of overlapping nucleotides"""
 
     if locA1 < locB1:
         cor1 = locA1
@@ -226,10 +260,8 @@ def BGC_dic_gen(filtered_matrix):
         try: #Should be faster than performing if key in dictionary.keys()
             bgc_dict[row[6]]
             bgc_dict[row[6]].append(str(row[0]) + "_" + str(row[-1]) + "_" + str(row[3]) + "_" + str(row[4]))
-            #bgc_dict[row[6]].append(str(row[6]) + "_" + str(row[-1]) + "_" + str(row[3]) + "_" + str(row[4]))
         except KeyError: #In case of this error, this is the first occurrence of this domain in the cluster
            bgc_dict[row[6]]=[str(row[0]) + "_" + str(row[-1]) + "_" + str(row[3]) + "_" + str(row[4])]
-            #bgc_dict[row[6]]=[str(row[6]) + "_" + str(row[-1]) + "_" + str(row[3]) + "_" + str(row[4])]
             
     return bgc_dict
 
@@ -239,7 +271,7 @@ def save_domain_seqs(filtered_matrix, fasta_dict, domains_folder, output_folder)
     for row in filtered_matrix:
         domain = row[6]
         seq = fasta_dict[">"+str(row[-1].strip())] #access the sequence by using the header
-        domain_file = open(output_folder + "/" + domains_folder + "/" + domain +".fasta", 'a')
+        domain_file = open(output_folder + "/" + domains_folder + "/" + domain +".fasta", 'a') #append to existing file
         #same as in BGCs variable
         domain_file.write(">" + str(row[0]) + "_" + str(row[-1]) + "_" + str(row[3]) + "_" + str(row[4]) \
         + "\n" + str(seq)[int(row[3]):int(row[4])] + "\n")
@@ -278,6 +310,7 @@ def get_domain_fastas(domain_folder, output_folder):
 
 
 def iterFlatten(root):
+    """'Flattens' a matrix by collapsing the lists into one list"""
     if isinstance(root, (list, tuple)):
         for element in root:
             for e in iterFlatten(element):
@@ -355,8 +388,6 @@ def write_network_matrix(matrix, cutoff, filename, include_disc_nodes):
     for row in matrix:
         temprow = []
         #if both clusters have the same group, this group will be annotated in the last column of the network file
-        #print "raw_distance", float(row[5]) 
-        #print "cutoff", float(cutoff)
         for i in row:
             temprow.append(i)
         
@@ -364,16 +395,16 @@ def write_network_matrix(matrix, cutoff, filename, include_disc_nodes):
             clusters.append(row[0])
             clusters.append(row[1])
 
-            if row[2] != "" and row[3] != "":
-                temprow.append(" - ".join(sorted([str(row[2]),str(row[3])])))
-            elif row[3] != "":
-                temprow.append(str(row[3]))
+            if row[2] != "" and row[4] != "": #group1, group2
+                temprow.append(" - ".join(sorted([str(row[2]),str(row[4])])))
+            elif row[4] != "":
+                temprow.append(str(row[4]))
             elif row[2] != "":
                 temprow.append(str(row[2]))
             else:
                  temprow.append(str("NA"))
             
-            if row[2] == row[3]:
+            if row[2] == row[4]:
                 temprow.append(row[2])
             else:
                 temprow.append("")
@@ -381,9 +412,9 @@ def write_network_matrix(matrix, cutoff, filename, include_disc_nodes):
             networkfile.write("\t".join(temprow) + "\n")
 
             
-    if include_disc_nodes == True:   
+    if include_disc_nodes == True:  
+        #Add the nodes without any edges, give them an edge to themselves with a distance of 0 
         clusters = set(clusters)
-    #clustername1    clustername2    group1    definition    group2    definition    #NAME?    raw distance    squared similarity    combined group    shared group
         passed_clusters = []
         for row in matrix:
             if row[0] not in clusters and row[0] not in passed_clusters:
@@ -394,26 +425,43 @@ def write_network_matrix(matrix, cutoff, filename, include_disc_nodes):
                 passed_clusters.append(row[1])
             
     networkfile.close()
-    
-    
-def get_gbk_files(gbksamples):
+                    
+
+def get_gbk_files(inputdir, gbksamples, min_bgc_size, exclude_gbk_str):
     """Find .gbk files, and store the .gbk files in lists, separated by sample."""
     genbankfiles=[] #Will contain lists of gbk files
     dirpath = ""
     file_counter = 0
-    for dirpath, dirnames, filenames in os.walk(str(os.getcwd()) + "/"):
+    
+    print "Importing the gbk files, while skipping gbk files with", exclude_gbk_str, "in their filename"
+    
+    if inputdir != "" and inputdir[-1] != "/":
+        inputdir += "/"
+        
+    
+    for dirpath, dirnames, filenames in os.walk(str(os.getcwd()) + "/" + inputdir):
+        print dirpath
         genbankfilelist=[]
         
         for fname in filenames:
-            if fname.split(".")[-1] == "gbk" and "final" not in fname:
+            if fname.split(".")[-1] == "gbk" and exclude_gbk_str not in fname:
+                
+                gbk_header = open(dirpath + "/" + fname, "r").readline().split(" ")
+                gbk_header = filter(None, gbk_header) #remove the empty items from the list
+                bgc_size = int(gbk_header[gbk_header.index("bp")-1])
+                    
                 file_counter += 1
-                genbankfilelist.append(dirpath + "/" + fname)
+                if bgc_size > min_bgc_size: #exclude the bgc if it's too small
+                    genbankfilelist.append(dirpath + "/" + fname)
+                    
+                    if gbksamples == True: #Then each gbk file represents a different sample
+                        genbankfiles.append(genbankfilelist)
+                        genbankfilelist = []
+                    
                 if verbose == True:
                     print fname
-                if gbksamples == True:
-                    genbankfiles.append(genbankfilelist)
-                    genbankfilelist = []
-                
+                    print "bgc size in bp", bgc_size
+                    
         if genbankfilelist != []:
             genbankfiles.append(genbankfilelist)
     
@@ -427,8 +475,6 @@ def domtable_parser(gbk, hmm_table):
 # target name        accession   tlen query name                                    accession   qlen   E-value  score  bias   #  of  c-Evalue  i-Evalue  score  bias  from    to  from    to  from    to  acc description of target
 #------------------- ---------- -----                          -------------------- ---------- ----- --------- ------ ----- --- --- --------- --------- ------ ----- ----- ----- ----- ----- ----- ----- ---- ---------------------
 #Lycopene_cycl        PF05834.8    378 loc:[0:960](-):gid::pid::loc_tag:['ctg363_1'] -            320   3.1e-38  131.7   0.0   1   1   1.1e-40   1.8e-36  126.0   0.0     7   285    33   295    31   312 0.87 Lycopene cyclase protein
-
-
     pfd_matrix = []
 
     handle = open(hmm_table, 'r')
