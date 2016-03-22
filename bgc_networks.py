@@ -103,9 +103,10 @@ def generate_dist_matrix(parms):
     A = get_domain_list(cluster_file1)
     B = get_domain_list(cluster_file2)
     
-    if A == [] or B == []:
+    if A == [''] or B == ['']:
         print "Regarding files", cluster_file1, cluster_file2
         print "One or both of these clusters contain no pfam domains"
+        sys.exit()
         return [cluster1,cluster2,'','','','',str(1),str(1),str(1),'','']
     
 
@@ -510,7 +511,6 @@ def genbank_parser_hmmscan_call(gb_files, outputdir, cores, gbk_group, skip_hmms
     
     for gb_file in gb_files:
         
-        CDS_keys = []
         outputbase = gb_file.split("/")[-1].replace(".gbk", "")
         outputfile = outputdir + "/" + outputbase + ".fasta"
         multifasta = open(outputfile, "w")
@@ -540,9 +540,7 @@ def genbank_parser_hmmscan_call(gb_files, outputdir, cores, gbk_group, skip_hmms
         except ValueError:
             print "cannot find file", gb_file
         
-            
         features = get_all_features_of_type(gb_record, "CDS")
-        
         
         for feature in features:
             gene_id = ""
@@ -567,15 +565,14 @@ def genbank_parser_hmmscan_call(gb_files, outputdir, cores, gbk_group, skip_hmms
                 fasta_header = ">" + "loc:" + str(feature.location)\
                 + ":gid:" + str(gene_id )\
                 + ":pid:" + str(protein_id)
+            
+            fasta_header = fasta_header.replace(" ", "") #the domtable output format (hmmscan) uses spaces as a delimiter, so these cannot be present in the fasta header
                 
-            CDS_keys.append(fasta_header)
+            sequence = str(feature.qualifiers['translation'][0]) #in the case of the translation there should be one and only one entry (entry zero)
+            if sequence != "":
+                fasta_dict[fasta_header] = sequence
             
-            
-            fasta_dict[fasta_header] =\
-            str(feature.qualifiers['translation'][0])
-            
-
-        writeout(multifasta, fasta_dict, CDS_keys) #save the coding sequences in a fasta format
+        writeout(multifasta, fasta_dict) #save the coding sequences in a fasta format
         multifasta.close()
         
         if skip_hmmscan == False:
@@ -588,7 +585,6 @@ def genbank_parser_hmmscan_call(gb_files, outputdir, cores, gbk_group, skip_hmms
 
 def CMD_parser():
     parser = OptionParser()
-    
     
     parser.add_option("-o", "--outputdir", dest="outputdir", default="",
                       help="output directory, this contains your pfd,pfs,network and hmmscan output files")
@@ -751,16 +747,19 @@ def main():
         clusters.append(hmms) #remember the clusters per sample        
         #loop over clusters
         for outputbase in hmms:
+            print "Processing domtable file:", outputbase
             pfsoutput = output_folder + "/" + outputbase + ".pfs"
             pfs_handle = open(pfsoutput, 'w')
             
             
             #pfd_matrix = hmm_table_parser(outputbase+".gbk", output_folder +"/"+ hmm_file)
             pfd_matrix = domtable_parser(outputbase, output_folder + "/" + outputbase+".domtable")
+            pfdoutput = output_folder + "/" + outputbase + ".pfd2"
+            pfd_handle = open(pfdoutput, 'w')
+            write_pfd(pfd_handle, pfd_matrix)
             filtered_matrix, domains = check_overlap(pfd_matrix, options.domain_overlap_cutoff)  #removes overlapping domains, and keeps the highest scoring domain
             save_domain_seqs(filtered_matrix, fasta_dict, domainsout, output_folder) #save the sequences for the found domains per pfam domain
             write_pfs(pfs_handle, domains)
-            
             BGC = BGC_dic_gen(filtered_matrix)
             BGCs[outputbase] = BGC
             pfdoutput = output_folder + "/" + outputbase + ".pfd"
@@ -782,7 +781,6 @@ def main():
             write_network_matrix(network_matrix, cutoff, networkfilename + "_c" + cutoff + ".network", include_disc_nodes)
          
         
-        
     if verbose == True:
         print "BGCs:", BGCs
         BGC_handle = open("BGCs.txt", "w")
@@ -797,6 +795,7 @@ def main():
         - general_domain_name_x: as above
         - ('specific_domain_name_1', 'specific_domain_name_2'): pair of specific domains, sorted alphabetically
         - (sequence_identity, alignment_length): sequence identity and alignment length of the domain pair"""
+
 
     DMS = {}
     fasta_domains = get_domain_fastas(domainsout, output_folder)

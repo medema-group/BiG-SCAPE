@@ -11,6 +11,7 @@ Usage: score a network
 
 import os
 import subprocess
+from encodings import gbk
 
 global verbose
 verbose = False
@@ -90,6 +91,8 @@ def get_hmm_output_files(output_folder):
                         hmm_table_list.append(fname)
                         if verbose == True:
                             print fname
+                    else:
+                        print output_folder + "/" + fname, "seems to be an empty domtable file"
                     
                 except IndexError:
                     print "IndexError on file", output_folder + "/" + fname
@@ -126,9 +129,12 @@ def check_overlap(pfd_matrix, overlap_cutoff):
             pfd_matrix.remove(lst)
         except ValueError:
             pass
+    try:    
+        pfd_matrix = sorted(pfd_matrix, key=lambda pfd_matrix_entry: int(pfd_matrix_entry[3]))
+    except ValueError:
+        print "Something went wrong during the sorting of the fourth column (ValueError)"
+        print pfd_matrix
         
-    pfd_matrix = sorted(pfd_matrix, key=lambda pfd_matrix_entry: int(pfd_matrix_entry[3]))
-    #print pfd_matrix
     domains = []
     for row in pfd_matrix:
         domains.append(row[-2]) #save the pfam domains for the .pfs file
@@ -150,8 +156,8 @@ def write_pfd(pfd_handle, matrix):
     pfd_handle.close() 
     
 
-def writeout(handle, dct, keys):
-    for key in keys:
+def writeout(handle, dct):
+    for key in dct.keys():
         handle.write(key+"\n"+dct[key]+"\n")
     handle.close()
 
@@ -272,9 +278,8 @@ def save_domain_seqs(filtered_matrix, fasta_dict, domains_folder, output_folder)
         domain = row[6]
         seq = fasta_dict[">"+str(row[-1].strip())] #access the sequence by using the header
         domain_file = open(output_folder + "/" + domains_folder + "/" + domain +".fasta", 'a') #append to existing file
-        #same as in BGCs variable
         domain_file.write(">" + str(row[0]) + "_" + str(row[-1]) + "_" + str(row[3]) + "_" + str(row[4]) \
-        + "\n" + str(seq)[int(row[3]):int(row[4])] + "\n")
+        + "\n" + str(seq)[int(row[3]):int(row[4])] + "\n") #only use the range of the pfam domain within the sequence
         domain_file.close()
         
 
@@ -440,7 +445,6 @@ def get_gbk_files(inputdir, gbksamples, min_bgc_size, exclude_gbk_str):
         
     
     for dirpath, dirnames, filenames in os.walk(str(os.getcwd()) + "/" + inputdir):
-        print dirpath
         genbankfilelist=[]
         
         for fname in filenames:
@@ -475,36 +479,41 @@ def domtable_parser(gbk, hmm_table):
 # target name        accession   tlen query name                                    accession   qlen   E-value  score  bias   #  of  c-Evalue  i-Evalue  score  bias  from    to  from    to  from    to  acc description of target
 #------------------- ---------- -----                          -------------------- ---------- ----- --------- ------ ----- --- --- --------- --------- ------ ----- ----- ----- ----- ----- ----- ----- ---- ---------------------
 #Lycopene_cycl        PF05834.8    378 loc:[0:960](-):gid::pid::loc_tag:['ctg363_1'] -            320   3.1e-38  131.7   0.0   1   1   1.1e-40   1.8e-36  126.0   0.0     7   285    33   295    31   312 0.87 Lycopene cyclase protein
+    
+    
     pfd_matrix = []
-
     handle = open(hmm_table, 'r')
     for line in handle:
+        
         if line[0] != "#":
+
+            splitline = filter(None, line.split(" "))
+            print splitline
+            pfd_row = []
+            pfd_row.append(gbk)         #add clustername or gbk filename
+            
+            pfd_row.append(splitline[13]) #add the score
+
+            ##example of header_list ['loc', '[2341', '3538](+)', 'gid', '', 'pid', '', 'loc_tag', "['ctg4508_7"]]
+
+            header_list = splitline[3].split(":")
             try:
-                splitline = filter(None, line.split(" "))
-                pfd_row = []
-                pfd_row.append(gbk)         #add clustername or gbk filename
-                
-                pfd_row.append(splitline[13]) #add the score
-    
-    ##example of header_list ['loc', '[2341', '3538](+)', 'gid', '', 'pid', '', 'loc_tag', "['ctg4508_7"]]
-    
-                header_list = splitline[3].split(":")
                 pfd_row.append(header_list[header_list.index("gid")+1]) #add gene ID if known
-                pfd_row.append(splitline[19])#first coordinate, env coord from
-                pfd_row.append(splitline[20])#second coordinate, env coord to
-                loc_split = header_list[2].split("]") #second coordinate (of CDS) and the direction
-                pfd_row.append(loc_split[1]) #add direction          
-    
-                pfd_row.append(splitline[1]) #pfam id
-                pfd_row.append(splitline[0]) #domain name
-                pfd_row.append(splitline[3])#cds header
-                
-                pfd_matrix.append(pfd_row)
             except ValueError:
-                print "line: ", line
-                print "file", hmm_table
-            #print pfd_row
+                print "No gene ID in ", gbk
+                pfd_row.append('')
+                
+            pfd_row.append(splitline[19])#first coordinate, env coord from
+            pfd_row.append(splitline[20])#second coordinate, env coord to
+            loc_split = header_list[2].split("]") #second coordinate (of CDS) and the direction
+            pfd_row.append(loc_split[1]) #add direction          
+
+            pfd_row.append(splitline[1]) #pfam id
+            pfd_row.append(splitline[0]) #domain name
+            pfd_row.append(splitline[3])#cds header
+            
+            pfd_matrix.append(pfd_row)
+
 
     return pfd_matrix
 
