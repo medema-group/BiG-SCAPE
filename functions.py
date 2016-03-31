@@ -350,7 +350,6 @@ def distout_parser(distout_file):
             except AttributeError:
                 print "something went wrong during the import of distout file: ", str(distout_file)
                 
-                #return {('', ''): (0.000000001, 0)}
             
             seqsdict[seq_number] = "".join(line.split("=")[1:]).strip()#in case the header contains an = sign
 
@@ -363,7 +362,6 @@ def distout_parser(distout_file):
     else:
         print "distance matrix imported correctly"
         keys = seqsdict.keys()
-        print sorted(keys)
 
     keys_queue = []
     for key in keys:

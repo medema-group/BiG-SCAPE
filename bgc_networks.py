@@ -10,15 +10,15 @@ dependencies: hmmer, biopython, mafft, munkres, numpy
 Usage:   place this script in the same folder as the antismash output files
          include the munkres.py file in this folder
          include the files necessary for hmmscan in this folder
-         $python bgc_networks.py
+         Example runstring: python ~/bgc_networks/bgc_networks.py -o exclude_small_bgcs --mafft_threads 12 -m 5000 -c 12 --include_disc_nodes
 
 Status: development/testing
 
 Todo: 
-
-Example runstring: python ~/bgc_networks/bgc_networks.py -o exclude_small_bgcs --mafft_threads 12 -m 5000 -c 12 --include_disc_nodes --skip_hmmscan
+Calculate and report on some general properties of the generated networks
 
 """
+
 
 from functions import *
 import fileinput, pickle, sys, math
@@ -38,6 +38,7 @@ from Bio import SeqIO
 from Bio.Seq import Seq
 from Bio.Alphabet import generic_dna
 from site import setBEGINLIBPATH
+
 
 
 """
@@ -70,6 +71,7 @@ FFT NS 1 will be specified whenever distance measures are needed. If no distance
 FFTNS2 method will be used. 
 
 """
+
 
 def timeit(f):
     def wrap(*args):
@@ -279,7 +281,6 @@ def cluster_distance(A,B, anchor_domains):
         print "Distance is set to 0 for these clusters" 
         Distance = 0
     return Distance
-
 
 
 # --- compare two clusters using distance information between sequences of domains
@@ -555,6 +556,8 @@ def genbank_parser_hmmscan_call(gb_files, outputdir, cores, gbk_group, skip_hmms
             except KeyError:
                 pass
             
+            #Maybe add a seqcounter to avoid overwriting the sequences?
+            
             try:
                 fasta_header = ">" + "loc:" + str(feature.location)\
                 + ":gid:" + str(gene_id )\
@@ -591,7 +594,7 @@ def CMD_parser():
     parser.add_option("-i", "--inputdir", dest="inputdir", default="",
                       help="Input directory of gbk files, if left empty, all gbk files in current and lower directories will be used.")
     parser.add_option("-c", "--cores", dest="cores", default=8,
-                      help="cores")
+                      help="Set the amount of cores the script and hmmscan may use")
     parser.add_option("-l", "--limit", dest="limit", default=-1,
                       help="-limit- parameter of run_antismash")
     parser.add_option("-v", "--verbose", dest="verbose", action="store_true", default=False,
@@ -602,11 +605,11 @@ def CMD_parser():
                       help="Specify at which overlap percentage domains are considered to overlap")
     parser.add_option("-m", "--min_bgc_size", dest="min_bgc_size", default=5000,
                       help="Provide the minimum size of a bgc in base pairs, default is 5000bp")
-    parser.add_option("--seqdist_networks", dest="seqdist_networks", default="A",
-                      help="Mode A generates the all vs all networks with seqquence distance. Mode P generates the pairwise sample comparisons.\
-                       Sample input: \"P,A\" generates the pairwise and all vs all. Default is \"A\"")
+    parser.add_option("--seqdist_networks", dest="seqdist_networks", default="S,A",
+                      help="Mode A generates the all vs all networks with sequence distance. Mode S compares clusters within a sample.\
+                       Sample input: \"S,A\" generates the samplewise and all vs all. Default is \"S,A\"")
     parser.add_option("--domaindist_networks", dest="domaindist_networks", default="",
-                      help="Mode A generates the all vs all networks with domain distance. Mode P generates the pairwise sample comparisons.\
+                      help="Mode A generates the all vs all networks with domain distance. Mode S compares clusters within a sample.\
                        Sample input: \"A\" only generates the all vs all. Default is \"\"")
     parser.add_option("--Jaccardw", dest="Jaccardw", default=0.1,
                       help="SJaccard weight")
@@ -628,17 +631,13 @@ def CMD_parser():
                       help="maxiterate parameter in mafft, default is 0")
     parser.add_option("--mafft_threads", dest="mafft_threads", default=-1,
                       help="Set the number of threads in mafft, -1 sets the number of threads as the number of physical cores")
-
     parser.add_option("--use_perc_id", dest="use_perc_id", action="store_true", default=False,
                       help="Let the script calculate the percent identity between sequences? \
                       Or use the distout scores from the mafft output? - default")
-
     parser.add_option("--skip_hmmscan", dest="skip_hmmscan", action="store_true", default=False,
                       help="When skipping hmmscan, the GBK files should be available, and the domain tables need to be in the output folder.")
-
     parser.add_option("--sim_cutoffs", dest="sim_cutoffs", default="1,0.7,0.65,0.6,0.5,0.4,0.3,0.2,0.1",
                       help="Generate networks using multiple simmilarity (raw distance) cutoff values, example: \"1,0.5,0.1\"")
-    
     parser.add_option("-a", "--anchorweight", dest="anchorweight", default=0.1,
                       help="")
     parser.add_option("-n", "--nbhood", dest="nbhood", default=4,
@@ -708,7 +707,7 @@ def main():
     except subprocess.CalledProcessError, e:
         pass
 
-    timings_file = open(output_folder + "/" + "runtimes.txt", 'w') #open the file that will contain the timed functions
+    timings_file = open(output_folder + "/" + "runtimes.txt", 'wa') #open the file that will contain the timed functions
     
     
     gbk_files = get_gbk_files(options.inputdir, gbksamples, int(options.min_bgc_size), options.exclude_gbk_str) #files will contain lists of gbk files per sample. Thus a matrix contains lists with gbk files by sample.
@@ -767,7 +766,7 @@ def main():
             write_pfd(pfd_handle, filtered_matrix)
         
     
-        if "P" in domaindist_networks:
+        if "S" in domaindist_networks:
             print "Generating pairwise networks with domain_dist"
             network_matrix, networkfilename = generate_network(hmms, group_dct, str(samplename), networks_folder, "domain_dist", anchor_domains, cores)
             for cutoff in cutoff_list:
@@ -828,13 +827,13 @@ def main():
                 DMS[domain.split("/")[-1]] = domain_pairs
     
     
-    if "P" in seqdist_networks:     
+    if "S" in seqdist_networks:     
         #Compare the gene clusters within one sample, and save them in tab delimited .txt files.
         for clusters_per_sample in clusters:
             network_matrix, networkfilename = generate_network(clusters_per_sample, group_dct, "", networks_folder, "seqdist", anchor_domains, cores)
             for cutoff in cutoff_list:
                 write_network_matrix(network_matrix, cutoff, networkfilename + "_c" + cutoff + ".network", include_disc_nodes)
-         
+                
 
     if "A" in seqdist_networks:
         network_matrix, networkfilename = generate_network(list(iterFlatten(clusters)), group_dct, "all_vs_all", networks_folder, "seqdist", anchor_domains, cores)
