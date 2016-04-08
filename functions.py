@@ -503,7 +503,6 @@ def domtable_parser(gbk, dom_file):
         if line[0] != "#":
 
             splitline = filter(None, line.split(" "))
-            print splitline
             pfd_row = []
             pfd_row.append(gbk)         #add clustername or gbk filename
             

@@ -663,9 +663,9 @@ def CMD_parser():
                       help="maxiterate parameter in mafft, default is 0")
     parser.add_option("--mafft_threads", dest="mafft_threads", default=-1,
                       help="Set the number of threads in mafft, -1 sets the number of threads as the number of physical cores")
-    parser.add_option("--use_perc_id", dest="use_perc_id", action="store_true", default=False,
+    parser.add_option("--use_mafft_distout", dest="use_perc_id", action="store_false", default=True,
                       help="Let the script calculate the percent identity between sequences? \
-                      Or use the distout scores from the mafft output? - default")
+                      Or use the distout scores from the mafft output?")
     parser.add_option("--skip_hmmscan", dest="skip_hmmscan", action="store_true", default=False,
                       help="When skipping hmmscan, the GBK files should be available, and the domain tables need to be in the output folder.")
     parser.add_option("--sim_cutoffs", dest="sim_cutoffs", default="1,0.7,0.65,0.6,0.5,0.4,0.3,0.2,0.1",
@@ -745,7 +745,6 @@ def main():
     gbk_files = get_gbk_files(options.inputdir, gbksamples, int(options.min_bgc_size), options.exclude_gbk_str) #files will contain lists of gbk files per sample. Thus a matrix contains lists with gbk files by sample.
     check_data_integrity(gbk_files)
 
-
     
     """BGCs -- dictionary of this structure:  BGCs = {'cluster_name_x': { 'general_domain_name_x' : ['specific_domain_name_1',
      'specific_domain_name_2'] } }
@@ -782,10 +781,8 @@ def main():
             pfsoutput = output_folder + "/" + outputbase + ".pfs"
             pfs_handle = open(pfsoutput, 'w')
             
-            
             #pfd_matrix = hmm_table_parser(outputbase+".gbk", output_folder +"/"+ hmm_file)
             pfd_matrix = domtable_parser(outputbase, output_folder + "/" + outputbase + ".domtable")
-            
             
             #===================================================================
             # pfdoutput = output_folder + "/" + outputbase + ".pfd2"
@@ -803,7 +800,7 @@ def main():
             pfd_handle = open(pfdoutput, 'w')
             write_pfd(pfd_handle, filtered_matrix)
         
-    
+        
         if "S" in domaindist_networks:
             print "Generating pairwise networks with domain_dist"
             network_matrix, networkfilename = generate_network(hmms, group_dct, str(samplename), networks_folder, "domain_dist", anchor_domains, cores)
@@ -826,13 +823,11 @@ def main():
         BGC_handle.close()
         
         
-        
     """DMS -- dictionary of this structure: DMS = {'general_domain_name_x': { ('specific_domain_name_1',
     'specific_domain_name_2'): (sequence_identity, alignment_length), ... }   }
         - general_domain_name_x: as above
         - ('specific_domain_name_1', 'specific_domain_name_2'): pair of specific domains, sorted alphabetically
         - (sequence_identity, alignment_length): sequence identity and alignment length of the domain pair"""
-
 
 
     DMS = {}
