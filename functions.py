@@ -111,7 +111,7 @@ def check_overlap(pfd_matrix, overlap_cutoff):
         row2_count = 0
         for row2 in pfd_matrix:
             row2_count += 1
-            if row1_count != row2_count and row1[8] == row2[8]: #check if we are not comparing the same rows, but has the same CDS
+            if row1_count != row2_count and row1[-1] == row2[-1]: #check if we are not comparing the same rows, but has the same CDS
                 #check if there is overlap between the domains
                 if no_overlap(int(row1[3]), int(row1[4]), int(row2[3]), int(row2[4])) == False:
                     overlapping_nucleotides = overlap(int(row1[3]), int(row1[4]), int(row2[3]), int(row2[4]))
@@ -156,7 +156,7 @@ def write_pfd(pfd_handle, matrix):
     pfd_handle.close() 
     
 
-def writeout(handle, dct):
+def dct_writeout(handle, dct):
     for key in dct.keys():
         handle.write(key+"\n"+dct[key]+"\n")
     handle.close()
@@ -194,11 +194,12 @@ def hmmscan(fastafile, outputdir, name, cores):
     #removed --noali par
 
     hmmscan_cmd = "hmmscan --cpu " + str(cores) + " --domtblout " + str(outputdir)\
-     + "/" +str(name) + ".domtable --cut_tc Pfam-A.hmm " + str(fastafile) 
+     + "/" +str(name) + ".domtable --cut_tc Pfam-A.hmm " + str(fastafile)
     if verbose == True:
         print hmmscan_cmd
         
     subprocess.check_output(hmmscan_cmd, shell=True)
+    
     
 def get_domains(filename):
     handle = open(filename, 'r')
@@ -209,6 +210,7 @@ def get_domains(filename):
             
     return domains
 
+
 def no_overlap(locA1, locA2, locB1, locB2):
     """Return True if there is no overlap between two regions"""
     if locA1 < locB1 and locA2 < locB1:
@@ -217,6 +219,7 @@ def no_overlap(locA1, locA2, locB1, locB2):
         return True
     else:
         return False
+
 
 def overlap_perc(overlap, len_seq):
     return float(overlap) / len_seq
@@ -241,8 +244,8 @@ def overlap(locA1, locA2, locB1, locB2):
     return sum_len - total_region
 
   
-def calc_perc_identity(seq1, seq2):
-    """Percent Identity = (Matches x 100)/Length of aligned region (with gaps)
+def calc_perc_identity(seq1, seq2, spec_domain, spec_domain_nest, domain):
+    """Percent Identity = Matches/Length of aligned region (with gaps)
     Note that only internal gaps are included in the length, not gaps at the sequence ends."""
 
     al_len = min([len(seq1.strip("-")), len(seq2.strip("-"))])
@@ -253,9 +256,11 @@ def calc_perc_identity(seq1, seq2):
                 matches += 1
         except IndexError:
             print "Something went wrong, most likely your alignment file contains duplicate sequences"
+            print "file: ", domain, "domains: ", spec_domain, spec_domain_nest
+        
             
 
-    return (matches * 100) / float(al_len), al_len    
+    return float(matches) / float(al_len), al_len    
 
 
 def BGC_dic_gen(filtered_matrix):
@@ -264,22 +269,34 @@ def BGC_dic_gen(filtered_matrix):
     bgc_dict = {}
     for row in filtered_matrix:
         try: #Should be faster than performing if key in dictionary.keys()
-            bgc_dict[row[6]]
-            bgc_dict[row[6]].append(str(row[0]) + "_" + str(row[-1]) + "_" + str(row[3]) + "_" + str(row[4]))
+            bgc_dict[row[5]]
+            bgc_dict[row[5]].append(str(row[0]) + "_" + str(row[-1]) + "_" + str(row[3]) + "_" + str(row[4]))
         except KeyError: #In case of this error, this is the first occurrence of this domain in the cluster
-           bgc_dict[row[6]]=[str(row[0]) + "_" + str(row[-1]) + "_" + str(row[3]) + "_" + str(row[4])]
+           bgc_dict[row[5]]=[str(row[0]) + "_" + str(row[-1]) + "_" + str(row[3]) + "_" + str(row[4])]
             
     return bgc_dict
 
     
-def save_domain_seqs(filtered_matrix, fasta_dict, domains_folder, output_folder):
+def save_domain_seqs(filtered_matrix, fasta_dict, domains_folder, output_folder, outputbase):
     """Write fasta sequences for the domains in the right pfam-domain file"""
     for row in filtered_matrix:
-        domain = row[6]
+        domain = row[5]
         seq = fasta_dict[">"+str(row[-1].strip())] #access the sequence by using the header
+        
+
         domain_file = open(output_folder + "/" + domains_folder + "/" + domain +".fasta", 'a') #append to existing file
         domain_file.write(">" + str(row[0]) + "_" + str(row[-1]) + "_" + str(row[3]) + "_" + str(row[4]) \
         + "\n" + str(seq)[int(row[3]):int(row[4])] + "\n") #only use the range of the pfam domain within the sequence
+        
+#===============================================================================
+# 
+#         if str(seq)[int(row[3]):int(row[4])] == "":
+#             print seq
+#             print row[3], row[4]
+#             print str(row[-1].strip())
+#             print outputbase
+#===============================================================================
+            
         domain_file.close()
         
 
@@ -325,7 +342,7 @@ def iterFlatten(root):
 
 
 def distout_parser(distout_file):
-    """returns distance values, for domains in the following format  { ('specific_domain_name_1',
+    """returns similarity values, for domains in the following format  { ('specific_domain_name_1',
     'specific_domain_name_2'): (sequence_identity, alignment_length), ... }"""
     
     try:
@@ -372,9 +389,7 @@ def distout_parser(distout_file):
         keys_queue.remove(key)
         for key_queue in keys_queue:
             tuples.append((key, key_queue))
-
-    
-
+            
     for tupl in range(len(tuples)):
         ##    { ('specific_domain_name_1',
         ##    'specific_domain_name_2'): (sequence_identity, alignment_length), ... }
@@ -429,6 +444,7 @@ def write_network_matrix(matrix, cutoff, filename, include_disc_nodes):
             
     networkfile.close()
                     
+                    
 
 def get_gbk_files(inputdir, gbksamples, min_bgc_size, exclude_gbk_str):
     """Find .gbk files, and store the .gbk files in lists, separated by sample."""
@@ -470,7 +486,8 @@ def get_gbk_files(inputdir, gbksamples, min_bgc_size, exclude_gbk_str):
     return genbankfiles
 
 
-def domtable_parser(gbk, hmm_table):
+
+def domtable_parser(gbk, dom_file):
     """Parses the domain table output files from hmmscan"""
     
 ##example from domain table output:
@@ -480,8 +497,8 @@ def domtable_parser(gbk, hmm_table):
     
     
     pfd_matrix = []
-    handle = open(hmm_table, 'r')
-    for line in handle:
+    dom_handle = open(dom_file, 'r')
+    for line in dom_handle:
         
         if line[0] != "#":
 
@@ -492,8 +509,6 @@ def domtable_parser(gbk, hmm_table):
             
             pfd_row.append(splitline[13]) #add the score
 
-            ##example of header_list ['loc', '[2341', '3538](+)', 'gid', '', 'pid', '', 'loc_tag', "['ctg4508_7"]]
-
             header_list = splitline[3].split(":")
             try:
                 pfd_row.append(header_list[header_list.index("gid")+1]) #add gene ID if known
@@ -503,13 +518,18 @@ def domtable_parser(gbk, hmm_table):
                 
             pfd_row.append(splitline[19])#first coordinate, env coord from
             pfd_row.append(splitline[20])#second coordinate, env coord to
-            loc_split = header_list[2].split("]") #second coordinate (of CDS) and the direction
-            pfd_row.append(loc_split[1]) #add direction          
-
+            
+            #===================================================================
+            # loc_split = header_list[2].split("]") #second coordinate (of CDS) and the direction
+            # pfd_row.append(loc_split[1]) #add direction          
+            #===================================================================
+            
             pfd_row.append(splitline[1]) #pfam id
             pfd_row.append(splitline[0]) #domain name
-            pfd_row.append(splitline[3])#cds header
+            pfd_row.append(header_list[header_list.index("loc")+1]) #start coordinate of gene
+            pfd_row.append(header_list[header_list.index("loc")+2]) #end coordinate of gene
             
+            pfd_row.append(splitline[3])#cds header
             pfd_matrix.append(pfd_row)
 
 
@@ -547,9 +567,6 @@ def hmm_table_parser(gbk, hmm_table):
 
             pfd_row.append(splitline[1])
             pfd_row.append(splitline[0])
-##            pfd_row.append(splitline[-1])
-
-##            row = "\t".join(pfd_row)
             
             pfd_matrix.append(pfd_row)
 

@@ -102,8 +102,10 @@ def generate_dist_matrix(parms):
     cluster_file1 = output_folder + "/" + cluster1 + ".pfs"
     cluster_file2 = output_folder + "/" + cluster2 + ".pfs"
     
+    
     A = get_domain_list(cluster_file1)
     B = get_domain_list(cluster_file2)
+    
     
     if A == [''] or B == ['']:
         print "Regarding files", cluster_file1, cluster_file2
@@ -137,7 +139,6 @@ def generate_dist_matrix(parms):
 def generate_network(bgc_list, group_dct, networkfilename, networks_folder, dist_method, anchor_domains, cores):
     #Contents of the network file: clustername1 clustername2 group1, group2, -log2score, dist, squared similarity
     "saves the distances as the log2 of the similarity"
-    network_matrix_conv = []
 
     
     if networkfilename == "":
@@ -174,7 +175,7 @@ def generate_network(bgc_list, group_dct, networkfilename, networks_folder, dist
     sorted_network_matrix = sorted(network_matrix, key=lambda network_matrix_entry: network_matrix_entry[5]) #sort the matrix on the log2 scores
     return sorted_network_matrix, networkfilename
     
-
+    
 def cluster_distance(A,B, anchor_domains): 
   
     #key is name of GC, values is list of specific pfam domain names
@@ -221,9 +222,19 @@ def cluster_distance(A,B, anchor_domains):
         seta = clusterA[shared_domain]
         setb = clusterB[shared_domain]
         
-        if len(seta+setb) == 2: #The domain occurs only once in both clusters
+        if len(seta+setb) == 2: #The domain occurs only once in both clusters   
             pair = tuple(sorted([seta[0],setb[0]]))
-            SumDistance = 1-DMS[shared_domain][pair][0] #1
+            
+            try:
+                SumDistance = 1-DMS[shared_domain][pair][0] 
+            except KeyError:
+                print "KeyError on", pair
+                
+                errorhandle = open(str(A)+".txt", 'w')
+                errorhandle.write(str(pair)+"\n")
+                errorhandle.write(str(DMS[shared_domain]))
+                errorhandle.close()
+            
             if shared_domain.split(".")[0] in anchor_domains: 
                 Sa += max(len(seta),len(setb))
                 DDSa += SumDistance 
@@ -237,7 +248,15 @@ def cluster_distance(A,B, anchor_domains):
             for domsa in range(len(seta)):
                 for domsb in range(domsa, len(setb)):
                     pair = tuple(sorted([seta[domsa], setb[domsb]]))
-                    Similarity = DMS[shared_domain][pair][0]
+                    
+                    try:
+                        Similarity = DMS[shared_domain][pair][0]
+                    except KeyError:
+                        print "KeyError on", pair
+                        errorhandle = open(str(B)+".txt", 'w')
+                        errorhandle.write(str(pair)+"\n")
+                        errorhandle.write(str(DMS[shared_domain]))
+                        errorhandle.close()
                     
                     seq_dist = 1-Similarity
                     DistanceMatrix[domsa][domsb] = seq_dist
@@ -323,7 +342,7 @@ def CompareTwoClusters(A,B):
             pair = tuple(sorted([seta[0],setb[0]]))
             try: SumDistance = 1-DMS[domain][pair][0] #1
             except KeyError: 
-                print "Could not retrieve the distance metric for this cluster pair", pair
+                print "KeyError on", pair
                 SumDistance = 1-0.1
           #  print "if", SumDistance
             if domain.split(".")[0] in anchor_domains:
@@ -350,7 +369,7 @@ def CompareTwoClusters(A,B):
                         Distance = 1-DMS[domain][pair][0]
                     except KeyError: 
                         Distance = 1-0.1
-                        print "KeyError when retrieving the distance score during the hungarian calculation", pair
+                        print "KeyError on", pair
                       
                     print "Distance", Distance
                       
@@ -411,7 +430,7 @@ def run_mafft(al_method, maxit, cores, mafft_pars, domain):
     
     
     mafft_cmd_list = []
-    mafft_cmd_list.append("mafft --distout")
+    mafft_cmd_list.append("mafft --distout") #distout will save the distance matrix in a ".hat2" file
     mafft_cmd_list.append("--quiet")
     mafft_cmd_list.append(al_method)
     if maxit != 0:
@@ -425,7 +444,7 @@ def run_mafft(al_method, maxit, cores, mafft_pars, domain):
         
     mafft_cmd_list.append(str(domain) + ".fasta")
     mafft_cmd_list.append(">")
-    mafft_cmd_list.append("alignment_file")
+    mafft_cmd_list.append(str(alignment_file))
     
     mafft_cmd = " ".join(mafft_cmd_list)
     
@@ -543,7 +562,15 @@ def genbank_parser_hmmscan_call(gb_files, outputdir, cores, gbk_group, skip_hmms
         
         features = get_all_features_of_type(gb_record, "CDS")
         
+        
+        
+        feature_counter = 0
         for feature in features:
+            feature_counter += 1
+            
+            start = feature.location.start
+            end = feature.location.end
+            
             gene_id = ""
             protein_id = ""
             try:
@@ -555,27 +582,32 @@ def genbank_parser_hmmscan_call(gb_files, outputdir, cores, gbk_group, skip_hmms
                 protein_id =  feature.qualifiers['protein_id']
             except KeyError:
                 pass
+
+            fasta_header = outputbase + "_ORF" + str(feature_counter)+ ":gid:" + str(gene_id) + ":pid:" + str(protein_id) + ":loc:" + str(start) + ":" + str(end)
+            fasta_header = fasta_header.replace(">","") #the coordinates might contain larger than signs, tools upstream don't like this
             
-            #Maybe add a seqcounter to avoid overwriting the sequences?
+            #===================================================================
+            # try:
+            #     fasta_header = "loc:" + str(feature.location)\
+            #     + ":gid:" + str(gene_id)\
+            #     + ":pid:" + str(protein_id)\
+            #     + ":loc_tag:" + str(feature.qualifiers['locus_tag'])
+            # except KeyError:
+            #     print "no locus tag available in gbk file", gb_file
+            #     fasta_header = "loc:" + str(feature.location)\
+            #     + ":gid:" + str(gene_id )\
+            #     + ":pid:" + str(protein_id)
+            #===================================================================
+                
+                
             
-            try:
-                fasta_header = ">" + "loc:" + str(feature.location)\
-                + ":gid:" + str(gene_id )\
-                + ":pid:" + str(protein_id)\
-                + ":loc_tag:" + str(feature.qualifiers['locus_tag'])
-            except KeyError:
-                print "no locus tag available in gbk file", gb_file
-                fasta_header = ">" + "loc:" + str(feature.location)\
-                + ":gid:" + str(gene_id )\
-                + ":pid:" + str(protein_id)
-            
-            fasta_header = fasta_header.replace(" ", "") #the domtable output format (hmmscan) uses spaces as a delimiter, so these cannot be present in the fasta header
+            fasta_header = ">"+(fasta_header.replace(" ", "")) #the domtable output format (hmmscan) uses spaces as a delimiter, so these cannot be present in the fasta header
                 
             sequence = str(feature.qualifiers['translation'][0]) #in the case of the translation there should be one and only one entry (entry zero)
             if sequence != "":
                 fasta_dict[fasta_header] = sequence
             
-        writeout(multifasta, fasta_dict) #save the coding sequences in a fasta format
+        dct_writeout(multifasta, fasta_dict) #save the coding sequences in a fasta format
         multifasta.close()
         
         if skip_hmmscan == False:
@@ -608,9 +640,9 @@ def CMD_parser():
     parser.add_option("--seqdist_networks", dest="seqdist_networks", default="S,A",
                       help="Mode A generates the all vs all networks with sequence distance. Mode S compares clusters within a sample.\
                        Sample input: \"S,A\" generates the samplewise and all vs all. Default is \"S,A\"")
-    parser.add_option("--domaindist_networks", dest="domaindist_networks", default="",
+    parser.add_option("--domaindist_networks", dest="domaindist_networks", default="A",
                       help="Mode A generates the all vs all networks with domain distance. Mode S compares clusters within a sample.\
-                       Sample input: \"A\" only generates the all vs all. Default is \"\"")
+                       Sample input: \"A\" only generates the all vs all. Default is \"A\"")
     parser.add_option("--Jaccardw", dest="Jaccardw", default=0.1,
                       help="SJaccard weight")
     parser.add_option("--DDSw", dest="DDSw", default=0.7,
@@ -752,12 +784,18 @@ def main():
             
             
             #pfd_matrix = hmm_table_parser(outputbase+".gbk", output_folder +"/"+ hmm_file)
-            pfd_matrix = domtable_parser(outputbase, output_folder + "/" + outputbase+".domtable")
-            pfdoutput = output_folder + "/" + outputbase + ".pfd2"
-            pfd_handle = open(pfdoutput, 'w')
-            write_pfd(pfd_handle, pfd_matrix)
+            pfd_matrix = domtable_parser(outputbase, output_folder + "/" + outputbase + ".domtable")
+            
+            
+            #===================================================================
+            # pfdoutput = output_folder + "/" + outputbase + ".pfd2"
+            # pfd_handle = open(pfdoutput, 'w')
+            # write_pfd(pfd_handle, pfd_matrix)
+            #===================================================================
+            
+            
             filtered_matrix, domains = check_overlap(pfd_matrix, options.domain_overlap_cutoff)  #removes overlapping domains, and keeps the highest scoring domain
-            save_domain_seqs(filtered_matrix, fasta_dict, domainsout, output_folder) #save the sequences for the found domains per pfam domain
+            save_domain_seqs(filtered_matrix, fasta_dict, domainsout, output_folder, outputbase) #save the sequences for the found domains per pfam domain
             write_pfs(pfs_handle, domains)
             BGC = BGC_dic_gen(filtered_matrix)
             BGCs[outputbase] = BGC
@@ -796,6 +834,7 @@ def main():
         - (sequence_identity, alignment_length): sequence identity and alignment length of the domain pair"""
 
 
+
     DMS = {}
     fasta_domains = get_domain_fastas(domainsout, output_folder)
     #Fill the DMS variable by using all 'domains.fasta'  files
@@ -815,8 +854,8 @@ def main():
                 for spec_domain_nest in fasta_dict.keys():
                     if spec_domain != spec_domain_nest:
                         #tuple(sorted([seta[0],setb[0]]))
-                        dist, length = calc_perc_identity(fasta_dict[spec_domain], fasta_dict[spec_domain_nest])
-                        spec_domains_dict[tuple(sorted([spec_domain, spec_domain_nest]))] = (dist, length)
+                        sim, length = calc_perc_identity(fasta_dict[spec_domain], fasta_dict[spec_domain_nest], spec_domain, spec_domain_nest, domain)
+                        spec_domains_dict[tuple(sorted([spec_domain.replace(">",""), spec_domain_nest.replace(">","")]))] = (sim, length)
                     
             DMS[domain.split("/")[-1]] = spec_domains_dict
             
@@ -825,6 +864,13 @@ def main():
             domain_pairs = distout_parser(domain+".fasta" + ".hat2")
             if domain_pairs != {}:
                 DMS[domain.split("/")[-1]] = domain_pairs
+                
+    if verbose == True:
+        print "Saving the DMS variable to DMS.txt"
+        DMS_handle = open("DMS.txt", "w")
+        for item in DMS.items():
+            DMS_handle.write(str(item)+"\n")
+        DMS_handle.close()
     
     
     if "S" in seqdist_networks:     
@@ -841,12 +887,7 @@ def main():
             write_network_matrix(network_matrix, cutoff, networkfilename + "_c" + cutoff + ".network", include_disc_nodes)
          
         
-    if verbose == True:
-        print "Saving the DMS variable to DMS.txt"
-        DMS_handle = open("DMS.txt", "w")
-        for item in DMS.items():
-            DMS_handle.write(str(item)+"\n")
-        DMS_handle.close()
+
     
     
 main()
