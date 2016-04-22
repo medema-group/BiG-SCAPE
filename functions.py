@@ -11,6 +11,7 @@ Usage: score a network
 
 import os
 import subprocess
+import sys
 from encodings import gbk
 
 global verbose
@@ -463,6 +464,9 @@ def get_gbk_files(inputdir, gbksamples, min_bgc_size, exclude_gbk_str):
         
         for fname in filenames:
             if fname.split(".")[-1] == "gbk" and exclude_gbk_str not in fname:
+                if " " in fname:
+                    print "Your GenBank files should not have spaces in their filenames. Please remove the spaces from their names, HMMscan doesn't like spaces (too many arguments)."
+                    sys.exit(0)
                 
                 gbk_header = open(dirpath + "/" + fname, "r").readline().split(" ")
                 gbk_header = filter(None, gbk_header) #remove the empty items from the list
