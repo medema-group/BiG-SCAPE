@@ -562,8 +562,6 @@ def genbank_parser_hmmscan_call(gb_files, outputdir, cores, gbk_group, skip_hmms
         
         features = get_all_features_of_type(gb_record, "CDS")
         
-        
-        
         feature_counter = 0
         for feature in features:
             feature_counter += 1
@@ -622,21 +620,19 @@ def CMD_parser():
     parser = OptionParser()
     
     parser.add_option("-o", "--outputdir", dest="outputdir", default="",
-                      help="output directory, this contains your pfd,pfs,network and hmmscan output files")
+                      help="Output directory, this will contain your pfd, pfs, network and hmmscan output files.")
     parser.add_option("-i", "--inputdir", dest="inputdir", default="",
                       help="Input directory of gbk files, if left empty, all gbk files in current and lower directories will be used.")
     parser.add_option("-c", "--cores", dest="cores", default=8,
                       help="Set the amount of cores the script and hmmscan may use")
-    parser.add_option("-l", "--limit", dest="limit", default=-1,
-                      help="-limit- parameter of run_antismash")
     parser.add_option("-v", "--verbose", dest="verbose", action="store_true", default=False,
-                      help="toggle to true")
+                      help="Toggle to true, will print and save some variables.")
     parser.add_option("--include_disc_nodes", dest="include_disc_nodes", action="store_true", default=False,
-                      help="Include nodes that have no edges to other nodes from the network, default is false.")
+                      help="Toggle to true. Include nodes that have no edges to other nodes from the network, default is false.")
     parser.add_option("-d", "--domain_overlap_cutoff", dest="domain_overlap_cutoff", default=0.1,
                       help="Specify at which overlap percentage domains are considered to overlap")
-    parser.add_option("-m", "--min_bgc_size", dest="min_bgc_size", default=5000,
-                      help="Provide the minimum size of a bgc in base pairs, default is 5000bp")
+    parser.add_option("-m", "--min_bgc_size", dest="min_bgc_size", default=0,
+                      help="Provide the minimum size of a bgc in base pairs, default is 0bp")
     parser.add_option("--seqdist_networks", dest="seqdist_networks", default="S,A",
                       help="Mode A generates the all vs all networks with sequence distance. Mode S compares clusters within a sample.\
                        Sample input: \"S,A\" generates the samplewise and all vs all. Default is \"S,A\"")
@@ -652,30 +648,31 @@ def CMD_parser():
     parser.add_option("--domainsout", dest="domainsout", default="domains",
                       help="outputfolder of the pfam domain fasta files")
     parser.add_option("--anchorfile", dest="anchorfile", default="anchor_domains.txt",
-                      help="Provide a custom name for the anchor domains file")
+                      help="Provide a custom name for the anchor domains file, default is anchor_domains.txt.")
     parser.add_option("--exclude_gbk_str", dest="exclude_gbk_str", default="final",
-                      help="If this string occurs in the gbk filename, this will not be used for the analysis.")
+                      help="If this string occurs in the gbk filename, this will not be used for the analysis. Best to just leave out these samples to begin with.")
     parser.add_option("--mafft_pars", dest="mafft_pars", default="",
                       help="Add single/multiple parameters for mafft specific enclosed by quotation marks e.g. \"--nofft --parttree\"")
     parser.add_option("--al_method", dest="al_method", default="--retree 2",
                       help="alignment method for mafft, if there's a space in the method's name, enclose by quotation marks. default: \"--retree 1\"")
     parser.add_option("--maxiterate", dest="maxit", default=10,
-                      help="maxiterate parameter in mafft, default is 0")
+                      help="Maxiterate parameter in mafft, default is 10")
     parser.add_option("--mafft_threads", dest="mafft_threads", default=-1,
                       help="Set the number of threads in mafft, -1 sets the number of threads as the number of physical cores")
     parser.add_option("--use_mafft_distout", dest="use_perc_id", action="store_false", default=True,
                       help="Let the script calculate the percent identity between sequences? \
-                      Or use the distout scores from the mafft output?")
+                      Or use the distout scores from the mafft output? As default it calculates the percent identity from the MSAs.")
     parser.add_option("--skip_hmmscan", dest="skip_hmmscan", action="store_true", default=False,
                       help="When skipping hmmscan, the GBK files should be available, and the domain tables need to be in the output folder.")
     parser.add_option("--sim_cutoffs", dest="sim_cutoffs", default="1,0.7,0.65,0.6,0.5,0.4,0.3,0.2,0.1",
-                      help="Generate networks using multiple simmilarity (raw distance) cutoff values, example: \"1,0.5,0.1\"")
+                      help="Generate networks using multiple similarity (raw distance) cutoff values, example: \"1,0.5,0.1\"")
     parser.add_option("-a", "--anchorweight", dest="anchorweight", default=0.1,
-                      help="")
+                      help="Weight of the anchor domains in the DDS distance metric. Default is set to 0.1.")
     parser.add_option("-n", "--nbhood", dest="nbhood", default=4,
-                      help="")
+                      help="nbhood variable for the GK distance metric, default is set to 4.")
     parser.add_option("-s", "--gbksamples", dest="gbksamples", action="store_true", default=False,
-                      help="If each seperate gbk file represents a different sample, toggle to true.")
+                      help="If each seperate gbk file represents a different sample, toggle to true. \
+                      Saves you the effort of having to place each gbk file in a different folder.")
 
     (options, args) = parser.parse_args()
     return options, args
@@ -684,8 +681,6 @@ def CMD_parser():
 @timeit
 def main():
     options, args = CMD_parser()
-    
-    #anchor_handle = open("anchor_doms.txt", 'r') 
     
     if options.outputdir == "":
         print "please provide a name for an output folder using parameter -o or --outputdir"
@@ -762,7 +757,7 @@ def main():
     #Loop over the samples 
     for gbks in gbk_files:
         #samplefolder = "/".join(gbks[0].split("/")[0:-1])
-        samplename = ".".join(gbks[0].split("/")[-1].split(".")[0:-2])
+        samplename = ".".join(gbks[0].split("/")[-1].split(".")[0:-2]) #gbk files should look something like samplename.clusternumber.gbk
         print "running hmmscan and or parsing the hmmscan output files on sample:", samplename 
         #outputdir = samplefolder + "/" + str(options.outputdir)         
         
