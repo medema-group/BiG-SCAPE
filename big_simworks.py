@@ -195,27 +195,31 @@ def cluster_distance(A, B, A_domlist, B_domlist, anchor_domains):
     intersect = set(clusterA.keys() ).intersection(clusterB.keys()) #shared pfam domains
     not_intersect = []
     
-    #DDS: The difference in abundance of the domains per cluster
+    #dom_seq_dist: Difference in sequence per domain. If one cluster doesn't have a domain at all, but the other does, 
+    #this is a sequence difference of 1. If both clusters contain the domain once, and the sequence is the same, there is a seq diff of 0.
     #S: Max occurence of each domain
-    DDSa,Sa = 0,0
-    DDS,S = 0,0
-    SumDistance = 0
+    dom_seq_dist_anchor,Sa = 0,0 #DDSa
+    dom_seq_dist,S = 0,0 #dom_seq_dist
     pair = ""
+
+
+    #start calculating the DDS
+
 
     for domain in set(clusterA.keys() + clusterB.keys()):
         if domain not in intersect:
             not_intersect.append(domain)
             
     for unshared_domain in not_intersect: #no need to look at seq identity or anchors, since these domains are unshared
-        #for each occurence of an unshared domain do DDS += count of domain and S += count of domain
-        dom_set = []
+        #for each occurence of an unshared domain do dom_seq_dist += count of domain and S += count of domain
+        unshared_occurrences = []
         try:
-            dom_set = clusterA[unshared_domain]
+            unshared_occurrences = clusterA[unshared_domain]
         except KeyError:
-            dom_set = clusterB[unshared_domain]
+            unshared_occurrences = clusterB[unshared_domain]
             
-        DDS += len(dom_set)
-        S += len(dom_set)
+        dom_seq_dist += len(unshared_occurrences)
+        S += len(unshared_occurrences)
         
         
     for shared_domain in intersect:
@@ -226,7 +230,7 @@ def cluster_distance(A, B, A_domlist, B_domlist, anchor_domains):
             pair = tuple(sorted([seta[0],setb[0]]))
             
             try:
-                SumDistance = 1-DMS[shared_domain][pair][0] 
+                seq_dist = 1-DMS[shared_domain][pair][0] #1-sequence_similarity
             except KeyError:
                 print "KeyError on", pair
                 
@@ -237,10 +241,10 @@ def cluster_distance(A, B, A_domlist, B_domlist, anchor_domains):
             
             if shared_domain.split(".")[0] in anchor_domains: 
                 Sa += max(len(seta),len(setb))
-                DDSa += SumDistance 
+                dom_seq_dist_anchor += seq_dist 
             else:
                 S += max(len(seta),len(setb))
-                DDS += SumDistance
+                dom_seq_dist += seq_dist
         else:                   #The domain occurs more than once in both clusters
             accumulated_distance = 0
             
@@ -269,14 +273,14 @@ def cluster_distance(A, B, A_domlist, B_domlist, anchor_domains):
             accumulated_distance = sum([DistanceMatrix[bi[0]][bi[1]] for bi in BestIndexes])
             #print "accumulated_distance", accumulated_distance
                          
-            SumDistance = (abs(len(seta)-len(setb)) + accumulated_distance)  #diff in abundance + sequence distance check this
+            sum_seq_dist = (abs(len(seta)-len(setb)) + accumulated_distance)  #essentially 1-sim
             
             if shared_domain.split(".")[0] in anchor_domains: 
                 Sa += max(len(seta),len(setb))
-                DDSa += SumDistance 
+                dom_seq_dist_anchor += sum_seq_dist 
             else:
                 S += max(len(seta),len(setb))
-                DDS += SumDistance 
+                dom_seq_dist += sum_seq_dist 
 
  
     #  calculate the Goodman-Kruskal gamma index
@@ -288,13 +292,19 @@ def cluster_distance(A, B, A_domlist, B_domlist, anchor_domains):
     print GK
     print B_domlist
     print A_domlist
+    
+
+    
      
-    if DDSa != 0:
-        DDSa /= float(Sa)
-        DDS = (anchorweight * DDSa) + (1 - anchorweight) * DDS    #Recalculate DDS by giving preference to anchor domains
-        DDS /= float(S)
+    if dom_seq_dist_anchor != 0:
+        dom_seq_dist_combined = (anchorweight * (dom_seq_dist_anchor / float(Sa))) + ((1 - anchorweight) * (dom_seq_dist / float(S)))   #Recalculate dom_seq_dist by giving preference to anchor domains
+        DDS = dom_seq_dist_combined / float(S)
     else:
-        DDS /= float(S) 
+        DDS = dom_seq_dist / float(S) 
+        
+        
+    print "DDSDDSDDSDDSDDS"
+    print DDS
     
     
     DDS = 1-DDS #transform into similarity

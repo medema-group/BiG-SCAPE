@@ -120,7 +120,7 @@ def check_overlap(pfd_matrix, overlap_cutoff):
                     overlap_perc_loc2 = overlap_perc(overlapping_nucleotides, int(row2[4])-int(row2[3]))
                     #check if the amount of overlap is significant
                     if overlap_perc_loc1 > overlap_cutoff or overlap_perc_loc2 > overlap_cutoff:
-                        if float(row1[1]) > float(row2[1]):
+                        if float(row1[1]) > float(row2[1]): #see which has a better score
                             delete_list.append(row2)
                         elif float(row1[1]) < float(row2[1]):
                              delete_list.append(row1)
@@ -138,7 +138,7 @@ def check_overlap(pfd_matrix, overlap_cutoff):
         
     domains = []
     for row in pfd_matrix:
-        domains.append(row[-2]) #save the pfam domains for the .pfs file
+        domains.append(row[5]) #save the pfam domains for the .pfs file
 
     return pfd_matrix, domains                       
                         
@@ -246,7 +246,7 @@ def overlap(locA1, locA2, locB1, locB2):
 
   
 def calc_perc_identity(seq1, seq2, spec_domain, spec_domain_nest, domain):
-    """Percent Identity = Matches/Length of aligned region (with gaps)
+    """Percent Identity = Matches/Length of aligned region (with gaps) (sequence similarity!)
     Note that only internal gaps are included in the length, not gaps at the sequence ends."""
 
     al_len = min([len(seq1.strip("-")), len(seq2.strip("-"))])
