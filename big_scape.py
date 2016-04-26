@@ -181,26 +181,22 @@ def cluster_distance(A, B, A_domlist, B_domlist, anchor_domains):
     #key is name of GC, values is list of specific pfam domain names
     clusterA = BGCs[A] #will contain a dictionary where keys are pfam domains, and values are domains that map to a specific sequence in the DMS variable
     clusterB = BGCs[B]
-     
-    try:
-        #calculates the intersect
-        Jaccard = len(set(clusterA.keys()) & set(clusterB.keys())) / \
-              float( len(set(clusterA.keys())) + len(set(clusterB.keys())) \
-              - len(set(clusterA.keys()) & set(clusterB.keys())))
-    except ZeroDivisionError:
-        print "Zerodivisionerror during the Jaccard distance calculation. Can only happen when one or more clusters contains no pfam domains."
-        print "keys of clusterA", A, clusterA.keys()
-        print "keys of clusterB", B, clusterB.keys()
+    
+    #calculates the intersect
+    Jaccard = len(set(clusterA.keys()) & set(clusterB.keys())) / \
+          float( len(set(clusterA.keys())) + len(set(clusterB.keys())) \
+          - len(set(clusterA.keys()) & set(clusterB.keys())))
+              
          
     intersect = set(clusterA.keys() ).intersection(clusterB.keys()) #shared pfam domains
     not_intersect = []
     
-    #dom_seq_dist: Difference in sequence per domain. If one cluster doesn't have a domain at all, but the other does, 
+    #dom_diff: Difference in sequence per domain. If one cluster doesn't have a domain at all, but the other does, 
     #this is a sequence difference of 1. If both clusters contain the domain once, and the sequence is the same, there is a seq diff of 0.
     #S: Max occurence of each domain
-    dom_seq_dist_anchor,Sa = 0,0 #DDSa
-    dom_seq_dist,S = 0,0 #dom_seq_dist
-    pair = ""
+    dom_diff_anch,Sa = 0,0 
+    dom_diff,S = 0,0 
+    pair = "" #pair of clusters to access their sequence identity
 
 
     #start calculating the DDS
@@ -211,14 +207,14 @@ def cluster_distance(A, B, A_domlist, B_domlist, anchor_domains):
             not_intersect.append(domain)
             
     for unshared_domain in not_intersect: #no need to look at seq identity or anchors, since these domains are unshared
-        #for each occurence of an unshared domain do dom_seq_dist += count of domain and S += count of domain
+        #for each occurence of an unshared domain do dom_diff += count of domain and S += count of domain
         unshared_occurrences = []
         try:
             unshared_occurrences = clusterA[unshared_domain]
         except KeyError:
             unshared_occurrences = clusterB[unshared_domain]
             
-        dom_seq_dist += len(unshared_occurrences)
+        dom_diff += len(unshared_occurrences)
         S += len(unshared_occurrences)
         
         
@@ -241,10 +237,10 @@ def cluster_distance(A, B, A_domlist, B_domlist, anchor_domains):
             
             if shared_domain.split(".")[0] in anchor_domains: 
                 Sa += max(len(seta),len(setb))
-                dom_seq_dist_anchor += seq_dist 
+                dom_diff_anch += seq_dist 
             else:
                 S += max(len(seta),len(setb))
-                dom_seq_dist += seq_dist
+                dom_diff += seq_dist
         else:                   #The domain occurs more than once in both clusters
             accumulated_distance = 0
             
@@ -277,35 +273,22 @@ def cluster_distance(A, B, A_domlist, B_domlist, anchor_domains):
             
             if shared_domain.split(".")[0] in anchor_domains: 
                 Sa += max(len(seta),len(setb))
-                dom_seq_dist_anchor += sum_seq_dist 
+                dom_diff_anch += sum_seq_dist 
             else:
                 S += max(len(seta),len(setb))
-                dom_seq_dist += sum_seq_dist 
+                dom_diff += sum_seq_dist 
 
  
     #  calculate the Goodman-Kruskal gamma index
     Ar = [item for item in A_domlist]
     Ar.reverse()
     GK = max([calculate_GK(A_domlist, B_domlist, nbhood), calculate_GK(Ar, B_domlist, nbhood)])
-    
-    print "GKGKGKGGKGKGKGKGKGKGKGKGKGK"
-    print GK
-    print B_domlist
-    print A_domlist
-    
-
-    
      
-    if dom_seq_dist_anchor != 0:
-        dom_seq_dist_combined = (anchorweight * (dom_seq_dist_anchor / float(Sa))) + ((1 - anchorweight) * (dom_seq_dist / float(S)))   #Recalculate dom_seq_dist by giving preference to anchor domains
-        DDS = dom_seq_dist_combined / float(S)
+    if dom_diff_anch != 0:
+        DDS = (anchorweight * (dom_diff_anch / float(Sa))) + ((1 - anchorweight) * (dom_diff / float(S)))   #Recalculate dom_diff by giving preference to anchor domains
     else:
-        DDS = dom_seq_dist / float(S) 
+        DDS = dom_diff / float(S) 
         
-        
-    print "DDSDDSDDSDDSDDS"
-    print DDS
-    
     
     DDS = 1-DDS #transform into similarity
     Distance = 1 - (Jaccardw * Jaccard) - (DDSw * DDS) - (GKw * GK) 
@@ -469,7 +452,8 @@ def run_mafft(al_method, maxit, cores, mafft_pars, domain):
 
 @timeit
 def calculate_GK(A, B, nbhood):
-    # calculate the Goodman-Kruskal gamma index
+    """Goodman and Kruskal's gamma is a measure of rank correlation, i.e., 
+    the similarity of the orderings of the data when ranked by each of the quantities."""
     GK = 0.
     if len(set(A) & set(B)) > 1:
         pairsA = set( [(A[i],A[j]) for i in xrange(len(A)-nbhood) for j in xrange(i+1,i+nbhood)] )
