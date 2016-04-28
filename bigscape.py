@@ -176,7 +176,10 @@ def generate_network(bgc_list, group_dct, networkfilename, networks_folder, dist
     return sorted_network_matrix, networkfilename
     
     
+       
 def cluster_distance(A, B, A_domlist, B_domlist, anchor_domains): 
+    """Compare two clusters using information on their domains, and the sequences of the domains"""    
+
   
     #key is name of GC, values is list of specific pfam domain names
     clusterA = BGCs[A] #will contain a dictionary where keys are pfam domains, and values are domains that map to a specific sequence in the DMS variable
@@ -300,120 +303,6 @@ def cluster_distance(A, B, A_domlist, B_domlist, anchor_domains):
     return Distance
 
 
-# --- compare two clusters using distance information between sequences of domains
-@timeit
-def CompareTwoClusters(A,B): 
-    anchor_domains = ["PF00668"]
-  
-    #key is name of GC, values is list of specific pfam domain names
-    clusterA = BGCs[A] #will contain a dictionary where keys are pfam domains, and values are domains that map to a specific sequence in the DMS variable
-    clusterB = BGCs[B] #{ 'general_domain_name_x' : ['specific_domain_name_1', 'specific_domain_name_2'], etc }
-    #A and B are lists of pfam domains
-     
-    try:
-        #calculates the intersect
-        Jaccard = len(set(clusterA.keys()) & set(clusterB.keys())) / \
-              float( len(set(clusterA.keys())) + len(set(clusterB.keys())) \
-              - len(set(clusterA.keys()) & set(clusterB.keys())))
-    except ZeroDivisionError:
-        print "Zerodivisionerror during the Jaccard distance calculation. Can only happen when both clusters are empty"
-        print "keys of clusterA", A, clusterA.keys()
-        print "keys of clusterB", B, clusterB.keys()
-         
-    #DDS: The difference in abundance of the domains per cluster
-    #S: Max occurence of each domain
-    DDSa,Sa = 0,0
-    DDS,S = 0,0
-    anchor = False
-    SumDistance = 0
-    for domain in set(clusterA.keys() + clusterB.keys()):
-         
-        try: seta = clusterA[domain] #Get the specific domains, that can be mapped to the sequence identity
-        except KeyError: 
-            seta = []
-             
-        try: setb = clusterB[domain]
-        except KeyError: 
-            setb = []
-
-        if len(seta) == 1 and len(setb) == 1: #if both clusters only contain this domain once
-            pair = tuple(sorted([seta[0],setb[0]]))
-            try: SumDistance = 1-DMS[domain][pair][0] #1
-            except KeyError: 
-                print "KeyError on", pair
-                SumDistance = 1-0.1
-          #  print "if", SumDistance
-            if domain.split(".")[0] in anchor_domains:
-                
-                Sa += max(len(seta),len(setb))
-                DDSa += SumDistance #Also include similar code for the if/elif statements above
-            else:
-                S += max(len(seta),len(setb))
-                DDS += SumDistance
- 
-        elif len(seta) + len(setb)==1: #If one cluster does not contain this domain
-            DDS += 1.
-            S += 1.
- 
-        else:                           #if the domain occurs more than once in either or both of the clusters
-            print "seta", seta
-            print "setb", setb
-            N = max(len(seta),len(setb))
-            DistanceMatrix = np.zeros((N,N)) #creates a matrix of N by N dimensions filled with zeros
-            for ja in xrange(len(seta)):
-                for jb in xrange(ja,len(setb)):
-                    pair = tuple(sorted([seta[ja],setb[jb]]))
-                    try: 
-                        Distance = 1-DMS[domain][pair][0]
-                    except KeyError: 
-                        Distance = 1-0.1
-                        print "KeyError on", pair
-                      
-                    print "Distance", Distance
-                      
-                    DistanceMatrix[ja,jb] = Distance
-                    DistanceMatrix[jb,ja] = Distance
- 
- 
-            print "DistanceMatrix", DistanceMatrix
-            Hungarian = Munkres()
-            BestIndexes = Hungarian.compute(DistanceMatrix)
-            SumDistance = sum([DistanceMatrix[bi] for bi in BestIndexes])
- 
-            if domain.split(".")[0] in anchor_domains:
-                Sa += max(len(seta),len(setb))
-                DDSa += SumDistance
-            else:
-                S += max(len(seta),len(setb))
-                DDS += SumDistance
- 
-    #  calculate the Goodman-Kruskal gamma index
-    Ar = [item for item in A]
-    Ar.reverse()
-    GK = max([calculate_GK(A, B, nbhood), calculate_GK(Ar, B, nbhood)])
-     
-    if DDSa != 0:
-        DDSa /= float(Sa)
-        DDS = (anchorweight * DDSa) + (1 - anchorweight) * DDS    #Recalculate DDS by giving preference to anchor domains
-        #print "DDSa", DDS
-        DDS /= float(S)
-        #print "DDS", DDS
-    else:
-        DDS /= float(S) 
-     
-    DDS = math.exp(-DDS) #will 'flip' the DDS value 0.9 becomes 0.4, 0.1 becomes 0.9 
-     
-    Distance = 1 - (Jaccardw * Jaccard) - (DDSw * DDS) - (GKw * GK) 
-   # Distance = 1 - 0.36*Jaccard - 0.64*DDS 0.63
-         
-    #===========================================================================
-    # Similarity = 1-Distance
-    # lin = '%s\t%s\t%.4f\n' % (A,B,Similarity)
-    # output = open("seqdist.txt", 'w')
-    # output.write(lin)
-    #===========================================================================
-    
-    return Distance
 
 
 @timeit
@@ -638,12 +527,15 @@ def CMD_parser():
     parser.add_option("--domaindist_networks", dest="domaindist_networks", default="A",
                       help="Mode A generates the all vs all networks with domain distance. Mode S compares clusters within a sample.\
                        Sample input: \"A\" only generates the all vs all. Default is \"A\"")
-    parser.add_option("--Jaccardw", dest="Jaccardw", default=0.1,
-                      help="SJaccard weight")
-    parser.add_option("--DDSw", dest="DDSw", default=0.7,
-                      help="DDS weight")
+    parser.add_option("--Jaccardw", dest="Jaccardw", default=0.2,
+                      help="SJaccard weight, default is 0.2")
+    parser.add_option("--DDSw", dest="DDSw", default=0.6,
+                      help="DDS weight, default is 0.6")
     parser.add_option("--GKw", dest="GKw", default=0.2,
-                      help="GK weight")
+                      help="GK weight, default is 0.2")
+    parser.add_option("-a", "--anchorweight", dest="anchorweight", default=0.2,
+                      help="Weight of the anchor domains in the DDS distance metric. Default is set to 0.2.")
+    
     parser.add_option("--domainsout", dest="domainsout", default="domains",
                       help="outputfolder of the pfam domain fasta files")
     parser.add_option("--anchorfile", dest="anchorfile", default="anchor_domains.txt",
@@ -665,8 +557,7 @@ def CMD_parser():
                       help="When skipping hmmscan, the GBK files should be available, and the domain tables need to be in the output folder.")
     parser.add_option("--sim_cutoffs", dest="sim_cutoffs", default="1,0.7,0.65,0.6,0.5,0.4,0.3,0.2,0.1",
                       help="Generate networks using multiple similarity (raw distance) cutoff values, example: \"1,0.5,0.1\"")
-    parser.add_option("-a", "--anchorweight", dest="anchorweight", default=0.1,
-                      help="Weight of the anchor domains in the DDS distance metric. Default is set to 0.1.")
+
     parser.add_option("-n", "--nbhood", dest="nbhood", default=4,
                       help="nbhood variable for the GK distance metric, default is set to 4.")
     parser.add_option("-s", "--gbksamples", dest="gbksamples", action="store_true", default=False,
@@ -731,7 +622,10 @@ def main():
     try:
         subprocess.check_output("mkdir " + output_folder + "/" + domainsout, shell=True)
     except subprocess.CalledProcessError, e:
-        pass
+        #remove an existing domain folder
+        #existing domain.fasta files need to be removed, otherwise this will cause problems downstream
+        subprocess.check_output("rm -rf " + output_folder + "/" + domainsout, shell=True) 
+        subprocess.check_output("mkdir " + output_folder + "/" + domainsout, shell=True);
 
     timings_file = open(output_folder + "/" + "runtimes.txt", 'wa') #open the file that will contain the timed functions
     
