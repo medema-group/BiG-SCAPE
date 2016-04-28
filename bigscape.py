@@ -529,11 +529,11 @@ def CMD_parser():
                        Sample input: \"A\" only generates the all vs all. Default is \"A\"")
     parser.add_option("--Jaccardw", dest="Jaccardw", default=0.2,
                       help="SJaccard weight, default is 0.2")
-    parser.add_option("--DDSw", dest="DDSw", default=0.6,
+    parser.add_option("--DDSw", dest="DDSw", default=0.7,
                       help="DDS weight, default is 0.6")
-    parser.add_option("--GKw", dest="GKw", default=0.2,
+    parser.add_option("--GKw", dest="GKw", default=0.1,
                       help="GK weight, default is 0.2")
-    parser.add_option("-a", "--anchorweight", dest="anchorweight", default=0.2,
+    parser.add_option("-a", "--anchorweight", dest="anchorweight", default=0.1,
                       help="Weight of the anchor domains in the DDS distance metric. Default is set to 0.2.")
     
     parser.add_option("--domainsout", dest="domainsout", default="domains",
