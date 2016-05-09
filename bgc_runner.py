@@ -10,38 +10,46 @@ Usage: run bgc_networks.py with different parameter combinations
 
 """
 from optparse import OptionParser
-from subprocess import Popen
+import subprocess
 from itertools import islice
 import os
 from functions import frange
 
-def param_combinations(outputdir, steps):
+
+def param_combinations(outputdir, steps, inputdir):
     commands = []
-    for i in frange(0,1,steps):
+    for i in frange(0,0.4,steps):
 
-        for j in frange(0,1,steps):
+        for j in frange(0.55,0.85,steps):
 
-            for k in frange(0,1,steps):
+            for k in frange(0,0.4,steps):
 
-                for l in frange(0,1,steps):
+                for l in frange(0.05,0.4,steps):
                     if i+j+k == 1:
-                        cmd = "python ~/bgc_networks/bgc_networks.py -o " + outputdir + " --sim_cutoffs \"0.25,0.3,0.35,0.4,0.45,0.5,0.55,0.6,0.65,0.7,0.75\" \
-                        --skip_hmmscan --Jaccardw " + str(i) + " --DDSw " + str(j) +" --GKw " + str(k) + " -a " + str(l) + " -s --al_method \"--retree 2\" --maxiterate 10 --include_disc_nodes"
-                        commands.append(cmd)
+                        cmd = "python /home/yeong001/bgc_networks/bigscape.py -i " + inputdir + " -o " + outputdir + " --sim_cutoffs \"0.25,0.3,0.35,0.4,0.45,0.5,0.55,0.6,0.65,0.7,0.75,0.8\" \
+                        --skip_hmmscan --Jaccardw " + str(i) + " --DDSw " + str(j) +" --GKw " + str(k) + " -a " + str(l) + " -s --include_disc_nodes"
+                        #commands.append(cmd)
+                        process = subprocess.Popen(cmd, shell=True)
+                        process.wait()
+
     
                 
-    max_workers = 8  # no more than 8 concurrent processes
-    processes = (Popen(cmd, shell=True) for cmd in commands)
-    running_processes = list(islice(processes, max_workers))  # start new processes
-    while running_processes:
-        for i, process in enumerate(running_processes):
-            if process.poll() is not None:  # the process has finished
-                try:
-                    running_processes[i] = next(processes)  # start new process
-                except StopIteration:
-                    del running_processes[i]
-                    break
+    #===========================================================================
+    # max_workers = 8  # no more than n concurrent processes
+    # processes = (Popen(cmd, shell=True) for cmd in commands)
+    # running_processes = list(islice(processes, max_workers))  # start new processes
+    # while running_processes:
+    #     for i, process in enumerate(running_processes):
+    #         if process.poll() is not None:  # the process has finished
+    #             try:
+    #                 running_processes[i] = next(processes)  # start new process
+    #             except StopIteration:
+    #                 del running_processes[i]
+    #                 break
+    #===========================================================================
                 
+
+    print "finished!"
 
 #===============================================================================
 # def param_combinations(outputdir, steps):
@@ -82,6 +90,8 @@ def CMD_parser():
                       help="name of networkfile")
     parser.add_option("-o", "--outputdir", dest="outputdir", default="second_test",
                       help="output directory, this contains your pfd,pfs,network and hmmscan output files")
+    parser.add_option("-i", "--inputdir", dest="inputdir", default="",
+                      help="Input directory of gbk files, if left empty, all gbk files in current and lower directories will be used.")
     parser.add_option("--steps", dest="steps", default=0.1,
                       help="DDS weight")
  
@@ -93,7 +103,7 @@ def CMD_parser():
 if __name__=="__main__":
      
     options, args = CMD_parser()
-    param_combinations(options.outputdir, float(options.steps))
+    param_combinations(options.outputdir, float(options.steps), options.inputdir)
     #===========================================================================
     # networkfile = options.networkfile
     # groups = network_reader.load_groups("groups.txt")

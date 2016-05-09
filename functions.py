@@ -21,7 +21,7 @@ def frange(start, stop, step):
     """Range function with float increments"""
     
     i = start
-    while i < stop:
+    while i <= stop:
         yield i
         i += step
          

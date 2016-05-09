@@ -129,6 +129,10 @@ def get_network_score(groups, number_of_groups, filename, clusters_threshold, ex
             cluster_list.append(linelist[5].lower().replace(" biosynthetic gene cluster",""))
                 
             for cluster in cluster_list:
+                
+                if " / " in cluster:
+                    cluster = cluster.split(" / ")[-1] # in case of "Methymycin / pikromycin" etc
+                
                 try:
                     group = groups[cluster]
                 except KeyError:
@@ -136,6 +140,7 @@ def get_network_score(groups, number_of_groups, filename, clusters_threshold, ex
                         if key in cluster:
                             #there is a space in the cluster definition
                             group = key
+                            
                 
                 try:
                     group_list.append(group)
@@ -147,9 +152,7 @@ def get_network_score(groups, number_of_groups, filename, clusters_threshold, ex
                 #===================================================================
                 # if cluster.lower() not in cluster_occurence and cluster != '':
                 #     cluster_occurence.append(cluster.lower())
-                #===================================================================
-                    
-                            
+                #===================================================================            
             if group_list[0] == group_list[1]:
                 within_distances += float(line[7])
                 within_edges += 1
@@ -192,7 +195,7 @@ def get_network_score(groups, number_of_groups, filename, clusters_threshold, ex
     if exclude_penalty == False:
         if subnetworks > (number_of_groups + singletons):
             score = score / (((subnetworks + 1) - (number_of_groups + singletons))**disc_penalty) #If more subnetworks exist than the amount of groups + the singletons
-    
+            #subnetworks + 1 because dividing the score by 1 does nothing
                                                              
     try:
         return filename.split("/")[-2] + "\t" + filename.split("/")[-1] + "\t" + str(score)  + "\t" + str(subnetworks)
@@ -202,6 +205,10 @@ def get_network_score(groups, number_of_groups, filename, clusters_threshold, ex
 
 def CMD_parser():
     parser = OptionParser()
+    
+    parser.add_option("-g", "--groups", dest="groups", default="bgc_groups.txt",
+                      help="group file")
+    
     parser.add_option("-n", "--networkfile", dest="networkfile", default="",
                       help="name of networkfile")
  
@@ -233,7 +240,7 @@ if __name__=="__main__":
     options, args = CMD_parser()
     networkfile = options.networkfile
     scores_handle = open(options.output, "w")
-    groups,number_of_groups = load_groups("groups_pk_groups.txt")
+    groups,number_of_groups = load_groups(options.groups)
     if options.networkfile == "":
         for network_file in get_network_files():
             score = get_network_score(groups, number_of_groups, network_file, float(options.clusters_threshold), options.exclude_penalty, options.exclude_singletons, options.ratio_score, int(options.disc_penalty))

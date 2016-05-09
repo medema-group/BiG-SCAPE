@@ -16,7 +16,6 @@ Status: development/testing
 
 Todo: 
 Calculate and report on some general properties of the generated networks
-
 """
 
 
@@ -168,7 +167,7 @@ def generate_network(bgc_list, group_dct, networkfilename, networks_folder, dist
     #maxtasksperchild is the number of tasks a worker process can complete before it will exit and be replaced with a fresh worker process, to
     #enable unused resources to be freed. The default maxtasksperchild is None, which means worker processes will live as long as the pool.
     
-    pool = multiprocessing.Pool(cores, maxtasksperchild=1000) #create the appropriate amount of pool instances, with a limited amount of tasks per child process
+    pool = multiprocessing.Pool(cores, maxtasksperchild=500) #create the appropriate amount of pool instances, with a limited amount of tasks per child process
     network_matrix = pool.map(generate_dist_matrix, cluster_pairs)  #Assigns the data to the different workers and pools the results
                                                                     #back into the network_matrix variable   
 
@@ -189,7 +188,7 @@ def cluster_distance(A, B, A_domlist, B_domlist, anchor_domains):
     Jaccard = len(set(clusterA.keys()) & set(clusterB.keys())) / \
           float( len(set(clusterA.keys())) + len(set(clusterB.keys())) \
           - len(set(clusterA.keys()) & set(clusterB.keys())))
-              
+          
          
     intersect = set(clusterA.keys() ).intersection(clusterB.keys()) #shared pfam domains
     not_intersect = []
@@ -287,10 +286,12 @@ def cluster_distance(A, B, A_domlist, B_domlist, anchor_domains):
     Ar.reverse()
     GK = max([calculate_GK(A_domlist, B_domlist, nbhood), calculate_GK(Ar, B_domlist, nbhood)])
      
-    if dom_diff_anch != 0:
+    if dom_diff_anch != 0 and dom_diff != 0:
         DDS = (anchorweight * (dom_diff_anch / float(Sa))) + ((1 - anchorweight) * (dom_diff / float(S)))   #Recalculate dom_diff by giving preference to anchor domains
-    else:
+    elif dom_diff_anch == 0:
         DDS = dom_diff / float(S) 
+    else: #no none anchor domains were found
+        DDS = dom_diff_anch / float(Sa)
         
     
     DDS = 1-DDS #transform into similarity
@@ -419,6 +420,8 @@ def genbank_parser_hmmscan_call(gb_files, outputdir, cores, gbk_group, skip_hmms
     
     for gb_file in gb_files:
         
+        sample_dict = {}
+        
         outputbase = gb_file.split("/")[-1].replace(".gbk", "")
         outputfile = outputdir + "/" + outputbase + ".fasta"
         multifasta = open(outputfile, "w")
@@ -471,31 +474,19 @@ def genbank_parser_hmmscan_call(gb_files, outputdir, cores, gbk_group, skip_hmms
 
             fasta_header = outputbase + "_ORF" + str(feature_counter)+ ":gid:" + str(gene_id) + ":pid:" + str(protein_id) + ":loc:" + str(start) + ":" + str(end)
             fasta_header = fasta_header.replace(">","") #the coordinates might contain larger than signs, tools upstream don't like this
-            
-            #===================================================================
-            # try:
-            #     fasta_header = "loc:" + str(feature.location)\
-            #     + ":gid:" + str(gene_id)\
-            #     + ":pid:" + str(protein_id)\
-            #     + ":loc_tag:" + str(feature.qualifiers['locus_tag'])
-            # except KeyError:
-            #     print "no locus tag available in gbk file", gb_file
-            #     fasta_header = "loc:" + str(feature.location)\
-            #     + ":gid:" + str(gene_id )\
-            #     + ":pid:" + str(protein_id)
-            #===================================================================
-                
-                
-            
+
             fasta_header = ">"+(fasta_header.replace(" ", "")) #the domtable output format (hmmscan) uses spaces as a delimiter, so these cannot be present in the fasta header
                 
             sequence = str(feature.qualifiers['translation'][0]) #in the case of the translation there should be one and only one entry (entry zero)
             if sequence != "":
                 fasta_dict[fasta_header] = sequence
+                sample_dict[fasta_header] = sequence #this should be used for hmmscan
+                
+
             
-        dct_writeout(multifasta, fasta_dict) #save the coding sequences in a fasta format
+        dct_writeout(multifasta, sample_dict) #save the coding sequences in a fasta format
         multifasta.close()
-        
+            
         if skip_hmmscan == False:
             hmmscan(outputfile, outputdir, outputbase, cores) #Run hmmscan
         else:
@@ -521,20 +512,23 @@ def CMD_parser():
                       help="Specify at which overlap percentage domains are considered to overlap")
     parser.add_option("-m", "--min_bgc_size", dest="min_bgc_size", default=0,
                       help="Provide the minimum size of a bgc in base pairs, default is 0bp")
+    
     parser.add_option("--seqdist_networks", dest="seqdist_networks", default="A",
                       help="Mode A generates the all vs all networks with sequence distance. Mode S compares clusters within a sample.\
                        Sample input: \"S,A\" generates the samplewise and all vs all. Default is \"A\"")
+    
     parser.add_option("--domaindist_networks", dest="domaindist_networks", default="A",
                       help="Mode A generates the all vs all networks with domain distance. Mode S compares clusters within a sample.\
                        Sample input: \"A\" only generates the all vs all. Default is \"A\"")
+    
     parser.add_option("--Jaccardw", dest="Jaccardw", default=0.2,
                       help="SJaccard weight, default is 0.2")
-    parser.add_option("--DDSw", dest="DDSw", default=0.7,
-                      help="DDS weight, default is 0.6")
-    parser.add_option("--GKw", dest="GKw", default=0.1,
-                      help="GK weight, default is 0.2")
-    parser.add_option("-a", "--anchorweight", dest="anchorweight", default=0.1,
-                      help="Weight of the anchor domains in the DDS distance metric. Default is set to 0.2.")
+    parser.add_option("--DDSw", dest="DDSw", default=0.75,
+                      help="DDS weight, default is 0.75")
+    parser.add_option("--GKw", dest="GKw", default=0.05,
+                      help="GK weight, default is 0.05")
+    parser.add_option("-a", "--anchorw", dest="anchorweight", default=0.1,
+                      help="Weight of the anchor domains in the DDS distance metric. Default is set to 0.1.")
     
     parser.add_option("--domainsout", dest="domainsout", default="domains",
                       help="outputfolder of the pfam domain fasta files")
@@ -542,17 +536,19 @@ def CMD_parser():
                       help="Provide a custom name for the anchor domains file, default is anchor_domains.txt.")
     parser.add_option("--exclude_gbk_str", dest="exclude_gbk_str", default="final",
                       help="If this string occurs in the gbk filename, this will not be used for the analysis. Best to just leave out these samples to begin with.")
+    
     parser.add_option("--mafft_pars", dest="mafft_pars", default="",
                       help="Add single/multiple parameters for mafft specific enclosed by quotation marks e.g. \"--nofft --parttree\"")
     parser.add_option("--al_method", dest="al_method", default="--retree 2",
-                      help="alignment method for mafft, if there's a space in the method's name, enclose by quotation marks. default: \"--retree 1\"")
-    parser.add_option("--maxiterate", dest="maxit", default=10,
-                      help="Maxiterate parameter in mafft, default is 10")
+                      help="alignment method for mafft, if there's a space in the method's name, enclose by quotation marks. default: \"--retree 2\" corresponds to the FFT-NS-2 method")
+    parser.add_option("--maxiterate", dest="maxit", default=1000,
+                      help="Maxiterate parameter in mafft, default is 1000, corresponds to the FFT-NS-2 method")
     parser.add_option("--mafft_threads", dest="mafft_threads", default=-1,
                       help="Set the number of threads in mafft, -1 sets the number of threads as the number of physical cores")
     parser.add_option("--use_mafft_distout", dest="use_perc_id", action="store_false", default=True,
                       help="Let the script calculate the percent identity between sequences? \
                       Or use the distout scores from the mafft output? As default it calculates the percent identity from the MSAs.")
+    
     parser.add_option("--skip_hmmscan", dest="skip_hmmscan", action="store_true", default=False,
                       help="When skipping hmmscan, the GBK files should be available, and the domain tables need to be in the output folder.")
     parser.add_option("--sim_cutoffs", dest="sim_cutoffs", default="1,0.7,0.65,0.6,0.5,0.4,0.3,0.2,0.1",
