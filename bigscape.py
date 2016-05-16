@@ -2,6 +2,7 @@
 
 
 """
+Date: 16-05-2016
 Student/programmer: Marley Yeong
 marleyyeong@live.nl
 supervisor: Marnix Medema
@@ -10,6 +11,7 @@ dependencies: hmmer, biopython, mafft, munkres, numpy
 Usage:   place this script in the same folder as the antismash output files
          include the munkres.py file in this folder
          include the files necessary for hmmscan in this folder
+         Make sure to delete/empty the 'domains' output folder if you are rerunning using the same parameters!
          Example runstring: python ~/bgc_networks/bgc_networks.py -o exclude_small_bgcs --mafft_threads 12 -m 5000 -c 12 --include_disc_nodes
 
 Status: development/testing
@@ -396,7 +398,7 @@ def Distance_modified(clusterA, clusterB, repeat=0, nbhood=4):
     # calculate the Goodman-Kruskal gamma index
     Ar = [item for item in A]
     Ar.reverse()
-    GK = max([calculate_GK(A, B, nbhood), calculate_GK(Ar, B, nbhood)])
+    GK = max([calculate_GK(A, B, nbhood), calculate_GK(Ar, B, nbhood)]) #100% dissimilarity results in a score of 0.5
 
 
     # calculate the distance
@@ -517,9 +519,9 @@ def CMD_parser():
                       help="Mode A generates the all vs all networks with sequence distance. Mode S compares clusters within a sample.\
                        Sample input: \"S,A\" generates the samplewise and all vs all. Default is \"A\"")
     
-    parser.add_option("--domaindist_networks", dest="domaindist_networks", default="A",
+    parser.add_option("--domaindist_networks", dest="domaindist_networks", default="",
                       help="Mode A generates the all vs all networks with domain distance. Mode S compares clusters within a sample.\
-                       Sample input: \"A\" only generates the all vs all. Default is \"A\"")
+                       Sample input: \"A\" only generates the all vs all. Default is \"\"")
     
     parser.add_option("--Jaccardw", dest="Jaccardw", default=0.2,
                       help="SJaccard weight, default is 0.2")
@@ -551,14 +553,13 @@ def CMD_parser():
     
     parser.add_option("--skip_hmmscan", dest="skip_hmmscan", action="store_true", default=False,
                       help="When skipping hmmscan, the GBK files should be available, and the domain tables need to be in the output folder.")
-    parser.add_option("--sim_cutoffs", dest="sim_cutoffs", default="1,0.7,0.65,0.6,0.5,0.4,0.3,0.2,0.1",
+    parser.add_option("--sim_cutoffs", dest="sim_cutoffs", default="1,0.85,0.75,0.6,0.4,0.2",
                       help="Generate networks using multiple similarity (raw distance) cutoff values, example: \"1,0.5,0.1\"")
 
     parser.add_option("-n", "--nbhood", dest="nbhood", default=4,
                       help="nbhood variable for the GK distance metric, default is set to 4.")
-    parser.add_option("-s", "--gbksamples", dest="gbksamples", action="store_true", default=False,
-                      help="If each seperate gbk file represents a different sample, toggle to true. \
-                      Saves you the effort of having to place each gbk file in a different folder.")
+    parser.add_option("-s", "--samples", dest="samples", action="store_true", default=False,
+                      help="If you have samples, thus different folders containing gbk files, where each folder represents a different sample, toggle to true.")
 
     (options, args) = parser.parse_args()
     return options, args
@@ -587,7 +588,7 @@ def main():
     global cores
     include_disc_nodes = options.include_disc_nodes
     cores = int(options.cores)
-    gbksamples = options.gbksamples
+    samples = options.samples
     nbhood = int(options.nbhood)
     anchorweight = float(options.anchorweight)
     Jaccardw = float(options.Jaccardw)
@@ -626,7 +627,7 @@ def main():
     timings_file = open(output_folder + "/" + "runtimes.txt", 'wa') #open the file that will contain the timed functions
     
     
-    gbk_files = get_gbk_files(options.inputdir, gbksamples, int(options.min_bgc_size), options.exclude_gbk_str) #files will contain lists of gbk files per sample. Thus a matrix contains lists with gbk files by sample.
+    gbk_files = get_gbk_files(options.inputdir, samples, int(options.min_bgc_size), options.exclude_gbk_str) #files will contain lists of gbk files per sample. Thus a matrix contains lists with gbk files by sample.
     check_data_integrity(gbk_files)
 
     
@@ -646,21 +647,25 @@ def main():
     #Loop over the samples 
     for gbks in gbk_files:
         #samplefolder = "/".join(gbks[0].split("/")[0:-1])
-        samplename = ".".join(gbks[0].split("/")[-1].split(".")[0:-2]) #gbk files should look something like samplename.clusternumber.gbk
-        print "running hmmscan and or parsing the hmmscan output files on sample:", samplename 
+        #samplename = ".".join(gbks[0].split("/")[-1].split(".")[0:-2]) #gbk files should look something like samplename.clusternumber.gbk
+        print "running hmmscan and or parsing the hmmscan output files" 
         #outputdir = samplefolder + "/" + str(options.outputdir)         
         
         group_dct, fasta_dict = genbank_parser_hmmscan_call(gbks, output_folder, cores, group_dct, options.skip_hmmscan) #runs hammscan and returns the CDS in the cluster
-        hmm_domtables = get_hmm_output_files(output_folder) 
+      #  hmm_domtables = get_hmm_output_files(output_folder) 
     
-        hmms = [] 
-        for hmm_file in hmm_domtables:
-            if samplename in hmm_file:
-                hmms.append(hmm_file.replace(".domtable", "")) 
+        #hmms = [] 
+        #for hmm_file in hmm_domtables:
+        #    if samplename in hmm_file:
+       #         hmms.append(hmm_file.replace(".domtable", ""))
         
-        clusters.append(hmms) #remember the clusters per sample        
+      #  clusters.append(hmms) #remember the clusters per sample        
+
         #loop over clusters
-        for outputbase in hmms:
+        clusters_per_sample = []
+        for gbk in gbks:
+            outputbase = gbk.split("/")[-1].replace(".gbk", "")
+            clusters_per_sample.append(outputbase)
             print "Processing domtable file:", outputbase
             pfsoutput = output_folder + "/" + outputbase + ".pfs"
             pfs_handle = open(pfsoutput, 'w')
@@ -683,6 +688,8 @@ def main():
             pfdoutput = output_folder + "/" + outputbase + ".pfd"
             pfd_handle = open(pfdoutput, 'w')
             write_pfd(pfd_handle, filtered_matrix)
+            clusters.append(clusters_per_sample)
+            
         
         
         if "S" in domaindist_networks:
@@ -707,6 +714,7 @@ def main():
         BGC_handle.close()
         
         
+		
     """DMS -- dictionary of this structure: DMS = {'general_domain_name_x': { ('specific_domain_name_1',
     'specific_domain_name_2'): (sequence_identity, alignment_length), ... }   }
         - general_domain_name_x: as above
@@ -714,6 +722,7 @@ def main():
         - (sequence_identity, alignment_length): sequence identity and alignment length of the domain pair"""
 
 
+		
     DMS = {}
     fasta_domains = get_domain_fastas(domainsout, output_folder)
     #Fill the DMS variable by using all 'domains.fasta'  files

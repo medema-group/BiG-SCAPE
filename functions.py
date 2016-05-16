@@ -447,7 +447,7 @@ def write_network_matrix(matrix, cutoff, filename, include_disc_nodes):
                     
                     
 
-def get_gbk_files(inputdir, gbksamples, min_bgc_size, exclude_gbk_str):
+def get_gbk_files(inputdir, samples, min_bgc_size, exclude_gbk_str):
     """Find .gbk files, and store the .gbk files in lists, separated by sample."""
     genbankfiles=[] #Will contain lists of gbk files
     dirpath = ""
@@ -476,7 +476,7 @@ def get_gbk_files(inputdir, gbksamples, min_bgc_size, exclude_gbk_str):
                 if bgc_size > min_bgc_size: #exclude the bgc if it's too small
                     genbankfilelist.append(dirpath + "/" + fname)
                     
-                    if gbksamples == True: #Then each gbk file represents a different sample
+                    if samples == False: #Then each gbk file represents a different sample
                         genbankfiles.append(genbankfilelist)
                         genbankfilelist = []
                     
