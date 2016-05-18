@@ -621,14 +621,24 @@ def main():
     except subprocess.CalledProcessError, e:
         #remove an existing domain folder
         #existing domain.fasta files need to be removed, otherwise this will cause problems downstream
+        print "removing the existing domains output folder!!!!"
         subprocess.check_output("rm -rf " + output_folder + "/" + domainsout, shell=True) 
-        subprocess.check_output("mkdir " + output_folder + "/" + domainsout, shell=True);
+        subprocess.check_output("mkdir " + output_folder + "/" + domainsout, shell=True)
+        
+        
 
     timings_file = open(output_folder + "/" + "runtimes.txt", 'wa') #open the file that will contain the timed functions
     
     
     gbk_files = get_gbk_files(options.inputdir, samples, int(options.min_bgc_size), options.exclude_gbk_str) #files will contain lists of gbk files per sample. Thus a matrix contains lists with gbk files by sample.
     check_data_integrity(gbk_files)
+    
+    #===========================================================================
+    # gbk_handle = open("gbk.txt", "w")
+    # for i in gbk_files:
+    #     gbk_handle.write(str(i)+"\n")
+    # gbk_handle.close()
+    #===========================================================================
 
     
     """BGCs -- dictionary of this structure:  BGCs = {'cluster_name_x': { 'general_domain_name_x' : ['specific_domain_name_1',
@@ -652,16 +662,7 @@ def main():
         #outputdir = samplefolder + "/" + str(options.outputdir)         
         
         group_dct, fasta_dict = genbank_parser_hmmscan_call(gbks, output_folder, cores, group_dct, options.skip_hmmscan) #runs hammscan and returns the CDS in the cluster
-      #  hmm_domtables = get_hmm_output_files(output_folder) 
-    
-        #hmms = [] 
-        #for hmm_file in hmm_domtables:
-        #    if samplename in hmm_file:
-       #         hmms.append(hmm_file.replace(".domtable", ""))
-        
-      #  clusters.append(hmms) #remember the clusters per sample        
-
-        #loop over clusters
+     
         clusters_per_sample = []
         for gbk in gbks:
             outputbase = gbk.split("/")[-1].replace(".gbk", "")
@@ -673,12 +674,6 @@ def main():
             #pfd_matrix = hmm_table_parser(outputbase+".gbk", output_folder +"/"+ hmm_file)
             pfd_matrix = domtable_parser(outputbase, output_folder + "/" + outputbase + ".domtable")
             
-            #===================================================================
-            # pfdoutput = output_folder + "/" + outputbase + ".pfd2"
-            # pfd_handle = open(pfdoutput, 'w')
-            # write_pfd(pfd_handle, pfd_matrix)
-            #===================================================================
-            
             
             filtered_matrix, domains = check_overlap(pfd_matrix, options.domain_overlap_cutoff)  #removes overlapping domains, and keeps the highest scoring domain
             save_domain_seqs(filtered_matrix, fasta_dict, domainsout, output_folder, outputbase) #save the sequences for the found domains per pfam domain
@@ -688,7 +683,8 @@ def main():
             pfdoutput = output_folder + "/" + outputbase + ".pfd"
             pfd_handle = open(pfdoutput, 'w')
             write_pfd(pfd_handle, filtered_matrix)
-            clusters.append(clusters_per_sample)
+            
+        clusters.append(clusters_per_sample)
             
         
         
@@ -704,7 +700,14 @@ def main():
         network_matrix, networkfilename = generate_network(list(iterFlatten(clusters)), group_dct, "all_vs_all", networks_folder, "domain_dist", anchor_domains, cores)   
         for cutoff in cutoff_list:
             write_network_matrix(network_matrix, cutoff, networkfilename + "_c" + cutoff + ".network", include_disc_nodes)
-         
+
+    #===========================================================================
+    # clust_handle = open("clust.txt", "w")
+    # for i in clusters:
+    #     clust_handle.write(str(i)+"\n")
+    # clust_handle.close()
+    #===========================================================================
+
         
     if verbose == True:
         print "BGCs:", BGCs
