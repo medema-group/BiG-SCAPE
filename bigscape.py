@@ -596,7 +596,10 @@ def main():
     output_folder = str(options.outputdir)
     verbose = options.verbose
     args = sys.argv[1:]
-    args.remove("-o")
+    if "-o" in args:
+        args.remove("-o")
+    else:
+        args.remove("--outputdir")
     args.remove(output_folder)
     networks_folder = make_network_output_name(args)
     domainsout = make_domains_output_name(args)
