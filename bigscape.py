@@ -92,8 +92,7 @@ def timeit(f):
     return wrap
 
 
-def generate_dist_matrix(parms):
-    
+def generate_dist_matrix(parms):    
     #Get the values from the parameters
     cluster1 = parms[0]
     cluster2 = parms[1]
@@ -304,7 +303,6 @@ def cluster_distance(A, B, A_domlist, B_domlist, anchor_domains):
         print "Distance is set to 0 for these clusters" 
         Distance = 0
     return Distance
-
 
 
 
@@ -606,6 +604,10 @@ def main():
     domaindist_networks = options.domaindist_networks.split(",")
     
     
+    gbk_files = get_gbk_files(options.inputdir, samples, int(options.min_bgc_size), options.exclude_gbk_str) #files will contain lists of gbk files per sample. Thus a matrix contains lists with gbk files by sample.
+    check_data_integrity(gbk_files)
+    
+    
     try:
         subprocess.check_output("mkdir " + output_folder, shell=True)
     except subprocess.CalledProcessError, e:
@@ -625,13 +627,9 @@ def main():
         subprocess.check_output("rm -rf " + output_folder + "/" + domainsout, shell=True) 
         subprocess.check_output("mkdir " + output_folder + "/" + domainsout, shell=True)
         
-        
 
     timings_file = open(output_folder + "/" + "runtimes.txt", 'wa') #open the file that will contain the timed functions
     
-    
-    gbk_files = get_gbk_files(options.inputdir, samples, int(options.min_bgc_size), options.exclude_gbk_str) #files will contain lists of gbk files per sample. Thus a matrix contains lists with gbk files by sample.
-    check_data_integrity(gbk_files)
     
     #===========================================================================
     # gbk_handle = open("gbk.txt", "w")
