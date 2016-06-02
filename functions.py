@@ -27,7 +27,8 @@ def frange(start, stop, step):
          
 
 def remove_values_from_list(the_list, val):
-   return [value for value in the_list if value != val]
+   return [value for value in the_list if value != val]
+
 
 def get_anchor_domains(filename):
     """Get the anchor/marker domains from a txt file.
@@ -253,7 +254,7 @@ def calc_perc_identity(seq1, seq2, spec_domain, spec_domain_nest, domain):
     matches = 0
     for pos in range(len(seq1)): #Sequences should have the same length because they come from an MSA
         try:
-            if seq1[pos] == seq2[pos] and not (seq1[pos] == "-" and seq2[pos] == "-"):  #don't count two gap signs as a match!
+            if seq1[pos] == seq2[pos] and seq1[pos] != "-":  #don't count two gap signs as a match!
                 matches += 1
         except IndexError:
             print "Something went wrong, most likely your alignment file contains duplicate sequences"
