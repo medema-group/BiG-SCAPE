@@ -5,8 +5,8 @@
 Date: 16-05-2016
 Student/programmer: Marley Yeong
 marleyyeong@live.nl
-supervisor: Marnix Medema
-dependencies: hmmer, biopython, mafft, munkres, numpy
+Supervisor: Marnix Medema
+Dependencies: hmmer, biopython, mafft, munkres, numpy
 
 Usage:   place this script in the same folder as the antismash output files
          include the munkres.py file in this folder
