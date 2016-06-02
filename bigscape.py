@@ -737,7 +737,7 @@ def main():
         
         
         if options.use_perc_id == True:
-            print "using percent identiy to calculate cluster diversity"
+            print "using percent identity to calculate cluster diversity"
             fasta_handle = open(domain + ".algn", 'r')
             fasta_dict = fasta_parser(fasta_handle) #overwrites the fasta dictionary for each fasta file
            
