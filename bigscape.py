@@ -141,8 +141,7 @@ def generate_network(bgc_list, group_dct, networkfilename, networks_folder, dist
     "saves the distances as the log2 of the similarity"
 
     
-    if networkfilename == "":
-    
+    if networkfilename == "":    
         networkfilename = output_folder + "/" + networks_folder + "/" + "networkfile_" + dist_method + "_" + \
         str("".join(bgc_list[0].split(".")[0:-2]))
     else:
@@ -690,10 +689,13 @@ def main():
         
         
         if "S" in domaindist_networks:
-            print "Generating pairwise networks with domain_dist"
-            network_matrix, networkfilename = generate_network(hmms, group_dct, str(samplename), networks_folder, "domain_dist", anchor_domains, cores)
-            for cutoff in cutoff_list:
-                write_network_matrix(network_matrix, cutoff, networkfilename + "_c" + cutoff + ".network", include_disc_nodes)
+            if len(clusters_per_sample) == 1:
+                print("Warning: Sample size = 1: not generating pairwise networks within sample (domaindist)")
+            else:
+                print "Generating pairwise networks with domain_dist"
+                network_matrix, networkfilename = generate_network(clusters_per_sample, group_dct, "", networks_folder, "domain_dist", anchor_domains, cores)
+                for cutoff in cutoff_list:
+                    write_network_matrix(network_matrix, cutoff, networkfilename + "_c" + cutoff + ".network", include_disc_nodes)
      
      
     if "A" in domaindist_networks:
@@ -768,9 +770,12 @@ def main():
     if "S" in seqdist_networks:     
         #Compare the gene clusters within one sample, and save them in tab delimited .txt files.
         for clusters_per_sample in clusters:
-            network_matrix, networkfilename = generate_network(clusters_per_sample, group_dct, "", networks_folder, "seqdist", anchor_domains, cores)
-            for cutoff in cutoff_list:
-                write_network_matrix(network_matrix, cutoff, networkfilename + "_c" + cutoff + ".network", include_disc_nodes)
+            if len(clusters_per_sample) == 1:
+                print("Warning: Sample size = 1: not generating pairwise networks within sample (seqdist)")
+            else:
+                network_matrix, networkfilename = generate_network(clusters_per_sample, group_dct, "", networks_folder, "seqdist", anchor_domains, cores)
+                for cutoff in cutoff_list:
+                    write_network_matrix(network_matrix, cutoff, networkfilename + "_c" + cutoff + ".network", include_disc_nodes)
                 
 
     if "A" in seqdist_networks:
