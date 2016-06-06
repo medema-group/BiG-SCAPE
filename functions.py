@@ -61,11 +61,13 @@ def get_domain_list(filename):
 
 def make_domains_output_name(args):
     foldername = "domains_" + "_".join(args)
+    foldername = foldername.replace("/", "_")
     return foldername.replace(" ", "_") 
  
 
 def make_network_output_name(args):
     foldername = "networks_" + "_".join(args)
+    foldername = foldername.replace("/", "_")
     return foldername.replace(" ", "_")
 
 
@@ -80,13 +82,13 @@ def get_all_features_of_type(seq_record, types):
             features.append(f)
     return features
 
+
 def get_hmm_output_files(output_folder):
     """Finds all .domtable files in the output folder and its child folders"""
     
     hmm_table_list = []
     for dirpath, dirnames, filenames in os.walk(str(output_folder) + "/"):
         for fname in filenames:
-
             if fname.split(".")[-1] == "domtable":
                 try:
                     if open(output_folder + "/" + fname, "r").readlines()[3][0] != "#": #if this is false, hmmscan has not found any domains in the sequence
@@ -323,10 +325,12 @@ def fasta_parser(handle):
 def get_domain_fastas(domain_folder, output_folder):
     """Finds the pfam domain fasta files"""
     domain_fastas = []
+    dirpath_ = ""
     for dirpath, dirnames, filenames in os.walk(output_folder + "/" + domain_folder + "/"):
         for fname in filenames:
             if ".fasta" in fname and "hat2" not in fname:
-                domain_fastas.append(dirpath + "/" + fname)
+                dirpath_ = dirpath[:-1] if dirpath[-1] == "/" else dirpath
+                domain_fastas.append(dirpath_ + "/" + fname)
                 if verbose == True:
                     print fname
                     
@@ -446,12 +450,11 @@ def write_network_matrix(matrix, cutoff, filename, include_disc_nodes):
             
     networkfile.close()
                     
-                    
 
 def get_gbk_files(inputdir, samples, min_bgc_size, exclude_gbk_str):
     """Find .gbk files, and store the .gbk files in lists, separated by sample."""
     genbankfiles=[] #Will contain lists of gbk files
-    dirpath = ""
+    dirpath_ = ""
     file_counter = 0
     
     print "Importing the gbk files, while skipping gbk files with", exclude_gbk_str, "in their filename"
@@ -459,9 +462,11 @@ def get_gbk_files(inputdir, samples, min_bgc_size, exclude_gbk_str):
     if inputdir != "" and inputdir[-1] != "/":
         inputdir += "/"
         
-    
-    for dirpath, dirnames, filenames in os.walk(str(os.getcwd()) + "/" + inputdir):
+    for dirpath, dirnames, filenames in os.walk(inputdir):
         genbankfilelist=[]
+        
+        #avoid double slashes
+        dirpath_ = dirpath[:-1] if dirpath[-1] == "/" else dirpath
         
         for fname in filenames:
             if fname.split(".")[-1] == "gbk" and exclude_gbk_str not in fname:
@@ -469,13 +474,13 @@ def get_gbk_files(inputdir, samples, min_bgc_size, exclude_gbk_str):
                     print "Your GenBank files should not have spaces in their filenames. Please remove the spaces from their names, HMMscan doesn't like spaces (too many arguments)."
                     sys.exit(0)
                 
-                gbk_header = open(dirpath + "/" + fname, "r").readline().split(" ")
+                gbk_header = open(dirpath_ + "/" + fname, "r").readline().split(" ")
                 gbk_header = filter(None, gbk_header) #remove the empty items from the list
                 bgc_size = int(gbk_header[gbk_header.index("bp")-1])
                     
                 file_counter += 1
                 if bgc_size > min_bgc_size: #exclude the bgc if it's too small
-                    genbankfilelist.append(dirpath + "/" + fname)
+                    genbankfilelist.append(dirpath_ + "/" + fname)
                     
                     if samples == False: #Then each gbk file represents a different sample
                         genbankfiles.append(genbankfilelist)
@@ -487,9 +492,8 @@ def get_gbk_files(inputdir, samples, min_bgc_size, exclude_gbk_str):
                     
         if genbankfilelist != []:
             genbankfiles.append(genbankfilelist)
-    
-    return genbankfiles
 
+    return genbankfiles
 
 
 def domtable_parser(gbk, dom_file):
