@@ -150,20 +150,12 @@ def generate_network(bgc_list, group_dct, networkfilename, networks_folder, dist
         
     print "Generating network file with name:", networkfilename
 
-    cluster_queue = []
     cluster_pairs = []
-    
-    for bgc in bgc_list:
-        cluster_queue.append(bgc) #deep copy
-        
-    for cluster1 in bgc_list:
-        cluster_queue = remove_values_from_list(cluster_queue, cluster1) # remove ALL instances of the bgc
-        
-        for cluster2 in cluster_queue:
-            #addclusterpair
-            cluster_pairs.append([cluster1, cluster2, dist_method, anchor_domains])    
+    for i in range(len(bgc_list)-1):
+        for j in range(i+1, len(bgc_list)):
+            cluster_pairs.append([bgc_list[i], bgc_list[j], dist_method, anchor_domains])
             
-    
+
     #maxtasksperchild is the number of tasks a worker process can complete before it will exit and be replaced with a fresh worker process, to
     #enable unused resources to be freed. The default maxtasksperchild is None, which means worker processes will live as long as the pool.
     

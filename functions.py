@@ -24,10 +24,6 @@ def frange(start, stop, step):
     while i <= stop:
         yield i
         i += step
-         
-
-def remove_values_from_list(the_list, val):
-   return [value for value in the_list if value != val]
 
 
 def get_anchor_domains(filename):
