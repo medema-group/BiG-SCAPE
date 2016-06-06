@@ -420,7 +420,7 @@ def genbank_parser_hmmscan_call(gb_files, outputdir, cores, gbk_group, skip_hmms
         gb_handle = open(gb_file, "r")
         
         #Parse the gbk file for the gbk_group dictionary
-        in_cluster = False
+        in_cluster = True
 
         for line in gb_handle:
             if "DEFINITION  " in line:
