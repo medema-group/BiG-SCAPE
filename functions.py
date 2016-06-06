@@ -57,12 +57,14 @@ def get_domain_list(filename):
 
 def make_domains_output_name(args):
     foldername = "domains_" + "_".join(args)
+    foldername = foldername.replace(".", "_")
     foldername = foldername.replace("/", "_")
     return foldername.replace(" ", "_") 
  
 
 def make_network_output_name(args):
     foldername = "networks_" + "_".join(args)
+    foldername = foldername.replace(".", "_")
     foldername = foldername.replace("/", "_")
     return foldername.replace(" ", "_")
 
