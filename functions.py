@@ -173,11 +173,11 @@ def check_data_integrity(gbk_files):
     
     gbk_files = list(iterFlatten(gbk_files))
     for file in gbk_files:
-        name = file.split("/")[-1]
+        name = file.split(os.sep)[-1]
         file_occ = 0
         for cfile in gbk_files:
             
-            cname = cfile.split("/")[-1]
+            cname = cfile.split(os.sep)[-1]
             if name == cname:
                 file_occ += 1
                 if file_occ > 1:
@@ -195,11 +195,10 @@ def hmmscan(fastafile, outputdir, name, cores):
     """Runs hmmscan"""
     #removed --noali par
 
-    hmmscan_cmd = "hmmscan --cpu " + str(cores) + " --domtblout " + str(outputdir)\
-     + "/" +str(name) + ".domtable --cut_tc Pfam-A.hmm " + str(fastafile)
+    hmmscan_cmd = "hmmscan --cpu " + str(cores) + " --domtblout " + os.path.join(outputdir, name+".domtable") + " --cut_tc Pfam-A.hmm " + str(fastafile)
     if verbose == True:
-        print hmmscan_cmd
-        
+        print("\t"+hmmscan_cmd)
+    
     subprocess.check_output(hmmscan_cmd, shell=True)
     
     
@@ -259,8 +258,6 @@ def calc_perc_identity(seq1, seq2, spec_domain, spec_domain_nest, domain):
         except IndexError:
             print "Something went wrong, most likely your alignment file contains duplicate sequences"
             print "file: ", domain, "domains: ", spec_domain, spec_domain_nest
-        
-            
 
     return float(matches) / float(al_len), al_len    
 
@@ -286,7 +283,7 @@ def save_domain_seqs(filtered_matrix, fasta_dict, domains_folder, output_folder,
         seq = fasta_dict[">"+str(row[-1].strip())] #access the sequence by using the header
         
 
-        domain_file = open(output_folder + "/" + domains_folder + "/" + domain +".fasta", 'a') #append to existing file
+        domain_file = open(os.path.join(output_folder, domains_folder, domain + ".fasta"), 'a') #append to existing file
         domain_file.write(">" + str(row[0]) + "_" + str(row[-1]) + "_" + str(row[3]) + "_" + str(row[4]) \
         + "\n" + str(seq)[int(row[3]):int(row[4])] + "\n") #only use the range of the pfam domain within the sequence
         
@@ -324,11 +321,10 @@ def get_domain_fastas(domain_folder, output_folder):
     """Finds the pfam domain fasta files"""
     domain_fastas = []
     dirpath_ = ""
-    for dirpath, dirnames, filenames in os.walk(output_folder + "/" + domain_folder + "/"):
+    for dirpath, dirnames, filenames in os.walk(os.path.join(output_folder, domain_folder)):
         for fname in filenames:
             if ".fasta" in fname and "hat2" not in fname:
-                dirpath_ = dirpath[:-1] if dirpath[-1] == "/" else dirpath
-                domain_fastas.append(dirpath_ + "/" + fname)
+                domain_fastas.append(os.path.join(dirpath, fname))
                 if verbose == True:
                     print fname
                     
@@ -455,16 +451,17 @@ def get_gbk_files(inputdir, samples, min_bgc_size, exclude_gbk_str):
     dirpath_ = ""
     file_counter = 0
     
-    print "Importing the gbk files, while skipping gbk files with", exclude_gbk_str, "in their filename"
+    print("Importing the gbk files, while skipping gbk files with '" + exclude_gbk_str + "' in their filename")
     
-    if inputdir != "" and inputdir[-1] != "/":
-        inputdir += "/"
+    #this doesn't seem to make a difference. Confirm
+    #if inputdir != "" and inputdir[-1] != "/":
+        #inputdir += "/"
         
     for dirpath, dirnames, filenames in os.walk(inputdir):
         genbankfilelist=[]
         
         #avoid double slashes
-        dirpath_ = dirpath[:-1] if dirpath[-1] == "/" else dirpath
+        dirpath_ = dirpath[:-1] if dirpath[-1] == os.sep else dirpath
         
         for fname in filenames:
             if fname.split(".")[-1] == "gbk" and exclude_gbk_str not in fname:
@@ -472,13 +469,13 @@ def get_gbk_files(inputdir, samples, min_bgc_size, exclude_gbk_str):
                     print "Your GenBank files should not have spaces in their filenames. Please remove the spaces from their names, HMMscan doesn't like spaces (too many arguments)."
                     sys.exit(0)
                 
-                gbk_header = open(dirpath_ + "/" + fname, "r").readline().split(" ")
+                gbk_header = open( os.path.join(dirpath_,fname) , "r").readline().split(" ")
                 gbk_header = filter(None, gbk_header) #remove the empty items from the list
                 bgc_size = int(gbk_header[gbk_header.index("bp")-1])
                     
                 file_counter += 1
                 if bgc_size > min_bgc_size: #exclude the bgc if it's too small
-                    genbankfilelist.append(dirpath_ + "/" + fname)
+                    genbankfilelist.append(os.path.join(dirpath_, fname))
                     
                     if samples == False: #Then each gbk file represents a different sample
                         genbankfiles.append(genbankfilelist)
@@ -491,6 +488,7 @@ def get_gbk_files(inputdir, samples, min_bgc_size, exclude_gbk_str):
         if genbankfilelist != []:
             genbankfiles.append(genbankfilelist)
 
+    print("")
     return genbankfiles
 
 
@@ -506,10 +504,8 @@ def domtable_parser(gbk, dom_file):
     
     pfd_matrix = []
     dom_handle = open(dom_file, 'r')
-    for line in dom_handle:
-        
+    for line in dom_handle:        
         if line[0] != "#":
-
             splitline = filter(None, line.split(" "))
             pfd_row = []
             pfd_row.append(gbk)         #add clustername or gbk filename
