@@ -418,7 +418,7 @@ def genbank_parser_hmmscan_call(gb_files, outputdir, cores, gbk_group, skip_hmms
         outputbase = gb_file.split(os.sep)[-1].replace(".gbk", "")
         outputfile = os.path.join(outputdir, outputbase + ".fasta")
         multifasta = open(outputfile, "w")
-
+        print(outputfile)
         gb_handle = open(gb_file, "r")
         
         #Parse the gbk file for the gbk_group dictionary
@@ -604,7 +604,7 @@ def main():
     check_data_integrity(gbk_files)
     
     
-    print("Creating output diretories")
+    print("Creating output directories")
     try:
         os.mkdir(output_folder)
     except OSError as e:
@@ -621,7 +621,8 @@ def main():
         os.mkdir(os.path.join(output_folder, domainsout))
     except OSError as e:
         print(" Warning: " + str(e))
-        if str(e) == "[Errno 17] File exists: '" + os.path.join(output_folder, domainsout) + "'":
+        # 17 (Linux): "[Errno 17] File exists"; 183 (Windows) "[Error 183] Cannot create a file when that file already exists"
+        if "Errno 17" in str(e) or "Error 183" in str(e):
             print(" Emptying domains directory first")
             for thing in os.listdir(os.path.join(output_folder, domainsout)):
                 os.remove(os.path.join(output_folder, domainsout, thing))
@@ -631,7 +632,7 @@ def main():
     print("")
 
 
-    timings_file = open(output_folder + "/" + "runtimes.txt", 'wa') #open the file that will contain the timed functions
+    timings_file = open(os.path.join(output_folder, "runtimes.txt"), 'w') #open the file that will contain the timed functions
     
     
     #===========================================================================
@@ -656,7 +657,7 @@ def main():
     clusters = []
     
     #Loop over the samples
-    print("Running hmmscan and or parsing the hmmscan output files:")
+    print("Running hmmscan and parsing the hmmscan output files:")
     for gbks in gbk_files:
         #samplefolder = "/".join(gbks[0].split("/")[0:-1])
         #samplename = ".".join(gbks[0].split("/")[-1].split(".")[0:-2]) #gbk files should look something like samplename.clusternumber.gbk
