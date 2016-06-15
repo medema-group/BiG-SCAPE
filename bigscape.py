@@ -206,8 +206,13 @@ def cluster_distance(A, B, A_domlist, B_domlist, anchor_domains):
         except KeyError:
             unshared_occurrences = clusterB[unshared_domain]
             
-        dom_diff += len(unshared_occurrences)
-        S += len(unshared_occurrences)
+        if unshared_domain.split(".")[0] in anchor_domains:
+            dom_diff_anch += len(unshared_occurrences)
+        else:
+            dom_diff += len(unshared_occurrences)
+        
+    S = dom_diff # can be done because it's the first use of these
+    Sa = dom_diff_anch
         
         
     for shared_domain in intersect:
@@ -238,7 +243,7 @@ def cluster_distance(A, B, A_domlist, B_domlist, anchor_domains):
             
             DistanceMatrix = [[1 for col in range(len(setb))] for row in range(len(seta))]
             for domsa in range(len(seta)):
-                for domsb in range(domsa, len(setb)):
+                for domsb in range(len(setb)):
                     pair = tuple(sorted([seta[domsa], setb[domsb]]))
                     
                     try:
@@ -274,7 +279,7 @@ def cluster_distance(A, B, A_domlist, B_domlist, anchor_domains):
         DDS = (anchorweight * (dom_diff_anch / float(Sa))) + ((1 - anchorweight) * (dom_diff / float(S)))   #Recalculate dom_diff by giving preference to anchor domains
     elif dom_diff_anch == 0:
         DDS = dom_diff / float(S) 
-    else: #no none anchor domains were found
+    else: #only anchor domains were found
         DDS = dom_diff_anch / float(Sa)
  
  
