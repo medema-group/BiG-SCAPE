@@ -194,8 +194,6 @@ def cluster_distance(A, B, A_domlist, B_domlist, anchor_domains):
 
 
     #start calculating the DDS
-
-
     for domain in set(clusterA.keys() + clusterB.keys()):
         if domain not in intersect:
             not_intersect.append(domain)
@@ -272,18 +270,18 @@ def cluster_distance(A, B, A_domlist, B_domlist, anchor_domains):
                 S += max(len(seta),len(setb))
                 dom_diff += sum_seq_dist 
 
- 
-    #  calculate the Goodman-Kruskal gamma index
-    Ar = [item for item in A_domlist]
-    Ar.reverse()
-    GK = max([calculate_GK(A_domlist, B_domlist, nbhood), calculate_GK(Ar, B_domlist, nbhood)])
-     
     if dom_diff_anch != 0 and dom_diff != 0:
         DDS = (anchorweight * (dom_diff_anch / float(Sa))) + ((1 - anchorweight) * (dom_diff / float(S)))   #Recalculate dom_diff by giving preference to anchor domains
     elif dom_diff_anch == 0:
         DDS = dom_diff / float(S) 
     else: #no none anchor domains were found
         DDS = dom_diff_anch / float(Sa)
+ 
+ 
+    #  calculate the Goodman-Kruskal gamma index
+    Ar = [item for item in A_domlist]
+    Ar.reverse()
+    GK = max([calculate_GK(A_domlist, B_domlist, nbhood), calculate_GK(Ar, B_domlist, nbhood)])
         
     
     DDS = 1-DDS #transform into similarity
