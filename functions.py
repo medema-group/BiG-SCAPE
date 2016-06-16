@@ -576,3 +576,143 @@ def hmm_table_parser(gbk, hmm_table):
     return pfd_matrix
 
 
+def write_parameters(output_folder, options):
+    pf = open(os.path.join(output_folder,"parameters.txt"), "w")
+    
+    pf.write("Input directory:\t" + options.inputdir + "\n")
+    pf.write("Cores:\t" + options.cores + "\n")
+    
+    pf.write("Verbose:\t" + ("True" if options.verbose else "False"))
+    if not options.verbose:
+        pf.write("\t(default)\n")
+    else:
+        pf.write("\n")
+    
+    pf.write("Include disc nodes:\t" + ("True" if options.include_disc_nodes else "False"))
+    if not options.include_disc_nodes:
+        pf.write("\t(default)\n")
+    else:
+        pf.write("\n")
+    
+    pf.write("Domain overlap cutoff:\t" + str(options.domain_overlap_cutoff))
+    if options.domain_overlap_cutoff == 0.1:
+        pf.write("\t(default)\n")
+    else:
+        pf.write("\n")
+        
+    pf.write("Minimum size of BGC:\t" + str(options.min_bgc_size))
+    if options.min_bgc_size == 0:
+        pf.write("\t(default)\n")
+    else:
+        pf.write("\n")
+
+    pf.write("Sequence distance networks:\t\"" + str(options.seqdist_networks) + "\"")
+    if options.seqdist_networks == "A":
+        pf.write("\t(default)\n")
+    else:
+        pf.write("\n")
+    
+    pf.write("Domain distance networks:\t\"" + str(options.domaindist_networks) + "\"")
+    if options.domaindist_networks == "":
+        pf.write("\t(default)\n")
+    else:
+        pf.write("\n")
+
+    pf.write("Jaccard weight:\t" + str(options.Jaccardw))
+    if options.Jaccardw == 0.2:
+        pf.write("\t(default)\n")
+    else:
+        pf.write("\n")
+        
+    pf.write("DDS weight:\t" + str(options.DDSw))
+    if options.DDSw == 0.75:
+        pf.write("\t(default)\n")
+    else:
+        pf.write("\n")
+        
+    pf.write("GK weight:\t" + str(options.GKw))
+    if options.GKw == 0.05:
+        pf.write("\t(default)\n")
+    else:
+        pf.write("\n")
+        
+    pf.write("Anchor domain weight:\t" + str(options.anchorweight))
+    if options.anchorweight == 0.1:
+        pf.write("\t(default)\n")
+    else:
+        pf.write("\n")
+
+    pf.write("Output folder for domain fasta files:\t" + options.domainsout)
+    if options.domainsout == "domains":
+        pf.write("\t(default)\n")
+    else:
+        pf.write("\n")
+        
+    pf.write("Anchor domains file:\t" + options.anchorfile)
+    if options.anchorfile == "anchor_domains.txt":
+        pf.write("\t(default)\n")
+    else:
+        pf.write("\n")
+        
+    pf.write("String for inclusion of gbk files:\t" + options.exclude_gbk_str)
+    if options.exclude_gbk_str == "final":
+        pf.write("\t(default)\n")
+    else:
+        pf.write("\n")
+    
+    pf.write("Skip hmmscan?:\t" + ("True" if options.skip_hmmscan else "False"))
+    if not options.skip_hmmscan:
+        pf.write("\t(default)\n")
+    else:
+        pf.write("\n")
+    
+    pf.write("Cutoff values for final network:\t" + options.sim_cutoffs)
+    if options.sim_cutoffs == "1,0.85,0.75,0.6,0.4,0.2":
+        pf.write("\t(default)\n")
+    else:
+        pf.write("\n")
+        
+    pf.write("Neighborhood variable for GK:\t" + str(options.nbhood))
+    if options.nbhood == 4:
+        pf.write("\t(default)\n")
+    else:
+        pf.write("\n")
+    
+    pf.write("\nMAFFT parameters:\n")
+    
+    pf.write("Additional MAFFT parameters:\t\"" + options.mafft_pars + "\"")
+    if options.mafft_pars == "":
+        pf.write("\t(default)\n")
+    else:
+        pf.write("\n")
+
+    pf.write("Alignment method for MAFFT:\t\"" + options.al_method + "\"")
+    if options.al_method == "--retree 2":
+        pf.write("\t(default)\n")
+    else:
+        pf.write("\n")
+
+    pf.write("Maxiterate:\t" + str(options.maxit))
+    if options.maxit == 1000:
+        pf.write("\t(default)\n")
+    else:
+        pf.write("\n")
+        
+    pf.write("Threads in MAFFT:\t" + str(options.mafft_threads))
+    if options.mafft_threads == -1:
+        pf.write("\t(default)\n")
+    else:
+        pf.write("\n")
+        
+    pf.write("Use own method for domain identity?:\t" + ("True" if options.use_perc_id else "False"))
+    if options.use_perc_id:
+        pf.write("\t(default)\n")
+    else:
+        pf.write("\n")
+
+    #parser.add_option("--use_mafft_distout", dest="use_perc_id", action="store_false", default=True,
+                      #help="Let the script calculate the percent identity between sequences? \
+                      #Or use the distout scores from the mafft output? As default it calculates the percent identity from the MSAs.")
+    
+
+    pf.close()

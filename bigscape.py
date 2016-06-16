@@ -615,6 +615,7 @@ def main():
     gbk_files = get_gbk_files(options.inputdir, samples, int(options.min_bgc_size), options.exclude_gbk_str) #files will contain lists of gbk files per sample. Thus a matrix contains lists with gbk files by sample.
     check_data_integrity(gbk_files)
     
+    write_parameters(output_folder, options)
     
     print("Creating output directories")
     try:
