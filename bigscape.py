@@ -769,14 +769,10 @@ def main():
         if sequences_per_domain[domain_name] == 1:
             if verbose:
                 print(" Skipping MAFFT for domain " + domain_name + "(only one sequence)")
-            
-            #create the (empty) alignment file
-            alignment_file = open(domain+".algn", "w")
-            alignment_file.close()
         else:
         
             if verbose:
-                print(" Running MAFFT for domain: " + domain_file)
+                print(" Running MAFFT for domain: " + domain_name)
             
             run_mafft(options.al_method, options.maxit, options.mafft_threads, options.mafft_pars, domain)
             
