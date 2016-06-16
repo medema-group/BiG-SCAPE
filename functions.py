@@ -710,9 +710,4 @@ def write_parameters(output_folder, options):
     else:
         pf.write("\n")
 
-    #parser.add_option("--use_mafft_distout", dest="use_perc_id", action="store_false", default=True,
-                      #help="Let the script calculate the percent identity between sequences? \
-                      #Or use the distout scores from the mafft output? As default it calculates the percent identity from the MSAs.")
-    
-
     pf.close()

@@ -606,8 +606,8 @@ def main():
     else:
         args.remove("--outputdir")
     args.remove(output_folder)
-    networks_folder = make_network_output_name(args)
-    domainsout = make_domains_output_name(args)
+    networks_folder = "networks"
+    domainsout = "domains"
     seqdist_networks = options.seqdist_networks.split(",")
     domaindist_networks = options.domaindist_networks.split(",")
     
@@ -615,7 +615,7 @@ def main():
     gbk_files = get_gbk_files(options.inputdir, samples, int(options.min_bgc_size), options.exclude_gbk_str) #files will contain lists of gbk files per sample. Thus a matrix contains lists with gbk files by sample.
     check_data_integrity(gbk_files)
     
-    write_parameters(output_folder, options)
+    
     
     print("Creating output directories")
     try:
@@ -623,6 +623,7 @@ def main():
     except OSError as e:
         print(" Warning: " + str(e))
         pass
+    write_parameters(output_folder, options)
     
     try:
         os.mkdir(os.path.join(output_folder, networks_folder))
