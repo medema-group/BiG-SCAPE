@@ -667,6 +667,7 @@ def main():
     global group_dct
     group_dct = {}
     clusters = []
+    sequences_per_domain = {} # to avoid calling MAFFT if only 1 seq. in a particular domain
     
     #Loop over the samples
     print("Running hmmscan and parsing the hmmscan output files:")
@@ -700,6 +701,12 @@ def main():
             
             BGCs[outputbase] = BGC_dic_gen(filtered_matrix)
             
+            for row in filtered_matrix:
+                try:
+                    sequences_per_domain[row[5]] += 1
+                except KeyError:
+                    sequences_per_domain[row[5]] = 1
+            
         clusters.append(clusters_per_sample)
             
         
@@ -728,7 +735,7 @@ def main():
     # clust_handle.close()
     #===========================================================================
 
-        
+
     if verbose == True:
         print "BGCs:", BGCs
         BGC_handle = open("BGCs.txt", "w")
@@ -755,29 +762,42 @@ def main():
     fasta_domains = get_domain_fastas(domainsout, output_folder)
     #Fill the DMS variable by using all 'domains.fasta'  files
     for domain_file in fasta_domains:
-        if verbose:
-            print(" Running MAFFT for domain: " + domain_file)
+        domain_name = domain_file.split(os.sep)[-1].replace(".fasta", "")
         domain = domain_file.replace(".fasta", "")
-        run_mafft(options.al_method, options.maxit, options.mafft_threads, options.mafft_pars, domain)
         
-        if options.use_perc_id == True:
-            fasta_handle = open(domain + ".algn", 'r')
-            fasta_dict = fasta_parser(fasta_handle) #overwrites the fasta dictionary for each fasta file
-           
-            spec_domains_dict = {}
-            for spec_domain in fasta_dict.keys():
-                for spec_domain_nest in fasta_dict.keys():
-                    if spec_domain != spec_domain_nest:
-                        #tuple(sorted([seta[0],setb[0]]))
-                        sim, length = calc_perc_identity(fasta_dict[spec_domain], fasta_dict[spec_domain_nest], spec_domain, spec_domain_nest, domain)
-                        spec_domains_dict[tuple(sorted([spec_domain.replace(">",""), spec_domain_nest.replace(">","")]))] = (sim, length)
-                    
-            DMS[domain.split(os.sep)[-1]] = spec_domains_dict
+        # avoid calling MAFFT if it's not possible to align (only one sequence)
+        if sequences_per_domain[domain_name] == 1:
+            if verbose:
+                print(" Skipping MAFFT for domain " + domain_name + "(only one sequence)")
             
-        else:      
-            domain_pairs = distout_parser(domain + ".fasta" + ".hat2")
-            if domain_pairs != {}:
-                DMS[domain.split(os.sep)[-1]] = domain_pairs
+            #create the (empty) alignment file
+            alignment_file = open(domain+".algn", "w")
+            alignment_file.close()
+        else:
+        
+            if verbose:
+                print(" Running MAFFT for domain: " + domain_file)
+            
+            run_mafft(options.al_method, options.maxit, options.mafft_threads, options.mafft_pars, domain)
+            
+            if options.use_perc_id == True:
+                fasta_handle = open(domain + ".algn", 'r')
+                fasta_dict = fasta_parser(fasta_handle) #overwrites the fasta dictionary for each fasta file
+            
+                spec_domains_dict = {}
+                for spec_domain in fasta_dict.keys():
+                    for spec_domain_nest in fasta_dict.keys():
+                        if spec_domain != spec_domain_nest:
+                            #tuple(sorted([seta[0],setb[0]]))
+                            sim, length = calc_perc_identity(fasta_dict[spec_domain], fasta_dict[spec_domain_nest], spec_domain, spec_domain_nest, domain)
+                            spec_domains_dict[tuple(sorted([spec_domain.replace(">",""), spec_domain_nest.replace(">","")]))] = (sim, length)
+                        
+                DMS[domain.split(os.sep)[-1]] = spec_domains_dict
+                
+            else:      
+                domain_pairs = distout_parser(domain + ".fasta" + ".hat2")
+                if domain_pairs != {}:
+                    DMS[domain.split(os.sep)[-1]] = domain_pairs
     
     if verbose == True:
         print "Saving the DMS variable to DMS.txt"
