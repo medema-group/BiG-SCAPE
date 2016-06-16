@@ -425,7 +425,11 @@ def genbank_parser_hmmscan_call(gb_files, outputdir, cores, gbk_group, skip_hmms
         gb_handle = open(gb_file, "r")
         
         #Parse the gbk file for the gbk_group dictionary
-        in_cluster = True
+        # AntiSMASH-produced genbank files use the "cluster" tag
+        # to annotate the Gene Cluster class in the "product" subtag...
+        # (There should be just one "cluster" tag per genbank file, 
+        # if not, maybe you're using the wrong file with the whole seq.)
+        in_cluster = False
 
         for line in gb_handle:
             if "DEFINITION  " in line:
@@ -441,6 +445,11 @@ def genbank_parser_hmmscan_call(gb_files, outputdir, cores, gbk_group, skip_hmms
                 gbk_group[outputbase] = [group, definition]
                 gb_handle.close()
                 break
+            
+        #...but other genbank files (e.g. MiBIG) do NOT have this tag
+        if not in_cluster:
+            gbk_group[outputbase] = ["no type", definition]
+            gb_handle.close()
         
         try:
             gb_record = SeqIO.read(open(gb_file, "r"), "genbank")
@@ -736,7 +745,7 @@ def main():
         - (sequence_identity, alignment_length): sequence identity and alignment length of the domain pair"""
 
 
-    print("Processing domains")
+    print("Aligning domains")
     if options.use_perc_id == True:
         print("(Using calculated percentage identity for cluster diversity)")
     else:
@@ -746,7 +755,8 @@ def main():
     fasta_domains = get_domain_fastas(domainsout, output_folder)
     #Fill the DMS variable by using all 'domains.fasta'  files
     for domain_file in fasta_domains:
-        print(" Running MAFFT for domain: " + domain_file)
+        if verbose:
+            print(" Running MAFFT for domain: " + domain_file)
         domain = domain_file.replace(".fasta", "")
         run_mafft(options.al_method, options.maxit, options.mafft_threads, options.mafft_pars, domain)
         
