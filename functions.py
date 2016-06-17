@@ -453,11 +453,7 @@ def get_gbk_files(inputdir, samples, min_bgc_size, exclude_gbk_str):
     dirpath_ = ""
     file_counter = 0
     
-<<<<<<< HEAD
     print "Importing the gbk files, while skipping gbk files with '%s'in their filename" % exclude_gbk_str
-=======
-    print("Importing the gbk files, while skipping gbk files with '" + exclude_gbk_str + "' in their filename")
->>>>>>> 41822b65f0f1f6fa94871d20cc7bdc144eb637dd
     
     #this doesn't seem to make a difference. Confirm
     #if inputdir != "" and inputdir[-1] != "/":
