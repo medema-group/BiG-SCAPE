@@ -27,7 +27,7 @@ def frange(start, stop, step):
          
 
 def remove_values_from_list(the_list, val):
-   return [value for value in the_list if value != val]
+   return [value for value in the_list if value != val]
 
 def get_anchor_domains(filename):
     """Get the anchor/marker domains from a txt file.
@@ -453,7 +453,7 @@ def get_gbk_files(inputdir, samples, min_bgc_size, exclude_gbk_str):
     dirpath = ""
     file_counter = 0
     
-    print "Importing the gbk files, while skipping gbk files with", exclude_gbk_str, "in their filename"
+    print "Importing the gbk files, while skipping gbk files with '%s'in their filename" % exclude_gbk_str
     
     if inputdir != "" and inputdir[-1] != "/":
         inputdir += "/"
