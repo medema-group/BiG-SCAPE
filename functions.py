@@ -24,7 +24,6 @@ def frange(start, stop, step):
     while i <= stop:
         yield i
         i += step
-         
 
 def remove_values_from_list(the_list, val):
    return [value for value in the_list if value != val]
@@ -60,11 +59,15 @@ def get_domain_list(filename):
 
 def make_domains_output_name(args):
     foldername = "domains_" + "_".join(args)
+    foldername = foldername.replace(".", "_")
+    foldername = foldername.replace("/", "_")
     return foldername.replace(" ", "_") 
  
 
 def make_network_output_name(args):
     foldername = "networks_" + "_".join(args)
+    foldername = foldername.replace(".", "_")
+    foldername = foldername.replace("/", "_")
     return foldername.replace(" ", "_")
 
 
@@ -79,13 +82,13 @@ def get_all_features_of_type(seq_record, types):
             features.append(f)
     return features
 
+
 def get_hmm_output_files(output_folder):
     """Finds all .domtable files in the output folder and its child folders"""
     
     hmm_table_list = []
     for dirpath, dirnames, filenames in os.walk(str(output_folder) + "/"):
         for fname in filenames:
-
             if fname.split(".")[-1] == "domtable":
                 try:
                     if open(output_folder + "/" + fname, "r").readlines()[3][0] != "#": #if this is false, hmmscan has not found any domains in the sequence
@@ -172,11 +175,11 @@ def check_data_integrity(gbk_files):
     
     gbk_files = list(iterFlatten(gbk_files))
     for file in gbk_files:
-        name = file.split("/")[-1]
+        name = file.split(os.sep)[-1]
         file_occ = 0
         for cfile in gbk_files:
             
-            cname = cfile.split("/")[-1]
+            cname = cfile.split(os.sep)[-1]
             if name == cname:
                 file_occ += 1
                 if file_occ > 1:
@@ -194,11 +197,10 @@ def hmmscan(fastafile, outputdir, name, cores):
     """Runs hmmscan"""
     #removed --noali par
 
-    hmmscan_cmd = "hmmscan --cpu " + str(cores) + " --domtblout " + str(outputdir)\
-     + "/" +str(name) + ".domtable --cut_tc Pfam-A.hmm " + str(fastafile)
+    hmmscan_cmd = "hmmscan --cpu " + str(cores) + " --domtblout " + os.path.join(outputdir, name+".domtable") + " --cut_tc Pfam-A.hmm " + str(fastafile)
     if verbose == True:
-        print hmmscan_cmd
-        
+        print("\t"+hmmscan_cmd)
+    
     subprocess.check_output(hmmscan_cmd, shell=True)
     
     
@@ -253,13 +255,11 @@ def calc_perc_identity(seq1, seq2, spec_domain, spec_domain_nest, domain):
     matches = 0
     for pos in range(len(seq1)): #Sequences should have the same length because they come from an MSA
         try:
-            if seq1[pos] == seq2[pos] and not (seq1[pos] == "-" and seq2[pos] == "-"):  #don't count two gap signs as a match!
+            if seq1[pos] == seq2[pos] and seq1[pos] != "-":  #don't count two gap signs as a match!
                 matches += 1
         except IndexError:
             print "Something went wrong, most likely your alignment file contains duplicate sequences"
             print "file: ", domain, "domains: ", spec_domain, spec_domain_nest
-        
-            
 
     return float(matches) / float(al_len), al_len    
 
@@ -285,7 +285,7 @@ def save_domain_seqs(filtered_matrix, fasta_dict, domains_folder, output_folder,
         seq = fasta_dict[">"+str(row[-1].strip())] #access the sequence by using the header
         
 
-        domain_file = open(output_folder + "/" + domains_folder + "/" + domain +".fasta", 'a') #append to existing file
+        domain_file = open(os.path.join(output_folder, domains_folder, domain + ".fasta"), 'a') #append to existing file
         domain_file.write(">" + str(row[0]) + "_" + str(row[-1]) + "_" + str(row[3]) + "_" + str(row[4]) \
         + "\n" + str(seq)[int(row[3]):int(row[4])] + "\n") #only use the range of the pfam domain within the sequence
         
@@ -322,10 +322,11 @@ def fasta_parser(handle):
 def get_domain_fastas(domain_folder, output_folder):
     """Finds the pfam domain fasta files"""
     domain_fastas = []
-    for dirpath, dirnames, filenames in os.walk(output_folder + "/" + domain_folder + "/"):
+    dirpath_ = ""
+    for dirpath, dirnames, filenames in os.walk(os.path.join(output_folder, domain_folder)):
         for fname in filenames:
             if ".fasta" in fname and "hat2" not in fname:
-                domain_fastas.append(dirpath + "/" + fname)
+                domain_fastas.append(os.path.join(dirpath, fname))
                 if verbose == True:
                     print fname
                     
@@ -445,22 +446,28 @@ def write_network_matrix(matrix, cutoff, filename, include_disc_nodes):
             
     networkfile.close()
                     
-                    
 
 def get_gbk_files(inputdir, samples, min_bgc_size, exclude_gbk_str):
     """Find .gbk files, and store the .gbk files in lists, separated by sample."""
     genbankfiles=[] #Will contain lists of gbk files
-    dirpath = ""
+    dirpath_ = ""
     file_counter = 0
     
+<<<<<<< HEAD
     print "Importing the gbk files, while skipping gbk files with '%s'in their filename" % exclude_gbk_str
+=======
+    print("Importing the gbk files, while skipping gbk files with '" + exclude_gbk_str + "' in their filename")
+>>>>>>> 41822b65f0f1f6fa94871d20cc7bdc144eb637dd
     
-    if inputdir != "" and inputdir[-1] != "/":
-        inputdir += "/"
+    #this doesn't seem to make a difference. Confirm
+    #if inputdir != "" and inputdir[-1] != "/":
+        #inputdir += "/"
         
-    
-    for dirpath, dirnames, filenames in os.walk(str(os.getcwd()) + "/" + inputdir):
+    for dirpath, dirnames, filenames in os.walk(inputdir):
         genbankfilelist=[]
+        
+        #avoid double slashes
+        dirpath_ = dirpath[:-1] if dirpath[-1] == os.sep else dirpath
         
         for fname in filenames:
             if fname.split(".")[-1] == "gbk" and exclude_gbk_str not in fname:
@@ -468,13 +475,13 @@ def get_gbk_files(inputdir, samples, min_bgc_size, exclude_gbk_str):
                     print "Your GenBank files should not have spaces in their filenames. Please remove the spaces from their names, HMMscan doesn't like spaces (too many arguments)."
                     sys.exit(0)
                 
-                gbk_header = open(dirpath + "/" + fname, "r").readline().split(" ")
+                gbk_header = open( os.path.join(dirpath_,fname) , "r").readline().split(" ")
                 gbk_header = filter(None, gbk_header) #remove the empty items from the list
                 bgc_size = int(gbk_header[gbk_header.index("bp")-1])
                     
                 file_counter += 1
                 if bgc_size > min_bgc_size: #exclude the bgc if it's too small
-                    genbankfilelist.append(dirpath + "/" + fname)
+                    genbankfilelist.append(os.path.join(dirpath_, fname))
                     
                     if samples == False: #Then each gbk file represents a different sample
                         genbankfiles.append(genbankfilelist)
@@ -486,9 +493,9 @@ def get_gbk_files(inputdir, samples, min_bgc_size, exclude_gbk_str):
                     
         if genbankfilelist != []:
             genbankfiles.append(genbankfilelist)
-    
-    return genbankfiles
 
+    print("")
+    return genbankfiles
 
 
 def domtable_parser(gbk, dom_file):
@@ -503,10 +510,8 @@ def domtable_parser(gbk, dom_file):
     
     pfd_matrix = []
     dom_handle = open(dom_file, 'r')
-    for line in dom_handle:
-        
+    for line in dom_handle:        
         if line[0] != "#":
-
             splitline = filter(None, line.split(" "))
             pfd_row = []
             pfd_row.append(gbk)         #add clustername or gbk filename
@@ -577,3 +582,138 @@ def hmm_table_parser(gbk, hmm_table):
     return pfd_matrix
 
 
+def write_parameters(output_folder, options):
+    pf = open(os.path.join(output_folder,"parameters.txt"), "w")
+    
+    pf.write("Input directory:\t" + options.inputdir + "\n")
+    pf.write("Cores:\t" + options.cores + "\n")
+    
+    pf.write("Verbose:\t" + ("True" if options.verbose else "False"))
+    if not options.verbose:
+        pf.write("\t(default)\n")
+    else:
+        pf.write("\n")
+    
+    pf.write("Include disc nodes:\t" + ("True" if options.include_disc_nodes else "False"))
+    if not options.include_disc_nodes:
+        pf.write("\t(default)\n")
+    else:
+        pf.write("\n")
+    
+    pf.write("Domain overlap cutoff:\t" + str(options.domain_overlap_cutoff))
+    if options.domain_overlap_cutoff == 0.1:
+        pf.write("\t(default)\n")
+    else:
+        pf.write("\n")
+        
+    pf.write("Minimum size of BGC:\t" + str(options.min_bgc_size))
+    if options.min_bgc_size == 0:
+        pf.write("\t(default)\n")
+    else:
+        pf.write("\n")
+
+    pf.write("Sequence distance networks:\t\"" + str(options.seqdist_networks) + "\"")
+    if options.seqdist_networks == "A":
+        pf.write("\t(default)\n")
+    else:
+        pf.write("\n")
+    
+    pf.write("Domain distance networks:\t\"" + str(options.domaindist_networks) + "\"")
+    if options.domaindist_networks == "":
+        pf.write("\t(default)\n")
+    else:
+        pf.write("\n")
+
+    pf.write("Jaccard weight:\t" + str(options.Jaccardw))
+    if options.Jaccardw == 0.2:
+        pf.write("\t(default)\n")
+    else:
+        pf.write("\n")
+        
+    pf.write("DDS weight:\t" + str(options.DDSw))
+    if options.DDSw == 0.75:
+        pf.write("\t(default)\n")
+    else:
+        pf.write("\n")
+        
+    pf.write("GK weight:\t" + str(options.GKw))
+    if options.GKw == 0.05:
+        pf.write("\t(default)\n")
+    else:
+        pf.write("\n")
+        
+    pf.write("Anchor domain weight:\t" + str(options.anchorweight))
+    if options.anchorweight == 0.1:
+        pf.write("\t(default)\n")
+    else:
+        pf.write("\n")
+
+    pf.write("Output folder for domain fasta files:\t" + options.domainsout)
+    if options.domainsout == "domains":
+        pf.write("\t(default)\n")
+    else:
+        pf.write("\n")
+        
+    pf.write("Anchor domains file:\t" + options.anchorfile)
+    if options.anchorfile == "anchor_domains.txt":
+        pf.write("\t(default)\n")
+    else:
+        pf.write("\n")
+        
+    pf.write("String for inclusion of gbk files:\t" + options.exclude_gbk_str)
+    if options.exclude_gbk_str == "final":
+        pf.write("\t(default)\n")
+    else:
+        pf.write("\n")
+    
+    pf.write("Skip hmmscan?:\t" + ("True" if options.skip_hmmscan else "False"))
+    if not options.skip_hmmscan:
+        pf.write("\t(default)\n")
+    else:
+        pf.write("\n")
+    
+    pf.write("Cutoff values for final network:\t" + options.sim_cutoffs)
+    if options.sim_cutoffs == "1,0.85,0.75,0.6,0.4,0.2":
+        pf.write("\t(default)\n")
+    else:
+        pf.write("\n")
+        
+    pf.write("Neighborhood variable for GK:\t" + str(options.nbhood))
+    if options.nbhood == 4:
+        pf.write("\t(default)\n")
+    else:
+        pf.write("\n")
+    
+    pf.write("\nMAFFT parameters:\n")
+    
+    pf.write("Additional MAFFT parameters:\t\"" + options.mafft_pars + "\"")
+    if options.mafft_pars == "":
+        pf.write("\t(default)\n")
+    else:
+        pf.write("\n")
+
+    pf.write("Alignment method for MAFFT:\t\"" + options.al_method + "\"")
+    if options.al_method == "--retree 2":
+        pf.write("\t(default)\n")
+    else:
+        pf.write("\n")
+
+    pf.write("Maxiterate:\t" + str(options.maxit))
+    if options.maxit == 1000:
+        pf.write("\t(default)\n")
+    else:
+        pf.write("\n")
+        
+    pf.write("Threads in MAFFT:\t" + str(options.mafft_threads))
+    if options.mafft_threads == -1:
+        pf.write("\t(default)\n")
+    else:
+        pf.write("\n")
+        
+    pf.write("Use own method for domain identity?:\t" + ("True" if options.use_perc_id else "False"))
+    if options.use_perc_id:
+        pf.write("\t(default)\n")
+    else:
+        pf.write("\n")
+
+    pf.close()

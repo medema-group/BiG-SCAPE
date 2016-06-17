@@ -82,7 +82,7 @@ def timeit(f):
         time2 = time.time()
         runtime = time2-time1
         
-        runtime_string = '%s function took %0.3f s' % (f.func_name, runtime)
+        runtime_string = '\t%s function took %0.3f s' % (f.func_name, runtime)
         
         if runtime > insignificant_runtime:
             timings_file.write(runtime_string + "\n")
@@ -92,16 +92,15 @@ def timeit(f):
     return wrap
 
 
-def generate_dist_matrix(parms):
-    
+def generate_dist_matrix(parms):    
     #Get the values from the parameters
     cluster1 = parms[0]
     cluster2 = parms[1]
     dist_method = parms[2]
     anchor_domains = parms[3]
     
-    cluster_file1 = output_folder + "/" + cluster1 + ".pfs"
-    cluster_file2 = output_folder + "/" + cluster2 + ".pfs"
+    cluster_file1 = os.path.join(output_folder, cluster1 + ".pfs")
+    cluster_file2 = os.path.join(output_folder, cluster2 + ".pfs")
     
     
     A = get_domain_list(cluster_file1)
@@ -142,30 +141,21 @@ def generate_network(bgc_list, group_dct, networkfilename, networks_folder, dist
     "saves the distances as the log2 of the similarity"
 
     
-    if networkfilename == "":
-    
-        networkfilename = output_folder + "/" + networks_folder + "/" + "networkfile_" + dist_method + "_" + \
-        str("".join(bgc_list[0].split(".")[0:-2]))
+    if networkfilename == "":    
+        networkfilename = os.path.join(output_folder, network_folder, "networkfile_" + dist_method + "_" + \
+        str("".join(bgc_list[0].split(".")[0:-2])))
     else:
-        networkfilename = output_folder + "/" + networks_folder + "/" + "networkfile_" + dist_method + "_" + \
-        networkfilename
+        networkfilename = os.path.join(output_folder, networks_folder, "networkfile_" + dist_method + "_" + \
+        networkfilename)
         
     print "Generating network file with name:", networkfilename
 
-    cluster_queue = []
     cluster_pairs = []
-    
-    for bgc in bgc_list:
-        cluster_queue.append(bgc) #deep copy
-        
-    for cluster1 in bgc_list:
-        cluster_queue = remove_values_from_list(cluster_queue, cluster1) # remove ALL instances of the bgc
-        
-        for cluster2 in cluster_queue:
-            #addclusterpair
-            cluster_pairs.append([cluster1, cluster2, dist_method, anchor_domains])    
+    for i in range(len(bgc_list)-1):
+        for j in range(i+1, len(bgc_list)):
+            cluster_pairs.append([bgc_list[i], bgc_list[j], dist_method, anchor_domains])
             
-    
+
     #maxtasksperchild is the number of tasks a worker process can complete before it will exit and be replaced with a fresh worker process, to
     #enable unused resources to be freed. The default maxtasksperchild is None, which means worker processes will live as long as the pool.
     
@@ -204,8 +194,6 @@ def cluster_distance(A, B, A_domlist, B_domlist, anchor_domains):
 
 
     #start calculating the DDS
-
-
     for domain in set(clusterA.keys() + clusterB.keys()):
         if domain not in intersect:
             not_intersect.append(domain)
@@ -218,8 +206,13 @@ def cluster_distance(A, B, A_domlist, B_domlist, anchor_domains):
         except KeyError:
             unshared_occurrences = clusterB[unshared_domain]
             
-        dom_diff += len(unshared_occurrences)
-        S += len(unshared_occurrences)
+        if unshared_domain.split(".")[0] in anchor_domains:
+            dom_diff_anch += len(unshared_occurrences)
+        else:
+            dom_diff += len(unshared_occurrences)
+        
+    S = dom_diff # can be done because it's the first use of these
+    Sa = dom_diff_anch
         
         
     for shared_domain in intersect:
@@ -250,7 +243,7 @@ def cluster_distance(A, B, A_domlist, B_domlist, anchor_domains):
             
             DistanceMatrix = [[1 for col in range(len(setb))] for row in range(len(seta))]
             for domsa in range(len(seta)):
-                for domsb in range(domsa, len(setb)):
+                for domsb in range(len(setb)):
                     pair = tuple(sorted([seta[domsa], setb[domsb]]))
                     
                     try:
@@ -282,18 +275,18 @@ def cluster_distance(A, B, A_domlist, B_domlist, anchor_domains):
                 S += max(len(seta),len(setb))
                 dom_diff += sum_seq_dist 
 
+    if dom_diff_anch != 0 and dom_diff != 0:
+        DDS = (anchorweight * (dom_diff_anch / float(Sa))) + ((1 - anchorweight) * (dom_diff / float(S)))   #Recalculate dom_diff by giving preference to anchor domains
+    elif dom_diff_anch == 0:
+        DDS = dom_diff / float(S) 
+    else: #only anchor domains were found
+        DDS = dom_diff_anch / float(Sa)
+ 
  
     #  calculate the Goodman-Kruskal gamma index
     Ar = [item for item in A_domlist]
     Ar.reverse()
     GK = max([calculate_GK(A_domlist, B_domlist, nbhood), calculate_GK(Ar, B_domlist, nbhood)])
-     
-    if dom_diff_anch != 0 and dom_diff != 0:
-        DDS = (anchorweight * (dom_diff_anch / float(Sa))) + ((1 - anchorweight) * (dom_diff / float(S)))   #Recalculate dom_diff by giving preference to anchor domains
-    elif dom_diff_anch == 0:
-        DDS = dom_diff / float(S) 
-    else: #no none anchor domains were found
-        DDS = dom_diff_anch / float(Sa)
         
     
     DDS = 1-DDS #transform into similarity
@@ -303,8 +296,8 @@ def cluster_distance(A, B, A_domlist, B_domlist, anchor_domains):
         print "Probably a rounding issue"
         print "Distance is set to 0 for these clusters" 
         Distance = 0
+        
     return Distance
-
 
 
 
@@ -338,7 +331,8 @@ def run_mafft(al_method, maxit, cores, mafft_pars, domain):
     
     mafft_cmd = " ".join(mafft_cmd_list)
     
-    print mafft_cmd
+    if verbose:
+        print(mafft_cmd)
     subprocess.check_output(mafft_cmd, shell=True)
 
 
@@ -424,13 +418,17 @@ def genbank_parser_hmmscan_call(gb_files, outputdir, cores, gbk_group, skip_hmms
         
         sample_dict = {}
         
-        outputbase = gb_file.split("/")[-1].replace(".gbk", "")
-        outputfile = outputdir + "/" + outputbase + ".fasta"
+        outputbase = gb_file.split(os.sep)[-1].replace(".gbk", "")
+        outputfile = os.path.join(outputdir, outputbase + ".fasta")
         multifasta = open(outputfile, "w")
-
+        print(outputfile)
         gb_handle = open(gb_file, "r")
         
         #Parse the gbk file for the gbk_group dictionary
+        # AntiSMASH-produced genbank files use the "cluster" tag
+        # to annotate the Gene Cluster class in the "product" subtag...
+        # (There should be just one "cluster" tag per genbank file, 
+        # if not, maybe you're using the wrong file with the whole seq.)
         in_cluster = False
 
         for line in gb_handle:
@@ -443,10 +441,15 @@ def genbank_parser_hmmscan_call(gb_files, outputdir, cores, gbk_group, skip_hmms
                 group= ""
                 #group = line.strip().split(" ")[-1].replace("/product=", "").replace(" ", "").replace("\"", "")
                 group = line.strip().split("=")[-1].replace("\"", "")
-                print outputbase, group
+                #print(" " + outputbase + " " + group)
                 gbk_group[outputbase] = [group, definition]
                 gb_handle.close()
                 break
+            
+        #...but other genbank files (e.g. MiBIG) do NOT have this tag
+        if not in_cluster:
+            gbk_group[outputbase] = ["no type", definition]
+            gb_handle.close()
         
         try:
             gb_record = SeqIO.read(open(gb_file, "r"), "genbank")
@@ -492,7 +495,7 @@ def genbank_parser_hmmscan_call(gb_files, outputdir, cores, gbk_group, skip_hmms
         if skip_hmmscan == False:
             hmmscan(outputfile, outputdir, outputbase, cores) #Run hmmscan
         else:
-            print "Skipping hmmscan"
+            print(" Skipping hmmscan")
         
     return gbk_group, fasta_dict
             
@@ -598,40 +601,53 @@ def main():
     output_folder = str(options.outputdir)
     verbose = options.verbose
     args = sys.argv[1:]
-    args.remove("-o")
+    if "-o" in args:
+        args.remove("-o")
+    else:
+        args.remove("--outputdir")
     args.remove(output_folder)
-    networks_folder = make_network_output_name(args)
-    domainsout = make_domains_output_name(args)
+    networks_folder = "networks"
+    domainsout = "domains"
     seqdist_networks = options.seqdist_networks.split(",")
     domaindist_networks = options.domaindist_networks.split(",")
     
     
-    try:
-        subprocess.check_output("mkdir " + output_folder, shell=True)
-    except subprocess.CalledProcessError, e:
-        pass
-
-    try:
-        subprocess.check_output("mkdir " + output_folder + "/" + networks_folder, shell=True)
-    except subprocess.CalledProcessError, e:
-        pass
-
-    try:
-        subprocess.check_output("mkdir " + output_folder + "/" + domainsout, shell=True)
-    except subprocess.CalledProcessError, e:
-        #remove an existing domain folder
-        #existing domain.fasta files need to be removed, otherwise this will cause problems downstream
-        print "removing the existing domains output folder!!!!"
-        subprocess.check_output("rm -rf " + output_folder + "/" + domainsout, shell=True) 
-        subprocess.check_output("mkdir " + output_folder + "/" + domainsout, shell=True)
-        
-        
-
-    timings_file = open(output_folder + "/" + "runtimes.txt", 'wa') #open the file that will contain the timed functions
-    
-    
     gbk_files = get_gbk_files(options.inputdir, samples, int(options.min_bgc_size), options.exclude_gbk_str) #files will contain lists of gbk files per sample. Thus a matrix contains lists with gbk files by sample.
     check_data_integrity(gbk_files)
+    
+    
+    
+    print("Creating output directories")
+    try:
+        os.mkdir(output_folder)
+    except OSError as e:
+        print(" Warning: " + str(e))
+        pass
+    write_parameters(output_folder, options)
+    
+    try:
+        os.mkdir(os.path.join(output_folder, networks_folder))
+    except OSError as e:
+        print(" Warning: " + str(e))
+        pass
+    
+    try:
+        os.mkdir(os.path.join(output_folder, domainsout))
+    except OSError as e:
+        print(" Warning: " + str(e))
+        # 17 (Linux): "[Errno 17] File exists"; 183 (Windows) "[Error 183] Cannot create a file when that file already exists"
+        if "Errno 17" in str(e) or "Error 183" in str(e):
+            print(" Emptying domains directory first")
+            for thing in os.listdir(os.path.join(output_folder, domainsout)):
+                os.remove(os.path.join(output_folder, domainsout, thing))
+        else:
+            print("Fatal error when retrying to create domains' directory")
+            sys.exit(str(e))
+    print("")
+
+
+    timings_file = open(os.path.join(output_folder, "runtimes.txt"), 'w') #open the file that will contain the timed functions
+    
     
     #===========================================================================
     # gbk_handle = open("gbk.txt", "w")
@@ -653,48 +669,61 @@ def main():
     global group_dct
     group_dct = {}
     clusters = []
+    sequences_per_domain = {} # to avoid calling MAFFT if only 1 seq. in a particular domain
     
-    #Loop over the samples 
+    #Loop over the samples
+    print("Running hmmscan and parsing the hmmscan output files:")
     for gbks in gbk_files:
         #samplefolder = "/".join(gbks[0].split("/")[0:-1])
         #samplename = ".".join(gbks[0].split("/")[-1].split(".")[0:-2]) #gbk files should look something like samplename.clusternumber.gbk
-        print "running hmmscan and or parsing the hmmscan output files" 
         #outputdir = samplefolder + "/" + str(options.outputdir)         
         
         group_dct, fasta_dict = genbank_parser_hmmscan_call(gbks, output_folder, cores, group_dct, options.skip_hmmscan) #runs hammscan and returns the CDS in the cluster
      
         clusters_per_sample = []
         for gbk in gbks:
-            outputbase = gbk.split("/")[-1].replace(".gbk", "")
+            outputbase = gbk.split(os.sep)[-1].replace(".gbk", "")
             clusters_per_sample.append(outputbase)
-            print "Processing domtable file:", outputbase
-            pfsoutput = output_folder + "/" + outputbase + ".pfs"
-            pfs_handle = open(pfsoutput, 'w')
+            print(" Processing domtable file: " + outputbase)
             
             #pfd_matrix = hmm_table_parser(outputbase+".gbk", output_folder +"/"+ hmm_file)
-            pfd_matrix = domtable_parser(outputbase, output_folder + "/" + outputbase + ".domtable")
-            
-            
+            pfd_matrix = domtable_parser(outputbase, os.path.join(output_folder, outputbase + ".domtable"))
             filtered_matrix, domains = check_overlap(pfd_matrix, options.domain_overlap_cutoff)  #removes overlapping domains, and keeps the highest scoring domain
             save_domain_seqs(filtered_matrix, fasta_dict, domainsout, output_folder, outputbase) #save the sequences for the found domains per pfam domain
+            
+            # Save list of domains per BGC
+            pfsoutput = os.path.join(output_folder, outputbase + ".pfs")
+            pfs_handle = open(pfsoutput, 'w')
             write_pfs(pfs_handle, domains)
-            BGC = BGC_dic_gen(filtered_matrix)
-            BGCs[outputbase] = BGC
-            pfdoutput = output_folder + "/" + outputbase + ".pfd"
+            
+            # Save more complete information of each domain per BGC
+            pfdoutput = os.path.join(output_folder, outputbase + ".pfd")
             pfd_handle = open(pfdoutput, 'w')
             write_pfd(pfd_handle, filtered_matrix)
+            
+            BGCs[outputbase] = BGC_dic_gen(filtered_matrix)
+            
+            for row in filtered_matrix:
+                try:
+                    sequences_per_domain[row[5]] += 1
+                except KeyError:
+                    sequences_per_domain[row[5]] = 1
             
         clusters.append(clusters_per_sample)
             
         
         
         if "S" in domaindist_networks:
-            print "Generating pairwise networks with domain_dist"
-            network_matrix, networkfilename = generate_network(hmms, group_dct, str(samplename), networks_folder, "domain_dist", anchor_domains, cores)
-            for cutoff in cutoff_list:
-                write_network_matrix(network_matrix, cutoff, networkfilename + "_c" + cutoff + ".network", include_disc_nodes)
+            if len(clusters_per_sample) == 1:
+                print("Warning: Sample size = 1: not generating pairwise networks within sample (domaindist)")
+            else:
+                print "Generating pairwise networks with domain_dist"
+                network_matrix, networkfilename = generate_network(clusters_per_sample, group_dct, "", networks_folder, "domain_dist", anchor_domains, cores)
+                for cutoff in cutoff_list:
+                    write_network_matrix(network_matrix, cutoff, networkfilename + "_c" + cutoff + ".network", include_disc_nodes)
      
-     
+        print("")
+
     if "A" in domaindist_networks:
         print "Generating all_vs_all network with domain_dist"
         network_matrix, networkfilename = generate_network(list(iterFlatten(clusters)), group_dct, "all_vs_all", networks_folder, "domain_dist", anchor_domains, cores)   
@@ -708,7 +737,7 @@ def main():
     # clust_handle.close()
     #===========================================================================
 
-        
+
     if verbose == True:
         print "BGCs:", BGCs
         BGC_handle = open("BGCs.txt", "w")
@@ -725,51 +754,66 @@ def main():
         - (sequence_identity, alignment_length): sequence identity and alignment length of the domain pair"""
 
 
-		
+    print("Aligning domains")
+    if options.use_perc_id == True:
+        print("(Using calculated percentage identity for cluster diversity)")
+    else:
+        print("(Using percentage identity from MAFFT for cluster diversity)")
+        
     DMS = {}
     fasta_domains = get_domain_fastas(domainsout, output_folder)
     #Fill the DMS variable by using all 'domains.fasta'  files
     for domain_file in fasta_domains:
-        print "Running MAFFT and parsing the distout file for domain:", domain_file
-        domain=domain_file.replace(".fasta", "")
-        run_mafft(options.al_method, options.maxit, options.mafft_threads, options.mafft_pars, domain)
+        domain_name = domain_file.split(os.sep)[-1].replace(".fasta", "")
+        domain = domain_file.replace(".fasta", "")
         
+        # avoid calling MAFFT if it's not possible to align (only one sequence)
+        if sequences_per_domain[domain_name] == 1:
+            if verbose:
+                print(" Skipping MAFFT for domain " + domain_name + "(only one sequence)")
+        else:
         
-        if options.use_perc_id == True:
-            print "using percent identiy to calculate cluster diversity"
-            fasta_handle = open(domain + ".algn", 'r')
-            fasta_dict = fasta_parser(fasta_handle) #overwrites the fasta dictionary for each fasta file
-           
-            spec_domains_dict = {}
-            for spec_domain in fasta_dict.keys():
-                for spec_domain_nest in fasta_dict.keys():
-                    if spec_domain != spec_domain_nest:
-                        #tuple(sorted([seta[0],setb[0]]))
-                        sim, length = calc_perc_identity(fasta_dict[spec_domain], fasta_dict[spec_domain_nest], spec_domain, spec_domain_nest, domain)
-                        spec_domains_dict[tuple(sorted([spec_domain.replace(">",""), spec_domain_nest.replace(">","")]))] = (sim, length)
-                    
-            DMS[domain.split("/")[-1]] = spec_domains_dict
+            if verbose:
+                print(" Running MAFFT for domain: " + domain_name)
             
-        else:      
-            print "using distout file from mafft to calculate cluster diversity with sequence sim"
-            domain_pairs = distout_parser(domain+".fasta" + ".hat2")
-            if domain_pairs != {}:
-                DMS[domain.split("/")[-1]] = domain_pairs
+            run_mafft(options.al_method, options.maxit, options.mafft_threads, options.mafft_pars, domain)
+            
+            if options.use_perc_id == True:
+                fasta_handle = open(domain + ".algn", 'r')
+                fasta_dict = fasta_parser(fasta_handle) #overwrites the fasta dictionary for each fasta file
+            
+                spec_domains_dict = {}
+                for spec_domain in fasta_dict.keys():
+                    for spec_domain_nest in fasta_dict.keys():
+                        if spec_domain != spec_domain_nest:
+                            #tuple(sorted([seta[0],setb[0]]))
+                            sim, length = calc_perc_identity(fasta_dict[spec_domain], fasta_dict[spec_domain_nest], spec_domain, spec_domain_nest, domain)
+                            spec_domains_dict[tuple(sorted([spec_domain.replace(">",""), spec_domain_nest.replace(">","")]))] = (sim, length)
+                        
+                DMS[domain.split(os.sep)[-1]] = spec_domains_dict
                 
+            else:      
+                domain_pairs = distout_parser(domain + ".fasta" + ".hat2")
+                if domain_pairs != {}:
+                    DMS[domain.split(os.sep)[-1]] = domain_pairs
+    
     if verbose == True:
         print "Saving the DMS variable to DMS.txt"
         DMS_handle = open("DMS.txt", "w")
         for item in DMS.items():
             DMS_handle.write(str(item)+"\n")
         DMS_handle.close()
-    
+    print("")
     
     if "S" in seqdist_networks:     
         #Compare the gene clusters within one sample, and save them in tab delimited .txt files.
         for clusters_per_sample in clusters:
-            network_matrix, networkfilename = generate_network(clusters_per_sample, group_dct, "", networks_folder, "seqdist", anchor_domains, cores)
-            for cutoff in cutoff_list:
-                write_network_matrix(network_matrix, cutoff, networkfilename + "_c" + cutoff + ".network", include_disc_nodes)
+            if len(clusters_per_sample) == 1:
+                print("Warning: Sample size = 1: not generating pairwise networks within sample (seqdist)")
+            else:
+                network_matrix, networkfilename = generate_network(clusters_per_sample, group_dct, "", networks_folder, "seqdist", anchor_domains, cores)
+                for cutoff in cutoff_list:
+                    write_network_matrix(network_matrix, cutoff, networkfilename + "_c" + cutoff + ".network", include_disc_nodes)
                 
 
     if "A" in seqdist_networks:
