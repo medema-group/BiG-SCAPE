@@ -25,8 +25,6 @@ def frange(start, stop, step):
         yield i
         i += step
 
-def remove_values_from_list(the_list, val):
-   return [value for value in the_list if value != val]
 
 def get_anchor_domains(filename):
     """Get the anchor/marker domains from a txt file.
@@ -55,20 +53,6 @@ def get_domain_list(filename):
     domains_string = handle.readline().strip()
     domains = domains_string.split(" ")
     return domains
-
-
-def make_domains_output_name(args):
-    foldername = "domains_" + "_".join(args)
-    foldername = foldername.replace(".", "_")
-    foldername = foldername.replace("/", "_")
-    return foldername.replace(" ", "_") 
- 
-
-def make_network_output_name(args):
-    foldername = "networks_" + "_".join(args)
-    foldername = foldername.replace(".", "_")
-    foldername = foldername.replace("/", "_")
-    return foldername.replace(" ", "_")
 
 
 def get_all_features_of_type(seq_record, types):
@@ -299,7 +283,24 @@ def save_domain_seqs(filtered_matrix, fasta_dict, domains_folder, output_folder,
 #===============================================================================
             
         domain_file.close()
+
+
+def network_parser(network_file):
+    network = {}
+    
+    try:
+        with open(network_file, "r") as handle:
+            next(handle) # ignore first line with column names
+            for line in handle:
+                if line[0] != "#":
+                    strippedline = line.strip().split("\t")
+                    network[strippedline[0], strippedline[1]] = strippedline[2:]
+        handle.close()
+    except IOError:
+        sys.exit("Error: Cannot open file " + network_file)
         
+    return network
+
 
 def fasta_parser(handle):
     """Parses a fasta file, and stores it in a dictionary.
@@ -402,10 +403,15 @@ def distout_parser(distout_file):
 
 
 def write_network_matrix(matrix, cutoff, filename, include_disc_nodes):
-    networkfile = open(filename, 'w+')
+    networkfile = open(filename, 'w')
     clusters = [] # will contain the names of clusters that have an edge value lower than the threshold
-    networkfile.write("clustername1\tclustername2\tgroup1\tdefinition\tgroup2\tdefinition\t-log2score\traw distance\tsquared similarity\tcombined group\tshared group\n")
-    for row in matrix:
+    networkfile.write("clustername1\tclustername2\tgroup1\tdefinition\tgroup2\tdefinition\t-log2score\traw distance\tsquared similarity\tJaccard index\tDDS index\tGK index\tcombined group\tshared group\n")
+        
+    for (gc1, gc2) in matrix.keys():
+        row = [gc1, gc2]
+        for i in matrix[gc1, gc2]:
+            row.append(i)
+
         temprow = []
         #if both clusters have the same group, this group will be annotated in the last column of the network file
         for i in row:
@@ -429,7 +435,7 @@ def write_network_matrix(matrix, cutoff, filename, include_disc_nodes):
             else:
                 temprow.append("")
                 
-            networkfile.write("\t".join(temprow) + "\n")
+            networkfile.write("\t".join(map(str,temprow)) + "\n")
 
             
     if include_disc_nodes == True:  
@@ -449,17 +455,22 @@ def write_network_matrix(matrix, cutoff, filename, include_disc_nodes):
 
 def get_gbk_files(inputdir, samples, min_bgc_size, exclude_gbk_str):
     """Find .gbk files, and store the .gbk files in lists, separated by sample."""
-    genbankfiles=[] #Will contain lists of gbk files
+    genbankfiles = [] #Will contain lists of gbk files
+    sample_name = []
     dirpath_ = ""
     file_counter = 0
     
-    print "Importing the gbk files, while skipping gbk files with '%s'in their filename" % exclude_gbk_str
+    print("Importing the gbk files, while skipping gbk files with '" + exclude_gbk_str + "' in their filename")
     
     #this doesn't seem to make a difference. Confirm
     #if inputdir != "" and inputdir[-1] != "/":
         #inputdir += "/"
-        
+    current_dir = ""
     for dirpath, dirnames, filenames in os.walk(inputdir):
+        head, tail = os.path.split(dirpath)
+        if current_dir != tail:
+            current_dir = tail
+        
         genbankfilelist=[]
         
         #avoid double slashes
@@ -488,10 +499,14 @@ def get_gbk_files(inputdir, samples, min_bgc_size, exclude_gbk_str):
                     print "bgc size in bp", bgc_size
                     
         if genbankfilelist != []:
+            if current_dir not in sample_name:
+                sample_name.append(current_dir)
+            else:
+                sys.exit("Error! Found two sample directories with the same name! This would cause trouble when writing the network files...")
             genbankfiles.append(genbankfilelist)
-
+    
     print("")
-    return genbankfiles
+    return genbankfiles, sample_name
 
 
 def domtable_parser(gbk, dom_file):
@@ -664,6 +679,12 @@ def write_parameters(output_folder, options):
     
     pf.write("Skip hmmscan?:\t" + ("True" if options.skip_hmmscan else "False"))
     if not options.skip_hmmscan:
+        pf.write("\t(default)\n")
+    else:
+        pf.write("\n")
+        
+    pf.write("Skip all?:\t" + ("True" if options.skip_all else "False"))
+    if not options.skip_all:
         pf.write("\t(default)\n")
     else:
         pf.write("\n")
