@@ -519,7 +519,11 @@ def get_gbk_files(inputdir, samples, min_bgc_size, exclude_gbk_str):
                 
                 gbk_header = open( os.path.join(dirpath_,fname) , "r").readline().split(" ")
                 gbk_header = filter(None, gbk_header) #remove the empty items from the list
-                bgc_size = int(gbk_header[gbk_header.index("bp")-1])
+                try:
+                    bgc_size = int(gbk_header[gbk_header.index("bp")-1])
+                except ValueError as e:
+                    print("  " + str(e) + ": " + os.path.join(dirpath_,fname))
+                    sys.exit()
                     
                 file_counter += 1
                 if bgc_size > min_bgc_size: #exclude the bgc if it's too small
