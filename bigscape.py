@@ -449,13 +449,8 @@ def genbank_parser_hmmscan_call(gb_files, outputdir, cores, gbk_group, skip_hmms
             gbk_group[outputbase] = ["no type", definition]
             gb_handle.close()
         
-        try:
-            gb_record = SeqIO.read(open(gb_file, "r"), "genbank")
-        except ValueError as e:
-            print("Error while parsing file " + gb_file)
-            sys.exit(str(e))
-        
-        features = get_all_features_of_type(gb_record, "CDS")
+        # possible errors were catched previously in check_data_integrity
+        features = get_all_features_of_type(gb_file, "CDS")
         
         feature_counter = 0
         for feature in features:
@@ -614,11 +609,14 @@ def main():
         print("Overriding --skip_hmmscan with --skip_all parameter")
     
     
-    gbk_files, sample_name = get_gbk_files(options.inputdir, samples, int(options.min_bgc_size), options.exclude_gbk_str) #files will contain lists of gbk files per sample. Thus a matrix contains lists with gbk files by sample.
+    # Obtain gbk files
+    global gbk_files
+    # gbk_files will contain lists of gbk files per sample. Thus a matrix contains lists with gbk files by sample.
+    gbk_files, sample_name = get_gbk_files(options.inputdir, samples, int(options.min_bgc_size), options.exclude_gbk_str) 
     check_data_integrity(gbk_files)
     
     
-    print("Creating output directories")
+    print("\nCreating output directories")
     try:
         os.mkdir(output_folder)
     except OSError as e:

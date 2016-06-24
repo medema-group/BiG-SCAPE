@@ -13,6 +13,8 @@ import os
 import subprocess
 import sys
 from encodings import gbk
+from Bio import SeqIO
+import copy
 
 global verbose
 verbose = False
@@ -55,8 +57,12 @@ def get_domain_list(filename):
     return domains
 
 
-def get_all_features_of_type(seq_record, types):
+def get_all_features_of_type(gb_file, types):
     "Return all features of the specified types for a seq_record"
+    
+    handle = open(gb_file, "r")
+    seq_record = SeqIO.read(handle, "genbank")    
+    
     if isinstance(types, str):
         # force into a tuple
         types = (types, )
@@ -64,6 +70,8 @@ def get_all_features_of_type(seq_record, types):
     for f in seq_record.features:
         if f.type in types:
             features.append(f)
+    handle.close()
+            
     return features
 
 
@@ -152,16 +160,43 @@ def dct_writeout(handle, dct):
 
 def check_data_integrity(gbk_files):
     """Perform some integrity checks on the input gbk files."""
-    duplication = False
+
+    # check for existance of files
     if gbk_files == []:
         print "No .gbk files were found"
         sys.exit()
     
-    gbk_files = list(iterFlatten(gbk_files))
-    for file in gbk_files:
+    # check for potential errors while reading the gbk files
+    # Structure must remain intact after removing offending files
+    gbk_files_check = copy.deepcopy(gbk_files)
+    samples_for_deletion = []
+    for sample in range(len(gbk_files_check)):
+        for f in gbk_files_check[sample]:
+            handle = open(f, "r")
+            try:
+                SeqIO.read(handle, "genbank")
+            except ValueError as e:
+                print("   Error with file " + f + ": \n   " + str(e))
+                print("    (This file will be excluded from the analysis)")
+                if len(gbk_files[sample]) > 1:
+                    gbk_files[sample].remove(f)
+                else:
+                    # this is a one-element list, mark it for late removal
+                    samples_for_deletion.append(sample)
+                pass
+            handle.close()
+    if len(samples_for_deletion) > 0:
+        for s in sorted(samples_for_deletion, reverse=True):
+            del gbk_files[s]
+            
+    # check for duplication
+    duplication = False
+    del gbk_files_check[:]
+    gbk_files_check = list(iterFlatten(gbk_files))
+    for file in gbk_files_check:
         name = file.split(os.sep)[-1]
         file_occ = 0
-        for cfile in gbk_files:
+        for cfile in gbk_files_check:
             
             cname = cfile.split(os.sep)[-1]
             if name == cname:
