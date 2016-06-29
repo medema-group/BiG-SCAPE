@@ -107,11 +107,17 @@ def generate_dist_matrix(parms):
     B = get_domain_list(cluster_file2)
     
     
+    # this really shouldn't happen if we've filtered the gene cluster list already
     if A == [''] or B == ['']:
-        print "Regarding files", cluster_file1, cluster_file2
-        print "One or both of these clusters contain no pfam domains"
-        sys.exit()
-        return [cluster1,cluster2,'','','','',str(1),str(1),str(1),'','']
+        print("   Warning: Regarding distance between clusters " + cluster1 + " and " + cluster2 + ":")
+        if A == [""] and B == [""]:
+            print("   None have identified domains. Distance cannot be calculated")
+        if A == [""]:            
+            print("   Cluster " + cluster1 + " has no identified domains. Distance cannot be calculated")
+        else:
+            print("   Cluster " + cluster2 + " has no identified domains. Distance cannot be calculated")
+        return [cluster1, cluster2, group_dct[cluster1][0], group_dct[cluster1][1], \
+            group_dct[cluster2][0],group_dct[cluster2][1], '1.0', '1.0', '0.0','1.0','1.0', '1.0']
     
 
     if dist_method == "seqdist":
@@ -128,8 +134,8 @@ def generate_dist_matrix(parms):
         except ValueError:
             print "calculating the logscore with distance", dist, "failed in function generate_network, using distance method", dist_method, networkfilename
             
-    #clustername1 clustername2 group1, group2, -log2score, dist, squared similarity
-    network_row = [str(cluster1), str(cluster2),group_dct[cluster1][0],group_dct[cluster1][1], \
+    #clustername1 clustername2 group1, group2, -log2score, dist, squared similarity, j, dds, gk
+    network_row = [str(cluster1), str(cluster2), group_dct[cluster1][0],group_dct[cluster1][1], \
         group_dct[cluster2][0],group_dct[cluster2][1], str(logscore), str(dist), str((1-dist)**2), \
         jaccard, dds, gk]
     
@@ -680,7 +686,7 @@ def main():
     BGCs = {} #will contain the BGCs
     global group_dct
     group_dct = {}
-    clusters = [] # structure of samples
+    clusters = [] # main structure with samples/gene clusters to be analized later on
     sequences_per_domain = {} # to avoid calling MAFFT if only 1 seq. in a particular domain
     
     #Loop over the samples
@@ -696,13 +702,20 @@ def main():
         clusters_per_sample = []
         for gbk in gbks:
             outputbase = gbk.split(os.sep)[-1].replace(".gbk", "")
-            clusters_per_sample.append(outputbase)
             
-            if not (options.skip_hmmscan or options.skip_all):
+            # try to read the domtable file to find out if this gbk has domains. Needed to parse domains into fastas anyway.
+            pfd_matrix = domtable_parser(outputbase, os.path.join(output_folder, outputbase + ".domtable"))
+            num_domains = len(pfd_matrix) # these might be overlapped, but we only need a minimum number
+            
+            if num_domains > 0:
+                clusters_per_sample.append(outputbase)
+            else:
+                print(" Gene cluster " + outputbase + " has no identified domains. Removing it from further analysis")
+            
+            if num_domains > 0 and not (options.skip_hmmscan or options.skip_all):
                 print(" Processing domtable file: " + outputbase)
                 
                 #pfd_matrix = hmm_table_parser(outputbase+".gbk", output_folder +"/"+ hmm_file)
-                pfd_matrix = domtable_parser(outputbase, os.path.join(output_folder, outputbase + ".domtable"))
                 filtered_matrix, domains = check_overlap(pfd_matrix, options.domain_overlap_cutoff)  #removes overlapping domains, and keeps the highest scoring domain
                 save_domain_seqs(filtered_matrix, fasta_dict, domainsout, output_folder, outputbase) #save the sequences for the found domains per pfam domain
                 
@@ -724,8 +737,10 @@ def main():
                     except KeyError:
                         sequences_per_domain[row[5]] = 1
 
-                
-        clusters.append(clusters_per_sample)
+        # empty samples could arise from gbks with no domains
+        if len(clusters_per_sample) > 0:
+            clusters.append(clusters_per_sample)
+    
     print("")
         
     #Write or retrieve BGC dictionary
@@ -738,7 +753,7 @@ def main():
                 pickle.dump(BGCs, BGC_file)
     
     
-    # Dictioanry with pairwise distance information
+    # Dictionary with pairwise distance information
     network_matrix = {}
     network_matrix_sample = {}
     
