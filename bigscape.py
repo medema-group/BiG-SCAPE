@@ -710,7 +710,7 @@ def main():
             if num_domains > 0:
                 clusters_per_sample.append(outputbase)
             else:
-                print(" Gene cluster " + outputbase + " has no identified domains. Removing it from further analysis")
+                print(" Could not find domains in " + outputbase + ".domtable file. Removing it from further analysis")
             
             if num_domains > 0 and not (options.skip_hmmscan or options.skip_all):
                 print(" Processing domtable file: " + outputbase)
