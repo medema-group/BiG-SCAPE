@@ -441,7 +441,7 @@ def write_network_matrix(matrix, cutoff, filename, include_disc_nodes):
     networkfile = open(filename, 'w')
     clusters = [] # will contain the names of clusters that have an edge value lower than the threshold
     networkfile.write("clustername1\tclustername2\tgroup1\tdefinition\tgroup2\tdefinition\t-log2score\traw distance\tsquared similarity\tJaccard index\tDDS index\tGK index\tcombined group\tshared group\n")
-        
+    
     for (gc1, gc2) in matrix.keys():
         row = [gc1, gc2]
         for i in matrix[gc1, gc2]:
@@ -455,7 +455,7 @@ def write_network_matrix(matrix, cutoff, filename, include_disc_nodes):
         if float(temprow[7]) <= float(cutoff):
             clusters.append(row[0])
             clusters.append(row[1])
-
+            
             if row[2] != "" and row[4] != "": #group1, group2
                 temprow.append(" - ".join(sorted([str(row[2]),str(row[4])])))
             elif row[4] != "":
@@ -472,18 +472,21 @@ def write_network_matrix(matrix, cutoff, filename, include_disc_nodes):
                 
             networkfile.write("\t".join(map(str,temprow)) + "\n")
 
-            
+    # matrix[gc1, gc2] =
+    # row:   0      1    2    3       4       5      6      7    8   9   [   10      11   <- these two are written directly
+    #       grp1  def1 grp2  def2  -logScr  rawD  sqrtSim  Jac  DDS  GK  [combGrp  ShrdGrp
     if include_disc_nodes == True:  
         #Add the nodes without any edges, give them an edge to themselves with a distance of 0 
         clusters = set(clusters)
         passed_clusters = []
-        for row in matrix:
-            if row[0] not in clusters and row[0] not in passed_clusters:
-                networkfile.write("\t".join([row[0],row[0],row[2],row[3],'','',str(0),str(0),str(0),'','']) + "\n")
-                passed_clusters.append(row[0])
-            elif row[1] not in clusters and row[1] not in passed_clusters:
-                networkfile.write("\t".join([row[1],row[1],row[4],row[5],'','',str(0),str(0),str(0),'','']) + "\n")
-                passed_clusters.append(row[1])
+        for (gc1, gc2) in matrix.keys():
+            if gc1 not in clusters and gc1 not in passed_clusters:
+                networkfile.write("\t".join([gc1, gc1, matrix[gc1, gc2][0], matrix[gc1, gc2][1], "0", "0", "1", "0", "0", "0", "", ""]) + "\n")
+                passed_clusters.append(gc1)
+            
+            if gc2 not in clusters and gc2 not in passed_clusters:
+                networkfile.write("\t".join([gc2, gc2, matrix[gc1, gc2][2], matrix[gc1, gc2][3], "0", "0", "1", "0", "0", "0", "", ""]) + "\n")
+                passed_clusters.append(gc2)
             
     networkfile.close()
                     
@@ -639,7 +642,7 @@ def write_parameters(output_folder, options):
     pf = open(os.path.join(output_folder,"parameters.txt"), "w")
     
     pf.write("Input directory:\t" + options.inputdir + "\n")
-    pf.write("Cores:\t" + options.cores + "\n")
+    pf.write("Cores:\t" + str(options.cores) + "\n")
     
     pf.write("Verbose:\t" + ("True" if options.verbose else "False"))
     if not options.verbose:
