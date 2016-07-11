@@ -20,7 +20,6 @@ Todo:
 Calculate and report on some general properties of the generated networks
 """
 
-
 from functions import *
 import fileinput, pickle, sys, math
 from munkres import Munkres
@@ -424,8 +423,6 @@ def genbank_parser_hmmscan_call(gb_files, outputdir, cores, gbk_group, skip_hmms
         
         outputbase = gb_file.split(os.sep)[-1].replace(".gbk", "")
         outputfile = os.path.join(outputdir, outputbase + ".fasta")
-        multifasta = open(outputfile, "w")
-        #print(outputfile)
         gb_handle = open(gb_file, "r")
         
         #Parse the gbk file for the gbk_group dictionary
@@ -455,44 +452,48 @@ def genbank_parser_hmmscan_call(gb_files, outputdir, cores, gbk_group, skip_hmms
             gbk_group[outputbase] = ["no type", definition]
             gb_handle.close()
         
-        # possible errors were catched previously in check_data_integrity
-        features = get_all_features_of_type(gb_file, "CDS")
-        
-        feature_counter = 0
-        for feature in features:
-            feature_counter += 1
-            
-            start = feature.location.start
-            end = feature.location.end
-            
-            gene_id = ""
-            protein_id = ""
-            try:
-                gene_id =  feature.qualifiers['gene']
-            except KeyError:
-                pass
-            
-            try:
-                protein_id =  feature.qualifiers['protein_id']
-            except KeyError:
-                pass
-
-            fasta_header = outputbase + "_ORF" + str(feature_counter)+ ":gid:" + str(gene_id) + ":pid:" + str(protein_id) + ":loc:" + str(start) + ":" + str(end)
-            fasta_header = fasta_header.replace(">","") #the coordinates might contain larger than signs, tools upstream don't like this
-
-            fasta_header = ">"+(fasta_header.replace(" ", "")) #the domtable output format (hmmscan) uses spaces as a delimiter, so these cannot be present in the fasta header
-                
-            sequence = str(feature.qualifiers['translation'][0]) #in the case of the translation there should be one and only one entry (entry zero)
-            if sequence != "":
-                fasta_dict[fasta_header] = sequence
-                sample_dict[fasta_header] = sequence #this should be used for hmmscan
-                
-
-            
-        dct_writeout(multifasta, sample_dict) #save the coding sequences in a fasta format
-        multifasta.close()
-        
+        # write fasta sequence of features and predict domains
         if not skip_hmmscan:
+            multifasta = open(outputfile, "w")
+            
+            # possible errors were catched previously in check_data_integrity
+            features = get_all_features_of_type(gb_file, "CDS")
+            
+            feature_counter = 0
+            for feature in features:
+                feature_counter += 1
+                
+                start = feature.location.start
+                end = feature.location.end
+                
+                gene_id = ""
+                protein_id = ""
+                try:
+                    gene_id =  feature.qualifiers['gene']
+                except KeyError:
+                    pass
+                
+                try:
+                    protein_id =  feature.qualifiers['protein_id']
+                except KeyError:
+                    pass
+
+                fasta_header = outputbase + "_ORF" + str(feature_counter)+ ":gid:" + str(gene_id) + ":pid:" + str(protein_id) + ":loc:" + str(start) + ":" + str(end)
+                fasta_header = fasta_header.replace(">","") #the coordinates might contain larger than signs, tools upstream don't like this
+
+                fasta_header = ">"+(fasta_header.replace(" ", "")) #the domtable output format (hmmscan) uses spaces as a delimiter, so these cannot be present in the fasta header
+                    
+                sequence = str(feature.qualifiers['translation'][0]) #in the case of the translation there should be one and only one entry (entry zero)
+                if sequence != "":
+                    fasta_dict[fasta_header] = sequence
+                    sample_dict[fasta_header] = sequence #this should be used for hmmscan
+                    
+
+                
+            dct_writeout(multifasta, sample_dict) #save the coding sequences in a fasta format
+            multifasta.close()
+        
+        
             hmmscan(outputfile, outputdir, outputbase, cores) #Run hmmscan
         
     return gbk_group, fasta_dict
@@ -554,6 +555,8 @@ def CMD_parser():
     
     parser.add_option("--skip_hmmscan", dest="skip_hmmscan", action="store_true", default=False,
                       help="When skipping hmmscan, the GBK files should be available, and the domain tables need to be in the output folder.")
+    parser.add_option("--skip_mafft", dest="skip_mafft", action="store_true", default=False, 
+                      help="Skip domain prediction by hmmscan as well as domains' sequence's alignments with MAFFT. Needs the original GenBank files, the list of domains per BGC (.pfs) and the BGCs.dict and DMS.dict files.")
     parser.add_option("--skip_all", dest="skip_all", action="store_true",
                       default = False, help = "Only generate new network files. ")
     parser.add_option("--sim_cutoffs", dest="sim_cutoffs", default="1,0.85,0.75,0.6,0.4,0.2",
@@ -596,6 +599,7 @@ def main():
     cutoff_list = options.sim_cutoffs.split(",")
     if "1" not in cutoff_list:
         cutoff_list.append("1") # compulsory for re-runs
+        print("Adding cutoff=1.0 case by default")
     output_folder = str(options.outputdir)
     verbose = options.verbose
     args = sys.argv[1:]
@@ -611,8 +615,9 @@ def main():
     # variable "samples" takes care of structure of files in get_gbk_files
     samples = True if "S" in seqdist_networks or "S" in domaindist_networks else False
     
-    if options.skip_hmmscan and options.skip_all:
-        print("Overriding --skip_hmmscan with --skip_all parameter")
+    if options.skip_all:
+        if options.skip_hmmscan or options.skip_mafft:
+            print("Overriding --skip_hmmscan/--skip_mafft with --skip_all parameter")
     
     
     # Obtain gbk files
@@ -690,14 +695,16 @@ def main():
     sequences_per_domain = {} # to avoid calling MAFFT if only 1 seq. in a particular domain
     
     #Loop over the samples
-    if options.skip_hmmscan or options.skip_all:
+    if options.skip_hmmscan or options.skip_mafft or options.skip_all:
         print("Skipping processing of hmmscan output files")
     else:
         print("Running hmmscan and parsing the hmmscan output files...")
     
     for gbks in gbk_files:        
-        # the "group" dictionary must always be obtained, so this call has to stay despite --skip_hmmscan
-        group_dct, fasta_dict = genbank_parser_hmmscan_call(gbks, output_folder, cores, group_dct, (options.skip_hmmscan or options.skip_all) ) #runs hammscan and returns the CDS in the cluster
+        # the "group" dictionary must always be obtained as it's used when 
+        # writing the network file, so this call has to stay despite 
+        # --skip_hmmscan, --skip_mafft or --skip_all
+        group_dct, fasta_dict = genbank_parser_hmmscan_call(gbks, output_folder, cores, group_dct, (options.skip_hmmscan or options.skip_mafft or options.skip_all) ) #runs hammscan and returns the CDS in the cluster
      
         clusters_per_sample = []
         for gbk in gbks:
@@ -705,14 +712,14 @@ def main():
             
             # try to read the domtable file to find out if this gbk has domains. Needed to parse domains into fastas anyway.
             pfd_matrix = domtable_parser(outputbase, os.path.join(output_folder, outputbase + ".domtable"))
-            num_domains = len(pfd_matrix) # these might be overlapped, but we only need a minimum number
+            num_domains = len(pfd_matrix) # these might still be overlapped, but we only need a minimum number
             
             if num_domains > 0:
                 clusters_per_sample.append(outputbase)
             else:
                 print(" Could not find domains in " + outputbase + ".domtable file. Removing it from further analysis")
             
-            if num_domains > 0 and not (options.skip_hmmscan or options.skip_all):
+            if num_domains > 0 and not (options.skip_hmmscan or options.skip_mafft or options.skip_all):
                 print(" Processing domtable file: " + outputbase)
                 
                 #pfd_matrix = hmm_table_parser(outputbase+".gbk", output_folder +"/"+ hmm_file)
@@ -730,14 +737,16 @@ def main():
                 write_pfd(pfd_handle, filtered_matrix)
             
                 BGCs[outputbase] = BGC_dic_gen(filtered_matrix)
-            
+                
+                # keep track of number of sequences per domain. If only 1 
+                #  sequence, skip MAFFT call for this particular domain.
                 for row in filtered_matrix:
                     try:
                         sequences_per_domain[row[5]] += 1
                     except KeyError:
                         sequences_per_domain[row[5]] = 1
 
-        # empty samples could arise from gbks with no domains
+        # empty entire samples could arise from individual gbks with no domains
         if len(clusters_per_sample) > 0:
             clusters.append(clusters_per_sample)
     
@@ -745,7 +754,7 @@ def main():
         
     #Write or retrieve BGC dictionary
     if not options.skip_all:
-        if options.skip_hmmscan:
+        if options.skip_hmmscan or options.skip_mafft:
             with open(os.path.join(output_folder, "BGCs.dict"), "r") as BGC_file:
                 BGCs = pickle.load(BGC_file)
         else:
@@ -760,7 +769,7 @@ def main():
     # Distance without taking sequence similarity between specific domains into account
     if "S" in domaindist_networks or "A" in domaindist_networks:
         if options.skip_all: #read already calculated distances
-            network_matrix = network_parser(os.path.join(output_folder, networks_folder, "networkfile_domain_dist_all_vs_all_c1.network"))
+            network_matrix = network_parser(os.path.join(output_folder, networks_folder, "networkfile_domain_dist_all_vs_all_c1.network"), Jaccardw, DDSw, GKw)
         
         # If user wants all-vs-all, no need to recalculate anything for sample networks, so, this goes first
         if "A" in domaindist_networks:
@@ -769,6 +778,7 @@ def main():
                 print(" Calculating all pairwise distances")
                 network_matrix = generate_network(list(iterFlatten(clusters)), group_dct, networks_folder, "domain_dist", anchor_domains, cores)   
             
+            # write network files
             for cutoff in cutoff_list:
                 write_network_matrix(network_matrix, cutoff, os.path.join(output_folder, networks_folder, "networkfile_domain_dist_all_vs_all_c" + cutoff + ".network"), include_disc_nodes)
     
@@ -788,7 +798,7 @@ def main():
                             print(sn)
                             print(sample_name)
                             sys.exit()
-                    else:              
+                    else:
                         network_matrix_sample.clear()
                         if "A" in domaindist_networks or options.skip_all:
                             # we should have the distances already calculated either from the all-vs-all case or retrieved from the file
@@ -800,6 +810,7 @@ def main():
                             print("  Calculating distances for this sample")
                             network_matrix_sample = generate_network(clusters_per_sample, group_dct, networks_folder, "domain_dist", anchor_domains, cores)
                     
+                        # write network files
                         for cutoff in cutoff_list:
                             write_network_matrix(network_matrix_sample, cutoff, os.path.join(output_folder, networks_folder, "networkfile_domain_dist_" + sample_name[sn] + "_c" + cutoff + ".network"), include_disc_nodes)
                     sn += 1
@@ -809,8 +820,15 @@ def main():
     if "A" in seqdist_networks or "S" in seqdist_networks:
         print("")
         if options.skip_all:
-            network_matrix = network_parser(os.path.join(output_folder, networks_folder, "networkfile_seqdist_all_vs_all_c1.network"))
-        else:  
+            network_matrix = network_parser(os.path.join(output_folder, networks_folder, "networkfile_seqdist_all_vs_all_c1.network"), Jaccardw, DDSw, GKw)
+            
+        elif options.skip_mafft:
+            DMS = {}
+            print("Trying to read domain alignments (DMS.dict file)")
+            with open(os.path.join(output_folder, "DMS.dict"), "r") as DMS_file:
+                DMS = pickle.load(DMS_file)
+                
+        else:
             DMS = {}
                 
             if options.skip_hmmscan: # in this case we didn't have a chance to fill sequences_per_domain
@@ -848,7 +866,7 @@ def main():
                 # avoid calling MAFFT if it's not possible to align (only one sequence)
                 if sequences_per_domain[domain_name] == 1:
                     if verbose:
-                        print(" Skipping MAFFT for domain " + domain_name + "(only one sequence)")
+                        print(" Skipping MAFFT for domain " + domain_name + " (only one sequence)")
                 else:                
                     if verbose:
                         print(" Running MAFFT for domain: " + domain_name)
