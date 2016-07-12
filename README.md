@@ -39,8 +39,8 @@ There are some options to re-run BiG-SCAPE and skip some of the most time-consum
 * Writes list of sequences per domain (.fasta)
 * Writes list of domains per BGC (.pfs)
 * Writes selected information from domtable files per BGC (.pfd)
-* Saves dictionary with list of specific domains per BGC (<output dir>/BGCs.dict)
-* When using the `seqdist` distance method, calculates multiple alignments using MAFFT (.algn) for domains represented by more than one sequence. Saves alignment information in <output dir>/DMS.dict
+* Saves dictionary with list of specific domains per BGC (`<output dir>/BGCs.dict`)
+* When using the `seqdist` distance method, calculates multiple alignments using MAFFT (.algn) for domains represented by more than one sequence. Saves alignment information in `<output dir>/DMS.dict`
 * Calculates distance between BGCs
 * Generates network files
 
@@ -55,7 +55,7 @@ There are some options to re-run BiG-SCAPE and skip some of the most time-consum
 
 ### What it does
 Skips domain prediction using `hmmscan` and extraction of information, but recalculates everything else:
-* When using the `seqdist` distance method, calculates multiple alignments using MAFFT (.algn) for domains represented by more than one sequence. Saves alignment information in <output dir>/DMS.dict
+* When using the `seqdist` distance method, calculates multiple alignments using MAFFT (.algn) for domains represented by more than one sequence. Saves alignment information in `<output dir>/DMS.dict`
 * Calculates distance between BGCs
 * Generates network files
 
@@ -68,8 +68,8 @@ Skips domain prediction using `hmmscan` and extraction of information, but recal
 * The original .gbk files. These are necessary to rebuild the original structure
 * The list of domains per BGC (.pfs files). These are necessary for distance calculations
 * The output from `hmmscan` (.domtable files). These are necesary to see whether a particular .gbk file had no predicted domains (in which case it will be taken out of the analysis)
-* If using the `seqdist` method, the fasta sequence files per domain (<output dir>/domains/). These are necessary for the alignments
-* The BGCs dictionary (<output dir>/BGCs.dict). This contains a list of domains per BGC (and for each of these domains, a list of all predicted locations within the BGC). Needed for distance calculations
+* If using the `seqdist` method, the fasta sequence files per domain (`<output dir>/domains/`). These are necessary for the alignments
+* The BGCs dictionary (`<output dir>/BGCs.dict`). This contains a list of domains per BGC (and for each of these domains, a list of all predicted locations within the BGC). Needed for distance calculations
 
 ## Parameter `--skip_mafft`
 
@@ -90,8 +90,8 @@ Skips domain prediction usnig `hmmscan`, extraction of sequences and domain sequ
 * The original .gbk files. These are necessary to rebuild the original structure
 * The list of domains per BGC (.pfs files). These are necessary for distance calculations
 * The output from `hmmscan` (.domtable files). These are necesary to see whether a particular .gbk file had no predicted domains (in which case will be taken out of the analysis
-* The BGCs dictionary (<output dir>/BGCs.dict). This contains a list of domains per BGC (and for each of these domains, a list of all predicted locations within the BGC). Needed for distance calculations
-* The DMS dictionary (<output dir>/DMS.dict). This contains information from the sequence alignment
+* The BGCs dictionary (`<output dir>/BGCs.dict`). This contains a list of domains per BGC (and for each of these domains, a list of all predicted locations within the BGC). Needed for distance calculations
+* The DMS dictionary (`<output dir>/DMS.dict`). This contains information from the sequence alignment
 
 ## Parameter `--skip_all`
 
