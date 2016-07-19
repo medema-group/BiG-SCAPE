@@ -237,14 +237,15 @@ def cluster_distance(A, B, A_domlist, B_domlist, anchor_domains):
                 errorhandle.close()
             
             if shared_domain.split(".")[0] in anchor_domains: 
-                Sa += max(len(seta),len(setb))
+                Sa += 1
                 dom_diff_anch += seq_dist 
             else:
-                S += max(len(seta),len(setb))
+                S += 1
                 dom_diff += seq_dist
         else:                   #The domain occurs more than once in both clusters
             accumulated_distance = 0
             
+            # Fill distance matrix between domain's A and B versions
             DistanceMatrix = [[1 for col in range(len(setb))] for row in range(len(seta))]
             for domsa in range(len(seta)):
                 for domsb in range(len(setb)):
@@ -346,8 +347,8 @@ def calculate_GK(A, B, nbhood):
     the similarity of the orderings of the data when ranked by each of the quantities."""
     GK = 0.
     if len(set(A) & set(B)) > 1:
-        pairsA = set( [(A[i],A[j]) for i in xrange(len(A)-nbhood) for j in xrange(i+1,i+nbhood)] )
-        pairsB = set( [(B[i],B[j]) for i in xrange(len(B)-nbhood) for j in xrange(i+1,i+nbhood)] )
+        pairsA = set( [(A[i],A[j]) for i in xrange(len(A)-1) for j in xrange(i+1,(i+nbhood if i+nbhood < len(A) else len(A)))] )
+        pairsB = set( [(B[i],B[j]) for i in xrange(len(B)-1) for j in xrange(i+1,(i+nbhood if i+nbhood < len(B) else len(B)))] )
         allPairs = set(list(pairsA) + list(pairsB))
         Ns, Nr = 0.,0.
         for p in allPairs:
@@ -355,10 +356,11 @@ def calculate_GK(A, B, nbhood):
             elif p in pairsA and tuple(p[::-1]) in pairsB: Nr += 1
             elif tuple(p[::-1]) in pairsA and p in pairsB: Nr += 1
             else: pass
-        if (Nr + Ns) == 0:
+        
+        if (Nr + Ns) == 0: # this could happen if e.g. only two domains are shared but are farther than nbhood
             gamma = 0
         else:
-            gamma = abs(Nr-Ns) / (Nr+Ns)
+            gamma = (Ns-Nr) / (Nr+Ns)
         GK = (1+gamma)/2.
     return GK
 

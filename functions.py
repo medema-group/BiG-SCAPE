@@ -62,7 +62,7 @@ def get_all_features_of_type(gb_file, types):
     "Return all features of the specified types for a seq_record"
     
     handle = open(gb_file, "r")
-    seq_record = SeqIO.read(handle, "genbank")    
+    seq_record = SeqIO.read(handle, "genbank")
     
     if isinstance(types, str):
         # force into a tuple
@@ -126,11 +126,20 @@ def check_overlap(pfd_matrix, overlap_cutoff):
             pfd_matrix.remove(lst)
         except ValueError:
             pass
-    try:    
-        pfd_matrix = sorted(pfd_matrix, key=lambda pfd_matrix_entry: int(pfd_matrix_entry[3]))
-    except ValueError:
-        print "Something went wrong during the sorting of the fourth column (ValueError)"
-        print pfd_matrix
+        
+    # for some reason, some coordinates in genbank files have ambiguous 
+    # starting/ending positions for the CDS. In this case we need the 
+    # absolute start position of each domain so the loci start coordinate
+    # needs to be checked
+    for row in pfd_matrix:
+        if row[7][0] == "<" or row[7][0] == ">":
+            row[7] = row[7][1:]
+    try:
+        # sorted by absolute position: env coordinate start + gene locus start
+        pfd_matrix = sorted(pfd_matrix, key=lambda pfd_matrix_entry: (int(pfd_matrix_entry[3]) + int(pfd_matrix_entry[7])))
+    except ValueError as e:
+        print("Something went wrong during the sorting of the fourth column (ValueError): " + str(e))
+        print(pfd_matrix)
         
     domains = []
     for row in pfd_matrix:
