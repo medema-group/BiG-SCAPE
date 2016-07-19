@@ -213,11 +213,11 @@ def check_data_integrity(gbk_files):
             sys.exit()
             
 
-def hmmscan(fastafile, outputdir, name, cores):
+def hmmscan(pfam_dir, fastafile, outputdir, name, cores):
     """Runs hmmscan"""
     #removed --noali par
 
-    hmmscan_cmd = "hmmscan --cpu " + str(cores) + " --domtblout " + os.path.join(outputdir, name+".domtable") + " --cut_tc Pfam-A.hmm " + str(fastafile)
+    hmmscan_cmd = "hmmscan --cpu " + str(cores) + " --domtblout " + os.path.join(outputdir, name+".domtable") + " --cut_tc " + os.path.join(pfam_dir,"Pfam-A.hmm") + " " + str(fastafile)
     if verbose == True:
         print("\t"+hmmscan_cmd)
     
@@ -728,8 +728,14 @@ def write_parameters(output_folder, options):
     else:
         pf.write("\n")
 
-    pf.write("Output folder for domain fasta files:\t" + options.domainsout)
-    if options.domainsout == "domains":
+    #pf.write("Output folder for domain fasta files:\t" + options.domainsout)
+    #if options.domainsout == "domains":
+        #pf.write("\t(default)\n")
+    #else:
+        #pf.write("\n")
+        
+    pf.write("Location of Pfam files:\t" + options.pfam_dir)
+    if options.pfam_dir == os.path.dirname(os.path.realpath(__file__)):
         pf.write("\t(default)\n")
     else:
         pf.write("\n")

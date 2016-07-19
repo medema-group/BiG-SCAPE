@@ -494,7 +494,7 @@ def genbank_parser_hmmscan_call(gb_files, outputdir, cores, gbk_group, skip_hmms
             multifasta.close()
         
         
-            hmmscan(outputfile, outputdir, outputbase, cores) #Run hmmscan
+            hmmscan(pfam_dir, outputfile, outputdir, outputbase, cores) #Run hmmscan
         
     return gbk_group, fasta_dict
             
@@ -534,8 +534,11 @@ def CMD_parser():
     parser.add_option("-a", "--anchorw", dest="anchorweight", default=0.1,
                       help="Weight of the anchor domains in the DDS distance metric. Default is set to 0.1.")
     
-    parser.add_option("--domainsout", dest="domainsout", default="domains",
-                      help="outputfolder of the pfam domain fasta files")
+    #parser.add_option("--domainsout", dest="domainsout", default="domains",
+                      #help="outputfolder of the pfam domain fasta files")
+    parser.add_option("--pfam_dir", dest="pfam_dir",
+                      default=os.path.dirname(os.path.realpath(__file__)), 
+                      help="Location of hmmpress-processed Pfam files. Default is same location of BiG-SCAPE")
     parser.add_option("--anchorfile", dest="anchorfile", default="anchor_domains.txt",
                       help="Provide a custom name for the anchor domains file, default is anchor_domains.txt.")
     parser.add_option("--exclude_gbk_str", dest="exclude_gbk_str", default="final",
@@ -582,6 +585,7 @@ def main():
     global BGCs
     global DMS
     global output_folder
+    global pfam_dir
     global timings_file
     global Jaccardw
     global DDSw
@@ -601,6 +605,7 @@ def main():
         cutoff_list.append("1") # compulsory for re-runs
         print("Adding cutoff=1.0 case by default")
     output_folder = str(options.outputdir)
+    pfam_dir = str(options.pfam_dir)
     verbose = options.verbose
     args = sys.argv[1:]
     if "-o" in args:
@@ -618,6 +623,8 @@ def main():
     if options.skip_all:
         if options.skip_hmmscan or options.skip_mafft:
             print("Overriding --skip_hmmscan/--skip_mafft with --skip_all parameter")
+            options.skip_hmmscan = False
+            options.skip_mafft = False
     
     
     # Obtain gbk files
