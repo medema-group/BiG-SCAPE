@@ -46,7 +46,8 @@ There are some options to re-run BiG-SCAPE and skip some of the most time-consum
 
 ### When to use it
 * First time
-* When changing fundamental parameters like `domain_overlap_cutoff` of `min_bgc_size`
+* When changing fundamental parameters like `domain_overlap_cutoff` or `min_bgc_size`
+* When you are changing versions of the pfam database
 
 ### What you need
 * A list of GenBank files (.gbk). If either the `seqdist` or `domain_dist` methods are selected with the "S" option, BiG-SCAPE will treat subfolders within your input directory as "samples". The name of each sample is taken from each subfolder with .gbk files, so repeating subfolder names is not allowed
