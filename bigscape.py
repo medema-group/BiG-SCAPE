@@ -154,14 +154,29 @@ def generate_network(bgc_list, group_dct, networks_folder, dist_method, anchor_d
                 cluster_pairs.append([bgc_list[i], bgc_list[j], dist_method, anchor_domains])
             else:
                 cluster_pairs.append([bgc_list[j], bgc_list[i], dist_method, anchor_domains])
-            
-    #maxtasksperchild is the number of tasks a worker process can complete before it will exit and be replaced with a fresh worker process, to
-    #enable unused resources to be freed. The default maxtasksperchild is None, which means worker processes will live as long as the pool.
     
-    pool = multiprocessing.Pool(cores, maxtasksperchild=500) #create the appropriate amount of pool instances, with a limited amount of tasks per child process
-    network_matrix = pool.map(generate_dist_matrix, cluster_pairs)  #Assigns the data to the different workers and pools the results
-                                                                    #back into the network_matrix variable   
+    # --- Use multiprocessing to distribute distance calculation ---
+    #maxtasksperchild is the number of tasks a worker process can complete 
+    # before it will exit and be replaced with a fresh worker process, to
+    # enable unused resources to be freed. The default maxtasksperchild is 
+    # None, which means worker processes will live as long as the pool.
+    
+    #create the appropriate amount of pool instances, with a limited amount of
+    # tasks per child process
+    pool = multiprocessing.Pool(cores, maxtasksperchild=500)
+    
+    #Assigns the data to the different workers and pools the results back into
+    # the network_matrix variable
+    network_matrix = pool.map(generate_dist_matrix, cluster_pairs)
 
+    
+    # --- Serialized version of distance calculation ---
+    # For the time being, use this if you have memory issues
+    #network_matrix = []
+    #for pair in cluster_pairs:
+        #network_matrix.append(generate_dist_matrix(pair))
+
+    # use a dictionary to store results
     network_matrix_dict = {}
     for row in network_matrix:
         network_matrix_dict[row[0], row[1]] = row[2:]
@@ -641,7 +656,7 @@ def main():
         os.mkdir(output_folder)
     except OSError as e:
         if "Errno 17" in str(e) or "Error 183" in str(e):
-            if not (options.skip_hmmscan or options.skip_all):
+            if not (options.skip_hmmscan or options.skip_all or options.skip_mafft):
                 print(" Warning: Output directory already exists!")
             else:
                 print(" Using existing output directory.")
@@ -666,7 +681,7 @@ def main():
         # 17 (Linux): "[Errno 17] File exists";
         # 183 (Windows) "[Error 183] Cannot create a file when that file already exists"
         if "Errno 17" in str(e) or "Error 183" in str(e):
-            if not (options.skip_all or options.skip_hmmscan):
+            if not (options.skip_all or options.skip_hmmscan or options.skip_mafft):
                 print(" Emptying domains directory first")
                 for thing in os.listdir(os.path.join(output_folder, domainsout)):
                     os.remove(os.path.join(output_folder, domainsout, thing))
