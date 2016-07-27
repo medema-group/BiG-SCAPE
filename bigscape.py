@@ -903,12 +903,14 @@ def main():
                         fasta_handle.close()
                     
                         spec_domains_dict = {}
-                        for spec_domain in fasta_dict.keys():
-                            for spec_domain_nest in fasta_dict.keys():
-                                if spec_domain != spec_domain_nest:
-                                    #tuple(sorted([seta[0],setb[0]]))
-                                    sim, length = calc_perc_identity(fasta_dict[spec_domain], fasta_dict[spec_domain_nest], spec_domain, spec_domain_nest, domain)
-                                    spec_domains_dict[tuple(sorted([spec_domain.replace(">",""), spec_domain_nest.replace(">","")]))] = (sim, length)
+                        keys = fasta_dict.keys()
+                        for i in range(len(fasta_dict)-1):
+                            for j in range(i+1, len(fasta_dict)):
+                                spec_domain = keys[i]
+                                spec_domain_nest = keys[j]
+
+                                sim, length = calc_perc_identity(fasta_dict[spec_domain], fasta_dict[spec_domain_nest], spec_domain, spec_domain_nest, domain)
+                                spec_domains_dict[tuple(sorted([spec_domain.replace(">",""), spec_domain_nest.replace(">","")]))] = (sim, length)
                                 
                         DMS[domain.split(os.sep)[-1]] = spec_domains_dict
                         
