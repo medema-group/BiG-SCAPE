@@ -278,19 +278,20 @@ def overlap(locA1, locA2, locB1, locB2):
   
 def calc_perc_identity(seq1, seq2, spec_domain, spec_domain_nest, domain):
     """Percent Identity = Matches/Length of aligned region (with gaps) (sequence similarity!)
-    Note that only internal gaps are included in the length, not gaps at the sequence ends."""
+    Positions where both characters are gaps (dashes) are not counted in the Length"""
 
-    al_len = min([len(seq1.strip("-")), len(seq2.strip("-"))])
+    length = 0
     matches = 0
+    
     for pos in range(len(seq1)): #Sequences should have the same length because they come from an MSA
-        try:
-            if seq1[pos] == seq2[pos] and seq1[pos] != "-":  #don't count two gap signs as a match!
+        if seq1[pos] == seq2[pos]:
+            if seq1[pos] != "-":
                 matches += 1
-        except IndexError:
-            print "Something went wrong, most likely your alignment file contains duplicate sequences"
-            print "file: ", domain, "domains: ", spec_domain, spec_domain_nest
+                length += 1
+        else:
+            length += 1
 
-    return float(matches) / float(al_len), al_len    
+    return float(matches) / float(length), length    
 
 
 def BGC_dic_gen(filtered_matrix):
