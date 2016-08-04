@@ -494,8 +494,10 @@ def genbank_parser_hmmscan_call(gb_files, outputdir, cores, gbk_group, skip_hmms
                     protein_id =  feature.qualifiers['protein_id']
                 except KeyError:
                     pass
+                
+                strand = "+" if feature.strand == 1 else "-"
 
-                fasta_header = outputbase + "_ORF" + str(feature_counter)+ ":gid:" + str(gene_id) + ":pid:" + str(protein_id) + ":loc:" + str(start) + ":" + str(end)
+                fasta_header = outputbase + "_ORF" + str(feature_counter)+ ":gid:" + str(gene_id) + ":pid:" + str(protein_id) + ":loc:" + str(start) + ":" + str(end) + ":strand:" + strand
                 fasta_header = fasta_header.replace(">","") #the coordinates might contain larger than signs, tools upstream don't like this
 
                 fasta_header = ">"+(fasta_header.replace(" ", "")) #the domtable output format (hmmscan) uses spaces as a delimiter, so these cannot be present in the fasta header
@@ -781,9 +783,11 @@ def main():
         if options.skip_hmmscan or options.skip_mafft:
             with open(os.path.join(output_folder, "BGCs.dict"), "r") as BGC_file:
                 BGCs = pickle.load(BGC_file)
+                BGC_file.close()
         else:
             with open(os.path.join(output_folder, "BGCs.dict"), "w") as BGC_file:
                 pickle.dump(BGCs, BGC_file)
+                BGC_file.close()
     
     
     # Dictionary with pairwise distance information
@@ -851,6 +855,7 @@ def main():
             print("Trying to read domain alignments (DMS.dict file)")
             with open(os.path.join(output_folder, "DMS.dict"), "r") as DMS_file:
                 DMS = pickle.load(DMS_file)
+                DMS_file.close()
                 
         else:
             DMS = {}
@@ -922,6 +927,7 @@ def main():
             # though we don't really get to load this file by the time being
             with open(os.path.join(output_folder, "DMS.dict"), "w") as DMS_file:
                 pickle.dump(DMS, DMS_file)
+                DMS_file.close()
             print("")
             
             
