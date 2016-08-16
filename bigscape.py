@@ -195,69 +195,66 @@ def cluster_distance(A, B, A_domlist, B_domlist, anchor_domains):
     clusterA = BGCs[A] #will contain a dictionary where keys are pfam domains, and values are domains that map to a specific sequence in the DMS variable
     clusterB = BGCs[B]
     
-    #calculates the intersect
-    Jaccard = len(set(clusterA.keys()) & set(clusterB.keys())) / \
-          float( len(set(clusterA.keys())) + len(set(clusterB.keys())) \
-          - len(set(clusterA.keys()) & set(clusterB.keys())))
-          
-         
-    intersect = set(clusterA.keys() ).intersection(clusterB.keys()) #shared pfam domains
-    not_intersect = []
+    intersect = set(A_domlist).intersection(B_domlist)
+    not_intersect = set(A_domlist).symmetric_difference(set(B_domlist))
     
-    #dom_diff: Difference in sequence per domain. If one cluster doesn't have a domain at all, but the other does, 
+    
+    # JACCARD INDEX
+    Jaccard = len(intersect)/ float( len(set(A_domlist)) + len(set(B_domlist)) - len(intersect))
+
+
+    # DDS INDEX
+    #domain_difference: Difference in sequence per domain. If one cluster doesn't have a domain at all, but the other does, 
     #this is a sequence difference of 1. If both clusters contain the domain once, and the sequence is the same, there is a seq diff of 0.
     #S: Max occurence of each domain
-    dom_diff_anch,Sa = 0,0 
-    dom_diff,S = 0,0 
+    domain_difference_anchor,S_anchor = 0,0 
+    domain_difference,S = 0,0 
     pair = "" #pair of clusters to access their sequence identity
-
-
-    #start calculating the DDS
-    for domain in set(clusterA.keys() + clusterB.keys()):
-        if domain not in intersect:
-            not_intersect.append(domain)
-            
-    for unshared_domain in not_intersect: #no need to look at seq identity or anchors, since these domains are unshared
-        #for each occurence of an unshared domain do dom_diff += count of domain and S += count of domain
+    
+    # Case 1
+    for unshared_domain in not_intersect: #no need to look at seq identity, since these domains are unshared
+        #for each occurence of an unshared domain do domain_difference += count of domain and S += count of domain
         unshared_occurrences = []
         try:
             unshared_occurrences = clusterA[unshared_domain]
         except KeyError:
             unshared_occurrences = clusterB[unshared_domain]
             
+        # don't look at domain version, hence the split
         if unshared_domain.split(".")[0] in anchor_domains:
-            dom_diff_anch += len(unshared_occurrences)
+            domain_difference_anchor += len(unshared_occurrences)
         else:
-            dom_diff += len(unshared_occurrences)
+            domain_difference += len(unshared_occurrences)
         
-    S = dom_diff # can be done because it's the first use of these
-    Sa = dom_diff_anch
+    S = domain_difference # can be done because it's the first use of these
+    S_anchor = domain_difference_anchor
         
         
     for shared_domain in intersect:
         seta = clusterA[shared_domain]
         setb = clusterB[shared_domain]
         
+        # Case 2: The shared domains occurs only once in each gene cluster
         if len(seta+setb) == 2: #The domain occurs only once in both clusters   
             pair = tuple(sorted([seta[0],setb[0]]))
             
             try:
                 seq_dist = 1-DMS[shared_domain][pair][0] #1-sequence_similarity
             except KeyError:
-                print "KeyError on", pair
-                
-                errorhandle = open(str(A)+".txt", 'w')
-                errorhandle.write(str(pair)+"\n")
-                errorhandle.write(str(DMS[shared_domain]))
-                errorhandle.close()
+                print("For some reason, a sequence similarity value could not be retrieved from DMS...")
+                print(shared_domain + ": " + pair)
+                print(str(DMS[shared_domain]))
+                sys.exit("(Case 2)")
             
             if shared_domain.split(".")[0] in anchor_domains: 
-                Sa += 1
-                dom_diff_anch += seq_dist 
+                S_anchor += 1
+                domain_difference_anchor += seq_dist 
             else:
                 S += 1
-                dom_diff += seq_dist
-        else:                   #The domain occurs more than once in both clusters
+                domain_difference += seq_dist
+                
+        # Case 3: The domain occurs more than once in both clusters
+        else:
             accumulated_distance = 0
             
             # Fill distance matrix between domain's A and B versions
@@ -267,14 +264,13 @@ def cluster_distance(A, B, A_domlist, B_domlist, anchor_domains):
                     pair = tuple(sorted([seta[domsa], setb[domsb]]))
                     
                     try:
-                        Similarity = DMS[shared_domain][pair][0]
+                        Similarity = DMS[shared_domain][pair][0] # the [1] key holds the sequence length
                     except KeyError:
-                        print "KeyError on", pair
-                        errorhandle = open(str(B)+".txt", 'w')
-                        errorhandle.write(str(pair)+"\n")
-                        errorhandle.write(str(DMS[shared_domain]))
-                        errorhandle.close()
-                    
+                        print("For some reason, a sequence similarity value could not be retrieved from DMS...")
+                        print(shared_domain + ": " + pair)
+                        print(str(DMS[shared_domain]))
+                        sys.exit("(Case 3)")
+                        
                     seq_dist = 1-Similarity
                     DistanceMatrix[domsa][domsb] = seq_dist
                 
@@ -285,24 +281,27 @@ def cluster_distance(A, B, A_domlist, B_domlist, anchor_domains):
             #print "BestIndexes", BestIndexes
             accumulated_distance = sum([DistanceMatrix[bi[0]][bi[1]] for bi in BestIndexes])
             #print "accumulated_distance", accumulated_distance
-                         
+            
+            # the difference in number of domains accounts for the "lost" (or not duplicated) domains
             sum_seq_dist = (abs(len(seta)-len(setb)) + accumulated_distance)  #essentially 1-sim
             
             if shared_domain.split(".")[0] in anchor_domains: 
-                Sa += max(len(seta),len(setb))
-                dom_diff_anch += sum_seq_dist 
+                S_anchor += max(len(seta),len(setb))
+                domain_difference_anchor += sum_seq_dist
             else:
                 S += max(len(seta),len(setb))
-                dom_diff += sum_seq_dist 
+                domain_difference += sum_seq_dist
 
-    if dom_diff_anch != 0 and dom_diff != 0:
-        DDS = (anchorweight * (dom_diff_anch / float(Sa))) + ((1 - anchorweight) * (dom_diff / float(S)))   #Recalculate dom_diff by giving preference to anchor domains
-    elif dom_diff_anch == 0:
-        DDS = dom_diff / float(S) 
+        
+    if domain_difference_anchor != 0 and domain_difference != 0:
+        DDS = (anchorweight * (domain_difference_anchor / float(S_anchor))) + ((1 - anchorweight) * (domain_difference / float(S)))   #Recalculate domain_difference by giving preference to anchor domains
+    elif domain_difference_anchor == 0:
+        DDS = domain_difference / float(S)
     else: #only anchor domains were found
-        DDS = dom_diff_anch / float(Sa)
+        DDS = domain_difference_anchor / float(S_anchor)
  
  
+    # GK INDEX
     #  calculate the Goodman-Kruskal gamma index
     Ar = [item for item in A_domlist]
     Ar.reverse()
@@ -312,10 +311,10 @@ def cluster_distance(A, B, A_domlist, B_domlist, anchor_domains):
     DDS = 1-DDS #transform into similarity
     Distance = 1 - (Jaccardw * Jaccard) - (DDSw * DDS) - (GKw * GK) 
     if Distance < 0:
-        print "negative distance", Distance, "DDS", DDS, pair
-        print "Probably a rounding issue"
-        print "Distance is set to 0 for these clusters" 
-        Distance = 0
+        print("Negative distance detected!")
+        print("J: " + str(Jaccard) + ", DDS: " + str(DDS) + ", GK: " + str(GK))
+        print("Jw: " + str(Jaccardw) + ", DDSw: " + str(DDSw) + ", GKw: " + str(GKw))
+        sys.exit()
         
     return Distance, Jaccard, DDS, GK
 
@@ -616,6 +615,8 @@ def main():
     cores = int(options.cores)
     nbhood = int(options.nbhood)
     anchorweight = float(options.anchorweight)
+    if anchorweight > 1.0 or anchorweight < 0.0:
+        sys.exit("Invalid anchorweight parameter (must be between 0 and 1)")
     Jaccardw = float(options.Jaccardw)
     DDSw = float(options.DDSw) 
     GKw = float(options.GKw)
