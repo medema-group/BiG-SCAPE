@@ -210,6 +210,15 @@ def check_data_integrity(gbk_files):
                     # this is a one-element list, mark it for late removal
                     samples_for_deletion.append(sample)
                 pass
+            except AssertionError as e:
+                print("   Assertion error with file " + f + ": \n   " + str(e))
+                print("    (This file will be excluded from the analysis)")
+                if len(gbk_files[sample]) > 1:
+                    gbk_files[sample].remove(f)
+                else:
+                    # this is a one-element list, mark it for late removal
+                    samples_for_deletion.append(sample)
+                pass
             handle.close()
     if len(samples_for_deletion) > 0:
         for s in sorted(samples_for_deletion, reverse=True):
