@@ -21,7 +21,7 @@ Calculate and report on some general properties of the generated networks
 """
 
 from functions import *
-from itertools import chain,repeat
+from itertools import chain,repeat,combinations
 from multiprocessing import Pool,cpu_count
 from glob import glob
 
@@ -147,13 +147,15 @@ def generate_network(bgc_list, group_dct, networks_folder, dist_method, anchor_d
     "saves the distances as the log2 of the similarity"
     
     # select every different pair. Sort by name to avoid double calculations
-    cluster_pairs = []
-    for i in range(len(bgc_list)-1):
-        for j in range(i+1, len(bgc_list)):
-            if bgc_list[i] < bgc_list[j]:
-                cluster_pairs.append([bgc_list[i], bgc_list[j], dist_method, anchor_domains])
-            else:
-                cluster_pairs.append([bgc_list[j], bgc_list[i], dist_method, anchor_domains])
+    pairs = set(map(tuple,map(sorted,combinations(bgc_list,2))))
+    cluster_pairs = [(x,y,dist_method,anchor_domains) for (x,y) in pairs]
+
+    # for i in range(len(bgc_list)-1):
+    #     for j in range(i+1, len(bgc_list)):
+    #         if bgc_list[i] < bgc_list[j]:
+    #             cluster_pairs.append([bgc_list[i], bgc_list[j], dist_method, anchor_domains])
+    #         else:
+    #             cluster_pairs.append([bgc_list[j], bgc_list[i], dist_method, anchor_domains])
     
     # --- Use multiprocessing to distribute distance calculation ---
     #maxtasksperchild is the number of tasks a worker process can complete 
@@ -525,10 +527,13 @@ def parseHmmScan(hmmscanResults,outputdir,overlapCutoff):
 
             filtered_matrix, domains = check_overlap(pfd_matrix,overlapCutoff)  #removes overlapping domains, and keeps the highest scoring domain
             # Save list of domains per BGC
+            ## Remove duplicates
+            domains = set(domains)
+            filtered_matrix = set(map(tuple,filtered_matrix))
             pfsoutput = os.path.join(outputdir, outputbase + ".pfs")
             with open(pfsoutput, 'wb') as pfs_handle:
                 write_pfs(pfs_handle, domains)
-
+            pickle.dump(filtered_matrix,open(os.path.join(outputdir, outputbase + '_debug.dict'),'wb'))
             # Save more complete information of each domain per BGC
             pfdoutput = os.path.join(outputdir, outputbase + ".pfd")
             with open(pfdoutput,'wb') as pfd_handle:
@@ -1057,7 +1062,9 @@ if __name__=="__main__":
 
         print("")
     ##################################################################################################
-        
+
+    clusters = set(map(tuple,clusters_per_sample))
+
     #Write or retrieve BGC dictionary
     if not options.skip_all:
         if options.skip_hmmscan or options.skip_mafft:
@@ -1073,7 +1080,6 @@ if __name__=="__main__":
     # Dictionary with pairwise distance information
     network_matrix = {}
     network_matrix_sample = {}
-    
     # Distance without taking sequence similarity between specific domains into account
     if "S" in domaindist_networks or "A" in domaindist_networks:
         if options.skip_all: #read already calculated distances
@@ -1084,7 +1090,7 @@ if __name__=="__main__":
             print("* Generating all-vs-all network with domain distance method")
             if not options.skip_all:
                 print(" Calculating all pairwise distances")
-                network_matrix = generate_network(list(iterFlatten(clusters)), group_dct, networks_folder, "domain_dist", anchor_domains, cores)   
+                network_matrix = generate_network(list(iterFlatten(clusters)), group_dct, networks_folder, "domain_dist", anchor_domains, cores)
             
             # write network files
             for cutoff in cutoff_list:
