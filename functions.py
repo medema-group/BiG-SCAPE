@@ -243,7 +243,7 @@ def check_data_integrity(gbk_files):
     if duplication == True:
         print "There was duplication in the input files, if this is not intended remove them."
         cont = raw_input("Continue anyway? Y/N ")
-        if cont.lower() == "n":
+        if cont.lower() != "y":
             sys.exit()
             
 
@@ -309,12 +309,21 @@ def calc_perc_identity(seq1, seq2, spec_domain, spec_domain_nest, domain):
     matches = 0
     
     for pos in range(len(seq1)): #Sequences should have the same length because they come from an MSA
-        if seq1[pos] == seq2[pos]:
-            if seq1[pos] != "-":
-                matches += 1
+        try:
+            if seq1[pos] == seq2[pos]:
+                if seq1[pos] != "-":
+                    matches += 1
+                    length += 1
+            else:
                 length += 1
-        else:
-            length += 1
+        except IndexError:
+            print("\tWARNING: there was a problem in calc_perc_identity")
+            print("\t Most likely a mismatch in sequences' lengths: " + str(len(seq1)) + ", " + str(len(seq2)))
+            print("\t Domain: " + domain)
+            print("\t  Specific domain 1: " + spec_domain)
+            print("\t  Specific domain 2: " + spec_domain_nest)
+            print("\t trying to continue...")
+            return float(matches) / float(length), length    
 
     return float(matches) / float(length), length    
 
