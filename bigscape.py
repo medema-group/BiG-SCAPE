@@ -2,26 +2,27 @@
 
 
 """
-Date: 16-05-2016
-Student/programmer: Marley Yeong
-marleyyeong@live.nl
-Supervisor: Marnix Medema
-Dependencies: hmmer, biopython, mafft, munkres, numpy
+BiG-SCAPE
 
-Usage:   place this script in the same folder as the antismash output files
-         include the munkres.py file in this folder
-         include the files necessary for hmmscan in this folder
-         Make sure to delete/empty the 'domains' output folder if you are rerunning using the same parameters!
-         Example runstring: python ~/bgc_networks/bgc_networks.py -o exclude_small_bgcs --mafft_threads 12 -m 5000 -c 12 --include_disc_nodes
+PI: Marnix Medema
+
+Developers:
+Marley Yeong                    marleyyeong@live.nl
+Jorge Navarro
+Emmanuel (Emzo) de los Santos
+
+Dependencies: hmmer, biopython, mafft, munkres
+
+Usage:   Please see `python bigscape.py -h`
+
+Example: python bigscape.py -c 8 --pfam_dir ./ -i ./inputfiles -o ./results
 
 Status: development/testing
 
-Todo: 
-Calculate and report on some general properties of the generated networks
 """
 
 import cPickle as pickle  # for storing and retrieving dictionaries
-import math
+from math import exp, log
 import os
 import subprocess
 import sys
@@ -68,10 +69,10 @@ FFTNS2 method will be used.
 """
 
 
-def get_gbk_files(inputdir, samples, min_bgc_size, exclude_gbk_str):
+def get_gbk_files(inputdir, min_bgc_size, exclude_gbk_str):
     """Searches given directory for genbank files recursively, will assume that the genbank files that have the same name
-    are the same genbank file, returns a dictionary that contains with the names of the clusters found as a key and a list
-    that contains a path to the genbank file and the samples that the genbank file is a part of
+    are the same genbank file. Returns a dictionary that contains the names of the clusters found as keys and a list
+    that contains a path to the genbank file and the samples that the genbank file is a part of:
     return: {cluster_name:[genbank_path,[s_a,s_b...]]}
     """
 
@@ -79,7 +80,7 @@ def get_gbk_files(inputdir, samples, min_bgc_size, exclude_gbk_str):
 
     file_counter = 0
 
-    print("Importing the gbk files, while skipping gbk files with '" + exclude_gbk_str + "' in their filename")
+    print("Importing the gbk files, while skipping those with '" + exclude_gbk_str + "' in their filename")
 
     # this doesn't seem to make a difference. Confirm
     # if inputdir != "" and inputdir[-1] != "/":
@@ -99,7 +100,7 @@ def get_gbk_files(inputdir, samples, min_bgc_size, exclude_gbk_str):
             fname_parse = fname.split('.')
             if fname_parse[-1] == "gbk" and exclude_gbk_str not in fname:
                 if " " in fname:
-                    print "Your GenBank files should not have spaces in their filenames. Please remove the spaces from their names, HMMscan doesn't like spaces (too many arguments)."
+                    print "Your GenBank files should not have spaces in their filenames as HMMscan cannot process them properly ('too many arguments')."
                     sys.exit(0)
 
                 gbk_header = open(os.path.join(dirpath_, fname), "r").readline().split(" ")
@@ -110,16 +111,21 @@ def get_gbk_files(inputdir, samples, min_bgc_size, exclude_gbk_str):
                     print("  " + str(e) + ": " + os.path.join(dirpath_, fname))
                     sys.exit()
 
-                file_counter += 1
+                clusterName = '.'.join(fname_parse[:-1])
                 if bgc_size > min_bgc_size:  # exclude the bgc if it's too small
-                    clusterName = '.'.join(fname_parse[:-1])
+                    file_counter += 1
+                    
                     if clusterName in genbankDict.keys():
                         genbankDict[clusterName][1].add(current_dir)
                     else:
-                        genbankDict.setdefault(clusterName, [os.path.join(dirpath_, fname), set([current_dir])])
+                        genbankDict.setdefault(clusterName, [os.path.join(dirpath_, fname), set([current_dir])]) # first instance of the file is genbankDict[clustername][0]
+                else:
+                    print(" Discarding " + clusterName +  " (size < " + str(min_bgc_size) + " bp)")
                 if verbose == True:
-                    print fname
-                    print "bgc size in bp", bgc_size
+                    print("  Adding " + fname + " (" + str(bgc_size) + " bps)")
+    
+    if verbose:
+        print("\n Starting with " + str(file_counter) + " files")
     print("")
     return genbankDict
 
@@ -179,7 +185,7 @@ def generate_dist_matrix(parms):
     else:
         logscore = 0
         try:
-            logscore = -math.log(dist, 2) #Write exception, ValueError
+            logscore = -log(dist, 2) #Write exception, ValueError
         except ValueError:
             print "calculating the logscore with distance", dist, "failed in function generate_network, using distance method", dist_method, networkfilename
             
@@ -193,13 +199,19 @@ def generate_dist_matrix(parms):
         
 @timeit
 def generate_network(cluster_pairs, cores):
-    #Contents of the network file: clustername1 clustername2 group1, group2, -log2score, dist, squared similarity
+    #Contents of the network file: clustername1 clustername2, group1, group2, -log2score, dist, squared similarity
     "saves the distances as the log2 of the similarity"
     pool = Pool(cores, maxtasksperchild=500)
     
     #Assigns the data to the different workers and pools the results back into
     # the network_matrix variable
     network_matrix = pool.map(generate_dist_matrix, cluster_pairs)
+    
+    # --- Serialized version of distance calculation ---
+    # For the time being, use this if you have memory issues
+    #network_matrix = []
+    #for pair in cluster_pairs:
+    #   network_matrix.append(generate_dist_matrix(pair))
 
     # use a dictionary to store results
     network_matrix_dict = {}
@@ -405,7 +417,7 @@ def calculate_GK(A, B, nbhood):
 @timeit
 def Distance_modified(clusterA, clusterB, repeat=0, nbhood=4):
     "Modified to work better for 'OBU' detection"
-    "Kui Lin, Lei Zhu and Da-Yong Zhang "
+    "Original DDS formula from Lin, Zhu and Zhang (2006)"
 
     repeats = []
 
@@ -430,7 +442,7 @@ def Distance_modified(clusterA, clusterB, repeat=0, nbhood=4):
         DDS += abs(A.count(p)-B.count(p))
         S += max(A.count(p),B.count(p))
     DDS /= float(S) 
-    DDS = math.exp(-DDS) #transforms the DDS to a value between 0 - 1
+    DDS = exp(-DDS) #transforms the DDS to a value between 0 - 1
 
     # calculate the Goodman-Kruskal gamma index
     Ar = [item for item in A]
@@ -526,15 +538,14 @@ def runHmmScan(fastaPath,hmmPath,outputdir):
     if os.path.isfile(fastaPath):
         name = fastaPath.split(os.sep)[-1].replace(".fasta","")
         outputName = os.path.join(outputdir, name+".domtable")
-        if os.path.isfile(hmmFile):
-            hmmscan_cmd = "hmmscan --cpu 1 --domtblout %s --cut_tc %s %s" % (outputName,hmmFile,fastaPath)
-            if verbose == True:
-                print("\t"+hmmscan_cmd)
-            subprocess.check_output(hmmscan_cmd, shell=True)
-        else:
-            "Error: invalid path to HMM"
+        
+        hmmscan_cmd = "hmmscan --cpu 1 --domtblout %s --cut_tc %s %s" % (outputName,hmmFile,fastaPath)
+        if verbose == True:
+            print("\t"+hmmscan_cmd)
+        subprocess.check_output(hmmscan_cmd, shell=True)
+
     else:
-        "Error: Fasta File Doesn't Exist"
+        sys.exit("Error running hmmscan: Fasta file " + fastaPath + " doesn't exist")
 
 def parseHmmScan(hmmscanResults,outputdir,overlapCutoff):
     outputbase = hmmscanResults.split(os.sep)[-1].replace(".domtable", "")
@@ -793,7 +804,20 @@ if __name__=="__main__":
         cutoff_list.append("1") # compulsory for re-runs
         print("Adding cutoff=1.0 case by default")
     output_folder = str(options.outputdir)
+    
     pfam_dir = str(options.pfam_dir)
+    h3f = os.path.join(pfam_dir, "Pfam-A.hmm.h3f")
+    h3i = os.path.join(pfam_dir, "Pfam-A.hmm.h3i")
+    h3m = os.path.join(pfam_dir, "Pfam-A.hmm.h3m")
+    h3p = os.path.join(pfam_dir, "Pfam-A.hmm.h3p")
+    if not (os.path.isfile(h3f) and os.path.isfile(h3i) and os.path.isfile(h3m) and os.path.isfile(h3p)):
+        print("One or more of the necessary Pfam files (.h3f, .h3i, .h3m, .h3p) were not found")
+        if os.path.isfile(os.path.join(pfam_dir, "Pfam-A.hmm")):
+            print("Please use hmmpress with Pfam-A.hmm")
+        else:
+            print("Please use the --pfam_dir parameter to point to the correct location of those files")
+        sys.exit()
+                    
     verbose = options.verbose
     args = sys.argv[1:]
     if "-o" in args:
@@ -817,12 +841,15 @@ if __name__=="__main__":
     
     # Obtain gbk files
     global gbk_files
-    # gbk_files will contain lists of gbk files per sample. Thus a matrix contains lists with gbk files by sample.
-    genbankDict = get_gbk_files(options.inputdir, samples, int(options.min_bgc_size), options.exclude_gbk_str)
+    
+    # genbankDickt: {cluster_name:[genbank_path_to_1st_instance,[sample_1,sample_2,...]]}
+    genbankDict = get_gbk_files(options.inputdir, int(options.min_bgc_size), options.exclude_gbk_str)
 
+    # clusters and sampleDict contain the necessary structure for all-vs-all and sample analysis
     clusters = genbankDict.keys()
-    sampleDict = {}
-    gbk_files = []
+    
+    sampleDict = {} # {sampleName:set(bgc1,bgc2,...)}
+    gbk_files = [] # raw list of gbk file locations
     for (cluster, (path, clusterSample)) in genbankDict.iteritems():
         gbk_files.append(path)
         for sample in clusterSample:
@@ -830,7 +857,8 @@ if __name__=="__main__":
             clustersInSample.add(cluster)
             sampleDict[sample] = clustersInSample
 
-    check_data_integrity([gbk_files])
+    check_data_integrity([gbk_files]) # turned into a list-within-a-list to retain backwards compatibility
+    
     print("\nCreating output directories")
     try:
         os.mkdir(output_folder)
@@ -901,7 +929,7 @@ if __name__=="__main__":
     if options.skip_hmmscan or options.skip_mafft or options.skip_all:
         print("Skipping processing of hmmscan output files")
     else:
-        print("Running hmmscan and parsing the hmmscan output files...")
+        print("Predicting domains and parsing the hmmscan output files...")
 
 
     if options.splitProcess:

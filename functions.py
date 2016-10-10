@@ -1,11 +1,16 @@
 #!/usr/bin/env python
 
 """
-Student/programmer: Marley Yeong
-marleyyeong@live.nl
-supervisor: Marnix Medema
+BiG-SCAPE
 
-Usage: score a network
+PI: Marnix Medema
+
+Developers:
+Marley Yeong                    marleyyeong@live.nl
+Jorge Navarro
+Emmanuel (Emzo) de los Santos
+
+Functions used by bigscape.py
 
 """
 
@@ -374,7 +379,7 @@ def network_parser(network_file, Jaccardw, DDSw, GKw):
         if distance <= 0:
             logscore = float("inf")
         else:
-            logscore = -math.log(distance, 2)
+            logscore = -log(distance, 2)
         sqrd_similarity = (1-distance)**2
         
         network[a,b][4] = logscore
