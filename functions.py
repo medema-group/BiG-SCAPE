@@ -60,6 +60,8 @@ def get_domain_list(filename):
     handle = open(filename, 'r')
     domains_string = handle.readline().strip()
     domains = domains_string.split(" ")
+    handle.close()
+    
     return domains
 
 
@@ -192,13 +194,12 @@ def dct_writeout(handle, dct):
 def check_data_integrity(gbk_files):
     """Perform some integrity checks on the input gbk files."""
 
-    # check for existance of files
-    if gbk_files == []:
-        print "No .gbk files were found"
-        sys.exit()
-    
+    discarded_set = set()
+
     # check for potential errors while reading the gbk files
     # Structure must remain intact after removing offending files
+    # -> The following used to be necessary before storing sample information
+    # in genbankDict. It could eventually be removed/simplified
     gbk_files_check = copy.deepcopy(gbk_files)
     samples_for_deletion = []
     for sample in range(len(gbk_files_check)):
@@ -207,8 +208,9 @@ def check_data_integrity(gbk_files):
             try:
                 SeqIO.read(handle, "genbank")
             except ValueError as e:
-                print("   Error with file " + f + ": \n   " + str(e))
+                print("   Error with file " + f + ": \n    '" + str(e) + "'")
                 print("    (This file will be excluded from the analysis)")
+                discarded_set.add(f)
                 if len(gbk_files[sample]) > 1:
                     gbk_files[sample].remove(f)
                 else:
@@ -236,11 +238,22 @@ def check_data_integrity(gbk_files):
                     duplication = True
                     print "duplicated file at:", cfile 
     
+    # Without proper checking downstream, allowing duplicate files results in
+    # problems: domain's sequences could be duplicated and the length's mismatch
+    # raises an exception in sequence similarity scoring. 
+    # This probably is not an issue anymore with the new genbankDict structure
     if duplication == True:
         print "There was duplication in the input files, if this is not intended remove them."
         cont = raw_input("Continue anyway? Y/N ")
         if cont.lower() == "n":
             sys.exit()
+            
+    # The possibility of not having files to analyze was checked for in get_gbk_files
+    # so if the list is empty now, it's due to issues in the gbk files
+    if len(gbk_files_check) < 2:
+        sys.exit("Due to errors in the input files, there are no files left for the analysis (" + str(len(gbk_files_check)) + ")")
+       
+    return discarded_set
             
 
 def hmmscan(pfam_dir, fastafile, outputdir, name, cores):
@@ -543,66 +556,6 @@ def write_network_matrix(matrix, cutoff, filename, include_disc_nodes):
     networkfile.close()
                     
 
-def get_gbk_files(inputdir, samples, min_bgc_size, exclude_gbk_str):
-    """Find .gbk files, and store the .gbk files in lists, separated by sample."""
-    genbankfiles = [] #Will contain lists of gbk files
-    sample_name = []
-    dirpath_ = ""
-    file_counter = 0
-    
-    print("Importing the gbk files, while skipping gbk files with '" + exclude_gbk_str + "' in their filename")
-    
-    #this doesn't seem to make a difference. Confirm
-    #if inputdir != "" and inputdir[-1] != "/":
-        #inputdir += "/"
-    current_dir = ""
-    for dirpath, dirnames, filenames in os.walk(inputdir):
-        head, tail = os.path.split(dirpath)
-        if current_dir != tail:
-            current_dir = tail
-        
-        genbankfilelist=[]
-        
-        #avoid double slashes
-        dirpath_ = dirpath[:-1] if dirpath[-1] == os.sep else dirpath
-        
-        for fname in filenames:
-            if fname.split(".")[-1] == "gbk" and exclude_gbk_str not in fname:
-                if " " in fname:
-                    print "Your GenBank files should not have spaces in their filenames. Please remove the spaces from their names, HMMscan doesn't like spaces (too many arguments)."
-                    sys.exit(0)
-                
-                gbk_header = open( os.path.join(dirpath_,fname) , "r").readline().split(" ")
-                gbk_header = filter(None, gbk_header) #remove the empty items from the list
-                try:
-                    bgc_size = int(gbk_header[gbk_header.index("bp")-1])
-                except ValueError as e:
-                    print("  " + str(e) + ": " + os.path.join(dirpath_,fname))
-                    sys.exit()
-                    
-                file_counter += 1
-                if bgc_size > min_bgc_size: #exclude the bgc if it's too small
-                    genbankfilelist.append(os.path.join(dirpath_, fname))
-                    
-                    if samples == False: #Then each gbk file represents a different sample
-                        genbankfiles.append(genbankfilelist)
-                        genbankfilelist = []
-                    
-                if verbose == True:
-                    print fname
-                    print "bgc size in bp", bgc_size
-                    
-        if genbankfilelist != []:
-            if current_dir not in sample_name:
-                sample_name.append(current_dir)
-            else:
-                sys.exit("Error! Found two sample directories with the same name! This would cause trouble when writing the network files...")
-            genbankfiles.append(genbankfilelist)
-    
-    print("")
-    return genbankfiles, sample_name
-
-
 def domtable_parser(gbk, dom_file):
     """Parses the domain table output files from hmmscan"""
     
@@ -651,7 +604,6 @@ def domtable_parser(gbk, dom_file):
                 pfd_matrix.append(pfd_row)
 
     return pfd_matrix
-
 
 
 def hmm_table_parser(gbk, hmm_table):

@@ -70,9 +70,11 @@ FFTNS2 method will be used.
 
 
 def get_gbk_files(inputdir, min_bgc_size, exclude_gbk_str):
-    """Searches given directory for genbank files recursively, will assume that the genbank files that have the same name
-    are the same genbank file. Returns a dictionary that contains the names of the clusters found as keys and a list
-    that contains a path to the genbank file and the samples that the genbank file is a part of:
+    """Searches given directory for genbank files recursively, will assume that
+    the genbank files that have the same name are the same genbank file. 
+    Returns a dictionary that contains the names of the clusters found as keys
+    and a list that contains [0] a path to the genbank file and [1] the 
+    samples that the genbank file is a part of.
     return: {cluster_name:[genbank_path,[s_a,s_b...]]}
     """
 
@@ -80,7 +82,9 @@ def get_gbk_files(inputdir, min_bgc_size, exclude_gbk_str):
 
     file_counter = 0
 
-    print("Importing the gbk files, while skipping those with '" + exclude_gbk_str + "' in their filename")
+    print("\nImporting GenBank files")
+    if exclude_gbk_str != "":
+        print(" Skipping files with '" + exclude_gbk_str + "' in their filename")
 
     # this doesn't seem to make a difference. Confirm
     # if inputdir != "" and inputdir[-1] != "/":
@@ -98,12 +102,29 @@ def get_gbk_files(inputdir, min_bgc_size, exclude_gbk_str):
 
         for fname in filenames:
             fname_parse = fname.split('.')
-            if fname_parse[-1] == "gbk" and exclude_gbk_str not in fname:
-                if " " in fname:
-                    print "Your GenBank files should not have spaces in their filenames as HMMscan cannot process them properly ('too many arguments')."
-                    sys.exit(0)
-
-                gbk_header = open(os.path.join(dirpath_, fname), "r").readline().split(" ")
+            
+            if fname_parse[-1] != "gbk":
+                continue
+            
+            if exclude_gbk_str != "" and exclude_gbk_str in fname:
+                print(" Skipping file " + fname)
+                continue
+            
+            if " " in fname:
+                sys.exit("\nError: Input GenBank files should not have spaces in their filenames as HMMscan cannot process them properly ('too many arguments').")
+                
+            
+            with open(os.path.join(dirpath_, fname), "r") as f:
+                try:
+                    # basic file verification. Substitutes check_data_integrity
+                    SeqIO.read(f, "genbank")
+                except ValueError as e:
+                    print("   Error with file " + os.path.join(dirpath_, fname) + ": \n    '" + str(e) + "'")
+                    print("    (This file will be excluded from the analysis)")
+                    continue
+            
+            with open(os.path.join(dirpath_, fname), "r") as f:
+                gbk_header = f.readline().split(" ")
                 gbk_header = filter(None, gbk_header)  # remove the empty items from the list
                 try:
                     bgc_size = int(gbk_header[gbk_header.index("bp") - 1])
@@ -116,17 +137,28 @@ def get_gbk_files(inputdir, min_bgc_size, exclude_gbk_str):
                     file_counter += 1
                     
                     if clusterName in genbankDict.keys():
-                        genbankDict[clusterName][1].add(current_dir)
+                        # current_dir gets to be the name of the sample
+                        genbankDict[clusterName][1].add(current_dir) 
                     else:
-                        genbankDict.setdefault(clusterName, [os.path.join(dirpath_, fname), set([current_dir])]) # first instance of the file is genbankDict[clustername][0]
+                        # location of first instance of the file is genbankDict[clustername][0]
+                        genbankDict.setdefault(clusterName, [os.path.join(dirpath_, fname), set([current_dir])])
+                        
+                    if verbose == True:
+                        print("  Adding " + fname + " (" + str(bgc_size) + " bps)")
                 else:
-                    print(" Discarding " + clusterName +  " (size < " + str(min_bgc_size) + " bp)")
-                if verbose == True:
-                    print("  Adding " + fname + " (" + str(bgc_size) + " bps)")
+                    print(" Discarding " + clusterName +  " (size less than " + str(min_bgc_size) + " bp, was " + str(bgc_size) + ")")
+                    
+            # else: The file does not have the gbk extension. Skip it
+    
+    if file_counter == 0:
+        sys.exit("\nError: There are no files to process")
+        
+    if file_counter == 1:
+        sys.exit("\nError: Only one file found. Please input at least two files")
     
     if verbose:
         print("\n Starting with " + str(file_counter) + " files")
-    print("")
+
     return genbankDict
 
 def timeit(f):
@@ -532,7 +564,7 @@ def generateFasta(gbkfilePath,outputdir):
                     fastaHandle.write('%s\n' % prot_seq)
     return outputfile
 
-def runHmmScan(fastaPath,hmmPath,outputdir):
+def runHmmScan(fastaPath, hmmPath, outputdir, verbose):
     ## will run hmmscan command on a fasta file with a single core and generate a domtable file
     hmmFile = os.path.join(hmmPath,"Pfam-A.hmm")
     if os.path.isfile(fastaPath):
@@ -541,7 +573,8 @@ def runHmmScan(fastaPath,hmmPath,outputdir):
         
         hmmscan_cmd = "hmmscan --cpu 1 --domtblout %s --cut_tc %s %s" % (outputName,hmmFile,fastaPath)
         if verbose == True:
-            print("\t"+hmmscan_cmd)
+            print("  Processing " + name)
+            #print("\t"+hmmscan_cmd)
         subprocess.check_output(hmmscan_cmd, shell=True)
 
     else:
@@ -549,25 +582,41 @@ def runHmmScan(fastaPath,hmmPath,outputdir):
 
 def parseHmmScan(hmmscanResults,outputdir,overlapCutoff):
     outputbase = hmmscanResults.split(os.sep)[-1].replace(".domtable", "")
-    # try to read the domtable file to find out if this gbk has domains. Needed to parse domains into fastas anyway.
+    # try to read the domtable file to find out if this gbk has domains. Domains need to be parsed into fastas anyway.
     if os.path.isfile(hmmscanResults):
         pfd_matrix = domtable_parser(outputbase, hmmscanResults)
-        num_domains = len(pfd_matrix) # these might still be overlapped, but we only need a minimum number
+        num_domains = len(pfd_matrix) # these might still be overlapped, but we need at least 1
 
         if num_domains > 0:
             print(" Processing domtable file: " + outputbase)
 
             filtered_matrix, domains = check_overlap(pfd_matrix,overlapCutoff)  #removes overlapping domains, and keeps the highest scoring domain
+            
             # Save list of domains per BGC
             pfsoutput = os.path.join(outputdir, outputbase + ".pfs")
             with open(pfsoutput, 'wb') as pfs_handle:
                 write_pfs(pfs_handle, domains)
+            
             # Save more complete information of each domain per BGC
             pfdoutput = os.path.join(outputdir, outputbase + ".pfd")
             with open(pfdoutput,'wb') as pfd_handle:
                 write_pfd(pfd_handle, filtered_matrix)
+        else:
+            # there aren't any domains in this BGC
+            # delete from all data structures
+            print("  No domains where found in " + outputbase + ".domtable. Removing it from further analysis")
+            info = genbankDict.get(outputbase)
+            clusters.remove(outputbase)
+            baseNames.remove(outputbase)
+            gbk_files.remove(info[0])
+            for sample in info[1]:
+                sampleDict[sample].remove(outputbase)
+            del genbankDict[outputbase]
+            
     else:
-        print "Error hmmscan file doesn't exist"
+        sys.exit("Error: hmmscan file " + outputbase + " was not found! (parseHmmScan)")
+
+    return("")
 
 def genbank_grp_dict(gb_files,gbk_group):
     for gb_file in gb_files:
@@ -700,11 +749,11 @@ def CMD_parser():
     parser.add_option("-i", "--inputdir", dest="inputdir", default="",
                       help="Input directory of gbk files, if left empty, all gbk files in current and lower directories will be used.")
     parser.add_option("-c", "--cores", dest="cores", default=cpu_count(),
-                      help="Set the amount of cores the script and hmmscan may use")
+                      help="Set the amount of cores the script and hmmscan may use (default: use _all_ available cores)")
     parser.add_option("-v", "--verbose", dest="verbose", action="store_true", default=False,
-                      help="Toggle to true, will print and save some variables.")
+                      help="Prints more detailed information. Toggle to true.")
     parser.add_option("--include_disc_nodes", dest="include_disc_nodes", action="store_true", default=False,
-                      help="Toggle to true. Include nodes that have no edges to other nodes from the network, default is false.")
+                      help="Include nodes that have no edges to other nodes from the network, default is false. Toggle to true.")
     parser.add_option("-d", "--domain_overlap_cutoff", dest="domain_overlap_cutoff", default=0.1,
                       help="Specify at which overlap percentage domains are considered to overlap")
     parser.add_option("-m", "--min_bgc_size", dest="min_bgc_size", default=0,
@@ -734,8 +783,8 @@ def CMD_parser():
                       help="Location of hmmpress-processed Pfam files. Default is same location of BiG-SCAPE")
     parser.add_option("--anchorfile", dest="anchorfile", default="anchor_domains.txt",
                       help="Provide a custom name for the anchor domains file, default is anchor_domains.txt.")
-    parser.add_option("--exclude_gbk_str", dest="exclude_gbk_str", default="final",
-                      help="If this string occurs in the gbk filename, this will not be used for the analysis. Best to just leave out these samples to begin with.")
+    parser.add_option("--exclude_gbk_str", dest="exclude_gbk_str", default="",
+                      help="If this string occurs in the gbk filename, this file will not be used for the analysis.")
     
     parser.add_option("--mafft_pars", dest="mafft_pars", default="",
                       help="Add single/multiple parameters for mafft specific enclosed by quotation marks e.g. \"--nofft --parttree\"")
@@ -749,6 +798,8 @@ def CMD_parser():
                       help="Let the script calculate the percent identity between sequences? \
                       Or use the distout scores from the mafft output? As default it calculates the percent identity from the MSAs.")
     
+    parser.add_option("--force_hmmscan", dest="force_hmmscan", action="store_true", default=False, 
+                      help="Force domain prediction using hmmscan even if BiG-SCAPE finds processed domtable files (e.g. to use a new version of PFAM).")
     parser.add_option("--skip_hmmscan", dest="skip_hmmscan", action="store_true", default=False,
                       help="When skipping hmmscan, the GBK files should be available, and the domain tables need to be in the output folder.")
     parser.add_option("--skip_mafft", dest="skip_mafft", action="store_true", default=False, 
@@ -819,12 +870,6 @@ if __name__=="__main__":
         sys.exit()
                     
     verbose = options.verbose
-    args = sys.argv[1:]
-    if "-o" in args:
-        args.remove("-o")
-    else:
-        args.remove("--outputdir")
-    args.remove(output_folder)
     networks_folder = "networks"
     domainsout = "domains"
     seqdist_networks = options.seqdist_networks.split(",")
@@ -838,11 +883,13 @@ if __name__=="__main__":
             options.skip_hmmscan = False
             options.skip_mafft = False
     
+    time1 = time.time()
+    print("\n   - - Obtaining input files - -")
     
-    # Obtain gbk files
-    global gbk_files
+    # Make the following available for possibly deleting entries within parseHmmScan
+    global genbankDict, gbk_files, sampleDict, clusters, baseNames
     
-    # genbankDickt: {cluster_name:[genbank_path_to_1st_instance,[sample_1,sample_2,...]]}
+    # genbankDict: {cluster_name:[genbank_path_to_1st_instance,[sample_1,sample_2,...]]}
     genbankDict = get_gbk_files(options.inputdir, int(options.min_bgc_size), options.exclude_gbk_str)
 
     # clusters and sampleDict contain the necessary structure for all-vs-all and sample analysis
@@ -857,7 +904,13 @@ if __name__=="__main__":
             clustersInSample.add(cluster)
             sampleDict[sample] = clustersInSample
 
-    check_data_integrity([gbk_files]) # turned into a list-within-a-list to retain backwards compatibility
+    # This gets very messy if there are files with errors, as the original
+    # structures (clusters, sampleDict) are not changed. We'd have to extract
+    # only gbk_files, then process it and possibly delete entries, then obtain
+    # clusters and sampleDict. genbankDict.keys would still be holding non-valid
+    # entries. I'll pass the verifying to get_gbk_files for now
+    #print("\nVerifying input files")
+    #check_data_integrity([gbk_files]) # turned into a list-within-a-list to retain backwards compatibility
     
     print("\nCreating output directories")
     try:
@@ -890,7 +943,7 @@ if __name__=="__main__":
         # 183 (Windows) "[Error 183] Cannot create a file when that file already exists"
         if "Errno 17" in str(e) or "Error 183" in str(e):
             if not (options.skip_all or options.skip_hmmscan or options.skip_mafft):
-                print(" Emptying domains directory first")
+                print(" Emptying domains directory")
                 for thing in os.listdir(os.path.join(output_folder, domainsout)):
                     os.remove(os.path.join(output_folder, domainsout, thing))
             else:
@@ -898,153 +951,177 @@ if __name__=="__main__":
         else:
             print("Fatal error when trying to create domains' directory")
             sys.exit(str(e))
-    print("")
 
 
-    timings_file = open(os.path.join(output_folder, "runtimes.txt"), 'w') #open the file that will contain the timed functions
+    if verbose:
+        print(" Trying threading on %i cores" % cores)
     
+    #open the file that will contain the timed functions
+    timings_file = open(os.path.join(output_folder, "runtimes.txt"), 'w') 
     
-    #===========================================================================
-    # gbk_handle = open("gbk.txt", "w")
-    # for i in gbk_files:
-    #     gbk_handle.write(str(i)+"\n")
-    # gbk_handle.close()
-    #===========================================================================
-
-    
-    """BGCs -- dictionary of this structure:  BGCs = {'cluster_name_x': { 'general_domain_name_x' : ['specific_domain_name_1',
+    """BGCs -- 
+    dictionary of this structure:
+    BGCs = {'cluster_name_x': { 'general_domain_name_x' : ['specific_domain_name_1',
      'specific_domain_name_2'] } }
     - cluster_name_x: cluster name (can be anything)
     - general_domain_name_x: PFAM ID, for example 'PF00550'
     - specific_domain_name_x: ID of a specific domain that will allow to you to map it to names in DMS unequivocally
-     (for example, 'PF00550_start_end', where start and end are genomic positions)."""
-     
-     
+     (for example, 'PF00550_start_end', where start and end are genomic positions)."""     
     BGCs = {} #will contain the BGCs
+    
+    # contains the class of the Gene Clusters (predicted by antiSMASH and annotated in the GenBank files. Will be used in the final network files)
     global group_dct
     group_dct = {}
-    sequences_per_domain = {} # to avoid calling MAFFT if only 1 seq. in a particular domain
+    
+    # to avoid calling MAFFT if there's only 1 seq. representing a particular domain
+    sequences_per_domain = {} 
     
     #Loop over the samples
-    if options.skip_hmmscan or options.skip_mafft or options.skip_all:
-        print("Skipping processing of hmmscan output files")
-    else:
-        print("Predicting domains and parsing the hmmscan output files...")
+    #if options.skip_hmmscan or options.skip_mafft or options.skip_all:
+        #print("\nSkipping processing of hmmscan output files")
+    #else:
+        #print("\nPredicting domains and parsing the hmmscan output files...\n")
 
-
+    print("\n\n   - - Processing input files - -")
+    
     if options.splitProcess:
-        if verbose:
-            print("Trying Threading on %i cores" % cores)
-        # since the structure of gbk_files is nested lists of file paths need to unpack this
-
-        # This will go into clusters later for checking if we dropped files in processing
-        genbankFileNames = set(gbk_files)
-        baseNames = set(x.split(os.sep)[-1].replace(".gbk","") for x in genbankFileNames)
+        # These will be used to track if we drop files in processing
+        genbankFileLocations = set(gbk_files)
+        baseNames = set(clusters)
 
         ### Step 1: Generate Fasta Files
-        print "Parsing genbank Files to generate fasta files for hmmsearch"
+        print "\nParsing genbank files to generate fasta files for hmmscan"
 
-        # filter through task list to avoid unecessary computation, if output file is there and nonempty exclude it from list
-
+        # filter through task list to avoid unecessary computation: if output file is already there and non-empty, exclude it from list
         alreadyDone = set()
-
-        for genbank in genbankFileNames:
-            outputbase  = genbank.split(os.sep)[-1].replace(".gbk","")
+        for genbank in genbankFileLocations:
+            outputbase = genbank.split(os.sep)[-1].replace(".gbk","")
             outputfile = os.path.join(output_folder,outputbase + '.fasta')
             if os.path.isfile(outputfile) and os.path.getsize(outputfile) > 0:
                 alreadyDone.add(genbank)
 
-        if len(alreadyDone) > 0:
-            print "Found output files for %s, skipping these" % list(x.split(os.sep)[-1].replace(".gbk","") for x in alreadyDone)
-
+        if len(genbankFileLocations - alreadyDone) == 0:
+            print(" All GenBank files had already been processed")
+        elif len(alreadyDone) > 0:
+            print " Warning! The following NEW input file(s) will be processed: %s" % ", ".join(x.split(os.sep)[-1].replace(".gbk","") for x in genbankFileLocations - alreadyDone)
+        else:
+            print(" Processing " + str(len(genbankFileLocations)) + " files")
 
         # Generate Pool of workers
         pool = Pool(cores,maxtasksperchild=32)
-        for genbankFile in set(genbankFileNames) - alreadyDone:
+        for genbankFile in (genbankFileLocations - alreadyDone):
             pool.apply_async(generateFasta,args =(genbankFile,output_folder))
         pool.close()
         pool.join()
+        print " Finished generating fasta files."
 
-        print "Done generating fasta files checking output...."
 
         ### Step 2: Run hmmscan
-        fastaFiles = glob(os.path.join(output_folder,"*.fasta"))
+        print("\nPredicting domains using hmmscan")
+        
+        # grab fasta files locations
+        fastaFiles = set(glob(os.path.join(output_folder,"*.fasta")))
+        
+        # verify previous step
         fastaBases = set(x.split(os.sep)[-1].replace(".fasta","") for x in fastaFiles)
-
         if len(baseNames - fastaBases) > 0:
-            print "WARNING no fasta files for:", baseNames - fastaBases
-
-        if fastaFiles:
+            sys.exit("Error! The following files did NOT have their fasta sequences extracted: " + ", ".join(baseNames - fastaBases))
+        
+        if options.force_hmmscan:
+            # process all files, regardless of whether they already existed
+            task_set = fastaFiles
+            print(" Forcing domain prediction on ALL fasta files (--force_hmmscan)")
+        else:
+            # find already processed files
             alreadyDone = set()
             for fasta in fastaFiles:
                 outputbase  = fasta.split(os.sep)[-1].replace(".fasta","")
                 outputfile = os.path.join(output_folder,outputbase + '.domtable')
                 if os.path.isfile(outputfile) and os.path.getsize(outputfile) > 0:
                     alreadyDone.add(fasta)
+             
+            if len(fastaFiles - alreadyDone) == 0:
+                 print(" All fasta files had already been processed")
+            elif len(alreadyDone) > 0:
+                print " Warning! The following NEW fasta file(s) will be processed: %s" % ", ".join(x.split(os.sep)[-1].replace(".fasta","") for x in fastaFiles - alreadyDone)
+            else:
+                print(" Predicting domains for " + str(len(fastaFiles)) + " fasta files")
 
-            if len(alreadyDone) > 0:
-                print "Found output files for %s, skipping these" % list(x.split(os.sep)[-1].replace(".fasta","") for x in alreadyDone)
+            task_set = fastaFiles - alreadyDone
+            
+        pool = Pool(cores,maxtasksperchild=1)
+        for fastaFile in task_set:
+            pool.apply_async(runHmmScan,args=(fastaFile,pfam_dir,output_folder, verbose))
+        pool.close()
+        pool.join()
 
-            pool = Pool(cores,maxtasksperchild=1)
-            for fastaFile in set(fastaFiles) - alreadyDone:
-                pool.apply_async(runHmmScan,args=(fastaFile,pfam_dir,output_folder))
-            pool.close()
-            pool.join()
+        print " Finished generating domtable files."
 
-            print "Done generating domtable files checking output...."
-        else:
-            "ERROR: Tasklist empty for running hmmscan"
 
         ### Step 3: Parse hmmscan domtable results and generate pfs and pfd files
-
-        domtblFiles = glob(os.path.join(output_folder,"*.domtable"))
+        print("\nParsing hmmscan domtable files")
+        
+        # grab all domtable file locations
+        domtblFiles = set(glob(os.path.join(output_folder,"*.domtable")))
+        
+        # verify previous step
         domtblBases = set(x.split(os.sep)[-1].replace(".domtable","") for x in domtblFiles)
         if len(baseNames - domtblBases) > 0:
-            print "WARNING no domtbl files for:", baseNames - domtblBases
+            sys.exit("Error! The following files did NOT have their domains predicted by  sequences extracted: " + ", ".join(baseNames - domtblBases))
+        
+        # find already processed files
+        alreadyDone = set()
+        for domtable in domtblFiles:
+            outputbase  = domtable.split(os.sep)[-1].replace(".domtable","")
+            outputfile = os.path.join(output_folder,outputbase + '.pfd')
+            if os.path.isfile(outputfile) and os.path.getsize(outputfile) > 0:
+                alreadyDone.add(domtable)
 
-        if domtblFiles:
-
-            alreadyDone = set()
-
-            for domtable in domtblFiles:
-                outputbase  = fasta.split(os.sep)[-1].replace(".domtable","")
-                outputfile = os.path.join(output_folder,outputbase + '.pfd')
-                if os.path.isfile(outputfile) and os.path.getsize(outputfile) > 0:
-                    alreadyDone.add(domtable)
-
-            if len(alreadyDone) > 0:
-                print "Found output files for %s, skipping these" % list(x.split(os.sep)[-1].replace(".fasta","") for x in alreadyDone)
-
-            pool = Pool(cores,maxtasksperchild=32)
-
-            for domtableFile in set(domtblFiles) - alreadyDone:
-                pool.apply_async(parseHmmScan, args=(domtableFile,output_folder,options.domain_overlap_cutoff))
-            pool.close()
-            pool.join()
-
-            print "Done generating generating pfs and pfd files checking output...."
+        if len(domtblFiles - alreadyDone) == 0:
+            print(" All domtable files had already been processed")
+        elif len(alreadyDone) > 0:
+            print " Warning! The following domtable files had not been processed: %s" % ", ".join(x.split(os.sep)[-1].replace(".domtable","") for x in domtblFiles - alreadyDone)
         else:
-            "ERROR: Tasklist empty for parsing hmmscan"
+            print(" Processing " + str(len(fastaFiles)) + " domtable files")
+
+        # If using the multiprocessing version and outputbase doesn't have any
+        #  predicted domains, it's not as easy to remove if from the analysis
+        #  (probably because parseHmmScan only has a copy of clusters et al?)
+        # Using serialized version for now. Probably doesn't have too bad an impact
+        #pool = Pool(cores,maxtasksperchild=32)
+        for domtableFile in domtblFiles - alreadyDone:
+            parseHmmScan(domtableFile,output_folder,options.domain_overlap_cutoff)
+            #pool.apply_async(parseHmmScan, args=(domtableFile,output_folder,options.domain_overlap_cutoff))
+        #pool.close()
+        #pool.join()
+
+        print " Finished generating generating pfs and pfd files."
+
 
         ### Step 4: Parse the pfs, pfd files to generate BGC dictionary, clusters, and clusters per sample objects
-            ## Note: this code currently doesn't modify the fasta files to include the domain fasta IDs
-
+        print("\nProcessing domains sequence files")
+        
+        # grab all pfd files
         pfdFiles = glob(os.path.join(output_folder,"*.pfd"))
+        
+        # verify previous step. All BGCs without predicted domains should be gone
         pfdBases = set(x.split(os.sep)[-1].replace(".pfd","") for x in pfdFiles)
-
         if len(baseNames - pfdBases) > 0:
-            print "WARNING no domtbl files for:", baseNames - pfdBases
-
+            sys.exit("Error! The following files did NOT have their domains predicted by  sequences extracted: " + ", ".join(baseNames - pfdBases))
+    
+        if verbose:
+            print(" Adding sequences to corresponding domains file")
         for outputbase in pfdBases:
-            print "Processing: %s" % outputbase
+            if verbose:
+                print("   Processing: " + outputbase)
 
             pfdFile = os.path.join(output_folder, outputbase + ".pfd")
-            pfsFile = os.path.join(output_folder, outputbase + ".pfs")
             fasta_file = os.path.join(output_folder, outputbase + ".fasta")
 
-            fasta_dict = fasta_parser(open(fasta_file))
+            fasta_dict = fasta_parser(open(fasta_file)) # all fasta info from a BGC
             filtered_matrix = [map(lambda x: x.strip(), line.split('\t')) for line in open(pfdFile)]
 
+            # save each domain sequence from a single BGC in its corresponding file
             save_domain_seqs(filtered_matrix, fasta_dict, domainsout, output_folder, outputbase)
 
             BGCs[outputbase] = BGC_dic_gen(filtered_matrix)
@@ -1120,7 +1197,6 @@ if __name__=="__main__":
             pairs = set(map(tuple, map(sorted, combinations(clusters, 2))))
             cluster_pairs = [(x, y, "domain_dist", anchor_domains) for (x, y) in pairs]
             network_matrix = generate_network(cluster_pairs, cores)
-            allCalcFlag = True
             for cutoff in cutoff_list:
                 write_network_matrix(network_matrix, cutoff, os.path.join(output_folder, networks_folder, "networkfile_domain_dist_all_vs_all_c" + cutoff + ".network"), include_disc_nodes)
             if 'S' in domaindist_networks:
@@ -1168,10 +1244,10 @@ if __name__=="__main__":
 
     if seqdist_networks:
         print("")
-        if options.skip_all:
+        if options.skip_all and os.path.isfile(os.path.join(output_folder, networks_folder, "networkfile_seqdist_all_vs_all_c1.network")):
             network_matrix = network_parser(os.path.join(output_folder, networks_folder, "networkfile_seqdist_all_vs_all_c1.network"), Jaccardw, DDSw, GKw)
             
-        elif options.skip_mafft:
+        elif options.skip_mafft and os.path.isfile(os.path.join(output_folder, "DMS.dict")):
             DMS = {}
             print("Trying to read domain alignments (DMS.dict file)")
             with open(os.path.join(output_folder, "DMS.dict"), "r") as DMS_file:
@@ -1269,7 +1345,7 @@ if __name__=="__main__":
                 for sample, sampleClusters in sampleDict.iteritems():
                     print(" Sample: " + sample)
                     if len(sampleClusters) == 1:
-                        print(" Warning: Sample size = 1 detected. Not generating network for this sample (" + sample_name[sn] + ")")
+                        print(" Warning: Sample size = 1 detected. Not generating network for this sample (" + sample + ")")
                     else:
                         pairs = set(map(tuple, map(sorted, combinations(sampleClusters, 2))))
                         cluster_pairs = [(x, y, "seqdist", anchor_domains) for (x, y) in pairs]
@@ -1285,4 +1361,10 @@ if __name__=="__main__":
                                                  os.path.join(output_folder, networks_folder,
                                                               "networkfile_seqdist_" + sample + "_c" + cutoff + ".network"),
                                                  include_disc_nodes)
+
+    runtime = time.time()-time1
+    runtime_string = '\tMain function took %0.3f s' % (runtime)
+    timings_file.write(runtime_string + "\n")
+    print runtime_string
+    
     timings_file.close()
