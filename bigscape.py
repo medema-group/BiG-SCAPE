@@ -418,7 +418,7 @@ def run_mafft(al_method, maxit, cores, mafft_pars, domain):
     mafft_cmd = " ".join(mafft_cmd_list)
     
     if verbose:
-        print(mafft_cmd)
+        print("   " + mafft_cmd)
     subprocess.check_output(mafft_cmd, shell=True)
 
 
@@ -746,7 +746,7 @@ def CMD_parser():
     
     parser.add_option("-o", "--outputdir", dest="outputdir", default="",
                       help="Output directory, this will contain your pfd, pfs, network and hmmscan output files.")
-    parser.add_option("-i", "--inputdir", dest="inputdir", default="",
+    parser.add_option("-i", "--inputdir", dest="inputdir", default=os.path.dirname(os.path.realpath(__file__)),
                       help="Input directory of gbk files, if left empty, all gbk files in current and lower directories will be used.")
     parser.add_option("-c", "--cores", dest="cores", default=cpu_count(),
                       help="Set the amount of cores the script and hmmscan may use (default: use _all_ available cores)")
@@ -812,10 +812,6 @@ def CMD_parser():
     parser.add_option("-n", "--nbhood", dest="nbhood", default=4,
                       help="nbhood variable for the GK distance metric, default is set to 4.")
 
-    parser.add_option("--splitProcess",dest="splitProcess",action="store_true",default=False,
-                      help="Experimental Method: Splits initial work into separate processes equal to the number of cores used. "
-                           "Namely (1) parsing genbanks, (2) running hmmscan and generating the domtable files, "
-                           "(3) Parsing the domtable files to generate the pfs and pfd files. Will use these files to generate the BGC and DMS dictionary to rejoin the main workflow.")
     (options, args) = parser.parse_args()
     return options, args
 
@@ -874,8 +870,6 @@ if __name__=="__main__":
     domainsout = "domains"
     seqdist_networks = options.seqdist_networks.split(",")
     domaindist_networks = options.domaindist_networks.split(",")
-    # variable "samples" takes care of structure of files in get_gbk_files
-    samples = True if "S" in seqdist_networks or "S" in domaindist_networks else False
     
     if options.skip_all:
         if options.skip_hmmscan or options.skip_mafft:
@@ -976,203 +970,151 @@ if __name__=="__main__":
     # to avoid calling MAFFT if there's only 1 seq. representing a particular domain
     sequences_per_domain = {} 
     
-    #Loop over the samples
-    #if options.skip_hmmscan or options.skip_mafft or options.skip_all:
-        #print("\nSkipping processing of hmmscan output files")
-    #else:
-        #print("\nPredicting domains and parsing the hmmscan output files...\n")
-
     print("\n\n   - - Processing input files - -")
     
-    if options.splitProcess:
-        # These will be used to track if we drop files in processing
-        genbankFileLocations = set(gbk_files)
-        baseNames = set(clusters)
+    # These will be used to track if we drop files in processing
+    genbankFileLocations = set(gbk_files)
+    baseNames = set(clusters)
 
-        ### Step 1: Generate Fasta Files
-        print "\nParsing genbank files to generate fasta files for hmmscan"
+    ### Step 1: Generate Fasta Files
+    print "\nParsing genbank files to generate fasta files for hmmscan"
 
-        # filter through task list to avoid unecessary computation: if output file is already there and non-empty, exclude it from list
-        alreadyDone = set()
-        for genbank in genbankFileLocations:
-            outputbase = genbank.split(os.sep)[-1].replace(".gbk","")
-            outputfile = os.path.join(output_folder,outputbase + '.fasta')
-            if os.path.isfile(outputfile) and os.path.getsize(outputfile) > 0:
-                alreadyDone.add(genbank)
+    # filter through task list to avoid unecessary computation: if output file is already there and non-empty, exclude it from list
+    alreadyDone = set()
+    for genbank in genbankFileLocations:
+        outputbase = genbank.split(os.sep)[-1].replace(".gbk","")
+        outputfile = os.path.join(output_folder,outputbase + '.fasta')
+        if os.path.isfile(outputfile) and os.path.getsize(outputfile) > 0:
+            alreadyDone.add(genbank)
 
-        if len(genbankFileLocations - alreadyDone) == 0:
-            print(" All GenBank files had already been processed")
-        elif len(alreadyDone) > 0:
-            print " Warning! The following NEW input file(s) will be processed: %s" % ", ".join(x.split(os.sep)[-1].replace(".gbk","") for x in genbankFileLocations - alreadyDone)
-        else:
-            print(" Processing " + str(len(genbankFileLocations)) + " files")
+    if len(genbankFileLocations - alreadyDone) == 0:
+        print(" All GenBank files had already been processed")
+    elif len(alreadyDone) > 0:
+        print " Warning! The following NEW input file(s) will be processed: %s" % ", ".join(x.split(os.sep)[-1].replace(".gbk","") for x in genbankFileLocations - alreadyDone)
+    else:
+        print(" Processing " + str(len(genbankFileLocations)) + " files")
 
-        # Generate Pool of workers
-        pool = Pool(cores,maxtasksperchild=32)
-        for genbankFile in (genbankFileLocations - alreadyDone):
-            pool.apply_async(generateFasta,args =(genbankFile,output_folder))
-        pool.close()
-        pool.join()
-        print " Finished generating fasta files."
-
-
-        ### Step 2: Run hmmscan
-        print("\nPredicting domains using hmmscan")
-        
-        # grab fasta files locations
-        fastaFiles = set(glob(os.path.join(output_folder,"*.fasta")))
-        
-        # verify previous step
-        fastaBases = set(x.split(os.sep)[-1].replace(".fasta","") for x in fastaFiles)
-        if len(baseNames - fastaBases) > 0:
-            sys.exit("Error! The following files did NOT have their fasta sequences extracted: " + ", ".join(baseNames - fastaBases))
-        
-        if options.force_hmmscan:
-            # process all files, regardless of whether they already existed
-            task_set = fastaFiles
-            print(" Forcing domain prediction on ALL fasta files (--force_hmmscan)")
-        else:
-            # find already processed files
-            alreadyDone = set()
-            for fasta in fastaFiles:
-                outputbase  = fasta.split(os.sep)[-1].replace(".fasta","")
-                outputfile = os.path.join(output_folder,outputbase + '.domtable')
-                if os.path.isfile(outputfile) and os.path.getsize(outputfile) > 0:
-                    alreadyDone.add(fasta)
-             
-            if len(fastaFiles - alreadyDone) == 0:
-                 print(" All fasta files had already been processed")
-            elif len(alreadyDone) > 0:
-                print " Warning! The following NEW fasta file(s) will be processed: %s" % ", ".join(x.split(os.sep)[-1].replace(".fasta","") for x in fastaFiles - alreadyDone)
-            else:
-                print(" Predicting domains for " + str(len(fastaFiles)) + " fasta files")
-
-            task_set = fastaFiles - alreadyDone
-            
-        pool = Pool(cores,maxtasksperchild=1)
-        for fastaFile in task_set:
-            pool.apply_async(runHmmScan,args=(fastaFile,pfam_dir,output_folder, verbose))
-        pool.close()
-        pool.join()
-
-        print " Finished generating domtable files."
+    # Generate Pool of workers
+    pool = Pool(cores,maxtasksperchild=32)
+    for genbankFile in (genbankFileLocations - alreadyDone):
+        pool.apply_async(generateFasta,args =(genbankFile,output_folder))
+    pool.close()
+    pool.join()
+    print " Finished generating fasta files."
 
 
-        ### Step 3: Parse hmmscan domtable results and generate pfs and pfd files
-        print("\nParsing hmmscan domtable files")
-        
-        # grab all domtable file locations
-        domtblFiles = set(glob(os.path.join(output_folder,"*.domtable")))
-        
-        # verify previous step
-        domtblBases = set(x.split(os.sep)[-1].replace(".domtable","") for x in domtblFiles)
-        if len(baseNames - domtblBases) > 0:
-            sys.exit("Error! The following files did NOT have their domains predicted by  sequences extracted: " + ", ".join(baseNames - domtblBases))
-        
+    ### Step 2: Run hmmscan
+    print("\nPredicting domains using hmmscan")
+    
+    # grab fasta files locations
+    fastaFiles = set(glob(os.path.join(output_folder,"*.fasta")))
+    
+    # verify previous step
+    fastaBases = set(x.split(os.sep)[-1].replace(".fasta","") for x in fastaFiles)
+    if len(baseNames - fastaBases) > 0:
+        sys.exit("Error! The following files did NOT have their fasta sequences extracted: " + ", ".join(baseNames - fastaBases))
+    
+    if options.force_hmmscan:
+        # process all files, regardless of whether they already existed
+        task_set = fastaFiles
+        print(" Forcing domain prediction on ALL fasta files (--force_hmmscan)")
+    else:
         # find already processed files
         alreadyDone = set()
-        for domtable in domtblFiles:
-            outputbase  = domtable.split(os.sep)[-1].replace(".domtable","")
-            outputfile = os.path.join(output_folder,outputbase + '.pfd')
+        for fasta in fastaFiles:
+            outputbase  = fasta.split(os.sep)[-1].replace(".fasta","")
+            outputfile = os.path.join(output_folder,outputbase + '.domtable')
             if os.path.isfile(outputfile) and os.path.getsize(outputfile) > 0:
-                alreadyDone.add(domtable)
-
-        if len(domtblFiles - alreadyDone) == 0:
-            print(" All domtable files had already been processed")
+                alreadyDone.add(fasta)
+            
+        if len(fastaFiles - alreadyDone) == 0:
+                print(" All fasta files had already been processed")
         elif len(alreadyDone) > 0:
-            print " Warning! The following domtable files had not been processed: %s" % ", ".join(x.split(os.sep)[-1].replace(".domtable","") for x in domtblFiles - alreadyDone)
+            print " Warning! The following NEW fasta file(s) will be processed: %s" % ", ".join(x.split(os.sep)[-1].replace(".fasta","") for x in fastaFiles - alreadyDone)
         else:
-            print(" Processing " + str(len(fastaFiles)) + " domtable files")
+            print(" Predicting domains for " + str(len(fastaFiles)) + " fasta files")
 
-        # If using the multiprocessing version and outputbase doesn't have any
-        #  predicted domains, it's not as easy to remove if from the analysis
-        #  (probably because parseHmmScan only has a copy of clusters et al?)
-        # Using serialized version for now. Probably doesn't have too bad an impact
-        #pool = Pool(cores,maxtasksperchild=32)
-        for domtableFile in domtblFiles - alreadyDone:
-            parseHmmScan(domtableFile,output_folder,options.domain_overlap_cutoff)
-            #pool.apply_async(parseHmmScan, args=(domtableFile,output_folder,options.domain_overlap_cutoff))
-        #pool.close()
-        #pool.join()
-
-        print " Finished generating generating pfs and pfd files."
-
-
-        ### Step 4: Parse the pfs, pfd files to generate BGC dictionary, clusters, and clusters per sample objects
-        print("\nProcessing domains sequence files")
+        task_set = fastaFiles - alreadyDone
         
-        # grab all pfd files
-        pfdFiles = glob(os.path.join(output_folder,"*.pfd"))
-        
-        # verify previous step. All BGCs without predicted domains should be gone
-        pfdBases = set(x.split(os.sep)[-1].replace(".pfd","") for x in pfdFiles)
-        if len(baseNames - pfdBases) > 0:
-            sys.exit("Error! The following files did NOT have their domains predicted by  sequences extracted: " + ", ".join(baseNames - pfdBases))
+    pool = Pool(cores,maxtasksperchild=1)
+    for fastaFile in task_set:
+        pool.apply_async(runHmmScan,args=(fastaFile,pfam_dir,output_folder, verbose))
+    pool.close()
+    pool.join()
+
+    print " Finished generating domtable files."
+
+
+    ### Step 3: Parse hmmscan domtable results and generate pfs and pfd files
+    print("\nParsing hmmscan domtable files")
     
-        if verbose:
-            print(" Adding sequences to corresponding domains file")
-        for outputbase in pfdBases:
-            if verbose:
-                print("   Processing: " + outputbase)
+    # grab all domtable file locations
+    domtblFiles = set(glob(os.path.join(output_folder,"*.domtable")))
+    
+    # verify previous step
+    domtblBases = set(x.split(os.sep)[-1].replace(".domtable","") for x in domtblFiles)
+    if len(baseNames - domtblBases) > 0:
+        sys.exit("Error! The following files did NOT have their domains predicted by  sequences extracted: " + ", ".join(baseNames - domtblBases))
+    
+    # find already processed files
+    alreadyDone = set()
+    for domtable in domtblFiles:
+        outputbase  = domtable.split(os.sep)[-1].replace(".domtable","")
+        outputfile = os.path.join(output_folder,outputbase + '.pfd')
+        if os.path.isfile(outputfile) and os.path.getsize(outputfile) > 0:
+            alreadyDone.add(domtable)
 
-            pfdFile = os.path.join(output_folder, outputbase + ".pfd")
-            fasta_file = os.path.join(output_folder, outputbase + ".fasta")
-
-            fasta_dict = fasta_parser(open(fasta_file)) # all fasta info from a BGC
-            filtered_matrix = [map(lambda x: x.strip(), line.split('\t')) for line in open(pfdFile)]
-
-            # save each domain sequence from a single BGC in its corresponding file
-            save_domain_seqs(filtered_matrix, fasta_dict, domainsout, output_folder, outputbase)
-
-            BGCs[outputbase] = BGC_dic_gen(filtered_matrix)
-            group_dct = genbank_grp_dict(gbk_files, group_dct)
-
-    ### This is the current workflow to generate the BGC dictionary, pfs, and pfd files #################
-
+    if len(domtblFiles - alreadyDone) == 0:
+        print(" All domtable files had already been processed")
+    elif len(alreadyDone) > 0:
+        print " Warning! The following domtable files had not been processed: %s" % ", ".join(x.split(os.sep)[-1].replace(".domtable","") for x in domtblFiles - alreadyDone)
     else:
-        for gbk in gbk_files:
-            # the "group" dictionary must always be obtained as it's used when
-            # writing the network file, so this call has to stay despite
-            # --skip_hmmscan, --skip_mafft or --skip_all
-            group_dct, fasta_dict = genbank_parser_hmmscan_call([gbk], output_folder, cores, group_dct, (
-            options.skip_hmmscan or options.skip_mafft or options.skip_all))  # runs hammscan and returns the CDS in the cluster
+        print(" Processing " + str(len(fastaFiles)) + " domtable files")
 
-            outputbase = gbk.split(os.sep)[-1].replace(".gbk", "")
+    # If using the multiprocessing version and outputbase doesn't have any
+    #  predicted domains, it's not as easy to remove if from the analysis
+    #  (probably because parseHmmScan only has a copy of clusters et al?)
+    # Using serialized version for now. Probably doesn't have too bad an impact
+    #pool = Pool(cores,maxtasksperchild=32)
+    for domtableFile in domtblFiles - alreadyDone:
+        parseHmmScan(domtableFile,output_folder,options.domain_overlap_cutoff)
+        #pool.apply_async(parseHmmScan, args=(domtableFile,output_folder,options.domain_overlap_cutoff))
+    #pool.close()
+    #pool.join()
 
-            # try to read the domtable file to find out if this gbk has domains. Needed to parse domains into fastas anyway.
-            pfd_matrix = domtable_parser(outputbase, os.path.join(output_folder, outputbase + ".domtable"))
-            num_domains = len(pfd_matrix)  # these might still be overlapped, but we only need a minimum number
+    print " Finished generating generating pfs and pfd files."
 
-            if num_domains > 0 and not (options.skip_hmmscan or options.skip_mafft or options.skip_all):
-                print(" Processing domtable file: " + outputbase)
 
-                # pfd_matrix = hmm_table_parser(outputbase+".gbk", output_folder +"/"+ hmm_file)
-                filtered_matrix, domains = check_overlap(pfd_matrix,
-                                                         options.domain_overlap_cutoff)  # removes overlapping domains, and keeps the highest scoring domain
-                save_domain_seqs(filtered_matrix, fasta_dict, domainsout, output_folder,
-                                 outputbase)  #save the sequences for the found domains per pfam domain
+    ### Step 4: Parse the pfs, pfd files to generate BGC dictionary, clusters, and clusters per sample objects
+    print("\nProcessing domains sequence files")
+    
+    # grab all pfd files
+    pfdFiles = glob(os.path.join(output_folder,"*.pfd"))
+    
+    # verify previous step. All BGCs without predicted domains should be gone
+    pfdBases = set(x.split(os.sep)[-1].replace(".pfd","") for x in pfdFiles)
+    if len(baseNames - pfdBases) > 0:
+        sys.exit("Error! The following files did NOT have their domains predicted by  sequences extracted: " + ", ".join(baseNames - pfdBases))
 
-                # Save list of domains per BGC
-                pfsoutput = os.path.join(output_folder, outputbase + ".pfs")
-                pfs_handle = open(pfsoutput, 'w')
-                write_pfs(pfs_handle, domains)
+    if verbose:
+        print(" Adding sequences to corresponding domains file")
+        
+    for outputbase in pfdBases:
+        if verbose:
+            print("   Processing: " + outputbase)
 
-                # Save more complete information of each domain per BGC
-                pfdoutput = os.path.join(output_folder, outputbase + ".pfd")
-                pfd_handle = open(pfdoutput, 'w')
-                write_pfd(pfd_handle, filtered_matrix)
+        pfdFile = os.path.join(output_folder, outputbase + ".pfd")
+        fasta_file = os.path.join(output_folder, outputbase + ".fasta")
 
-                BGCs[outputbase] = BGC_dic_gen(filtered_matrix)
+        fasta_dict = fasta_parser(open(fasta_file)) # all fasta info from a BGC
+        filtered_matrix = [map(lambda x: x.strip(), line.split('\t')) for line in open(pfdFile)]
 
-                # keep track of number of sequences per domain. If only 1
-                #  sequence, skip MAFFT call for this particular domain.
-                for row in filtered_matrix:
-                    try:
-                        sequences_per_domain[row[5]] += 1
-                    except KeyError:
-                        sequences_per_domain[row[5]] = 1
+        # save each domain sequence from a single BGC in its corresponding file
+        save_domain_seqs(filtered_matrix, fasta_dict, domainsout, output_folder, outputbase)
 
-                        # empty entire samples could arise from individual gbks with no domains
+        BGCs[outputbase] = BGC_dic_gen(filtered_matrix)
+        group_dct = genbank_grp_dict(gbk_files, group_dct)
+
 
     #Write or retrieve BGC dictionary
     if not options.skip_all:
@@ -1186,14 +1128,21 @@ if __name__=="__main__":
                 BGC_file.close()
     
     
-    # Dictionary with pairwise distance information
+    print("\n\n   - - Calculating distance matrix - -")
+    
+    
     # Distance without taking sequence similarity between specific domains into account
-
     if domaindist_networks:
         if options.skip_all: #read already calculated distances
-            network_matrix = network_parser(os.path.join(output_folder, networks_folder, "networkfile_domain_dist_all_vs_all_c1.network"), Jaccardw, DDSw, GKw)
+            print(" Trying to read alread calculated network file...")
+            if os.path.isfile(os.path.join(output_folder, networks_folder, "networkfile_domain_dist_all_vs_all_c1.network")):
+                network_matrix = network_parser(os.path.join(output_folder, networks_folder, "networkfile_domain_dist_all_vs_all_c1.network"), Jaccardw, DDSw, GKw)
+                print("  ...done")
+            else:
+                sys.exit("  File networkfile_domain_dist_all_vs_all_c1.network could not be found!")
+            
         if 'A' in domaindist_networks:
-            print("* Generating all-vs-all network with domain distance method")
+            print("\nGenerating all-vs-all network with domain distance method")
             pairs = set(map(tuple, map(sorted, combinations(clusters, 2))))
             cluster_pairs = [(x, y, "domain_dist", anchor_domains) for (x, y) in pairs]
             network_matrix = generate_network(cluster_pairs, cores)
@@ -1201,9 +1150,9 @@ if __name__=="__main__":
                 write_network_matrix(network_matrix, cutoff, os.path.join(output_folder, networks_folder, "networkfile_domain_dist_all_vs_all_c" + cutoff + ".network"), include_disc_nodes)
             if 'S' in domaindist_networks:
                 if len(sampleDict) == 1:
-                    print("* NOT generating networks per sample (only one sample, covered in the all-vs-all case)")
+                    print("\nNOT generating networks per sample (only one sample, covered in the all-vs-all case)")
                 else:
-                    print("* Generating sample networks with domain distance method")
+                    print("\nGenerating sample networks with domain distance method")
                     for sample, sampleClusters in sampleDict.iteritems():
                         print(" Sample: " + sample)
                         if len(sampleClusters) == 1:
@@ -1222,9 +1171,9 @@ if __name__=="__main__":
         elif 'S' in domaindist_networks:
             # need to caculate the network for each of the pairs
             if len(sampleDict) == 1:
-                print("* NOT generating networks per sample (only one sample, covered in the all-vs-all case)")
+                print("\nNOT generating networks per sample (only one sample, covered in the all-vs-all case)")
             else:
-                print("* Generating sample networks with domain distance method")
+                print("\nGenerating sample networks with domain distance method")
                 for sample, sampleClusters in sampleDict.iteritems():
                     print(" Sample: " + sample)
                     if len(clusters) == 1:
@@ -1243,38 +1192,42 @@ if __name__=="__main__":
     # Check whether user wants seqdist method networks before calculating DMS
 
     if seqdist_networks:
-        print("")
-        if options.skip_all and os.path.isfile(os.path.join(output_folder, networks_folder, "networkfile_seqdist_all_vs_all_c1.network")):
-            network_matrix = network_parser(os.path.join(output_folder, networks_folder, "networkfile_seqdist_all_vs_all_c1.network"), Jaccardw, DDSw, GKw)
+        if options.skip_all:
+            print(" Trying to read already calculated network file...")
+            if os.path.isfile(os.path.join(output_folder, networks_folder, "networkfile_seqdist_all_vs_all_c1.network")):
+                network_matrix = network_parser(os.path.join(output_folder, networks_folder, "networkfile_seqdist_all_vs_all_c1.network"), Jaccardw, DDSw, GKw)
+                print("  ...done")
+            else:
+                sys.exit("  File networkfile_seqdist_all_vs_all_c1.network could not be found!")
             
-        elif options.skip_mafft and os.path.isfile(os.path.join(output_folder, "DMS.dict")):
-            DMS = {}
-            print("Trying to read domain alignments (DMS.dict file)")
-            with open(os.path.join(output_folder, "DMS.dict"), "r") as DMS_file:
-                DMS = pickle.load(DMS_file)
-                DMS_file.close()
+        elif options.skip_mafft:
+            print(" Trying to read domain alignments (DMS.dict file)")
+            if os.path.isfile(os.path.join(output_folder, "DMS.dict")):
+                DMS = {}
+                with open(os.path.join(output_folder, "DMS.dict"), "r") as DMS_file:
+                    DMS = pickle.load(DMS_file)
+            else:
+                sys.exit("  File DMS.dict could not be found!")
                 
         else:
             DMS = {}
             fasta_domains = get_domain_fastas(domainsout, output_folder)
-            if options.skip_hmmscan or options.splitProcess: # in this case we didn't have a chance to fill sequences_per_domain
 
-                for domain_fasta in fasta_domains:
-                    domain_name = domain_fasta.split(os.sep)[-1].replace(".fasta", "")
-                    
-                    # fill fasta_dict
-                    fasta_handle = open(domain_fasta, "r")
+            for domain_fasta in fasta_domains:
+                domain_name = domain_fasta.split(os.sep)[-1].replace(".fasta", "")
+                
+                # fill fasta_dict
+                with open(domain_fasta, "r") as fasta_handle:
                     fasta_dict = fasta_parser(fasta_handle)
-                    fasta_handle.close()
-                    
-                    sequences_per_domain[domain_name] = len(fasta_dict)
+                
+                sequences_per_domain[domain_name] = len(fasta_dict)
                         
                         
-            print("Aligning domains")
+            print("\nAligning domains")
             if options.use_perc_id == True:
-                print("(Using calculated percentage identity for cluster diversity)")
+                print("  Using calculated percentage identity")
             else:
-                print("(Using percentage identity from MAFFT for cluster diversity)")
+                print("  Using percentage identity score from MAFFT")
                 
                 
             """DMS -- dictionary of this structure: DMS = {'general_domain_name_x': { ('specific_domain_name_1',
@@ -1322,13 +1275,12 @@ if __name__=="__main__":
             
             # though we don't really get to load this file by the time being
             with open(os.path.join(output_folder, "DMS.dict"), "w") as DMS_file:
+                print("  Saving DMS.dict file")
                 pickle.dump(DMS, DMS_file)
-                DMS_file.close()
-            print("")
             
             
         if "A" in seqdist_networks:
-            print("* Generating all-vs-all network with domain-sequence distance method")
+            print("\nGenerating all-vs-all network with domain-sequence distance method")
             if not options.skip_all:
                 print(" Calculating all pairwise distances")
                 pairs = set(map(tuple, map(sorted, combinations(clusters, 2))))
@@ -1339,9 +1291,9 @@ if __name__=="__main__":
                 
         if "S" in seqdist_networks:
             if len(sampleDict) == 1 and "A" in seqdist_networks:
-                print("* NOT generating networks per sample (only one sample, covered in the all-vs-all case)")
+                print("\nNOT generating networks per sample (only one sample, covered in the all-vs-all case)")
             else:
-                print("* Generating sample networks with domain-sequence distance method")
+                print("\nGenerating sample networks with domain-sequence distance method")
                 for sample, sampleClusters in sampleDict.iteritems():
                     print(" Sample: " + sample)
                     if len(sampleClusters) == 1:
@@ -1354,7 +1306,6 @@ if __name__=="__main__":
                             for pair in pairs:
                                 network_matrix_sample[pair] = network_matrix[pair]
                         else:
-                            print("  Calculating distances for this sample")
                             network_matrix_sample = generate_network(cluster_pairs, cores)
                         for cutoff in cutoff_list:
                             write_network_matrix(network_matrix_sample, cutoff,
