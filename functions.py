@@ -317,7 +317,19 @@ def calc_perc_identity(seq1, seq2, spec_domain, spec_domain_nest, domain):
     length = 0
     matches = 0
     
-    for pos in range(len(seq1)): #Sequences should have the same length because they come from an MSA
+    #Sequences *should* have the same length because they come from an MSA
+    # but if sequences were incorrectly appended more than once to the same 
+    # domain sequence, there would be problems here
+    if len(seq1) != len(seq2):
+        print("\tWARNING: mismatch in sequences' lengths while calculating sequence identity") 
+        print("\t Domain: " + domain)
+        print("\t  Specific domain 1: " + spec_domain + " len: " + str(len(seq1)))
+        print("\t  Specific domain 2: " + spec_domain_nest + " len: " + str(len(seq2)))
+        print("\t trying to continue with shortest length...")
+        
+    seq_length = min(len(seq1), len(seq2))
+    
+    for pos in range(seq_length): 
         if seq1[pos] == seq2[pos]:
             if seq1[pos] != "-":
                 matches += 1
