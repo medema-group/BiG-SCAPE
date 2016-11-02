@@ -217,6 +217,15 @@ def check_data_integrity(gbk_files):
                     # this is a one-element list, mark it for late removal
                     samples_for_deletion.append(sample)
                 pass
+            except AssertionError as e:
+                print("   Assertion error with file " + f + ": \n   " + str(e))
+                print("    (This file will be excluded from the analysis)")
+                if len(gbk_files[sample]) > 1:
+                    gbk_files[sample].remove(f)
+                else:
+                    # this is a one-element list, mark it for late removal
+                    samples_for_deletion.append(sample)
+                pass
             handle.close()
     if len(samples_for_deletion) > 0:
         for s in sorted(samples_for_deletion, reverse=True):
@@ -245,7 +254,7 @@ def check_data_integrity(gbk_files):
     if duplication == True:
         print "There was duplication in the input files, if this is not intended remove them."
         cont = raw_input("Continue anyway? Y/N ")
-        if cont.lower() == "n":
+        if cont.lower() != "y":
             sys.exit()
             
     # The possibility of not having files to analyze was checked for in get_gbk_files
@@ -334,8 +343,14 @@ def calc_perc_identity(seq1, seq2, spec_domain, spec_domain_nest, domain):
             if seq1[pos] != "-":
                 matches += 1
                 length += 1
-        else:
-            length += 1
+        except IndexError:
+            print("\tWARNING: there was a problem in calc_perc_identity")
+            print("\t Most likely a mismatch in sequences' lengths: " + str(len(seq1)) + ", " + str(len(seq2)))
+            print("\t Domain: " + domain)
+            print("\t  Specific domain 1: " + spec_domain)
+            print("\t  Specific domain 2: " + spec_domain_nest)
+            print("\t trying to continue...")
+            return float(matches) / float(length), length    
 
     return float(matches) / float(length), length    
 
@@ -809,4 +824,4 @@ def write_parameters(output_folder, options):
     else:
         pf.write("\n")
 
-    pf.close()
+    pf.close()
