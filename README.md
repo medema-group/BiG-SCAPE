@@ -70,49 +70,20 @@ MAFFT (.algn) for domains represented by more than one sequence. Saves alignment
 ### When to use it
 * First time
 * When changing fundamental parameters like `domain_overlap_cutoff` or 
-`min_bgc_size`
-* When you are changing versions of the pfam database
+`min_bgc_size`. Note that BiG-SCAPE only works with files which do not yet have their corresponding processed output (so it's possible to save time when resuming from an unexpected end of the run). This means that re-running BiG-SCAPE with different values for these parameters will not have an effect unless you empty your output directory or choose a new one.
+* When you are changing versions of the pfam database (if you have previous results from past runs, you can use the `--force_hmmscan` parameter)
 
 ### What you need
 * A list of GenBank files (.gbk). If either the `seqdist` or `domain_dist` 
 methods are selected with the "S" option, BiG-SCAPE will treat subfolders within
 your input directory as "samples". The name of each sample is taken from each 
-subfolder with .gbk files, so repeating subfolder names is not allowed
+subfolder with .gbk files and, as it is used in the final network files duplicated subfolder/sample names is not allowed.
 
-## Parameter `--skip_hmmscan`
-
-### What it does
-Skips domain prediction using `hmmscan` and extraction of information, but 
-recalculates everything else:
-* When using the `seqdist` distance method, calculates multiple alignments 
-using MAFFT (.algn) for domains represented by more than one sequence. Saves alignment information in `<output dir>/DMS.dict`
-* Calculates distance between BGCs
-* Generates network files
-
-### When to use it
-* You already ran BiG-SCAPE once
-* You *need* to change parameters in MAFFT
-* You are using the `seqdist` method *and* you want to change the sequence 
-domain identity score method (e.g. from BiG-SCAPE's to MAFFT's)
-
-### What you need
-* The original .gbk files. These are necessary to rebuild the original structure
-* The list of domains per BGC (.pfs files). These are necessary for distance 
-calculations
-* The output from `hmmscan` (.domtable files). These are necesary to see whether
-a particular .gbk file had no predicted domains (in which case it will be taken 
-out of the analysis)
-* If using the `seqdist` method, the fasta sequence files per domain 
-(`<output dir>/domains/`). These are necessary for the alignments
-* The BGCs dictionary (`<output dir>/BGCs.dict`). This contains a list of 
-domains per BGC (and for each of these domains, a list of all predicted 
-locations within the BGC). Needed for distance calculations
 
 ## Parameter `--skip_mafft`
 
 ### What it does
-Skips domain prediction using `hmmscan`, extraction of sequences and domain 
-sequence alignment using `MAFFT`. Oherwise:
+Skips domain sequence alignment using `MAFFT`. Oherwise:
 * Calculates distance between BGCs
 * Generates network files
 
