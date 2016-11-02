@@ -497,7 +497,7 @@ def generateFasta(gbkfilePath,outputdir):
     ## first parse the genbankfile and generate the fasta file for input into hmmscan ##
     outputbase  = gbkfilePath.split(os.sep)[-1].replace(".gbk","")
     if verbose:
-        print "Generating fasta for: ", outputbase
+        print "   Generating fasta for: ", outputbase
     outputfile = os.path.join(outputdir,outputbase + '.fasta')
 
     with open(gbkfilePath,"r") as genbankHandle:
@@ -1054,15 +1054,16 @@ if __name__=="__main__":
     # verify previous step
     domtblBases = set(x.split(os.sep)[-1].replace(".domtable","") for x in domtblFiles)
     if len(baseNames - domtblBases) > 0:
-        sys.exit("Error! The following files did NOT have their domains predicted by  sequences extracted: " + ", ".join(baseNames - domtblBases))
+        sys.exit("Error! The following files did NOT have their domains predicted: " + ", ".join(baseNames - domtblBases))
     
     # find already processed files
     alreadyDone = set()
-    for domtable in domtblFiles:
-        outputbase  = domtable.split(os.sep)[-1].replace(".domtable","")
-        outputfile = os.path.join(output_folder,outputbase + '.pfd')
-        if os.path.isfile(outputfile) and os.path.getsize(outputfile) > 0:
-            alreadyDone.add(domtable)
+    if not options.force_hmmscan:
+        for domtable in domtblFiles:
+            outputbase  = domtable.split(os.sep)[-1].replace(".domtable","")
+            outputfile = os.path.join(output_folder,outputbase + '.pfd')
+            if os.path.isfile(outputfile) and os.path.getsize(outputfile) > 0:
+                alreadyDone.add(domtable)
 
     if len(domtblFiles - alreadyDone) == 0:
         print(" All domtable files had already been processed")
@@ -1091,10 +1092,10 @@ if __name__=="__main__":
     # grab all pfd files
     pfdFiles = glob(os.path.join(output_folder,"*.pfd"))
     
-    # verify previous step. All BGCs without predicted domains should be gone
+    # verify previous step. All BGCs without predicted domains should no longer be in baseNames
     pfdBases = set(x.split(os.sep)[-1].replace(".pfd","") for x in pfdFiles)
     if len(baseNames - pfdBases) > 0:
-        sys.exit("Error! The following files did NOT have their domains predicted by  sequences extracted: " + ", ".join(baseNames - pfdBases))
+        sys.exit("Error! The following files did NOT have their domtable files processed: " + ", ".join(baseNames - pfdBases))
 
     if verbose:
         print(" Adding sequences to corresponding domains file")
