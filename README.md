@@ -70,8 +70,8 @@ MAFFT (.algn) for domains represented by more than one sequence. Saves alignment
 ### When to use it
 * First time
 * When changing fundamental parameters like `domain_overlap_cutoff` or 
-`min_bgc_size`. Note that BiG-SCAPE only works with files which do not yet have their corresponding processed output (so it's possible to save time when resuming from an unexpected end of the run). This means that re-running BiG-SCAPE with different values for these parameters will not have an effect unless you empty your output directory or choose a new one.
-* When you are changing versions of the pfam database (if you have previous results from past runs, you can use the `--force_hmmscan` parameter)
+`min_bgc_size`. Note that BiG-SCAPE only works with files which do not yet have their corresponding processed output (so it's possible to save time when resuming from an unexpected end of the run by just working on the unprocessed files). This means that re-running BiG-SCAPE with different values for these parameters will not have an effect unless you empty your output directory or choose a new one.
+* When you are changing versions of the pfam database (if you have previous results from past runs, you can override BiG-SCAPE's normal behavior using the `--force_hmmscan` parameter)
 
 ### What you need
 * A list of GenBank files (.gbk). If either the `seqdist` or `domain_dist` 
