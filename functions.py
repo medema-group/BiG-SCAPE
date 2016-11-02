@@ -343,14 +343,8 @@ def calc_perc_identity(seq1, seq2, spec_domain, spec_domain_nest, domain):
             if seq1[pos] != "-":
                 matches += 1
                 length += 1
-        except IndexError:
-            print("\tWARNING: there was a problem in calc_perc_identity")
-            print("\t Most likely a mismatch in sequences' lengths: " + str(len(seq1)) + ", " + str(len(seq2)))
-            print("\t Domain: " + domain)
-            print("\t  Specific domain 1: " + spec_domain)
-            print("\t  Specific domain 2: " + spec_domain_nest)
-            print("\t trying to continue...")
-            return float(matches) / float(length), length    
+        else:
+            length += 1
 
     return float(matches) / float(length), length    
 
@@ -824,4 +818,4 @@ def write_parameters(output_folder, options):
     else:
         pf.write("\n")
 
-    pf.close()
+    pf.close()
