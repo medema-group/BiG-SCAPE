@@ -271,7 +271,7 @@ def hmmscan(pfam_dir, fastafile, outputdir, name, cores):
 
     hmmscan_cmd = "hmmscan --cpu " + str(cores) + " --domtblout " + os.path.join(outputdir, name+".domtable") + " --cut_tc " + os.path.join(pfam_dir,"Pfam-A.hmm") + " " + str(fastafile)
     if verbose == True:
-        print("\t"+hmmscan_cmd)
+        print("   "+hmmscan_cmd)
     
     subprocess.check_output(hmmscan_cmd, shell=True)
     
@@ -386,7 +386,7 @@ def save_domain_seqs(filtered_matrix, fasta_dict, domains_folder, output_folder,
         domain_file.close()
 
 
-def network_parser(network_file, Jaccardw, DDSw, GKw):
+def network_parser(network_file, Jaccardw, DDSw, GKw, anchorweight):
     network = {}
     
     try:
@@ -407,18 +407,49 @@ def network_parser(network_file, Jaccardw, DDSw, GKw):
     # re-calculate raw distance with potentially new weights
     for (a, b) in network:
         Jaccard = network[a,b][7]
-        DDS = network[a,b][8]
+        #DDS = network[a,b][8] <- will be recalculated
         GK = network[a,b][9]
+        
+        rDDSna = network[a,b][10]
+        rDDSa = network[a,b][11]
+        Sa = network[a,b][12]
+        S = network[a,b][13]
+        
+        # Calculate DDS
+        if S_anchor != 0 and S != 0:
+            DDS_non_anchor = domain_difference / S
+            DDS_anchor = domain_difference_anchor / S_anchor
+            non_anchor_prct = S / (S + S_anchor)
+            anchor_prct = S_anchor / (S + S_anchor)
+            
+            DDS = ((1-anchorweight)*non_anchor_prct*DDS_non_anchor) + ((1+anchorweight)*anchor_prct*DDS_anchor)
+            
+        elif S_anchor == 0:
+            DDS_non_anchor = domain_difference / S
+            DDS_anchor = 0.0
+            
+            DDS = DDS_non_anchor
+            
+        else: #only anchor domains were found
+            DDS_non_anchor = 0.0
+            DDS_anchor = domain_difference_anchor / S_anchor
+            
+            DDS = DDS_anchor
+        DDS = 1 - DDS
+        
         distance = 1- (Jaccardw * Jaccard) - (DDSw * DDS) - (GKw * GK)
+        
         if distance <= 0:
             logscore = float("inf")
         else:
             logscore = -log(distance, 2)
+            
         sqrd_similarity = (1-distance)**2
         
         network[a,b][4] = logscore
         network[a,b][5] = distance
         network[a,b][6] = sqrd_similarity
+        network[a,b][8] = DDS
         
     return network
 
@@ -526,7 +557,7 @@ def distout_parser(distout_file):
 def write_network_matrix(matrix, cutoff, filename, include_disc_nodes):
     networkfile = open(filename, 'w')
     clusters = [] # will contain the names of clusters that have an edge value lower than the threshold
-    networkfile.write("clustername1\tclustername2\tgroup1\tdefinition\tgroup2\tdefinition\t-log2score\traw distance\tsquared similarity\tJaccard index\tDDS index\tGK index\tcombined group\tshared group\n")
+    networkfile.write("clustername1\tclustername2\tgroup1\tdefinition\tgroup2\tdefinition\t-log2score\traw distance\tsquared similarity\tJaccard index\tDDS index\tGK index\traw DDS non-anchor\traw DDS anchor\tNon-anchor domains\tAnchor domains\tcombined group\tshared group\n")
     
     for (gc1, gc2) in matrix.keys():
         row = [gc1, gc2]
@@ -549,7 +580,7 @@ def write_network_matrix(matrix, cutoff, filename, include_disc_nodes):
             elif row[2] != "":
                 temprow.append(str(row[2]))
             else:
-                 temprow.append(str("NA"))
+                temprow.append(str("NA"))
             
             if row[2] == row[4]:
                 temprow.append(row[2])
@@ -559,19 +590,31 @@ def write_network_matrix(matrix, cutoff, filename, include_disc_nodes):
             networkfile.write("\t".join(map(str,temprow)) + "\n")
 
     # matrix[gc1, gc2] =
-    # row:   0      1    2    3       4       5      6      7    8   9   [   10      11   <- these two are written directly
-    #       grp1  def1 grp2  def2  -logScr  rawD  sqrtSim  Jac  DDS  GK  [combGrp  ShrdGrp
+    # row:   0      1    2    3       4       5      6      7    8   9   
+    #       grp1  def1 grp2  def2  -logScr  rawD  sqrtSim  Jac  DDS  GK  
+    #
+    #       10      11    12    13
+    #     rDDSna  rDDSa   S     Sa
+    #
+    #       [   14      15   <- these two are written directly
+    #       [combGrp  ShrdGrp
+
+    
     if include_disc_nodes == True:  
         #Add the nodes without any edges, give them an edge to themselves with a distance of 0 
         clusters = set(clusters)
         passed_clusters = []
+        
+        #Arbitrary numbers for S and Sa domains: 1 of each (logical would be 0,0 but 
+        # that could mess re-analysis; 
+        # the actual values would be most accurate but that'd involve more work
         for (gc1, gc2) in matrix.keys():
             if gc1 not in clusters and gc1 not in passed_clusters:
-                networkfile.write("\t".join([gc1, gc1, matrix[gc1, gc2][0], matrix[gc1, gc2][1], "0", "0", "1", "0", "0", "0", "", ""]) + "\n")
+                networkfile.write("\t".join([gc1, gc1, matrix[gc1, gc2][0], matrix[gc1, gc2][1], matrix[gc1, gc2][0], matrix[gc1, gc2][1], "0", "0", "1", "1", "1", "1", "0", "0", "1", "1", "", ""]) + "\n")
                 passed_clusters.append(gc1)
             
             if gc2 not in clusters and gc2 not in passed_clusters:
-                networkfile.write("\t".join([gc2, gc2, matrix[gc1, gc2][2], matrix[gc1, gc2][3], "0", "0", "1", "0", "0", "0", "", ""]) + "\n")
+                networkfile.write("\t".join([gc2, gc2, matrix[gc1, gc2][2], matrix[gc1, gc2][3], matrix[gc1, gc2][2], matrix[gc1, gc2][3], "0", "0", "1", "1", "1", "1", "0", "0", "1", "1", "", ""]) + "\n")
                 passed_clusters.append(gc2)
             
     networkfile.close()

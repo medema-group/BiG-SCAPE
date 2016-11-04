@@ -189,12 +189,10 @@ def generate_dist_matrix(parms):
     cluster_file1 = os.path.join(output_folder, cluster1 + ".pfs")
     cluster_file2 = os.path.join(output_folder, cluster2 + ".pfs")
     
-    
     A = get_domain_list(cluster_file1)
     B = get_domain_list(cluster_file2)
     
-    
-    # this really shouldn't happen if we've filtered the gene cluster list already
+    # this really shouldn't happen if we've filtered domain-less gene clusters already
     if A == [''] or B == ['']:
         print("   Warning: Regarding distance between clusters " + cluster1 + " and " + cluster2 + ":")
         if A == [""] and B == [""]:
@@ -203,14 +201,17 @@ def generate_dist_matrix(parms):
             print("   Cluster " + cluster1 + " has no identified domains. Distance cannot be calculated")
         else:
             print("   Cluster " + cluster2 + " has no identified domains. Distance cannot be calculated")
+            
+        # last two values (S, Sa) should really be zero but this could give rise to errors when parsing 
+        # the network file (unless we catched the case S = Sa = 0
         return [cluster1, cluster2, group_dct[cluster1][0], group_dct[cluster1][1], \
-            group_dct[cluster2][0],group_dct[cluster2][1], '1.0', '1.0', '0.0','1.0','1.0', '1.0']
+            group_dct[cluster2][0],group_dct[cluster2][1], '0.0', '1.0', '0.0', '0.0', '0.0', '0.0', "1.0", "1.0", "1", "1"] 
     
 
     if dist_method == "seqdist":
-        dist, jaccard, dds, gk = cluster_distance(cluster1, cluster2, A, B, anchor_domains) #sequence dist
+        dist, jaccard, dds, gk, rDDSna, rDDS, S, Sa = cluster_distance(cluster1, cluster2, A, B, anchor_domains) #sequence dist
     elif dist_method == "domain_dist":
-        dist, jaccard, dds, gk = Distance_modified(A, B, 0, 4) #domain dist
+        dist, jaccard, dds, gk, rDDSna, rDDS, S, Sa = Distance_modified(A, B, 0, 4) #domain dist
         
     if dist == 0:
         logscore = float("inf")
@@ -224,7 +225,7 @@ def generate_dist_matrix(parms):
     #clustername1 clustername2 group1, group2, -log2score, dist, squared similarity, j, dds, gk
     network_row = [str(cluster1), str(cluster2), group_dct[cluster1][0],group_dct[cluster1][1], \
         group_dct[cluster2][0],group_dct[cluster2][1], str(logscore), str(dist), str((1-dist)**2), \
-        jaccard, dds, gk]
+        jaccard, dds, gk, rDDSna, rDDS, S, Sa]
     
     return network_row
     
@@ -359,13 +360,31 @@ def cluster_distance(A, B, A_domlist, B_domlist, anchor_domains):
                 S += max(len(seta),len(setb))
                 domain_difference += sum_seq_dist
 
+    
+    if S_anchor != 0 and S != 0:
+        DDS_non_anchor = domain_difference / float(S)
+        DDS_anchor = domain_difference_anchor / float(S_anchor)
         
-    if domain_difference_anchor != 0 and domain_difference != 0:
-        DDS = (anchorweight * (domain_difference_anchor / float(S_anchor))) + ((1 - anchorweight) * (domain_difference / float(S)))   #Recalculate domain_difference by giving preference to anchor domains
-    elif domain_difference_anchor == 0:
-        DDS = domain_difference / float(S)
+        # Calculate proper, proportional weight to each kind of domain
+        non_anchor_prct = S / float(S + S_anchor)
+        anchor_prct = S_anchor / float(S + S_anchor)
+
+        # Use anchorweight parameter to boost percieved rDDS_anchor
+        DDS = ((1-anchorweight)*non_anchor_prct*DDS_non_anchor) + ((1+anchorweight)*anchor_prct*DDS_anchor)
+        
+    elif S_anchor == 0:
+        DDS_non_anchor = domain_difference / float(S)
+        DDS_anchor = 0.0
+        
+        DDS = DDS_non_anchor
+        
     else: #only anchor domains were found
-        DDS = domain_difference_anchor / float(S_anchor)
+        DDS_non_anchor = 0.0
+        DDS_anchor = domain_difference_anchor / float(S_anchor)
+        
+        DDS = DDS_anchor
+ 
+    DDS = 1-DDS #transform into similarity
  
  
     # GK INDEX
@@ -373,17 +392,15 @@ def cluster_distance(A, B, A_domlist, B_domlist, anchor_domains):
     Ar = [item for item in A_domlist]
     Ar.reverse()
     GK = max([calculate_GK(A_domlist, B_domlist, nbhood), calculate_GK(Ar, B_domlist, nbhood)])
-        
     
-    DDS = 1-DDS #transform into similarity
     Distance = 1 - (Jaccardw * Jaccard) - (DDSw * DDS) - (GKw * GK) 
     if Distance < 0:
         print("Negative distance detected!")
-        print("J: " + str(Jaccard) + ", DDS: " + str(DDS) + ", GK: " + str(GK))
-        print("Jw: " + str(Jaccardw) + ", DDSw: " + str(DDSw) + ", GKw: " + str(GKw))
+        print("J: " + str(Jaccard) + "\tDDS: " + str(DDS) + "\tGK: " + str(GK))
+        print("Jw: " + str(Jaccardw) + "\tDDSw: " + str(DDSw) + "\tGKw: " + str(GKw))
         sys.exit()
         
-    return Distance, Jaccard, DDS, GK
+    return Distance, Jaccard, DDS, GK, DDS_non_anchor, DDS_anchor, S, S_anchor
 
 
 
@@ -574,7 +591,7 @@ def runHmmScan(fastaPath, hmmPath, outputdir, verbose):
         hmmscan_cmd = "hmmscan --cpu 1 --domtblout %s --cut_tc %s %s" % (outputName,hmmFile,fastaPath)
         if verbose == True:
             print("  Processing " + name)
-            #print("\t"+hmmscan_cmd)
+            print("   " + hmmscan_cmd)
         subprocess.check_output(hmmscan_cmd, shell=True)
 
     else:
@@ -588,7 +605,7 @@ def parseHmmScan(hmmscanResults,outputdir,overlapCutoff):
         num_domains = len(pfd_matrix) # these might still be overlapped, but we need at least 1
 
         if num_domains > 0:
-            print(" Processing domtable file: " + outputbase)
+            print("  Processing domtable file: " + outputbase)
 
             filtered_matrix, domains = check_overlap(pfd_matrix,overlapCutoff)  #removes overlapping domains, and keeps the highest scoring domain
             
@@ -768,13 +785,13 @@ def CMD_parser():
                        Sample input: \"A\" only generates the all vs all. Default is \"\"")
     
     parser.add_option("--Jaccardw", dest="Jaccardw", default=0.2,
-                      help="SJaccard weight, default is 0.2")
+                      help="Jaccard weight, default is 0.2")
     parser.add_option("--DDSw", dest="DDSw", default=0.75,
                       help="DDS weight, default is 0.75")
     parser.add_option("--GKw", dest="GKw", default=0.05,
                       help="GK weight, default is 0.05")
-    parser.add_option("-a", "--anchorw", dest="anchorweight", default=0.1,
-                      help="Weight of the anchor domains in the DDS distance metric. Default is set to 0.1.")
+    parser.add_option("-a", "--anchorboost", dest="anchorweight", default=0.2,
+                      help="Boost perceived proportion of DDS component with anchor domains in 'seqdist' method. Default is set to 0.2.")
     
     #parser.add_option("--domainsout", dest="domainsout", default="domains",
                       #help="outputfolder of the pfam domain fasta files")
@@ -1137,7 +1154,7 @@ if __name__=="__main__":
         if options.skip_all: #read already calculated distances
             print(" Trying to read alread calculated network file...")
             if os.path.isfile(os.path.join(output_folder, networks_folder, "networkfile_domain_dist_all_vs_all_c1.network")):
-                network_matrix = network_parser(os.path.join(output_folder, networks_folder, "networkfile_domain_dist_all_vs_all_c1.network"), Jaccardw, DDSw, GKw)
+                network_matrix = network_parser(os.path.join(output_folder, networks_folder, "networkfile_domain_dist_all_vs_all_c1.network"), Jaccardw, DDSw, GKw, anchorweight)
                 print("  ...done")
             else:
                 sys.exit("  File networkfile_domain_dist_all_vs_all_c1.network could not be found!")
@@ -1196,7 +1213,7 @@ if __name__=="__main__":
         if options.skip_all:
             print(" Trying to read already calculated network file...")
             if os.path.isfile(os.path.join(output_folder, networks_folder, "networkfile_seqdist_all_vs_all_c1.network")):
-                network_matrix = network_parser(os.path.join(output_folder, networks_folder, "networkfile_seqdist_all_vs_all_c1.network"), Jaccardw, DDSw, GKw)
+                network_matrix = network_parser(os.path.join(output_folder, networks_folder, "networkfile_seqdist_all_vs_all_c1.network"), Jaccardw, DDSw, GKw, anchorweight)
                 print("  ...done")
             else:
                 sys.exit("  File networkfile_seqdist_all_vs_all_c1.network could not be found!")
@@ -1226,9 +1243,9 @@ if __name__=="__main__":
                         
             print("\nAligning domains")
             if options.use_perc_id == True:
-                print("  Using calculated percentage identity")
+                print(" Using calculated percentage identity")
             else:
-                print("  Using percentage identity score from MAFFT")
+                print(" Using percentage identity score from MAFFT")
                 
                 
             """DMS -- dictionary of this structure: DMS = {'general_domain_name_x': { ('specific_domain_name_1',
