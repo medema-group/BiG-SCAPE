@@ -410,31 +410,27 @@ def network_parser(network_file, Jaccardw, DDSw, GKw, anchorweight):
         #DDS = network[a,b][8] <- will be recalculated
         GK = network[a,b][9]
         
-        rDDSna = network[a,b][10]
-        rDDSa = network[a,b][11]
-        Sa = network[a,b][12]
+        DDS_non_anchor = network[a,b][10]
+        DDS_anchor = network[a,b][11]
+        S_anchor = network[a,b][12]
         S = network[a,b][13]
         
         # Calculate DDS
         if S_anchor != 0 and S != 0:
-            DDS_non_anchor = domain_difference / S
-            DDS_anchor = domain_difference_anchor / S_anchor
             non_anchor_prct = S / (S + S_anchor)
             anchor_prct = S_anchor / (S + S_anchor)
             
-            DDS = ((1-anchorweight)*non_anchor_prct*DDS_non_anchor) + ((1+anchorweight)*anchor_prct*DDS_anchor)
+            non_anchor_weight = non_anchor_prct / (anchor_prct*anchorweight + non_anchor_prct)
+            anchor_weight = anchor_prct*anchorweight / (anchor_prct*anchorweight + non_anchor_prct)
+        
+            DDS = (non_anchor_weight*DDS_non_anchor) + (anchor_weight*DDS_anchor)
             
         elif S_anchor == 0:
-            DDS_non_anchor = domain_difference / S
-            DDS_anchor = 0.0
-            
             DDS = DDS_non_anchor
             
         else: #only anchor domains were found
-            DDS_non_anchor = 0.0
-            DDS_anchor = domain_difference_anchor / S_anchor
-            
             DDS = DDS_anchor
+            
         DDS = 1 - DDS
         
         distance = 1- (Jaccardw * Jaccard) - (DDSw * DDS) - (GKw * GK)

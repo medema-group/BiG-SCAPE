@@ -368,9 +368,13 @@ def cluster_distance(A, B, A_domlist, B_domlist, anchor_domains):
         # Calculate proper, proportional weight to each kind of domain
         non_anchor_prct = S / float(S + S_anchor)
         anchor_prct = S_anchor / float(S + S_anchor)
+        
+        # boost anchor subcomponent and re-normalize
+        non_anchor_weight = non_anchor_prct / (anchor_prct*anchorweight + non_anchor_prct)
+        anchor_weight = anchor_prct*anchorweight / (anchor_prct*anchorweight + non_anchor_prct)
 
         # Use anchorweight parameter to boost percieved rDDS_anchor
-        DDS = ((1-anchorweight)*non_anchor_prct*DDS_non_anchor) + ((1+anchorweight)*anchor_prct*DDS_anchor)
+        DDS = (non_anchor_weight*DDS_non_anchor) + (anchor_weight*DDS_anchor)
         
     elif S_anchor == 0:
         DDS_non_anchor = domain_difference / float(S)
@@ -790,8 +794,8 @@ def CMD_parser():
                       help="DDS weight, default is 0.75")
     parser.add_option("--GKw", dest="GKw", default=0.05,
                       help="GK weight, default is 0.05")
-    parser.add_option("-a", "--anchorboost", dest="anchorweight", default=0.2,
-                      help="Boost perceived proportion of DDS component with anchor domains in 'seqdist' method. Default is set to 0.2.")
+    parser.add_option("-a", "--anchorboost", dest="anchorweight", default=2.0,
+                      help="Boost perceived proportion of anchor DDS subcomponent in 'seqdist' method. Default is to double if (2.0)")
     
     #parser.add_option("--domainsout", dest="domainsout", default="domains",
                       #help="outputfolder of the pfam domain fasta files")
@@ -858,8 +862,8 @@ if __name__=="__main__":
     cores = int(options.cores)
     nbhood = int(options.nbhood)
     anchorweight = float(options.anchorweight)
-    if anchorweight > 1.0 or anchorweight < 0.0:
-        sys.exit("Invalid anchorweight parameter (must be between 0 and 1)")
+    if anchorweight < 1.0:
+        sys.exit("Invalid anchorweight parameter (must be equal or greater than 1)")
     Jaccardw = float(options.Jaccardw)
     DDSw = float(options.DDSw) 
     GKw = float(options.GKw)
