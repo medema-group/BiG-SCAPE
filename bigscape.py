@@ -1027,14 +1027,24 @@ if __name__=="__main__":
     ### Step 2: Run hmmscan
     print("\nPredicting domains using hmmscan")
     
-    # grab fasta files locations
-    fastaFiles = set(glob(os.path.join(output_folder,"*.fasta")))
+    # All available fasta files (could be more than it should if reusing output folder)
+    allFastaFiles = set(glob(os.path.join(output_folder,"*.fasta")))
     
-    # verify previous step
-    fastaBases = set(x.split(os.sep)[-1].replace(".fasta","") for x in fastaFiles)
-    if len(baseNames - fastaBases) > 0:
-        sys.exit("Error! The following files did NOT have their fasta sequences extracted: " + ", ".join(baseNames - fastaBases))
+    # fastaFiles: all the fasta files that should be there 
+    # (i.e. correspond to the input files)
+    fastaFiles = set()
+    for name in baseNames:
+        fastaFiles.add(os.path.join(output_folder, name+".fasta"))
     
+    # fastaBases: the actual fasta files we have that correspond to the input
+    fastaBases = allFastaFiles.intersection(fastaFiles)
+    
+    # Verify that all input files had their fasta sequences extracted
+    if len(fastaFiles - fastaBases) > 0:
+        sys.exit("Error! The following files did NOT have their fasta sequences extracted: " + ", ".join(fastaFiles - fastaBases))
+    
+    # Make a list of all fasta files that need to be processed
+    # (i.e., they don't yet have a corresponding .domtable)
     if options.force_hmmscan:
         # process all files, regardless of whether they already existed
         task_set = fastaFiles
@@ -1069,36 +1079,43 @@ if __name__=="__main__":
     ### Step 3: Parse hmmscan domtable results and generate pfs and pfd files
     print("\nParsing hmmscan domtable files")
     
-    # grab all domtable file locations
-    domtblFiles = set(glob(os.path.join(output_folder,"*.domtable")))
+    # All available domtable files
+    allDomtableFiles = set(glob(os.path.join(output_folder,"*.domtable")))
     
-    # verify previous step
-    domtblBases = set(x.split(os.sep)[-1].replace(".domtable","") for x in domtblFiles)
-    if len(baseNames - domtblBases) > 0:
-        sys.exit("Error! The following files did NOT have their domains predicted: " + ", ".join(baseNames - domtblBases))
+    # domtableFiles: all domtable files corresponding to the input files
+    domtableFiles = set()
+    for name in baseNames:
+        domtableFiles.add(os.path.join(output_folder, name+".domtable"))
+    
+    # domtableBases: the actual set of input files with coresponding domtable files
+    domtableBases = allDomtableFiles.intersection(domtableFiles)
+    
+    # Verify that all input files have a corresponding domtable file
+    if len(domtableFiles - domtableBases) > 0:
+        sys.exit("Error! The following files did NOT have their domains predicted: " + ", ".join(domtableFiles - domtableBases))
     
     # find already processed files
     alreadyDone = set()
     if not options.force_hmmscan:
-        for domtable in domtblFiles:
+        for domtable in domtableFiles:
             outputbase  = domtable.split(os.sep)[-1].replace(".domtable","")
             outputfile = os.path.join(output_folder,outputbase + '.pfd')
             if os.path.isfile(outputfile) and os.path.getsize(outputfile) > 0:
                 alreadyDone.add(domtable)
 
-    if len(domtblFiles - alreadyDone) == 0:
+    if len(domtableFiles - alreadyDone) == 0:
         print(" All domtable files had already been processed")
     elif len(alreadyDone) > 0:
-        print " Warning! The following domtable files had not been processed: %s" % ", ".join(x.split(os.sep)[-1].replace(".domtable","") for x in domtblFiles - alreadyDone)
+        print " Warning! The following domtable files had not been processed: %s" % ", ".join(x.split(os.sep)[-1].replace(".domtable","") for x in domtableFiles - alreadyDone)
     else:
-        print(" Processing " + str(len(fastaFiles)) + " domtable files")
+        print(" Processing " + str(len(domtableFiles)) + " domtable files")
 
     # If using the multiprocessing version and outputbase doesn't have any
     #  predicted domains, it's not as easy to remove if from the analysis
     #  (probably because parseHmmScan only has a copy of clusters et al?)
     # Using serialized version for now. Probably doesn't have too bad an impact
     #pool = Pool(cores,maxtasksperchild=32)
-    for domtableFile in domtblFiles - alreadyDone:
+    for domtableFile in domtableFiles - alreadyDone:
         parseHmmScan(domtableFile,output_folder,options.domain_overlap_cutoff)
         #pool.apply_async(parseHmmScan, args=(domtableFile,output_folder,options.domain_overlap_cutoff))
     #pool.close()
@@ -1110,18 +1127,27 @@ if __name__=="__main__":
     ### Step 4: Parse the pfs, pfd files to generate BGC dictionary, clusters, and clusters per sample objects
     print("\nProcessing domains sequence files")
     
-    # grab all pfd files
-    pfdFiles = glob(os.path.join(output_folder,"*.pfd"))
+    # All available pfd files
+    allPfdFiles = set(glob(os.path.join(output_folder,"*.pfd")))
     
-    # verify previous step. All BGCs without predicted domains should no longer be in baseNames
-    pfdBases = set(x.split(os.sep)[-1].replace(".pfd","") for x in pfdFiles)
-    if len(baseNames - pfdBases) > 0:
-        sys.exit("Error! The following files did NOT have their domtable files processed: " + ", ".join(baseNames - pfdBases))
+    # pfdFiles: all pfd files corresponding to the input files
+    # (some input files could've been removed due to not having predicted domains)
+    pfdFiles = set()
+    for name in baseNames:
+        pfdFiles.add(os.path.join(output_folder, name+".pfd"))
+    
+    # pfdBases: the actual set of input files that have pfd files
+    pfdBases = allPfdFiles.intersection(pfdFiles)
+    
+    # verify previous step. 
+    # All BGCs without predicted domains should no longer be in baseNames    
+    if len(pfdFiles - pfdBases) > 0:
+        sys.exit("Error! The following files did NOT have their domtable files processed: " + ", ".join(pfdFiles - pfdBases))
 
     if verbose:
         print(" Adding sequences to corresponding domains file")
         
-    for outputbase in pfdBases:
+    for outputbase in baseNames:
         if verbose:
             print("   Processing: " + outputbase)
 
