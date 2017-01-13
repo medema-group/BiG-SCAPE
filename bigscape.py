@@ -192,7 +192,8 @@ def generate_dist_matrix(parms):
         domain_list_A = DomainList[cluster1]
         domain_list_B = DomainList[cluster2]
     except KeyError:
-        print(" Error: domain list for " + cluster1 + " or " + cluster2 + " was not found. Extracting from pfs files")
+        if verbose:
+            print(" Warning: domain list for " + cluster1 + " or " + cluster2 + " was not found. Extracting from pfs files")
         
         cluster_file1 = os.path.join(output_folder, cluster1 + ".pfs")
         cluster_file2 = os.path.join(output_folder, cluster2 + ".pfs")
@@ -341,7 +342,9 @@ def cluster_distance(A, B, A_domlist, B_domlist, anchor_domains):
                 except KeyError:
                     # For some reason we don't have the multiple alignment from MAFFT. 
                     # Try manual alignment
-                    if shared_domain not in missing_aligned_domain_files:
+                    if shared_domain not in missing_aligned_domain_files and verbose:
+                        # this will print everytime an unfound <domain>.algn is not found for every
+                        # distance calculation (but at least, not for every domain pair!)
                         print("  Warning: " + shared_domain + ".algn not found. Trying pairwise alignment...")
                         missing_aligned_domain_files.append(shared_domain)
                     
@@ -349,7 +352,7 @@ def cluster_distance(A, B, A_domlist, B_domlist, anchor_domains):
                         unaligned_seqA = temp_domain_fastas[sequence_tag_a]
                         unaligned_seqB = temp_domain_fastas[sequence_tag_b]
                     except KeyError:
-                        # parse the file for the first time
+                        # parse the file for the first time and load all the sequences
                         with open(os.path.join(output_folder, domainsout, shared_domain + ".fasta"),"r") as domain_fasta_handle:
                             temp_domain_fastas = fasta_parser(domain_fasta_handle)
                         
