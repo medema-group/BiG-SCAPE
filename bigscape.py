@@ -188,21 +188,27 @@ def generate_dist_matrix(parms):
     dist_method = parms[2]
     anchor_domains = parms[3]
     
-    cluster_file1 = os.path.join(output_folder, cluster1 + ".pfs")
-    cluster_file2 = os.path.join(output_folder, cluster2 + ".pfs")
-    
-    A = get_domain_list(cluster_file1)
-    B = get_domain_list(cluster_file2)
+    try:
+        domain_list_A = DomainList[cluster1]
+        domain_list_B = DomainList[cluster2]
+    except KeyError:
+        print(" Error: domain list for " + cluster1 + " or " + cluster2 + " was not found. Extracting from pfs files")
+        
+        cluster_file1 = os.path.join(output_folder, cluster1 + ".pfs")
+        cluster_file2 = os.path.join(output_folder, cluster2 + ".pfs")
+        
+        domain_list_A = get_domain_list(cluster_file1)
+        domain_list_B = get_domain_list(cluster_file2)
     
     # this really shouldn't happen if we've filtered domain-less gene clusters already
-    if A == [''] or B == ['']:
+    if len(domain_list_A) == 0 or len(domain_list_B) == 0:
         print("   Warning: Regarding distance between clusters " + cluster1 + " and " + cluster2 + ":")
-        if A == [""] and B == [""]:
+        if len(domain_list_A) == 0 and len(domain_list_B) == 0:
             print("   None have identified domains. Distance cannot be calculated")
-        if A == [""]:            
-            print("   Cluster " + cluster1 + " has no identified domains. Distance cannot be calculated")
+        elif (domain_list_A) == 0:            
+            print("   Cluster " + cluster1 + " has no identified domains. Distance set to 1")
         else:
-            print("   Cluster " + cluster2 + " has no identified domains. Distance cannot be calculated")
+            print("   Cluster " + cluster2 + " has no identified domains. Distance set to 1")
             
         # last two values (S, Sa) should really be zero but this could give rise to errors when parsing 
         # the network file (unless we catched the case S = Sa = 0
@@ -211,9 +217,9 @@ def generate_dist_matrix(parms):
     
 
     if dist_method == "seqdist":
-        dist, jaccard, dds, gk, rDDSna, rDDS, S, Sa = cluster_distance(cluster1, cluster2, A, B, anchor_domains) #sequence dist
+        dist, jaccard, dds, gk, rDDSna, rDDS, S, Sa = cluster_distance(cluster1, cluster2, domain_list_A, domain_list_B, anchor_domains) #sequence dist
     elif dist_method == "domain_dist":
-        dist, jaccard, dds, gk, rDDSna, rDDS, S, Sa = Distance_modified(A, B, 0, 4) #domain dist
+        dist, jaccard, dds, gk, rDDSna, rDDS, S, Sa = Distance_modified(domain_list_A, domain_list_B, 0, 4) #domain dist
         
     if dist == 0:
         logscore = float("inf")
@@ -324,9 +330,9 @@ def cluster_distance(A, B, A_domlist, B_domlist, anchor_domains):
                 sequence_tag_a = specific_domain_list_A[domsa]
                 sequence_tag_b = specific_domain_list_B[domsb]
                 
-                matches = 0
                 seq_length = 0
-                length = 0 # could be shorter than seq_length because common gaps are not counted
+                matches = 0
+                gaps = 0
                 
                 try:
                     aligned_seqA = AlignedDomainSequences[sequence_tag_a]
@@ -358,6 +364,7 @@ def cluster_distance(A, B, A_domlist, B_domlist, anchor_domains):
                     aligned_seqB = bestAlignment[1]
                     
                     
+                # - Calculate aligned domain sequences similarity -
                 # Sequences *should* be of the same length unless something went
                 # wrong elsewhere
                 if len(aligned_seqA) != len(aligned_seqB):
@@ -374,12 +381,11 @@ def cluster_distance(A, B, A_domlist, B_domlist, anchor_domains):
                     if aligned_seqA[position] == aligned_seqB[position]:
                         if aligned_seqA[position] != "-":
                             matches += 1
-                            length += 1
-                    else:
-                        length += 1
-                        
-                
-                DistanceMatrix[domsa][domsb] = 1 - ( float(matches)/float(length) )
+                        else:
+                            gaps += 1
+                            
+                DistanceMatrix[domsa][domsb] = 1 - ( float(matches)/float(seq_length-gaps) )
+                            
             
         #Only use the best scoring pairs
         Hungarian = Munkres()
@@ -1048,7 +1054,7 @@ if __name__=="__main__":
     alreadyDone = set()
     if not options.force_hmmscan:
         for domtable in domtableFiles:
-            outputbase  = domtable.split(os.sep)[-1].replace(".domtable","")
+            outputbase = domtable.split(os.sep)[-1].replace(".domtable","")
             outputfile = os.path.join(output_folder,outputbase + '.pfd')
             if os.path.isfile(outputfile) and os.path.getsize(outputfile) > 0:
                 alreadyDone.add(domtable)
@@ -1115,6 +1121,14 @@ if __name__=="__main__":
 
             BGCs[outputbase] = BGC_dic_gen(filtered_matrix)
 
+    # Get the ordered list of domains
+    print(" Reading the ordered list of domains from the pfs files")
+    for outputbase in baseNames:
+        pfsfile = os.path.join(output_folder, outputbase + ".pfs")
+        if os.path.isfile(pfsfile):
+            DomainList[outputbase] = get_domain_list(pfsfile)
+        else:
+            sys.exit(" Error: could not open " + outputbase + ".pfs")
 
     #Write or retrieve BGC dictionary
     if not options.skip_all:
