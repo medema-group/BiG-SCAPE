@@ -372,9 +372,10 @@ def cluster_distance(A, B, A_domlist, B_domlist, anchor_domains):
                 # wrong elsewhere
                 if len(aligned_seqA) != len(aligned_seqB):
                     print("\tWARNING: mismatch in sequences' lengths while calculating sequence identity") 
-                    print("\t Domain: " + domain)
+                    print("\t Domain: " + shared_domain)
                     print("\t  Specific domain 1: " + aligned_seqA + " len: " + str(len(seq1)))
                     print("\t  Specific domain 2: " + aligned_seqB + " len: " + str(len(seq2)))
+                    sys.exit("debug stop")
                     print("\t trying to continue with shortest length...")
                     seq_length = min(len(aligned_seqA), len(aligned_seqB))
                 else:
@@ -687,40 +688,7 @@ def parseHmmScan(hmmscanResults,outputdir,overlapCutoff):
         sys.exit("Error: hmmscan file " + outputbase + " was not found! (parseHmmScan)")
 
     return("")
-
-def genbank_grp_dict(gb_files,gbk_group):
-    for gb_file in gb_files:
-        outputbase = gb_file.split(os.sep)[-1].replace(".gbk", "")
-        gb_handle = open(gb_file, "r")
-
-        #Parse the gbk file for the gbk_group dictionary
-        # AntiSMASH-produced genbank files use the "cluster" tag
-        # to annotate the Gene Cluster class in the "product" subtag...
-        # (There should be just one "cluster" tag per genbank file,
-        # if not, maybe you're using the wrong file with the whole seq.)
-        in_cluster = False
-
-        for line in gb_handle:
-            if "DEFINITION  " in line:
-                definition = line.strip().replace("DEFINITION  ", "")
-            if "  cluster  " in line:
-                in_cluster = True
-
-            if "/product" in line and in_cluster == True:
-                group= ""
-                #group = line.strip().split(" ")[-1].replace("/product=", "").replace(" ", "").replace("\"", "")
-                group = line.strip().split("=")[-1].replace("\"", "")
-                #print(" " + outputbase + " " + group)
-                gbk_group[outputbase] = [group, definition]
-                gb_handle.close()
-                break
-
-        #...but other genbank files (e.g. MiBIG) do NOT have this tag
-        if not in_cluster:
-            gbk_group[outputbase] = ["no type", definition]
-            gb_handle.close()
-    return gbk_group
-            
+   
 
 def CMD_parser():
     parser = OptionParser()
@@ -842,7 +810,8 @@ if __name__=="__main__":
         if os.path.isfile(os.path.join(pfam_dir, "Pfam-A.hmm")):
             print("Please use hmmpress with Pfam-A.hmm")
         else:
-            print("Please use the --pfam_dir parameter to point to the correct location of those files")
+            print("Please download the latest Pfam-A.hmm file from http://pfam.xfam.org/")
+            print("Then use hmmpress on it, and use the --pfam_dir parameter to point to the location of the files")
         sys.exit()
                     
     verbose = options.verbose
