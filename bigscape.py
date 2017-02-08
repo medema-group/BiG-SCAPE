@@ -696,7 +696,7 @@ def CMD_parser():
     parser.add_option("-i", "--inputdir", dest="inputdir", default=os.path.dirname(os.path.realpath(__file__)),
                       help="Input directory of gbk files, if left empty, all gbk files in current and lower directories will be used.")
     parser.add_option("-c", "--cores", dest="cores", default=cpu_count(),
-                      help="Set the amount of cores the script and hmmscan may use (default: use _all_ available cores)")
+                      help="Set the amount of cores the script may use (default: use all available cores)")
     parser.add_option("-v", "--verbose", dest="verbose", action="store_true", default=False,
                       help="Prints more detailed information. Toggle to true.")
     parser.add_option("--include_disc_nodes", dest="include_disc_nodes", action="store_true", default=False,
@@ -739,8 +739,8 @@ def CMD_parser():
                       help="alignment method for mafft, if there's a space in the method's name, enclose by quotation marks. default: \"--retree 2\" corresponds to the FFT-NS-2 method")
     parser.add_option("--maxiterate", dest="maxit", default=1000,
                       help="Maxiterate parameter in mafft, default is 1000, corresponds to the FFT-NS-2 method")
-    parser.add_option("--mafft_threads", dest="mafft_threads", default=-1,
-                      help="Set the number of threads in mafft, -1 sets the number of threads as the number of physical cores")
+    parser.add_option("--mafft_threads", dest="mafft_threads", default=0,
+                      help="Set the number of threads in mafft, -1 sets the number of threads as the number of physical cores. Default: same as --cores parameter")
     
     parser.add_option("--force_hmmscan", dest="force_hmmscan", action="store_true", default=False, 
                       help="Force domain prediction using hmmscan even if BiG-SCAPE finds processed domtable files (e.g. to use a new version of PFAM).")
@@ -811,6 +811,9 @@ if __name__=="__main__":
             print("Please download the latest Pfam-A.hmm file from http://pfam.xfam.org/")
             print("Then use hmmpress on it, and use the --pfam_dir parameter to point to the location of the files")
         sys.exit()
+    
+    if options.mafft_threads == 0:
+        options.mafft_threads = options.cores
                     
     verbose = options.verbose
     networks_folder = "networks"
