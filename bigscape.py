@@ -33,6 +33,8 @@ from multiprocessing import Pool, cpu_count
 from optparse import OptionParser
 
 from Bio import SeqIO
+from Bio import pairwise2
+from Bio.SubsMat.MatrixInfo import pam250 as scoring_matrix
 
 from functions import *
 from munkres import Munkres
@@ -69,7 +71,7 @@ FFTNS2 method will be used.
 """
 
 
-def get_gbk_files(inputdir, min_bgc_size, exclude_gbk_str):
+def get_gbk_files(inputdir, min_bgc_size, exclude_gbk_str, gbk_group):
     """Searches given directory for genbank files recursively, will assume that
     the genbank files that have the same name are the same genbank file. 
     Returns a dictionary that contains the names of the clusters found as keys
@@ -106,6 +108,8 @@ def get_gbk_files(inputdir, min_bgc_size, exclude_gbk_str):
             if fname_parse[-1] != "gbk":
                 continue
             
+            clusterName = '.'.join(fname_parse[:-1])
+            
             if exclude_gbk_str != "" and exclude_gbk_str in fname:
                 print(" Skipping file " + fname)
                 continue
@@ -117,37 +121,35 @@ def get_gbk_files(inputdir, min_bgc_size, exclude_gbk_str):
             with open(os.path.join(dirpath_, fname), "r") as f:
                 try:
                     # basic file verification. Substitutes check_data_integrity
-                    SeqIO.read(f, "genbank")
+                    # look into SeqIO.parse for multiple records [FUTURE]
+                    record = SeqIO.read(f, "genbank")
                 except ValueError as e:
                     print("   Error with file " + os.path.join(dirpath_, fname) + ": \n    '" + str(e) + "'")
                     print("    (This file will be excluded from the analysis)")
                     continue
-            
-            with open(os.path.join(dirpath_, fname), "r") as f:
-                gbk_header = f.readline().split(" ")
-                gbk_header = filter(None, gbk_header)  # remove the empty items from the list
-                try:
-                    bgc_size = int(gbk_header[gbk_header.index("bp") - 1])
-                except ValueError as e:
-                    print("  " + str(e) + ": " + os.path.join(dirpath_, fname))
-                    sys.exit()
-
-                clusterName = '.'.join(fname_parse[:-1])
-                if bgc_size > min_bgc_size:  # exclude the bgc if it's too small
-                    file_counter += 1
-                    
-                    if clusterName in genbankDict.keys():
-                        # current_dir gets to be the name of the sample
-                        genbankDict[clusterName][1].add(current_dir) 
-                    else:
-                        # location of first instance of the file is genbankDict[clustername][0]
-                        genbankDict.setdefault(clusterName, [os.path.join(dirpath_, fname), set([current_dir])])
-                        
-                    if verbose == True:
-                        print("  Adding " + fname + " (" + str(bgc_size) + " bps)")
                 else:
-                    print(" Discarding " + clusterName +  " (size less than " + str(min_bgc_size) + " bp, was " + str(bgc_size) + ")")
+                    group = "no type"
+                    for feature in record.features:
+                        if "cluster" in feature.type and "product" in feature.qualifiers:
+                            group = ",".join(feature.qualifiers["product"])
+                    gbk_group[clusterName] = (group, record.description)
                     
+                    bgc_size = len(record.seq)
+                    if bgc_size > min_bgc_size:  # exclude the bgc if it's too small
+                        file_counter += 1
+                        
+                        if clusterName in genbankDict.keys():
+                            # current_dir gets to be the name of the sample
+                            genbankDict[clusterName][1].add(current_dir) 
+                        else:
+                            # location of first instance of the file is genbankDict[clustername][0]
+                            genbankDict.setdefault(clusterName, [os.path.join(dirpath_, fname), set([current_dir])])
+                            
+                        if verbose == True:
+                            print("  Adding " + fname + " (" + str(bgc_size) + " bps)")
+                    else:
+                        print(" Discarding " + clusterName +  " (size less than " + str(min_bgc_size) + " bp, was " + str(bgc_size) + ")")
+                        
             # else: The file does not have the gbk extension. Skip it
     
     if file_counter == 0:
@@ -186,21 +188,28 @@ def generate_dist_matrix(parms):
     dist_method = parms[2]
     anchor_domains = parms[3]
     
-    cluster_file1 = os.path.join(output_folder, cluster1 + ".pfs")
-    cluster_file2 = os.path.join(output_folder, cluster2 + ".pfs")
-    
-    A = get_domain_list(cluster_file1)
-    B = get_domain_list(cluster_file2)
+    try:
+        domain_list_A = DomainList[cluster1]
+        domain_list_B = DomainList[cluster2]
+    except KeyError:
+        if verbose:
+            print(" Warning: domain list for " + cluster1 + " or " + cluster2 + " was not found. Extracting from pfs files")
+        
+        cluster_file1 = os.path.join(output_folder, cluster1 + ".pfs")
+        cluster_file2 = os.path.join(output_folder, cluster2 + ".pfs")
+        
+        domain_list_A = get_domain_list(cluster_file1)
+        domain_list_B = get_domain_list(cluster_file2)
     
     # this really shouldn't happen if we've filtered domain-less gene clusters already
-    if A == [''] or B == ['']:
+    if len(domain_list_A) == 0 or len(domain_list_B) == 0:
         print("   Warning: Regarding distance between clusters " + cluster1 + " and " + cluster2 + ":")
-        if A == [""] and B == [""]:
+        if len(domain_list_A) == 0 and len(domain_list_B) == 0:
             print("   None have identified domains. Distance cannot be calculated")
-        if A == [""]:            
-            print("   Cluster " + cluster1 + " has no identified domains. Distance cannot be calculated")
+        elif (domain_list_A) == 0:            
+            print("   Cluster " + cluster1 + " has no identified domains. Distance set to 1")
         else:
-            print("   Cluster " + cluster2 + " has no identified domains. Distance cannot be calculated")
+            print("   Cluster " + cluster2 + " has no identified domains. Distance set to 1")
             
         # last two values (S, Sa) should really be zero but this could give rise to errors when parsing 
         # the network file (unless we catched the case S = Sa = 0
@@ -209,9 +218,9 @@ def generate_dist_matrix(parms):
     
 
     if dist_method == "seqdist":
-        dist, jaccard, dds, gk, rDDSna, rDDS, S, Sa = cluster_distance(cluster1, cluster2, A, B, anchor_domains) #sequence dist
+        dist, jaccard, dds, gk, rDDSna, rDDS, S, Sa = cluster_distance(cluster1, cluster2, domain_list_A, domain_list_B, anchor_domains) #sequence dist
     elif dist_method == "domain_dist":
-        dist, jaccard, dds, gk, rDDSna, rDDS, S, Sa = Distance_modified(A, B, 0, 4) #domain dist
+        dist, jaccard, dds, gk, rDDSna, rDDS, S, Sa = Distance_modified(domain_list_A, domain_list_B, 0, 4) #domain dist
         
     if dist == 0:
         logscore = float("inf")
@@ -244,7 +253,7 @@ def generate_network(cluster_pairs, cores):
     # For the time being, use this if you have memory issues
     #network_matrix = []
     #for pair in cluster_pairs:
-    #   network_matrix.append(generate_dist_matrix(pair))
+      #network_matrix.append(generate_dist_matrix(pair))
 
     # use a dictionary to store results
     network_matrix_dict = {}
@@ -258,11 +267,8 @@ def generate_network(cluster_pairs, cores):
 def cluster_distance(A, B, A_domlist, B_domlist, anchor_domains): 
     """Compare two clusters using information on their domains, and the sequences of the domains"""    
 
-  
-    #key is name of GC, values is list of specific pfam domain names
-    clusterA = BGCs[A] #will contain a dictionary where keys are pfam domains, and values are domains that map to a specific sequence in the DMS variable
-    clusterB = BGCs[B]
-    
+    temp_domain_fastas = {}
+
     intersect = set(A_domlist).intersection(B_domlist)
     not_intersect = set(A_domlist).symmetric_difference(set(B_domlist))
     
@@ -277,16 +283,15 @@ def cluster_distance(A, B, A_domlist, B_domlist, anchor_domains):
     #S: Max occurence of each domain
     domain_difference_anchor,S_anchor = 0,0 
     domain_difference,S = 0,0 
-    pair = "" #pair of clusters to access their sequence identity
     
     # Case 1
     for unshared_domain in not_intersect: #no need to look at seq identity, since these domains are unshared
         #for each occurence of an unshared domain do domain_difference += count of domain and S += count of domain
         unshared_occurrences = []
         try:
-            unshared_occurrences = clusterA[unshared_domain]
+            unshared_occurrences = BGCs[A][unshared_domain]
         except KeyError:
-            unshared_occurrences = clusterB[unshared_domain]
+            unshared_occurrences = BGCs[B][unshared_domain]
             
         # don't look at domain version, hence the split
         if unshared_domain.split(".")[0] in anchor_domains:
@@ -297,69 +302,112 @@ def cluster_distance(A, B, A_domlist, B_domlist, anchor_domains):
     S = domain_difference # can be done because it's the first use of these
     S_anchor = domain_difference_anchor
         
-        
+    
+    # Cases 2 and 3 (now merged)
+    missing_aligned_domain_files = []
     for shared_domain in intersect:
-        seta = clusterA[shared_domain]
-        setb = clusterB[shared_domain]
+        specific_domain_list_A = BGCs[A][shared_domain]
+        specific_domain_list_B = BGCs[B][shared_domain]
+        
+        num_copies_a = len(specific_domain_list_A)
+        num_copies_b = len(specific_domain_list_B)
+        
+        temp_domain_fastas.clear()
         
         # Case 2: The shared domains occurs only once in each gene cluster
-        if len(seta+setb) == 2: #The domain occurs only once in both clusters   
-            pair = tuple(sorted([seta[0],setb[0]]))
-            
-            try:
-                seq_dist = 1-DMS[shared_domain][pair][0] #1-sequence_similarity
-            except KeyError:
-                print("For some reason, a sequence similarity value could not be retrieved from DMS...")
-                print(shared_domain + ": " + pair)
-                print(str(DMS[shared_domain]))
-                sys.exit("(Case 2)")
-            
-            if shared_domain.split(".")[0] in anchor_domains: 
-                S_anchor += 1
-                domain_difference_anchor += seq_dist 
-            else:
-                S += 1
-                domain_difference += seq_dist
-                
+        #if len(specific_domain_list_A+specific_domain_list_B) == 2: #The domain occurs only once in both clusters
+        #   print(this is case 2)
         # Case 3: The domain occurs more than once in both clusters
-        else:
-            accumulated_distance = 0
+        #else:
+        #   print(this is case 3)
+        
+        accumulated_distance = 0
             
-            # Fill distance matrix between domain's A and B versions
-            DistanceMatrix = [[1 for col in range(len(setb))] for row in range(len(seta))]
-            for domsa in range(len(seta)):
-                for domsb in range(len(setb)):
-                    pair = tuple(sorted([seta[domsa], setb[domsb]]))
+        # Fill distance matrix between domain's A and B versions
+        DistanceMatrix = [[1 for col in range(num_copies_b)] for row in range(num_copies_a)]
+        
+        for domsa in range(num_copies_a):
+            for domsb in range(num_copies_b):
+                sequence_tag_a = specific_domain_list_A[domsa]
+                sequence_tag_b = specific_domain_list_B[domsb]
+                
+                seq_length = 0
+                matches = 0
+                gaps = 0
+                
+                try:
+                    aligned_seqA = AlignedDomainSequences[sequence_tag_a]
+                    aligned_seqB = AlignedDomainSequences[sequence_tag_b]
+                    
+                except KeyError:
+                    # For some reason we don't have the multiple alignment from MAFFT. 
+                    # Try manual alignment
+                    if shared_domain not in missing_aligned_domain_files and verbose:
+                        # this will print everytime an unfound <domain>.algn is not found for every
+                        # distance calculation (but at least, not for every domain pair!)
+                        print("  Warning: " + shared_domain + ".algn not found. Trying pairwise alignment...")
+                        missing_aligned_domain_files.append(shared_domain)
                     
                     try:
-                        Similarity = DMS[shared_domain][pair][0] # the [1] key holds the sequence length
+                        unaligned_seqA = temp_domain_fastas[sequence_tag_a]
+                        unaligned_seqB = temp_domain_fastas[sequence_tag_b]
                     except KeyError:
-                        print("For some reason, a sequence similarity value could not be retrieved from DMS...")
-                        print(shared_domain + ": " + pair)
-                        print(str(DMS[shared_domain]))
-                        sys.exit("(Case 3)")
+                        # parse the file for the first time and load all the sequences
+                        with open(os.path.join(output_folder, domainsout, shared_domain + ".fasta"),"r") as domain_fasta_handle:
+                            temp_domain_fastas = fasta_parser(domain_fasta_handle)
                         
-                    seq_dist = 1-Similarity
-                    DistanceMatrix[domsa][domsb] = seq_dist
-                
-            #Only use the best scoring pairs
-            Hungarian = Munkres()
-            #print "DistanceMatrix", DistanceMatrix
-            BestIndexes = Hungarian.compute(DistanceMatrix)
-            #print "BestIndexes", BestIndexes
-            accumulated_distance = sum([DistanceMatrix[bi[0]][bi[1]] for bi in BestIndexes])
-            #print "accumulated_distance", accumulated_distance
+                        unaligned_seqA = temp_domain_fastas[sequence_tag_a]
+                        unaligned_seqB = temp_domain_fastas[sequence_tag_b]
+                        
+                    # gap_open = -15
+                    # gap_extend = -6.67. These parameters were set up by Emzo
+                    alignScore = pairwise2.align.globalds(unaligned_seqA, unaligned_seqB, scoring_matrix, -15, -6.67, one_alignment_only=True)
+                    bestAlignment = alignScore[0]
+                    aligned_seqA = bestAlignment[0]
+                    aligned_seqB = bestAlignment[1]
+                    
+                    
+                # - Calculate aligned domain sequences similarity -
+                # Sequences *should* be of the same length unless something went
+                # wrong elsewhere
+                if len(aligned_seqA) != len(aligned_seqB):
+                    print("\tWARNING: mismatch in sequences' lengths while calculating sequence identity (" + shared_domain + ")")
+                    if verbose:
+                        print("\t  Specific domain 1: " + aligned_seqA + " len: " + str(len(seq1)))
+                        print("\t  Specific domain 2: " + aligned_seqB + " len: " + str(len(seq2)))
+                    seq_length = min(len(aligned_seqA), len(aligned_seqB))
+                else:
+                    seq_length = len(aligned_seqA)
+                    
+                for position in range(seq_length):
+                    if aligned_seqA[position] == aligned_seqB[position]:
+                        if aligned_seqA[position] != "-":
+                            matches += 1
+                        else:
+                            gaps += 1
+                            
+                DistanceMatrix[domsa][domsb] = 1 - ( float(matches)/float(seq_length-gaps) )
+                            
             
-            # the difference in number of domains accounts for the "lost" (or not duplicated) domains
-            sum_seq_dist = (abs(len(seta)-len(setb)) + accumulated_distance)  #essentially 1-sim
-            
-            if shared_domain.split(".")[0] in anchor_domains: 
-                S_anchor += max(len(seta),len(setb))
-                domain_difference_anchor += sum_seq_dist
-            else:
-                S += max(len(seta),len(setb))
-                domain_difference += sum_seq_dist
-
+        #Only use the best scoring pairs
+        Hungarian = Munkres()
+        #print "DistanceMatrix", DistanceMatrix
+        BestIndexes = Hungarian.compute(DistanceMatrix)
+        #print "BestIndexes", BestIndexes
+        accumulated_distance = sum([DistanceMatrix[bi[0]][bi[1]] for bi in BestIndexes])
+        #print "accumulated_distance", accumulated_distance
+        
+        # the difference in number of domains accounts for the "lost" (or not duplicated) domains
+        sum_seq_dist = (abs(num_copies_a-num_copies_b) + accumulated_distance)  #essentially 1-sim
+        
+        if shared_domain.split(".")[0] in anchor_domains: 
+            S_anchor += max(num_copies_a,num_copies_b)
+            domain_difference_anchor += sum_seq_dist
+        else:
+            S += max(num_copies_a, num_copies_b)
+            domain_difference += sum_seq_dist
+        
+        
     
     if S_anchor != 0 and S != 0:
         DDS_non_anchor = domain_difference / float(S)
@@ -638,129 +686,7 @@ def parseHmmScan(hmmscanResults,outputdir,overlapCutoff):
         sys.exit("Error: hmmscan file " + outputbase + " was not found! (parseHmmScan)")
 
     return("")
-
-def genbank_grp_dict(gb_files,gbk_group):
-    for gb_file in gb_files:
-        outputbase = gb_file.split(os.sep)[-1].replace(".gbk", "")
-        gb_handle = open(gb_file, "r")
-
-        #Parse the gbk file for the gbk_group dictionary
-        # AntiSMASH-produced genbank files use the "cluster" tag
-        # to annotate the Gene Cluster class in the "product" subtag...
-        # (There should be just one "cluster" tag per genbank file,
-        # if not, maybe you're using the wrong file with the whole seq.)
-        in_cluster = False
-
-        for line in gb_handle:
-            if "DEFINITION  " in line:
-                definition = line.strip().replace("DEFINITION  ", "")
-            if "  cluster  " in line:
-                in_cluster = True
-
-            if "/product" in line and in_cluster == True:
-                group= ""
-                #group = line.strip().split(" ")[-1].replace("/product=", "").replace(" ", "").replace("\"", "")
-                group = line.strip().split("=")[-1].replace("\"", "")
-                #print(" " + outputbase + " " + group)
-                gbk_group[outputbase] = [group, definition]
-                gb_handle.close()
-                break
-
-        #...but other genbank files (e.g. MiBIG) do NOT have this tag
-        if not in_cluster:
-            gbk_group[outputbase] = ["no type", definition]
-            gb_handle.close()
-    return gbk_group
-
-@timeit
-def genbank_parser_hmmscan_call(gb_files, outputdir, cores, gbk_group, skip_hmmscan):
-    """Extract the CDS from the antismash genbank clusters, and provide these coding regions to hmmscan"""
-    
-    #gbk_group = {} #Will contain the gbk cluster as key, and the assigned group as a value together with the definition
-    fasta_dict = {} #should make fasta headers more unique
-    
-    for gb_file in gb_files:        
-        sample_dict = {}
-        
-        outputbase = gb_file.split(os.sep)[-1].replace(".gbk", "")
-        outputfile = os.path.join(outputdir, outputbase + ".fasta")
-        gb_handle = open(gb_file, "r")
-        
-        #Parse the gbk file for the gbk_group dictionary
-        # AntiSMASH-produced genbank files use the "cluster" tag
-        # to annotate the Gene Cluster class in the "product" subtag...
-        # (There should be just one "cluster" tag per genbank file, 
-        # if not, maybe you're using the wrong file with the whole seq.)
-        in_cluster = False
-
-        for line in gb_handle:
-            if "DEFINITION  " in line:
-                definition = line.strip().replace("DEFINITION  ", "")
-            if "  cluster  " in line:
-                in_cluster = True  
-                
-            if "/product" in line and in_cluster == True:
-                group= ""
-                #group = line.strip().split(" ")[-1].replace("/product=", "").replace(" ", "").replace("\"", "")
-                group = line.strip().split("=")[-1].replace("\"", "")
-                #print(" " + outputbase + " " + group)
-                gbk_group[outputbase] = [group, definition]
-                gb_handle.close()
-                break
-            
-        #...but other genbank files (e.g. MiBIG) do NOT have this tag
-        if not in_cluster:
-            gbk_group[outputbase] = ["no type", definition]
-            gb_handle.close()
-        
-        # write fasta sequence of features and predict domains
-        if not skip_hmmscan:
-            multifasta = open(outputfile, "w")
-            
-            # possible errors were catched previously in check_data_integrity
-            features = get_all_features_of_type(gb_file, "CDS")
-            
-            feature_counter = 0
-            for feature in features:
-                feature_counter += 1
-                
-                start = feature.location.start
-                end = feature.location.end
-                
-                gene_id = ""
-                protein_id = ""
-                try:
-                    gene_id =  feature.qualifiers['gene']
-                except KeyError:
-                    pass
-                
-                try:
-                    protein_id =  feature.qualifiers['protein_id']
-                except KeyError:
-                    pass
-                
-                strand = "+" if feature.strand == 1 else "-"
-
-                fasta_header = outputbase + "_ORF" + str(feature_counter)+ ":gid:" + str(gene_id) + ":pid:" + str(protein_id) + ":loc:" + str(start) + ":" + str(end) + ":strand:" + strand
-                fasta_header = fasta_header.replace(">","") #the coordinates might contain larger than signs, tools upstream don't like this
-
-                fasta_header = ">"+(fasta_header.replace(" ", "")) #the domtable output format (hmmscan) uses spaces as a delimiter, so these cannot be present in the fasta header
-                    
-                sequence = str(feature.qualifiers['translation'][0]) #in the case of the translation there should be one and only one entry (entry zero)
-                if sequence != "":
-                    fasta_dict[fasta_header] = sequence
-                    sample_dict[fasta_header] = sequence #this should be used for hmmscan
-                    
-
-                
-            dct_writeout(multifasta, sample_dict) #save the coding sequences in a fasta format
-            multifasta.close()
-        
-        
-            hmmscan(pfam_dir, outputfile, outputdir, outputbase, cores) #Run hmmscan
-        
-    return gbk_group, fasta_dict
-            
+   
 
 def CMD_parser():
     parser = OptionParser()
@@ -815,9 +741,6 @@ def CMD_parser():
                       help="Maxiterate parameter in mafft, default is 1000, corresponds to the FFT-NS-2 method")
     parser.add_option("--mafft_threads", dest="mafft_threads", default=-1,
                       help="Set the number of threads in mafft, -1 sets the number of threads as the number of physical cores")
-    parser.add_option("--use_mafft_distout", dest="use_perc_id", action="store_false", default=True,
-                      help="Let the script calculate the percent identity between sequences? \
-                      Or use the distout scores from the mafft output? As default it calculates the percent identity from the MSAs.")
     
     parser.add_option("--force_hmmscan", dest="force_hmmscan", action="store_true", default=False, 
                       help="Force domain prediction using hmmscan even if BiG-SCAPE finds processed domtable files (e.g. to use a new version of PFAM).")
@@ -846,9 +769,11 @@ if __name__=="__main__":
     
     anchor_domains = get_anchor_domains(options.anchorfile)
     
+    global AlignedDomainSequences
+    global DomainList
     global verbose
     global BGCs
-    global DMS
+    global group_dct # contains the class of the Gene Clusters (predicted by antiSMASH and annotated in the GenBank files. Used in the final network files)
     global output_folder
     global pfam_dir
     global timings_file
@@ -883,7 +808,8 @@ if __name__=="__main__":
         if os.path.isfile(os.path.join(pfam_dir, "Pfam-A.hmm")):
             print("Please use hmmpress with Pfam-A.hmm")
         else:
-            print("Please use the --pfam_dir parameter to point to the correct location of those files")
+            print("Please download the latest Pfam-A.hmm file from http://pfam.xfam.org/")
+            print("Then use hmmpress on it, and use the --pfam_dir parameter to point to the location of the files")
         sys.exit()
                     
     verbose = options.verbose
@@ -905,7 +831,8 @@ if __name__=="__main__":
     global genbankDict, gbk_files, sampleDict, clusters, baseNames
     
     # genbankDict: {cluster_name:[genbank_path_to_1st_instance,[sample_1,sample_2,...]]}
-    genbankDict = get_gbk_files(options.inputdir, int(options.min_bgc_size), options.exclude_gbk_str)
+    group_dct = {} # also 
+    genbankDict = get_gbk_files(options.inputdir, int(options.min_bgc_size), options.exclude_gbk_str, group_dct)
 
     # clusters and sampleDict contain the necessary structure for all-vs-all and sample analysis
     clusters = genbankDict.keys()
@@ -984,9 +911,8 @@ if __name__=="__main__":
      (for example, 'PF00550_start_end', where start and end are genomic positions)."""     
     BGCs = {} #will contain the BGCs
     
-    # contains the class of the Gene Clusters (predicted by antiSMASH and annotated in the GenBank files. Will be used in the final network files)
-    global group_dct
-    group_dct = {}
+    AlignedDomainSequences = {} # Key: specific domain sequence label. Item: aligned sequence
+    DomainList = {} # Key: BGC. Item: ordered list of domains
     
     # to avoid calling MAFFT if there's only 1 seq. representing a particular domain
     sequences_per_domain = {} 
@@ -1098,7 +1024,7 @@ if __name__=="__main__":
     alreadyDone = set()
     if not options.force_hmmscan:
         for domtable in domtableFiles:
-            outputbase  = domtable.split(os.sep)[-1].replace(".domtable","")
+            outputbase = domtable.split(os.sep)[-1].replace(".domtable","")
             outputfile = os.path.join(output_folder,outputbase + '.pfd')
             if os.path.isfile(outputfile) and os.path.getsize(outputfile) > 0:
                 alreadyDone.add(domtable)
@@ -1144,25 +1070,35 @@ if __name__=="__main__":
     if len(pfdFiles - pfdBases) > 0:
         sys.exit("Error! The following files did NOT have their domtable files processed: " + ", ".join(pfdFiles - pfdBases))
 
-    if verbose:
-        print(" Adding sequences to corresponding domains file")
-        
-    for outputbase in baseNames:
+    if options.skip_mafft:
+        print(" Running with skip_mafft parameter: Assuming that the domains folder has all the fasta files")
+        print(" Only extracting BGC group from input file")
+    else:
         if verbose:
-            print("   Processing: " + outputbase)
+            print(" Adding sequences to corresponding domains file")
+            
+        for outputbase in baseNames:
+            if verbose:
+                print("   Processing: " + outputbase)
 
-        pfdFile = os.path.join(output_folder, outputbase + ".pfd")
-        fasta_file = os.path.join(output_folder, outputbase + ".fasta")
+            pfdFile = os.path.join(output_folder, outputbase + ".pfd")
+            filtered_matrix = [map(lambda x: x.strip(), line.split('\t')) for line in open(pfdFile)]
 
-        fasta_dict = fasta_parser(open(fasta_file)) # all fasta info from a BGC
-        filtered_matrix = [map(lambda x: x.strip(), line.split('\t')) for line in open(pfdFile)]
+            # save each domain sequence from a single BGC in its corresponding file
+            fasta_file = os.path.join(output_folder, outputbase + ".fasta")
+            fasta_dict = fasta_parser(open(fasta_file, "r")) # all fasta info from a BGC
+            save_domain_seqs(filtered_matrix, fasta_dict, domainsout, output_folder, outputbase)
 
-        # save each domain sequence from a single BGC in its corresponding file
-        save_domain_seqs(filtered_matrix, fasta_dict, domainsout, output_folder, outputbase)
+            BGCs[outputbase] = BGC_dic_gen(filtered_matrix)
 
-        BGCs[outputbase] = BGC_dic_gen(filtered_matrix)
-        group_dct = genbank_grp_dict(gbk_files, group_dct)
-
+    # Get the ordered list of domains
+    print(" Reading the ordered list of domains from the pfs files")
+    for outputbase in baseNames:
+        pfsfile = os.path.join(output_folder, outputbase + ".pfs")
+        if os.path.isfile(pfsfile):
+            DomainList[outputbase] = get_domain_list(pfsfile)
+        else:
+            sys.exit(" Error: could not open " + outputbase + ".pfs")
 
     #Write or retrieve BGC dictionary
     if not options.skip_all:
@@ -1248,84 +1184,44 @@ if __name__=="__main__":
             else:
                 sys.exit("  File networkfile_seqdist_all_vs_all_c1.network could not be found!")
             
-        elif options.skip_mafft:
-            print(" Trying to read domain alignments (DMS.dict file)")
-            if os.path.isfile(os.path.join(output_folder, "DMS.dict")):
-                DMS = {}
-                with open(os.path.join(output_folder, "DMS.dict"), "r") as DMS_file:
-                    DMS = pickle.load(DMS_file)
-            else:
-                sys.exit("  File DMS.dict could not be found!")
-                
-        else:
-            DMS = {}
+        elif not options.skip_mafft:
+            # obtain all fasta files with domain sequences
             fasta_domains = get_domain_fastas(domainsout, output_folder)
 
-            for domain_fasta in fasta_domains:
-                domain_name = domain_fasta.split(os.sep)[-1].replace(".fasta", "")
-                
-                # fill fasta_dict
-                with open(domain_fasta, "r") as fasta_handle:
-                    fasta_dict = fasta_parser(fasta_handle)
-                
-                sequences_per_domain[domain_name] = len(fasta_dict)
-                        
-                        
-            print("\nAligning domains")
-            if options.use_perc_id == True:
-                print(" Using calculated percentage identity")
-            else:
-                print(" Using percentage identity score from MAFFT")
-                
-                
-            """DMS -- dictionary of this structure: DMS = {'general_domain_name_x': { ('specific_domain_name_1',
-            'specific_domain_name_2'): (sequence_identity, alignment_length), ... }   }
-                - general_domain_name_x: as above
-                - ('specific_domain_name_1', 'specific_domain_name_2'): pair of specific domains, sorted alphabetically
-                - (sequence_identity, alignment_length): sequence identity and alignment length of the domain pair"""
-            
-            #Fill the DMS variable by using all 'domains.fasta'  files
             for domain_file in fasta_domains:
                 domain_name = domain_file.split(os.sep)[-1].replace(".fasta", "")
-                domain = domain_file.replace(".fasta", "")
                 
-                # avoid calling MAFFT if it's not possible to align (only one sequence)
-                if sequences_per_domain[domain_name] == 1:
+                # fill fasta_dict...
+                with open(domain_file, "r") as fasta_handle:
+                    fasta_dict = fasta_parser(fasta_handle)
+                # ...to find out how many sequences do we actually have
+                if len(fasta_dict) == 1:
+                    # avoid calling MAFFT if it's not possible to align (only one sequence)
                     if verbose:
                         print(" Skipping MAFFT for domain " + domain_name + " (only one sequence)")
-                else:                
+                else:           
                     if verbose:
                         print(" Running MAFFT for domain: " + domain_name)
                     
-                    run_mafft(options.al_method, options.maxit, options.mafft_threads, options.mafft_pars, domain)
+                    domain_file_base = domain_file.replace(".fasta", "")
                     
-                    if options.use_perc_id == True:
-                        fasta_handle = open(domain + ".algn", 'r')
-                        fasta_dict = fasta_parser(fasta_handle) #overwrites the fasta dictionary for each fasta file
-                        fasta_handle.close()
+                    # Multiple alignment of all domain sequences
+                    run_mafft(options.al_method, options.maxit, options.mafft_threads, options.mafft_pars, domain_file_base)
                     
-                        spec_domains_dict = {}
-                        keys = fasta_dict.keys()
-                        for i in range(len(fasta_dict)-1):
-                            for j in range(i+1, len(fasta_dict)):
-                                spec_domain = keys[i]
-                                spec_domain_nest = keys[j]
-
-                                sim, length = calc_perc_identity(fasta_dict[spec_domain], fasta_dict[spec_domain_nest], spec_domain, spec_domain_nest, domain)
-                                spec_domains_dict[tuple(sorted([spec_domain.replace(">",""), spec_domain_nest.replace(">","")]))] = (sim, length)
-                                
-                        DMS[domain.split(os.sep)[-1]] = spec_domains_dict
-                        
-                    else:      
-                        domain_pairs = distout_parser(domain + ".fasta" + ".hat2")
-                        if domain_pairs != {}:
-                            DMS[domain.split(os.sep)[-1]] = domain_pairs
-            
-            # though we don't really get to load this file by the time being
-            with open(os.path.join(output_folder, "DMS.dict"), "w") as DMS_file:
-                print("  Saving DMS.dict file")
-                pickle.dump(DMS, DMS_file)
-            
+                    # Check if MAFFT's output file was generated
+                    if not os.path.isfile(domain_file_base + ".algn"):
+                        print("  Warning, " + domain_name + ".algn could not be found (did MAFFT failed?)")
+                    
+  
+        print(" Trying to read domain alignments (*.algn files)")            
+        aligned_files_list = glob(os.path.join(output_folder, domainsout, "*.algn"))
+        if len(aligned_files_list) == 0:
+            sys.exit("No aligned sequences found in the domain folder (run without the --skip_mafft parameter or point to the correct output folder)")
+        for aligned_file in aligned_files_list:
+            with open(aligned_file, "r") as aligned_file_handle:
+                fasta_dict = fasta_parser(aligned_file_handle)
+                for header in fasta_dict:
+                    AlignedDomainSequences[header] = fasta_dict[header]
             
         if "A" in seqdist_networks:
             print("\nGenerating all-vs-all network with domain-sequence distance method")

@@ -367,7 +367,7 @@ def save_domain_seqs(filtered_matrix, fasta_dict, domains_folder, output_folder,
     """Write fasta sequences for the domains in the right pfam-domain file"""
     for row in filtered_matrix:
         domain = row[5]
-        seq = fasta_dict[">"+str(row[-1].strip())] #access the sequence by using the header
+        seq = fasta_dict[str(row[-1].strip())] #access the sequence by using the header
         
 
         domain_file = open(os.path.join(output_folder, domains_folder, domain + ".fasta"), 'a') #append to existing file
@@ -458,7 +458,7 @@ def fasta_parser(handle):
     header = ""
     for line in handle:
         if line[0] == ">":
-            header=line.strip()
+            header=line.strip()[1:]
         else:
             try:
                 fasta_dict[header] += line.strip()
@@ -850,11 +850,6 @@ def write_parameters(output_folder, options):
         pf.write("\t(default)\n")
     else:
         pf.write("\n")
-        
-    pf.write("Use own method for domain identity?:\t" + ("True" if options.use_perc_id else "False"))
-    if options.use_perc_id:
-        pf.write("\t(default)\n")
-    else:
-        pf.write("\n")
 
     pf.close()
+
