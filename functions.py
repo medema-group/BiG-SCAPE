@@ -25,14 +25,6 @@ import math
 global verbose
 verbose = False
 
-def frange(start, stop, step):
-    """Range function with float increments"""
-    
-    i = start
-    while i <= stop:
-        yield i
-        i += step
-
 
 def get_anchor_domains(filename):
     """Get the anchor/marker domains from a txt file.
@@ -63,24 +55,6 @@ def get_domain_list(filename):
     handle.close()
     
     return domains
-
-
-def get_all_features_of_type(gb_file, types):
-    "Return all features of the specified types for a seq_record"
-    
-    handle = open(gb_file, "r")
-    seq_record = SeqIO.read(handle, "genbank")
-    
-    if isinstance(types, str):
-        # force into a tuple
-        types = (types, )
-    features = []
-    for f in seq_record.features:
-        if f.type in types:
-            features.append(f)
-    handle.close()
-            
-    return features
 
 
 def check_overlap(pfd_matrix, overlap_cutoff):
@@ -164,12 +138,6 @@ def write_pfd(pfd_handle, matrix):
     pfd_handle.close() 
     
 
-def dct_writeout(handle, dct):
-    for key in dct.keys():
-        handle.write(key+"\n"+dct[key]+"\n")
-    handle.close()
-
-
 def hmmscan(pfam_dir, fastafile, outputdir, name, cores):
     """Runs hmmscan"""
     #removed --noali par
@@ -224,36 +192,6 @@ def overlap(locA1, locA2, locB1, locB2):
     return sum_len - total_region
 
   
-def calc_perc_identity(seq1, seq2, spec_domain, spec_domain_nest, domain):
-    """Percent Identity = Matches/Length of aligned region (with gaps) (sequence similarity!)
-    Positions where both characters are gaps (dashes) are not counted in the Length"""
-
-    length = 0
-    matches = 0
-    
-    #Sequences *should* have the same length because they come from an MSA
-    # but if sequences were incorrectly appended more than once to the same 
-    # domain sequence, there would be problems here
-    if len(seq1) != len(seq2):
-        print("\tWARNING: mismatch in sequences' lengths while calculating sequence identity") 
-        print("\t Domain: " + domain)
-        print("\t  Specific domain 1: " + spec_domain + " len: " + str(len(seq1)))
-        print("\t  Specific domain 2: " + spec_domain_nest + " len: " + str(len(seq2)))
-        print("\t trying to continue with shortest length...")
-        
-    seq_length = min(len(seq1), len(seq2))
-    
-    for pos in range(seq_length): 
-        if seq1[pos] == seq2[pos]:
-            if seq1[pos] != "-":
-                matches += 1
-                length += 1
-        else:
-            length += 1
-
-    return float(matches) / float(length), length    
-
-
 def BGC_dic_gen(filtered_matrix):
     """Generates the: { 'general_domain_name_x' : ['specific_domain_name_1',
      'specific_domain_name_2'] } part of the BGCs variable."""
@@ -313,7 +251,7 @@ def network_parser(network_file, Jaccardw, DDSw, GKw, anchorboost):
     for (a, b) in network:
         Jaccard = network[a,b][7]
         #DDS = network[a,b][8] <- will be recalculated
-        GK = network[a,b][9]
+        AI = network[a,b][9]
         
         DDS_non_anchor = network[a,b][10]
         DDS_anchor = network[a,b][11]
@@ -338,7 +276,7 @@ def network_parser(network_file, Jaccardw, DDSw, GKw, anchorboost):
             
         DDS = 1 - DDS
         
-        distance = 1- (Jaccardw * Jaccard) - (DDSw * DDS) - (GKw * GK)
+        distance = 1- (Jaccardw * Jaccard) - (DDSw * DDS) - (AIw * AI)
         
         if distance <= 0:
             logscore = float("inf")
@@ -354,6 +292,72 @@ def network_parser(network_file, Jaccardw, DDSw, GKw, anchorboost):
         
     return network
 
+
+def write_network_matrix(matrix, cutoff, filename, include_disc_nodes):
+    networkfile = open(filename, 'w')
+    clusters = [] # will contain the names of clusters that have an edge value lower than the threshold
+    networkfile.write("clustername1\tclustername2\tgroup1\tdefinition\tgroup2\tdefinition\t-log2score\traw distance\tsquared similarity\tJaccard index\tDDS index\tAdjacency index\traw DDS non-anchor\traw DDS anchor\tNon-anchor domains\tAnchor domains\tcombined group\tshared group\n")
+    
+    for (gc1, gc2) in matrix.keys():
+        row = [gc1, gc2]
+        for i in matrix[gc1, gc2]:
+            row.append(i)
+
+        temprow = []
+        #if both clusters have the same group, this group will be annotated in the last column of the network file
+        for i in row:
+            temprow.append(i)
+        
+        if float(temprow[7]) <= float(cutoff):
+            clusters.append(row[0])
+            clusters.append(row[1])
+            
+            if row[2] != "" and row[4] != "": #group1, group2
+                temprow.append(" - ".join(sorted([str(row[2]),str(row[4])])))
+            elif row[4] != "":
+                temprow.append(str(row[4]))
+            elif row[2] != "":
+                temprow.append(str(row[2]))
+            else:
+                temprow.append(str("NA"))
+            
+            if row[2] == row[4]:
+                temprow.append(row[2])
+            else:
+                temprow.append("")
+                
+            networkfile.write("\t".join(map(str,temprow)) + "\n")
+
+    # matrix[gc1, gc2] =
+    # row:   0      1    2    3       4       5      6      7    8   9   
+    #       grp1  def1 grp2  def2  -logScr  rawD  sqrtSim  Jac  DDS  AI  
+    #
+    #       10      11    12    13
+    #     rDDSna  rDDSa   S     Sa
+    #
+    #       [   14      15   <- these two are written directly
+    #       [combGrp  ShrdGrp
+
+    
+    if include_disc_nodes == True:  
+        #Add the nodes without any edges, give them an edge to themselves with a distance of 0 
+        clusters = set(clusters)
+        passed_clusters = []
+        
+        #Arbitrary numbers for S and Sa domains: 1 of each (logical would be 0,0 but 
+        # that could mess re-analysis; 
+        # the actual values would be most accurate but that'd involve more work
+        for (gc1, gc2) in matrix.keys():
+            if gc1 not in clusters and gc1 not in passed_clusters:
+                networkfile.write("\t".join([gc1, gc1, matrix[gc1, gc2][0], matrix[gc1, gc2][1], matrix[gc1, gc2][0], matrix[gc1, gc2][1], "0", "0", "1", "1", "1", "1", "0", "0", "1", "1", "", ""]) + "\n")
+                passed_clusters.append(gc1)
+            
+            if gc2 not in clusters and gc2 not in passed_clusters:
+                networkfile.write("\t".join([gc2, gc2, matrix[gc1, gc2][2], matrix[gc1, gc2][3], matrix[gc1, gc2][2], matrix[gc1, gc2][3], "0", "0", "1", "1", "1", "1", "0", "0", "1", "1", "", ""]) + "\n")
+                passed_clusters.append(gc2)
+            
+    networkfile.close()
+    
 
 def fasta_parser(handle):
     """Parses a fasta file, and stores it in a dictionary.
@@ -385,16 +389,6 @@ def get_domain_fastas(domain_folder, output_folder):
                     print fname
                     
     return domain_fastas
-
-
-def iterFlatten(root):
-    """'Flattens' a matrix by collapsing the lists into one list"""
-    if isinstance(root, (list, tuple)):
-        for element in root:
-            for e in iterFlatten(element):
-                yield e
-    else:
-        yield root
 
 
 def distout_parser(distout_file):
@@ -455,72 +449,6 @@ def distout_parser(distout_file):
     return domain_pairs_dict
 
 
-def write_network_matrix(matrix, cutoff, filename, include_disc_nodes):
-    networkfile = open(filename, 'w')
-    clusters = [] # will contain the names of clusters that have an edge value lower than the threshold
-    networkfile.write("clustername1\tclustername2\tgroup1\tdefinition\tgroup2\tdefinition\t-log2score\traw distance\tsquared similarity\tJaccard index\tDDS index\tGK index\traw DDS non-anchor\traw DDS anchor\tNon-anchor domains\tAnchor domains\tcombined group\tshared group\n")
-    
-    for (gc1, gc2) in matrix.keys():
-        row = [gc1, gc2]
-        for i in matrix[gc1, gc2]:
-            row.append(i)
-
-        temprow = []
-        #if both clusters have the same group, this group will be annotated in the last column of the network file
-        for i in row:
-            temprow.append(i)
-        
-        if float(temprow[7]) <= float(cutoff):
-            clusters.append(row[0])
-            clusters.append(row[1])
-            
-            if row[2] != "" and row[4] != "": #group1, group2
-                temprow.append(" - ".join(sorted([str(row[2]),str(row[4])])))
-            elif row[4] != "":
-                temprow.append(str(row[4]))
-            elif row[2] != "":
-                temprow.append(str(row[2]))
-            else:
-                temprow.append(str("NA"))
-            
-            if row[2] == row[4]:
-                temprow.append(row[2])
-            else:
-                temprow.append("")
-                
-            networkfile.write("\t".join(map(str,temprow)) + "\n")
-
-    # matrix[gc1, gc2] =
-    # row:   0      1    2    3       4       5      6      7    8   9   
-    #       grp1  def1 grp2  def2  -logScr  rawD  sqrtSim  Jac  DDS  GK  
-    #
-    #       10      11    12    13
-    #     rDDSna  rDDSa   S     Sa
-    #
-    #       [   14      15   <- these two are written directly
-    #       [combGrp  ShrdGrp
-
-    
-    if include_disc_nodes == True:  
-        #Add the nodes without any edges, give them an edge to themselves with a distance of 0 
-        clusters = set(clusters)
-        passed_clusters = []
-        
-        #Arbitrary numbers for S and Sa domains: 1 of each (logical would be 0,0 but 
-        # that could mess re-analysis; 
-        # the actual values would be most accurate but that'd involve more work
-        for (gc1, gc2) in matrix.keys():
-            if gc1 not in clusters and gc1 not in passed_clusters:
-                networkfile.write("\t".join([gc1, gc1, matrix[gc1, gc2][0], matrix[gc1, gc2][1], matrix[gc1, gc2][0], matrix[gc1, gc2][1], "0", "0", "1", "1", "1", "1", "0", "0", "1", "1", "", ""]) + "\n")
-                passed_clusters.append(gc1)
-            
-            if gc2 not in clusters and gc2 not in passed_clusters:
-                networkfile.write("\t".join([gc2, gc2, matrix[gc1, gc2][2], matrix[gc1, gc2][3], matrix[gc1, gc2][2], matrix[gc1, gc2][3], "0", "0", "1", "1", "1", "1", "0", "0", "1", "1", "", ""]) + "\n")
-                passed_clusters.append(gc2)
-            
-    networkfile.close()
-                    
-
 def domtable_parser(gbk, dom_file):
     """Parses the domain table output files from hmmscan"""
     
@@ -571,13 +499,10 @@ def domtable_parser(gbk, dom_file):
     return pfd_matrix
 
 
-def hmm_table_parser(gbk, hmm_table):
-##AB050629.gbk    score   yxjC    1    1167    +    PF03600    CitMHS
-
 ##example from hmm table output:
 ##Thiolase_N           PF00108.19 loc:[2341:3538](+):gid::pid::loc_tag:['ctg4508_7'] -
 ##8.2e-90  300.5   2.3   1.2e-89  300.0   2.3   1.2   1   0   0   1   1   1   1 Thiolase, N-terminal domain
-
+def hmm_table_parser(gbk, hmm_table):
     pfd_matrix = []
 
     handle = open(hmm_table, 'r')
@@ -664,11 +589,11 @@ def write_parameters(output_folder, options):
     else:
         pf.write("\n")
         
-    pf.write("GK weight:\t" + str(options.GKw))
-    if options.GKw == 0.05:
-        pf.write("\t(default)\n")
-    else:
-        pf.write("\n")
+    #pf.write("GK weight:\t" + str(options.GKw))
+    #if options.GKw == 0.05:
+        #pf.write("\t(default)\n")
+    #else:
+        #pf.write("\n")
         
     pf.write("Anchor domain weight:\t" + str(options.anchorboost))
     if options.anchorboost == 0.1:

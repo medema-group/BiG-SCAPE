@@ -133,6 +133,7 @@ def get_gbk_files(inputdir, min_bgc_size, exclude_gbk_str, gbk_group):
 
     return genbankDict
 
+
 def timeit(f):
     def wrap(*args):
         insignificant_runtime = 1 #prevents an overload 
@@ -149,6 +150,30 @@ def timeit(f):
             
         return ret
     return wrap
+
+
+@timeit
+def generate_network(cluster_pairs, cores):
+    #Contents of the network file: clustername1 clustername2, group1, group2, -log2score, dist, squared similarity
+    "saves the distances as the log2 of the similarity"
+    pool = Pool(cores, maxtasksperchild=500)
+    
+    #Assigns the data to the different workers and pools the results back into
+    # the network_matrix variable
+    network_matrix = pool.map(generate_dist_matrix, cluster_pairs)
+    
+    # --- Serialized version of distance calculation ---
+    # For the time being, use this if you have memory issues
+    #network_matrix = []
+    #for pair in cluster_pairs:
+      #network_matrix.append(generate_dist_matrix(pair))
+
+    # use a dictionary to store results
+    network_matrix_dict = {}
+    for row in network_matrix:
+        network_matrix_dict[row[0], row[1]] = row[2:]
+    
+    return network_matrix_dict
 
 
 def generate_dist_matrix(parms):    
@@ -188,9 +213,9 @@ def generate_dist_matrix(parms):
     
 
     if dist_method == "seqdist":
-        dist, jaccard, dds, gk, rDDSna, rDDS, S, Sa = cluster_distance(cluster1, cluster2, domain_list_A, domain_list_B, anchor_domains) #sequence dist
+        dist, jaccard, dds, ai, rDDSna, rDDS, S, Sa = cluster_distance(cluster1, cluster2, domain_list_A, domain_list_B, anchor_domains) #sequence dist
     elif dist_method == "domain_dist":
-        dist, jaccard, dds, gk, rDDSna, rDDS, S, Sa = Distance_modified(domain_list_A, domain_list_B, 0, 4) #domain dist
+        dist, jaccard, dds, ai, rDDSna, rDDS, S, Sa = Distance_modified(domain_list_A, domain_list_B, 0, 4) #domain dist
         
     if dist == 0:
         logscore = float("inf")
@@ -204,36 +229,11 @@ def generate_dist_matrix(parms):
     #clustername1 clustername2 group1, group2, -log2score, dist, squared similarity, j, dds, gk
     network_row = [str(cluster1), str(cluster2), group_dct[cluster1][0],group_dct[cluster1][1], \
         group_dct[cluster2][0],group_dct[cluster2][1], str(logscore), str(dist), str((1-dist)**2), \
-        jaccard, dds, gk, rDDSna, rDDS, S, Sa]
+        jaccard, dds, ai, rDDSna, rDDS, S, Sa]
     
     return network_row
     
-        
-@timeit
-def generate_network(cluster_pairs, cores):
-    #Contents of the network file: clustername1 clustername2, group1, group2, -log2score, dist, squared similarity
-    "saves the distances as the log2 of the similarity"
-    pool = Pool(cores, maxtasksperchild=500)
-    
-    #Assigns the data to the different workers and pools the results back into
-    # the network_matrix variable
-    network_matrix = pool.map(generate_dist_matrix, cluster_pairs)
-    
-    # --- Serialized version of distance calculation ---
-    # For the time being, use this if you have memory issues
-    #network_matrix = []
-    #for pair in cluster_pairs:
-      #network_matrix.append(generate_dist_matrix(pair))
 
-    # use a dictionary to store results
-    network_matrix_dict = {}
-    for row in network_matrix:
-        network_matrix_dict[row[0], row[1]] = row[2:]
-    
-    return network_matrix_dict
-    
-    
-       
 def cluster_distance(A, B, A_domlist, B_domlist, anchor_domains): 
     """Compare two clusters using information on their domains, and the sequences of the domains"""    
 
@@ -408,21 +408,38 @@ def cluster_distance(A, B, A_domlist, B_domlist, anchor_domains):
  
     DDS = 1-DDS #transform into similarity
  
- 
+
+    # ADJACENCY INDEX
+    # calculates the Tanimoto similarity of pairs of adjacent domains
+    
+    if len(A_domlist) < 2 or len(B_domlist) < 2:
+        AI = 0.0
+    else:
+        setA = set()
+        for l in range(len(A_domlist)-1):
+            setA.add(tuple(sorted([A_domlist[l],A_domlist[l+1]])))
+        
+        setB = set()
+        for l in range(len(B_domlist)-1):
+            setB.add(tuple(sorted([B_domlist[l],B_domlist[l+1]])))
+
+        AI = float(len(setA.intersection(setB))) / float(len(setA.union(setB)))
+
+    
     # GK INDEX
     #  calculate the Goodman-Kruskal gamma index
-    Ar = [item for item in A_domlist]
-    Ar.reverse()
-    GK = max([calculate_GK(A_domlist, B_domlist, nbhood), calculate_GK(Ar, B_domlist, nbhood)])
+    #Ar = [item for item in A_domlist]
+    #Ar.reverse()
+    #GK = max([calculate_GK(A_domlist, B_domlist, nbhood), calculate_GK(Ar, B_domlist, nbhood)])
     
-    Distance = 1 - (Jaccardw * Jaccard) - (DDSw * DDS) - (GKw * GK) 
+    Distance = 1 - (Jaccardw * Jaccard) - (DDSw * DDS) - (AIw * AI) 
     if Distance < 0:
         print("Negative distance detected!")
-        print("J: " + str(Jaccard) + "\tDDS: " + str(DDS) + "\tGK: " + str(GK))
-        print("Jw: " + str(Jaccardw) + "\tDDSw: " + str(DDSw) + "\tGKw: " + str(GKw))
+        print("J: " + str(Jaccard) + "\tDDS: " + str(DDS) + "\tAI: " + str(AI))
+        print("Jw: " + str(Jaccardw) + "\tDDSw: " + str(DDSw) + "\tAIw: " + str(AIw))
         sys.exit()
         
-    return Distance, Jaccard, DDS, GK, DDS_non_anchor, DDS_anchor, S, S_anchor
+    return Distance, Jaccard, DDS, AI, DDS_non_anchor, DDS_anchor, S, S_anchor
 
 
 """
@@ -715,8 +732,8 @@ def CMD_parser():
                       help="Jaccard weight, default is 0.2")
     parser.add_option("--DDSw", dest="DDSw", default=0.75,
                       help="DDS weight, default is 0.75")
-    parser.add_option("--GKw", dest="GKw", default=0.05,
-                      help="GK weight, default is 0.05")
+    parser.add_option("--AIw", dest="AIw", default=0.05,
+                      help="Adjacency Index weight, default is 0.05")
     parser.add_option("-a", "--anchorboost", dest="anchorboost", default=2.0,
                       help="Boost perceived proportion of anchor DDS subcomponent in 'seqdist' method. Default is to double if (2.0)")
     
@@ -750,8 +767,8 @@ def CMD_parser():
     parser.add_option("--sim_cutoffs", dest="sim_cutoffs", default="1,0.85,0.75,0.6,0.4,0.2",
                       help="Generate networks using multiple similarity (raw distance) cutoff values, example: \"1,0.5,0.1\"")
 
-    parser.add_option("-n", "--nbhood", dest="nbhood", default=4,
-                      help="nbhood variable for the GK distance metric, default is set to 4.")
+    #parser.add_option("-n", "--nbhood", dest="nbhood", default=4,
+                      #help="nbhood variable for the GK distance metric, default is set to 4.")
 
     (options, args) = parser.parse_args()
     return options, args
@@ -776,7 +793,7 @@ if __name__=="__main__":
     global timings_file
     global Jaccardw
     global DDSw
-    global GKw
+    global AIw
     global anchorboost
     global nbhood
     global cores
@@ -788,7 +805,7 @@ if __name__=="__main__":
         sys.exit("Invalid anchorboost parameter (must be equal or greater than 1)")
     Jaccardw = float(options.Jaccardw)
     DDSw = float(options.DDSw) 
-    GKw = float(options.GKw)
+    AIw = float(options.AIw)
     cutoff_list = options.sim_cutoffs.split(",")
     if "1" not in cutoff_list:
         cutoff_list.append("1") # compulsory for re-runs
@@ -1120,7 +1137,7 @@ if __name__=="__main__":
         if options.skip_all: #read already calculated distances
             print(" Trying to read alread calculated network file...")
             if os.path.isfile(os.path.join(output_folder, networks_folder, "networkfile_domain_dist_all_vs_all_c1.network")):
-                network_matrix = network_parser(os.path.join(output_folder, networks_folder, "networkfile_domain_dist_all_vs_all_c1.network"), Jaccardw, DDSw, GKw, anchorboost)
+                network_matrix = network_parser(os.path.join(output_folder, networks_folder, "networkfile_domain_dist_all_vs_all_c1.network"), Jaccardw, DDSw, AIw, anchorboost)
                 print("  ...done")
             else:
                 sys.exit("  File networkfile_domain_dist_all_vs_all_c1.network could not be found!")
@@ -1179,7 +1196,7 @@ if __name__=="__main__":
         if options.skip_all:
             print(" Trying to read already calculated network file...")
             if os.path.isfile(os.path.join(output_folder, networks_folder, "networkfile_seqdist_all_vs_all_c1.network")):
-                network_matrix = network_parser(os.path.join(output_folder, networks_folder, "networkfile_seqdist_all_vs_all_c1.network"), Jaccardw, DDSw, GKw, anchorboost)
+                network_matrix = network_parser(os.path.join(output_folder, networks_folder, "networkfile_seqdist_all_vs_all_c1.network"), Jaccardw, DDSw, AIw, anchorboost)
                 print("  ...done")
             else:
                 sys.exit("  File networkfile_seqdist_all_vs_all_c1.network could not be found!")
