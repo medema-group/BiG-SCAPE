@@ -39,36 +39,6 @@ from Bio.SubsMat.MatrixInfo import pam250 as scoring_matrix
 from functions import *
 from munkres import Munkres
 
-"""
-*FFT-NS-i (iterative refinement method; two cycles only):
-mafft --retree 2 --maxiterate 2 input [> output]
-fftnsi input [> output]
-*FFT-NS-i (iterative refinement method; max. 1000 iterations):
-mafft --retree 2 --maxiterate 1000 input [> output]
-*FFT-NS-2 (fast; progressive method):
-mafft --retree 2 --maxiterate 0 input [> output]
-fftns input [> output]
-*FFT-NS-1 (very fast; recommended for >2000 sequences; progressive method with a rough guide tree):
-mafft --retree 1 --maxiterate 0 input [> output]
-*NW-NS-i (iterative refinement method without FFT approximation; two cycles only):
-mafft --retree 2 --maxiterate 2 --nofft input [> output]
-nwnsi input [> output]
-*NW-NS-2 (fast; progressive method without the FFT approximation):
-mafft --retree 2 --maxiterate 0 --nofft input [> output]
-nwns input [> output]
-*NW-NS-PartTree-1 (recommended for ~10,000 to ~50,000 sequences; progressive method with the PartTree algorithm):
-mafft --retree 1 --maxiterate 0 --nofft --parttree input [> output]
-
-
-With FFT NS 1, a distance matrix is first generated using the 6 tuple score between each pair of sequences both sequences
-are scanned from the start for matching 6 tuples, and when a match is found the score is incremented and scanning continues
-from the next residue [4]. A guide tree is then constructed by clustering according to these distances, and the sequences 
-are then aligned using the branching order of the guide tree. With FFT NS 2, the alignment produced by the FFT NS 1 method
-is used to regenerate the distance matrix and the guide tree, and then do a second progressive alignment. In this paper,
-FFT NS 1 will be specified whenever distance measures are needed. If no distance measures are required, the default 
-FFTNS2 method will be used. 
-
-"""
 
 
 def get_gbk_files(inputdir, min_bgc_size, exclude_gbk_str, gbk_group):
@@ -418,10 +388,10 @@ def cluster_distance(A, B, A_domlist, B_domlist, anchor_domains):
         anchor_prct = S_anchor / float(S + S_anchor)
         
         # boost anchor subcomponent and re-normalize
-        non_anchor_weight = non_anchor_prct / (anchor_prct*anchorweight + non_anchor_prct)
-        anchor_weight = anchor_prct*anchorweight / (anchor_prct*anchorweight + non_anchor_prct)
+        non_anchor_weight = non_anchor_prct / (anchor_prct*anchorboost + non_anchor_prct)
+        anchor_weight = anchor_prct*anchorboost / (anchor_prct*anchorboost + non_anchor_prct)
 
-        # Use anchorweight parameter to boost percieved rDDS_anchor
+        # Use anchorboost parameter to boost percieved rDDS_anchor
         DDS = (non_anchor_weight*DDS_non_anchor) + (anchor_weight*DDS_anchor)
         
     elif S_anchor == 0:
@@ -455,7 +425,34 @@ def cluster_distance(A, B, A_domlist, B_domlist, anchor_domains):
     return Distance, Jaccard, DDS, GK, DDS_non_anchor, DDS_anchor, S, S_anchor
 
 
+"""
+*FFT-NS-i (iterative refinement method; two cycles only):
+mafft --retree 2 --maxiterate 2 input [> output]
+fftnsi input [> output]
+*FFT-NS-i (iterative refinement method; max. 1000 iterations):
+mafft --retree 2 --maxiterate 1000 input [> output]
+*FFT-NS-2 (fast; progressive method):
+mafft --retree 2 --maxiterate 0 input [> output]
+fftns input [> output]
+*FFT-NS-1 (very fast; recommended for >2000 sequences; progressive method with a rough guide tree):
+mafft --retree 1 --maxiterate 0 input [> output]
+*NW-NS-i (iterative refinement method without FFT approximation; two cycles only):
+mafft --retree 2 --maxiterate 2 --nofft input [> output]
+nwnsi input [> output]
+*NW-NS-2 (fast; progressive method without the FFT approximation):
+mafft --retree 2 --maxiterate 0 --nofft input [> output]
+nwns input [> output]
+*NW-NS-PartTree-1 (recommended for ~10,000 to ~50,000 sequences; progressive method with the PartTree algorithm):
+mafft --retree 1 --maxiterate 0 --nofft --parttree input [> output]
 
+With FFT NS 1, a distance matrix is first generated using the 6 tuple score between each pair of sequences both sequences
+are scanned from the start for matching 6 tuples, and when a match is found the score is incremented and scanning continues
+from the next residue [4]. A guide tree is then constructed by clustering according to these distances, and the sequences 
+are then aligned using the branching order of the guide tree. With FFT NS 2, the alignment produced by the FFT NS 1 method
+is used to regenerate the distance matrix and the guide tree, and then do a second progressive alignment. In this paper,
+FFT NS 1 will be specified whenever distance measures are needed. If no distance measures are required, the default 
+FFTNS2 method will be used. 
+"""
 @timeit
 def run_mafft(al_method, maxit, cores, mafft_pars, domain):
     """Runs mafft program with the provided parameters.
@@ -720,7 +717,7 @@ def CMD_parser():
                       help="DDS weight, default is 0.75")
     parser.add_option("--GKw", dest="GKw", default=0.05,
                       help="GK weight, default is 0.05")
-    parser.add_option("-a", "--anchorboost", dest="anchorweight", default=2.0,
+    parser.add_option("-a", "--anchorboost", dest="anchorboost", default=2.0,
                       help="Boost perceived proportion of anchor DDS subcomponent in 'seqdist' method. Default is to double if (2.0)")
     
     #parser.add_option("--domainsout", dest="domainsout", default="domains",
@@ -780,15 +777,15 @@ if __name__=="__main__":
     global Jaccardw
     global DDSw
     global GKw
-    global anchorweight
+    global anchorboost
     global nbhood
     global cores
     include_disc_nodes = options.include_disc_nodes
     cores = int(options.cores)
     nbhood = int(options.nbhood)
-    anchorweight = float(options.anchorweight)
-    if anchorweight < 1.0:
-        sys.exit("Invalid anchorweight parameter (must be equal or greater than 1)")
+    anchorboost = float(options.anchorboost)
+    if anchorboost < 1.0:
+        sys.exit("Invalid anchorboost parameter (must be equal or greater than 1)")
     Jaccardw = float(options.Jaccardw)
     DDSw = float(options.DDSw) 
     GKw = float(options.GKw)
@@ -1123,7 +1120,7 @@ if __name__=="__main__":
         if options.skip_all: #read already calculated distances
             print(" Trying to read alread calculated network file...")
             if os.path.isfile(os.path.join(output_folder, networks_folder, "networkfile_domain_dist_all_vs_all_c1.network")):
-                network_matrix = network_parser(os.path.join(output_folder, networks_folder, "networkfile_domain_dist_all_vs_all_c1.network"), Jaccardw, DDSw, GKw, anchorweight)
+                network_matrix = network_parser(os.path.join(output_folder, networks_folder, "networkfile_domain_dist_all_vs_all_c1.network"), Jaccardw, DDSw, GKw, anchorboost)
                 print("  ...done")
             else:
                 sys.exit("  File networkfile_domain_dist_all_vs_all_c1.network could not be found!")
@@ -1182,7 +1179,7 @@ if __name__=="__main__":
         if options.skip_all:
             print(" Trying to read already calculated network file...")
             if os.path.isfile(os.path.join(output_folder, networks_folder, "networkfile_seqdist_all_vs_all_c1.network")):
-                network_matrix = network_parser(os.path.join(output_folder, networks_folder, "networkfile_seqdist_all_vs_all_c1.network"), Jaccardw, DDSw, GKw, anchorweight)
+                network_matrix = network_parser(os.path.join(output_folder, networks_folder, "networkfile_seqdist_all_vs_all_c1.network"), Jaccardw, DDSw, GKw, anchorboost)
                 print("  ...done")
             else:
                 sys.exit("  File networkfile_seqdist_all_vs_all_c1.network could not be found!")

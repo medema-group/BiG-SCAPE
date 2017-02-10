@@ -83,27 +83,6 @@ def get_all_features_of_type(gb_file, types):
     return features
 
 
-def get_hmm_output_files(output_folder):
-    """Finds all .domtable files in the output folder and its child folders"""
-    
-    hmm_table_list = []
-    for dirpath, dirnames, filenames in os.walk(str(output_folder) + "/"):
-        for fname in filenames:
-            if fname.split(".")[-1] == "domtable":
-                try:
-                    if open(output_folder + "/" + fname, "r").readlines()[3][0] != "#": #if this is false, hmmscan has not found any domains in the sequence
-                        hmm_table_list.append(fname)
-                        if verbose == True:
-                            print fname
-                    else:
-                        print output_folder + "/" + fname, "seems to be an empty domtable file"
-                    
-                except IndexError:
-                    print "IndexError on file", output_folder + "/" + fname
-
-    return hmm_table_list
-
-
 def check_overlap(pfd_matrix, overlap_cutoff):
     """Check if domains overlap for a certain overlap_cutoff.
      If so, remove the domain(s) with the lower score."""
@@ -190,80 +169,6 @@ def dct_writeout(handle, dct):
         handle.write(key+"\n"+dct[key]+"\n")
     handle.close()
 
-
-def check_data_integrity(gbk_files):
-    """Perform some integrity checks on the input gbk files."""
-
-    discarded_set = set()
-
-    # check for potential errors while reading the gbk files
-    # Structure must remain intact after removing offending files
-    # -> The following used to be necessary before storing sample information
-    # in genbankDict. It could eventually be removed/simplified
-    gbk_files_check = copy.deepcopy(gbk_files)
-    samples_for_deletion = []
-    for sample in range(len(gbk_files_check)):
-        for f in gbk_files_check[sample]:
-            handle = open(f, "r")
-            try:
-                SeqIO.read(handle, "genbank")
-            except ValueError as e:
-                print("   Error with file " + f + ": \n    '" + str(e) + "'")
-                print("    (This file will be excluded from the analysis)")
-                discarded_set.add(f)
-                if len(gbk_files[sample]) > 1:
-                    gbk_files[sample].remove(f)
-                else:
-                    # this is a one-element list, mark it for late removal
-                    samples_for_deletion.append(sample)
-                pass
-            except AssertionError as e:
-                print("   Assertion error with file " + f + ": \n   " + str(e))
-                print("    (This file will be excluded from the analysis)")
-                if len(gbk_files[sample]) > 1:
-                    gbk_files[sample].remove(f)
-                else:
-                    # this is a one-element list, mark it for late removal
-                    samples_for_deletion.append(sample)
-                pass
-            handle.close()
-    if len(samples_for_deletion) > 0:
-        for s in sorted(samples_for_deletion, reverse=True):
-            del gbk_files[s]
-            
-    # check for duplication
-    duplication = False
-    del gbk_files_check[:]
-    gbk_files_check = list(iterFlatten(gbk_files))
-    for file in gbk_files_check:
-        name = file.split(os.sep)[-1]
-        file_occ = 0
-        for cfile in gbk_files_check:
-            
-            cname = cfile.split(os.sep)[-1]
-            if name == cname:
-                file_occ += 1
-                if file_occ > 1:
-                    duplication = True
-                    print "duplicated file at:", cfile 
-    
-    # Without proper checking downstream, allowing duplicate files results in
-    # problems: domain's sequences could be duplicated and the length's mismatch
-    # raises an exception in sequence similarity scoring. 
-    # This probably is not an issue anymore with the new genbankDict structure
-    if duplication == True:
-        print "There was duplication in the input files, if this is not intended remove them."
-        cont = raw_input("Continue anyway? Y/N ")
-        if cont.lower() != "y":
-            sys.exit()
-            
-    # The possibility of not having files to analyze was checked for in get_gbk_files
-    # so if the list is empty now, it's due to issues in the gbk files
-    if len(gbk_files_check) < 2:
-        sys.exit("Due to errors in the input files, there are no files left for the analysis (" + str(len(gbk_files_check)) + ")")
-       
-    return discarded_set
-            
 
 def hmmscan(pfam_dir, fastafile, outputdir, name, cores):
     """Runs hmmscan"""
