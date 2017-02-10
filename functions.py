@@ -291,7 +291,7 @@ def save_domain_seqs(filtered_matrix, fasta_dict, domains_folder, output_folder,
         domain_file.close()
 
 
-def network_parser(network_file, Jaccardw, DDSw, GKw, anchorweight):
+def network_parser(network_file, Jaccardw, DDSw, GKw, anchorboost):
     network = {}
     
     try:
@@ -325,8 +325,8 @@ def network_parser(network_file, Jaccardw, DDSw, GKw, anchorweight):
             non_anchor_prct = S / (S + S_anchor)
             anchor_prct = S_anchor / (S + S_anchor)
             
-            non_anchor_weight = non_anchor_prct / (anchor_prct*anchorweight + non_anchor_prct)
-            anchor_weight = anchor_prct*anchorweight / (anchor_prct*anchorweight + non_anchor_prct)
+            non_anchor_weight = non_anchor_prct / (anchor_prct*anchorboost + non_anchor_prct)
+            anchor_weight = anchor_prct*anchorboost / (anchor_prct*anchorboost + non_anchor_prct)
         
             DDS = (non_anchor_weight*DDS_non_anchor) + (anchor_weight*DDS_anchor)
             
@@ -670,8 +670,8 @@ def write_parameters(output_folder, options):
     else:
         pf.write("\n")
         
-    pf.write("Anchor domain weight:\t" + str(options.anchorweight))
-    if options.anchorweight == 0.1:
+    pf.write("Anchor domain weight:\t" + str(options.anchorboost))
+    if options.anchorboost == 0.1:
         pf.write("\t(default)\n")
     else:
         pf.write("\n")
