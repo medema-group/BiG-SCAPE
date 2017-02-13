@@ -1135,63 +1135,65 @@ if __name__=="__main__":
     
     # Distance without taking sequence similarity between specific domains into account
     if domaindist_networks:
-        if options.skip_all: #read already calculated distances
-            print(" Trying to read alread calculated network file...")
-            if os.path.isfile(os.path.join(output_folder, networks_folder, "networkfile_domain_dist_all_vs_all_c1.network")):
-                network_matrix = network_parser(os.path.join(output_folder, networks_folder, "networkfile_domain_dist_all_vs_all_c1.network"), Jaccardw, DDSw, AIw, anchorboost)
-                print("  ...done")
-            else:
-                sys.exit("  File networkfile_domain_dist_all_vs_all_c1.network could not be found!")
+        print(" - This method is under revision - ")
+    #if domaindist_networks:
+        #if options.skip_all: #read already calculated distances
+            #print(" Trying to read alread calculated network file...")
+            #if os.path.isfile(os.path.join(output_folder, networks_folder, "networkfile_domain_dist_all_vs_all_c1.network")):
+                #network_matrix = network_parser(os.path.join(output_folder, networks_folder, "networkfile_domain_dist_all_vs_all_c1.network"), Jaccardw, DDSw, AIw, anchorboost)
+                #print("  ...done")
+            #else:
+                #sys.exit("  File networkfile_domain_dist_all_vs_all_c1.network could not be found!")
             
-        if 'A' in domaindist_networks:
-            print("\nGenerating all-vs-all network with domain distance method")
-            pairs = set(map(tuple, map(sorted, combinations(clusters, 2))))
-            cluster_pairs = [(x, y, "domain_dist", anchor_domains) for (x, y) in pairs]
-            network_matrix = generate_network(cluster_pairs, cores)
-            for cutoff in cutoff_list:
-                write_network_matrix(network_matrix, cutoff, os.path.join(output_folder, networks_folder, "networkfile_domain_dist_all_vs_all_c" + cutoff + ".network"), include_disc_nodes)
-            if 'S' in domaindist_networks:
-                if len(sampleDict) == 1:
-                    print("\nNOT generating networks per sample (only one sample, covered in the all-vs-all case)")
-                else:
-                    print("\nGenerating sample networks with domain distance method")
-                    for sample, sampleClusters in sampleDict.iteritems():
-                        print(" Sample: " + sample)
-                        if len(sampleClusters) == 1:
-                            print(" Warning: Sample size = 1 detected. Not generating networks for this sample (" +
-                                  sample + ")")
-                        else:
-                            pairs = set(map(tuple, map(sorted, combinations(sampleClusters, 2))))
-                            network_matrix_sample = {}
-                            for pair in pairs:
-                                network_matrix_sample[pair] = network_matrix[pair]
-                            for cutoff in cutoff_list:
-                                write_network_matrix(network_matrix_sample, cutoff,
-                                                     os.path.join(output_folder, networks_folder,
-                                                                  "networkfile_domain_dist_" + sample + "_c" + cutoff + ".network"),
-                                                     include_disc_nodes)
-        elif 'S' in domaindist_networks:
-            # need to caculate the network for each of the pairs
-            if len(sampleDict) == 1:
-                print("\nNOT generating networks per sample (only one sample, covered in the all-vs-all case)")
-            else:
-                print("\nGenerating sample networks with domain distance method")
-                for sample, sampleClusters in sampleDict.iteritems():
-                    print(" Sample: " + sample)
-                    if len(clusters) == 1:
-                        print(" Warning: Sample size = 1 detected. Not generating networks for this sample (" +
-                              sample + ")")
-                    else:
-                        pairs = set(map(tuple, map(sorted, combinations(sampleClusters, 2))))
-                        cluster_pairs = [(x, y, "domain_dist", anchor_domains) for (x, y) in pairs]
-                        network_matrix_sample = generate_network(cluster_pairs, cores)
-                        for cutoff in cutoff_list:
-                            write_network_matrix(network_matrix_sample, cutoff,
-                                                 os.path.join(output_folder, networks_folder,
-                                                              "networkfile_domain_dist_" + sample + "_c" + cutoff + ".network"),
-                                                 include_disc_nodes)
-                            # Need to calculate the networks per sample from the all-v-all network matrix
-    # Check whether user wants seqdist method networks before calculating DMS
+        #if 'A' in domaindist_networks:
+            #print("\nGenerating all-vs-all network with domain distance method")
+            #pairs = set(map(tuple, map(sorted, combinations(clusters, 2))))
+            #cluster_pairs = [(x, y, "domain_dist", anchor_domains) for (x, y) in pairs]
+            #network_matrix = generate_network(cluster_pairs, cores)
+            #for cutoff in cutoff_list:
+                #write_network_matrix(network_matrix, cutoff, os.path.join(output_folder, networks_folder, "networkfile_domain_dist_all_vs_all_c" + cutoff + ".network"), include_disc_nodes)
+            #if 'S' in domaindist_networks:
+                #if len(sampleDict) == 1:
+                    #print("\nNOT generating networks per sample (only one sample, covered in the all-vs-all case)")
+                #else:
+                    #print("\nGenerating sample networks with domain distance method")
+                    #for sample, sampleClusters in sampleDict.iteritems():
+                        #print(" Sample: " + sample)
+                        #if len(sampleClusters) == 1:
+                            #print(" Warning: Sample size = 1 detected. Not generating networks for this sample (" +
+                                  #sample + ")")
+                        #else:
+                            #pairs = set(map(tuple, map(sorted, combinations(sampleClusters, 2))))
+                            #network_matrix_sample = {}
+                            #for pair in pairs:
+                                #network_matrix_sample[pair] = network_matrix[pair]
+                            #for cutoff in cutoff_list:
+                                #write_network_matrix(network_matrix_sample, cutoff,
+                                                     #os.path.join(output_folder, networks_folder,
+                                                                  #"networkfile_domain_dist_" + sample + "_c" + cutoff + ".network"),
+                                                     #include_disc_nodes)
+        #elif 'S' in domaindist_networks:
+            ## need to caculate the network for each of the pairs
+            #if len(sampleDict) == 1:
+                #print("\nNOT generating networks per sample (only one sample, covered in the all-vs-all case)")
+            #else:
+                #print("\nGenerating sample networks with domain distance method")
+                #for sample, sampleClusters in sampleDict.iteritems():
+                    #print(" Sample: " + sample)
+                    #if len(clusters) == 1:
+                        #print(" Warning: Sample size = 1 detected. Not generating networks for this sample (" +
+                              #sample + ")")
+                    #else:
+                        #pairs = set(map(tuple, map(sorted, combinations(sampleClusters, 2))))
+                        #cluster_pairs = [(x, y, "domain_dist", anchor_domains) for (x, y) in pairs]
+                        #network_matrix_sample = generate_network(cluster_pairs, cores)
+                        #for cutoff in cutoff_list:
+                            #write_network_matrix(network_matrix_sample, cutoff,
+                                                 #os.path.join(output_folder, networks_folder,
+                                                              #"networkfile_domain_dist_" + sample + "_c" + cutoff + ".network"),
+                                                 #include_disc_nodes)
+                            ## Need to calculate the networks per sample from the all-v-all network matrix
+    ## Check whether user wants seqdist method networks before calculating DMS
 
     if seqdist_networks:
         if options.skip_all:
@@ -1206,17 +1208,27 @@ if __name__=="__main__":
             # obtain all fasta files with domain sequences
             fasta_domains = get_domain_fastas(domainsout, output_folder)
 
+            sequence_tag_list = set()
             for domain_file in fasta_domains:
                 domain_name = domain_file.split(os.sep)[-1].replace(".fasta", "")
                 
                 # fill fasta_dict...
                 with open(domain_file, "r") as fasta_handle:
                     fasta_dict = fasta_parser(fasta_handle)
+                    
+                # Get the BGC name from the sequence tag. The form of the tag is:
+                # >BGCXXXXXXX_BGCXXXXXXX_ORF25:gid...
+                sequence_tag_list = set(s.split("_")[0] for s in fasta_dict.keys())
+
                 # ...to find out how many sequences do we actually have
                 if len(fasta_dict) == 1:
                     # avoid calling MAFFT if it's not possible to align (only one sequence)
                     if verbose:
                         print(" Skipping MAFFT for domain " + domain_name + " (only one sequence)")
+                elif len(sequence_tag_list) == 1:
+                    # avoid calling MAFFT if we only have copies of some domain in only one BGC
+                    if verbose:
+                        print(" Skipping MAFFT for domain " + domain_name + "(appears only in one BGC)")
                 else:           
                     if verbose:
                         print(" Running MAFFT for domain: " + domain_name)
