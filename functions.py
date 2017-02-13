@@ -649,11 +649,11 @@ def write_parameters(output_folder, options):
     else:
         pf.write("\n")
         
-    pf.write("Neighborhood variable for GK:\t" + str(options.nbhood))
-    if options.nbhood == 4:
-        pf.write("\t(default)\n")
-    else:
-        pf.write("\n")
+    #pf.write("Neighborhood variable for GK:\t" + str(options.nbhood))
+    #if options.nbhood == 4:
+        #pf.write("\t(default)\n")
+    #else:
+        #pf.write("\n")
     
     pf.write("\nMAFFT parameters:\n")
     

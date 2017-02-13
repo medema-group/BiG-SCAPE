@@ -64,6 +64,7 @@ def get_gbk_files(inputdir, min_bgc_size, exclude_gbk_str, gbk_group):
     current_dir = ""
     for dirpath, dirnames, filenames in os.walk(inputdir):
         head, tail = os.path.split(dirpath)
+
         if current_dir != tail:
             current_dir = tail
 
@@ -795,11 +796,11 @@ if __name__=="__main__":
     global DDSw
     global AIw
     global anchorboost
-    global nbhood
+    #global nbhood
     global cores
     include_disc_nodes = options.include_disc_nodes
     cores = int(options.cores)
-    nbhood = int(options.nbhood)
+    #nbhood = int(options.nbhood)
     anchorboost = float(options.anchorboost)
     if anchorboost < 1.0:
         sys.exit("Invalid anchorboost parameter (must be equal or greater than 1)")
