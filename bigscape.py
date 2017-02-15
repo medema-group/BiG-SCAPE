@@ -181,8 +181,7 @@ def generate_dist_matrix(parms):
     #Get the values from the parameters
     cluster1 = parms[0]
     cluster2 = parms[1]
-    dist_method = parms[2]
-    anchor_domains = parms[3]
+    bgc_class = parms[2]
     
     try:
         domain_list_A = DomainList[cluster1]
@@ -213,10 +212,7 @@ def generate_dist_matrix(parms):
             group_dct[cluster2][0],group_dct[cluster2][1], '0.0', '1.0', '0.0', '0.0', '0.0', '0.0', "1.0", "1.0", "1", "1"] 
     
 
-    if dist_method == "seqdist":
-        dist, jaccard, dds, ai, rDDSna, rDDS, S, Sa = cluster_distance(cluster1, cluster2, domain_list_A, domain_list_B, anchor_domains) #sequence dist
-    elif dist_method == "domain_dist":
-        dist, jaccard, dds, ai, rDDSna, rDDS, S, Sa = Distance_modified(domain_list_A, domain_list_B, 0, 4) #domain dist
+    dist, jaccard, dds, ai, rDDSna, rDDS, S, Sa = cluster_distance(cluster1, cluster2, domain_list_A, domain_list_B, bgc_class) #sequence dist
         
     if dist == 0:
         logscore = float("inf")
@@ -225,18 +221,22 @@ def generate_dist_matrix(parms):
         try:
             logscore = -log(dist, 2) #Write exception, ValueError
         except ValueError:
-            print "calculating the logscore with distance", dist, "failed in function generate_network, using distance method", dist_method, networkfilename
+            print("ERROR: Unexpected issue when calculating logscore.")
+            print(cluster1 + " - " + cluster2 + ": " + str(dist))
             
-    #clustername1 clustername2 group1, group2, -log2score, dist, squared similarity, j, dds, gk
-    network_row = [str(cluster1), str(cluster2), group_dct[cluster1][0],group_dct[cluster1][1], \
-        group_dct[cluster2][0],group_dct[cluster2][1], str(logscore), str(dist), str((1-dist)**2), \
+    #clustername1 clustername2 group1, def1, group2, def2, -log2score, 
+    # dist, squared similarity, j, dds, ai
+    network_row = [cluster1, cluster2, group_dct[cluster1][0], group_dct[cluster1][1], \
+        group_dct[cluster2][0], group_dct[cluster2][1], str(logscore), str(dist), str((1-dist)**2), \
         jaccard, dds, ai, rDDSna, rDDS, S, Sa]
     
     return network_row
     
 
-def cluster_distance(A, B, A_domlist, B_domlist, anchor_domains): 
-    """Compare two clusters using information on their domains, and the sequences of the domains"""    
+def cluster_distance(A, B, A_domlist, B_domlist, bgc_class): 
+    """Compare two clusters using information on their domains, and the sequences of the domains"""
+    
+    Jaccardw, DDSw, AIw, anchorboost = bgc_class_weight[bgc_class]
 
     temp_domain_fastas = {}
 
@@ -715,31 +715,20 @@ def CMD_parser():
     parser.add_option("-v", "--verbose", dest="verbose", action="store_true", default=False,
                       help="Prints more detailed information. Toggle to true.")
     parser.add_option("--include_disc_nodes", dest="include_disc_nodes", action="store_true", default=False,
-                      help="Include nodes that have no edges to other nodes from the network, default is false. Toggle to true.")
+                      help="Include nodes that have no edges to other nodes from the network. Toggle to activate.")
     parser.add_option("-d", "--domain_overlap_cutoff", dest="domain_overlap_cutoff", default=0.1,
-                      help="Specify at which overlap percentage domains are considered to overlap")
+                      help="Specify at which overlap percentage domains are considered to overlap.")
     parser.add_option("-m", "--min_bgc_size", dest="min_bgc_size", default=0,
-                      help="Provide the minimum size of a bgc in base pairs, default is 0bp")
+                      help="Provide the minimum size of a BGC to be included in the analysis. Default is 0 base pairs")
     
-    parser.add_option("--seqdist_networks", dest="seqdist_networks", default="A",
-                      help="Mode A generates the all vs all networks with sequence distance. Mode S compares clusters within a sample.\
-                       Sample input: \"S,A\" generates the samplewise and all vs all. Default is \"A\"")
+    parser.add_option("-s", "--samples", dest="samples", action="store_true", default=False, help="Separate the input files into samples according to their containing folder within the input folder. Toggle to activate")
     
-    parser.add_option("--domaindist_networks", dest="domaindist_networks", default="",
-                      help="Mode A generates the all vs all networks with domain distance. Mode S compares clusters within a sample.\
-                       Sample input: \"A\" only generates the all vs all. Default is \"\"")
+    parser.add_option("--no_all", dest="no_all", action="store_true", default=False, help="By default, BiG-SCAPE uses a single data set comprised of all input files available recursively within the input folder. Toggle to disactivate this behaviour (in that case, if the --samples parameter is not activated, BiG-SCAPE will not create any network file)")
     
-    parser.add_option("--Jaccardw", dest="Jaccardw", default=0.2,
-                      help="Jaccard weight, default is 0.2")
-    parser.add_option("--DDSw", dest="DDSw", default=0.75,
-                      help="DDS weight, default is 0.75")
-    parser.add_option("--AIw", dest="AIw", default=0.05,
-                      help="Adjacency Index weight, default is 0.05")
-    parser.add_option("-a", "--anchorboost", dest="anchorboost", default=2.0,
-                      help="Boost perceived proportion of anchor DDS subcomponent in 'seqdist' method. Default is to double if (2.0)")
+    parser.add_option("--mix", dest="mix", action="store_true", default=False, help="By default, BiG-SCAPE separates analysis according to the BGC product (PKS Type I, NRPS, RiPPs, etc.) and will create network directories for each class. Toggle to include an analysis mixing all classes")
     
-    #parser.add_option("--domainsout", dest="domainsout", default="domains",
-                      #help="outputfolder of the pfam domain fasta files")
+    parser.add_option("--no_classify", dest="no_classify", action="store_true", default=False, help="By default, BiG-SCAPE classifies the output files analysis based on the BGC product. Toggle to desactivate (in that case, if the --no_classify parameter is not activated, BiG-SCAPE will not create any network file).")
+
     parser.add_option("--pfam_dir", dest="pfam_dir",
                       default=os.path.dirname(os.path.realpath(__file__)), 
                       help="Location of hmmpress-processed Pfam files. Default is same location of BiG-SCAPE")
@@ -782,31 +771,42 @@ if __name__=="__main__":
         print "please provide a name for an output folder using parameter -o or --outputdir"
         sys.exit(0)
     
-    anchor_domains = get_anchor_domains(options.anchorfile)
+    global anchor_domains
+    if os.path.isdir(options.anchorfile):
+        print("File with list of anchor domains not found")
+        anchor_domains = get_anchor_domains(options.anchorfile)
+    else:
+        anchor_domains = []
     
+    global bgc_class_weight
     global AlignedDomainSequences
     global DomainList
     global verbose
     global BGCs
-    global group_dct # contains the class of the Gene Clusters (predicted by antiSMASH and annotated in the GenBank files. Used in the final network files)
+    
+    # contains the type of the final product of the BGC (as predicted by AntiSMASH), 
+    # as well as the definition line from the BGC file. Used in the final network files.
     global output_folder
     global pfam_dir
     global timings_file
-    global Jaccardw
-    global DDSw
-    global AIw
-    global anchorboost
+    #global Jaccardw
+    #global DDSw
+    #global AIw
+    #global anchorboost
     #global nbhood
     global cores
     include_disc_nodes = options.include_disc_nodes
     cores = int(options.cores)
     #nbhood = int(options.nbhood)
-    anchorboost = float(options.anchorboost)
-    if anchorboost < 1.0:
-        sys.exit("Invalid anchorboost parameter (must be equal or greater than 1)")
-    Jaccardw = float(options.Jaccardw)
-    DDSw = float(options.DDSw) 
-    AIw = float(options.AIw)
+    #anchorboost = float(options.anchorboost)
+    #if anchorboost < 1.0:
+        #sys.exit("Invalid anchorboost parameter (must be equal or greater than 1)")
+    
+    # there will now be weights for each kind of BGC
+    #Jaccardw = float(options.Jaccardw)
+    #DDSw = float(options.DDSw) 
+    #AIw = float(options.AIw)
+    
     cutoff_list = options.sim_cutoffs.split(",")
     if "1" not in cutoff_list:
         cutoff_list.append("1") # compulsory for re-runs
@@ -831,10 +831,13 @@ if __name__=="__main__":
         options.mafft_threads = options.cores
                     
     verbose = options.verbose
-    networks_folder = "networks"
+    #networks_folder = "networks"
+    networks_folder_all = "networks_all"
+    networks_folder_samples = "networks_samples"
+    
     domainsout = "domains"
-    seqdist_networks = options.seqdist_networks.split(",")
-    domaindist_networks = options.domaindist_networks.split(",")
+    #seqdist_networks = options.seqdist_networks.split(",")
+    #domaindist_networks = options.domaindist_networks.split(",")
     
     if options.skip_all:
         if options.skip_hmmscan or options.skip_mafft:
@@ -887,16 +890,6 @@ if __name__=="__main__":
     write_parameters(output_folder, options)
     
     try:
-        os.mkdir(os.path.join(output_folder, networks_folder))
-    except OSError as e:
-        if "Errno 17" in str(e) or "Error 183" in str(e):
-            print(" Warning: possibly overwriting files in network folder")
-            pass
-        else:
-            print("Unexpected error when creating network directory")
-            sys.exit(str(e))
-    
-    try:
         os.mkdir(os.path.join(output_folder, domainsout))
     except OSError as e:
         # 17 (Linux): "[Errno 17] File exists";
@@ -929,11 +922,28 @@ if __name__=="__main__":
      (for example, 'PF00550_start_end', where start and end are genomic positions)."""     
     BGCs = {} #will contain the BGCs
     
+    
+    # Weights in the format J, DDS, AI, anchorboost
+    # Generated with optimization results 2016-12-05. 
+    # Used the basic list of 4 anchor domains.
+    bgc_class_weight = {}
+    bgc_class_weight["PKSI"] = (0.22, 0.76, 0.02, 1.0)
+    bgc_class_weight["PKSother"] = (0.0, 0.32, 0.68, 4.0)
+    bgc_class_weight["NRPS"] = (0.0, 1.0, 0.0, 4.0)
+    bgc_class_weight["RiPPs"] = (0.28, 0.71, 0.01, 1.0)
+    bgc_class_weight["Saccharides"] = (0.0, 0.0, 1.0, 1.0)
+    bgc_class_weight["PKS-NRP_Hybrids"] = (0.0, 0.78, 0.22, 1.0)
+    bgc_class_weight["Others"] = (0.01, 0.97, 0.02, 4.0)
+    bgc_class_weight["mix"] = (0.2, 0.75, 0.05, 2.0) # default when not separating in classes
+    BGC_classes = {}
+    for bgc_class in ["PKSI", "PKSother", "NRPS", "RiPPs", "Saccharides", "PKS-NRP_Hybrids", "Others", "Unknown"]
+        BGC_classes[bgc_class] = []
+    
     AlignedDomainSequences = {} # Key: specific domain sequence label. Item: aligned sequence
     DomainList = {} # Key: BGC. Item: ordered list of domains
     
     # to avoid calling MAFFT if there's only 1 seq. representing a particular domain
-    sequences_per_domain = {} 
+    sequences_per_domain = {}
     
     print("\n\n   - - Processing input files - -")
     
@@ -1132,118 +1142,58 @@ if __name__=="__main__":
     
     print("\n\n   - - Calculating distance matrix - -")
     
-    
-    # Distance without taking sequence similarity between specific domains into account
-    if domaindist_networks:
-        print(" - This method is under revision - ")
-    #if domaindist_networks:
-        #if options.skip_all: #read already calculated distances
-            #print(" Trying to read alread calculated network file...")
-            #if os.path.isfile(os.path.join(output_folder, networks_folder, "networkfile_domain_dist_all_vs_all_c1.network")):
-                #network_matrix = network_parser(os.path.join(output_folder, networks_folder, "networkfile_domain_dist_all_vs_all_c1.network"), Jaccardw, DDSw, AIw, anchorboost)
+    #if options.samples or not options.no_all:
+        #if options.skip_all:
+            #print(" Trying to read already calculated network file...")
+            #if os.path.isfile(os.path.join(output_folder, networks_folder, "networkfile_seqdist_all_vs_all_c1.network")):
+                #network_matrix = network_parser(os.path.join(output_folder, networks_folder, "networkfile_seqdist_all_vs_all_c1.network"), Jaccardw, DDSw, AIw, anchorboost)
                 #print("  ...done")
             #else:
-                #sys.exit("  File networkfile_domain_dist_all_vs_all_c1.network could not be found!")
-            
-        #if 'A' in domaindist_networks:
-            #print("\nGenerating all-vs-all network with domain distance method")
-            #pairs = set(map(tuple, map(sorted, combinations(clusters, 2))))
-            #cluster_pairs = [(x, y, "domain_dist", anchor_domains) for (x, y) in pairs]
-            #network_matrix = generate_network(cluster_pairs, cores)
-            #for cutoff in cutoff_list:
-                #write_network_matrix(network_matrix, cutoff, os.path.join(output_folder, networks_folder, "networkfile_domain_dist_all_vs_all_c" + cutoff + ".network"), include_disc_nodes)
-            #if 'S' in domaindist_networks:
-                #if len(sampleDict) == 1:
-                    #print("\nNOT generating networks per sample (only one sample, covered in the all-vs-all case)")
-                #else:
-                    #print("\nGenerating sample networks with domain distance method")
-                    #for sample, sampleClusters in sampleDict.iteritems():
-                        #print(" Sample: " + sample)
-                        #if len(sampleClusters) == 1:
-                            #print(" Warning: Sample size = 1 detected. Not generating networks for this sample (" +
-                                  #sample + ")")
-                        #else:
-                            #pairs = set(map(tuple, map(sorted, combinations(sampleClusters, 2))))
-                            #network_matrix_sample = {}
-                            #for pair in pairs:
-                                #network_matrix_sample[pair] = network_matrix[pair]
-                            #for cutoff in cutoff_list:
-                                #write_network_matrix(network_matrix_sample, cutoff,
-                                                     #os.path.join(output_folder, networks_folder,
-                                                                  #"networkfile_domain_dist_" + sample + "_c" + cutoff + ".network"),
-                                                     #include_disc_nodes)
-        #elif 'S' in domaindist_networks:
-            ## need to caculate the network for each of the pairs
-            #if len(sampleDict) == 1:
-                #print("\nNOT generating networks per sample (only one sample, covered in the all-vs-all case)")
-            #else:
-                #print("\nGenerating sample networks with domain distance method")
-                #for sample, sampleClusters in sampleDict.iteritems():
-                    #print(" Sample: " + sample)
-                    #if len(clusters) == 1:
-                        #print(" Warning: Sample size = 1 detected. Not generating networks for this sample (" +
-                              #sample + ")")
-                    #else:
-                        #pairs = set(map(tuple, map(sorted, combinations(sampleClusters, 2))))
-                        #cluster_pairs = [(x, y, "domain_dist", anchor_domains) for (x, y) in pairs]
-                        #network_matrix_sample = generate_network(cluster_pairs, cores)
-                        #for cutoff in cutoff_list:
-                            #write_network_matrix(network_matrix_sample, cutoff,
-                                                 #os.path.join(output_folder, networks_folder,
-                                                              #"networkfile_domain_dist_" + sample + "_c" + cutoff + ".network"),
-                                                 #include_disc_nodes)
-                            ## Need to calculate the networks per sample from the all-v-all network matrix
-    ## Check whether user wants seqdist method networks before calculating DMS
+                #sys.exit("  File networkfile_seqdist_all_vs_all_c1.network could not be found!")
+        
+    # Do multiple alignments if needed
+    if not options.skip_mafft:
+        # obtain all fasta files with domain sequences
+        fasta_domains = get_domain_fastas(domainsout, output_folder)
 
-    if seqdist_networks:
-        if options.skip_all:
-            print(" Trying to read already calculated network file...")
-            if os.path.isfile(os.path.join(output_folder, networks_folder, "networkfile_seqdist_all_vs_all_c1.network")):
-                network_matrix = network_parser(os.path.join(output_folder, networks_folder, "networkfile_seqdist_all_vs_all_c1.network"), Jaccardw, DDSw, AIw, anchorboost)
-                print("  ...done")
-            else:
-                sys.exit("  File networkfile_seqdist_all_vs_all_c1.network could not be found!")
+        sequence_tag_list = set()
+        for domain_file in fasta_domains:
+            domain_name = domain_file.split(os.sep)[-1].replace(".fasta", "")
             
-        elif not options.skip_mafft:
-            # obtain all fasta files with domain sequences
-            fasta_domains = get_domain_fastas(domainsout, output_folder)
-
-            sequence_tag_list = set()
-            for domain_file in fasta_domains:
-                domain_name = domain_file.split(os.sep)[-1].replace(".fasta", "")
+            # fill fasta_dict...
+            with open(domain_file, "r") as fasta_handle:
+                fasta_dict = fasta_parser(fasta_handle)
                 
-                # fill fasta_dict...
-                with open(domain_file, "r") as fasta_handle:
-                    fasta_dict = fasta_parser(fasta_handle)
-                    
-                # Get the BGC name from the sequence tag. The form of the tag is:
-                # >BGCXXXXXXX_BGCXXXXXXX_ORF25:gid...
-                sequence_tag_list = set(s.split("_")[0] for s in fasta_dict.keys())
+            # Get the BGC name from the sequence tag. The form of the tag is:
+            # >BGCXXXXXXX_BGCXXXXXXX_ORF25:gid...
+            sequence_tag_list = set(s.split("_")[0] for s in fasta_dict.keys())
 
-                # ...to find out how many sequences do we actually have
-                if len(fasta_dict) == 1:
-                    # avoid calling MAFFT if it's not possible to align (only one sequence)
-                    if verbose:
-                        print(" Skipping MAFFT for domain " + domain_name + " (only one sequence)")
-                elif len(sequence_tag_list) == 1:
-                    # avoid calling MAFFT if we only have copies of some domain in only one BGC
-                    if verbose:
-                        print(" Skipping MAFFT for domain " + domain_name + "(appears only in one BGC)")
-                else:           
-                    if verbose:
-                        print(" Running MAFFT for domain: " + domain_name)
+            # ...to find out how many sequences do we actually have
+            if len(fasta_dict) == 1:
+                # avoid calling MAFFT if it's not possible to align (only one sequence)
+                if verbose:
+                    print(" Skipping MAFFT for domain " + domain_name + " (only one sequence)")
+            elif len(sequence_tag_list) == 1:
+                # avoid calling MAFFT if we only have copies of some domain in only one BGC
+                if verbose:
+                    print(" Skipping MAFFT for domain " + domain_name + "(appears only in one BGC)")
+            else:           
+                if verbose:
+                    print(" Running MAFFT for domain: " + domain_name)
+                
+                domain_file_base = domain_file.replace(".fasta", "")
+                
+                # Multiple alignment of all domain sequences
+                run_mafft(options.al_method, options.maxit, options.mafft_threads, options.mafft_pars, domain_file_base)
+                
+                # Check if MAFFT's output file was generated
+                if not os.path.isfile(domain_file_base + ".algn"):
+                    print("  WARNING, " + domain_name + ".algn could not be found (possible issue with MAFFT)")
                     
-                    domain_file_base = domain_file.replace(".fasta", "")
-                    
-                    # Multiple alignment of all domain sequences
-                    run_mafft(options.al_method, options.maxit, options.mafft_threads, options.mafft_pars, domain_file_base)
-                    
-                    # Check if MAFFT's output file was generated
-                    if not os.path.isfile(domain_file_base + ".algn"):
-                        print("  Warning, " + domain_name + ".algn could not be found (did MAFFT failed?)")
-                    
-  
-        print(" Trying to read domain alignments (*.algn files)")            
+    
+    # If there's something to analyze, load the aligned sequences
+    if options.samples or not options.no_all:
+        print(" Trying to read domain alignments (*.algn files)")
         aligned_files_list = glob(os.path.join(output_folder, domainsout, "*.algn"))
         if len(aligned_files_list) == 0:
             sys.exit("No aligned sequences found in the domain folder (run without the --skip_mafft parameter or point to the correct output folder)")
@@ -1252,40 +1202,187 @@ if __name__=="__main__":
                 fasta_dict = fasta_parser(aligned_file_handle)
                 for header in fasta_dict:
                     AlignedDomainSequences[header] = fasta_dict[header]
-            
-        if "A" in seqdist_networks:
-            print("\nGenerating all-vs-all network with domain-sequence distance method")
-            if not options.skip_all:
-                print(" Calculating all pairwise distances")
-                pairs = set(map(tuple, map(sorted, combinations(clusters, 2))))
-                cluster_pairs = [(x, y, "seqdist", anchor_domains) for (x, y) in pairs]
-                network_matrix = generate_network(cluster_pairs, cores)
-            for cutoff in cutoff_list:
-                write_network_matrix(network_matrix, cutoff, os.path.join(output_folder, networks_folder, "networkfile_seqdist_all_vs_all_c" + cutoff + ".network"), include_disc_nodes)
-                
-        if "S" in seqdist_networks:
-            if len(sampleDict) == 1 and "A" in seqdist_networks:
-                print("\nNOT generating networks per sample (only one sample, covered in the all-vs-all case)")
+    
+    
+    # Try to make default analysis using all files found inside the input folder
+    if not options.no_all:
+        print("\nGenerating distance network files with all available input files")
+    
+        # create output directory
+        try:
+            os.mkdir(os.path.join(output_folder, networks_folder_all))
+        except OSError as e:
+            if "Errno 17" in str(e) or "Error 183" in str(e):
+                print(" Warning: possibly overwriting files in network all folder")
+                pass
             else:
-                print("\nGenerating sample networks with domain-sequence distance method")
-                for sample, sampleClusters in sampleDict.iteritems():
-                    print(" Sample: " + sample)
-                    if len(sampleClusters) == 1:
-                        print(" Warning: Sample size = 1 detected. Not generating network for this sample (" + sample + ")")
+                print("Unexpected error when creating network 'all' directory")
+                sys.exit(str(e))
+    
+        # Making network files mixing all classes
+        if options.mix:
+            print(" Mixing all BGC classes")
+            if not options.skip_all:
+                print("  Calculating all pairwise distances")
+                pairs = set(map(tuple, map(sorted, combinations(clusters, 2))))
+                cluster_pairs = [(x, y, "mix") for (x, y) in pairs]
+                network_matrix = generate_network(cluster_pairs, cores)
+                
+            print("  Writing output files")
+            for cutoff in cutoff_list:
+                write_network_matrix(network_matrix, cutoff, os.path.join(output_folder, networks_folder_all, "all_mix_c" + cutoff + ".network"), include_disc_nodes)
+        
+        # Making network files separating by BGC class
+        if not options.no_classify:
+            print(" Working for each BGC class")
+            
+            # make sure the bgc lists are empty
+            for bgc_class in bgc_classes:
+                del bgc_classes[bgc_class][:]
+        
+            # Preparing gene cluster classes
+            print(" Sorting the input BGCs")
+            for cluster in clusters:
+                product = group_dct[cluster]
+                bgc_classes[sort_bgc(cluster)].append(cluster)
+            
+            for bgc_class in BGC_classes:
+                # create output directory
+                try:
+                    os.mkdir(os.path.join(output_folder, networks_folder_all, bgc_class))
+                except OSError as e:
+                    if "Errno 17" in str(e) or "Error 183" in str(e):
+                        pass
                     else:
-                        pairs = set(map(tuple, map(sorted, combinations(sampleClusters, 2))))
-                        cluster_pairs = [(x, y, "seqdist", anchor_domains) for (x, y) in pairs]
-                        network_matrix_sample = {}
-                        if "A" in seqdist_networks or options.skip_all:
-                            for pair in pairs:
-                                network_matrix_sample[pair] = network_matrix[pair]
-                        else:
-                            network_matrix_sample = generate_network(cluster_pairs, cores)
+                        print("Error when creating network directory " + os.path.join(networks_folder_all, bgc_class))
+                        sys.exit(str(e))
+    
+                print(" Working on " + bgc_class + " (" + str(len(BGC_classes[bgc_class])) + " BGCs")
+                
+                if not options.skip_all:
+                    print("  Calculating all pairwise distances")
+                    pairs = set(map(tuple, map(sorted, combinations(BGC_classes[bgc_class], 2))))
+                    cluster_pairs = [(x, y, bgc_class) for (x, y) in pairs]
+                    network_matrix = generate_network(cluster_pairs, cores)
+                    
+                print("  Writing output files")
+                for cutoff in cutoff_list:
+                    write_network_matrix(network_matrix, cutoff, os.path.join(output_folder, networks_folder_all, bgc_class, "all_" + bgc_class + "_c" + cutoff + ".network"), include_disc_nodes)
+        
+
+    # Try to make analysis for each sample
+    if options.samples:
+        if len(sampleDict) == 1 and not options.no_all:
+            print("\nNOT generating networks per sample (only one sample, covered in the all-vs-all case)")
+        else:
+            print("\nGenerating distance network files for each sample")
+            
+            # create output directory
+            try:
+                os.mkdir(os.path.join(output_folder, networks_folder_samples))
+            except OSError as e:
+                if "Errno 17" in str(e) or "Error 183" in str(e):
+                    print(" Warning: possibly overwriting files in network samples folder")
+                    pass
+                else:
+                    print("Unexpected error when creating network samples directory")
+                    sys.exit(str(e))
+            
+            for sample, sampleClusters in sampleDict.iteritems():
+                print(" Sample: " + sample)
+                if len(sampleClusters) == 1:
+                    print(" Warning: Sample size = 1 detected. Not generating network for this sample (" + sample + ")")
+                else:
+                    # Making network files mixing all classes
+                    if options.mix:
+                        print(" Mixing all BGC classes")
+                        if not options.skip_all:
+                            print("  Calculating all pairwise distances")
+                            pairs = set(map(tuple, map(sorted, combinations(sampleClusters, 2))))
+                            
+                            # If we did the 'all' case and didn't mix 'classify' and 'mix', 
+                            # the pairs' distances should be ready
+                            if not options.no_all or options.skip_all:
+                                for pair in pairs:
+                                    network_matrix_sample[pair] = network_matrix[pair]
+                            else:
+                                cluster_pairs = [(x, y, "mix") for (x, y) in pairs]
+                                network_matrix_sample = generate_network(cluster_pairs, cores)
+
+                        print("  Writing output files")
                         for cutoff in cutoff_list:
-                            write_network_matrix(network_matrix_sample, cutoff,
-                                                 os.path.join(output_folder, networks_folder,
-                                                              "networkfile_seqdist_" + sample + "_c" + cutoff + ".network"),
-                                                 include_disc_nodes)
+                            write_network_matrix(network_matrix, cutoff, os.path.join(output_folder, networks_folder_samples, "sample_" + sample + "_mix_c" + cutoff + ".network"), include_disc_nodes)
+                    
+                    # Making network files separating by BGC class
+                    if not options.no_classify:
+                        print("  Working for each BGC class")
+                        
+                        # make sure the bgc lists are empty
+                        for bgc_class in bgc_classes:
+                            del bgc_classes[bgc_class][:]
+                    
+                        # Preparing gene cluster classes
+                        print("  Sorting the input BGCs")
+                        for cluster in sampleDict:
+                            product = group_dct[cluster]
+                            bgc_classes[sort_bgc(cluster)].append(cluster)
+                        
+                        for bgc_class in BGC_classes:
+                            # create output directory
+                            try:
+                                os.mkdir(os.path.join(output_folder, networks_folder_samples, sample, bgc_class))
+                            except OSError as e:
+                                if "Errno 17" in str(e) or "Error 183" in str(e):
+                                    pass
+                                else:
+                                    print("Error when creating network directory " + os.path.join(networks_folder_samples, sample, bgc_class))
+                                    sys.exit(str(e))
+                
+                            print("  Working on " + bgc_class + " (" + str(len(BGC_classes[bgc_class])) + " BGCs")
+                            
+                            if not options.skip_all:
+                                print("   Calculating all pairwise distances")
+                                pairs = set(map(tuple, map(sorted, combinations(BGC_classes[bgc_class], 2))))
+                                
+                                if not options.no_all or options.skip_all:
+                                    for pair in pairs:
+                                        network_matrix_sample[pair] = network_matrix[pair]
+                                else:
+                                    cluster_pairs = [(x, y, bgc_class) for (x, y) in pairs]
+                                    network_matrix = generate_network(cluster_pairs, cores)
+                                
+                            print("  Writing output files")
+                            for cutoff in cutoff_list:
+                                write_network_matrix(network_matrix, cutoff, os.path.join(output_folder, networks_folder, "networkfile_seqdist_all_vs_all_c" + cutoff + ".network"), include_disc_nodes)
+                    
+                    
+                    
+                    
+                    
+                    
+                    
+                    
+                    
+                    
+                    
+                    
+                    
+                    
+                    pairs = set(map(tuple, map(sorted, combinations(sampleClusters, 2))))
+                    cluster_pairs = [(x, y, "seqdist", anchor_domains) for (x, y) in pairs]
+                    network_matrix_sample = {}
+                    
+                    # Perhaps it's already calculated
+                    if "A" in seqdist_networks or options.skip_all:
+                        for pair in pairs:
+                            network_matrix_sample[pair] = network_matrix[pair]
+                    else:
+                        network_matrix_sample = generate_network(cluster_pairs, cores)
+                    for cutoff in cutoff_list:
+                        write_network_matrix(network_matrix_sample, cutoff,
+                                                os.path.join(output_folder, networks_folder,
+                                                            "networkfile_seqdist_" + sample + "_c" + cutoff + ".network"),
+                                                include_disc_nodes)
 
     runtime = time.time()-time1
     runtime_string = '\tMain function took %0.3f s' % (runtime)

@@ -338,7 +338,7 @@ def write_network_matrix(matrix, cutoff, filename, include_disc_nodes):
     #       [   14      15   <- these two are written directly
     #       [combGrp  ShrdGrp
 
-    
+    clusters is declared as global in main
     if include_disc_nodes == True:  
         #Add the nodes without any edges, give them an edge to themselves with a distance of 0 
         clusters = set(clusters)
@@ -530,6 +530,43 @@ def hmm_table_parser(gbk, hmm_table):
             pfd_matrix.append(pfd_row)
 
     return pfd_matrix
+
+
+def sort_bgc(product):
+    """Sort BGC by its type. Uses AntiSMASH annotations
+    (see http://antismash.secondarymetabolites.org/help.html#secmettypes)"""
+    # PKS_Type I
+    if product == 't1pks':
+        return("PKSI")
+    # PKS Other Types
+    elif product in ('transatpks', 't2pks', 't3pks', 'otherks'):
+        return("PKSother")
+    # NRPs
+    elif product == 'nrps':
+        return("NRPS")
+    # RiPPs
+    elif product in ('lantipeptide', 'thiopeptide', 'bacteriocin', 'linaridin', 'cyanobactin', 'glycocin', 'LAP', 'lassopeptide', 'sactipeptide', 'bottromycin', 'head_to_tail', 'microcin', 'microviridin', 'proteusin'):
+        return("RiPPs")
+    # Saccharides
+    elif product in ('amglyccycl', 'oligosaccharide', 'cf_saccharide'):
+        return("Saccharides")
+    # PKS/NRP hybrids
+    elif len(product.split("-")) > 1:
+        #print("  Possible hybrid: (" + cluster + "): " + product)
+        subtypes = set(s.strip() for s in product.split("-"))
+        if len(subtypes - set(['t1pks', 'transatpks', 't2pks', 't3pks', 'otherks', 'nrps'])) == 0:
+            if 'nrps' in subtypes:
+                return("PKS-NRP_Hybrids")
+            else:
+                return("PKSother") # pks hybrids
+        else:
+            return("Others") # other hybrid
+    # Others
+    elif product in ('arylpolyene', 'terpene', 'aminocoumarin', 'ectoine', 'butyrolactone', 'nucleoside', 'melanin', 'phosphoglycolipid', 'phenazine', 'phosphonate', 'other', 'cf_putative', 'resorcinol', 'indole', 'ladderane', 'PUFA', 'furan', 'hserlactone', 'fused', 'cf_fatty_acid ', 'siderophore', 'blactam'):
+        return("Others")
+    # ??
+    else:
+        return("Others")
 
 
 def write_parameters(output_folder, options):
