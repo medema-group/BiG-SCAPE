@@ -587,6 +587,8 @@ def generateFasta(gbkfilePath, outputdir):
         genbankEntry = SeqIO.read(genbankHandle,"genbank")
         CDS_List = (feature for feature in genbankEntry.features if feature.type == 'CDS')
 
+        fasta_data = {}
+
         cds_ctr = 0
         # parse through the CDS lists to make the fasta file for hmmscan, if translation isn't available attempt manual translation
         for CDS in CDS_List:
@@ -606,10 +608,8 @@ def generateFasta(gbkfilePath, outputdir):
                 prot_seq = CDS.qualifiers['translation'][0]
             # If translation isn't available translate manually, this will take longer
             else:
-                genbank_seq = CDS.location.extract(genbank_entry)
+                nt_seq = CDS.location.extract(genbankEntry).seq
 
-
-                nt_seq = genbank_seq.seq
                 if direction == 1:
                     # for protein sequence if it is at the start of the entry assume that end of sequence is in frame
                     # if it is at the end of the genbank entry assume that the start of the sequence is in frame
@@ -635,16 +635,20 @@ def generateFasta(gbkfilePath, outputdir):
                     else:
                         prot_seq = nt_seq.translate()
 
-            # write fasta file
-            with open(outputfile,'ab') as fastaHandle:
-                # final check to see if string is empty
-                if prot_seq:
-                    fasta_header = outputbase + "_ORF" + str(cds_ctr)+ ":gid:" + str(gene_id) + ":pid:" + str(protein_id) + \
-                                   ":loc:" + str(gene_start) + ":" + str(gene_end) + ":strand:" + strand
-                    fasta_header = fasta_header.replace(">","") #the coordinates might contain larger than signs, tools upstream don't like this
-                    fasta_header = ">"+(fasta_header.replace(" ", "")) #the domtable output format (hmmscan) uses spaces as a delimiter, so these cannot be present in the fasta header
-                    fastaHandle.write('%s\n' % fasta_header)
-                    fastaHandle.write('%s\n' % prot_seq)
+            
+            fasta_header = outputbase + "_ORF" + str(cds_ctr)+ ":gid:" + str(gene_id) + ":pid:" + str(protein_id) + ":loc:" + str(gene_start) + ":" + str(gene_end) + ":strand:" + strand
+            fasta_header = fasta_header.replace(">","") #the coordinates might contain larger than signs, tools upstream don't like this
+            fasta_header = ">"+(fasta_header.replace(" ", "")) #the domtable output format (hmmscan) uses spaces as a delimiter, so these cannot be present in the fasta header
+            
+            fasta_data[fasta_header] = prot_seq
+            
+        # write fasta file
+        with open(outputfile,'w') as fastaHandle:
+            for header in fasta_data:
+                fastaHandle.write('%s\n' % header)
+                fastaHandle.write('%s\n' % fasta_data[header])
+                
+
     return outputfile
 
 def runHmmScan(fastaPath, hmmPath, outputdir, verbose):
@@ -1138,7 +1142,7 @@ if __name__=="__main__":
                 
             # Get the BGC name from the sequence tag. The form of the tag is:
             # >BGCXXXXXXX_BGCXXXXXXX_ORF25:gid...
-            sequence_tag_list = set(s.split("_")[0] for s in fasta_dict.keys())
+            sequence_tag_list = set(s.split("_ORF")[0] for s in fasta_dict.keys())
 
             # ...to find out how many sequences do we actually have
             if len(fasta_dict) == 1:
@@ -1184,17 +1188,17 @@ if __name__=="__main__":
     
         # Making network files mixing all classes
         if options_mix:
-            print(" \n Mixing all BGC classes")
+            print("\n Mixing all BGC classes")
             
             print("  Calculating all pairwise distances")
             pairs = set(map(tuple, map(sorted, combinations(clusters, 2))))
             cluster_pairs = [(x, y, "mix") for (x, y) in pairs]
-            network_matrix = generate_network(cluster_pairs, cores)
+            network_matrix_mix = generate_network(cluster_pairs, cores)
                 
             print("  Writing output files")
             for cutoff in cutoff_list:
                 path = os.path.join(output_folder, networks_folder_all, "all_mix_c" + str(cutoff) + ".network")
-                write_network_matrix(network_matrix, cutoff, path, include_disc_nodes, group_dct)
+                write_network_matrix(network_matrix_mix, cutoff, path, include_disc_nodes, group_dct)
         
         # Making network files separating by BGC class
         if options_classify:
@@ -1212,7 +1216,7 @@ if __name__=="__main__":
             
             for bgc_class in BGC_classes:
                 if len(BGC_classes[bgc_class]) > 1:
-                    print("  Working on " + bgc_class + " (" + str(len(BGC_classes[bgc_class])) + " BGCs)")
+                    print("  " + bgc_class + " (" + str(len(BGC_classes[bgc_class])) + " BGCs)")
                     # create output directory
                     create_directory(os.path.join(output_folder, networks_folder_all, bgc_class), "  All - " + bgc_class, False)
                             
@@ -1225,11 +1229,11 @@ if __name__=="__main__":
                     for cutoff in cutoff_list:
                         path = os.path.join(output_folder, networks_folder_all, bgc_class, "all_" + bgc_class + "_c" + str(cutoff) + ".network")
                         write_network_matrix(network_matrix, cutoff, path, include_disc_nodes, group_dct)
-                else:
-                    print("  (Class " + bgc_class + " has less than two BGCs)")
 
     # Try to make analysis for each sample
     if options_samples:
+        network_matrix_sample = {}
+        
         if len(sampleDict) == 1 and options_all:
             print("\nNOT generating networks per sample (only one sample, covered in the all-vs-all case)")
         else:
@@ -1239,74 +1243,78 @@ if __name__=="__main__":
             create_directory(os.path.join(output_folder, networks_folder_samples), "Samples", False)
             
             for sample, sampleClusters in sampleDict.iteritems():
-                print(" Sample: " + sample)
+                print("\n Sample: " + sample)
                 if len(sampleClusters) == 1:
                     print(" Warning: Sample size = 1 detected. Not generating network for this sample (" + sample + ")")
                 else:
                     # create output directory for this sample
-                    create_directory(os.path.join(output_folder, networks_folder_samples, sample), "Samples - " + sample, False)
+                    create_directory(os.path.join(output_folder, networks_folder_samples, sample), " Samples - " + sample, False)
                         
                     # Making network files mixing all classes
                     if options_mix:
-                        print("  Mixing all BGC classes")
+                        print("\n  Mixing all BGC classes")
                             
                         pairs = set(map(tuple, map(sorted, combinations(sampleClusters, 2))))
                         
                         # If we did the 'all' case and didn't mix 'classify' and 'mix', 
                         # the pairs' distances should be ready
                         if options_all and options_mix:
-                            print("  Using distances calculated in the 'all' analysis")
+                            print("   Using distances calculated in the 'all' analysis")
+                            
                             for pair in pairs:
-                                network_matrix_sample[pair[0], pair[1], "mix"] = network_matrix[pair[0], pair[1], "mix"]
+                                network_matrix_sample[pair[0], pair[1], "mix"] = network_matrix_mix[pair[0], pair[1], "mix"]
                         else:
-                            print("  Calculating all pairwise distances")
+                            print("   Calculating all pairwise distances")
                             cluster_pairs = [(x, y, "mix") for (x, y) in pairs]
                             network_matrix_sample = generate_network(cluster_pairs, cores)
 
-                        print("  Writing output files")
+                        print("   Writing output files")
                         for cutoff in cutoff_list:
-                            write_network_matrix(network_matrix, cutoff, os.path.join(output_folder, networks_folder_samples, "sample_" + sample + "_mix_c" + cutoff + ".network"), include_disc_nodes)
+                            path = os.path.join(output_folder, networks_folder_samples, "sample_" + sample + "_mix_c" + str(cutoff) + ".network")
+                            write_network_matrix(network_matrix_sample, cutoff, path, include_disc_nodes, group_dct)
                     
                     # Making network files separating by BGC class
                     if options_classify:
-                        print("  Working for each BGC class")
+                        print("\n  Working for each BGC class")
                         
                         # make sure the bgc lists are empty
                         for bgc_class in BGC_classes:
                             del BGC_classes[bgc_class][:]
                     
                         # Preparing gene cluster classes
-                        print("  Sorting the input BGCs")
+                        print("   Sorting the input BGCs\n")
                         for cluster in sampleClusters:
                             product = group_dct[cluster]
                             BGC_classes[sort_bgc(cluster)].append(cluster)
                         
                         for bgc_class in BGC_classes:
-                            print("   Working on " + bgc_class + " (" + str(len(BGC_classes[bgc_class])) + " BGCs)")
-
                             if len(BGC_classes[bgc_class]) > 1:
-                                # create output directory
-                                create_directory(os.path.join(output_folder, networks_folder_samples, sample, bgc_class), "Sample " + sample + " - " + bgc_class, False)
-                                                
-                                pairs = set(map(tuple, map(sorted, combinations(BGC_classes[bgc_class], 2))))
-                                
-                                if options_all or options_classify:
-                                    print("  Using distances calculated in the 'all' analysis")
-                                    for pair in pairs:
-                                        network_matrix_sample[pair[0], pair[1], bgc_class] = network_matrix[pair[0], pair[1], bgc_class]
-                                else:
-                                    print("   Calculating all pairwise distances")
-                                    cluster_pairs = [(x, y, bgc_class) for (x, y) in pairs]
-                                    network_matrix = generate_network(cluster_pairs, cores)
+                                print("   " + bgc_class + " (" + str(len(BGC_classes[bgc_class])) + " BGCs)")
+                                network_matrix_sample.clear()
+
+                                if len(BGC_classes[bgc_class]) > 1:
+                                    # create output directory
+                                    create_directory(os.path.join(output_folder, networks_folder_samples, sample, bgc_class), "   Sample " + sample + " - " + bgc_class, False)
+                                                    
+                                    pairs = set(map(tuple, map(sorted, combinations(BGC_classes[bgc_class], 2))))
                                     
-                                print("   Writing output files")
-                                for cutoff in cutoff_list:
-                                    write_network_matrix(network_matrix, cutoff, os.path.join(output_folder, networks_folder_samples, sample, bgc_class, "sample_"+sample+"_"+bgc_class+"_c" + cutoff + ".network"), include_disc_nodes)
-                            else:
-                                print("  Warning: Less than 2 BGCs for this class were found")
+                                    if options_all or options_classify:
+                                        print("    Using distances calculated in the 'all' analysis")
+                                        for pair in pairs:
+                                            network_matrix_sample[pair[0], pair[1], bgc_class] = network_matrix[pair[0], pair[1], bgc_class]
+                                    else:
+                                        print("    Calculating all pairwise distances")
+                                        cluster_pairs = [(x, y, bgc_class) for (x, y) in pairs]
+                                        network_matrix_sample = generate_network(cluster_pairs, cores)
+                                        
+                                    print("    Writing output files")
+                                    for cutoff in cutoff_list:
+                                        path = os.path.join(output_folder, networks_folder_samples, sample, bgc_class, "sample_"+sample+"_"+bgc_class+"_c" + str(cutoff) + ".network")
+                                        write_network_matrix(network_matrix_sample, cutoff, path, include_disc_nodes, group_dct)
+
 
     runtime = time.time()-time1
-    runtime_string = '\tMain function took %0.3f s' % (runtime)
+    runtime_string = '\n\n\tMain function took %0.3f s' % (runtime)
     timings_file.write(runtime_string + "\n")
     print runtime_string
     

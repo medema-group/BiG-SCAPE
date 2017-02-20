@@ -208,11 +208,12 @@ def BGC_dic_gen(filtered_matrix):
      'specific_domain_name_2'] } part of the BGCs variable."""
     bgc_dict = {}
     for row in filtered_matrix:
+        header = row[-1] + ":" + row[3] + ":" + row[4]
         try: #Should be faster than performing if key in dictionary.keys()
             bgc_dict[row[5]]
-            bgc_dict[row[5]].append(str(row[0]) + "_" + str(row[-1]) + "_" + str(row[3]) + "_" + str(row[4]))
+            bgc_dict[row[5]].append(header)
         except KeyError: #In case of this error, this is the first occurrence of this domain in the cluster
-           bgc_dict[row[5]]=[str(row[0]) + "_" + str(row[-1]) + "_" + str(row[3]) + "_" + str(row[4])]
+           bgc_dict[row[5]]=[header]
             
     return bgc_dict
 
@@ -221,12 +222,13 @@ def save_domain_seqs(filtered_matrix, fasta_dict, domains_folder, outputbase):
     """Write fasta sequences for the domains in the right pfam-domain file"""
     for row in filtered_matrix:
         domain = row[5]
-        seq = fasta_dict[str(row[-1].strip())] #access the sequence by using the header
+        header = row[-1].strip()
+        seq = fasta_dict[header] #access the sequence by using the header
         
 
         domain_file = open(os.path.join(domains_folder, domain + ".fasta"), 'a') #append to existing file
-        domain_file.write(">" + str(row[0]) + "_" + str(row[-1]) + "_" + str(row[3]) + "_" + str(row[4]) \
-        + "\n" + str(seq)[int(row[3]):int(row[4])] + "\n") #only use the range of the pfam domain within the sequence
+        domain_file.write(">" + header + ":" + row[3] + ":" + row[4] \
+        + "\n" + seq[int(row[3]):int(row[4])] + "\n") #only use the range of the pfam domain within the sequence
             
         domain_file.close()
 
