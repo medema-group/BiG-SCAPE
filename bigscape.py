@@ -53,14 +53,12 @@ def get_gbk_files(inputdir, min_bgc_size, exclude_gbk_str, gbk_group):
     genbankDict = {}
 
     file_counter = 0
-
+    product_list_per_record = []
+    
     print("\nImporting GenBank files")
     if exclude_gbk_str != "":
         print(" Skipping files with '" + exclude_gbk_str + "' in their filename")
 
-    # this doesn't seem to make a difference. Confirm
-    # if inputdir != "" and inputdir[-1] != "/":
-    # inputdir += "/"
     current_dir = ""
     for dirpath, dirnames, filenames in os.walk(inputdir):
         head, tail = os.path.split(dirpath)
@@ -70,16 +68,11 @@ def get_gbk_files(inputdir, min_bgc_size, exclude_gbk_str, gbk_group):
 
         genbankfilelist = []
 
-        # avoid double slashes
-        dirpath_ = dirpath[:-1] if dirpath[-1] == os.sep else dirpath
-
         for fname in filenames:
-            fname_parse = fname.split('.')
-            
-            if fname_parse[-1] != "gbk":
+            if fname[-3:] != "gbk":
                 continue
             
-            clusterName = '.'.join(fname_parse[:-1])
+            clusterName = fname[:-4]
             
             if exclude_gbk_str != "" and exclude_gbk_str in fname:
                 print(" Skipping file " + fname)
@@ -92,21 +85,46 @@ def get_gbk_files(inputdir, min_bgc_size, exclude_gbk_str, gbk_group):
                 sys.exit("\nError: Input GenBank files should not have spaces in their filenames as HMMscan cannot process them properly ('too many arguments').")
                 
             
-            with open(os.path.join(dirpath_, fname), "r") as f:
+            with open(os.path.join(dirpath, fname), "r") as f:
                 try:
                     # basic file verification. Substitutes check_data_integrity
-                    # look into SeqIO.parse for multiple records [FUTURE]
-                    record = SeqIO.read(f, "genbank")
+                    records = list(SeqIO.parse(os.path.join(dirpath,fname), "genbank"))
                 except ValueError as e:
-                    print("   Error with file " + os.path.join(dirpath_, fname) + ": \n    '" + str(e) + "'")
+                    print("   Error with file " + os.path.join(dirpath, fname) + ": \n    '" + str(e) + "'")
                     print("    (This file will be excluded from the analysis)")
                     continue
                 else:
+                    bgc_size = 0
                     group = "no type"
-                    for feature in record.features:
-                        if "cluster" in feature.type and "product" in feature.qualifiers:
-                            group = ",".join(feature.qualifiers["product"])
-                    gbk_group[clusterName] = (group, record.description)
+                    del product_list_per_record[:]
+                    
+                    record_count = 0
+                    for record in records:
+                        bgc_size += len(record.seq)
+                        record_count += 1
+                        
+                        for feature in record.features:
+                            if "cluster" in feature.type and "product" in feature.qualifiers:
+                                if len(feature.qualifiers["product"]) > 1:
+                                    print("  WARNING: more than product annotated in record " + str(record_cound) + ", " + fname)
+                                    break
+                                else:
+                                    product_list_per_record.append(feature.qualifiers["product"][0])
+                    
+                    # check what we have product-wise
+                    product_set = set(product_list_per_record)
+                    if len(product_set) == 1: # only one type of product
+                        group = product_list_per_record[0]
+                    elif "other" in product_set: # more than one, and it contains "other"
+                        if len(product_set) == 2:
+                            group = list(product_set - set(['other']))[0] # group = not "other"
+                        else:
+                            group = "-".join(product_set - set(['other'])) # likely a hybrid
+                    else:
+                        group = "-".join(product_set) # likely a hybrid
+                    
+                    # assuming that the definition field is the same in all records
+                    gbk_group[clusterName] = (group, records[0].description)
                     
                     bgc_size = len(record.seq)
                     if bgc_size > min_bgc_size:  # exclude the bgc if it's too small
@@ -117,7 +135,7 @@ def get_gbk_files(inputdir, min_bgc_size, exclude_gbk_str, gbk_group):
                             genbankDict[clusterName][1].add(current_dir) 
                         else:
                             # location of first instance of the file is genbankDict[clustername][0]
-                            genbankDict.setdefault(clusterName, [os.path.join(dirpath_, fname), set([current_dir])])
+                            genbankDict.setdefault(clusterName, [os.path.join(dirpath, fname), set([current_dir])])
                             
                         if verbose == True:
                             print("  Adding " + fname + " (" + str(bgc_size) + " bps)")
@@ -584,15 +602,14 @@ def generateFasta(gbkfilePath, outputdir):
     outputbase  = gbkfilePath.split(os.sep)[-1].replace(".gbk","")
     if verbose:
         print "   Generating fasta for: ", outputbase
-    outputfile = os.path.join(outputdir,outputbase + '.fasta')
+    outputfile = os.path.join(outputdir, outputbase+'.fasta')
 
-    with open(gbkfilePath,"r") as genbankHandle:
-        genbankEntry = SeqIO.read(genbankHandle,"genbank")
-        CDS_List = (feature for feature in genbankEntry.features if feature.type == 'CDS')
+    records = list(SeqIO.parse(gbkfilePath, "genbank"))
+    cds_ctr = 0
+    fasta_data = []
+    for record in records:
+        CDS_List = (feature for feature in record.features if feature.type == 'CDS')
 
-        fasta_data = {}
-
-        cds_ctr = 0
         # parse through the CDS lists to make the fasta file for hmmscan, if translation isn't available attempt manual translation
         for CDS in CDS_List:
             cds_ctr += 1
@@ -638,18 +655,16 @@ def generateFasta(gbkfilePath, outputdir):
                     else:
                         prot_seq = nt_seq.translate()
 
-            
             fasta_header = outputbase + "_ORF" + str(cds_ctr)+ ":gid:" + str(gene_id) + ":pid:" + str(protein_id) + ":loc:" + str(gene_start) + ":" + str(gene_end) + ":strand:" + strand
             fasta_header = fasta_header.replace(">","") #the coordinates might contain larger than signs, tools upstream don't like this
             fasta_header = ">"+(fasta_header.replace(" ", "")) #the domtable output format (hmmscan) uses spaces as a delimiter, so these cannot be present in the fasta header
-            
-            fasta_data[fasta_header] = prot_seq
-            
-        # write fasta file
-        with open(outputfile,'w') as fastaHandle:
-            for header in fasta_data:
-                fastaHandle.write('%s\n' % header)
-                fastaHandle.write('%s\n' % fasta_data[header])
+            fasta_data.append((fasta_header, prot_seq))
+       
+    # write fasta file
+    with open(outputfile,'w') as fastaHandle:
+        for header_sequence in fasta_data:
+            fastaHandle.write('%s\n' % header_sequence[0])
+            fastaHandle.write('%s\n' % header_sequence[1])
                 
 
     return outputfile
@@ -957,7 +972,6 @@ if __name__=="__main__":
     pool.close()
     pool.join()
     print " Finished generating fasta files."
-
 
     ### Step 2: Run hmmscan
     print("\nPredicting domains using hmmscan")
