@@ -594,7 +594,7 @@ def sort_bgc(product):
     if product == 't1pks':
         return("PKSI")
     # PKS Other Types
-    elif product in ('transatpks', 't2pks', 't3pks', 'otherks'):
+    elif product in ('transatpks', 't2pks', 't3pks', 'otherks', 'hglks'):
         return("PKSother")
     # NRPs
     elif product == 'nrps':
@@ -610,7 +610,7 @@ def sort_bgc(product):
         #print("  Possible hybrid: (" + cluster + "): " + product)
         # cf_fatty_acid category contains a trailing empty space
         subtypes = set(s.strip() for s in product.split("-"))
-        if len(subtypes - set(['t1pks', 'transatpks', 't2pks', 't3pks', 'otherks', 'nrps'])) == 0:
+        if len(subtypes - set(['t1pks', 'transatpks', 't2pks', 't3pks', 'otherks', 'hglks', 'nrps'])) == 0:
             if 'nrps' in subtypes:
                 return("PKS-NRP_Hybrids")
             else:

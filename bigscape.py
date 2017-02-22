@@ -84,6 +84,9 @@ def get_gbk_files(inputdir, min_bgc_size, exclude_gbk_str, gbk_group):
             if exclude_gbk_str != "" and exclude_gbk_str in fname:
                 print(" Skipping file " + fname)
                 continue
+            if "_ORF" in fname:
+                print(" Skipping file " + fname + " (string '_ORF' is used internally)")
+                continue
             
             if " " in fname:
                 sys.exit("\nError: Input GenBank files should not have spaces in their filenames as HMMscan cannot process them properly ('too many arguments').")
@@ -874,7 +877,7 @@ if __name__=="__main__":
     write_parameters(output_folder, options)
     
     create_directory(domtable_folder, "Domtable", False)
-    create_directory(domains_folder, "Domains", not options.skip_mafft)
+    create_directory(domains_folder, "Domains", False)
     create_directory(bgc_fasta_folder, "BGC fastas", False)
     create_directory(pfs_folder, "pfs", False)
     create_directory(pfd_folder, "pfd", False)
@@ -1037,15 +1040,15 @@ if __name__=="__main__":
             outputfile = os.path.join(pfd_folder, outputbase + '.pfd')
             if os.path.isfile(outputfile) and os.path.getsize(outputfile) > 0:
                 alreadyDone.add(domtable)
-
-    if len(domtableFiles - alreadyDone) == 0:
+                
+    if len(domtableFiles - alreadyDone) == 0: # Re-run
         print(" All domtable files had already been processed")
-    elif len(alreadyDone) > 0:
+    elif len(alreadyDone) > 0: # Incomplete run
         if len(domtableFiles-alreadyDone) < 20:
             print " Warning! The following domtable files had not been processed: %s" % ", ".join(x.split(os.sep)[-1].replace(".domtable","") for x in domtableFiles - alreadyDone)
         else:
             print(" Warning: " + str(len(domtableFiles-alreadyDone)) + " domtable files will be processed")
-    else:
+    else: # First run
         print(" Processing " + str(len(domtableFiles)) + " domtable files")
 
     # If using the multiprocessing version and outputbase doesn't have any
@@ -1058,6 +1061,17 @@ if __name__=="__main__":
         #pool.apply_async(parseHmmScan, args=(domtableFile,output_folder,options.domain_overlap_cutoff))
     #pool.close()
     #pool.join()
+    
+    # If number of pfd files did not change, no new sequences were added to the 
+    #  domain fastas and we could try to resume the multiple alignment phase
+    # baseNames have been pruned of BGCs with no domains that might've been added temporarily
+    try_MAFFT_resume = False
+    if len(baseNames - set(pfd.split(os.sep)[-1][:-9] for pfd in alreadyDone)) == 0:
+        try_MAFFT_resume = True
+    else:
+        # new sequences will be added to the domain fasta files. Clean domains folder
+        for thing in os.listdir(domains_folder):
+            os.remove(os.path.join(domains_folder,thing))
 
     print " Finished generating generating pfs and pfd files."
 
@@ -1129,10 +1143,26 @@ if __name__=="__main__":
    
     # Do multiple alignments if needed
     if not options.skip_mafft:
+        print("Performing multiple alignment of domain sequences")
+        
         # obtain all fasta files with domain sequences
-        fasta_domains = glob(os.path.join(domains_folder,"*.fasta"))
-
+        fasta_domains = set(glob(os.path.join(domains_folder,"*.fasta")))
+        temp_aligned = set(glob(os.path.join(domains_folder, "*.algn")))
+        
+        # compare with .algn set of files. Maybe resuming is possible if
+        # no new sequences were added
+        if try_MAFFT_resume and len(temp_aligned) > 0:
+            if len(fasta_domains - temp_aligned) > 0:
+                print(" Resuming incomplete alignment phase")
+                
+            for a in temp_aligned:
+                if os.path.getsize(a) > 0:
+                    fasta_domains.remove(a[:-5]+".fasta")
+            
+            temp_aligned.clear()
+        
         sequence_tag_list = set()
+        
         for domain_file in fasta_domains:
             domain_name = domain_file.split(os.sep)[-1].replace(".fasta", "")
             
@@ -1179,6 +1209,7 @@ if __name__=="__main__":
                 for header in fasta_dict:
                     AlignedDomainSequences[header] = fasta_dict[header]
     
+    network_matrix_complete = {}
     # Try to make default analysis using all files found inside the input folder
     if options_all:
         print("\nGenerating distance network files with ALL available input files")
@@ -1211,9 +1242,9 @@ if __name__=="__main__":
             # Preparing gene cluster classes
             print("  Sorting the input BGCs\n")
             for cluster in clusters:
-                product = group_dct[cluster]
-                BGC_classes[sort_bgc(cluster)].append(cluster)
-            
+                product = group_dct[cluster][0]
+                BGC_classes[sort_bgc(product)].append(cluster)
+
             for bgc_class in BGC_classes:
                 if len(BGC_classes[bgc_class]) > 1:
                     print("  " + bgc_class + " (" + str(len(BGC_classes[bgc_class])) + " BGCs)")
@@ -1229,6 +1260,10 @@ if __name__=="__main__":
                     for cutoff in cutoff_list:
                         path = os.path.join(output_folder, networks_folder_all, bgc_class, "all_" + bgc_class + "_c" + str(cutoff) + ".network")
                         write_network_matrix(network_matrix, cutoff, path, include_disc_nodes, group_dct)
+                        
+                    # keep the data if we have to reuse it
+                    if options_samples and options_classify:
+                        network_matrix_complete.update(network_matrix)
 
     # Try to make analysis for each sample
     if options_samples:
@@ -1284,8 +1319,8 @@ if __name__=="__main__":
                         # Preparing gene cluster classes
                         print("   Sorting the input BGCs\n")
                         for cluster in sampleClusters:
-                            product = group_dct[cluster]
-                            BGC_classes[sort_bgc(cluster)].append(cluster)
+                            product = group_dct[cluster][0]
+                            BGC_classes[sort_bgc(product)].append(cluster)
                         
                         for bgc_class in BGC_classes:
                             if len(BGC_classes[bgc_class]) > 1:
@@ -1298,10 +1333,10 @@ if __name__=="__main__":
                                                     
                                     pairs = set(map(tuple, map(sorted, combinations(BGC_classes[bgc_class], 2))))
                                     
-                                    if options_all or options_classify:
+                                    if options_all and options_classify:
                                         print("    Using distances calculated in the 'all' analysis")
                                         for pair in pairs:
-                                            network_matrix_sample[pair[0], pair[1], bgc_class] = network_matrix[pair[0], pair[1], bgc_class]
+                                            network_matrix_sample[pair[0], pair[1], bgc_class] = network_matrix_complete[pair[0], pair[1], bgc_class]
                                     else:
                                         print("    Calculating all pairwise distances")
                                         cluster_pairs = [(x, y, bgc_class) for (x, y) in pairs]
