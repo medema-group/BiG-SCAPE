@@ -456,7 +456,7 @@ def cluster_distance(A, B, A_domlist, B_domlist, bgc_class):
     
     # This could happen due to numerical innacuracies
     if Distance < 0.0:
-        if Distance < 0.000001: # this definitely is something else...
+        if Distance < -0.000001: # this definitely is something else...
             print("Negative distance detected!")
             print(Distance)
             print(A + " - " + B)
