@@ -681,7 +681,7 @@ def runHmmScan(fastaPath, hmmPath, outputdir, verbose):
         name = fastaPath.split(os.sep)[-1].replace(".fasta","")
         outputName = os.path.join(outputdir, name+".domtable")
         
-        hmmscan_cmd = "hmmscan --cpu 1 --domtblout %s --cut_tc %s %s" % (outputName,hmmFile,fastaPath)
+        hmmscan_cmd = "hmmscan --cpu 0 --domtblout %s --cut_tc %s %s" % (outputName,hmmFile,fastaPath)
         if verbose == True:
             print("  Processing " + name)
             print("   " + hmmscan_cmd)
