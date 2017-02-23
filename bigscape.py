@@ -452,12 +452,17 @@ def cluster_distance(A, B, A_domlist, B_domlist, bgc_class):
     #Ar.reverse()
     #GK = max([calculate_GK(A_domlist, B_domlist, nbhood), calculate_GK(Ar, B_domlist, nbhood)])
     
-    Distance = 1 - (Jaccardw * Jaccard) - (DDSw * DDS) - (AIw * AI) 
-    if Distance < 0:
-        print("Negative distance detected!")
-        print("J: " + str(Jaccard) + "\tDDS: " + str(DDS) + "\tAI: " + str(AI))
-        print("Jw: " + str(Jaccardw) + "\tDDSw: " + str(DDSw) + "\tAIw: " + str(AIw))
-        sys.exit()
+    Distance = 1 - (Jaccardw * Jaccard) - (DDSw * DDS) - (AIw * AI)
+    
+    # This could happen due to numerical innacuracies
+    if Distance < 0.0:
+        if Distance < 0.000001: # this definitely is something else...
+            print("Negative distance detected!")
+            print(Distance)
+            print(A + " - " + B)
+            print("J: " + str(Jaccard) + "\tDDS: " + str(DDS) + "\tAI: " + str(AI))
+            print("Jw: " + str(Jaccardw) + "\tDDSw: " + str(DDSw) + "\tAIw: " + str(AIw))
+        Distance = 0.0
         
     return Distance, Jaccard, DDS, AI, DDS_non_anchor, DDS_anchor, S, S_anchor
 
