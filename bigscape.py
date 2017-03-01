@@ -33,6 +33,8 @@ from multiprocessing import Pool, cpu_count
 from optparse import OptionParser
 
 from Bio import SeqIO
+from Bio.SeqFeature import BeforePosition, AfterPosition
+from Bio import AlignIO
 from Bio import pairwise2
 from Bio.SubsMat.MatrixInfo import pam250 as scoring_matrix
 
@@ -331,7 +333,7 @@ def cluster_distance(A, B, A_domlist, B_domlist, bgc_class):
                     aligned_seqB = AlignedDomainSequences[sequence_tag_b]
                     
                 except KeyError:
-                    # For some reason we don't have the multiple alignment from MAFFT. 
+                    # For some reason we don't have the multiple alignment files. 
                     # Try manual alignment
                     if shared_domain not in missing_aligned_domain_files and verbose:
                         # this will print everytime an unfound <domain>.algn is not found for every
@@ -531,76 +533,34 @@ def run_mafft(al_method, maxit, cores, mafft_pars, domain):
     subprocess.check_output(mafft_cmd, shell=True)
 
 
-@timeit
-def calculate_GK(A, B, nbhood):
-    """Goodman and Kruskal's gamma is a measure of rank correlation, i.e., 
-    the similarity of the orderings of the data when ranked by each of the quantities."""
-    GK = 0.
-    if len(set(A) & set(B)) > 1:
-        pairsA = set( [(A[i],A[j]) for i in xrange(len(A)-1) for j in xrange(i+1,(i+nbhood if i+nbhood < len(A) else len(A)))] )
-        pairsB = set( [(B[i],B[j]) for i in xrange(len(B)-1) for j in xrange(i+1,(i+nbhood if i+nbhood < len(B) else len(B)))] )
-        allPairs = set(list(pairsA) + list(pairsB))
-        Ns, Nr = 0.,0.
-        for p in allPairs:
-            if p in pairsA and p in pairsB: Ns += 1
-            elif p in pairsA and tuple(p[::-1]) in pairsB: Nr += 1
-            elif tuple(p[::-1]) in pairsA and p in pairsB: Nr += 1
-            else: pass
-        
-        if (Nr + Ns) == 0: # this could happen if e.g. only two domains are shared but are farther than nbhood
-            gamma = 0
-        else:
-            gamma = (Ns-Nr) / (Nr+Ns)
-        GK = (1+gamma)/2.
-    return GK
-
-
-@timeit
-def Distance_modified(clusterA, clusterB, repeat=0, nbhood=4):
-    "Modified to work better for 'OBU' detection"
-    "Original DDS formula from Lin, Zhu and Zhang (2006)"
-
-    repeats = []
-
-    # delete short and frequent domains
-    if repeat==1:
-        A = [i for i in clusterA] 
-        B = [j for j in clusterB] 
-    elif repeat==0:
-        A = [i for i in clusterA if i not in repeats]
-        B = [j for j in clusterB if j not in repeats]
-
-    if len(A)==0 or len(B)==0: return 1.
-
-    # calculate Jaccard index, modified not to give problems with size differences between clusters
-    Jaccard = len(set(A) & set(B)) / float( 2 * min([len(set(A)),len(set(B))]) - len(set(A) & set(B)) )
-    #Jaccard = len(set(A) & set(B)) / float( len(set(A)) + len(set(B)) - len(set(A) & set(B)) )
-
-    # calculate domain duplication index
-    DDS = 0 #The difference in abundance of the domains per cluster
-    S = 0 #Max occurence of each domain
-    for p in set(A+B):
-        DDS += abs(A.count(p)-B.count(p))
-        S += max(A.count(p),B.count(p))
-    DDS /= float(S) 
-    DDS = exp(-DDS) #transforms the DDS to a value between 0 - 1
-
-    # calculate the Goodman-Kruskal gamma index
-    Ar = [item for item in A]
-    Ar.reverse()
-    GK = max([calculate_GK(A, B, nbhood), calculate_GK(Ar, B, nbhood)]) #100% dissimilarity results in a score of 0.5
-
-
-    # calculate the distance
-    #print "Jaccard", Jaccard
-    #print "DDS", DDS
-    #print "GK", GK
-    Distance = 1 - Jaccardw*Jaccard - DDSw*DDS - GKw*GK
+def launch_hmmalign(cores, domains):
+    """
+    Launches instances of hmmalign with multiprocessing.
+    Note that the domains parameter contains the .fasta extension
+    """
+    pool = Pool(cores, maxtasksperchild=32)
+    pool.map(run_hmmalign, domains)
+    pool.close()
+    pool.join()
     
-    if Distance < 0:
-        Distance = 0
-
-    return Distance, Jaccard, DDS, GK
+def run_hmmalign(domain):
+    #domain already contains the full path, with the file extension
+    domain_base = domain.split(os.sep)[-1][:-6]
+    hmmfetch_pars = ["hmmfetch", os.path.join(pfam_dir,"Pfam-A.hmm.h3m"), domain_base]
+    proc_hmmfetch = subprocess.Popen(hmmfetch_pars, stdout=subprocess.PIPE, shell=False)
+    
+    hmmalign_pars = ["hmmalign", "-o", domain.replace(".fasta",".stk"), "-", domain]
+    proc_hmmalign = subprocess.Popen(hmmalign_pars, stdin=proc_hmmfetch.stdout, stdout=subprocess.PIPE, shell=False)
+    
+    proc_hmmfetch.stdout.close()
+    proc_hmmalign.communicate()[0]
+    proc_hmmfetch.wait()
+    
+    if verbose:
+        print(" ".join(hmmfetch_pars) + " | " + " ".join(hmmalign_pars))
+    
+    SeqIO.convert(domain[:-6]+".stk", "stockholm", domain[:-6]+".algn", "fasta")
+    
 
 def generateFasta(gbkfilePath, outputdir):
     ## first parse the genbankfile and generate the fasta file for input into hmmscan ##
@@ -612,18 +572,28 @@ def generateFasta(gbkfilePath, outputdir):
     records = list(SeqIO.parse(gbkfilePath, "genbank"))
     cds_ctr = 0
     fasta_data = []
+    
     for record in records:
         CDS_List = (feature for feature in record.features if feature.type == 'CDS')
 
         # parse through the CDS lists to make the fasta file for hmmscan, if translation isn't available attempt manual translation
         for CDS in CDS_List:
             cds_ctr += 1
-            gene_id = CDS.qualifiers.get('gene',"")
-            protein_id = CDS.qualifiers.get('protein_id',"")
-            gene_start = max(0,CDS.location.nofuzzy_start)
-            gene_end = max(0,CDS.location.nofuzzy_end)
+            
+            gene_id = ""
+            if "gene" in CDS.qualifiers:
+                gene_id = CDS.qualifiers.get('gene',"")[0]
+                
+            protein_id = ""
+            if "protein_id" in CDS.qualifiers:
+                protein_id = CDS.qualifiers.get('protein_id',"")[0]
+            
+            # nofuzzy_start/nofuzzy_end are obsolete
+            # http://biopython.org/DIST/docs/api/Bio.SeqFeature.FeatureLocation-class.html#nofuzzy_start
+            gene_start = max(0, int(CDS.location.start))
+            gene_end = max(0, int(CDS.location.end))
             direction = CDS.location.strand
-
+            
             if direction == 1:
                 strand = '+'
             else:
@@ -633,44 +603,65 @@ def generateFasta(gbkfilePath, outputdir):
                 prot_seq = CDS.qualifiers['translation'][0]
             # If translation isn't available translate manually, this will take longer
             else:
-                nt_seq = CDS.location.extract(genbankEntry).seq
-
-                if direction == 1:
-                    # for protein sequence if it is at the start of the entry assume that end of sequence is in frame
-                    # if it is at the end of the genbank entry assume that the start of the sequence is in frame
-                    if gene_start == 0:
-                        if len(nt_seq) % 3 == 0:
-                            prot_seq = nt_seq.translate()
-                        elif len(nt_seq) % 3 == 1:
-                            prot_seq = nt_seq[1:].translate()
+                nt_seq = CDS.location.extract(record.seq)
+                
+                # If we know sequence is an ORF (like all CDSs), codon table can be
+                #  used to correctly translate alternative start codons.
+                #  see http://biopython.org/DIST/docs/tutorial/Tutorial.html#htoc25
+                # If the sequence has a fuzzy start/end, it might not be complete,
+                # (therefore it might not be the true start codon)
+                # However, in this case, if 'translation' not availabe, assume 
+                #  this is just a random sequence 
+                complete_cds = False 
+                
+                # More about fuzzy positions
+                # http://biopython.org/DIST/docs/tutorial/Tutorial.html#htoc39
+                fuzzy_start = False 
+                if str(CDS.location.start)[0] in "<>":
+                    complete_cds = False
+                    fuzzy_start = True
+                    
+                fuzzy_end = False
+                if str(CDS.location.end)[0] in "<>":
+                    fuzzy_end = True
+                
+                #for protein sequence if it is at the start of the entry assume 
+                # that end of sequence is in frame and trim from the beginning
+                #if it is at the end of the genbank entry assume that the start 
+                # of the sequence is in frame
+                reminder = len(nt_seq)%3
+                if reminder > 0:
+                    if fuzzy_start and fuzzy_end:
+                        print("Warning, CDS (" + outputbase + ", " + CDS.qualifiers.get('locus_tag',"")[0] + ") has fuzzy start and end positions, and a sequence length not multiple of three. Skipping")
+                        break
+                    
+                    if fuzzy_start:
+                        if reminder == 1:
+                            nt_seq = nt_seq[1:]
                         else:
-                            prot_seq = nt_seq[2:].translate()
+                            nt_seq = nt_seq[2:]
+                    # fuzzy end
                     else:
-                        prot_seq = nt_seq.translate()
-                # reverse direction
-                else:
-                    #same logic reverse direction
-                    if gene_start == 0:
-                        if len(nt_seq) % 3 == 0:
-                            prot_seq = nt_seq.translate()
-                        elif len(nt_seq) % 3 == 1:
-                            prot_seq = nt_seq[:-1].translate()
+                        #same logic reverse direction
+                        if reminder == 1:
+                            nt_seq = nt_seq[:-1]
                         else:
-                            prot_seq = nt_seq[:-2].translate()
-                    else:
-                        prot_seq = nt_seq.translate()
-
+                            nt_seq = nt_seq[:-2]
+                
+                # The Genetic Codes: www.ncbi.nlm.nih.gov/Taxonomy/Utils/wprintgc.cgi
+                CDStable = CDS.qualifiers.get("transl_table", "")[0]
+                prot_seq = str(nt_seq.translate(table=CDStable, to_stop=True, cds=complete_cds))
+                
             fasta_header = outputbase + "_ORF" + str(cds_ctr)+ ":gid:" + str(gene_id) + ":pid:" + str(protein_id) + ":loc:" + str(gene_start) + ":" + str(gene_end) + ":strand:" + strand
             fasta_header = fasta_header.replace(">","") #the coordinates might contain larger than signs, tools upstream don't like this
             fasta_header = ">"+(fasta_header.replace(" ", "")) #the domtable output format (hmmscan) uses spaces as a delimiter, so these cannot be present in the fasta header
             fasta_data.append((fasta_header, prot_seq))
-       
+    
     # write fasta file
     with open(outputfile,'w') as fastaHandle:
         for header_sequence in fasta_data:
             fastaHandle.write('%s\n' % header_sequence[0])
             fastaHandle.write('%s\n' % header_sequence[1])
-                
 
     return outputfile
 
@@ -764,20 +755,21 @@ def CMD_parser():
                       help="If this string occurs in the gbk filename, this file will not be used for the analysis.")
     
     parser.add_option("--mafft_pars", dest="mafft_pars", default="",
-                      help="Add single/multiple parameters for mafft specific enclosed by quotation marks e.g. \"--nofft --parttree\"")
+                      help="Add single/multiple parameters for MAFFT specific enclosed by quotation marks e.g. \"--nofft --parttree\"")
     parser.add_option("--al_method", dest="al_method", default="--retree 2",
-                      help="alignment method for mafft, if there's a space in the method's name, enclose by quotation marks. default: \"--retree 2\" corresponds to the FFT-NS-2 method")
+                      help="alignment method for MAFFT, if there's a space in the method's name, enclose by quotation marks. default: \"--retree 2\" corresponds to the FFT-NS-2 method")
     parser.add_option("--maxiterate", dest="maxit", default=1000,
-                      help="Maxiterate parameter in mafft, default is 1000, corresponds to the FFT-NS-2 method")
+                      help="Maxiterate parameter in MAFFT, default is 1000, corresponds to the FFT-NS-2 method")
     parser.add_option("--mafft_threads", dest="mafft_threads", default=0,
-                      help="Set the number of threads in mafft, -1 sets the number of threads as the number of physical cores. Default: same as --cores parameter")
+                      help="Set the number of threads in MAFFT, -1 sets the number of threads as the number of physical cores. Default: same as --cores parameter")
+    parser.add_option("--use_hmmalign", dest="use_hmmalign", action="store_true", default=False, help="Use hmmalign instead of MAFFT for multiple alignment of domain sequences")
     
     parser.add_option("--force_hmmscan", dest="force_hmmscan", action="store_true", default=False, 
                       help="Force domain prediction using hmmscan even if BiG-SCAPE finds processed domtable files (e.g. to use a new version of PFAM).")
     parser.add_option("--skip_hmmscan", dest="skip_hmmscan", action="store_true", default=False,
                       help="When skipping hmmscan, the GBK files should be available, and the domain tables need to be in the output folder.")
-    parser.add_option("--skip_mafft", dest="skip_mafft", action="store_true", default=False, 
-                      help="Skip domain prediction by hmmscan as well as domains' sequence's alignments with MAFFT. Needs the original GenBank files, the list of domains per BGC (.pfs) and the BGCs.dict and DMS.dict files.")
+    parser.add_option("--skip_ma", dest="skip_ma", action="store_true", default=False, 
+                      help="Skip Multiple Alignment of domains' sequences.")
     parser.add_option("--skip_all", dest="skip_all", action="store_true",
                       default = False, help = "Only generate new network files. ")
     parser.add_option("--cutoffs", dest="cutoffs", default="1",
@@ -857,10 +849,10 @@ if __name__=="__main__":
     networks_folder_samples = "networks_samples"
     
     if options.skip_all:
-        if options.skip_hmmscan or options.skip_mafft:
-            print("Overriding --skip_hmmscan/--skip_mafft with --skip_all parameter")
+        if options.skip_hmmscan or options.skip_ma:
+            print("Overriding --skip_hmmscan/--skip_ma with --skip_all parameter")
             options.skip_hmmscan = False
-            options.skip_mafft = False
+            options.skip_ma = False
     
     time1 = time.time()
     print("\n   - - Obtaining input files - -")
@@ -939,7 +931,7 @@ if __name__=="__main__":
     AlignedDomainSequences = {} # Key: specific domain sequence label. Item: aligned sequence
     DomainList = {} # Key: BGC. Item: ordered list of domains
     
-    # to avoid calling MAFFT if there's only 1 seq. representing a particular domain
+    # to avoid multiple alignment if there's only 1 seq. representing a particular domain
     sequences_per_domain = {}
     
     print("\n\n   - - Processing input files - -")
@@ -976,6 +968,7 @@ if __name__=="__main__":
         pool.apply_async(generateFasta,args =(genbankFile,bgc_fasta_folder))
     pool.close()
     pool.join()
+
     print " Finished generating fasta files."
 
     ### Step 2: Run hmmscan
@@ -1084,9 +1077,9 @@ if __name__=="__main__":
     # If number of pfd files did not change, no new sequences were added to the 
     #  domain fastas and we could try to resume the multiple alignment phase
     # baseNames have been pruned of BGCs with no domains that might've been added temporarily
-    try_MAFFT_resume = False
+    try_MA_resume = False
     if len(baseNames - set(pfd.split(os.sep)[-1][:-9] for pfd in alreadyDone)) == 0:
-        try_MAFFT_resume = True
+        try_MA_resume = True
     else:
         # new sequences will be added to the domain fasta files. Clean domains folder
         for thing in os.listdir(domains_folder):
@@ -1115,8 +1108,8 @@ if __name__=="__main__":
     if len(pfdFiles - pfdBases) > 0:
         sys.exit("Error! The following files did NOT have their domtable files processed: " + ", ".join(pfdFiles - pfdBases))
 
-    if options.skip_mafft:
-        print(" Running with skip_mafft parameter: Assuming that the domains folder has all the fasta files")
+    if options.skip_ma:
+        print(" Running with skip_ma parameter: Assuming that the domains folder has all the fasta files")
         print(" Only extracting BGC group from input file")
     else:
         if verbose:
@@ -1148,7 +1141,7 @@ if __name__=="__main__":
 
     #Write or retrieve BGC dictionary
     if not options.skip_all:
-        if options.skip_hmmscan or options.skip_mafft:
+        if options.skip_hmmscan or options.skip_ma:
             with open(os.path.join(output_folder, "BGCs.dict"), "r") as BGC_file:
                 BGCs = pickle.load(BGC_file)
                 BGC_file.close()
@@ -1161,59 +1154,75 @@ if __name__=="__main__":
     print("\n\n   - - Calculating distance matrix - -")
    
     # Do multiple alignments if needed
-    if not options.skip_mafft:
+    if not options.skip_ma:
         print("Performing multiple alignment of domain sequences")
         
         # obtain all fasta files with domain sequences
         fasta_domains = set(glob(os.path.join(domains_folder,"*.fasta")))
-        temp_aligned = set(glob(os.path.join(domains_folder, "*.algn")))
         
         # compare with .algn set of files. Maybe resuming is possible if
         # no new sequences were added
-        if try_MAFFT_resume and len(temp_aligned) > 0:
-            if len(fasta_domains - temp_aligned) > 0:
-                print(" Resuming incomplete alignment phase")
+        if try_MA_resume:
+            temp_aligned = set(glob(os.path.join(domains_folder, "*.algn")))
+            
+            if len(temp_aligned) > 0:
+                print(" Found domain fasta files without corresponding alignments")
                 
-            for a in temp_aligned:
-                if os.path.getsize(a) > 0:
-                    fasta_domains.remove(a[:-5]+".fasta")
+                for a in temp_aligned:
+                    if os.path.getsize(a) > 0:
+                        fasta_domains.remove(a[:-5]+".fasta")
             
             temp_aligned.clear()
         
+        # Try to further reduce the set of domain fastas that need alignment
         sequence_tag_list = set()
-        
-        for domain_file in fasta_domains:
+        header_list = []
+        fasta_domains_temp = fasta_domains.copy()
+        for domain_file in fasta_domains_temp:
             domain_name = domain_file.split(os.sep)[-1].replace(".fasta", "")
             
             # fill fasta_dict...
             with open(domain_file, "r") as fasta_handle:
-                fasta_dict = fasta_parser(fasta_handle)
+                header_list = get_fasta_keys(fasta_handle)
                 
             # Get the BGC name from the sequence tag. The form of the tag is:
             # >BGCXXXXXXX_BGCXXXXXXX_ORF25:gid...
-            sequence_tag_list = set(s.split("_ORF")[0] for s in fasta_dict.keys())
+            sequence_tag_list = set(s.split("_ORF")[0] for s in header_list)
 
             # ...to find out how many sequences do we actually have
-            if len(fasta_dict) == 1:
-                # avoid calling MAFFT if it's not possible to align (only one sequence)
+            if len(sequence_tag_list) == 1:
+                # avoid multiple alignment if the domains all belong to the same BGC
+                fasta_domains.remove(domain_file)
                 if verbose:
-                    print(" Skipping MAFFT for domain " + domain_name + " (only one sequence)")
-            elif len(sequence_tag_list) == 1:
-                # avoid calling MAFFT if we only have copies of some domain in only one BGC
-                if verbose:
-                    print(" Skipping MAFFT for domain " + domain_name + "(appears only in one BGC)")
-            else:           
-                if verbose:
-                    print(" Running MAFFT for domain: " + domain_name)
-                
-                domain_file_base = domain_file.replace(".fasta", "")
-                
-                # Multiple alignment of all domain sequences
-                run_mafft(options.al_method, options.maxit, options.mafft_threads, options.mafft_pars, domain_file_base)
-                
-                # Check if MAFFT's output file was generated
-                if not os.path.isfile(domain_file_base + ".algn"):
-                    print("  WARNING, " + domain_name + ".algn could not be found (possible issue with MAFFT)")
+                    print(" Skipping Multiple Alignment for " + domain_name + " (appears only in one BGC)")
+        
+        sequence_tag_list.clear()
+        del header_list[:]
+        
+        fasta_domains_temp.clear()
+            
+        # Do the multiple alignment
+        if len(fasta_domains) > 0:
+            if options.use_hmmalign:
+                print("\n Using hmmalign")
+                launch_hmmalign(cores, fasta_domains)
+                                        
+            else:
+                print("\n Using MAFFT")
+                for domain in fasta_domains:
+                    domain_name = domain[:-6]
+                    # Multiple alignment of all domain sequences
+                    if verbose:
+                        print("  Aligning " + domain_file.split(os.sep)[-1].replace(".fasta", ""))
+                    run_mafft(options.al_method, options.maxit, options.mafft_threads, options.mafft_pars, domain_name)
+    
+            # verify all tasks were completed by checking existance of alignment files
+            for domain in fasta_domains:
+                if not os.path.isfile(domain[:-6]+".algn"):
+                    print("   WARNING, " + domain[:-6] + ".algn could not be found (possible issue with aligner).")
+                       
+        else:
+            print(" No domain fasta files found to align")
     
     
     # If there's something to analyze, load the aligned sequences
@@ -1221,7 +1230,7 @@ if __name__=="__main__":
         print(" Trying to read domain alignments (*.algn files)")
         aligned_files_list = glob(os.path.join(domains_folder, "*.algn"))
         if len(aligned_files_list) == 0:
-            sys.exit("No aligned sequences found in the domain folder (run without the --skip_mafft parameter or point to the correct output folder)")
+            sys.exit("No aligned sequences found in the domain folder (run without the --skip_ma parameter or point to the correct output folder)")
         for aligned_file in aligned_files_list:
             with open(aligned_file, "r") as aligned_file_handle:
                 fasta_dict = fasta_parser(aligned_file_handle)

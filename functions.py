@@ -446,6 +446,18 @@ def fasta_parser(handle):
     return fasta_dict
 
 
+def get_fasta_keys(handle):
+    """Parses a fasta file, only stores headers
+    """
+    
+    header_list = []
+    for line in handle:
+        if line[0] == ">":
+            header_list.append(line.strip()[1:])
+            
+    return header_list
+
+
 def distout_parser(distout_file):
     """returns similarity values, for domains in the following format  { ('specific_domain_name_1',
     'specific_domain_name_2'): (sequence_identity, alignment_length), ... }"""
@@ -724,8 +736,8 @@ def write_parameters(output_folder, options):
     else:
         pf.write("\n")
         
-    pf.write("Skip MAFFT?:\t" + ("True" if options.skip_mafft else "False"))
-    if not options.skip_mafft:
+    pf.write("Skip Multiple Alignment?:\t" + ("True" if options.skip_ma else "False"))
+    if not options.skip_ma:
         pf.write("\t(default)\n")
     else:
         pf.write("\n")
@@ -748,7 +760,7 @@ def write_parameters(output_folder, options):
     #else:
         #pf.write("\n")
     
-    pf.write("\nMAFFT parameters:\n")
+    pf.write("\nMA parameters:\n")
     
     pf.write("Additional MAFFT parameters:\t\"" + options.mafft_pars + "\"")
     if options.mafft_pars == "":
