@@ -617,6 +617,9 @@ def sort_bgc(product):
     # Saccharides
     elif product in ('amglyccycl', 'oligosaccharide', 'cf_saccharide'):
         return("Saccharides")
+    # Terpenes
+    elif product == 'terpene':
+        return("Terpene")
     # PKS/NRP hybrids
     elif len(product.split("-")) > 1:
         #print("  Possible hybrid: (" + cluster + "): " + product)
@@ -630,7 +633,7 @@ def sort_bgc(product):
         else:
             return("Others") # other hybrid
     # Others
-    elif product in ('arylpolyene', 'terpene', 'aminocoumarin', 'ectoine', 'butyrolactone', 'nucleoside', 'melanin', 'phosphoglycolipid', 'phenazine', 'phosphonate', 'other', 'cf_putative', 'resorcinol', 'indole', 'ladderane', 'PUFA', 'furan', 'hserlactone', 'fused', 'cf_fatty_acid ', 'siderophore', 'blactam'):
+    elif product in ('arylpolyene', 'aminocoumarin', 'ectoine', 'butyrolactone', 'nucleoside', 'melanin', 'phosphoglycolipid', 'phenazine', 'phosphonate', 'other', 'cf_putative', 'resorcinol', 'indole', 'ladderane', 'PUFA', 'furan', 'hserlactone', 'fused', 'cf_fatty_acid ', 'siderophore', 'blactam'):
         return("Others")
     # ??
     else:

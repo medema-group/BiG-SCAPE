@@ -29,6 +29,7 @@ import sys
 import time
 from glob import glob
 from itertools import combinations
+from collections import defaultdict
 from multiprocessing import Pool, cpu_count
 from optparse import OptionParser
 
@@ -842,6 +843,8 @@ if __name__=="__main__":
     
     if options.mafft_threads == 0:
         options.mafft_threads = options.cores
+    else:
+        options.mafft_threads = int(options.mafft_threads)
                     
     verbose = options.verbose
     
@@ -921,12 +924,11 @@ if __name__=="__main__":
     bgc_class_weight["NRPS"] = (0.0, 1.0, 0.0, 4.0)
     bgc_class_weight["RiPPs"] = (0.28, 0.71, 0.01, 1.0)
     bgc_class_weight["Saccharides"] = (0.0, 0.0, 1.0, 1.0)
+    bgc_class_weight["Terpene"] = (0.2, 0.75, 0.05, 2.0)
     bgc_class_weight["PKS-NRP_Hybrids"] = (0.0, 0.78, 0.22, 1.0)
     bgc_class_weight["Others"] = (0.01, 0.97, 0.02, 4.0)
     bgc_class_weight["mix"] = (0.2, 0.75, 0.05, 2.0) # default when not separating in classes
-    BGC_classes = {}
-    for bgc_class in ["PKSI", "PKSother", "NRPS", "RiPPs", "Saccharides", "PKS-NRP_Hybrids", "Others", "Unknown"]:
-        BGC_classes[bgc_class] = []
+    BGC_classes = defaultdict(list)
     
     AlignedDomainSequences = {} # Key: specific domain sequence label. Item: aligned sequence
     DomainList = {} # Key: BGC. Item: ordered list of domains
@@ -1124,9 +1126,14 @@ if __name__=="__main__":
 
             # save each domain sequence from a single BGC in its corresponding file
             fasta_file = os.path.join(bgc_fasta_folder, outputbase + ".fasta")
-            with open(fasta_file, "r") as fasta_file_handle:
-                fasta_dict = fasta_parser(fasta_file_handle) # all fasta info from a BGC
-            save_domain_seqs(filtered_matrix, fasta_dict, domains_folder, outputbase)
+            
+            # only create domain fasta if the pfd content is different from original and 
+            #  domains folder has been emptied. Else, if trying to resume alignment phase,
+            #  domain fasta files will contain duplicate sequence labels
+            if not try_MA_resume:
+                with open(fasta_file, "r") as fasta_file_handle:
+                    fasta_dict = fasta_parser(fasta_file_handle) # all fasta info from a BGC
+                save_domain_seqs(filtered_matrix, fasta_dict, domains_folder, outputbase)
 
             BGCs[outputbase] = BGC_dic_gen(filtered_matrix)
 
