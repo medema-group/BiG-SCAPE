@@ -140,7 +140,7 @@ def get_gbk_files(inputdir, min_bgc_size, exclude_gbk_str, gbk_group):
                             # location of first instance of the file is genbankDict[clustername][0]
                             genbankDict.setdefault(clusterName, [os.path.join(dirpath, fname), set([current_dir])])
                             
-                        if verbose == True:
+                        if verbose:
                             print("  Adding " + fname + " (" + str(bgc_size) + " bps)")
                     else:
                         print(" Discarding " + clusterName +  " (size less than " + str(min_bgc_size) + " bp, was " + str(bgc_size) + ")")
@@ -153,8 +153,7 @@ def get_gbk_files(inputdir, min_bgc_size, exclude_gbk_str, gbk_group):
     if file_counter == 1:
         sys.exit("\nError: Only one file found. Please input at least two files")
     
-    if verbose:
-        print("\n Starting with " + str(file_counter) + " files")
+    print("\n Starting with " + str(file_counter) + " files")
 
     return genbankDict
 
@@ -181,7 +180,7 @@ def timeit(f):
 def generate_network(cluster_pairs, cores):
     #Contents of the network file: clustername1 clustername2, group1, group2, -log2score, dist, squared similarity
     "saves the distances as the log2 of the similarity"
-    pool = Pool(cores, maxtasksperchild=500)
+    pool = Pool(cores, maxtasksperchild=100)
     
     #Assigns the data to the different workers and pools the results back into
     # the network_matrix variable
@@ -211,8 +210,7 @@ def generate_dist_matrix(parms):
         domain_list_A = DomainList[cluster1]
         domain_list_B = DomainList[cluster2]
     except KeyError:
-        if verbose:
-            print(" Warning: domain list for " + cluster1 + " or " + cluster2 + " was not found. Extracting from pfs files")
+        print(" Warning: domain list for " + cluster1 + " or " + cluster2 + " was not found. Extracting from pfs files")
         
         cluster_file1 = os.path.join(output_folder, cluster1 + ".pfs")
         cluster_file2 = os.path.join(output_folder, cluster2 + ".pfs")
@@ -366,9 +364,8 @@ def cluster_distance(A, B, A_domlist, B_domlist, bgc_class):
                 # wrong elsewhere
                 if len(aligned_seqA) != len(aligned_seqB):
                     print("\tWARNING: mismatch in sequences' lengths while calculating sequence identity (" + shared_domain + ")")
-                    if verbose:
-                        print("\t  Specific domain 1: " + aligned_seqA + " len: " + str(len(aligned_seqA)))
-                        print("\t  Specific domain 2: " + aligned_seqB + " len: " + str(len(aligned_seqB)))
+                    print("\t  Specific domain 1: " + aligned_seqA + " len: " + str(len(aligned_seqA)))
+                    print("\t  Specific domain 2: " + aligned_seqB + " len: " + str(len(aligned_seqB)))
                     seq_length = min(len(aligned_seqA), len(aligned_seqB))
                 else:
                     seq_length = len(aligned_seqA)
@@ -675,7 +672,6 @@ def runHmmScan(fastaPath, hmmPath, outputdir, verbose):
         
         hmmscan_cmd = "hmmscan --cpu 0 --domtblout %s --cut_tc %s %s" % (outputName,hmmFile,fastaPath)
         if verbose == True:
-            print("  Processing " + name)
             print("   " + hmmscan_cmd)
         subprocess.check_output(hmmscan_cmd, shell=True)
 
@@ -898,8 +894,7 @@ if __name__=="__main__":
     create_directory(pfd_folder, "pfd", False)
     
 
-    if verbose:
-        print("\nTrying threading on %i cores" % cores)
+    print("\nTrying threading on %i cores" % cores)
     
     #open the file that will contain the timed functions
     timings_file = open(os.path.join(output_folder, "runtimes.txt"), 'w') 
@@ -1114,8 +1109,7 @@ if __name__=="__main__":
         print(" Running with skip_ma parameter: Assuming that the domains folder has all the fasta files")
         print(" Only extracting BGC group from input file")
     else:
-        if verbose:
-            print(" Adding sequences to corresponding domains file")
+        print(" Adding sequences to corresponding domains file")
             
         for outputbase in baseNames:
             if verbose:
@@ -1219,8 +1213,6 @@ if __name__=="__main__":
                 for domain in fasta_domains:
                     domain_name = domain[:-6]
                     # Multiple alignment of all domain sequences
-                    if verbose:
-                        print("  Aligning " + domain_file.split(os.sep)[-1].replace(".fasta", ""))
                     run_mafft(options.al_method, options.maxit, options.mafft_threads, options.mafft_pars, domain_name)
     
             # verify all tasks were completed by checking existance of alignment files
@@ -1282,7 +1274,7 @@ if __name__=="__main__":
 
             for bgc_class in BGC_classes:
                 if len(BGC_classes[bgc_class]) > 1:
-                    print("  " + bgc_class + " (" + str(len(BGC_classes[bgc_class])) + " BGCs)")
+                    print("\n  " + bgc_class + " (" + str(len(BGC_classes[bgc_class])) + " BGCs)")
                     # create output directory
                     create_directory(os.path.join(output_folder, networks_folder_all, bgc_class), "  All - " + bgc_class, False)
                             
@@ -1359,7 +1351,7 @@ if __name__=="__main__":
                         
                         for bgc_class in BGC_classes:
                             if len(BGC_classes[bgc_class]) > 1:
-                                print("   " + bgc_class + " (" + str(len(BGC_classes[bgc_class])) + " BGCs)")
+                                print("\n   " + bgc_class + " (" + str(len(BGC_classes[bgc_class])) + " BGCs)")
                                 network_matrix_sample.clear()
 
                                 if len(BGC_classes[bgc_class]) > 1:
