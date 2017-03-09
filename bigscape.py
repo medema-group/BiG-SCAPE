@@ -261,13 +261,15 @@ def cluster_distance(A, B, A_domlist, B_domlist, bgc_class):
     Jaccardw, DDSw, AIw, anchorboost = bgc_class_weight[bgc_class]
 
     temp_domain_fastas = {}
-
-    intersect = set(A_domlist).intersection(B_domlist)
-    not_intersect = set(A_domlist).symmetric_difference(set(B_domlist))
     
+    setA = set(A_domlist)
+    setB = set(B_domlist)
+
+    intersect = setA.intersection(setB)
+    not_intersect = setA.symmetric_difference(setB)
     
     # JACCARD INDEX
-    Jaccard = len(intersect)/ float( len(set(A_domlist)) + len(set(B_domlist)) - len(intersect))
+    Jaccard = len(intersect)/ float( len(setA) + len(setB) - len(intersect))
 
 
     # DDS INDEX
@@ -435,15 +437,15 @@ def cluster_distance(A, B, A_domlist, B_domlist, bgc_class):
     if len(A_domlist) < 2 or len(B_domlist) < 2:
         AI = 0.0
     else:
-        setA = set()
+        setA_pair = set()
         for l in range(len(A_domlist)-1):
-            setA.add(tuple(sorted([A_domlist[l],A_domlist[l+1]])))
+            setA_pair.add(tuple(sorted([A_domlist[l],A_domlist[l+1]])))
         
-        setB = set()
+        setB_pair = set()
         for l in range(len(B_domlist)-1):
-            setB.add(tuple(sorted([B_domlist[l],B_domlist[l+1]])))
+            setB_pair.add(tuple(sorted([B_domlist[l],B_domlist[l+1]])))
 
-        AI = float(len(setA.intersection(setB))) / float(len(setA.union(setB)))
+        AI = float(len(setA_pair.intersection(setB_pair))) / float(len(setA_pair.union(setB_pair)))
 
     
     # GK INDEX
