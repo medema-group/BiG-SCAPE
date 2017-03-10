@@ -458,64 +458,6 @@ def get_fasta_keys(handle):
     return header_list
 
 
-def distout_parser(distout_file):
-    """returns similarity values, for domains in the following format  { ('specific_domain_name_1',
-    'specific_domain_name_2'): (sequence_identity, alignment_length), ... }"""
-    
-    try:
-        hat2_handle = open(distout_file, 'r')
-    except IOError:
-        return {}
-    
-    domain_pairs_dict = {}    
-    linecounter = 0
-    seqsdict = {}
-    distances = [] #will be of length numberof_seqs * (numberof_seqs-1) / 2
-    numberof_seqs = 0
-    for line in hat2_handle:
-        linecounter += 1
-        if linecounter == 2: #contains number of sequences
-            numberof_seqs = int(line.replace(" ", "").strip())
-            
-        elif linecounter >= 4 and linecounter <= 3 + numberof_seqs:
-            try:
-                #seq_number = int(re.search(r' \d*\. ', str(line.split("=")[0])).group(0).replace(".", "").replace(" ", ""))
-                seq_number = int(line.split("=")[0].replace(" ", "").replace(".", ""))
-            except AttributeError:
-                print "something went wrong during the import of distout file: ", str(distout_file)
-                
-            
-            seqsdict[seq_number] = "".join(line.split("=")[1:]).strip()#in case the header contains an = sign
-
-        elif linecounter > 3 + numberof_seqs:
-            distances += line.strip().split(" ")
-
-    keys=[]
-    if len(distances) != (numberof_seqs * (numberof_seqs-1)) / 2.0:
-        print "something went horribly wrong in importing the distance matrix"
-    else:
-        print "distance matrix imported correctly"
-        keys = seqsdict.keys()
-
-    keys_queue = []
-    for key in keys:
-        keys_queue.append(key)
-
-    tuples = []
-    for key in keys:
-        keys_queue.remove(key)
-        for key_queue in keys_queue:
-            tuples.append((key, key_queue))
-            
-    for tupl in range(len(tuples)):
-        ##    { ('specific_domain_name_1',
-        ##    'specific_domain_name_2'): (sequence_identity, alignment_length), ... }
-        #1-distance is a representation of the sequence_identity
-        domain_pairs_dict[tuple(sorted([seqsdict[tuples[tupl][0]], seqsdict[tuples[tupl][1]]]))] = (1-float(distances[tupl]), 0)
-
-    return domain_pairs_dict
-
-
 def domtable_parser(gbk, dom_file):
     """Parses the domain table output files from hmmscan"""
     
@@ -562,39 +504,6 @@ def domtable_parser(gbk, dom_file):
                 
                 pfd_row.append(splitline[3])#cds header
                 pfd_matrix.append(pfd_row)
-
-    return pfd_matrix
-
-
-##example from hmm table output:
-##Thiolase_N           PF00108.19 loc:[2341:3538](+):gid::pid::loc_tag:['ctg4508_7'] -
-##8.2e-90  300.5   2.3   1.2e-89  300.0   2.3   1.2   1   0   0   1   1   1   1 Thiolase, N-terminal domain
-def hmm_table_parser(gbk, hmm_table):
-    pfd_matrix = []
-
-    handle = open(hmm_table, 'r')
-    for line in handle:
-        
-        if line[0] != "#":
-            
-            splitline = filter(None, line.split(" "))
-            pfd_row = []
-            pfd_row.append(gbk)
-            pfd_row.append(splitline[5]) #add the score
-
-##example of header_list ['loc', '[2341', '3538](+)', 'gid', '', 'pid', '', 'loc_tag', "['ctg4508_7"]]
-
-            header_list = splitline[2].split(":")
-            pfd_row.append(header_list[header_list.index("gid")+1])
-            pfd_row.append(header_list[1].replace("[", "")) #first coordinate
-            loc_split = header_list[2].split("]") #second coordinate and the direction
-            pfd_row.append(loc_split[0])
-            pfd_row.append(loc_split[1])
-
-            pfd_row.append(splitline[1])
-            pfd_row.append(splitline[0])
-            
-            pfd_matrix.append(pfd_row)
 
     return pfd_matrix
 
