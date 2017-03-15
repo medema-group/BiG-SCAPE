@@ -241,7 +241,8 @@ def generate_dist_matrix(parms):
     else:
         logscore = 0
         try:
-            logscore = -log(dist, 2) #Write exception, ValueError
+            logscore = log(dist, 2) #Write exception, ValueError
+            logscore = -1.0*logscore
         except ValueError:
             print("ERROR: Unexpected issue when calculating logscore.")
             print(cluster1 + " - " + cluster2 + ": " + str(dist))
@@ -255,18 +256,110 @@ def generate_dist_matrix(parms):
     return network_row
     
 
-def cluster_distance(A, B, A_domlist, B_domlist, bgc_class): 
+def cluster_distance(a, b, a_domlist, b_domlist, bgc_class): 
     """Compare two clusters using information on their domains, and the sequences of the domains"""
     
     Jaccardw, DDSw, AIw, anchorboost = bgc_class_weight[bgc_class]
 
     temp_domain_fastas = {}
     
+    A = a
+    B = b
+    A_domlist = a_domlist[:]
+    B_domlist = b_domlist[:]
+    
     setA = set(A_domlist)
     setB = set(B_domlist)
-
     intersect = setA.intersection(setB)
-    not_intersect = setA.symmetric_difference(setB)
+    
+    S = 0
+    S_anchor = 0
+    
+    # Detect totally unrelated pairs from the beginning
+    if len(intersect) == 0:
+        not_intersect = setA.symmetric_difference(setB)
+        
+        # Count total number of anchor and non-anchor domain to report in the network file
+        # Apart from that, these BGCs are totally unrelated.
+        for domain in setA:
+            if domain.split(".")[0] in anchor_domains:
+                S_anchor += len(BGCs[A][domain])
+            else:
+                S += len(BGCs[A][domain])
+                
+        for domain in setB:
+            if domain.split(".")[0] in anchor_domains:
+                S_anchor += len(BGCs[B][domain])
+            else:
+                S += len(BGCs[B][domain])
+        
+        return 1.0, 0.0, 0.0, 0.0, 1.0, 1.0, S, S_anchor
+
+    
+    # define the subset of domain sequence tags to include in
+    # the DDS calculation. This is done for every domain.
+    A_domain_sequence_slice_bottom = defaultdict(int)
+    A_domain_sequence_slice_top = defaultdict(int)
+    B_domain_sequence_slice_bottom = defaultdict(int)
+    B_domain_sequence_slice_top = defaultdict(int)
+    
+    
+    # In metagenomic mode, try to align the shorter BGC ("BGC-fragment") to the
+    # best matching slice of the larger BGC
+    if metagenomic:
+        # BGC A will be the shortest
+        if len(a_domlist) < len(b_domlist):
+            A = a
+            B = b
+            A_domlist = a_domlist[:]
+            tmpB_domlist = b_domlist[:]
+        else:
+            A = b
+            B = a
+            A_domlist = b_domlist[:]
+            tmpB_domlist = a_domlist[:]
+        
+        # Find the slice of the larger BGC where the shorter one fits the best
+        setA = set(A_domlist)
+        intersect = set()
+        startB = 0
+        lengthA = len(A_domlist) # length of raw list including copies
+        for i in range(len(tmpB_domlist) - lengthA + 1):
+            tmpBset = set(tmpB_domlist[i:i+lengthA])
+            if len(setA.intersection(tmpBset)) > len(intersect):
+                startB = i
+                intersect = setA.intersection(tmpBset)
+        B_domlist = tmpB_domlist[startB:startB+lengthA]
+        setB = set(B_domlist)
+
+        # initialize domain sequence slices
+        for domain in setA:
+            A_domain_sequence_slice_bottom[domain] = 0
+            A_domain_sequence_slice_top[domain] = len(BGCs[A][domain])
+            
+        # the longest BGC needs to be sliced for domain copies as well
+        for i in range(startB):
+            domain = tmpB_domlist[i]
+            B_domain_sequence_slice_bottom[domain] += 1
+            
+        # for each top, start at bottom
+        for domain in setB:
+            B_domain_sequence_slice_top[domain] = B_domain_sequence_slice_bottom[domain]
+        for i in range(startB, startB+lengthA):
+            domain = tmpB_domlist[i]
+            B_domain_sequence_slice_top[domain] += 1
+
+    else:
+        # initialize domain sequence slices
+        for domain in setA:
+            A_domain_sequence_slice_bottom[domain] = 0
+            A_domain_sequence_slice_top[domain] = len(BGCs[A][domain])
+            
+        for domain in setB:
+            B_domain_sequence_slice_bottom[domain] = 0
+            B_domain_sequence_slice_top[domain] = len(BGCs[B][domain])
+        
+    
     
     # JACCARD INDEX
     Jaccard = len(intersect)/ float( len(setA) + len(setB) - len(intersect))
@@ -276,13 +369,16 @@ def cluster_distance(A, B, A_domlist, B_domlist, bgc_class):
     #domain_difference: Difference in sequence per domain. If one cluster doesn't have a domain at all, but the other does, 
     #this is a sequence difference of 1. If both clusters contain the domain once, and the sequence is the same, there is a seq diff of 0.
     #S: Max occurence of each domain
-    domain_difference_anchor,S_anchor = 0,0 
-    domain_difference,S = 0,0 
-    
+    domain_difference_anchor,S_anchor = 0,0
+    domain_difference,S = 0,0
+        
+    not_intersect = setA.symmetric_difference(setB)
+        
     # Case 1
     for unshared_domain in not_intersect: #no need to look at seq identity, since these domains are unshared
         #for each occurence of an unshared domain do domain_difference += count of domain and S += count of domain
         unshared_occurrences = []
+
         try:
             unshared_occurrences = BGCs[A][unshared_domain]
         except KeyError:
@@ -303,17 +399,10 @@ def cluster_distance(A, B, A_domlist, B_domlist, bgc_class):
         specific_domain_list_A = BGCs[A][shared_domain]
         specific_domain_list_B = BGCs[B][shared_domain]
         
-        num_copies_a = len(specific_domain_list_A)
-        num_copies_b = len(specific_domain_list_B)
+        num_copies_a = A_domain_sequence_slice_top[shared_domain] - A_domain_sequence_slice_bottom[shared_domain]
+        num_copies_b = B_domain_sequence_slice_top[shared_domain] - B_domain_sequence_slice_bottom[shared_domain]
         
         temp_domain_fastas.clear()
-        
-        # Case 2: The shared domains occurs only once in each gene cluster
-        #if len(specific_domain_list_A+specific_domain_list_B) == 2: #The domain occurs only once in both clusters
-        #   print(this is case 2)
-        # Case 3: The domain occurs more than once in both clusters
-        #else:
-        #   print(this is case 3)
         
         accumulated_distance = 0
             
@@ -322,8 +411,8 @@ def cluster_distance(A, B, A_domlist, B_domlist, bgc_class):
         
         for domsa in range(num_copies_a):
             for domsb in range(num_copies_b):
-                sequence_tag_a = specific_domain_list_A[domsa]
-                sequence_tag_b = specific_domain_list_B[domsb]
+                sequence_tag_a = specific_domain_list_A[domsa + A_domain_sequence_slice_bottom[shared_domain]]
+                sequence_tag_b = specific_domain_list_B[domsb + B_domain_sequence_slice_bottom[shared_domain]]
                 
                 seq_length = 0
                 matches = 0
@@ -380,8 +469,11 @@ def cluster_distance(A, B, A_domlist, B_domlist, bgc_class):
                             gaps += 1
                             
                 DistanceMatrix[domsa][domsb] = 1 - ( float(matches)/float(seq_length-gaps) )
-                            
-            
+                
+        #print(shared_domain)
+        #for row in DistanceMatrix:
+            #print("\t".join(map(str,row)))
+        #print("")
         #Only use the best scoring pairs
         Hungarian = Munkres()
         #print "DistanceMatrix", DistanceMatrix
@@ -392,12 +484,13 @@ def cluster_distance(A, B, A_domlist, B_domlist, bgc_class):
         
         # the difference in number of domains accounts for the "lost" (or not duplicated) domains
         sum_seq_dist = (abs(num_copies_a-num_copies_b) + accumulated_distance)  #essentially 1-sim
-        
-        if shared_domain.split(".")[0] in anchor_domains: 
-            S_anchor += max(num_copies_a,num_copies_b)
+        normalization_element = max(num_copies_a, num_copies_b)
+            
+        if shared_domain.split(".")[0] in anchor_domains:
+            S_anchor += normalization_element
             domain_difference_anchor += sum_seq_dist
         else:
-            S += max(num_copies_a, num_copies_b)
+            S += normalization_element
             domain_difference += sum_seq_dist
         
         
@@ -437,15 +530,16 @@ def cluster_distance(A, B, A_domlist, B_domlist, bgc_class):
     if len(A_domlist) < 2 or len(B_domlist) < 2:
         AI = 0.0
     else:
-        setA_pair = set()
+        setA_pairs = set()
         for l in range(len(A_domlist)-1):
-            setA_pair.add(tuple(sorted([A_domlist[l],A_domlist[l+1]])))
+            setA_pairs.add(tuple(sorted([A_domlist[l],A_domlist[l+1]])))
         
-        setB_pair = set()
+        setB_pairs = set()
         for l in range(len(B_domlist)-1):
-            setB_pair.add(tuple(sorted([B_domlist[l],B_domlist[l+1]])))
+            setB_pairs.add(tuple(sorted([B_domlist[l],B_domlist[l+1]])))
 
-        AI = float(len(setA_pair.intersection(setB_pair))) / float(len(setA_pair.union(setB_pair)))
+        # same treatment as in Jaccard
+        AI = float(len(setA_pairs.intersection(setB_pairs))) / float(len(setA_pairs.union(setB_pairs)))
 
     
     # GK INDEX
@@ -690,6 +784,7 @@ def parseHmmScan(hmmscanResults, pfd_folder, pfs_folder, overlapCutoff):
         if num_domains > 0:
             print("  Processing domtable file: " + outputbase)
 
+            # check_overlap also sorts the filtered_matrix results
             filtered_matrix, domains = check_overlap(pfd_matrix,overlapCutoff)  #removes overlapping domains, and keeps the highest scoring domain
             
             # Save list of domains per BGC
@@ -744,6 +839,10 @@ def CMD_parser():
     parser.add_option("--mix", dest="mix", action="store_true", default=False, help="By default, BiG-SCAPE separates analysis according to the BGC product (PKS Type I, NRPS, RiPPs, etc.) and will create network directories for each class. Toggle to include an analysis mixing all classes")
     
     parser.add_option("--no_classify", dest="no_classify", action="store_true", default=False, help="By default, BiG-SCAPE classifies the output files analysis based on the BGC product. Toggle to desactivate (in that case, if the --no_classify parameter is not activated, BiG-SCAPE will not create any network file).")
+    
+    parser.add_option("--banned_classes", dest="banned_classes", default="", help="A comma-separated list of classes that should NOT be included in the classification. Currently: PKSI, PKSother, NRPS, RiPPs, Saccharides, Terpene, PKS-NRP_Hybrids and Others. E.g. \"PKSother, PKS-NRP_Hybrids, Others\"")
+
+    parser.add_option("--metagenomic", dest="metagenomic", action="store_true", default=False, help="Activate Metagenomic mode. BiG-SCAPE will change the logic in the distance calculation phase to try to align shorter, fragmented BGCs.")
 
     parser.add_option("--pfam_dir", dest="pfam_dir",
                       default=os.path.dirname(os.path.realpath(__file__)), 
@@ -805,6 +904,8 @@ if __name__=="__main__":
     global pfam_dir
     global timings_file
     global cores
+    global metagenomic
+    
     include_disc_nodes = options.include_disc_nodes
     
     cores = int(options.cores)
@@ -814,6 +915,7 @@ if __name__=="__main__":
     
     options_mix = options.mix
     options_classify = not options.no_classify
+    metagenomic = options.metagenomic
     
     cutoff_list = [float(c.strip()) for c in options.cutoffs.split(",")]
     for c in cutoff_list:
@@ -924,8 +1026,16 @@ if __name__=="__main__":
     bgc_class_weight["Terpene"] = (0.2, 0.75, 0.05, 2.0)
     bgc_class_weight["PKS-NRP_Hybrids"] = (0.0, 0.78, 0.22, 1.0)
     bgc_class_weight["Others"] = (0.01, 0.97, 0.02, 4.0)
+    
+    #define which classes will be analyzed (if in the options_classify mode)
+    valid_classes = set()
+    for key in bgc_class_weight:
+        valid_classes.add(key.lower())
+    user_banned_classes = set([a.strip().lower() for a in options.banned_classes.split(",")])
+    valid_classes = valid_classes - user_banned_classes
+        
     bgc_class_weight["mix"] = (0.2, 0.75, 0.05, 2.0) # default when not separating in classes
-    BGC_classes = defaultdict(list)
+    BGC_classes = defaultdict(list)    
     
     AlignedDomainSequences = {} # Key: specific domain sequence label. Item: aligned sequence
     DomainList = {} # Key: BGC. Item: ordered list of domains
@@ -1259,6 +1369,10 @@ if __name__=="__main__":
             for cutoff in cutoff_list:
                 path = os.path.join(output_folder, networks_folder_all, "all_mix_c" + str(cutoff) + ".network")
                 write_network_matrix(network_matrix_mix, cutoff, path, include_disc_nodes, group_dct)
+                
+            # free memory if we're not going to reuse this for samples
+            if not options_samples:
+                network_matrix_mix.clear()
         
         # Making network files separating by BGC class
         if options_classify:
@@ -1272,7 +1386,8 @@ if __name__=="__main__":
             print("  Sorting the input BGCs\n")
             for cluster in clusters:
                 product = group_dct[cluster][0]
-                BGC_classes[sort_bgc(product)].append(cluster)
+                if product in valid_classes:
+                    BGC_classes[sort_bgc(product)].append(cluster)
 
             for bgc_class in BGC_classes:
                 if len(BGC_classes[bgc_class]) > 1:
@@ -1291,7 +1406,7 @@ if __name__=="__main__":
                         write_network_matrix(network_matrix, cutoff, path, include_disc_nodes, group_dct)
                         
                     # keep the data if we have to reuse it
-                    if options_samples and options_classify:
+                    if options_samples:
                         network_matrix_complete.update(network_matrix)
 
     # Try to make analysis for each sample
@@ -1324,9 +1439,9 @@ if __name__=="__main__":
                         # the pairs' distances should be ready
                         if options_all and options_mix:
                             print("   Using distances calculated in the 'all' analysis")
-                            
                             for pair in pairs:
                                 network_matrix_sample[pair[0], pair[1], "mix"] = network_matrix_mix[pair[0], pair[1], "mix"]
+                            network_matrix_mix.clear()
                         else:
                             print("   Calculating all pairwise distances")
                             cluster_pairs = [(x, y, "mix") for (x, y) in pairs]
@@ -1349,7 +1464,8 @@ if __name__=="__main__":
                         print("   Sorting the input BGCs\n")
                         for cluster in sampleClusters:
                             product = group_dct[cluster][0]
-                            BGC_classes[sort_bgc(product)].append(cluster)
+                            if product in valid_classes:
+                                BGC_classes[sort_bgc(product)].append(cluster)
                         
                         for bgc_class in BGC_classes:
                             if len(BGC_classes[bgc_class]) > 1:
