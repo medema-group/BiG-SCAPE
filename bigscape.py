@@ -845,7 +845,7 @@ def CMD_parser():
 
     parser.add_option("--metagenomic", dest="metagenomic", action="store_true", default=False, help="Activate Metagenomic mode. BiG-SCAPE will change the logic in the distance calculation phase to try to align shorter, fragmented BGCs.")
 
-    parser.add.option("--hybrids", dest="hybrids", action="store_true", default=False, help="Toggle to also add PKS/NRPS Hybrids to the PKSI, PKSother and NRPS class analysis")
+    parser.add_option("--hybrids", dest="hybrids", action="store_true", default=False, help="Toggle to also add PKS/NRPS Hybrids to the PKSI, PKSother and NRPS class analysis")
 
     parser.add_option("--pfam_dir", dest="pfam_dir",
                       default=os.path.dirname(os.path.realpath(__file__)), 
