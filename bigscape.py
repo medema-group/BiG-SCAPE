@@ -115,6 +115,7 @@ def get_gbk_files(inputdir, min_bgc_size, exclude_gbk_str, gbk_group):
                                     product_list_per_record.append(feature.qualifiers["product"][0])
                     
                     # check what we have product-wise
+                    # In particular, handle different products for multi-record files
                     product_set = set(product_list_per_record)
                     if len(product_set) == 1: # only one type of product
                         group = product_list_per_record[0]
@@ -844,6 +845,8 @@ def CMD_parser():
 
     parser.add_option("--metagenomic", dest="metagenomic", action="store_true", default=False, help="Activate Metagenomic mode. BiG-SCAPE will change the logic in the distance calculation phase to try to align shorter, fragmented BGCs.")
 
+    parser.add.option("--hybrids", dest="hybrids", action="store_true", default=False, help="Toggle to also add PKS/NRPS Hybrids to the PKSI, PKSother and NRPS class analysis")
+
     parser.add_option("--pfam_dir", dest="pfam_dir",
                       default=os.path.dirname(os.path.realpath(__file__)), 
                       help="Location of hmmpress-processed Pfam files. Default is same location of BiG-SCAPE")
@@ -1386,8 +1389,18 @@ if __name__=="__main__":
             print("  Sorting the input BGCs\n")
             for cluster in clusters:
                 product = group_dct[cluster][0]
-                if product in valid_classes:
-                    BGC_classes[sort_bgc(product)].append(cluster)
+                predicted_class = sort_bgc(product)
+                if predicted_class in valid_classes:
+                    BGC_classes[predicted_class].append(cluster)
+                
+                # possibly add hybrids to 'pure' classes
+                if options.hybrids and predicted_class == "PKS-NRP_Hybrids":
+                    if "nrps" in valid_classes:
+                        BGC_classes["NRPS"].append(cluster)
+                    if "t1pks" in product and "pksi" in valid_classes:
+                        BGC_classes["PKSI"].append(cluster)
+                    if "t1pks" not in product and "pksother" in valid_classes:
+                        BGC_classes["PKSother"].append(cluster)
 
             for bgc_class in BGC_classes:
                 if len(BGC_classes[bgc_class]) > 1:
@@ -1464,8 +1477,18 @@ if __name__=="__main__":
                         print("   Sorting the input BGCs\n")
                         for cluster in sampleClusters:
                             product = group_dct[cluster][0]
-                            if product in valid_classes:
-                                BGC_classes[sort_bgc(product)].append(cluster)
+                            predicted_class = sort_bgc(product)
+                            if predicted_class in valid_classes:
+                                BGC_classes[predicted_class].append(cluster)
+                            
+                            # possibly add hybrids to 'pure' classes
+                            if options.hybrids and predicted_class == "PKS-NRP_Hybrids":
+                                if "nrps" in valid_classes:
+                                    BGC_classes["NRPS"].append(cluster)
+                                if "t1pks" in product and "pksi" in valid_classes:
+                                    BGC_classes["PKSI"].append(cluster)
+                                if "t1pks" not in product and "pksother" in valid_classes:
+                                    BGC_classes["PKSother"].append(cluster)
                         
                         for bgc_class in BGC_classes:
                             if len(BGC_classes[bgc_class]) > 1:
