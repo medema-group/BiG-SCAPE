@@ -1390,7 +1390,7 @@ if __name__=="__main__":
             for cluster in clusters:
                 product = group_dct[cluster][0]
                 predicted_class = sort_bgc(product)
-                if predicted_class in valid_classes:
+                if predicted_class.lower() in valid_classes:
                     BGC_classes[predicted_class].append(cluster)
                 
                 # possibly add hybrids to 'pure' classes
@@ -1478,7 +1478,7 @@ if __name__=="__main__":
                         for cluster in sampleClusters:
                             product = group_dct[cluster][0]
                             predicted_class = sort_bgc(product)
-                            if predicted_class in valid_classes:
+                            if predicted_class.lower() in valid_classes:
                                 BGC_classes[predicted_class].append(cluster)
                             
                             # possibly add hybrids to 'pure' classes
