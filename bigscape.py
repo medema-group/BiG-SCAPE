@@ -1403,11 +1403,21 @@ if __name__=="__main__":
                         BGC_classes["PKSother"].append(cluster)
 
             for bgc_class in BGC_classes:
+                folder_name = bgc_class
+                if options.hybrids and bgc_class in ("PKSI", "PKSother", "NRPS"):
+                    folder_name += "+hybrids"
+                    
+                print("\n  " + folder_name + " (" + str(len(BGC_classes[bgc_class])) + " BGCs)")
+                
+                # create output directory   
+                create_directory(os.path.join(output_folder, networks_folder_all, folder_name), "  All - " + bgc_class, False)
+                
+                # Create an additional file with the final list of all clusters in the class
+                path_list = os.path.join(output_folder, networks_folder_all, folder_name, "cluster_list_all_" + folder_name + ".txt")
+                with open(path_list, "w") as list_file:
+                    list_file.write("\n".join(BGC_classes[bgc_class]))
+                    
                 if len(BGC_classes[bgc_class]) > 1:
-                    print("\n  " + bgc_class + " (" + str(len(BGC_classes[bgc_class])) + " BGCs)")
-                    # create output directory
-                    create_directory(os.path.join(output_folder, networks_folder_all, bgc_class), "  All - " + bgc_class, False)
-                            
                     print("   Calculating all pairwise distances")
                     pairs = set(map(tuple, map(sorted, combinations(BGC_classes[bgc_class], 2))))
                     cluster_pairs = [(x, y, bgc_class) for (x, y) in pairs]
@@ -1415,7 +1425,7 @@ if __name__=="__main__":
                         
                     print("   Writing output files")
                     for cutoff in cutoff_list:
-                        path = os.path.join(output_folder, networks_folder_all, bgc_class, "all_" + bgc_class + "_c" + str(cutoff) + ".network")
+                        path = os.path.join(output_folder, networks_folder_all, folder_name, "all_" + folder_name + "_c" + str(cutoff) + ".network")
                         write_network_matrix(network_matrix, cutoff, path, include_disc_nodes, group_dct)
                         
                     # keep the data if we have to reuse it
@@ -1491,29 +1501,37 @@ if __name__=="__main__":
                                     BGC_classes["PKSother"].append(cluster)
                         
                         for bgc_class in BGC_classes:
-                            if len(BGC_classes[bgc_class]) > 1:
-                                print("\n   " + bgc_class + " (" + str(len(BGC_classes[bgc_class])) + " BGCs)")
-                                network_matrix_sample.clear()
+                            folder_name = bgc_class
+                            if options.hybrids and bgc_class in ("PKSI", "PKSother", "NRPS"):
+                                folder_name += "+hybrids"
+                                
+                            print("\n   " + folder_name + " (" + str(len(BGC_classes[bgc_class])) + " BGCs)")
+                            network_matrix_sample.clear()
+                            
+                            # create output directory
+                            create_directory(os.path.join(output_folder, networks_folder_samples, sample, folder_name), "   Sample " + sample + " - " + bgc_class, False)
 
-                                if len(BGC_classes[bgc_class]) > 1:
-                                    # create output directory
-                                    create_directory(os.path.join(output_folder, networks_folder_samples, sample, bgc_class), "   Sample " + sample + " - " + bgc_class, False)
-                                                    
-                                    pairs = set(map(tuple, map(sorted, combinations(BGC_classes[bgc_class], 2))))
+                            # Create an additional file with the final list of all clusters in the class
+                            path_list = os.path.join(output_folder, networks_folder_samples, sample, folder_name, "cluster_list_" + sample + "_" + folder_name + ".txt")
+                            with open(path_list, "w") as list_file:
+                                list_file.write("\n".join(BGC_classes[bgc_class]))
+
+                            if len(BGC_classes[bgc_class]) > 1:
+                                pairs = set(map(tuple, map(sorted, combinations(BGC_classes[bgc_class], 2))))
+                                
+                                if options_all and options_classify:
+                                    print("    Using distances calculated in the 'all' analysis")
+                                    for pair in pairs:
+                                        network_matrix_sample[pair[0], pair[1], bgc_class] = network_matrix_complete[pair[0], pair[1], bgc_class]
+                                else:
+                                    print("    Calculating all pairwise distances")
+                                    cluster_pairs = [(x, y, bgc_class) for (x, y) in pairs]
+                                    network_matrix_sample = generate_network(cluster_pairs, cores)
                                     
-                                    if options_all and options_classify:
-                                        print("    Using distances calculated in the 'all' analysis")
-                                        for pair in pairs:
-                                            network_matrix_sample[pair[0], pair[1], bgc_class] = network_matrix_complete[pair[0], pair[1], bgc_class]
-                                    else:
-                                        print("    Calculating all pairwise distances")
-                                        cluster_pairs = [(x, y, bgc_class) for (x, y) in pairs]
-                                        network_matrix_sample = generate_network(cluster_pairs, cores)
-                                        
-                                    print("    Writing output files")
-                                    for cutoff in cutoff_list:
-                                        path = os.path.join(output_folder, networks_folder_samples, sample, bgc_class, "sample_"+sample+"_"+bgc_class+"_c" + str(cutoff) + ".network")
-                                        write_network_matrix(network_matrix_sample, cutoff, path, include_disc_nodes, group_dct)
+                                print("    Writing output files")
+                                for cutoff in cutoff_list:
+                                    path = os.path.join(output_folder, networks_folder_samples, sample, folder_name, "sample_"+sample+"_"+folder_name+"_c" + str(cutoff) + ".network")
+                                    write_network_matrix(network_matrix_sample, cutoff, path, include_disc_nodes, group_dct)
 
 
     runtime = time.time()-time1
