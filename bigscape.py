@@ -744,9 +744,12 @@ def generateFasta(gbkfilePath, outputdir):
                             nt_seq = nt_seq[:-2]
                 
                 # The Genetic Codes: www.ncbi.nlm.nih.gov/Taxonomy/Utils/wprintgc.cgi
-                CDStable = CDS.qualifiers.get("transl_table", "")[0]
-                prot_seq = str(nt_seq.translate(table=CDStable, to_stop=True, cds=complete_cds))
-                
+                if "transl_table" in CDS.qualifiers.keys():
+                    CDStable = CDS.qualifiers.get("transl_table", "")[0]
+                    prot_seq = str(nt_seq.translate(table=CDStable, to_stop=True, cds=complete_cds))
+                else:
+                    prot_seq = str(nt_seq.translate(to_stop=True, cds=complete_cds))
+                    
             fasta_header = outputbase + "_ORF" + str(cds_ctr)+ ":gid:" + str(gene_id) + ":pid:" + str(protein_id) + ":loc:" + str(gene_start) + ":" + str(gene_end) + ":strand:" + strand
             fasta_header = fasta_header.replace(">","") #the coordinates might contain larger than signs, tools upstream don't like this
             fasta_header = ">"+(fasta_header.replace(" ", "")) #the domtable output format (hmmscan) uses spaces as a delimiter, so these cannot be present in the fasta header
