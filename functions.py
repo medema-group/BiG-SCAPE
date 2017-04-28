@@ -26,6 +26,23 @@ global verbose
 verbose = False
 
 
+def create_directory(path, kind, clean):
+    try:
+        os.mkdir(path)
+    except OSError as e:
+        # 17 (Linux): "[Errno 17] File exists";
+        # 183 (Windows) "[Error 183] Cannot create a file when that file already exists"
+        if "Errno 17" in str(e) or "Error 183" in str(e):
+            print(" " + kind + " folder already exists")
+            if clean:
+                print("  Cleaning folder")
+                for thing in os.listdir(path):
+                    os.remove(os.path.join(path,thing))
+        else:
+            print("Error: unexpected error when " + kind + " folder")
+            sys.exit(str(e))
+
+
 def get_anchor_domains(filename):
     """Get the anchor/marker domains from a txt file.
     This text file should contain one Pfam id per line"""
@@ -124,12 +141,6 @@ def check_overlap(pfd_matrix, overlap_cutoff):
     return pfd_matrix, domains                       
                         
 
-def write_pfs(pfs_handle, domains):
-    for domain in domains:
-        pfs_handle.write(domain+" ")
-    pfs_handle.close()
-    
-
 def write_pfd(pfd_handle, matrix):
     for row in matrix:
         row = "\t".join(row)
@@ -197,34 +208,27 @@ def BGC_dic_gen(filtered_matrix):
      'specific_domain_name_2'] } part of the BGCs variable."""
     bgc_dict = {}
     for row in filtered_matrix:
+        header = row[-1] + ":" + row[3] + ":" + row[4]
         try: #Should be faster than performing if key in dictionary.keys()
             bgc_dict[row[5]]
-            bgc_dict[row[5]].append(str(row[0]) + "_" + str(row[-1]) + "_" + str(row[3]) + "_" + str(row[4]))
+            bgc_dict[row[5]].append(header)
         except KeyError: #In case of this error, this is the first occurrence of this domain in the cluster
-           bgc_dict[row[5]]=[str(row[0]) + "_" + str(row[-1]) + "_" + str(row[3]) + "_" + str(row[4])]
+           bgc_dict[row[5]]=[header]
             
     return bgc_dict
 
     
-def save_domain_seqs(filtered_matrix, fasta_dict, domains_folder, output_folder, outputbase):
+def save_domain_seqs(filtered_matrix, fasta_dict, domains_folder, outputbase):
     """Write fasta sequences for the domains in the right pfam-domain file"""
     for row in filtered_matrix:
         domain = row[5]
-        seq = fasta_dict[str(row[-1].strip())] #access the sequence by using the header
+        header = row[-1].strip()
+        seq = fasta_dict[header] #access the sequence by using the header
         
 
-        domain_file = open(os.path.join(output_folder, domains_folder, domain + ".fasta"), 'a') #append to existing file
-        domain_file.write(">" + str(row[0]) + "_" + str(row[-1]) + "_" + str(row[3]) + "_" + str(row[4]) \
-        + "\n" + str(seq)[int(row[3]):int(row[4])] + "\n") #only use the range of the pfam domain within the sequence
-        
-#===============================================================================
-# 
-#         if str(seq)[int(row[3]):int(row[4])] == "":
-#             print seq
-#             print row[3], row[4]
-#             print str(row[-1].strip())
-#             print outputbase
-#===============================================================================
+        domain_file = open(os.path.join(domains_folder, domain + ".fasta"), 'a') #append to existing file
+        domain_file.write(">" + header + ":" + row[3] + ":" + row[4] \
+        + "\n" + seq[int(row[3]):int(row[4])] + "\n") #only use the range of the pfam domain within the sequence
             
         domain_file.close()
 
@@ -293,71 +297,136 @@ def network_parser(network_file, Jaccardw, DDSw, GKw, anchorboost):
     return network
 
 
-def write_network_matrix(matrix, cutoff, filename, include_disc_nodes):
+def write_network_matrix(matrix, cutoff, filename, include_disc_nodes, group_dict):
+    """
+    matrix[gc1, gc2] =
+    row:   0      1    2    3       4       5      6      7    8   9   
+          grp1  def1 grp2  def2  -logScr  rawD  sqrtSim  Jac  DDS  AI  
+    
+          10      11    12    13
+        rDDSna  rDDSa   S     Sa
+    
+          [   14      15   <- these two are written directly
+          [combGrp  ShrdGrp
+    """
     networkfile = open(filename, 'w')
-    clusters = [] # will contain the names of clusters that have an edge value lower than the threshold
-    networkfile.write("clustername1\tclustername2\tgroup1\tdefinition\tgroup2\tdefinition\t-log2score\traw distance\tsquared similarity\tJaccard index\tDDS index\tAdjacency index\traw DDS non-anchor\traw DDS anchor\tNon-anchor domains\tAnchor domains\tcombined group\tshared group\n")
     
-    for (gc1, gc2) in matrix.keys():
+    clusterSetAll = set()
+    clusterSetConnected = set()
+    
+    networkfile.write("Clustername1\tClustername2\tgroup1\tDefinition\tgroup2\tDefinition\t-log2score\tRaw distance\tSquared similarity\tJaccard index\tDDS index\tAdjacency index\traw DDS non-anchor\traw DDS anchor\tNon-anchor domains\tAnchor domains\tCombined group\tShared group\n")
+    
+    for (gc1, gc2, weights_kind) in matrix.keys():
         row = [gc1, gc2]
-        for i in matrix[gc1, gc2]:
-            row.append(i)
-
-        temprow = []
-        #if both clusters have the same group, this group will be annotated in the last column of the network file
-        for i in row:
-            temprow.append(i)
+        row.extend(matrix[gc1, gc2, weights_kind])
         
-        if float(temprow[7]) <= float(cutoff):
-            clusters.append(row[0])
-            clusters.append(row[1])
+        clusterSetAll.add(gc1)
+        clusterSetAll.add(gc2)
+        
+        if row[7] <= cutoff:
+            clusterSetConnected.add(gc1)
+            clusterSetConnected.add(gc2)
             
+            # write combined group
             if row[2] != "" and row[4] != "": #group1, group2
-                temprow.append(" - ".join(sorted([str(row[2]),str(row[4])])))
+                row.append(" - ".join(sorted([row[2],row[4]])))
             elif row[4] != "":
-                temprow.append(str(row[4]))
+                row.append(row[4])
             elif row[2] != "":
-                temprow.append(str(row[2]))
+                row.append(row[2])
             else:
-                temprow.append(str("NA"))
+                row.append("NA")
             
+            # write share group (if they indeed share it)
             if row[2] == row[4]:
-                temprow.append(row[2])
+                row.append(row[2])
             else:
-                temprow.append("")
+                row.append("")
                 
-            networkfile.write("\t".join(map(str,temprow)) + "\n")
+            networkfile.write("\t".join(map(str,row)) + "\n")
 
-    # matrix[gc1, gc2] =
-    # row:   0      1    2    3       4       5      6      7    8   9   
-    #       grp1  def1 grp2  def2  -logScr  rawD  sqrtSim  Jac  DDS  AI  
-    #
-    #       10      11    12    13
-    #     rDDSna  rDDSa   S     Sa
-    #
-    #       [   14      15   <- these two are written directly
-    #       [combGrp  ShrdGrp
+    #Add the nodes without any edges, give them an edge to themselves with a distance of 0
+    if include_disc_nodes == True:
+        for gc in clusterSetAll-clusterSetConnected:
+            #Arbitrary numbers for S and Sa domains: 1 of each (logical would be 0,0 but 
+            # that could mess re-analysis; 
+            networkfile.write("\t".join([gc, gc, group_dict[gc][0], group_dict[gc][1], group_dict[gc][0], group_dict[gc][1], "0", "0", "1", "1", "1", "1", "0", "0", "1", "1", "", ""]) + "\n")
 
-    
-    if include_disc_nodes == True:  
-        #Add the nodes without any edges, give them an edge to themselves with a distance of 0 
-        clusters = set(clusters)
-        passed_clusters = []
-        
-        #Arbitrary numbers for S and Sa domains: 1 of each (logical would be 0,0 but 
-        # that could mess re-analysis; 
-        # the actual values would be most accurate but that'd involve more work
-        for (gc1, gc2) in matrix.keys():
-            if gc1 not in clusters and gc1 not in passed_clusters:
-                networkfile.write("\t".join([gc1, gc1, matrix[gc1, gc2][0], matrix[gc1, gc2][1], matrix[gc1, gc2][0], matrix[gc1, gc2][1], "0", "0", "1", "1", "1", "1", "0", "0", "1", "1", "", ""]) + "\n")
-                passed_clusters.append(gc1)
-            
-            if gc2 not in clusters and gc2 not in passed_clusters:
-                networkfile.write("\t".join([gc2, gc2, matrix[gc1, gc2][2], matrix[gc1, gc2][3], matrix[gc1, gc2][2], matrix[gc1, gc2][3], "0", "0", "1", "1", "1", "1", "0", "0", "1", "1", "", ""]) + "\n")
-                passed_clusters.append(gc2)
             
     networkfile.close()
     
+
+def write_network_matrix2(matrix, cutoff_list, filename, include_disc_nodes, group_dict):
+    """
+    This version of the function reads the distance matrix only once
+    
+    Does NOT work yet. 
+    
+    It is possible to have an array of handles, but it's difficult to deal with the 
+    sets of connected clusters because they will vary with the cutoff. Easiest solution
+    is having a dictionary of clusterSetConnected but for large data sets and many 
+    cutoff values that could be impractical
+    
+    matrix[gc1, gc2] =
+    row:   0      1    2    3       4       5      6      7    8   9   
+          grp1  def1 grp2  def2  -logScr  rawD  sqrtSim  Jac  DDS  AI  
+    
+          10      11    12    13
+        rDDSna  rDDSa   S     Sa
+    
+          [   14      15   <- these two are written directly
+          [combGrp  ShrdGrp
+    """
+    handle_list = []
+    for cutoff in cutoff_list:
+        handle_list.append(open(filename + str(cutoff) + ".network", "w"))
+    
+    
+    clusterSetAll = set()
+    clusterSetConnected = set()
+    
+    for h in handle_list:
+        h.write("Clustername1\tClustername2\tgroup1\tDefinition\tgroup2\tDefinition\t-log2score\tRaw distance\tSquared similarity\tJaccard index\tDDS index\tAdjacency index\traw DDS non-anchor\traw DDS anchor\tNon-anchor domains\tAnchor domains\tCombined group\tShared group\n")
+    
+    for (gc1, gc2, weights_kind) in matrix.keys():
+        row = [gc1, gc2]
+        row.extend(matrix[gc1, gc2, weights_kind])
+        
+        clusterSetAll.add(gc1)
+        clusterSetAll.add(gc2)
+        
+        if row[7] <= cutoff:
+            clusterSetConnected.add(gc1)
+            clusterSetConnected.add(gc2)
+            
+            # write combined group
+            if row[2] != "" and row[4] != "": #group1, group2
+                row.append(" - ".join(sorted([row[2],row[4]])))
+            elif row[4] != "":
+                row.append(row[4])
+            elif row[2] != "":
+                row.append(row[2])
+            else:
+                row.append("NA")
+            
+            # write share group (if they indeed share it)
+            if row[2] == row[4]:
+                row.append(row[2])
+            else:
+                row.append("")
+                
+            h.write("\t".join(map(str,row)) + "\n")
+
+    #Add the nodes without any edges, give them an edge to themselves with a distance of 0
+    if include_disc_nodes == True:
+        for gc in clusterSetAll-clusterSetConnected:
+            #Arbitrary numbers for S and Sa domains: 1 of each (logical would be 0,0 but 
+            # that could mess re-analysis; 
+            h.write("\t".join([gc, gc, group_dict[gc][0], group_dict[gc][1], group_dict[gc][0], group_dict[gc][1], "0", "0", "1", "1", "1", "1", "0", "0", "1", "1", "", ""]) + "\n")
+
+    for h in handle_list:
+        h.close()
+        
 
 def fasta_parser(handle):
     """Parses a fasta file, and stores it in a dictionary.
@@ -377,76 +446,16 @@ def fasta_parser(handle):
     return fasta_dict
 
 
-def get_domain_fastas(domain_folder, output_folder):
-    """Finds the pfam domain fasta files"""
-    domain_fastas = []
-    dirpath_ = ""
-    for dirpath, dirnames, filenames in os.walk(os.path.join(output_folder, domain_folder)):
-        for fname in filenames:
-            if ".fasta" in fname and "hat2" not in fname:
-                domain_fastas.append(os.path.join(dirpath, fname))
-                if verbose == True:
-                    print fname
-                    
-    return domain_fastas
-
-
-def distout_parser(distout_file):
-    """returns similarity values, for domains in the following format  { ('specific_domain_name_1',
-    'specific_domain_name_2'): (sequence_identity, alignment_length), ... }"""
+def get_fasta_keys(handle):
+    """Parses a fasta file, only stores headers
+    """
     
-    try:
-        hat2_handle = open(distout_file, 'r')
-    except IOError:
-        return {}
-    
-    domain_pairs_dict = {}    
-    linecounter = 0
-    seqsdict = {}
-    distances = [] #will be of length numberof_seqs * (numberof_seqs-1) / 2
-    numberof_seqs = 0
-    for line in hat2_handle:
-        linecounter += 1
-        if linecounter == 2: #contains number of sequences
-            numberof_seqs = int(line.replace(" ", "").strip())
+    header_list = []
+    for line in handle:
+        if line[0] == ">":
+            header_list.append(line.strip()[1:])
             
-        elif linecounter >= 4 and linecounter <= 3 + numberof_seqs:
-            try:
-                #seq_number = int(re.search(r' \d*\. ', str(line.split("=")[0])).group(0).replace(".", "").replace(" ", ""))
-                seq_number = int(line.split("=")[0].replace(" ", "").replace(".", ""))
-            except AttributeError:
-                print "something went wrong during the import of distout file: ", str(distout_file)
-                
-            
-            seqsdict[seq_number] = "".join(line.split("=")[1:]).strip()#in case the header contains an = sign
-
-        elif linecounter > 3 + numberof_seqs:
-            distances += line.strip().split(" ")
-
-    keys=[]
-    if len(distances) != (numberof_seqs * (numberof_seqs-1)) / 2.0:
-        print "something went horribly wrong in importing the distance matrix"
-    else:
-        print "distance matrix imported correctly"
-        keys = seqsdict.keys()
-
-    keys_queue = []
-    for key in keys:
-        keys_queue.append(key)
-
-    tuples = []
-    for key in keys:
-        keys_queue.remove(key)
-        for key_queue in keys_queue:
-            tuples.append((key, key_queue))
-            
-    for tupl in range(len(tuples)):
-        ##    { ('specific_domain_name_1',
-        ##    'specific_domain_name_2'): (sequence_identity, alignment_length), ... }
-        #1-distance is a representation of the sequence_identity
-        domain_pairs_dict[tuple(sorted([seqsdict[tuples[tupl][0]], seqsdict[tuples[tupl][1]]]))] = (1-float(distances[tupl]), 0)
-
-    return domain_pairs_dict
+    return header_list
 
 
 def domtable_parser(gbk, dom_file):
@@ -499,37 +508,45 @@ def domtable_parser(gbk, dom_file):
     return pfd_matrix
 
 
-##example from hmm table output:
-##Thiolase_N           PF00108.19 loc:[2341:3538](+):gid::pid::loc_tag:['ctg4508_7'] -
-##8.2e-90  300.5   2.3   1.2e-89  300.0   2.3   1.2   1   0   0   1   1   1   1 Thiolase, N-terminal domain
-def hmm_table_parser(gbk, hmm_table):
-    pfd_matrix = []
-
-    handle = open(hmm_table, 'r')
-    for line in handle:
-        
-        if line[0] != "#":
-            
-            splitline = filter(None, line.split(" "))
-            pfd_row = []
-            pfd_row.append(gbk)
-            pfd_row.append(splitline[5]) #add the score
-
-##example of header_list ['loc', '[2341', '3538](+)', 'gid', '', 'pid', '', 'loc_tag', "['ctg4508_7"]]
-
-            header_list = splitline[2].split(":")
-            pfd_row.append(header_list[header_list.index("gid")+1])
-            pfd_row.append(header_list[1].replace("[", "")) #first coordinate
-            loc_split = header_list[2].split("]") #second coordinate and the direction
-            pfd_row.append(loc_split[0])
-            pfd_row.append(loc_split[1])
-
-            pfd_row.append(splitline[1])
-            pfd_row.append(splitline[0])
-            
-            pfd_matrix.append(pfd_row)
-
-    return pfd_matrix
+def sort_bgc(product):
+    """Sort BGC by its type. Uses AntiSMASH annotations
+    (see http://antismash.secondarymetabolites.org/help.html#secmettypes)"""
+    # PKS_Type I
+    if product == 't1pks':
+        return("PKSI")
+    # PKS Other Types
+    elif product in ('transatpks', 't2pks', 't3pks', 'otherks', 'hglks'):
+        return("PKSother")
+    # NRPs
+    elif product == 'nrps':
+        return("NRPS")
+    # RiPPs
+    elif product in ('lantipeptide', 'thiopeptide', 'bacteriocin', 'linaridin', 'cyanobactin', 'glycocin', 'LAP', 'lassopeptide', 'sactipeptide', 'bottromycin', 'head_to_tail', 'microcin', 'microviridin', 'proteusin'):
+        return("RiPPs")
+    # Saccharides
+    elif product in ('amglyccycl', 'oligosaccharide', 'cf_saccharide'):
+        return("Saccharides")
+    # Terpenes
+    elif product == 'terpene':
+        return("Terpene")
+    # PKS/NRP hybrids
+    elif len(product.split("-")) > 1:
+        #print("  Possible hybrid: (" + cluster + "): " + product)
+        # cf_fatty_acid category contains a trailing empty space
+        subtypes = set(s.strip() for s in product.split("-"))
+        if len(subtypes - set(['t1pks', 'transatpks', 't2pks', 't3pks', 'otherks', 'hglks', 'nrps'])) == 0:
+            if 'nrps' in subtypes:
+                return("PKS-NRP_Hybrids")
+            else:
+                return("PKSother") # pks hybrids
+        else:
+            return("Others") # other hybrid
+    # Others
+    elif product in ('arylpolyene', 'aminocoumarin', 'ectoine', 'butyrolactone', 'nucleoside', 'melanin', 'phosphoglycolipid', 'phenazine', 'phosphonate', 'other', 'cf_putative', 'resorcinol', 'indole', 'ladderane', 'PUFA', 'furan', 'hserlactone', 'fused', 'cf_fatty_acid ', 'siderophore', 'blactam'):
+        return("Others")
+    # ??
+    else:
+        return("Others")
 
 
 def write_parameters(output_folder, options):
@@ -565,29 +582,29 @@ def write_parameters(output_folder, options):
     else:
         pf.write("\n")
 
-    pf.write("Sequence distance networks:\t\"" + str(options.seqdist_networks) + "\"")
-    if options.seqdist_networks == "A":
-        pf.write("\t(default)\n")
-    else:
-        pf.write("\n")
+    #pf.write("Sequence distance networks:\t\"" + str(options.seqdist_networks) + "\"")
+    #if options.seqdist_networks == "A":
+        #pf.write("\t(default)\n")
+    #else:
+        #pf.write("\n")
     
-    pf.write("Domain distance networks:\t\"" + str(options.domaindist_networks) + "\"")
-    if options.domaindist_networks == "":
-        pf.write("\t(default)\n")
-    else:
-        pf.write("\n")
+    #pf.write("Domain distance networks:\t\"" + str(options.domaindist_networks) + "\"")
+    #if options.domaindist_networks == "":
+        #pf.write("\t(default)\n")
+    #else:
+        #pf.write("\n")
 
-    pf.write("Jaccard weight:\t" + str(options.Jaccardw))
-    if options.Jaccardw == 0.2:
-        pf.write("\t(default)\n")
-    else:
-        pf.write("\n")
+    #pf.write("Jaccard weight:\t" + str(options.Jaccardw))
+    #if options.Jaccardw == 0.2:
+        #pf.write("\t(default)\n")
+    #else:
+        #pf.write("\n")
         
-    pf.write("DDS weight:\t" + str(options.DDSw))
-    if options.DDSw == 0.75:
-        pf.write("\t(default)\n")
-    else:
-        pf.write("\n")
+    #pf.write("DDS weight:\t" + str(options.DDSw))
+    #if options.DDSw == 0.75:
+        #pf.write("\t(default)\n")
+    #else:
+        #pf.write("\n")
         
     #pf.write("GK weight:\t" + str(options.GKw))
     #if options.GKw == 0.05:
@@ -595,11 +612,11 @@ def write_parameters(output_folder, options):
     #else:
         #pf.write("\n")
         
-    pf.write("Anchor domain weight:\t" + str(options.anchorboost))
-    if options.anchorboost == 0.1:
-        pf.write("\t(default)\n")
-    else:
-        pf.write("\n")
+    #pf.write("Anchor domain weight:\t" + str(options.anchorboost))
+    #if options.anchorboost == 0.1:
+        #pf.write("\t(default)\n")
+    #else:
+        #pf.write("\n")
 
     #pf.write("Output folder for domain fasta files:\t" + options.domainsout)
     #if options.domainsout == "domains":
@@ -631,8 +648,8 @@ def write_parameters(output_folder, options):
     else:
         pf.write("\n")
         
-    pf.write("Skip MAFFT?:\t" + ("True" if options.skip_mafft else "False"))
-    if not options.skip_mafft:
+    pf.write("Skip Multiple Alignment?:\t" + ("True" if options.skip_ma else "False"))
+    if not options.skip_ma:
         pf.write("\t(default)\n")
     else:
         pf.write("\n")
@@ -643,11 +660,11 @@ def write_parameters(output_folder, options):
     else:
         pf.write("\n")
     
-    pf.write("Cutoff values for final network:\t" + options.sim_cutoffs)
-    if options.sim_cutoffs == "1,0.85,0.75,0.6,0.4,0.2":
-        pf.write("\t(default)\n")
-    else:
-        pf.write("\n")
+    pf.write("Cutoff values for final network:\t" + options.cutoffs)
+    #if options.cutoffs == "1.0":
+        #pf.write("\t(default)\n")
+    #else:
+        #pf.write("\n")
         
     #pf.write("Neighborhood variable for GK:\t" + str(options.nbhood))
     #if options.nbhood == 4:
@@ -655,7 +672,7 @@ def write_parameters(output_folder, options):
     #else:
         #pf.write("\n")
     
-    pf.write("\nMAFFT parameters:\n")
+    pf.write("\nMA parameters:\n")
     
     pf.write("Additional MAFFT parameters:\t\"" + options.mafft_pars + "\"")
     if options.mafft_pars == "":
