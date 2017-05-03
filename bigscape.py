@@ -41,7 +41,8 @@ from Bio.SubsMat.MatrixInfo import pam250 as scoring_matrix
 
 from functions import *
 from munkres import Munkres
-
+from sklearn.cluster import AffinityPropagation
+import numpy as np
 
 
 def get_gbk_files(inputdir, min_bgc_size, exclude_gbk_str, gbk_group):
@@ -816,7 +817,47 @@ def parseHmmScan(hmmscanResults, pfd_folder, pfs_folder, overlapCutoff):
         sys.exit("Error: hmmscan file " + outputbase + " was not found! (parseHmmScan)")
 
     return("")
-   
+
+def clusterJson(outputFile,matrix,cutoff=0.99,damping=0.8):
+    ## generate similarity matrix from distance score - any distance higher than the distance cutoff will result in a similarity score of 0
+    bgcs = set()
+    simDict = {}
+    # Doing this so it only has to go through the matrix once
+    for ((gc1, gc2, weights_kind),records) in matrix.iteritems():
+        bgcs.add(gc1)
+        bgcs.add(gc2)
+        if records[5] <= cutoff:
+            similarity = 1 - records[5]
+        else:
+            similarity = 0
+        gcSimilarities = simDict.setdefault(gc1,{})
+        gcSimilarities[gc2] = similarity
+    # preserve order
+    bgcs = sorted(list(bgcs))
+    for bgc in bgcs:
+        if bgc in simDict.keys():
+            simDict[bgc][bgc] = 1
+        else:
+            simDict[bgc] = {bgc:1}
+
+    triUdistMatrix = np.array([[simDict[bgc2].get(bgc1,0) for bgc1 in bgcs] for bgc2 in bgcs])
+    symDistMatrix = triUdistMatrix + triUdistMatrix.T - np.diag(triUdistMatrix.diagonal())
+    labels = AffinityPropagation(damping=damping, max_iter=500,
+                                 preference=None,affinity='precomputed').fit_predict(symDistMatrix)
+    numBGCs = len(bgcs)
+    bs_distances = [list(triUdistMatrix[idx,idx:numBGCs]) for idx in xrange(numBGCs)]
+    bs_data = [{"id":bgc} for bgc in bgcs]
+    familiesDict = {}
+    for idx,label in enumerate(labels):
+        members = familiesDict.setdefault(label,[])
+        members.append(idx)
+        familiesDict[label] = members
+    bs_families = [{'id':'FAM_%.3d' % family,'members':members} for family,members in familiesDict.iteritems()]
+    with open(outputFile,'w') as outfile:
+        outfile.write('var bs_distances=%s\n' % str(bs_distances))
+        outfile.write('var bs_data=%s\n' % str(bs_data))
+        outfile.write('var bs_families=%s' % str(bs_families))
+    return
 
 def CMD_parser():
     parser = OptionParser()
@@ -1372,8 +1413,10 @@ if __name__=="__main__":
             network_matrix_mix = generate_network(cluster_pairs, cores)
                 
             print("  Writing output files")
+            pathBase = os.path.join(output_folder, networks_folder_all, "all_mix")
+            clusterJson(pathBase + '.json', network_matrix_mix)
             for cutoff in cutoff_list:
-                path = os.path.join(output_folder, networks_folder_all, "all_mix_c" + str(cutoff) + ".network")
+                path = "_c" + str(cutoff) + '.network'
                 write_network_matrix(network_matrix_mix, cutoff, path, include_disc_nodes, group_dct)
                 
             # free memory if we're not going to reuse this for samples
@@ -1427,8 +1470,10 @@ if __name__=="__main__":
                     network_matrix = generate_network(cluster_pairs, cores)
                         
                     print("   Writing output files")
+                    pathBase = os.path.join(output_folder, networks_folder_all, folder_name, "all" + folder_name)
+                    clusterJson(pathBase + '.json', network_matrix)
                     for cutoff in cutoff_list:
-                        path = os.path.join(output_folder, networks_folder_all, folder_name, "all_" + folder_name + "_c" + str(cutoff) + ".network")
+                        path = pathBase + "_c" + str(cutoff) + '.network'
                         write_network_matrix(network_matrix, cutoff, path, include_disc_nodes, group_dct)
                         
                     # keep the data if we have to reuse it
@@ -1474,8 +1519,10 @@ if __name__=="__main__":
                             network_matrix_sample = generate_network(cluster_pairs, cores)
 
                         print("   Writing output files")
+                        pathBase = os.path.join(output_folder, networks_folder_samples, "sample_" + sample + "_mix")
+                        clusterJson(pathBase + '.json', network_matrix_sample)
                         for cutoff in cutoff_list:
-                            path = os.path.join(output_folder, networks_folder_samples, "sample_" + sample + "_mix_c" + str(cutoff) + ".network")
+                            path = pathBase + "_c" + str(cutoff) + '.network'
                             write_network_matrix(network_matrix_sample, cutoff, path, include_disc_nodes, group_dct)
                     
                     # Making network files separating by BGC class
@@ -1532,8 +1579,11 @@ if __name__=="__main__":
                                     network_matrix_sample = generate_network(cluster_pairs, cores)
                                     
                                 print("    Writing output files")
+                                pathBase = os.path.join(output_folder, networks_folder_samples, sample, folder_name,
+                                                        "sample_" + sample + "_" + folder_name)
+                                clusterJson(pathBase + '.json', network_matrix_sample)
                                 for cutoff in cutoff_list:
-                                    path = os.path.join(output_folder, networks_folder_samples, sample, folder_name, "sample_"+sample+"_"+folder_name+"_c" + str(cutoff) + ".network")
+                                    path =pathBase + "_c" + str(cutoff) +'.network'
                                     write_network_matrix(network_matrix_sample, cutoff, path, include_disc_nodes, group_dct)
 
 
