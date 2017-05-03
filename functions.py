@@ -297,16 +297,20 @@ def network_parser(network_file, Jaccardw, DDSw, GKw, anchorboost):
     return network
 
 
-def write_network_matrix(matrix, cutoff, filename, include_singletons, group_dict):
+def write_network_matrix(matrix, cutoff, filename, include_singletons, clusterNames, group_dict):
     """
-    matrix[gc1, gc2] =
-    row:   0      1    2    3       4       5      6      7    8   9   
-          grp1  def1 grp2  def2  -logScr  rawD  sqrtSim  Jac  DDS  AI  
+           
+    matrix
+      0         1           2      3      4       5    6    7    8      9     10   11
+    clus1Idx clus2Idx bgcClassIdx rawD  sqrtSim  Jac  DDS  AI rDDSna  rDDSa   S    Sa
     
-          10      11    12    13
-        rDDSna  rDDSa   S     Sa
+    row:   0      1      2     3    4     5     6     7        8    9   10
+        clus1   clus2  grp1  def1 grp2  def2   rawD  sqrtSim  Jac  DDS  AI  
     
-          [   14      15   <- these two are written directly
+          11      12    13    14
+        rDDSna  rDDSa   S    Sa
+    
+          [   15      16   <- these two are written directly
           [combGrp  ShrdGrp
     """
     networkfile = open(filename, 'w')
@@ -314,16 +318,24 @@ def write_network_matrix(matrix, cutoff, filename, include_singletons, group_dic
     clusterSetAll = set()
     clusterSetConnected = set()
     
-    networkfile.write("Clustername1\tClustername2\tgroup1\tDefinition\tgroup2\tDefinition\t-log2score\tRaw distance\tSquared similarity\tJaccard index\tDDS index\tAdjacency index\traw DDS non-anchor\traw DDS anchor\tNon-anchor domains\tAnchor domains\tCombined group\tShared group\n")
+    networkfile.write("Clustername1\tClustername2\tgroup1\tDefinition\tgroup2\tDefinition\tRaw distance\tSquared similarity\tJaccard index\tDDS index\tAdjacency index\traw DDS non-anchor\traw DDS anchor\tNon-anchor domains\tAnchor domains\tCombined group\tShared group\n")
     
-    for (gc1, gc2, weights_kind) in matrix.keys():
+    for matrix_entry in matrix:
+        gc1Idx, gc2Idx, weights_kind = int(matrix_entry[0]),int(matrix_entry[1]),matrix_entry[2]
+        gc1 = clusterNames[gc1Idx]
+        gc2 = clusterNames[gc2Idx]
         row = [gc1, gc2]
-        row.extend(matrix[gc1, gc2, weights_kind])
+        clus1group = group_dict[gc1]
+        clus2group = group_dict[gc2]
+        row.extend(clus1group)
+        row.extend(clus2group)
+        row.extend(matrix_entry[3:])
+
         
         clusterSetAll.add(gc1)
         clusterSetAll.add(gc2)
-        
-        if row[7] <= cutoff:
+
+        if row[6] <= cutoff:
             clusterSetConnected.add(gc1)
             clusterSetConnected.add(gc2)
             

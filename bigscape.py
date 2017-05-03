@@ -187,27 +187,21 @@ def generate_network(cluster_pairs, cores):
     #Assigns the data to the different workers and pools the results back into
     # the network_matrix variable
     network_matrix = pool.map(generate_dist_matrix, cluster_pairs)
-    
     # --- Serialized version of distance calculation ---
     # For the time being, use this if you have memory issues
     #network_matrix = []
     #for pair in cluster_pairs:
       #network_matrix.append(generate_dist_matrix(pair))
-
-    # use a dictionary to store results
-    network_matrix_dict = {}
-    for row in network_matrix:
-        network_matrix_dict[row[0], row[1], row[2]] = row[3:]
-    
-    return network_matrix_dict
+    return network_matrix
 
 
-def generate_dist_matrix(parms):    
+def generate_dist_matrix(parms):
     #Get the values from the parameters
-    cluster1 = parms[0]
-    cluster2 = parms[1]
-    bgc_class = parms[2]
-    
+    cluster1Idx,cluster2Idx,bgcClassIdx = map(int,parms)
+    cluster1 = clusterNames[cluster1Idx]
+    cluster2 = clusterNames[cluster2Idx]
+    bgc_class = bgcClassNames[bgcClassIdx]
+
     try:
         domain_list_A = DomainList[cluster1]
         domain_list_B = DomainList[cluster2]
@@ -232,28 +226,28 @@ def generate_dist_matrix(parms):
             
         # last two values (S, Sa) should really be zero but this could give rise to errors when parsing 
         # the network file (unless we catched the case S = Sa = 0
-        return [cluster1, cluster2, group_dct[cluster1][0], group_dct[cluster1][1], \
-            group_dct[cluster2][0],group_dct[cluster2][1], '0.0', '1.0', '0.0', '0.0', '0.0', '0.0', "1.0", "1.0", "1", "1"] 
+
+        # cluster1Idx, cluster2Idx, bgcClassIdx, distance, jaccard, DDS, AI, rDDSNa, rDDSa, S, Sa
+        return array('f',[cluster1Idx,cluster2Idx,bgcClassIdx,  1,0,0,0,0,0,1,1])
     
 
-    dist, jaccard, dds, ai, rDDSna, rDDS, S, Sa = cluster_distance(cluster1, cluster2, domain_list_A, domain_list_B, bgc_class) #sequence dist
+    dist, jaccard, dds, ai, rDDSna, rDDS, S, Sa = cluster_distance(cluster1, cluster2,
+                                                                   domain_list_A, domain_list_B, bgc_class) #sequence dist
         
-    if dist == 0:
-        logscore = float("inf")
-    else:
-        logscore = 0
-        try:
-            logscore = log(dist, 2) #Write exception, ValueError
-            logscore = -1.0*logscore
-        except ValueError:
-            print("ERROR: Unexpected issue when calculating logscore.")
-            print(cluster1 + " - " + cluster2 + ": " + str(dist))
+    # if dist == 0:
+    #     logscore = float("inf")
+    # else:
+    #     logscore = 0
+    #     try:
+    #         logscore = log(dist, 2) #Write exception, ValueError
+    #         logscore = -1.0*logscore
+    #     except ValueError:
+    #         print("ERROR: Unexpected issue when calculating logscore.")
+    #         print(cluster1 + " - " + cluster2 + ": " + str(dist))
             
-    #clustername1 clustername2 group1, def1, group2, def2, -log2score, 
-    # dist, squared similarity, j, dds, ai
-    network_row = [cluster1, cluster2, bgc_class, group_dct[cluster1][0], group_dct[cluster1][1], \
-        group_dct[cluster2][0], group_dct[cluster2][1], logscore, dist, (1-dist)**2, \
-        jaccard, dds, ai, rDDSna, rDDS, S, Sa]
+    #cluster1Idx, cluster2Idx, bgcClassIdx, distance, jaccard, DDS, AI, rDDSNa, rDDSa, S, Sa
+
+    network_row = array('f',[cluster1Idx, cluster2Idx, bgcClassIdx, dist, (1-dist)**2, jaccard, dds, ai, rDDSna, rDDS, S, Sa])
     
     return network_row
     
@@ -823,11 +817,14 @@ def clusterJson(outputFile,matrix,cutoff=0.99,damping=0.8):
     bgcs = set()
     simDict = {}
     # Doing this so it only has to go through the matrix once
-    for ((gc1, gc2, weights_kind),records) in matrix.iteritems():
+    for row in matrix:
+        gc1 = row[0]
+        gc2 = row[1]
+        distance = row[3]
         bgcs.add(gc1)
         bgcs.add(gc2)
-        if records[5] <= cutoff:
-            similarity = 1 - records[5]
+        if distance <= cutoff:
+            similarity = 1 - distance
         else:
             similarity = 0
         gcSimilarities = simDict.setdefault(gc1,{})
@@ -845,8 +842,8 @@ def clusterJson(outputFile,matrix,cutoff=0.99,damping=0.8):
     labels = AffinityPropagation(damping=damping, max_iter=500,
                                  preference=None,affinity='precomputed').fit_predict(symDistMatrix)
     numBGCs = len(bgcs)
-    bs_distances = [list(triUdistMatrix[idx,idx:numBGCs]) for idx in xrange(numBGCs)]
-    bs_data = [{"id":bgc} for bgc in bgcs]
+    bs_distances = [[float('%.3f' % sim) for sim in triUdistMatrix[idx,idx:numBGCs]] for idx in xrange(numBGCs)]
+    bs_data = [{"id":clusterNames[int(bgc)]} for bgc in bgcs]
     familiesDict = {}
     for idx,label in enumerate(labels):
         members = familiesDict.setdefault(label,[])
@@ -891,11 +888,11 @@ def CMD_parser():
     parser.add_argument("--mix", dest="mix", action="store_true", default=False, help="By default, BiG-SCAPE separates the analysis according to the BGC product (PKS Type I, NRPS, RiPPs, etc.) and will create network directories for each class. Toggle to include an analysis mixing all classes")
     
     parser.add_argument("--hybrids", dest="hybrids", action="store_true", default=False, help="Toggle to also add PKS/NRPS Hybrids to the PKSI, PKSother and NRPS class analysis")
-
+    
     parser.add_argument("--metagenomic", dest="metagenomic", action="store_true", default=False, help="Activate metagenomic mode. BiG-SCAPE will change the logic in the distance calculation phase to try to perform local alignments of shorter, fragmented BGCs.")
 
     parser.add_argument("--no_classify", dest="no_classify", action="store_true", default=False, help="By default, BiG-SCAPE classifies the output files analysis based on the BGC product. Toggle to deactivate (in that case, if the --no_classify parameter is not activated, BiG-SCAPE will not create any network file).")
-    
+
     parser.add_argument("--banned_classes", nargs='+', dest="banned_classes", default="", choices=["PKSI", "PKSother", "NRPS", "RiPPs", "Saccharides", "Terpene", "PKS-NRP_Hybrids", "Others"], help="Classes that should NOT be included in the classification. E.g. \"--banned_classes PKSI PKSOther\"")
 
     parser.add_argument("--pfam_dir", dest="pfam_dir",
@@ -959,6 +956,7 @@ if __name__=="__main__":
     global timings_file
     global cores
     global metagenomic
+    global clusterNames, bgcClassNames
     
     include_singletons = options.include_singletons
     
@@ -1087,10 +1085,15 @@ if __name__=="__main__":
         valid_classes.add(key.lower())
     user_banned_classes = set([a.strip().lower() for a in options.banned_classes])
     valid_classes = valid_classes - user_banned_classes
-        
+
     bgc_class_weight["mix"] = (0.2, 0.75, 0.05, 2.0) # default when not separating in classes
-    BGC_classes = defaultdict(list)    
-    
+    BGC_classes = defaultdict(list)
+    # mix class will always be the last element of the tuple
+    bgcClassNames = tuple(sorted(list(bgc_class_weight)) + ["mix"])
+    assert bgcClassNames[-1] == 'mix'
+
+    bgcClassName2idx = dict(zip(bgcClassNames,range(len(bgcClassNames))))
+
     AlignedDomainSequences = {} # Key: specific domain sequence label. Item: aligned sequence
     DomainList = {} # Key: BGC. Item: ordered list of domains
     
@@ -1370,7 +1373,7 @@ if __name__=="__main__":
             
         # Do the multiple alignment
         if len(fasta_domains) > 0:
-            if not options.use_mafft:
+            if options.use_hmmalign:
                 print("\n Using hmmalign")
                 launch_hmmalign(cores, fasta_domains)
                                         
@@ -1401,8 +1404,12 @@ if __name__=="__main__":
                 fasta_dict = fasta_parser(aligned_file_handle)
                 for header in fasta_dict:
                     AlignedDomainSequences[header] = fasta_dict[header]
-    
-    network_matrix_complete = {}
+
+    clusterNames = tuple(sorted(list(clusters)))
+    clusterNames2idx = dict(zip(clusterNames,range(len(clusterNames))))
+
+    network_matrix_complete = []
+
     # Try to make default analysis using all files found inside the input folder
     if options_all:
         print("\nGenerating distance network files with ALL available input files")
@@ -1415,8 +1422,8 @@ if __name__=="__main__":
             print("\n Mixing all BGC classes")
             
             print("  Calculating all pairwise distances")
-            pairs = set(map(tuple, map(sorted, combinations(clusters, 2))))
-            cluster_pairs = [(x, y, "mix") for (x, y) in pairs]
+            pairs = set(map(tuple, map(sorted, combinations(range(len(clusterNames)), 2))))
+            cluster_pairs = [(x, y, -1) for (x, y) in pairs]
             network_matrix_mix = generate_network(cluster_pairs, cores)
                 
             print("  Writing output files")
@@ -1424,37 +1431,37 @@ if __name__=="__main__":
             clusterJson(pathBase + '.json', network_matrix_mix)
             for cutoff in cutoff_list:
                 path = "_c" + str(cutoff) + '.network'
-                write_network_matrix(network_matrix_mix, cutoff, path, include_singletons, group_dct)
+                write_network_matrix(network_matrix_mix, cutoff, path, include_singletons, clusterNames,group_dct)
                 
             # free memory if we're not going to reuse this for samples
-            if not options_samples:
-                network_matrix_mix.clear()
+            # if not options_samples:
+            #     network_matrix_mix.clear()
         
         # Making network files separating by BGC class
         if options_classify:
             print("\n Working for each BGC class")
             
-            # make sure the bgc lists are empty
-            for bgc_class in BGC_classes:
-                del BGC_classes[bgc_class][:]
+            # reinitialize BGC_classes to make sure the bgc lists are empty
+            BGC_classes = defaultdict(list)
         
             # Preparing gene cluster classes
             print("  Sorting the input BGCs\n")
-            for cluster in clusters:
+            for clusterIdx,cluster in enumerate(clusterNames):
                 product = group_dct[cluster][0]
                 predicted_class = sort_bgc(product)
                 if predicted_class.lower() in valid_classes:
-                    BGC_classes[predicted_class].append(cluster)
+                    BGC_classes[predicted_class].append(clusterIdx)
                 
                 # possibly add hybrids to 'pure' classes
                 if options.hybrids and predicted_class == "PKS-NRP_Hybrids":
                     if "nrps" in valid_classes:
-                        BGC_classes["NRPS"].append(cluster)
+                        BGC_classes["NRPS"].append(clusterIdx)
                     if "t1pks" in product and "pksi" in valid_classes:
-                        BGC_classes["PKSI"].append(cluster)
+                        BGC_classes["PKSI"].append(clusterIdx)
                     if "t1pks" not in product and "pksother" in valid_classes:
-                        BGC_classes["PKSother"].append(cluster)
+                        BGC_classes["PKSother"].append(clusterIdx)
 
+            # only make folders for the BGC_classes that are found
             for bgc_class in BGC_classes:
                 folder_name = bgc_class
                 if options.hybrids and bgc_class in ("PKSI", "PKSother", "NRPS"):
@@ -1468,12 +1475,12 @@ if __name__=="__main__":
                 # Create an additional file with the final list of all clusters in the class
                 path_list = os.path.join(output_folder, networks_folder_all, folder_name, "cluster_list_all_" + folder_name + ".txt")
                 with open(path_list, "w") as list_file:
-                    list_file.write("\n".join(BGC_classes[bgc_class]))
+                    list_file.write("\n".join(clusterNames[idx] for idx in BGC_classes[bgc_class]))
                     
                 if len(BGC_classes[bgc_class]) > 1:
                     print("   Calculating all pairwise distances")
                     pairs = set(map(tuple, map(sorted, combinations(BGC_classes[bgc_class], 2))))
-                    cluster_pairs = [(x, y, bgc_class) for (x, y) in pairs]
+                    cluster_pairs = [(x, y, bgcClassName2idx[bgc_class]) for (x, y) in pairs]
                     network_matrix = generate_network(cluster_pairs, cores)
                         
                     print("   Writing output files")
@@ -1481,15 +1488,15 @@ if __name__=="__main__":
                     clusterJson(pathBase + '.json', network_matrix)
                     for cutoff in cutoff_list:
                         path = pathBase + "_c" + str(cutoff) + '.network'
-                        write_network_matrix(network_matrix, cutoff, path, include_singletons, group_dct)
+                        write_network_matrix(network_matrix, cutoff, path, include_singletons,clusterNames, group_dct)
                         
                     # keep the data if we have to reuse it
                     if options_samples:
-                        network_matrix_complete.update(network_matrix)
+                        network_matrix_complete.append(network_matrix)
 
     # Try to make analysis for each sample
     if options_samples:
-        network_matrix_sample = {}
+        network_matrix_sample = []
         
         if len(sampleDict) == 1 and options_all:
             print("\nNOT generating networks per sample (only one sample, covered in the all-vs-all case)")
@@ -1510,35 +1517,39 @@ if __name__=="__main__":
                     # Making network files mixing all classes
                     if options_mix:
                         print("\n  Mixing all BGC classes")
-                            
-                        pairs = set(map(tuple, map(sorted, combinations(sampleClusters, 2))))
+                        sampleClusterIdxs = [clusterNames2idx[cluster] for cluster in sampleClusters]
+                        pairs = set(map(tuple, map(sorted, combinations(sampleClusterIdxs, 2))))
                         
                         # If we did the 'all' case and didn't mix 'classify' and 'mix', 
                         # the pairs' distances should be ready
-                        if options_all and options_mix:
-                            print("   Using distances calculated in the 'all' analysis")
-                            for pair in pairs:
-                                network_matrix_sample[pair[0], pair[1], "mix"] = network_matrix_mix[pair[0], pair[1], "mix"]
-                            network_matrix_mix.clear()
-                        else:
-                            print("   Calculating all pairwise distances")
-                            cluster_pairs = [(x, y, "mix") for (x, y) in pairs]
-                            network_matrix_sample = generate_network(cluster_pairs, cores)
+
+                        ## Can't use this anymore with changed data structure, will have to redo calculations
+
+                        # if options_all and options_mix:
+                        #     print("   Using distances calculated in the 'all' analysis")
+                        #     for pair in pairs:
+                        #         network_matrix_sample[pair[0], pair[1], "mix"] = network_matrix_mix[pair[0], pair[1], "mix"]
+                        #     network_matrix_mix.clear()
+                        # else:
+                        #     print("   Calculating all pairwise distances")
+                        #     cluster_pairs = [(x, y, "mix") for (x, y) in pairs]
+                        #     network_matrix_sample = generate_network(cluster_pairs, cores)
+                        cluster_pairs = [(x, y, -1) for (x, y) in pairs]
+                        network_matrix_sample = generate_network(cluster_pairs, cores)
 
                         print("   Writing output files")
                         pathBase = os.path.join(output_folder, networks_folder_samples, "sample_" + sample + "_mix")
                         clusterJson(pathBase + '.json', network_matrix_sample)
                         for cutoff in cutoff_list:
                             path = pathBase + "_c" + str(cutoff) + '.network'
-                            write_network_matrix(network_matrix_sample, cutoff, path, include_singletons, group_dct)
+                            write_network_matrix(network_matrix_sample, cutoff, path, include_singletons, clusterNames,group_dct)
                     
                     # Making network files separating by BGC class
                     if options_classify:
                         print("\n  Working for each BGC class")
-                        
-                        # make sure the bgc lists are empty
-                        for bgc_class in BGC_classes:
-                            del BGC_classes[bgc_class][:]
+
+                        # reinitialize BGC_classes to make sure the bgc lists are empty
+                        BGC_classes = defaultdict(list)
                     
                         # Preparing gene cluster classes
                         print("   Sorting the input BGCs\n")
@@ -1546,16 +1557,16 @@ if __name__=="__main__":
                             product = group_dct[cluster][0]
                             predicted_class = sort_bgc(product)
                             if predicted_class.lower() in valid_classes:
-                                BGC_classes[predicted_class].append(cluster)
+                                BGC_classes[predicted_class].append(clusterNames2idx[cluster])
                             
                             # possibly add hybrids to 'pure' classes
                             if options.hybrids and predicted_class == "PKS-NRP_Hybrids":
                                 if "nrps" in valid_classes:
-                                    BGC_classes["NRPS"].append(cluster)
+                                    BGC_classes["NRPS"].append(clusterNames2idx[cluster])
                                 if "t1pks" in product and "pksi" in valid_classes:
-                                    BGC_classes["PKSI"].append(cluster)
+                                    BGC_classes["PKSI"].append(clusterNames2idx[cluster])
                                 if "t1pks" not in product and "pksother" in valid_classes:
-                                    BGC_classes["PKSother"].append(cluster)
+                                    BGC_classes["PKSother"].append(clusterNames2idx[cluster])
                         
                         for bgc_class in BGC_classes:
                             folder_name = bgc_class
@@ -1563,7 +1574,7 @@ if __name__=="__main__":
                                 folder_name += "+hybrids"
                                 
                             print("\n   " + folder_name + " (" + str(len(BGC_classes[bgc_class])) + " BGCs)")
-                            network_matrix_sample.clear()
+                            network_matrix_sample = []
                             
                             # create output directory
                             create_directory(os.path.join(output_folder, networks_folder_samples, sample, folder_name), "   Sample " + sample + " - " + bgc_class, False)
@@ -1571,27 +1582,30 @@ if __name__=="__main__":
                             # Create an additional file with the final list of all clusters in the class
                             path_list = os.path.join(output_folder, networks_folder_samples, sample, folder_name, "cluster_list_" + sample + "_" + folder_name + ".txt")
                             with open(path_list, "w") as list_file:
-                                list_file.write("\n".join(BGC_classes[bgc_class]))
+                                list_file.write("\n".join(clusterNames[idx] for idx in BGC_classes[bgc_class]))
 
                             if len(BGC_classes[bgc_class]) > 1:
                                 pairs = set(map(tuple, map(sorted, combinations(BGC_classes[bgc_class], 2))))
-                                
-                                if options_all and options_classify:
-                                    print("    Using distances calculated in the 'all' analysis")
-                                    for pair in pairs:
-                                        network_matrix_sample[pair[0], pair[1], bgc_class] = network_matrix_complete[pair[0], pair[1], bgc_class]
-                                else:
-                                    print("    Calculating all pairwise distances")
-                                    cluster_pairs = [(x, y, bgc_class) for (x, y) in pairs]
-                                    network_matrix_sample = generate_network(cluster_pairs, cores)
-                                    
+
+                                ## Can't use this with new data structure
+                                # if options_all and options_classify:
+                                #     print("    Using distances calculated in the 'all' analysis")
+                                #     for pair in pairs:
+                                #         network_matrix_sample[pair[0], pair[1], bgc_class] = network_matrix_complete[pair[0], pair[1], bgc_class]
+                                # else:
+                                #     print("    Calculating all pairwise distances")
+                                #     cluster_pairs = [(x, y, bgc_class) for (x, y) in pairs]
+                                #     network_matrix_sample = generate_network(cluster_pairs, cores)
+
+                                cluster_pairs = [(x, y, bgcClassName2idx[bgc_class]) for (x, y) in pairs]
+                                network_matrix_sample = generate_network(cluster_pairs, cores)
                                 print("    Writing output files")
                                 pathBase = os.path.join(output_folder, networks_folder_samples, sample, folder_name,
                                                         "sample_" + sample + "_" + folder_name)
                                 clusterJson(pathBase + '.json', network_matrix_sample)
                                 for cutoff in cutoff_list:
                                     path =pathBase + "_c" + str(cutoff) +'.network'
-                                    write_network_matrix(network_matrix_sample, cutoff, path, include_singletons, group_dct)
+                                    write_network_matrix(network_matrix_sample, cutoff, path, include_singletons, clusterNames,group_dct)
 
 
     runtime = time.time()-time1
