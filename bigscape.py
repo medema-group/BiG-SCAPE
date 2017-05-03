@@ -922,7 +922,7 @@ def CMD_parser():
                       help="Skip multiple alignment of domains' sequences. Use if alignments have been generated in a previous run.")
     parser.add_argument("--skip_all", dest="skip_all", action="store_true",
                       default = False, help = "Only generate new network files. ")
-    parser.add_argument("--cutoffs", dest="cutoffs", nargs="+", default="1", type=float, choices=[FloatRange(0.0, 1.0)],
+    parser.add_argument("--cutoffs", dest="cutoffs", nargs="+", default=[1.0], type=float, choices=[FloatRange(0.0, 1.0)],
                       help="Generate networks using multiple raw distance cutoff values, example: \"0.1, 0.25, 0.5, 1.0\". Default: 1.0 (all distances are included)")
 
     options = parser.parse_args()
