@@ -859,10 +859,17 @@ def clusterJson(outputFile,matrix,cutoff=0.99,damping=0.8):
         outfile.write('var bs_families=%s' % str(bs_families))
     return
 
+class FloatRange(object):
+    def __init__(self, start, end):
+        self.start = start
+        self.end = end
+    def __eq__(self, other):
+        return self.start <= other <= self.end
+
 def CMD_parser():
     parser = ArgumentParser()
     
-    parser.add_argument("-o", "--outputdir", dest="outputdir", default="",
+    parser.add_argument("-o", "--outputdir", dest="outputdir", default="", required=True,
                       help="Output directory, this will contain your pfd, pfs, network and hmmscan output files.")
     parser.add_argument("-i", "--inputdir", dest="inputdir", default=os.path.dirname(os.path.realpath(__file__)),
                       help="Input directory of gbk files, if left empty, all gbk files in current and lower directories will be used.")
@@ -889,7 +896,7 @@ def CMD_parser():
 
     parser.add_argument("--no_classify", dest="no_classify", action="store_true", default=False, help="By default, BiG-SCAPE classifies the output files analysis based on the BGC product. Toggle to deactivate (in that case, if the --no_classify parameter is not activated, BiG-SCAPE will not create any network file).")
     
-    parser.add_argument("--banned_classes", dest="banned_classes", default="", help="A comma-separated list of classes that should NOT be included in the classification. Class names should be denoted as follows: PKSI, PKSother, NRPS, RiPPs, Saccharides, Terpene, PKS-NRP_Hybrids or Others. E.g. \"PKSother, PKS-NRP_Hybrids, Others\"")
+    parser.add_argument("--banned_classes", nargs='+', dest="banned_classes", default="", choices=["PKSI", "PKSother", "NRPS", "RiPPs", "Saccharides", "Terpene", "PKS-NRP_Hybrids", "Others"], help="Classes that should NOT be included in the classification. E.g. \"--banned_classes PKSI PKSOther\"")
 
     parser.add_argument("--pfam_dir", dest="pfam_dir",
                       default=os.path.dirname(os.path.realpath(__file__)), 
@@ -917,7 +924,7 @@ def CMD_parser():
                       help="Skip multiple alignment of domains' sequences. Use if alignments have been generated in a previous run.")
     parser.add_argument("--skip_all", dest="skip_all", action="store_true",
                       default = False, help = "Only generate new network files. ")
-    parser.add_argument("--cutoffs", dest="cutoffs", default="1",
+    parser.add_argument("--cutoffs", dest="cutoffs", nargs="+", default="1", type=float, choices=[FloatRange(0.0, 1.0)],
                       help="Generate networks using multiple raw distance cutoff values, example: \"0.1, 0.25, 0.5, 1.0\". Default: 1.0 (all distances are included)")
 
     options = parser.parse_args()
@@ -964,7 +971,7 @@ if __name__=="__main__":
     options_classify = not options.no_classify
     metagenomic = options.metagenomic
     
-    cutoff_list = [float(c.strip()) for c in options.cutoffs.split(",")]
+    cutoff_list = options.cutoffs
     for c in cutoff_list:
         if c <= 0.0:
             cutoff_list.remove(c)
@@ -1078,7 +1085,7 @@ if __name__=="__main__":
     valid_classes = set()
     for key in bgc_class_weight:
         valid_classes.add(key.lower())
-    user_banned_classes = set([a.strip().lower() for a in options.banned_classes.split(",")])
+    user_banned_classes = set([a.strip().lower() for a in options.banned_classes])
     valid_classes = valid_classes - user_banned_classes
         
     bgc_class_weight["mix"] = (0.2, 0.75, 0.05, 2.0) # default when not separating in classes

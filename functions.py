@@ -660,7 +660,7 @@ def write_parameters(output_folder, options):
     else:
         pf.write("\n")
     
-    pf.write("Cutoff values for final network:\t" + options.cutoffs)
+    pf.write("Cutoff values for final network:\t" + ",".join([str(c) for c in options.cutoffs]))
     #if options.cutoffs == "1.0":
         #pf.write("\t(default)\n")
     #else:
