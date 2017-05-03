@@ -907,7 +907,7 @@ def CMD_parser():
                       help="Maxiterate parameter in MAFFT, default is 1000, corresponds to the FFT-NS-2 method")
     parser.add_argument("--mafft_threads", dest="mafft_threads", default=0,
                       help="Set the number of threads in MAFFT, -1 sets the number of threads as the number of physical cores. Default: same as --cores parameter")
-    parser.add_argument("--use_hmmalign", dest="use_hmmalign", action="store_true", default=False, help="Use hmmalign instead of MAFFT for multiple alignment of domain sequences")
+    parser.add_argument("--use_mafft", dest="use_mafft", action="store_true", default=False, help="Use MAFFT instead of hmmalign for multiple alignment of domain sequences")
     
     parser.add_argument("--force_hmmscan", dest="force_hmmscan", action="store_true", default=False, 
                       help="Force domain prediction using hmmscan even if BiG-SCAPE finds processed domtable files (e.g. to use a new version of PFAM).")
@@ -1363,7 +1363,7 @@ if __name__=="__main__":
             
         # Do the multiple alignment
         if len(fasta_domains) > 0:
-            if options.use_hmmalign:
+            if not options.use_mafft:
                 print("\n Using hmmalign")
                 launch_hmmalign(cores, fasta_domains)
                                         
