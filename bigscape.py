@@ -920,12 +920,12 @@ def CMD_parser():
     parser.add_argument("--cutoffs", dest="cutoffs", default="1",
                       help="Generate networks using multiple raw distance cutoff values, example: \"0.1, 0.25, 0.5, 1.0\". Default: 1.0 (all distances are included)")
 
-    (options, args) = parser.parse_args()
-    return options, args
+    options = parser.parse_args()
+    return options
 
 
 if __name__=="__main__":
-    options, args = CMD_parser()
+    options = CMD_parser()
     
     if options.outputdir == "":
         print "please provide a name for an output folder using parameter -o or --outputdir"
