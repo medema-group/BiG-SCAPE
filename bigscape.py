@@ -43,6 +43,7 @@ from functions import *
 from munkres import Munkres
 from sklearn.cluster import AffinityPropagation
 import numpy as np
+from array import array
 
 
 def get_gbk_files(inputdir, min_bgc_size, exclude_gbk_str, gbk_group):
@@ -1373,7 +1374,7 @@ if __name__=="__main__":
             
         # Do the multiple alignment
         if len(fasta_domains) > 0:
-            if options.use_hmmalign:
+            if not options.use_mafft:
                 print("\n Using hmmalign")
                 launch_hmmalign(cores, fasta_domains)
                                         
