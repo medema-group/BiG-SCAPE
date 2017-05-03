@@ -297,7 +297,7 @@ def network_parser(network_file, Jaccardw, DDSw, GKw, anchorboost):
     return network
 
 
-def write_network_matrix(matrix, cutoff, filename, include_disc_nodes, group_dict):
+def write_network_matrix(matrix, cutoff, filename, include_singletons, group_dict):
     """
     matrix[gc1, gc2] =
     row:   0      1    2    3       4       5      6      7    8   9   
@@ -346,7 +346,7 @@ def write_network_matrix(matrix, cutoff, filename, include_disc_nodes, group_dic
             networkfile.write("\t".join(map(str,row)) + "\n")
 
     #Add the nodes without any edges, give them an edge to themselves with a distance of 0
-    if include_disc_nodes == True:
+    if include_singletons == True:
         for gc in clusterSetAll-clusterSetConnected:
             #Arbitrary numbers for S and Sa domains: 1 of each (logical would be 0,0 but 
             # that could mess re-analysis; 
@@ -356,7 +356,7 @@ def write_network_matrix(matrix, cutoff, filename, include_disc_nodes, group_dic
     networkfile.close()
     
 
-def write_network_matrix2(matrix, cutoff_list, filename, include_disc_nodes, group_dict):
+def write_network_matrix2(matrix, cutoff_list, filename, include_singletons, group_dict):
     """
     This version of the function reads the distance matrix only once
     
@@ -418,7 +418,7 @@ def write_network_matrix2(matrix, cutoff_list, filename, include_disc_nodes, gro
             h.write("\t".join(map(str,row)) + "\n")
 
     #Add the nodes without any edges, give them an edge to themselves with a distance of 0
-    if include_disc_nodes == True:
+    if include_singletons == True:
         for gc in clusterSetAll-clusterSetConnected:
             #Arbitrary numbers for S and Sa domains: 1 of each (logical would be 0,0 but 
             # that could mess re-analysis; 
@@ -564,8 +564,8 @@ def write_parameters(output_folder, options):
     else:
         pf.write("\n")
     
-    pf.write("Include disc nodes:\t" + ("True" if options.include_disc_nodes else "False"))
-    if not options.include_disc_nodes:
+    pf.write("Include disc nodes:\t" + ("True" if options.include_singletons else "False"))
+    if not options.include_singletons:
         pf.write("\t(default)\n")
     else:
         pf.write("\n")

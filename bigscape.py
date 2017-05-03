@@ -31,7 +31,7 @@ from glob import glob
 from itertools import combinations
 from collections import defaultdict
 from multiprocessing import Pool, cpu_count
-from optparse import OptionParser
+from argparse import ArgumentParser
 
 from Bio import SeqIO
 from Bio.SeqFeature import BeforePosition, AfterPosition
@@ -860,64 +860,64 @@ def clusterJson(outputFile,matrix,cutoff=0.99,damping=0.8):
     return
 
 def CMD_parser():
-    parser = OptionParser()
+    parser = ArgumentParser()
     
-    parser.add_option("-o", "--outputdir", dest="outputdir", default="",
+    parser.add_argument("-o", "--outputdir", dest="outputdir", default="",
                       help="Output directory, this will contain your pfd, pfs, network and hmmscan output files.")
-    parser.add_option("-i", "--inputdir", dest="inputdir", default=os.path.dirname(os.path.realpath(__file__)),
+    parser.add_argument("-i", "--inputdir", dest="inputdir", default=os.path.dirname(os.path.realpath(__file__)),
                       help="Input directory of gbk files, if left empty, all gbk files in current and lower directories will be used.")
-    parser.add_option("-c", "--cores", dest="cores", default=cpu_count(),
-                      help="Set the amount of cores the script may use (default: use all available cores)")
-    parser.add_option("-v", "--verbose", dest="verbose", action="store_true", default=False,
+    parser.add_argument("-c", "--cores", dest="cores", default=cpu_count(),
+                      help="Set the number of cores the script may use (default: use all available cores)")
+    parser.add_argument("-v", "--verbose", dest="verbose", action="store_true", default=False,
                       help="Prints more detailed information. Toggle to true.")
-    parser.add_option("--include_disc_nodes", dest="include_disc_nodes", action="store_true", default=False,
+    parser.add_argument("--include_singletons", dest="include_singletons", action="store_true", default=False,
                       help="Include nodes that have no edges to other nodes from the network. Toggle to activate.")
-    parser.add_option("-d", "--domain_overlap_cutoff", dest="domain_overlap_cutoff", default=0.1,
+    parser.add_argument("-d", "--domain_overlap_cutoff", dest="domain_overlap_cutoff", default=0.1,
                       help="Specify at which overlap percentage domains are considered to overlap.")
-    parser.add_option("-m", "--min_bgc_size", dest="min_bgc_size", default=0,
+    parser.add_argument("-m", "--min_bgc_size", dest="min_bgc_size", default=0,
                       help="Provide the minimum size of a BGC to be included in the analysis. Default is 0 base pairs")
     
-    parser.add_option("-s", "--samples", dest="samples", action="store_true", default=False, help="Separate the input files into samples according to their containing folder within the input folder. Toggle to activate")
+    parser.add_argument("-s", "--samples", dest="samples", action="store_true", default=False, help="Separate the input files into samples according to their containing folder within the input folder. Toggle to activate")
     
-    parser.add_option("--no_all", dest="no_all", action="store_true", default=False, help="By default, BiG-SCAPE uses a single data set comprised of all input files available recursively within the input folder. Toggle to disactivate this behaviour (in that case, if the --samples parameter is not activated, BiG-SCAPE will not create any network file)")
+    parser.add_argument("--no_all", dest="no_all", action="store_true", default=False, help="By default, BiG-SCAPE uses a single data set comprised of all input files available recursively within the input folder. Toggle to disactivate this behaviour (in that case, if the --samples parameter is not activated, BiG-SCAPE will not create any network file)")
     
-    parser.add_option("--mix", dest="mix", action="store_true", default=False, help="By default, BiG-SCAPE separates analysis according to the BGC product (PKS Type I, NRPS, RiPPs, etc.) and will create network directories for each class. Toggle to include an analysis mixing all classes")
+    parser.add_argument("--mix", dest="mix", action="store_true", default=False, help="By default, BiG-SCAPE separates the analysis according to the BGC product (PKS Type I, NRPS, RiPPs, etc.) and will create network directories for each class. Toggle to include an analysis mixing all classes")
     
-    parser.add_option("--no_classify", dest="no_classify", action="store_true", default=False, help="By default, BiG-SCAPE classifies the output files analysis based on the BGC product. Toggle to desactivate (in that case, if the --no_classify parameter is not activated, BiG-SCAPE will not create any network file).")
-    
-    parser.add_option("--banned_classes", dest="banned_classes", default="", help="A comma-separated list of classes that should NOT be included in the classification. Currently: PKSI, PKSother, NRPS, RiPPs, Saccharides, Terpene, PKS-NRP_Hybrids and Others. E.g. \"PKSother, PKS-NRP_Hybrids, Others\"")
+    parser.add_argument("--hybrids", dest="hybrids", action="store_true", default=False, help="Toggle to also add PKS/NRPS Hybrids to the PKSI, PKSother and NRPS class analysis")
 
-    parser.add_option("--metagenomic", dest="metagenomic", action="store_true", default=False, help="Activate Metagenomic mode. BiG-SCAPE will change the logic in the distance calculation phase to try to align shorter, fragmented BGCs.")
+    parser.add_argument("--metagenomic", dest="metagenomic", action="store_true", default=False, help="Activate metagenomic mode. BiG-SCAPE will change the logic in the distance calculation phase to try to perform local alignments of shorter, fragmented BGCs.")
 
-    parser.add_option("--hybrids", dest="hybrids", action="store_true", default=False, help="Toggle to also add PKS/NRPS Hybrids to the PKSI, PKSother and NRPS class analysis")
+    parser.add_argument("--no_classify", dest="no_classify", action="store_true", default=False, help="By default, BiG-SCAPE classifies the output files analysis based on the BGC product. Toggle to deactivate (in that case, if the --no_classify parameter is not activated, BiG-SCAPE will not create any network file).")
+    
+    parser.add_argument("--banned_classes", dest="banned_classes", default="", help="A comma-separated list of classes that should NOT be included in the classification. Class names should be denoted as follows: PKSI, PKSother, NRPS, RiPPs, Saccharides, Terpene, PKS-NRP_Hybrids or Others. E.g. \"PKSother, PKS-NRP_Hybrids, Others\"")
 
-    parser.add_option("--pfam_dir", dest="pfam_dir",
+    parser.add_argument("--pfam_dir", dest="pfam_dir",
                       default=os.path.dirname(os.path.realpath(__file__)), 
                       help="Location of hmmpress-processed Pfam files. Default is same location of BiG-SCAPE")
-    parser.add_option("--anchorfile", dest="anchorfile", default="anchor_domains.txt",
-                      help="Provide a custom name for the anchor domains file, default is anchor_domains.txt.")
-    parser.add_option("--exclude_gbk_str", dest="exclude_gbk_str", default="",
+    parser.add_argument("--anchorfile", dest="anchorfile", default="anchor_domains.txt",
+                      help="Provide a custom location for the anchor domains file, default is anchor_domains.txt.")
+    parser.add_argument("--exclude_gbk_str", dest="exclude_gbk_str", default="",
                       help="If this string occurs in the gbk filename, this file will not be used for the analysis.")
     
-    parser.add_option("--mafft_pars", dest="mafft_pars", default="",
+    parser.add_argument("--mafft_pars", dest="mafft_pars", default="",
                       help="Add single/multiple parameters for MAFFT specific enclosed by quotation marks e.g. \"--nofft --parttree\"")
-    parser.add_option("--al_method", dest="al_method", default="--retree 2",
+    parser.add_argument("--al_method", dest="al_method", default="--retree 2",
                       help="alignment method for MAFFT, if there's a space in the method's name, enclose by quotation marks. default: \"--retree 2\" corresponds to the FFT-NS-2 method")
-    parser.add_option("--maxiterate", dest="maxit", default=1000,
+    parser.add_argument("--maxiterate", dest="maxit", default=1000,
                       help="Maxiterate parameter in MAFFT, default is 1000, corresponds to the FFT-NS-2 method")
-    parser.add_option("--mafft_threads", dest="mafft_threads", default=0,
+    parser.add_argument("--mafft_threads", dest="mafft_threads", default=0,
                       help="Set the number of threads in MAFFT, -1 sets the number of threads as the number of physical cores. Default: same as --cores parameter")
-    parser.add_option("--use_hmmalign", dest="use_hmmalign", action="store_true", default=False, help="Use hmmalign instead of MAFFT for multiple alignment of domain sequences")
+    parser.add_argument("--use_hmmalign", dest="use_hmmalign", action="store_true", default=False, help="Use hmmalign instead of MAFFT for multiple alignment of domain sequences")
     
-    parser.add_option("--force_hmmscan", dest="force_hmmscan", action="store_true", default=False, 
+    parser.add_argument("--force_hmmscan", dest="force_hmmscan", action="store_true", default=False, 
                       help="Force domain prediction using hmmscan even if BiG-SCAPE finds processed domtable files (e.g. to use a new version of PFAM).")
-    parser.add_option("--skip_hmmscan", dest="skip_hmmscan", action="store_true", default=False,
+    parser.add_argument("--skip_hmmscan", dest="skip_hmmscan", action="store_true", default=False,
                       help="When skipping hmmscan, the GBK files should be available, and the domain tables need to be in the output folder.")
-    parser.add_option("--skip_ma", dest="skip_ma", action="store_true", default=False, 
-                      help="Skip Multiple Alignment of domains' sequences.")
-    parser.add_option("--skip_all", dest="skip_all", action="store_true",
+    parser.add_argument("--skip_ma", dest="skip_ma", action="store_true", default=False, 
+                      help="Skip multiple alignment of domains' sequences. Use if alignments have been generated in a previous run.")
+    parser.add_argument("--skip_all", dest="skip_all", action="store_true",
                       default = False, help = "Only generate new network files. ")
-    parser.add_option("--cutoffs", dest="cutoffs", default="1",
+    parser.add_argument("--cutoffs", dest="cutoffs", default="1",
                       help="Generate networks using multiple raw distance cutoff values, example: \"0.1, 0.25, 0.5, 1.0\". Default: 1.0 (all distances are included)")
 
     (options, args) = parser.parse_args()
@@ -953,7 +953,7 @@ if __name__=="__main__":
     global cores
     global metagenomic
     
-    include_disc_nodes = options.include_disc_nodes
+    include_singletons = options.include_singletons
     
     cores = int(options.cores)
     
@@ -1417,7 +1417,7 @@ if __name__=="__main__":
             clusterJson(pathBase + '.json', network_matrix_mix)
             for cutoff in cutoff_list:
                 path = "_c" + str(cutoff) + '.network'
-                write_network_matrix(network_matrix_mix, cutoff, path, include_disc_nodes, group_dct)
+                write_network_matrix(network_matrix_mix, cutoff, path, include_singletons, group_dct)
                 
             # free memory if we're not going to reuse this for samples
             if not options_samples:
@@ -1474,7 +1474,7 @@ if __name__=="__main__":
                     clusterJson(pathBase + '.json', network_matrix)
                     for cutoff in cutoff_list:
                         path = pathBase + "_c" + str(cutoff) + '.network'
-                        write_network_matrix(network_matrix, cutoff, path, include_disc_nodes, group_dct)
+                        write_network_matrix(network_matrix, cutoff, path, include_singletons, group_dct)
                         
                     # keep the data if we have to reuse it
                     if options_samples:
@@ -1523,7 +1523,7 @@ if __name__=="__main__":
                         clusterJson(pathBase + '.json', network_matrix_sample)
                         for cutoff in cutoff_list:
                             path = pathBase + "_c" + str(cutoff) + '.network'
-                            write_network_matrix(network_matrix_sample, cutoff, path, include_disc_nodes, group_dct)
+                            write_network_matrix(network_matrix_sample, cutoff, path, include_singletons, group_dct)
                     
                     # Making network files separating by BGC class
                     if options_classify:
@@ -1584,7 +1584,7 @@ if __name__=="__main__":
                                 clusterJson(pathBase + '.json', network_matrix_sample)
                                 for cutoff in cutoff_list:
                                     path =pathBase + "_c" + str(cutoff) +'.network'
-                                    write_network_matrix(network_matrix_sample, cutoff, path, include_disc_nodes, group_dct)
+                                    write_network_matrix(network_matrix_sample, cutoff, path, include_singletons, group_dct)
 
 
     runtime = time.time()-time1
