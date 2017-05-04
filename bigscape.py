@@ -946,7 +946,7 @@ def CMD_parser():
 
     parser.add_argument("--no_classify", dest="no_classify", action="store_true", default=False, help="By default, BiG-SCAPE classifies the output files analysis based on the BGC product. Toggle to deactivate (in that case, if the --no_classify parameter is not activated, BiG-SCAPE will not create any network file).")
 
-    parser.add_argument("--banned_classes", nargs='+', dest="banned_classes", default="", choices=["PKSI", "PKSother", "NRPS", "RiPPs", "Saccharides", "Terpene", "PKS-NRP_Hybrids", "Others"], help="Classes that should NOT be included in the classification. E.g. \"--banned_classes PKSI PKSOther\"")
+    parser.add_argument("--banned_classes", nargs='+', dest="banned_classes", default=[], choices=["PKSI", "PKSother", "NRPS", "RiPPs", "Saccharides", "Terpene", "PKS-NRP_Hybrids", "Others"], help="Classes that should NOT be included in the classification. E.g. \"--banned_classes PKSI PKSOther\"")
 
     parser.add_argument("--pfam_dir", dest="pfam_dir",
                       default=os.path.dirname(os.path.realpath(__file__)), 
