@@ -335,7 +335,7 @@ def write_network_matrix(matrix, cutoff, filename, include_singletons, clusterNa
         clusterSetAll.add(gc1)
         clusterSetAll.add(gc2)
 
-        if row[6] <= cutoff:
+        if row[6] < cutoff:
             clusterSetConnected.add(gc1)
             clusterSetConnected.add(gc2)
             

@@ -815,7 +815,7 @@ def parseHmmScan(hmmscanResults, pfd_folder, pfs_folder, overlapCutoff):
 
     return("")
 
-def clusterJson_sparse(outputFile,matrix,cutoff=0.99,damping=0.8):
+def clusterJson_sparse(outputFile,matrix,cutoff=1.0,damping=0.8):
     ## implementation of clusterJson using csr sparce matrices
     bgcs = set()
     simDict = {}
@@ -826,7 +826,7 @@ def clusterJson_sparse(outputFile,matrix,cutoff=0.99,damping=0.8):
         distance = row[3]
         bgcs.add(gc1)
         bgcs.add(gc2)
-        if distance <= cutoff:
+        if distance < cutoff:
             similarity = 1 - distance
         else:
             similarity = 0
@@ -863,7 +863,7 @@ def clusterJson_sparse(outputFile,matrix,cutoff=0.99,damping=0.8):
         outfile.write('var bs_families=%s' % str(bs_families))
     return
 
-def clusterJson(outputFile,matrix,cutoff=0.99,damping=0.8):
+def clusterJson(outputFile,matrix,cutoff=1.0,damping=0.8):
     # From the data structure compute a similarity matrix for clustering, cluster using AP and then output a json
     # file with the results of the clustering for visualization
     # any distance higher than the distance cutoff will result in a similarity score of 0
@@ -876,7 +876,7 @@ def clusterJson(outputFile,matrix,cutoff=0.99,damping=0.8):
         distance = row[3]
         bgcs.add(gc1)
         bgcs.add(gc2)
-        if distance <= cutoff:
+        if distance < cutoff:
             similarity = 1 - distance
         else:
             similarity = 0
@@ -1481,8 +1481,8 @@ if __name__=="__main__":
                 
             print("  Writing output files")
             pathBase = os.path.join(output_folder, networks_folder_all, "all_mix")
-            clusterJson_sparse(pathBase + '.json', network_matrix_mix)
             for cutoff in cutoff_list:
+                clusterJson_sparse(pathBase + "_c" + str(cutoff) + '.json', network_matrix_mix,cutoff=cutoff)
                 path = "_c" + str(cutoff) + '.network'
                 write_network_matrix(network_matrix_mix, cutoff, path, include_singletons, clusterNames,group_dct)
                 
@@ -1538,8 +1538,8 @@ if __name__=="__main__":
                         
                     print("   Writing output files")
                     pathBase = os.path.join(output_folder, networks_folder_all, folder_name, "all" + folder_name)
-                    clusterJson_sparse(pathBase + '.json', network_matrix)
                     for cutoff in cutoff_list:
+                        clusterJson_sparse(pathBase + "_c" + str(cutoff) + '.json', network_matrix, cutoff=cutoff)
                         path = pathBase + "_c" + str(cutoff) + '.network'
                         write_network_matrix(network_matrix, cutoff, path, include_singletons,clusterNames, group_dct)
                         
@@ -1592,8 +1592,8 @@ if __name__=="__main__":
 
                         print("   Writing output files")
                         pathBase = os.path.join(output_folder, networks_folder_samples, "sample_" + sample + "_mix")
-                        clusterJson_sparse(pathBase + '.json', network_matrix_sample)
                         for cutoff in cutoff_list:
+                            clusterJson_sparse(pathBase + "_c" + str(cutoff) + '.json', network_matrix_sample, cutoff=cutoff)
                             path = pathBase + "_c" + str(cutoff) + '.network'
                             write_network_matrix(network_matrix_sample, cutoff, path, include_singletons, clusterNames,group_dct)
                     
@@ -1655,8 +1655,9 @@ if __name__=="__main__":
                                 print("    Writing output files")
                                 pathBase = os.path.join(output_folder, networks_folder_samples, sample, folder_name,
                                                         "sample_" + sample + "_" + folder_name)
-                                clusterJson_sparse(pathBase + '.json', network_matrix_sample)
                                 for cutoff in cutoff_list:
+                                    clusterJson_sparse(pathBase + "_c" + str(cutoff) + '.json', network_matrix_sample,
+                                                       cutoff=cutoff)
                                     path =pathBase + "_c" + str(cutoff) +'.network'
                                     write_network_matrix(network_matrix_sample, cutoff, path, include_singletons, clusterNames,group_dct)
 
