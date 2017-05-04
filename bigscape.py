@@ -974,7 +974,7 @@ def CMD_parser():
                       help="Skip multiple alignment of domains' sequences. Use if alignments have been generated in a previous run.")
     parser.add_argument("--skip_all", dest="skip_all", action="store_true",
                       default = False, help = "Only generate new network files. ")
-    parser.add_argument("--cutoffs", dest="cutoffs", nargs="+", default=[1.0], type=float, choices=[FloatRange(0.0, 1.0)],
+    parser.add_argument("--cutoffs", dest="cutoffs", nargs="+", default=[0.10, 0.15, 0.20, 0.25, 0.30, 0.35, 0.40, 0.45, 0.50, 0.55, 0.60, 0.65, 0.70, 0.75, 0.80], type=float, choices=[FloatRange(0.0, 1.0)],
                       help="Generate networks using multiple raw distance cutoff values, example: \"0.1, 0.25, 0.5, 1.0\". Default: 1.0 (all distances are included)")
 
     options = parser.parse_args()
@@ -1481,10 +1481,12 @@ if __name__=="__main__":
                 
             print("  Writing output files")
             pathBase = os.path.join(output_folder, networks_folder_all, "all_mix")
+            filenames = []
             for cutoff in cutoff_list:
                 clusterJson_sparse(pathBase + "_c" + str(cutoff) + '.json', network_matrix_mix,cutoff=cutoff)
-                path = "_c" + str(cutoff) + '.network'
-                write_network_matrix(network_matrix_mix, cutoff, path, include_singletons, clusterNames,group_dct)
+                filenames.append(pathBase + "_c%.2f.network" % cutoff)
+            cutoffs_and_filenames = zip(cutoff_list, filenames)
+            write_network_matrix(network_matrix_mix, cutoffs_and_filenames, include_singletons, clusterNames,group_dct)
                 
             # free memory if we're not going to reuse this for samples
             # if not options_samples:
@@ -1538,10 +1540,12 @@ if __name__=="__main__":
                         
                     print("   Writing output files")
                     pathBase = os.path.join(output_folder, networks_folder_all, folder_name, "all" + folder_name)
+                    filenames = []
                     for cutoff in cutoff_list:
                         clusterJson_sparse(pathBase + "_c" + str(cutoff) + '.json', network_matrix, cutoff=cutoff)
-                        path = pathBase + "_c" + str(cutoff) + '.network'
-                        write_network_matrix(network_matrix, cutoff, path, include_singletons,clusterNames, group_dct)
+                        filenames.append(pathBase + "_c%.2f.network" % cutoff)
+                    cutoffs_and_filenames = zip(cutoff_list, filenames)
+                    write_network_matrix(network_matrix, cutoffs_and_filenames, include_singletons,clusterNames, group_dct)
                         
                     # keep the data if we have to reuse it
                     if options_samples:
@@ -1592,10 +1596,12 @@ if __name__=="__main__":
 
                         print("   Writing output files")
                         pathBase = os.path.join(output_folder, networks_folder_samples, "sample_" + sample + "_mix")
+                        filenames = []
                         for cutoff in cutoff_list:
                             clusterJson_sparse(pathBase + "_c" + str(cutoff) + '.json', network_matrix_sample, cutoff=cutoff)
-                            path = pathBase + "_c" + str(cutoff) + '.network'
-                            write_network_matrix(network_matrix_sample, cutoff, path, include_singletons, clusterNames,group_dct)
+                            filenames.append(pathBase + "_c%.2f.network" % cutoff)
+                        cutoffs_and_filenames = zip(cutoff_list, filenames)
+                        write_network_matrix(network_matrix_sample, cutoffs_and_filenames, include_singletons, clusterNames,group_dct)
                     
                     # Making network files separating by BGC class
                     if options_classify:
@@ -1655,11 +1661,13 @@ if __name__=="__main__":
                                 print("    Writing output files")
                                 pathBase = os.path.join(output_folder, networks_folder_samples, sample, folder_name,
                                                         "sample_" + sample + "_" + folder_name)
+                                filenames = []
                                 for cutoff in cutoff_list:
                                     clusterJson_sparse(pathBase + "_c" + str(cutoff) + '.json', network_matrix_sample,
                                                        cutoff=cutoff)
-                                    path =pathBase + "_c" + str(cutoff) +'.network'
-                                    write_network_matrix(network_matrix_sample, cutoff, path, include_singletons, clusterNames,group_dct)
+                                    filenames.append(pathBase + "_c%.2f.network" % cutoff)
+                                cutoffs_and_filenames = zip(cutoff_list, filenames)
+                                write_network_matrix(network_matrix_sample, cutoffs_and_filenames, include_singletons, clusterNames,group_dct)
 
 
     runtime = time.time()-time1

@@ -297,7 +297,7 @@ def network_parser(network_file, Jaccardw, DDSw, GKw, anchorboost):
     return network
 
 
-def write_network_matrix(matrix, cutoff, filename, include_singletons, clusterNames, group_dict):
+def write_network_matrix(matrix, cutoffs_and_filenames, include_singletons, clusterNames, group_dict):
     """
            
     matrix
@@ -313,13 +313,20 @@ def write_network_matrix(matrix, cutoff, filename, include_singletons, clusterNa
           [   15      16   <- these two are written directly
           [combGrp  ShrdGrp
     """
-    networkfile = open(filename, 'w')
-    
-    clusterSetAll = set()
-    clusterSetConnected = set()
-    
-    networkfile.write("Clustername1\tClustername2\tgroup1\tDefinition\tgroup2\tDefinition\tRaw distance\tSquared similarity\tJaccard index\tDDS index\tAdjacency index\traw DDS non-anchor\traw DDS anchor\tNon-anchor domains\tAnchor domains\tCombined group\tShared group\n")
-    
+    #Open file handles for each cutoff
+    networkfiles = {}
+    cutoffs, filenames = zip(*cutoffs_and_filenames)
+    for cutoff, filename in cutoffs_and_filenames:
+        networkfiles[cutoff] = open(filename, 'w')
+        networkfiles[cutoff].write("Clustername1\tClustername2\tgroup1\tDefinition\tgroup2\tDefinition\tRaw distance\tSquared similarity\tJaccard index\tDDS index\tAdjacency index\traw DDS non-anchor\traw DDS anchor\tNon-anchor domains\tAnchor domains\tCombined group\tShared group\n")
+
+    #Dictionaries to keep track of connected nodes, to know which are singletons
+    clusterSetAllDict = {}
+    clusterSetConnectedDict = {}
+    for cutoff in cutoffs:
+        clusterSetAllDict[cutoff] = set()
+        clusterSetConnectedDict[cutoff] = set()
+
     for matrix_entry in matrix:
         gc1Idx, gc2Idx, weights_kind = int(matrix_entry[0]),int(matrix_entry[1]),matrix_entry[2]
         gc1 = clusterNames[gc1Idx]
@@ -332,113 +339,44 @@ def write_network_matrix(matrix, cutoff, filename, include_singletons, clusterNa
         row.extend(matrix_entry[3:])
 
         
-        clusterSetAll.add(gc1)
-        clusterSetAll.add(gc2)
+        clusterSetAllDict[cutoff].add(gc1)
+        clusterSetAllDict[cutoff].add(gc2)
 
-        if row[6] < cutoff:
-            clusterSetConnected.add(gc1)
-            clusterSetConnected.add(gc2)
+        for cutoff in cutoffs:
+            networkfile = networkfiles[cutoff]
+            if row[6] < cutoff:
+                clusterSetConnectedDict[cutoff].add(gc1)
+                clusterSetConnectedDict[cutoff].add(gc2)
             
-            # write combined group
-            if row[2] != "" and row[4] != "": #group1, group2
-                row.append(" - ".join(sorted([row[2],row[4]])))
-            elif row[4] != "":
-                row.append(row[4])
-            elif row[2] != "":
-                row.append(row[2])
-            else:
-                row.append("NA")
+                # write combined group
+                if row[2] != "" and row[4] != "": #group1, group2
+                    row.append(" - ".join(sorted([row[2],row[4]])))
+                elif row[4] != "":
+                    row.append(row[4])
+                elif row[2] != "":
+                    row.append(row[2])
+                else:
+                    row.append("NA")
             
-            # write share group (if they indeed share it)
-            if row[2] == row[4]:
-                row.append(row[2])
-            else:
-                row.append("")
+                # write share group (if they indeed share it)
+                if row[2] == row[4]:
+                    row.append(row[2])
+                else:
+                    row.append("")
                 
-            networkfile.write("\t".join(map(str,row)) + "\n")
+                networkfile.write("\t".join(map(str,row)) + "\n")
 
     #Add the nodes without any edges, give them an edge to themselves with a distance of 0
     if include_singletons == True:
-        for gc in clusterSetAll-clusterSetConnected:
+        for gc in clusterSetAllDict[cutoff]-clusterSetConnectedDict[cutoff]:
             #Arbitrary numbers for S and Sa domains: 1 of each (logical would be 0,0 but 
             # that could mess re-analysis; 
             networkfile.write("\t".join([gc, gc, group_dict[gc][0], group_dict[gc][1], group_dict[gc][0], group_dict[gc][1], "0", "0", "1", "1", "1", "1", "0", "0", "1", "1", "", ""]) + "\n")
 
-            
-    networkfile.close()
-    
+    #Close all files
+    for networkfile in networkfiles.values():
+        networkfile.close()
 
-def write_network_matrix2(matrix, cutoff_list, filename, include_singletons, group_dict):
-    """
-    This version of the function reads the distance matrix only once
-    
-    Does NOT work yet. 
-    
-    It is possible to have an array of handles, but it's difficult to deal with the 
-    sets of connected clusters because they will vary with the cutoff. Easiest solution
-    is having a dictionary of clusterSetConnected but for large data sets and many 
-    cutoff values that could be impractical
-    
-    matrix[gc1, gc2] =
-    row:   0      1    2    3       4       5      6      7    8   9   
-          grp1  def1 grp2  def2  -logScr  rawD  sqrtSim  Jac  DDS  AI  
-    
-          10      11    12    13
-        rDDSna  rDDSa   S     Sa
-    
-          [   14      15   <- these two are written directly
-          [combGrp  ShrdGrp
-    """
-    handle_list = []
-    for cutoff in cutoff_list:
-        handle_list.append(open(filename + str(cutoff) + ".network", "w"))
-    
-    
-    clusterSetAll = set()
-    clusterSetConnected = set()
-    
-    for h in handle_list:
-        h.write("Clustername1\tClustername2\tgroup1\tDefinition\tgroup2\tDefinition\t-log2score\tRaw distance\tSquared similarity\tJaccard index\tDDS index\tAdjacency index\traw DDS non-anchor\traw DDS anchor\tNon-anchor domains\tAnchor domains\tCombined group\tShared group\n")
-    
-    for (gc1, gc2, weights_kind) in matrix.keys():
-        row = [gc1, gc2]
-        row.extend(matrix[gc1, gc2, weights_kind])
-        
-        clusterSetAll.add(gc1)
-        clusterSetAll.add(gc2)
-        
-        if row[7] <= cutoff:
-            clusterSetConnected.add(gc1)
-            clusterSetConnected.add(gc2)
-            
-            # write combined group
-            if row[2] != "" and row[4] != "": #group1, group2
-                row.append(" - ".join(sorted([row[2],row[4]])))
-            elif row[4] != "":
-                row.append(row[4])
-            elif row[2] != "":
-                row.append(row[2])
-            else:
-                row.append("NA")
-            
-            # write share group (if they indeed share it)
-            if row[2] == row[4]:
-                row.append(row[2])
-            else:
-                row.append("")
-                
-            h.write("\t".join(map(str,row)) + "\n")
-
-    #Add the nodes without any edges, give them an edge to themselves with a distance of 0
-    if include_singletons == True:
-        for gc in clusterSetAll-clusterSetConnected:
-            #Arbitrary numbers for S and Sa domains: 1 of each (logical would be 0,0 but 
-            # that could mess re-analysis; 
-            h.write("\t".join([gc, gc, group_dict[gc][0], group_dict[gc][1], group_dict[gc][0], group_dict[gc][1], "0", "0", "1", "1", "1", "1", "0", "0", "1", "1", "", ""]) + "\n")
-
-    for h in handle_list:
-        h.close()
-        
 
 def fasta_parser(handle):
     """Parses a fasta file, and stores it in a dictionary.
