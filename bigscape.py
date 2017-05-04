@@ -1026,10 +1026,7 @@ if __name__=="__main__":
     for c in cutoff_list:
         if c <= 0.0:
             cutoff_list.remove(c)
-    if 1.0 not in cutoff_list:
-        cutoff_list.append(1.0) # compulsory for re-runs
-        print("Adding cutoff=1.0 case by default")
-    
+
     output_folder = str(options.outputdir)
     
     pfam_dir = str(options.pfam_dir)
