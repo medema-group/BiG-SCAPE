@@ -850,7 +850,7 @@ def clusterJsonBatch(outputFileBase,matrix,cutoffs=[1.0],damping=0.8):
         labels = pysapc.SAP(damping=damping, max_iter=500,
                             preference='min').fit_predict(simMatrix)
         numBGCs = len(bgcs)
-        bs_distances = [[float('%.3f' % simMatrix[row, col]) for col in xrange(row, numBGCs)] for row in
+        bs_distances = [[float('%.3f' % simMatrix[row, col]) for col in xrange(row+1)] for row in
                         xrange(numBGCs)]
         bs_data = [{"id": clusterNames[int(bgc)]} for bgc in bgcs]
         familiesDict = {}
