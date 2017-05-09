@@ -6,12 +6,15 @@ BiG-SCAPE
 PI: Marnix Medema
 
 Developers:
+Jorge Navarro                   jorge.navarromunoz@wur.nl
+Emmanuel (Emzo) de los Santos   E.De-Los-Santos@warwick.ac.uk
 Marley Yeong                    marleyyeong@live.nl
-Jorge Navarro
-Emmanuel (Emzo) de los Santos
 
 Functions used by bigscape.py
 
+
+# License: GNU Affero General Public License v3 or later
+# A copy of GNU AGPL v3 should have been included in this software package in LICENSE.txt.
 """
 
 import os

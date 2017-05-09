@@ -4,14 +4,15 @@
 """
 BiG-SCAPE
 
-PI: Marnix Medema
+PI: Marnix Medema               marnix.medema@wur.nl
 
 Developers:
+Jorge Navarro                   jorge.navarromunoz@wur.nl
+Emmanuel (Emzo) de los Santos   E.De-Los-Santos@warwick.ac.uk
 Marley Yeong                    marleyyeong@live.nl
-Jorge Navarro
-Emmanuel (Emzo) de los Santos
 
-Dependencies: hmmer, biopython, mafft, munkres
+
+Dependencies: hmmer, biopython, (mafft), munkres.py
 
 Usage:   Please see `python bigscape.py -h`
 
@@ -19,6 +20,12 @@ Example: python bigscape.py -c 8 --pfam_dir ./ -i ./inputfiles -o ./results
 
 Status: development/testing
 
+See more info on
+https://git.wageningenur.nl/medema-group/BiG-SCAPE
+
+
+# License: GNU Affero General Public License v3 or later
+# A copy of GNU AGPL v3 should have been included in this software package in LICENSE.txt.
 """
 
 import cPickle as pickle  # for storing and retrieving dictionaries
@@ -41,7 +48,6 @@ from Bio.SubsMat.MatrixInfo import pam250 as scoring_matrix
 
 from functions import *
 from munkres import Munkres
-from sklearn.cluster import AffinityPropagation
 import numpy as np
 from array import array
 from scipy.sparse import lil_matrix
