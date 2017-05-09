@@ -437,31 +437,32 @@ def SVG(write_html, outputfile, GenBankFile, pfdFile, use_pfd, color_genes, colo
     #  32839a, (50, 131, 154), 0.19, 0.51, 0.6
     # Regulator: "#63BB6D" (99, 187, 109) Green
     #  #127E1B, (18,126,27) 0.07, 0.49, 0.1
-    filters = additional_tabs + "<filter id=\"shadow_CoreBio\" color-interpolation-filters=\"sRGB\" x=\"-65%\" y=\"-25%\" width=\"230%\" height=\"150%\">\n"
-    filters += additional_tabs + "\t<feColorMatrix in=\"SourceGraphic\" result=\"matrixOut\" type=\"matrix\" values=\"0 0 0 0 0.85 0 0 0 0 0.08 0 0 0 0 0.23 0 0 0 1 0\" />\n"
-    filters += additional_tabs + "\t<feGaussianBlur in=\"matrixOut\" result=\"blurOut\" stdDeviation=\"7\" />\n"
-    filters += additional_tabs + "\t<feBlend in=\"SourceGraphic\" in2=\"blurOut\" mode=\"normal\" />\n"
-    filters += additional_tabs + "</filter>\n"
-    
-    filters += additional_tabs + "<filter id=\"shadow_OtherBio\" color-interpolation-filters=\"sRGB\" x=\"-65%\" y=\"-25%\" width=\"230%\" height=\"150%\">\n"
-    filters += additional_tabs + "\t<feColorMatrix in=\"SourceGraphic\" result=\"matrixOut\" type=\"matrix\" values=\"0 0 0 0 0.95 0 0 0 0 0.63 0 0 0 0 0.21 0 0 0 1 0\" />\n"
-    filters += additional_tabs + "\t<feGaussianBlur in=\"matrixOut\" result=\"blurOut\" stdDeviation=\"7\" />\n"
-    filters += additional_tabs + "\t<feBlend in=\"SourceGraphic\" in2=\"blurOut\" mode=\"normal\" />\n"
-    filters += additional_tabs + "</filter>\n"
-    
-    filters += additional_tabs + "<filter id=\"shadow_Transporter\" color-interpolation-filters=\"sRGB\" x=\"-65%\" y=\"-25%\" width=\"230%\" height=\"150%\">\n"
-    filters += additional_tabs + "\t<feColorMatrix in=\"SourceGraphic\" result=\"matrixOut\" type=\"matrix\" values=\"0 0 0 0 0.19 0 0 0 0 0.51 0 0 0 0 0.6 0 0 0 1 0\" />\n"
-    filters += additional_tabs + "\t<feGaussianBlur in=\"matrixOut\" result=\"blurOut\" stdDeviation=\"7\" />\n"
-    filters += additional_tabs + "\t<feBlend in=\"SourceGraphic\" in2=\"blurOut\" mode=\"normal\" />\n"
-    filters += additional_tabs + "</filter>\n"
-    
-    filters += additional_tabs + "<filter id=\"shadow_Regulator\" color-interpolation-filters=\"sRGB\" x=\"-65%\" y=\"-25%\" width=\"230%\" height=\"150%\">\n"
-    filters += additional_tabs + "\t<feColorMatrix in=\"SourceGraphic\" result=\"matrixOut\" type=\"matrix\" values=\"0 0 0 0 0.07 0 0 0 0 0.49 0 0 0 0 0.1 0 0 0 1 0\" />\n"
-    filters += additional_tabs + "\t<feGaussianBlur in=\"matrixOut\" result=\"blurOut\" stdDeviation=\"7\" />\n"
-    filters += additional_tabs + "\t<feBlend in=\"SourceGraphic\" in2=\"blurOut\" mode=\"normal\" />\n"
-    filters += additional_tabs + "</filter>\n"
-    
-    SVG_TEXT += filters
+    if len(pfam_domain_categories) > 0:
+        filters = additional_tabs + "<filter id=\"shadow_CoreBio\" color-interpolation-filters=\"sRGB\" x=\"-65%\" y=\"-25%\" width=\"230%\" height=\"150%\">\n"
+        filters += additional_tabs + "\t<feColorMatrix in=\"SourceGraphic\" result=\"matrixOut\" type=\"matrix\" values=\"0 0 0 0 0.85 0 0 0 0 0.08 0 0 0 0 0.23 0 0 0 1 0\" />\n"
+        filters += additional_tabs + "\t<feGaussianBlur in=\"matrixOut\" result=\"blurOut\" stdDeviation=\"7\" />\n"
+        filters += additional_tabs + "\t<feBlend in=\"SourceGraphic\" in2=\"blurOut\" mode=\"normal\" />\n"
+        filters += additional_tabs + "</filter>\n"
+        
+        filters += additional_tabs + "<filter id=\"shadow_OtherBio\" color-interpolation-filters=\"sRGB\" x=\"-65%\" y=\"-25%\" width=\"230%\" height=\"150%\">\n"
+        filters += additional_tabs + "\t<feColorMatrix in=\"SourceGraphic\" result=\"matrixOut\" type=\"matrix\" values=\"0 0 0 0 0.95 0 0 0 0 0.63 0 0 0 0 0.21 0 0 0 1 0\" />\n"
+        filters += additional_tabs + "\t<feGaussianBlur in=\"matrixOut\" result=\"blurOut\" stdDeviation=\"7\" />\n"
+        filters += additional_tabs + "\t<feBlend in=\"SourceGraphic\" in2=\"blurOut\" mode=\"normal\" />\n"
+        filters += additional_tabs + "</filter>\n"
+        
+        filters += additional_tabs + "<filter id=\"shadow_Transporter\" color-interpolation-filters=\"sRGB\" x=\"-65%\" y=\"-25%\" width=\"230%\" height=\"150%\">\n"
+        filters += additional_tabs + "\t<feColorMatrix in=\"SourceGraphic\" result=\"matrixOut\" type=\"matrix\" values=\"0 0 0 0 0.19 0 0 0 0 0.51 0 0 0 0 0.6 0 0 0 1 0\" />\n"
+        filters += additional_tabs + "\t<feGaussianBlur in=\"matrixOut\" result=\"blurOut\" stdDeviation=\"7\" />\n"
+        filters += additional_tabs + "\t<feBlend in=\"SourceGraphic\" in2=\"blurOut\" mode=\"normal\" />\n"
+        filters += additional_tabs + "</filter>\n"
+        
+        filters += additional_tabs + "<filter id=\"shadow_Regulator\" color-interpolation-filters=\"sRGB\" x=\"-65%\" y=\"-25%\" width=\"230%\" height=\"150%\">\n"
+        filters += additional_tabs + "\t<feColorMatrix in=\"SourceGraphic\" result=\"matrixOut\" type=\"matrix\" values=\"0 0 0 0 0.07 0 0 0 0 0.49 0 0 0 0 0.1 0 0 0 1 0\" />\n"
+        filters += additional_tabs + "\t<feGaussianBlur in=\"matrixOut\" result=\"blurOut\" stdDeviation=\"7\" />\n"
+        filters += additional_tabs + "\t<feBlend in=\"SourceGraphic\" in2=\"blurOut\" mode=\"normal\" />\n"
+        filters += additional_tabs + "</filter>\n"
+        
+        SVG_TEXT += filters
 
     # --- read in GenBank file
 
