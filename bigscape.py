@@ -48,6 +48,8 @@ from Bio.SubsMat.MatrixInfo import pam250 as scoring_matrix
 
 from functions import *
 from munkres import Munkres
+from ArrowerSVG import *
+
 import numpy as np
 from array import array
 from scipy.sparse import lil_matrix
@@ -111,10 +113,11 @@ def get_gbk_files(inputdir, min_bgc_size, exclude_gbk_str, gbk_group):
                     group = "no type"
                     del product_list_per_record[:]
                     
-                    record_count = 0
+                    max_width = 0 # This will be used for the SVG figure
                     for record in records:
                         bgc_size += len(record.seq)
-                        record_count += 1
+                        if len(record.seq) > max_width:
+                            max_width = len(record.seq)
                         
                         for feature in record.features:
                             if "cluster" in feature.type and "product" in feature.qualifiers:
@@ -138,7 +141,7 @@ def get_gbk_files(inputdir, min_bgc_size, exclude_gbk_str, gbk_group):
                         group = "-".join(product_set) # likely a hybrid
                     
                     # assuming that the definition field is the same in all records
-                    gbk_group[clusterName] = (group, records[0].description)
+                    gbk_group[clusterName] = (group, records[0].description, len(records), max_width)
                     
                     bgc_size = len(record.seq)
                     if bgc_size > min_bgc_size:  # exclude the bgc if it's too small
@@ -709,7 +712,7 @@ def generateFasta(gbkfilePath, outputdir):
                 #  see http://biopython.org/DIST/docs/tutorial/Tutorial.html#htoc25
                 # If the sequence has a fuzzy start/end, it might not be complete,
                 # (therefore it might not be the true start codon)
-                # However, in this case, if 'translation' not availabe, assume 
+                # However, in this case, if 'translation' not available, assume 
                 #  this is just a random sequence 
                 complete_cds = False 
                 
@@ -1147,6 +1150,7 @@ if __name__=="__main__":
     pfs_folder = os.path.join(output_folder, "pfs")
     pfd_folder = os.path.join(output_folder, "pfd")    
     domains_folder = os.path.join(output_folder, "domains")
+    svg_folder = os.path.join(output_folder, "SVG")
     
     create_directory(output_folder, "Output", False)
     write_parameters(output_folder, options)
@@ -1156,7 +1160,7 @@ if __name__=="__main__":
     create_directory(bgc_fasta_folder, "BGC fastas", False)
     create_directory(pfs_folder, "pfs", False)
     create_directory(pfd_folder, "pfd", False)
-    
+    create_directory(svg_folder, "SVG", False)
 
     print("\nTrying threading on %i cores" % cores)
     
@@ -1356,10 +1360,65 @@ if __name__=="__main__":
         try_MA_resume = True
     else:
         # new sequences will be added to the domain fasta files. Clean domains folder
+        # We could try to make it so it's not necessary to re-calculate every alignment,
+        #  either by expanding previous alignment files or at the very least, 
+        #  re-aligning only the domain files of the newly added BGCs
         for thing in os.listdir(domains_folder):
             os.remove(os.path.join(domains_folder,thing))
 
     print " Finished generating generating pfs and pfd files."
+    
+    print(" Creating arrower-like figures for each BGC")
+    
+    # verify if there are figures already generated
+    
+    # All available SVG files
+    availableSVGs = set()
+    for svg in glob(os.path.join(svg_folder,"*.svg")):
+        (root, ext) = os.path.splitext(svg)
+        availableSVGs.add(root.split(os.sep)[-1])
+        
+    # Which files actually need to be generated
+    working_set = baseNames - availableSVGs
+    
+    if len(working_set) > 0:
+        color_genes = read_color_genes_file()
+        color_domains = read_color_domains_file()
+        pfam_domain_categories = read_pfam_domain_categories()
+        
+        print("  Parsing hmm file for domain names")
+        pfam_info = {}
+        with open(os.path.join(pfam_dir, "Pfam-A.hmm"), "r") as pfam:
+            putindict = False
+            # assuming that the order of the information never changes
+            for line in pfam:
+                if line[:4] == "NAME":
+                    name = line.strip()[6:]
+                if line[:3] == "ACC":
+                    acc = line.strip()[6:].split(".")[0]
+                if line[:4] == "DESC":
+                    desc = line.strip()[6:]
+                    putindict = True
+                    
+                if putindict:
+                    putindict = False
+                    pfam_info[acc] = (name, desc)
+        print("    Done")
+        
+        #This must be done serially, because if a color for a gene/domain
+        # is not found, the text files with colors need to be updated
+        print("  Reading BGC information and writing SVG")
+        for bgc in working_set:
+            SVG(False, os.path.join(svg_folder,bgc+".svg"), genbankDict[bgc][0], os.path.join(pfd_folder,bgc+".pfd"), True, color_genes, color_domains, pfam_domain_categories, pfam_info, group_dct[bgc][2], group_dct[bgc][3])
+            
+        color_genes.clear()
+        color_domains.clear()
+        pfam_domain_categories.clear()
+    elif len(working_set) == 0:
+        print("  All SVG from the input files seem to be in the SVG folder")
+    
+    availableSVGs.clear()
+    print(" Finished creating figures")
 
 
     ### Step 4: Parse the pfs, pfd files to generate BGC dictionary, clusters, and clusters per sample objects
