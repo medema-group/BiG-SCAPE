@@ -316,6 +316,7 @@ def write_network_matrix(matrix, cutoffs_and_filenames, include_singletons, clus
           [   15      16   <- these two are written directly
           [combGrp  ShrdGrp
     """
+    
     #Open file handles for each cutoff
     networkfiles = {}
     cutoffs, filenames = zip(*cutoffs_and_filenames)
@@ -337,37 +338,37 @@ def write_network_matrix(matrix, cutoffs_and_filenames, include_singletons, clus
         row = [gc1, gc2]
         clus1group = group_dict[gc1]
         clus2group = group_dict[gc2]
-        row.extend(clus1group)
-        row.extend(clus2group)
+        row.extend([clus1group[0], clus1group[1]])
+        row.extend([clus2group[0], clus2group[1]])
         row.extend(matrix_entry[3:])
-
         
         clusterSetAllDict[cutoff].add(gc1)
         clusterSetAllDict[cutoff].add(gc2)
 
+        # prepare combined group
+        if row[2] != "" and row[4] != "": #group1, group2
+            row.append(" - ".join(sorted([row[2],row[4]])))
+        elif row[4] != "":
+            row.append(row[4])
+        elif row[2] != "":
+            row.append(row[2])
+        else:
+            row.append("NA")
+    
+        # prepare share group (if they indeed share it)
+        if row[2] == row[4]:
+            row.append(row[2])
+        else:
+            row.append("")
+
         for cutoff in cutoffs:
-            networkfile = networkfiles[cutoff]
             if row[6] < cutoff:
+                networkfile = networkfiles[cutoff]
                 clusterSetConnectedDict[cutoff].add(gc1)
                 clusterSetConnectedDict[cutoff].add(gc2)
-            
-                # write combined group
-                if row[2] != "" and row[4] != "": #group1, group2
-                    row.append(" - ".join(sorted([row[2],row[4]])))
-                elif row[4] != "":
-                    row.append(row[4])
-                elif row[2] != "":
-                    row.append(row[2])
-                else:
-                    row.append("NA")
-            
-                # write share group (if they indeed share it)
-                if row[2] == row[4]:
-                    row.append(row[2])
-                else:
-                    row.append("")
                 
                 networkfile.write("\t".join(map(str,row)) + "\n")
+
 
     #Add the nodes without any edges, give them an edge to themselves with a distance of 0
     if include_singletons == True:
