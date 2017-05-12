@@ -99,34 +99,34 @@ def get_gbk_files(inputdir, min_bgc_size, exclude_gbk_str, gbk_group):
             if " " in fname:
                 sys.exit("\nError: Input GenBank files should not have spaces in their filenames as HMMscan cannot process them properly ('too many arguments').")
                 
-            
-            with open(os.path.join(dirpath, fname), "r") as f:
-                try:
-                    # basic file verification. Substitutes check_data_integrity
-                    records = list(SeqIO.parse(os.path.join(dirpath,fname), "genbank"))
-                except ValueError as e:
-                    print("   Error with file " + os.path.join(dirpath, fname) + ": \n    '" + str(e) + "'")
-                    print("    (This file will be excluded from the analysis)")
-                    continue
-                else:
-                    bgc_size = 0
-                    group = "no type"
-                    del product_list_per_record[:]
+            try:
+                # basic file verification. Substitutes check_data_integrity
+                records = list(SeqIO.parse(os.path.join(dirpath,fname), "genbank"))
+            except ValueError as e:
+                print("   Error with file " + os.path.join(dirpath, fname) + ": \n    '" + str(e) + "'")
+                print("    (This file will be excluded from the analysis)")
+                continue
+            else:
+                bgc_size = 0
+                group = "no type"
+                del product_list_per_record[:]
+                
+                max_width = 0 # This will be used for the SVG figure
+                for record in records:
+                    bgc_size += len(record.seq)
+                    if len(record.seq) > max_width:
+                        max_width = len(record.seq)
                     
-                    max_width = 0 # This will be used for the SVG figure
-                    for record in records:
-                        bgc_size += len(record.seq)
-                        if len(record.seq) > max_width:
-                            max_width = len(record.seq)
-                        
-                        for feature in record.features:
-                            if "cluster" in feature.type and "product" in feature.qualifiers:
-                                if len(feature.qualifiers["product"]) > 1:
-                                    print("  WARNING: more than product annotated in record " + str(record_cound) + ", " + fname)
-                                    break
-                                else:
-                                    product_list_per_record.append(feature.qualifiers["product"][0])
-                    
+                    for feature in record.features:
+                        if "cluster" in feature.type and "product" in feature.qualifiers:
+                            if len(feature.qualifiers["product"]) > 1:
+                                print("  WARNING: more than product annotated in record " + str(record_cound) + ", " + fname)
+                                break
+                            else:
+                                product_list_per_record.append(feature.qualifiers["product"][0])
+                
+                if bgc_size > min_bgc_size:  # exclude the bgc if it's too small
+                    file_counter += 1
                     # check what we have product-wise
                     # In particular, handle different products for multi-record files
                     product_set = set(product_list_per_record)
@@ -142,23 +142,19 @@ def get_gbk_files(inputdir, min_bgc_size, exclude_gbk_str, gbk_group):
                     
                     # assuming that the definition field is the same in all records
                     gbk_group[clusterName] = (group, records[0].description, len(records), max_width)
-                    
-                    bgc_size = len(record.seq)
-                    if bgc_size > min_bgc_size:  # exclude the bgc if it's too small
-                        file_counter += 1
-                        
-                        if clusterName in genbankDict.keys():
-                            # current_dir gets to be the name of the sample
-                            genbankDict[clusterName][1].add(current_dir) 
-                        else:
-                            # location of first instance of the file is genbankDict[clustername][0]
-                            genbankDict.setdefault(clusterName, [os.path.join(dirpath, fname), set([current_dir])])
-                            
-                        if verbose:
-                            print("  Adding " + fname + " (" + str(bgc_size) + " bps)")
+                
+                    if clusterName in genbankDict.keys():
+                        # current_dir gets to be the name of the sample
+                        genbankDict[clusterName][1].add(current_dir) 
                     else:
-                        print(" Discarding " + clusterName +  " (size less than " + str(min_bgc_size) + " bp, was " + str(bgc_size) + ")")
+                        # location of first instance of the file is genbankDict[clustername][0]
+                        genbankDict.setdefault(clusterName, [os.path.join(dirpath, fname), set([current_dir])])
                         
+                    if verbose:
+                        print("  Adding " + fname + " (" + str(bgc_size) + " bps)")
+                else:
+                    print(" Discarding " + clusterName +  " (size less than " + str(min_bgc_size) + " bp, was " + str(bgc_size) + ")")
+                    
             # else: The file does not have the gbk extension. Skip it
     
     if file_counter == 0:
