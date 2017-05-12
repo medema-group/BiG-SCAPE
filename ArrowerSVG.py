@@ -552,7 +552,7 @@ def SVG(write_html, outputfile, GenBankFile, pfdFile, use_pfd, color_genes, colo
                 except KeyError:
                     color = new_color("gene")
                     new_color_genes[GeneName] = color
-                    color_genes[GenName] = color
+                    color_genes[GeneName] = color
                     pass
                 
                 # change to hsv color palette to lower shade for contour color
