@@ -770,7 +770,7 @@ def runHmmScan(fastaPath, hmmPath, outputdir, verbose):
     ## will run hmmscan command on a fasta file with a single core and generate a domtable file
     hmmFile = os.path.join(hmmPath,"Pfam-A.hmm")
     if os.path.isfile(fastaPath):
-        name = fastaPath.split(os.sep)[-1].replace(".fasta","")
+        name = ".".join(fastaPath.split(os.sep)[-1].split(".")[:-1])
         outputName = os.path.join(outputdir, name+".domtable")
         
         hmmscan_cmd = "hmmscan --cpu 0 --domtblout %s --cut_tc %s %s" % (outputName,hmmFile,fastaPath)
@@ -782,7 +782,7 @@ def runHmmScan(fastaPath, hmmPath, outputdir, verbose):
         sys.exit("Error running hmmscan: Fasta file " + fastaPath + " doesn't exist")
 
 def parseHmmScan(hmmscanResults, pfd_folder, pfs_folder, overlapCutoff):
-    outputbase = hmmscanResults.split(os.sep)[-1].replace(".domtable", "")
+    outputbase = ".".join(hmmscanResults.split(os.sep)[-1].split(".")[:-1])
     # try to read the domtable file to find out if this gbk has domains. Domains need to be parsed into fastas anyway.
     if os.path.isfile(hmmscanResults):
         pfd_matrix = domtable_parser(outputbase, hmmscanResults)
@@ -1215,13 +1215,13 @@ if __name__=="__main__":
     baseNames = set(clusters)
 
     ### Step 1: Generate Fasta Files
-    print "\nParsing genbank files to generate fasta files for hmmscan"
+    print "\nParsing Gene Cluster files to generate fasta files for hmmscan"
 
     # filter through task list to avoid unecessary computation: 
     #  If the corresponding fasta file from every genbank exists, skip it
     alreadyDone = set()
     for genbank in genbankFileLocations:
-        outputbase = genbank.split(os.sep)[-1].replace(".gbk","")
+        outputbase = ".".join(genbank.split(os.sep)[-1].split(".")[:-1])
         outputfile = os.path.join(bgc_fasta_folder,outputbase + '.fasta')
         if os.path.isfile(outputfile) and os.path.getsize(outputfile) > 0:
             alreadyDone.add(genbank)
@@ -1230,7 +1230,7 @@ if __name__=="__main__":
         print(" All GenBank files had already been processed")
     elif len(alreadyDone) > 0:
         if len(genbankFileLocations - alreadyDone) < 20:
-            print " Warning: The following NEW input file(s) will be processed: %s" % ", ".join(x.split(os.sep)[-1].replace(".gbk","") for x in genbankFileLocations - alreadyDone)
+            print " Warning: The following NEW input file(s) will be processed: %s" % ", ".join(".".join(x.split(os.sep)[-1].split(".")[:-1]) for x in genbankFileLocations - alreadyDone)
         else:
             print(" Warning: " + str(len(genbankFileLocations-alreadyDone)) + " new files will be processed")
     else:
@@ -1274,7 +1274,7 @@ if __name__=="__main__":
         # find already processed files
         alreadyDone = set()
         for fasta in fastaFiles:
-            outputbase  = fasta.split(os.sep)[-1].replace(".fasta","")
+            outputbase  = ".".join(fasta.split(os.sep)[-1].split(".")[:-1])
             outputfile = os.path.join(domtable_folder,outputbase + '.domtable')
             if os.path.isfile(outputfile) and os.path.getsize(outputfile) > 0:
                 alreadyDone.add(fasta)
@@ -1283,7 +1283,7 @@ if __name__=="__main__":
             print(" All fasta files had already been processed")
         elif len(alreadyDone) > 0:
             if len(fastaFiles-alreadyDone) < 20:
-                print " Warning! The following NEW fasta file(s) will be processed: %s" % ", ".join(x.split(os.sep)[-1].replace(".fasta","") for x in fastaFiles - alreadyDone)
+                print " Warning! The following NEW fasta file(s) will be processed: %s" % ", ".join(".".join(x.split(os.sep)[-1].split(".")[:-1]) for x in fastaFiles - alreadyDone)
             else:
                 print(" Warning: " + str(len(fastaFiles-alreadyDone)) + " NEW fasta files will be processed")
         else:
@@ -1322,7 +1322,7 @@ if __name__=="__main__":
     alreadyDone = set()
     if not options.force_hmmscan:
         for domtable in domtableFiles:
-            outputbase = domtable.split(os.sep)[-1].replace(".domtable","")
+            outputbase = ".".join(domtable.split(os.sep)[-1].split(".")[:-1])
             outputfile = os.path.join(pfd_folder, outputbase + '.pfd')
             if os.path.isfile(outputfile) and os.path.getsize(outputfile) > 0:
                 alreadyDone.add(domtable)
@@ -1331,7 +1331,7 @@ if __name__=="__main__":
         print(" All domtable files had already been processed")
     elif len(alreadyDone) > 0: # Incomplete run
         if len(domtableFiles-alreadyDone) < 20:
-            print " Warning! The following domtable files had not been processed: %s" % ", ".join(x.split(os.sep)[-1].replace(".domtable","") for x in domtableFiles - alreadyDone)
+            print " Warning! The following domtable files had not been processed: %s" % ", ".join(".".join(x.split(os.sep)[-1].split(".")[:-1]) for x in domtableFiles - alreadyDone)
         else:
             print(" Warning: " + str(len(domtableFiles-alreadyDone)) + " domtable files will be processed")
     else: # First run
@@ -1512,7 +1512,7 @@ if __name__=="__main__":
         header_list = []
         fasta_domains_temp = fasta_domains.copy()
         for domain_file in fasta_domains_temp:
-            domain_name = domain_file.split(os.sep)[-1].replace(".fasta", "")
+            domain_name = ".".join(domain_file.split(os.sep)[-1].split(".")[:-1])
             
             # fill fasta_dict...
             with open(domain_file, "r") as fasta_handle:
