@@ -822,7 +822,7 @@ def parseHmmScan(hmmscanResults, pfd_folder, pfs_folder, overlapCutoff):
 
 def clusterJsonBatch(outputFileBase,matrix,cutoffs=[1.0],damping=0.8):
     ## implementation of clusterJson using csr sparce matrices
-    bgcs = set()
+    bgcs = set() # contains the indices (as floats!) of all the BGCs in this class
     simDict = {}
     # Doing this so it only has to go through the matrix once
     for row in matrix:
@@ -852,8 +852,12 @@ def clusterJsonBatch(outputFileBase,matrix,cutoffs=[1.0],damping=0.8):
                     # Ensure symmetry
                     simMatrix[bgc2simIdx[bgc1], bgc2simIdx[bgc2]] = simDict[bgc1][bgc2]
                     simMatrix[bgc2simIdx[bgc2], bgc2simIdx[bgc1]] = simDict[bgc1][bgc2]
+        if verbose:
+            print("  Clustering (c=" + str(cutoff) + ")")
         labels = pysapc.SAP(damping=damping, max_iter=500,
                             preference='min').fit_predict(simMatrix)
+        if verbose:
+            print("   ...done")
         numBGCs = len(bgcs)
         bs_distances = [[float('%.3f' % simMatrix[row, col]) for col in xrange(row+1)] for row in
                         xrange(numBGCs)]
@@ -864,6 +868,19 @@ def clusterJsonBatch(outputFileBase,matrix,cutoffs=[1.0],damping=0.8):
             members.append(idx)
             familiesDict[label] = members
         bs_families = [{'id': 'FAM_%.3d' % family, 'members': members} for family, members in enumerate(familiesDict.values())]
+        
+        # column1: BGC, column2: clustering pseudo family
+        if verbose:
+            print("  Writing clustering file")
+        with open(outputFileBase + "_clustering_c" + str(cutoff) + ".tsv", "w") as clustering_file:
+            i = 0
+            for label in familiesDict:
+                i += 1
+                for x in familiesDict[label]:
+                    clustering_file.write(clusterNames[int(bgcs[x])] + "\t" + str(i) + "\n")
+                        
+        if verbose:
+            print("  Writing JS file")
         outputFile = "{}_cutoff{}.js".format(outputFileBase,cutoff)
         with open(outputFile, 'w') as outfile:
             outfile.write('var bs_similarity=%s\n' % str(bs_distances))
@@ -1594,7 +1611,7 @@ if __name__=="__main__":
             filenames = []
             for cutoff in cutoff_list:
                 filenames.append(pathBase + "_c%.2f.network" % cutoff)
-            clusterJsonBatch(pathBase + "_c" , network_matrix_mix,cutoffs=cutoff_list)
+            clusterJsonBatch(pathBase, network_matrix_mix,cutoffs=cutoff_list)
             cutoffs_and_filenames = zip(cutoff_list, filenames)
             write_network_matrix(network_matrix_mix, cutoffs_and_filenames, include_singletons, clusterNames,group_dct)
                 
@@ -1654,7 +1671,7 @@ if __name__=="__main__":
                     for cutoff in cutoff_list:
                         filenames.append(pathBase + "_c%.2f.network" % cutoff)
                     cutoffs_and_filenames = zip(cutoff_list, filenames)
-                    clusterJsonBatch(pathBase + "_c", network_matrix, cutoffs=cutoff_list)
+                    clusterJsonBatch(pathBase, network_matrix, cutoffs=cutoff_list)
                     write_network_matrix(network_matrix, cutoffs_and_filenames, include_singletons,clusterNames, group_dct)
                         
                     # keep the data if we have to reuse it
@@ -1710,7 +1727,7 @@ if __name__=="__main__":
                         for cutoff in cutoff_list:
                             filenames.append(pathBase + "_c%.2f.network" % cutoff)
                         cutoffs_and_filenames = zip(cutoff_list, filenames)
-                        clusterJsonBatch(pathBase + "_c", network_matrix_sample, cutoffs=cutoff_list)
+                        clusterJsonBatch(pathBase, network_matrix_sample, cutoffs=cutoff_list)
                         write_network_matrix(network_matrix_sample, cutoffs_and_filenames, include_singletons, clusterNames,group_dct)
                     
                     # Making network files separating by BGC class
@@ -1775,7 +1792,7 @@ if __name__=="__main__":
                                 for cutoff in cutoff_list:
                                     filenames.append(pathBase + "_c%.2f.network" % cutoff)
                                 cutoffs_and_filenames = zip(cutoff_list, filenames)
-                                clusterJsonBatch(pathBase + "_c", network_matrix_sample, cutoffs=cutoff_list)
+                                clusterJsonBatch(pathBase, network_matrix_sample, cutoffs=cutoff_list)
                                 write_network_matrix(network_matrix_sample, cutoffs_and_filenames, include_singletons, clusterNames,group_dct)
 
 
