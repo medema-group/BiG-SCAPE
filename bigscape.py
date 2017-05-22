@@ -56,7 +56,7 @@ from scipy.sparse import lil_matrix
 import pysapc
 
 
-def get_gbk_files(inputdir, min_bgc_size, exclude_gbk_str, gbk_group):
+def get_gbk_files(inputdir, min_bgc_size, exclude_gbk_str, bgc_info):
     """Searches given directory for genbank files recursively, will assume that
     the genbank files that have the same name are the same genbank file. 
     Returns a dictionary that contains the names of the clusters found as keys
@@ -141,7 +141,12 @@ def get_gbk_files(inputdir, min_bgc_size, exclude_gbk_str, gbk_group):
                         group = "-".join(product_set) # likely a hybrid
                     
                     # assuming that the definition field is the same in all records
-                    gbk_group[clusterName] = (group, records[0].description, len(records), max_width)
+                    # group: antiSMASH predicted class of metabolite
+                    # gbk definition
+                    # number of records (for Arrower figures)
+                    # max_width: width of the largest record (for Arrower figures)
+                    # id: the GenBank's accession
+                    bgc_info[clusterName] = (group, records[0].description, len(records), max_width, records[0].id)
                 
                     if clusterName in genbankDict.keys():
                         # current_dir gets to be the name of the sample
@@ -1140,8 +1145,8 @@ if __name__=="__main__":
     global genbankDict, gbk_files, sampleDict, clusters, baseNames
     
     # genbankDict: {cluster_name:[genbank_path_to_1st_instance,[sample_1,sample_2,...]]}
-    group_dct = {} # also 
-    genbankDict = get_gbk_files(options.inputdir, int(options.min_bgc_size), options.exclude_gbk_str, group_dct)
+    bgc_info = {} # also 
+    genbankDict = get_gbk_files(options.inputdir, int(options.min_bgc_size), options.exclude_gbk_str, bgc_info)
 
     # clusters and sampleDict contain the necessary structure for all-vs-all and sample analysis
     clusters = genbankDict.keys()
@@ -1422,7 +1427,7 @@ if __name__=="__main__":
         # is not found, the text files with colors need to be updated
         print("  Reading BGC information and writing SVG")
         for bgc in working_set:
-            SVG(False, os.path.join(svg_folder,bgc+".svg"), genbankDict[bgc][0], os.path.join(pfd_folder,bgc+".pfd"), True, color_genes, color_domains, pfam_domain_categories, pfam_info, group_dct[bgc][2], group_dct[bgc][3])
+            SVG(False, os.path.join(svg_folder,bgc+".svg"), genbankDict[bgc][0], os.path.join(pfd_folder,bgc+".pfd"), True, color_genes, color_domains, pfam_domain_categories, pfam_info, bgc_info[bgc][2], bgc_info[bgc][3])
             
         color_genes.clear()
         color_domains.clear()
@@ -1601,6 +1606,13 @@ if __name__=="__main__":
         if options_mix:
             print("\n Mixing all BGC classes")
             
+            # Create an additional file with the list of all clusters in the class + other info
+            print("   Writing annotation file")
+            path_list = os.path.join(output_folder, networks_folder_all, "Network_Annotations_ALL_mix.tsv")
+            with open(path_list, "w") as list_file:
+                for bgc in clusterNames:
+                    list_file.write("\t".join([bgc, bgc_info[bgc][4], bgc_info[bgc][1], bgc_info[bgc][0]]) + "\n")                    
+            
             print("  Calculating all pairwise distances")
             pairs = set(map(tuple, map(sorted, combinations(range(len(clusterNames)), 2))))
             cluster_pairs = [(x, y, -1) for (x, y) in pairs]
@@ -1613,12 +1625,10 @@ if __name__=="__main__":
                 filenames.append(pathBase + "_c%.2f.network" % cutoff)
             clusterJsonBatch(pathBase, network_matrix_mix,cutoffs=cutoff_list)
             cutoffs_and_filenames = zip(cutoff_list, filenames)
-            write_network_matrix(network_matrix_mix, cutoffs_and_filenames, include_singletons, clusterNames,group_dct)
+            write_network_matrix(network_matrix_mix, cutoffs_and_filenames, include_singletons, clusterNames,bgc_info)
                 
-            # free memory if we're not going to reuse this for samples
-            # if not options_samples:
-            #     network_matrix_mix.clear()
-        
+            del network_matrix_mix[:]
+            
         # Making network files separating by BGC class
         if options_classify:
             print("\n Working for each BGC class")
@@ -1629,7 +1639,7 @@ if __name__=="__main__":
             # Preparing gene cluster classes
             print("  Sorting the input BGCs\n")
             for clusterIdx,cluster in enumerate(clusterNames):
-                product = group_dct[cluster][0]
+                product = bgc_info[cluster][0]
                 predicted_class = sort_bgc(product)
                 if predicted_class.lower() in valid_classes:
                     BGC_classes[predicted_class].append(clusterIdx)
@@ -1655,9 +1665,13 @@ if __name__=="__main__":
                 create_directory(os.path.join(output_folder, networks_folder_all, folder_name), "  All - " + bgc_class, False)
                 
                 # Create an additional file with the final list of all clusters in the class
-                path_list = os.path.join(output_folder, networks_folder_all, folder_name, "cluster_list_all_" + folder_name + ".txt")
+                print("   Writing annotation files")
+                path_list = os.path.join(output_folder, networks_folder_all, folder_name, "Network_Annotations_All_" + folder_name + ".tsv")
                 with open(path_list, "w") as list_file:
-                    list_file.write("\n".join(clusterNames[idx] for idx in BGC_classes[bgc_class]))
+                    for idx in BGC_classes[bgc_class]:
+                        bgc = clusterNames[idx]
+                        list_file.write("\t".join([bgc, bgc_info[bgc][4], bgc_info[bgc][1], bgc_info[bgc][0]]) + "\n")                    
+            
                     
                 if len(BGC_classes[bgc_class]) > 1:
                     print("   Calculating all pairwise distances")
@@ -1672,7 +1686,7 @@ if __name__=="__main__":
                         filenames.append(pathBase + "_c%.2f.network" % cutoff)
                     cutoffs_and_filenames = zip(cutoff_list, filenames)
                     clusterJsonBatch(pathBase, network_matrix, cutoffs=cutoff_list)
-                    write_network_matrix(network_matrix, cutoffs_and_filenames, include_singletons,clusterNames, group_dct)
+                    write_network_matrix(network_matrix, cutoffs_and_filenames, include_singletons,clusterNames, bgc_info)
                         
                     # keep the data if we have to reuse it
                     if options_samples:
@@ -1704,6 +1718,15 @@ if __name__=="__main__":
                         sampleClusterIdxs = [clusterNames2idx[cluster] for cluster in sampleClusters]
                         pairs = set(map(tuple, map(sorted, combinations(sampleClusterIdxs, 2))))
                         
+                        # Create an additional file with the list of all clusters in the class + other info
+                        print("   Writing annotation files")
+                        path_list = os.path.join(output_folder, networks_folder_samples, sample, "Network_Annotations_Sample_" + sample + "_mix.tsv")
+                        with open(path_list, "w") as list_file:
+                            for bgc in sampleClusters:
+                                # filename, accession, description, antiSMASH predicted metabolite kind
+                                list_file.write("\t".join([bgc, bgc_info[bgc][4], bgc_info[bgc][1], bgc_info[bgc][0]]) + "\n")                    
+            
+                        
                         # If we did the 'all' case and didn't mix 'classify' and 'mix', 
                         # the pairs' distances should be ready
 
@@ -1722,13 +1745,13 @@ if __name__=="__main__":
                         network_matrix_sample = generate_network(cluster_pairs, cores)
 
                         print("   Writing output files")
-                        pathBase = os.path.join(output_folder, networks_folder_samples, "sample_" + sample + "_mix")
+                        pathBase = os.path.join(output_folder, networks_folder_samples, sample, "sample_" + sample + "_mix")
                         filenames = []
                         for cutoff in cutoff_list:
                             filenames.append(pathBase + "_c%.2f.network" % cutoff)
                         cutoffs_and_filenames = zip(cutoff_list, filenames)
                         clusterJsonBatch(pathBase, network_matrix_sample, cutoffs=cutoff_list)
-                        write_network_matrix(network_matrix_sample, cutoffs_and_filenames, include_singletons, clusterNames,group_dct)
+                        write_network_matrix(network_matrix_sample, cutoffs_and_filenames, include_singletons, clusterNames,bgc_info)
                     
                     # Making network files separating by BGC class
                     if options_classify:
@@ -1740,7 +1763,7 @@ if __name__=="__main__":
                         # Preparing gene cluster classes
                         print("   Sorting the input BGCs\n")
                         for cluster in sampleClusters:
-                            product = group_dct[cluster][0]
+                            product = bgc_info[cluster][0]
                             predicted_class = sort_bgc(product)
                             if predicted_class.lower() in valid_classes:
                                 BGC_classes[predicted_class].append(clusterNames2idx[cluster])
@@ -1766,9 +1789,11 @@ if __name__=="__main__":
                             create_directory(os.path.join(output_folder, networks_folder_samples, sample, folder_name), "   Sample " + sample + " - " + bgc_class, False)
 
                             # Create an additional file with the final list of all clusters in the class
-                            path_list = os.path.join(output_folder, networks_folder_samples, sample, folder_name, "cluster_list_" + sample + "_" + folder_name + ".txt")
+                            path_list = os.path.join(output_folder, networks_folder_samples, sample, folder_name, "Network_Annotations_Sample_" + sample + "_" + folder_name + ".tsv")
                             with open(path_list, "w") as list_file:
-                                list_file.write("\n".join(clusterNames[idx] for idx in BGC_classes[bgc_class]))
+                                for idx in BGC_classes[bgc_class]:
+                                    bgc = clusterNames[idx]
+                                    list_file.write("\t".join([bgc, bgc_info[bgc][4], bgc_info[bgc][1], bgc_info[bgc][0]]) + "\n")
 
                             if len(BGC_classes[bgc_class]) > 1:
                                 pairs = set(map(tuple, map(sorted, combinations(BGC_classes[bgc_class], 2))))
@@ -1793,7 +1818,7 @@ if __name__=="__main__":
                                     filenames.append(pathBase + "_c%.2f.network" % cutoff)
                                 cutoffs_and_filenames = zip(cutoff_list, filenames)
                                 clusterJsonBatch(pathBase, network_matrix_sample, cutoffs=cutoff_list)
-                                write_network_matrix(network_matrix_sample, cutoffs_and_filenames, include_singletons, clusterNames,group_dct)
+                                write_network_matrix(network_matrix_sample, cutoffs_and_filenames, include_singletons, clusterNames,bgc_info)
 
 
     runtime = time.time()-time1

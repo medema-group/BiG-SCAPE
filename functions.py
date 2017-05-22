@@ -302,19 +302,13 @@ def network_parser(network_file, Jaccardw, DDSw, GKw, anchorboost):
 
 def write_network_matrix(matrix, cutoffs_and_filenames, include_singletons, clusterNames, group_dict):
     """
-           
-    matrix
+    An entry in the distance matrix is currently (all floats):
       0         1           2      3      4       5    6    7    8      9     10   11
     clus1Idx clus2Idx bgcClassIdx rawD  sqrtSim  Jac  DDS  AI rDDSna  rDDSa   S    Sa
     
-    row:   0      1      2     3    4     5     6     7        8    9   10
-        clus1   clus2  grp1  def1 grp2  def2   rawD  sqrtSim  Jac  DDS  AI  
-    
-          11      12    13    14
-        rDDSna  rDDSa   S    Sa
-    
-          [   15      16   <- these two are written directly
-          [combGrp  ShrdGrp
+    The final row in the network file is currently:
+      0      1      2     3      4   5   6     7       8    9   10    11       12
+    clus1  clus2  rawD  sqrtSim  J  DDS  AI  rDDSna  rDDSa  S   Sa  combGrp  ShrdGrp
     """
     
     #Open file handles for each cutoff
@@ -322,7 +316,7 @@ def write_network_matrix(matrix, cutoffs_and_filenames, include_singletons, clus
     cutoffs, filenames = zip(*cutoffs_and_filenames)
     for cutoff, filename in cutoffs_and_filenames:
         networkfiles[cutoff] = open(filename, 'w')
-        networkfiles[cutoff].write("Clustername1\tClustername2\tgroup1\tDefinition\tgroup2\tDefinition\tRaw distance\tSquared similarity\tJaccard index\tDDS index\tAdjacency index\traw DDS non-anchor\traw DDS anchor\tNon-anchor domains\tAnchor domains\tCombined group\tShared group\n")
+        networkfiles[cutoff].write("Clustername 1\tClustername 2\tRaw distance\tSquared similarity\tJaccard index\tDDS index\tAdjacency index\traw DDS non-anchor\traw DDS anchor\tNon-anchor domains\tAnchor domains\tCombined group\tShared group\n")
 
     #Dictionaries to keep track of connected nodes, to know which are singletons
     clusterSetAllDict = {}
@@ -332,37 +326,42 @@ def write_network_matrix(matrix, cutoffs_and_filenames, include_singletons, clus
         clusterSetConnectedDict[cutoff] = set()
 
     for matrix_entry in matrix:
-        gc1Idx, gc2Idx, weights_kind = int(matrix_entry[0]),int(matrix_entry[1]),matrix_entry[2]
-        gc1 = clusterNames[gc1Idx]
-        gc2 = clusterNames[gc2Idx]
+        gc1 = clusterNames[int(matrix_entry[0])]
+        gc2 = clusterNames[int(matrix_entry[1])]
         row = [gc1, gc2]
-        clus1group = group_dict[gc1]
-        clus2group = group_dict[gc2]
-        row.extend([clus1group[0], clus1group[1]])
-        row.extend([clus2group[0], clus2group[1]])
-        row.extend(matrix_entry[3:])
+        
+        # get AntiSMASH annotations
+        clus1group = group_dict[gc1][0]
+        clus2group = group_dict[gc2][0]
+        
+        # add all the other floats
+        row.extend(matrix_entry[3:-2])
+        
+        # add number of anchor/non-anchor domains as integers
+        row.append(int(matrix_entry[-2]))
+        row.append(int(matrix_entry[-1]))
         
         clusterSetAllDict[cutoff].add(gc1)
         clusterSetAllDict[cutoff].add(gc2)
 
         # prepare combined group
-        if row[2] != "" and row[4] != "": #group1, group2
-            row.append(" - ".join(sorted([row[2],row[4]])))
-        elif row[4] != "":
-            row.append(row[4])
-        elif row[2] != "":
-            row.append(row[2])
+        if clus1group != "" and clus2group != "": #group1, group2
+            row.append(" - ".join(sorted([clus1group,clus2group])))
+        elif clus2group != "":
+            row.append(clus2group)
+        elif clus1group != "":
+            row.append(clus1group)
         else:
             row.append("NA")
     
         # prepare share group (if they indeed share it)
-        if row[2] == row[4]:
-            row.append(row[2])
+        if clus1group == clus2group:
+            row.append(clus1group)
         else:
             row.append("")
 
         for cutoff in cutoffs:
-            if row[6] < cutoff:
+            if row[2] < cutoff:
                 networkfile = networkfiles[cutoff]
                 clusterSetConnectedDict[cutoff].add(gc1)
                 clusterSetConnectedDict[cutoff].add(gc2)
@@ -375,7 +374,7 @@ def write_network_matrix(matrix, cutoffs_and_filenames, include_singletons, clus
         for gc in clusterSetAllDict[cutoff]-clusterSetConnectedDict[cutoff]:
             #Arbitrary numbers for S and Sa domains: 1 of each (logical would be 0,0 but 
             # that could mess re-analysis; 
-            networkfile.write("\t".join([gc, gc, group_dict[gc][0], group_dict[gc][1], group_dict[gc][0], group_dict[gc][1], "0", "0", "1", "1", "1", "1", "0", "0", "1", "1", "", ""]) + "\n")
+            networkfile.write("\t".join([gc, gc, "0", "1", "1", "1", "1", "0", "0", "1", "1", "", ""]) + "\n")
 
     #Close all files
     for networkfile in networkfiles.values():
