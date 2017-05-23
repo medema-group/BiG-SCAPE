@@ -184,7 +184,8 @@ def timeit(f):
         runtime_string = '\t%s function took %0.3f s' % (f.func_name, runtime)
         
         if runtime > insignificant_runtime:
-            timings_file.write(runtime_string + "\n")
+            with open(os.path.join(output_folder, "runtimes.txt"), 'a') as timings_file:
+                timings_file.write(runtime_string + "\n")
             print runtime_string
             
         return ret
@@ -1182,9 +1183,6 @@ if __name__=="__main__":
 
     print("\nTrying threading on %i cores" % cores)
     
-    #open the file that will contain the timed functions
-    timings_file = open(os.path.join(output_folder, "runtimes.txt"), 'w') 
-    
     """BGCs -- 
     dictionary of this structure:
     BGCs = {'cluster_name_x': { 'general_domain_name_x' : ['specific_domain_name_1',
@@ -1823,7 +1821,7 @@ if __name__=="__main__":
 
     runtime = time.time()-time1
     runtime_string = '\n\n\tMain function took %0.3f s' % (runtime)
-    timings_file.write(runtime_string + "\n")
+    with open(os.path.join(output_folder, "runtimes.txt"), 'a') as timings_file:
+        timings_file.write(runtime_string + "\n")
     print runtime_string
     
-    timings_file.close()
