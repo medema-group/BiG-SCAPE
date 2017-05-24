@@ -1608,9 +1608,10 @@ if __name__=="__main__":
             print("   Writing annotation file")
             path_list = os.path.join(output_folder, networks_folder_all, "Network_Annotations_ALL_mix.tsv")
             with open(path_list, "w") as list_file:
-                list_file.write("BGC\tAccesion ID\tDescription\tProduct Prediction\n")
+                list_file.write("BGC\tAccesion ID\tDescription\tProduct Prediction\tBiG-SCAPE class\n")
                 for bgc in clusterNames:
-                    list_file.write("\t".join([bgc, bgc_info[bgc][4], bgc_info[bgc][1], bgc_info[bgc][0]]) + "\n")                    
+                    product = bgc_info[bgc][0]
+                    list_file.write("\t".join([bgc, bgc_info[bgc][4], bgc_info[bgc][1], product, sort_bgc(product)]) + "\n")                    
             
             print("  Calculating all pairwise distances")
             pairs = set(map(tuple, map(sorted, combinations(range(len(clusterNames)), 2))))
@@ -1667,10 +1668,11 @@ if __name__=="__main__":
                 print("   Writing annotation files")
                 path_list = os.path.join(output_folder, networks_folder_all, folder_name, "Network_Annotations_All_" + folder_name + ".tsv")
                 with open(path_list, "w") as list_file:
-                    list_file.write("BGC\tAccesion ID\tDescription\tProduct Prediction\n")
+                    list_file.write("BGC\tAccesion ID\tDescription\tProduct Prediction\tBiG-SCAPE class\n")
                     for idx in BGC_classes[bgc_class]:
                         bgc = clusterNames[idx]
-                        list_file.write("\t".join([bgc, bgc_info[bgc][4], bgc_info[bgc][1], bgc_info[bgc][0]]) + "\n")                    
+                        product = bgc_info[bgc][0]
+                        list_file.write("\t".join([bgc, bgc_info[bgc][4], bgc_info[bgc][1], product, sort_bgc(product)]) + "\n")
             
                     
                 if len(BGC_classes[bgc_class]) > 1:
@@ -1722,10 +1724,10 @@ if __name__=="__main__":
                         print("   Writing annotation files")
                         path_list = os.path.join(output_folder, networks_folder_samples, sample, "Network_Annotations_Sample_" + sample + "_mix.tsv")
                         with open(path_list, "w") as list_file:
-                            list_file.write("BGC\tAccesion ID\tDescription\tProduct Prediction\n")
+                            list_file.write("BGC\tAccesion ID\tDescription\tProduct Prediction\tBiG-SCAPE class\n")
                             for bgc in sampleClusters:
-                                # filename, accession, description, antiSMASH predicted metabolite kind
-                                list_file.write("\t".join([bgc, bgc_info[bgc][4], bgc_info[bgc][1], bgc_info[bgc][0]]) + "\n")                    
+                                product = bgc_info[bgc][0]
+                                list_file.write("\t".join([bgc, bgc_info[bgc][4], bgc_info[bgc][1], product, sort_bgc(product)]) + "\n")
             
                         
                         # If we did the 'all' case and didn't mix 'classify' and 'mix', 
@@ -1792,10 +1794,11 @@ if __name__=="__main__":
                             # Create an additional file with the final list of all clusters in the class
                             path_list = os.path.join(output_folder, networks_folder_samples, sample, folder_name, "Network_Annotations_Sample_" + sample + "_" + folder_name + ".tsv")
                             with open(path_list, "w") as list_file:
-                                list_file.write("BGC\tAccesion ID\tDescription\tProduct Prediction\n")
+                                list_file.write("BGC\tAccesion ID\tDescription\tProduct Prediction\tBiG-SCAPE class\n")
                                 for idx in BGC_classes[bgc_class]:
                                     bgc = clusterNames[idx]
-                                    list_file.write("\t".join([bgc, bgc_info[bgc][4], bgc_info[bgc][1], bgc_info[bgc][0]]) + "\n")
+                                    product = bgc_info[bgc][0]
+                                    list_file.write("\t".join([bgc, bgc_info[bgc][4], bgc_info[bgc][1], product, sort_bgc(product)]) + "\n")
 
                             if len(BGC_classes[bgc_class]) > 1:
                                 pairs = set(map(tuple, map(sorted, combinations(BGC_classes[bgc_class], 2))))
