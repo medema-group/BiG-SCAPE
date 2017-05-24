@@ -494,6 +494,8 @@ def sort_bgc(product):
                 return("PKS-NRP_Hybrids")
             else:
                 return("PKSother") # pks hybrids
+        elif len(subtypes - set(['lantipeptide', 'thiopeptide', 'bacteriocin', 'linaridin', 'cyanobactin', 'glycocin', 'LAP', 'lassopeptide', 'sactipeptide', 'bottromycin', 'head_to_tail', 'microcin', 'microviridin', 'proteusin'])) == 0:
+            return("RiPPs")
         else:
             return("Others") # other hybrid
     # Others
