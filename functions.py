@@ -315,9 +315,9 @@ def write_network_matrix(matrix, cutoffs_and_filenames, include_singletons, clus
     networkfiles = {}
     cutoffs, filenames = zip(*cutoffs_and_filenames)
     for cutoff, filename in cutoffs_and_filenames:
-        networkfiles[cutoff] = open(filename, 'w')
-        networkfiles[cutoff].write("Clustername 1\tClustername 2\tRaw distance\tSquared similarity\tJaccard index\tDDS index\tAdjacency index\traw DDS non-anchor\traw DDS anchor\tNon-anchor domains\tAnchor domains\tCombined group\tShared group\n")
-
+        with open(filename, "w") as networkfile:
+            networkfile.write("Clustername 1\tClustername 2\tRaw distance\tSquared similarity\tJaccard index\tDDS index\tAdjacency index\traw DDS non-anchor\traw DDS anchor\tNon-anchor domains\tAnchor domains\tCombined group\tShared group\n")
+      
     #Dictionaries to keep track of connected nodes, to know which are singletons
     clusterSetAllDict = {}
     clusterSetConnectedDict = {}
@@ -340,9 +340,6 @@ def write_network_matrix(matrix, cutoffs_and_filenames, include_singletons, clus
         # add number of anchor/non-anchor domains as integers
         row.append(int(matrix_entry[-2]))
         row.append(int(matrix_entry[-1]))
-        
-        clusterSetAllDict[cutoff].add(gc1)
-        clusterSetAllDict[cutoff].add(gc2)
 
         # prepare combined group
         if clus1group != "" and clus2group != "": #group1, group2
@@ -360,21 +357,26 @@ def write_network_matrix(matrix, cutoffs_and_filenames, include_singletons, clus
         else:
             row.append("")
 
-        for cutoff in cutoffs:
+        for cutoff, filename in cutoffs_and_filenames:
+            clusterSetAllDict[cutoff].add(gc1)
+            clusterSetAllDict[cutoff].add(gc2)
+            
             if row[2] < cutoff:
-                networkfile = networkfiles[cutoff]
                 clusterSetConnectedDict[cutoff].add(gc1)
                 clusterSetConnectedDict[cutoff].add(gc2)
                 
-                networkfile.write("\t".join(map(str,row)) + "\n")
+                with open(filename, "a") as networkfile:
+                    networkfile.write("\t".join(map(str,row)) + "\n")
 
 
     #Add the nodes without any edges, give them an edge to themselves with a distance of 0
     if include_singletons == True:
-        for gc in clusterSetAllDict[cutoff]-clusterSetConnectedDict[cutoff]:
-            #Arbitrary numbers for S and Sa domains: 1 of each (logical would be 0,0 but 
-            # that could mess re-analysis; 
-            networkfile.write("\t".join([gc, gc, "0", "1", "1", "1", "1", "0", "0", "1", "1", "", ""]) + "\n")
+        for cutoff, filename in cutoffs_and_filenames:
+            for gc in clusterSetAllDict[cutoff]-clusterSetConnectedDict[cutoff]:
+                #Arbitrary numbers for S and Sa domains: 1 of each (logical would be 0,0 but 
+                # that could mess re-analysis;
+                with open(filename, "a") as networkfile:
+                    networkfile.write("\t".join([gc, gc, "0", "1", "1", "1", "1", "0", "0", "1", "1", "", ""]) + "\n")
 
     #Close all files
     for networkfile in networkfiles.values():
