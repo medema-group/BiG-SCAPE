@@ -995,6 +995,8 @@ class FloatRange(object):
         self.end = end
     def __eq__(self, other):
         return self.start <= other <= self.end
+    def __repr__(self):
+        return '{0}-{1}'.format(self.start, self.end)
 
 def CMD_parser():
     parser = ArgumentParser()
@@ -1055,7 +1057,7 @@ def CMD_parser():
     parser.add_argument("--skip_all", dest="skip_all", action="store_true",
                       default = False, help = "Only generate new network files. ")
     parser.add_argument("--cutoffs", dest="cutoffs", nargs="+", default=[0.10, 0.15, 0.20, 0.25, 0.30, 0.35, 0.40, 0.45, 0.50, 0.55, 0.60, 0.65, 0.70, 0.75, 0.80], type=float, choices=[FloatRange(0.0, 1.0)],
-                      help="Generate networks using multiple raw distance cutoff values, example: \"0.1, 0.25, 0.5, 1.0\". Default: 1.0 (all distances are included)")
+                      help="Generate networks using multiple raw distance cutoff values, example: \"0.1, 0.25, 0.5, 1.0\". Default: all values from 0.10 to 0.80 with 0.05 intervals.")
 
     options = parser.parse_args()
     return options
