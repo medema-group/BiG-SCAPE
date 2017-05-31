@@ -96,7 +96,7 @@ def check_overlap(pfd_matrix, overlap_cutoff):
                     overlap_perc_loc2 = overlap_perc(overlapping_nucleotides, int(row2[4])-int(row2[3]))
                     #check if the amount of overlap is significant
                     if overlap_perc_loc1 > overlap_cutoff or overlap_perc_loc2 > overlap_cutoff:
-                        if float(row1[1]) > float(row2[1]): #see which has a better score
+                        if float(row1[1]) >= float(row2[1]): #see which has a better score
                             delete_list.append(row2)
                         elif float(row1[1]) < float(row2[1]):
                             delete_list.append(row1)

@@ -465,8 +465,8 @@ def cluster_distance(a, b, a_domlist, b_domlist, bgc_class):
                 # wrong elsewhere
                 if len(aligned_seqA) != len(aligned_seqB):
                     print("\tWARNING: mismatch in sequences' lengths while calculating sequence identity (" + shared_domain + ")")
-                    print("\t  Specific domain 1: " + aligned_seqA + " len: " + str(len(aligned_seqA)))
-                    print("\t  Specific domain 2: " + aligned_seqB + " len: " + str(len(aligned_seqB)))
+                    print("\t  Specific domain 1: " + sequence_tag_a + " len: " + str(len(aligned_seqA)))
+                    print("\t  Specific domain 2: " + sequence_tag_b + " len: " + str(len(aligned_seqB)))
                     seq_length = min(len(aligned_seqA), len(aligned_seqB))
                 else:
                     seq_length = len(aligned_seqA)
