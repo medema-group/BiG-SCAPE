@@ -112,7 +112,9 @@ def get_gbk_files(inputdir, min_bgc_size, exclude_gbk_str, bgc_info):
                 del product_list_per_record[:]
                 
                 max_width = 0 # This will be used for the SVG figure
+                record_count = 0
                 for record in records:
+                    record_count += 1
                     bgc_size += len(record.seq)
                     if len(record.seq) > max_width:
                         max_width = len(record.seq)
@@ -120,7 +122,7 @@ def get_gbk_files(inputdir, min_bgc_size, exclude_gbk_str, bgc_info):
                     for feature in record.features:
                         if "cluster" in feature.type and "product" in feature.qualifiers:
                             if len(feature.qualifiers["product"]) > 1:
-                                print("  WARNING: more than product annotated in record " + str(record_cound) + ", " + fname)
+                                print("  WARNING: more than product annotated in record " + str(record_count) + ", " + fname)
                                 break
                             else:
                                 product_list_per_record.append(feature.qualifiers["product"][0])
