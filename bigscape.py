@@ -125,7 +125,7 @@ def get_gbk_files(inputdir, min_bgc_size, exclude_gbk_str, bgc_info):
                                 print("  WARNING: more than product annotated in record " + str(record_count) + ", " + fname)
                                 break
                             else:
-                                product_list_per_record.append(feature.qualifiers["product"][0])
+                                product_list_per_record.append(feature.qualifiers["product"][0].replace(" ",""))
                 
                 if bgc_size > min_bgc_size:  # exclude the bgc if it's too small
                     file_counter += 1
