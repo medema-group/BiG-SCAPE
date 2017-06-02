@@ -1608,17 +1608,29 @@ if __name__=="__main__":
         if options_mix:
             print("\n Mixing all BGC classes")
             
+            # only choose from valid classes
+            mix_set = []
+            for clusterIdx,cluster in enumerate(clusterNames):
+                product = bgc_info[cluster][0]
+                predicted_class = sort_bgc(product)
+                if predicted_class.lower() in valid_classes:
+                    mix_set.append(clusterIdx)
+            
             # Create an additional file with the list of all clusters in the class + other info
             print("   Writing annotation file")
             path_list = os.path.join(output_folder, networks_folder_all, "Network_Annotations_ALL_mix.tsv")
             with open(path_list, "w") as list_file:
                 list_file.write("BGC\tAccesion ID\tDescription\tProduct Prediction\tBiG-SCAPE class\n")
-                for bgc in clusterNames:
+                for idx in mix_set:
+                    bgc = clusterNames[idx]
                     product = bgc_info[bgc][0]
-                    list_file.write("\t".join([bgc, bgc_info[bgc][4], bgc_info[bgc][1], product, sort_bgc(product)]) + "\n")                    
+                    list_file.write("\t".join([bgc, bgc_info[bgc][4], bgc_info[bgc][1], product, sort_bgc(product)]) + "\n")
             
             print("  Calculating all pairwise distances")
-            pairs = set(map(tuple, map(sorted, combinations(range(len(clusterNames)), 2))))
+            
+            pairs = set(map(tuple, map(sorted, combinations(mix_set, 2))))
+            del mix_set[:]
+            #pairs = set(map(tuple, map(sorted, combinations(range(len(clusterNames)), 2))))
             cluster_pairs = [(x, y, -1) for (x, y) in pairs]
             network_matrix_mix = generate_network(cluster_pairs, cores)
                 
