@@ -1733,18 +1733,26 @@ if __name__=="__main__":
                     # Making network files mixing all classes
                     if options_mix:
                         print("\n  Mixing all BGC classes")
-                        sampleClusterIdxs = [clusterNames2idx[cluster] for cluster in sampleClusters]
-                        pairs = set(map(tuple, map(sorted, combinations(sampleClusterIdxs, 2))))
+                        
+                        mix_set = []
+                        for clusterIdx, sampleCluster in enumerate(sampleClusters):
+                            product = bgc_info[sampleCluster][0]
+                            predicted_class = sort_bgc(product)
+                            if predicted_class.lower() in valid_classes:
+                                mix_set.append(clusterIdx)
                         
                         # Create an additional file with the list of all clusters in the class + other info
                         print("   Writing annotation files")
                         path_list = os.path.join(output_folder, networks_folder_samples, sample, "Network_Annotations_Sample_" + sample + "_mix.tsv")
                         with open(path_list, "w") as list_file:
                             list_file.write("BGC\tAccesion ID\tDescription\tProduct Prediction\tBiG-SCAPE class\n")
-                            for bgc in sampleClusters:
+                            for idx in mix_set:
+                                bgc = clusterName[idx]
                                 product = bgc_info[bgc][0]
                                 list_file.write("\t".join([bgc, bgc_info[bgc][4], bgc_info[bgc][1], product, sort_bgc(product)]) + "\n")
             
+                        pairs = set(map(tuple, map(sorted, combinations(mix_set, 2))))
+                        del mix_set[:]
                         
                         # If we did the 'all' case and didn't mix 'classify' and 'mix', 
                         # the pairs' distances should be ready
