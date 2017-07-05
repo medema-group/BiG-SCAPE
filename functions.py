@@ -315,8 +315,8 @@ def write_network_matrix(matrix, cutoffs_and_filenames, include_singletons, clus
     networkfiles = {}
     cutoffs, filenames = zip(*cutoffs_and_filenames)
     for cutoff, filename in cutoffs_and_filenames:
-        with open(filename, "w") as networkfile:
-            networkfile.write("Clustername 1\tClustername 2\tRaw distance\tSquared similarity\tJaccard index\tDDS index\tAdjacency index\traw DDS non-anchor\traw DDS anchor\tNon-anchor domains\tAnchor domains\tCombined group\tShared group\n")
+        networkfiles[cutoff] = open(filename, "w")
+        networkfiles[cutoff].write("Clustername 1\tClustername 2\tRaw distance\tSquared similarity\tJaccard index\tDDS index\tAdjacency index\traw DDS non-anchor\traw DDS anchor\tNon-anchor domains\tAnchor domains\tCombined group\tShared group\n")
       
     #Dictionaries to keep track of connected nodes, to know which are singletons
     clusterSetAllDict = {}
@@ -357,7 +357,7 @@ def write_network_matrix(matrix, cutoffs_and_filenames, include_singletons, clus
         else:
             row.append("")
 
-        for cutoff, filename in cutoffs_and_filenames:
+        for cutoff in cutoffs:
             clusterSetAllDict[cutoff].add(gc1)
             clusterSetAllDict[cutoff].add(gc2)
             
@@ -365,18 +365,16 @@ def write_network_matrix(matrix, cutoffs_and_filenames, include_singletons, clus
                 clusterSetConnectedDict[cutoff].add(gc1)
                 clusterSetConnectedDict[cutoff].add(gc2)
                 
-                with open(filename, "a") as networkfile:
-                    networkfile.write("\t".join(map(str,row)) + "\n")
+                networkfiles[cutoff].write("\t".join(map(str,row)) + "\n")
 
 
     #Add the nodes without any edges, give them an edge to themselves with a distance of 0
     if include_singletons == True:
-        for cutoff, filename in cutoffs_and_filenames:
+        for cutoff in cutoffs:
             for gc in clusterSetAllDict[cutoff]-clusterSetConnectedDict[cutoff]:
                 #Arbitrary numbers for S and Sa domains: 1 of each (logical would be 0,0 but 
-                # that could mess re-analysis;
-                with open(filename, "a") as networkfile:
-                    networkfile.write("\t".join([gc, gc, "0", "1", "1", "1", "1", "0", "0", "1", "1", "", ""]) + "\n")
+                # that could mess re-analysis with divisions-by-zero;
+                networkfiles[cutoff].write("\t".join([gc, gc, "0", "1", "1", "1", "1", "0", "0", "1", "1", "", ""]) + "\n")
 
     #Close all files
     for networkfile in networkfiles.values():
