@@ -67,7 +67,7 @@ See the full options with `python bigscape.py -h`.
 ## Requirements
 
 Packages can be installed manually but using a virtual environment is
-recommended.
+recommended. For a quick guide, see [here](Installation Guide.md)
 
 * Python 2
 * The [HMMER suite](http://hmmer.org/)
