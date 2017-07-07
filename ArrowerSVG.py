@@ -38,10 +38,12 @@ def read_color_genes_file():
         print("  Found file with gene colors")
         with open("gene_color_file.tsv", "r") as color_genes_handle:
             for line in color_genes_handle:
-                row = line.strip().split("\t")
-                name = row[0]
-                rgb = row[1].split(",")
-                color_genes[name] = [int(rgb[x]) for x in range(3)]
+                # handle comments and empty lines
+                if line[0] != "#" and line.strip():
+                    row = line.strip().split("\t")
+                    name = row[0]
+                    rgb = row[1].split(",")
+                    color_genes[name] = [int(rgb[x]) for x in range(3)]
     else:
         print("  Gene color file was not found. A new file will be created")
         with open("gene_color_file.tsv", "w") as color_genes_handle:
@@ -59,10 +61,12 @@ def read_color_domains_file():
         print("  Found file with domains colors")
         with open("domains_color_file.tsv", "r") as color_domains_handle:
             for line in color_domains_handle:
-                row = line.strip().split("\t")
-                name = row[0]
-                rgb = row[1].split(",")
-                color_domains[name] = [int(rgb[x]) for x in range(3)]
+                # handle comments and empty lines
+                if line[0] != "#" and line.strip():
+                    row = line.strip().split("\t")
+                    name = row[0]
+                    rgb = row[1].split(",")
+                    color_domains[name] = [int(rgb[x]) for x in range(3)]
     else:
         print("  Domains colors file was not found. An empty file will be created")
         color_domains_handle = open("domains_color_file.tsv", "a+")
@@ -78,7 +82,8 @@ def read_pfam_domain_categories():
         print("  Found file with Pfam domain categories")
         with open("pfam_domain_categories.tsv", "r") as cat_handle:            
             for line in cat_handle:
-                if line[0] != "#":
+                # handle comments and empty lines
+                if line[0] != "#" and line.strip():
                     row = line.strip().split("\t")
                     domain = row[1]
                     category = row[0]
