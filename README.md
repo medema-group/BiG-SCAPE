@@ -20,12 +20,12 @@ In this project, three indices are combined to define a final distance metric
 between any given pair of BGCs:
 * The Jaccard index (J): The ratio between the distinct shared and distinct 
 unshared domain types between two BGCs.
-* The DDS (Domain Duplicate Score): Measures the sequence similarity between the
-domains of both BGCs, for each type of domain. When each BGC contains only one
-copy of a certain domain, the sequence similarity can be obtained directly, 
-otherwise, the Hungarian algorithm is used to select the most similar Pfam 
-domain sequences (`munkres.py`). A special weight can be also be given to marked 
-domains annotated as "anchor domains" (`anchor_domains.txt`).
+* The DSS (Domain Sequence Similarity score): Measures the sequence similarity 
+between the domains of both BGCs, for each type of domain. When each BGC 
+contains only one copy of a certain domain, the sequence similarity can be 
+obtained directly, otherwise, the Hungarian algorithm is used to select the most 
+similar Pfam domain sequences (`munkres.py`). A special weight can be also be 
+given to marked domains annotated as "anchor domains" (`anchor_domains.txt`).
 * The Adjacency Index (AI): Estimates the similarity in terms of proximal domain
 content by calculating the ratio between the distinct shared and distinct
 unshared adjacent domains (without taking order into account)
@@ -43,7 +43,7 @@ BiG-SCAPE then uses the Pfam database and `hmmscan` from the HMMER (v3.1b2)
 suite to predict Pfam domains in each sequence.
 
 For every pair of BGCs in the set(s), the pairwise distance between this BGCs is
-calculated as the weighted combination of the Jaccard, AI and DDS indices. 
+calculated as the weighted combination of the Jaccard, AI and DSS indices. 
 Network files are generated containing a number of information: the name of the 
 BGCs, the raw distance between them, and data from the the three indices' 
 scores. This is done taking into account different cutoff values for the 
@@ -74,7 +74,7 @@ recommended. For a quick guide, see [here](Installation Guide.md)
 * The (processed) Pfam database. For this, download the latest `Pfam-A.hmm.gz`
 file from the [Pfam website](http://pfam.xfam.org/), uncompress it and process
 it using the `hmmpress` command.
-* For sequence alignment (DDS score), BiG-SCAPE uses the `hmmalign` command from
+* For sequence alignment (DSS score), BiG-SCAPE uses the `hmmalign` command from
 the HMMER suite by default, but you can also select 
 [MAFFT](http://mafft.cbrc.jp/alignment/software/) (activate with `--use_mafft`)
 * Biopython

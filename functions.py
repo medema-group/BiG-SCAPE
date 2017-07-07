@@ -56,7 +56,7 @@ def get_anchor_domains(filename):
         handle = open(filename, 'r')
     except IOError:
         print "You have not provided the anchor_domains.txt file."
-        print "if you want to make use of the anchor domains in the DDS distance metric,\
+        print "if you want to make use of the anchor domains in the DSS distance metric,\
         make a file that contains a Pfam domain on each line."
         return []
         
@@ -236,7 +236,7 @@ def save_domain_seqs(filtered_matrix, fasta_dict, domains_folder, outputbase):
         domain_file.close()
 
 
-def network_parser(network_file, Jaccardw, DDSw, GKw, anchorboost):
+def network_parser(network_file, Jaccardw, DSSw, GKw, anchorboost):
     network = {}
     
     try:
@@ -257,15 +257,15 @@ def network_parser(network_file, Jaccardw, DDSw, GKw, anchorboost):
     # re-calculate raw distance with potentially new weights
     for (a, b) in network:
         Jaccard = network[a,b][7]
-        #DDS = network[a,b][8] <- will be recalculated
+        #DSS = network[a,b][8] <- will be recalculated
         AI = network[a,b][9]
         
-        DDS_non_anchor = network[a,b][10]
-        DDS_anchor = network[a,b][11]
+        DSS_non_anchor = network[a,b][10]
+        DSS_anchor = network[a,b][11]
         S_anchor = network[a,b][12]
         S = network[a,b][13]
         
-        # Calculate DDS
+        # Calculate DSS
         if S_anchor != 0 and S != 0:
             non_anchor_prct = S / (S + S_anchor)
             anchor_prct = S_anchor / (S + S_anchor)
@@ -273,17 +273,17 @@ def network_parser(network_file, Jaccardw, DDSw, GKw, anchorboost):
             non_anchor_weight = non_anchor_prct / (anchor_prct*anchorboost + non_anchor_prct)
             anchor_weight = anchor_prct*anchorboost / (anchor_prct*anchorboost + non_anchor_prct)
         
-            DDS = (non_anchor_weight*DDS_non_anchor) + (anchor_weight*DDS_anchor)
+            DSS = (non_anchor_weight*DSS_non_anchor) + (anchor_weight*DSS_anchor)
             
         elif S_anchor == 0:
-            DDS = DDS_non_anchor
+            DSS = DSS_non_anchor
             
         else: #only anchor domains were found
-            DDS = DDS_anchor
+            DSS = DSS_anchor
             
-        DDS = 1 - DDS
+        DSS = 1 - DSS
         
-        distance = 1- (Jaccardw * Jaccard) - (DDSw * DDS) - (AIw * AI)
+        distance = 1- (Jaccardw * Jaccard) - (DSSw * DSS) - (AIw * AI)
         
         if distance <= 0:
             logscore = float("inf")
@@ -295,7 +295,7 @@ def network_parser(network_file, Jaccardw, DDSw, GKw, anchorboost):
         network[a,b][4] = logscore
         network[a,b][5] = distance
         network[a,b][6] = sqrd_similarity
-        network[a,b][8] = DDS
+        network[a,b][8] = DSS
         
     return network
 
@@ -304,11 +304,11 @@ def write_network_matrix(matrix, cutoffs_and_filenames, include_singletons, clus
     """
     An entry in the distance matrix is currently (all floats):
       0         1           2      3      4       5    6    7    8      9     10   11
-    clus1Idx clus2Idx bgcClassIdx rawD  sqrtSim  Jac  DDS  AI rDDSna  rDDSa   S    Sa
+    clus1Idx clus2Idx bgcClassIdx rawD  sqrtSim  Jac  DSS  AI rDSSna  rDSSa   S    Sa
     
     The final row in the network file is currently:
       0      1      2     3      4   5   6     7       8    9   10    11       12
-    clus1  clus2  rawD  sqrtSim  J  DDS  AI  rDDSna  rDDSa  S   Sa  combGrp  ShrdGrp
+    clus1  clus2  rawD  sqrtSim  J  DSS  AI  rDSSna  rDSSa  S   Sa  combGrp  ShrdGrp
     """
     
     #Open file handles for each cutoff
@@ -316,7 +316,7 @@ def write_network_matrix(matrix, cutoffs_and_filenames, include_singletons, clus
     cutoffs, filenames = zip(*cutoffs_and_filenames)
     for cutoff, filename in cutoffs_and_filenames:
         networkfiles[cutoff] = open(filename, "w")
-        networkfiles[cutoff].write("Clustername 1\tClustername 2\tRaw distance\tSquared similarity\tJaccard index\tDDS index\tAdjacency index\traw DDS non-anchor\traw DDS anchor\tNon-anchor domains\tAnchor domains\tCombined group\tShared group\n")
+        networkfiles[cutoff].write("Clustername 1\tClustername 2\tRaw distance\tSquared similarity\tJaccard index\tDSS index\tAdjacency index\traw DSS non-anchor\traw DSS anchor\tNon-anchor domains\tAnchor domains\tCombined group\tShared group\n")
       
     #Dictionaries to keep track of connected nodes, to know which are singletons
     clusterSetAllDict = {}
@@ -555,8 +555,8 @@ def write_parameters(output_folder, options):
     #else:
         #pf.write("\n")
         
-    #pf.write("DDS weight:\t" + str(options.DDSw))
-    #if options.DDSw == 0.75:
+    #pf.write("DSS weight:\t" + str(options.DSSw))
+    #if options.DSSw == 0.75:
         #pf.write("\t(default)\n")
     #else:
         #pf.write("\n")

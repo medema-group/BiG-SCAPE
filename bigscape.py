@@ -243,27 +243,14 @@ def generate_dist_matrix(parms):
         # last two values (S, Sa) should really be zero but this could give rise to errors when parsing 
         # the network file (unless we catched the case S = Sa = 0
 
-        # cluster1Idx, cluster2Idx, bgcClassIdx, distance, jaccard, DDS, AI, rDDSNa, rDDSa, S, Sa
+        # cluster1Idx, cluster2Idx, bgcClassIdx, distance, jaccard, DSS, AI, rDSSNa, rDSSa, S, Sa
         return array('f',[cluster1Idx,cluster2Idx,bgcClassIdx,  1,0,0,0,0,0,1,1])
     
 
-    dist, jaccard, dds, ai, rDDSna, rDDS, S, Sa = cluster_distance(cluster1, cluster2,
+    dist, jaccard, dss, ai, rDSSna, rDSS, S, Sa = cluster_distance(cluster1, cluster2,
                                                                    domain_list_A, domain_list_B, bgc_class) #sequence dist
         
-    # if dist == 0:
-    #     logscore = float("inf")
-    # else:
-    #     logscore = 0
-    #     try:
-    #         logscore = log(dist, 2) #Write exception, ValueError
-    #         logscore = -1.0*logscore
-    #     except ValueError:
-    #         print("ERROR: Unexpected issue when calculating logscore.")
-    #         print(cluster1 + " - " + cluster2 + ": " + str(dist))
-            
-    #cluster1Idx, cluster2Idx, bgcClassIdx, distance, jaccard, DDS, AI, rDDSNa, rDDSa, S, Sa
-
-    network_row = array('f',[cluster1Idx, cluster2Idx, bgcClassIdx, dist, (1-dist)**2, jaccard, dds, ai, rDDSna, rDDS, S, Sa])
+    network_row = array('f',[cluster1Idx, cluster2Idx, bgcClassIdx, dist, (1-dist)**2, jaccard, dss, ai, rDSSna, rDSS, S, Sa])
     
     return network_row
     
@@ -271,7 +258,7 @@ def generate_dist_matrix(parms):
 def cluster_distance(a, b, a_domlist, b_domlist, bgc_class): 
     """Compare two clusters using information on their domains, and the sequences of the domains"""
     
-    Jaccardw, DDSw, AIw, anchorboost = bgc_class_weight[bgc_class]
+    Jaccardw, DSSw, AIw, anchorboost = bgc_class_weight[bgc_class]
 
     temp_domain_fastas = {}
     
@@ -289,8 +276,6 @@ def cluster_distance(a, b, a_domlist, b_domlist, bgc_class):
     
     # Detect totally unrelated pairs from the beginning
     if len(intersect) == 0:
-        not_intersect = setA.symmetric_difference(setB)
-        
         # Count total number of anchor and non-anchor domain to report in the network file
         # Apart from that, these BGCs are totally unrelated.
         for domain in setA:
@@ -309,7 +294,7 @@ def cluster_distance(a, b, a_domlist, b_domlist, bgc_class):
 
     
     # define the subset of domain sequence tags to include in
-    # the DDS calculation. This is done for every domain.
+    # the DSS calculation. This is done for every domain.
     A_domain_sequence_slice_bottom = defaultdict(int)
     A_domain_sequence_slice_top = defaultdict(int)
     B_domain_sequence_slice_bottom = defaultdict(int)
@@ -377,7 +362,7 @@ def cluster_distance(a, b, a_domlist, b_domlist, bgc_class):
     Jaccard = len(intersect)/ float( len(setA) + len(setB) - len(intersect))
 
 
-    # DDS INDEX
+    # DSS INDEX
     #domain_difference: Difference in sequence per domain. If one cluster doesn't have a domain at all, but the other does, 
     #this is a sequence difference of 1. If both clusters contain the domain once, and the sequence is the same, there is a seq diff of 0.
     #S: Max occurence of each domain
@@ -507,8 +492,8 @@ def cluster_distance(a, b, a_domlist, b_domlist, bgc_class):
         
         
     if S_anchor != 0 and S != 0:
-        DDS_non_anchor = domain_difference / float(S)
-        DDS_anchor = domain_difference_anchor / float(S_anchor)
+        DSS_non_anchor = domain_difference / float(S)
+        DSS_anchor = domain_difference_anchor / float(S_anchor)
         
         # Calculate proper, proportional weight to each kind of domain
         non_anchor_prct = S / float(S + S_anchor)
@@ -518,22 +503,22 @@ def cluster_distance(a, b, a_domlist, b_domlist, bgc_class):
         non_anchor_weight = non_anchor_prct / (anchor_prct*anchorboost + non_anchor_prct)
         anchor_weight = anchor_prct*anchorboost / (anchor_prct*anchorboost + non_anchor_prct)
 
-        # Use anchorboost parameter to boost percieved rDDS_anchor
-        DDS = (non_anchor_weight*DDS_non_anchor) + (anchor_weight*DDS_anchor)
+        # Use anchorboost parameter to boost percieved rDSS_anchor
+        DSS = (non_anchor_weight*DSS_non_anchor) + (anchor_weight*DSS_anchor)
         
     elif S_anchor == 0:
-        DDS_non_anchor = domain_difference / float(S)
-        DDS_anchor = 0.0
+        DSS_non_anchor = domain_difference / float(S)
+        DSS_anchor = 0.0
         
-        DDS = DDS_non_anchor
+        DSS = DSS_non_anchor
         
     else: #only anchor domains were found
-        DDS_non_anchor = 0.0
-        DDS_anchor = domain_difference_anchor / float(S_anchor)
+        DSS_non_anchor = 0.0
+        DSS_anchor = domain_difference_anchor / float(S_anchor)
         
-        DDS = DDS_anchor
+        DSS = DSS_anchor
  
-    DDS = 1-DDS #transform into similarity
+    DSS = 1-DSS #transform into similarity
  
 
     # ADJACENCY INDEX
@@ -553,14 +538,7 @@ def cluster_distance(a, b, a_domlist, b_domlist, bgc_class):
         # same treatment as in Jaccard
         AI = float(len(setA_pairs.intersection(setB_pairs))) / float(len(setA_pairs.union(setB_pairs)))
 
-    
-    # GK INDEX
-    #  calculate the Goodman-Kruskal gamma index
-    #Ar = [item for item in A_domlist]
-    #Ar.reverse()
-    #GK = max([calculate_GK(A_domlist, B_domlist, nbhood), calculate_GK(Ar, B_domlist, nbhood)])
-    
-    Distance = 1 - (Jaccardw * Jaccard) - (DDSw * DDS) - (AIw * AI)
+    Distance = 1 - (Jaccardw * Jaccard) - (DSSw * DSS) - (AIw * AI)
     
     # This could happen due to numerical innacuracies
     if Distance < 0.0:
@@ -568,11 +546,11 @@ def cluster_distance(a, b, a_domlist, b_domlist, bgc_class):
             print("Negative distance detected!")
             print(Distance)
             print(A + " - " + B)
-            print("J: " + str(Jaccard) + "\tDDS: " + str(DDS) + "\tAI: " + str(AI))
-            print("Jw: " + str(Jaccardw) + "\tDDSw: " + str(DDSw) + "\tAIw: " + str(AIw))
+            print("J: " + str(Jaccard) + "\tDSS: " + str(DSS) + "\tAI: " + str(AI))
+            print("Jw: " + str(Jaccardw) + "\tDSSw: " + str(DSSw) + "\tAIw: " + str(AIw))
         Distance = 0.0
         
-    return Distance, Jaccard, DDS, AI, DDS_non_anchor, DDS_anchor, S, S_anchor
+    return Distance, Jaccard, DSS, AI, DSS_non_anchor, DSS_anchor, S, S_anchor
 
 
 """
@@ -1198,7 +1176,7 @@ if __name__=="__main__":
     BGCs = {} #will contain the BGCs
     
     
-    # Weights in the format J, DDS, AI, anchorboost
+    # Weights in the format J, DSS, AI, anchorboost
     # Generated with optimization results 2016-12-05. 
     # Used the basic list of 4 anchor domains.
     bgc_class_weight = {}
