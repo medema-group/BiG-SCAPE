@@ -316,9 +316,9 @@ def cluster_distance(a, b, a_domlist, b_domlist, bgc_class):
     B_domain_sequence_slice_top = defaultdict(int)
     
     
-    # In metagenomic mode, try to align the shorter BGC ("BGC-fragment") to the
+    # In local mode, try to align the shorter BGC ("BGC-fragment") to the
     # best matching slice of the larger BGC
-    if metagenomic:
+    if local:
         # BGC A will be the shortest
         if len(a_domlist) < len(b_domlist):
             A = a
@@ -1026,7 +1026,7 @@ def CMD_parser():
     
     parser.add_argument("--hybrids", dest="hybrids", action="store_true", default=False, help="Toggle to also add PKS/NRPS Hybrids to the PKSI, PKSother and NRPS class analysis")
     
-    parser.add_argument("--metagenomic", dest="metagenomic", action="store_true", default=False, help="Activate metagenomic mode. BiG-SCAPE will change the logic in the distance calculation phase to try to perform local alignments of shorter, fragmented BGCs.")
+    parser.add_argument("--local", dest="local", action="store_true", default=False, help="Activate local mode. BiG-SCAPE will change the logic in the distance calculation phase to try to perform local alignments of shorter, 'fragmented' BGCs by finding the maximum overlap in domain content.")
 
     parser.add_argument("--no_classify", dest="no_classify", action="store_true", default=False, help="By default, BiG-SCAPE classifies the output files analysis based on the BGC product. Toggle to deactivate (in that case, if the --no_classify parameter is not activated, BiG-SCAPE will not create any network file).")
 
@@ -1092,7 +1092,7 @@ if __name__=="__main__":
     global pfam_dir
     global timings_file
     global cores
-    global metagenomic
+    global local
     global clusterNames, bgcClassNames
     
     include_singletons = options.include_singletons
@@ -1104,7 +1104,7 @@ if __name__=="__main__":
     
     options_mix = options.mix
     options_classify = not options.no_classify
-    metagenomic = options.metagenomic
+    local = options.local
     
     cutoff_list = options.cutoffs
     for c in cutoff_list:
