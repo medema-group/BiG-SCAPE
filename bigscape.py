@@ -1113,7 +1113,13 @@ if __name__=="__main__":
     verbose = options.verbose
     
     networks_folder_all = "networks_all"
-    networks_folder_samples = "networks_samples"
+    networks_folder_samples = "networks_samples"    
+    if options.hybrids:
+        networks_folder_all += "_hybrids"
+        networks_folder_samples += "_hybrids"
+    if local:
+        networks_folder_all += "_local"
+        networks_folder_samples += "_local"
     
     if options.skip_all:
         if options.skip_hmmscan or options.skip_ma:
@@ -1639,19 +1645,26 @@ if __name__=="__main__":
                     BGC_classes[predicted_class].append(clusterIdx)
                 
                 # possibly add hybrids to 'pure' classes
-                if options.hybrids and predicted_class == "PKS-NRP_Hybrids":
-                    if "nrps" in valid_classes:
-                        BGC_classes["NRPS"].append(clusterIdx)
-                    if "t1pks" in product and "pksi" in valid_classes:
-                        BGC_classes["PKSI"].append(clusterIdx)
-                    if "t1pks" not in product and "pksother" in valid_classes:
-                        BGC_classes["PKSother"].append(clusterIdx)
+                if options.hybrids:
+                    if predicted_class == "PKS-NRP_Hybrids":
+                        if "nrps" in valid_classes:
+                            BGC_classes["NRPS"].append(clusterIdx)
+                        if "t1pks" in product and "pksi" in valid_classes:
+                            BGC_classes["PKSI"].append(clusterIdx)
+                        if "t1pks" not in product and "pksother" in valid_classes:
+                            BGC_classes["PKSother"].append(clusterIdx)
+                    
+                    if predicted_class == "Others" and "-" in product:
+                        final_classes = set()
+                        for subproduct in product.split("-"):
+                            final_classes.add(sort_bgc(subproduct))
+                            
+                        for subclass in final_classes:
+                            BGC_classes[subclass].append(clusterIdx)
 
             # only make folders for the BGC_classes that are found
             for bgc_class in BGC_classes:
                 folder_name = bgc_class
-                if options.hybrids and bgc_class in ("PKSI", "PKSother", "NRPS"):
-                    folder_name += "+hybrids"
                     
                 print("\n  " + folder_name + " (" + str(len(BGC_classes[bgc_class])) + " BGCs)")
                 
@@ -1774,18 +1787,25 @@ if __name__=="__main__":
                                 BGC_classes[predicted_class].append(clusterNames2idx[cluster])
                             
                             # possibly add hybrids to 'pure' classes
-                            if options.hybrids and predicted_class == "PKS-NRP_Hybrids":
-                                if "nrps" in valid_classes:
-                                    BGC_classes["NRPS"].append(clusterNames2idx[cluster])
-                                if "t1pks" in product and "pksi" in valid_classes:
-                                    BGC_classes["PKSI"].append(clusterNames2idx[cluster])
-                                if "t1pks" not in product and "pksother" in valid_classes:
-                                    BGC_classes["PKSother"].append(clusterNames2idx[cluster])
-                        
+                            if options.hybrids:
+                                if predicted_class == "PKS-NRP_Hybrids":
+                                    if "nrps" in valid_classes:
+                                        BGC_classes["NRPS"].append(clusterNames2idx[cluster])
+                                    if "t1pks" in product and "pksi" in valid_classes:
+                                        BGC_classes["PKSI"].append(clusterNames2idx[cluster])
+                                    if "t1pks" not in product and "pksother" in valid_classes:
+                                        BGC_classes["PKSother"].append(clusterNames2idx[cluster])
+                                
+                                if predicted_class == "Others" and "-" in product:
+                                    final_classes = set()
+                                    for subproduct in product.split("-"):
+                                        final_classes.add(sort_bgc(subproduct))
+                                        
+                                    for subclass in final_classes:
+                                        BGC_classes[subclass].append(clusterNames2idx[cluster])
+
                         for bgc_class in BGC_classes:
                             folder_name = bgc_class
-                            if options.hybrids and bgc_class in ("PKSI", "PKSother", "NRPS"):
-                                folder_name += "+hybrids"
                                 
                             print("\n   " + folder_name + " (" + str(len(BGC_classes[bgc_class])) + " BGCs)")
                             network_matrix_sample = []
