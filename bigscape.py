@@ -1655,10 +1655,15 @@ if __name__=="__main__":
                             BGC_classes["PKSother"].append(clusterIdx)
                     
                     if predicted_class == "Others" and "-" in product:
+                        subclasses = set()
                         for subproduct in product.split("-"):
                             sub_class = sort_bgc(subproduct)
                             if sub_class.lower() in valid_classes:
-                                BGC_classes[sub_class].append(clusterIdx)
+                                subclasses.add(sub_class)
+                            
+                        for subclass in subclasses:
+                            BGC_classes[sub_class].append(clusterIdx)
+                        subclasses.clear()
 
             # only make folders for the BGC_classes that are found
             for bgc_class in BGC_classes:
@@ -1795,10 +1800,15 @@ if __name__=="__main__":
                                         BGC_classes["PKSother"].append(clusterNames2idx[cluster])
                                 
                                 if predicted_class == "Others" and "-" in product:
+                                    subclasses = set()
                                     for subproduct in product.split("-"):
                                         sub_class = sort_bgc(subproduct)
                                         if sub_class.lower() in valid_classes:
-                                            BGC_classes[sub_class].append(clusterNames2idx[cluster])
+                                            subclasses.add(sub_class)
+                                        
+                                    for subclass in subclasses:
+                                        BGC_classes[sub_class].append(clusterNames2idx[cluster])
+                                    subclasses.clear()
 
                         for bgc_class in BGC_classes:
                             folder_name = bgc_class
