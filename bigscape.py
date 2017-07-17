@@ -196,8 +196,10 @@ def timeit(f):
 
 @timeit
 def generate_network(cluster_pairs, cores):
-    #Contents of the network file: clustername1 clustername2, group1, group2, -log2score, dist, squared similarity
-    "saves the distances as the log2 of the similarity"
+    """Distributes the distance calculation part
+    cluster_pairs is a list of triads (cluster1_index, cluster2_index, BGC class)
+    """
+    
     pool = Pool(cores, maxtasksperchild=100)
     
     #Assigns the data to the different workers and pools the results back into
@@ -214,7 +216,8 @@ def generate_network(cluster_pairs, cores):
 
 
 def generate_dist_matrix(parms):
-    #Get the values from the parameters
+    """Unpack data to actually launch cluster_distance for one pair of BGCs"""
+    
     cluster1Idx,cluster2Idx,bgcClassIdx = map(int,parms)
     cluster1 = clusterNames[cluster1Idx]
     cluster2 = clusterNames[cluster2Idx]
@@ -258,7 +261,8 @@ def generate_dist_matrix(parms):
     
 
 def cluster_distance(a, b, a_domlist, b_domlist, bgc_class): 
-    """Compare two clusters using information on their domains, and the sequences of the domains"""
+    """Compare two clusters using information on their domains, and the 
+    sequences of the domains"""
 
     Jaccardw, DSSw, AIw, anchorboost = bgc_class_weight[bgc_class]
 
@@ -278,16 +282,19 @@ def cluster_distance(a, b, a_domlist, b_domlist, bgc_class):
     
     # Detect totally unrelated pairs from the beginning
     if len(intersect) == 0:
-        # Count total number of anchor and non-anchor domain to report in the network file
-        # Apart from that, these BGCs are totally unrelated.
+        # Count total number of anchor and non-anchor domain to report in the 
+        # network file. Apart from that, these BGCs are totally unrelated.
         for domain in setA:
-            if domain.split(".")[0] in anchor_domains:
+            # This is a bit of a hack. If pfam domain ids ever change in size
+            # we'd be in trouble. The previous approach was to .split(".")[0]
+            # but it's more costly
+            if domain[:7] in anchor_domains:
                 S_anchor += len(BGCs[A][domain])
             else:
                 S += len(BGCs[A][domain])
                 
         for domain in setB:
-            if domain.split(".")[0] in anchor_domains:
+            if domain[:7] in anchor_domains:
                 S_anchor += len(BGCs[B][domain])
             else:
                 S += len(BGCs[B][domain])
@@ -365,8 +372,10 @@ def cluster_distance(a, b, a_domlist, b_domlist, bgc_class):
 
 
     # DSS INDEX
-    #domain_difference: Difference in sequence per domain. If one cluster doesn't have a domain at all, but the other does, 
-    #this is a sequence difference of 1. If both clusters contain the domain once, and the sequence is the same, there is a seq diff of 0.
+    #domain_difference: Difference in sequence per domain. If one cluster does
+    # not have a domain at all, but the other does, this is a (complete) 
+    # difference in sequence 1. If both clusters contain the domain once, and 
+    # the sequence is the same, there is a seq diff of 0.
     #S: Max occurence of each domain
     domain_difference_anchor,S_anchor = 0,0
     domain_difference,S = 0,0
@@ -374,8 +383,10 @@ def cluster_distance(a, b, a_domlist, b_domlist, bgc_class):
     not_intersect = setA.symmetric_difference(setB)
         
     # Case 1
-    for unshared_domain in not_intersect: #no need to look at seq identity, since these domains are unshared
-        #for each occurence of an unshared domain do domain_difference += count of domain and S += count of domain
+    #no need to look at seq identity, since these domains are unshared
+    for unshared_domain in not_intersect:
+        #for each occurence of an unshared domain do domain_difference += count 
+        # of domain and S += count of domain
         unshared_occurrences = []
 
         try:
@@ -384,7 +395,7 @@ def cluster_distance(a, b, a_domlist, b_domlist, bgc_class):
             unshared_occurrences = BGCs[B][unshared_domain]
             
         # don't look at domain version, hence the split
-        if unshared_domain.split(".")[0] in anchor_domains:
+        if unshared_domain[:7] in anchor_domains:
             domain_difference_anchor += len(unshared_occurrences)
         else:
             domain_difference += len(unshared_occurrences)
@@ -469,23 +480,16 @@ def cluster_distance(a, b, a_domlist, b_domlist, bgc_class):
                             
                 DistanceMatrix[domsa][domsb] = 1 - ( float(matches)/float(seq_length-gaps) )
                 
-        #print(shared_domain)
-        #for row in DistanceMatrix:
-            #print("\t".join(map(str,row)))
-        #print("")
         #Only use the best scoring pairs
         Hungarian = Munkres()
-        #print "DistanceMatrix", DistanceMatrix
         BestIndexes = Hungarian.compute(DistanceMatrix)
-        #print "BestIndexes", BestIndexes
         accumulated_distance = sum([DistanceMatrix[bi[0]][bi[1]] for bi in BestIndexes])
-        #print "accumulated_distance", accumulated_distance
         
         # the difference in number of domains accounts for the "lost" (or not duplicated) domains
         sum_seq_dist = (abs(num_copies_a-num_copies_b) + accumulated_distance)  #essentially 1-sim
         normalization_element = max(num_copies_a, num_copies_b)
             
-        if shared_domain.split(".")[0] in anchor_domains:
+        if shared_domain[:7] in anchor_domains:
             S_anchor += normalization_element
             domain_difference_anchor += sum_seq_dist
         else:
@@ -754,7 +758,8 @@ def generateFasta(gbkfilePath, outputdir):
     return outputfile
 
 def runHmmScan(fastaPath, hmmPath, outputdir, verbose):
-    ## will run hmmscan command on a fasta file with a single core and generate a domtable file
+    """ will run hmmscan command on a fasta file with a single core to generate a
+    domtable file"""
     hmmFile = os.path.join(hmmPath,"Pfam-A.hmm")
     if os.path.isfile(fastaPath):
         name = ".".join(fastaPath.split(os.sep)[-1].split(".")[:-1])
@@ -770,16 +775,20 @@ def runHmmScan(fastaPath, hmmPath, outputdir, verbose):
 
 def parseHmmScan(hmmscanResults, pfd_folder, pfs_folder, overlapCutoff):
     outputbase = ".".join(hmmscanResults.split(os.sep)[-1].split(".")[:-1])
-    # try to read the domtable file to find out if this gbk has domains. Domains need to be parsed into fastas anyway.
+    # try to read the domtable file to find out if this gbk has domains. Domains
+    # need to be parsed into fastas anyway.
     if os.path.isfile(hmmscanResults):
         pfd_matrix = domtable_parser(outputbase, hmmscanResults)
-        num_domains = len(pfd_matrix) # these might still be overlapped, but we need at least 1
+        
+        # get number of domains to decide if this BGC should be removed
+        num_domains = len(pfd_matrix)
 
         if num_domains > 0:
             print("  Processing domtable file: " + outputbase)
 
-            # check_overlap also sorts the filtered_matrix results
-            filtered_matrix, domains = check_overlap(pfd_matrix,overlapCutoff)  #removes overlapping domains, and keeps the highest scoring domain
+            # check_overlap also sorts the filtered_matrix results and removes
+            # overlapping domains, keeping the highest scoring one
+            filtered_matrix, domains = check_overlap(pfd_matrix,overlapCutoff)
             
             # Save list of domains per BGC
             pfsoutput = os.path.join(pfs_folder, outputbase + ".pfs")
@@ -1032,11 +1041,8 @@ def CMD_parser():
     parser.add_argument("--mafft_threads", dest="mafft_threads", default=0,
                       help="Set the number of threads in MAFFT, -1 sets the number of threads as the number of physical cores. Default: same as --cores parameter")
     parser.add_argument("--use_mafft", dest="use_mafft", action="store_true", default=False, help="Use MAFFT instead of hmmalign for multiple alignment of domain sequences")
-    
     parser.add_argument("--force_hmmscan", dest="force_hmmscan", action="store_true", default=False, 
                       help="Force domain prediction using hmmscan even if BiG-SCAPE finds processed domtable files (e.g. to use a new version of PFAM).")
-    parser.add_argument("--skip_hmmscan", dest="skip_hmmscan", action="store_true", default=False,
-                      help="When skipping hmmscan, the GBK files should be available, and the domain tables need to be in the output folder.")
     parser.add_argument("--skip_ma", dest="skip_ma", action="store_true", default=False, 
                       help="Skip multiple alignment of domains' sequences. Use if alignments have been generated in a previous run.")
     parser.add_argument("--skip_all", dest="skip_all", action="store_true",
@@ -1126,11 +1132,10 @@ if __name__=="__main__":
         networks_folder_all += "_local"
         networks_folder_samples += "_local"
     
-    if options.skip_all:
-        if options.skip_hmmscan or options.skip_ma:
-            print("Overriding --skip_hmmscan/--skip_ma with --skip_all parameter")
-            options.skip_hmmscan = False
-            options.skip_ma = False
+    if options.skip_all and options.skip_ma:
+        print("Overriding --skip_ma with --skip_all parameter")
+        options.skip_hmmscan = False
+        options.skip_ma = False
     
     time1 = time.time()
     print("\n   - - Obtaining input files - -")
@@ -1372,11 +1377,83 @@ if __name__=="__main__":
         # We could try to make it so it's not necessary to re-calculate every alignment,
         #  either by expanding previous alignment files or at the very least, 
         #  re-aligning only the domain files of the newly added BGCs
+        print(" New domain sequences to be added; cleaning domains folder")
         for thing in os.listdir(domains_folder):
             os.remove(os.path.join(domains_folder,thing))
 
     print " Finished generating generating pfs and pfd files."
     
+
+    ### Step 4: Parse the pfs, pfd files to generate BGC dictionary, clusters, and clusters per sample objects
+    print("\nProcessing domains sequence files")
+    
+    # All available pfd files
+    allPfdFiles = set(glob(os.path.join(pfd_folder,"*.pfd")))
+    
+    # pfdFiles: all pfd files corresponding to the input files
+    # (some input files could've been removed due to not having predicted domains)
+    pfdFiles = set()
+    for name in baseNames:
+        pfdFiles.add(os.path.join(pfd_folder, name+".pfd"))
+    
+    # pfdBases: the actual set of input files that have pfd files
+    pfdBases = allPfdFiles.intersection(pfdFiles)
+    
+    # verify previous step. 
+    # All BGCs without predicted domains should no longer be in baseNames    
+    if len(pfdFiles - pfdBases) > 0:
+        sys.exit("Error! The following files did NOT have their domtable files processed: " + ", ".join(pfdFiles - pfdBases))
+
+    filtered_matrix = []
+    if options.skip_ma:
+        print(" Running with skip_ma parameter: Assuming that the domains folder has all the fasta files")
+        try:
+            with open(os.path.join(output_folder, "BGCs.dict"), "r") as BGC_file:
+                BGCs = pickle.load(BGC_file)
+                BGC_file.close()
+        except IOError:
+            sys.exit("BGCs file not found...")
+    else:
+        print(" Adding sequences to corresponding domains file")
+            
+        for outputbase in baseNames:
+            if verbose:
+                print("   Processing: " + outputbase)
+
+            pfdFile = os.path.join(pfd_folder, outputbase + ".pfd")
+            filtered_matrix = [map(lambda x: x.strip(), line.split('\t')) for line in open(pfdFile)]
+
+            # save each domain sequence from a single BGC in its corresponding file
+            fasta_file = os.path.join(bgc_fasta_folder, outputbase + ".fasta")
+            
+            # only create domain fasta if the pfd content is different from original and 
+            #  domains folder has been emptied. Else, if trying to resume alignment phase,
+            #  domain fasta files will contain duplicate sequence labels
+            if not try_MA_resume:
+                with open(fasta_file, "r") as fasta_file_handle:
+                    fasta_dict = fasta_parser(fasta_file_handle) # all fasta info from a BGC
+                save_domain_seqs(filtered_matrix, fasta_dict, domains_folder, outputbase)
+
+            BGCs[outputbase] = BGC_dic_gen(filtered_matrix)
+            
+            del filtered_matrix[:]
+            
+        # store processed BGCs dictionary for future re-runs
+        with open(os.path.join(output_folder, "BGCs.dict"), "w") as BGC_file:
+            pickle.dump(BGCs, BGC_file)
+            BGC_file.close()
+
+    # Get the ordered list of domains
+    print(" Reading the ordered list of domains from the pfs files")
+    for outputbase in baseNames:
+        pfsfile = os.path.join(pfs_folder, outputbase + ".pfs")
+        if os.path.isfile(pfsfile):
+            DomainList[outputbase] = get_domain_list(pfsfile)
+        else:
+            sys.exit(" Error: could not open " + outputbase + ".pfs")
+                
+                
+    ### Step 5: Create SVG figures
     print(" Creating arrower-like figures for each BGC")
     
     # verify if there are figures already generated
@@ -1428,73 +1505,6 @@ if __name__=="__main__":
     
     availableSVGs.clear()
     print(" Finished creating figures")
-
-
-    ### Step 4: Parse the pfs, pfd files to generate BGC dictionary, clusters, and clusters per sample objects
-    print("\nProcessing domains sequence files")
-    
-    # All available pfd files
-    allPfdFiles = set(glob(os.path.join(pfd_folder,"*.pfd")))
-    
-    # pfdFiles: all pfd files corresponding to the input files
-    # (some input files could've been removed due to not having predicted domains)
-    pfdFiles = set()
-    for name in baseNames:
-        pfdFiles.add(os.path.join(pfd_folder, name+".pfd"))
-    
-    # pfdBases: the actual set of input files that have pfd files
-    pfdBases = allPfdFiles.intersection(pfdFiles)
-    
-    # verify previous step. 
-    # All BGCs without predicted domains should no longer be in baseNames    
-    if len(pfdFiles - pfdBases) > 0:
-        sys.exit("Error! The following files did NOT have their domtable files processed: " + ", ".join(pfdFiles - pfdBases))
-
-    if options.skip_ma:
-        print(" Running with skip_ma parameter: Assuming that the domains folder has all the fasta files")
-        print(" Only extracting BGC group from input file")
-    else:
-        print(" Adding sequences to corresponding domains file")
-            
-        for outputbase in baseNames:
-            if verbose:
-                print("   Processing: " + outputbase)
-
-            pfdFile = os.path.join(pfd_folder, outputbase + ".pfd")
-            filtered_matrix = [map(lambda x: x.strip(), line.split('\t')) for line in open(pfdFile)]
-
-            # save each domain sequence from a single BGC in its corresponding file
-            fasta_file = os.path.join(bgc_fasta_folder, outputbase + ".fasta")
-            
-            # only create domain fasta if the pfd content is different from original and 
-            #  domains folder has been emptied. Else, if trying to resume alignment phase,
-            #  domain fasta files will contain duplicate sequence labels
-            if not try_MA_resume:
-                with open(fasta_file, "r") as fasta_file_handle:
-                    fasta_dict = fasta_parser(fasta_file_handle) # all fasta info from a BGC
-                save_domain_seqs(filtered_matrix, fasta_dict, domains_folder, outputbase)
-
-            BGCs[outputbase] = BGC_dic_gen(filtered_matrix)
-
-    # Get the ordered list of domains
-    print(" Reading the ordered list of domains from the pfs files")
-    for outputbase in baseNames:
-        pfsfile = os.path.join(pfs_folder, outputbase + ".pfs")
-        if os.path.isfile(pfsfile):
-            DomainList[outputbase] = get_domain_list(pfsfile)
-        else:
-            sys.exit(" Error: could not open " + outputbase + ".pfs")
-
-    #Write or retrieve BGC dictionary
-    if not options.skip_all:
-        if options.skip_hmmscan or options.skip_ma:
-            with open(os.path.join(output_folder, "BGCs.dict"), "r") as BGC_file:
-                BGCs = pickle.load(BGC_file)
-                BGC_file.close()
-        else:
-            with open(os.path.join(output_folder, "BGCs.dict"), "w") as BGC_file:
-                pickle.dump(BGCs, BGC_file)
-                BGC_file.close()
     
     
     print("\n\n   - - Calculating distance matrix - -")

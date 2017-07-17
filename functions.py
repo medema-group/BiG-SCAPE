@@ -58,7 +58,8 @@ def get_anchor_domains(filename):
             for line in handle:
                 # handle comments and empty lines
                 if line[0] != "#" and line.strip():
-                    domains.append(line.strip().split("\t")[0])
+                    # ignore domain versions
+                    domains.append(line.strip().split("\t")[0].split(".")[0])
         return domains
     except IOError:
         print "You have not provided the anchor_domains.txt file."
@@ -139,6 +140,8 @@ def check_overlap(pfd_matrix, overlap_cutoff):
         
     domains = []
     for row in pfd_matrix:
+        # removing the domain version at this point is not a very good idea
+        # because we need it complete for hmmalign
         domains.append(row[5]) #save the pfam domains for the .pfs file
 
     return pfd_matrix, domains                       
@@ -152,17 +155,6 @@ def write_pfd(pfd_handle, matrix):
     pfd_handle.close() 
     
 
-def hmmscan(pfam_dir, fastafile, outputdir, name, cores):
-    """Runs hmmscan"""
-    #removed --noali par
-
-    hmmscan_cmd = "hmmscan --cpu " + str(cores) + " --domtblout " + os.path.join(outputdir, name+".domtable") + " --cut_tc " + os.path.join(pfam_dir,"Pfam-A.hmm") + " " + str(fastafile)
-    if verbose == True:
-        print("   "+hmmscan_cmd)
-    
-    subprocess.check_output(hmmscan_cmd, shell=True)
-    
-    
 def get_domains(filename):
     handle = open(filename, 'r')
     domains = []
@@ -209,14 +201,21 @@ def overlap(locA1, locA2, locB1, locB2):
 def BGC_dic_gen(filtered_matrix):
     """Generates the: { 'general_domain_name_x' : ['specific_domain_name_1',
      'specific_domain_name_2'] } part of the BGCs variable."""
+    
+    # It would be tempting to do `bgc_dict = defaultdict(list)` but then the 
+    # dictionary keeps the defaultdict definition. Later on in the distance
+    # calculation function, we do a 
+    #  ```try: unshared_occurrences = BGCs[A][unshared_domain]
+    #  except KeyError: unshared_occurrences = BGCs[B][unshared_domain]```
+    # Problem is the `try` would always be successful because of defaultdict and
+    # an empty list is added for the unshared_domain!
     bgc_dict = {}
     for row in filtered_matrix:
-        header = row[-1] + ":" + row[3] + ":" + row[4]
-        try: #Should be faster than performing if key in dictionary.keys()
-            bgc_dict[row[5]]
+        header = row[-1] + ":" + row[3] + ":" + row[4] # add domain positions
+        try: #Should be faster than performing `if key in dictionary.keys()`
             bgc_dict[row[5]].append(header)
-        except KeyError: #In case of this error, this is the first occurrence of this domain in the cluster
-           bgc_dict[row[5]]=[header]
+        except KeyError: # First occurrence of this domain in the cluster
+           bgc_dict[row[5]] = [header]
             
     return bgc_dict
 
@@ -593,12 +592,6 @@ def write_parameters(output_folder, options):
         
     pf.write("String for exclusion of gbk files:\t" + options.exclude_gbk_str)
     if options.exclude_gbk_str == "final":
-        pf.write("\t(default)\n")
-    else:
-        pf.write("\n")
-    
-    pf.write("Skip hmmscan?:\t" + ("True" if options.skip_hmmscan else "False"))
-    if not options.skip_hmmscan:
         pf.write("\t(default)\n")
     else:
         pf.write("\n")
