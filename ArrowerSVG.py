@@ -27,6 +27,7 @@ internal_domain_margin = 2
 domain_contour_thickness = 1
 gene_contour_thickness = 1 # thickness grows outwards
 stripe_thickness = 3
+
 gene_color_file = os.path.join(os.path.dirname(os.path.realpath(__file__)), "gene_color_file.tsv")
 domains_color_file = os.path.join(os.path.dirname(os.path.realpath(__file__)), "domains_color_file.tsv")
 pfam_domain_categories = os.path.join(os.path.dirname(os.path.realpath(__file__)), "pfam_domain_categories.tsv")

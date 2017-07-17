@@ -56,9 +56,20 @@ try to define 'Gene Cluster Families' (GCFs).
 By default, BiG-SCAPE uses the `/product` information of antiSMASH-processed
 GenBank files to separate the analysis into eight BiG-SCAPE classes: PKS Type I,
 PKS Other types, NRPS, PKS/NRPS Hybrids, Saccharides, Terpenes, RiPPs and 
-Others. Each have different (tuned) sets of weights for the distance components.
+Others. Each has different (tuned) sets of weights for the distance components.
 You can also choose to combine all BGC classes in one network file (`--mix`) and
-deactivate the default classification (`--no_classify`).
+deactivate the default classification (`--no_classify`). It is also possible to
+prevent analysis of BiG-SCAPE classes by using the `--banned_classes` parameter.
+
+BGCs with more than one predicted product (hybrids) are either put into the 
+PKS/NRPS Hybrids or the Others BiG-SCAPE classes depending on the classification
+of their subproducts. Use `--hybrids` to also add them to each of their 
+individual BiG-SCAPE classes (e.g. a PKS/NRPS Hybrids BGC with 'nrps-t1pks' 
+annotation would be put in the NRPS and PKS Type I BiG-SCAPE classes; a 
+'terpene-nrps' BGC from Others would also be included in the Terpene and NRPS 
+BiG-SCAPE classes, etc.). Note that if this option is activated, it will try to
+re-classify these hybrid BGCs even if the PKS/NRPS Hybrids or Others classes are
+'banned'.
 
 See the full options with `python bigscape.py -h`.
 

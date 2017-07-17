@@ -203,11 +203,13 @@ def generate_network(cluster_pairs, cores):
     #Assigns the data to the different workers and pools the results back into
     # the network_matrix variable
     network_matrix = pool.map(generate_dist_matrix, cluster_pairs)
+
     # --- Serialized version of distance calculation ---
     # For the time being, use this if you have memory issues
     #network_matrix = []
     #for pair in cluster_pairs:
       #network_matrix.append(generate_dist_matrix(pair))
+
     return network_matrix
 
 
@@ -257,7 +259,7 @@ def generate_dist_matrix(parms):
 
 def cluster_distance(a, b, a_domlist, b_domlist, bgc_class): 
     """Compare two clusters using information on their domains, and the sequences of the domains"""
-    
+
     Jaccardw, DSSw, AIw, anchorboost = bgc_class_weight[bgc_class]
 
     temp_domain_fastas = {}
@@ -386,7 +388,7 @@ def cluster_distance(a, b, a_domlist, b_domlist, bgc_class):
             domain_difference_anchor += len(unshared_occurrences)
         else:
             domain_difference += len(unshared_occurrences)
-        
+                    
     S = domain_difference # can be done because it's the first use of these
     S_anchor = domain_difference_anchor
         
@@ -489,8 +491,7 @@ def cluster_distance(a, b, a_domlist, b_domlist, bgc_class):
         else:
             S += normalization_element
             domain_difference += sum_seq_dist
-        
-        
+            
     if S_anchor != 0 and S != 0:
         DSS_non_anchor = domain_difference / float(S)
         DSS_anchor = domain_difference_anchor / float(S_anchor)
@@ -1002,7 +1003,11 @@ def CMD_parser():
     
     parser.add_argument("--mix", dest="mix", action="store_true", default=False, help="By default, BiG-SCAPE separates the analysis according to the BGC product (PKS Type I, NRPS, RiPPs, etc.) and will create network directories for each class. Toggle to include an analysis mixing all classes")
     
-    parser.add_argument("--hybrids", dest="hybrids", action="store_true", default=False, help="Toggle to also add PKS/NRPS Hybrids to the PKSI, PKSother and NRPS class analysis")
+    parser.add_argument("--hybrids", dest="hybrids", action="store_true", 
+                        default=False, help="Toggle to also add BGCs with hybrid\
+                        predicted products from the PKS/NRPS Hybrids and Others\
+                        classes to each subclass (e.g. a 'terpene-nrps' BGC from\
+                        Others would be added to the Terpene and NRPS classes")
     
     parser.add_argument("--local", dest="local", action="store_true", default=False, help="Activate local mode. BiG-SCAPE will change the logic in the distance calculation phase to try to perform local alignments of shorter, 'fragmented' BGCs by finding the maximum overlap in domain content.")
 
@@ -1579,8 +1584,6 @@ if __name__=="__main__":
     clusterNames = tuple(sorted(list(clusters)))
     clusterNames2idx = dict(zip(clusterNames,range(len(clusterNames))))
 
-    network_matrix_complete = []
-
     # Try to make default analysis using all files found inside the input folder
     if options_all:
         print("\nGenerating distance network files with ALL available input files")
@@ -1614,19 +1617,21 @@ if __name__=="__main__":
             
             pairs = set(map(tuple, map(sorted, combinations(mix_set, 2))))
             del mix_set[:]
-            #pairs = set(map(tuple, map(sorted, combinations(range(len(clusterNames)), 2))))
             cluster_pairs = [(x, y, -1) for (x, y) in pairs]
+            pairs.clear()
             network_matrix_mix = generate_network(cluster_pairs, cores)
+            del cluster_pairs[:]
                 
             print("  Writing output files")
             pathBase = os.path.join(output_folder, networks_folder_all, "all_mix")
             filenames = []
             for cutoff in cutoff_list:
                 filenames.append(pathBase + "_c%.2f.network" % cutoff)
-            clusterJsonBatch(pathBase, network_matrix_mix,cutoffs=cutoff_list)
+            clusterJsonBatch(pathBase, network_matrix_mix, cutoffs=cutoff_list)
             cutoffs_and_filenames = zip(cutoff_list, filenames)
-            write_network_matrix(network_matrix_mix, cutoffs_and_filenames, include_singletons, clusterNames,bgc_info)
-                
+            del filenames[:]
+            write_network_matrix(network_matrix_mix, cutoffs_and_filenames, include_singletons, clusterNames, bgc_info)
+            
             del network_matrix_mix[:]
             
         # Making network files separating by BGC class
@@ -1657,12 +1662,12 @@ if __name__=="__main__":
                     if predicted_class == "Others" and "-" in product:
                         subclasses = set()
                         for subproduct in product.split("-"):
-                            sub_class = sort_bgc(subproduct)
-                            if sub_class.lower() in valid_classes:
-                                subclasses.add(sub_class)
+                            subclass = sort_bgc(subproduct)
+                            if subclass.lower() in valid_classes:
+                                subclasses.add(subclass)
                             
                         for subclass in subclasses:
-                            BGC_classes[sub_class].append(clusterIdx)
+                            BGC_classes[subclass].append(clusterIdx)
                         subclasses.clear()
 
             # only make folders for the BGC_classes that are found
@@ -1688,8 +1693,11 @@ if __name__=="__main__":
                 if len(BGC_classes[bgc_class]) > 1:
                     print("   Calculating all pairwise distances")
                     pairs = set(map(tuple, map(sorted, combinations(BGC_classes[bgc_class], 2))))
+                    del BGC_classes[bgc_class][:]
                     cluster_pairs = [(x, y, bgcClassName2idx[bgc_class]) for (x, y) in pairs]
+                    pairs.clear()
                     network_matrix = generate_network(cluster_pairs, cores)
+                    del cluster_pairs[:]
                         
                     print("   Writing output files")
                     pathBase = os.path.join(output_folder, networks_folder_all, folder_name, "all" + folder_name)
@@ -1697,12 +1705,12 @@ if __name__=="__main__":
                     for cutoff in cutoff_list:
                         filenames.append(pathBase + "_c%.2f.network" % cutoff)
                     cutoffs_and_filenames = zip(cutoff_list, filenames)
+                    del filenames[:]
                     clusterJsonBatch(pathBase, network_matrix, cutoffs=cutoff_list)
                     write_network_matrix(network_matrix, cutoffs_and_filenames, include_singletons,clusterNames, bgc_info)
-                        
-                    # keep the data if we have to reuse it
-                    if options_samples:
-                        network_matrix_complete.append(network_matrix)
+                    
+                    del network_matrix[:]
+                
 
     # Try to make analysis for each sample
     if options_samples:
@@ -1747,23 +1755,10 @@ if __name__=="__main__":
             
                         pairs = set(map(tuple, map(sorted, combinations(mix_set, 2))))
                         del mix_set[:]
-                        
-                        # If we did the 'all' case and didn't mix 'classify' and 'mix', 
-                        # the pairs' distances should be ready
-
-                        ## Can't use this anymore with changed data structure, will have to redo calculations
-
-                        # if options_all and options_mix:
-                        #     print("   Using distances calculated in the 'all' analysis")
-                        #     for pair in pairs:
-                        #         network_matrix_sample[pair[0], pair[1], "mix"] = network_matrix_mix[pair[0], pair[1], "mix"]
-                        #     network_matrix_mix.clear()
-                        # else:
-                        #     print("   Calculating all pairwise distances")
-                        #     cluster_pairs = [(x, y, "mix") for (x, y) in pairs]
-                        #     network_matrix_sample = generate_network(cluster_pairs, cores)
                         cluster_pairs = [(x, y, -1) for (x, y) in pairs]
+                        pairs.clear()
                         network_matrix_sample = generate_network(cluster_pairs, cores)
+                        del cluster_pairs[:]
 
                         print("   Writing output files")
                         pathBase = os.path.join(output_folder, networks_folder_samples, sample, "sample_" + sample + "_mix")
@@ -1773,6 +1768,8 @@ if __name__=="__main__":
                         cutoffs_and_filenames = zip(cutoff_list, filenames)
                         clusterJsonBatch(pathBase, network_matrix_sample, cutoffs=cutoff_list)
                         write_network_matrix(network_matrix_sample, cutoffs_and_filenames, include_singletons, clusterNames,bgc_info)
+                        
+                        del network_matrix_sample[:]
                     
                     # Making network files separating by BGC class
                     if options_classify:
@@ -1802,12 +1799,12 @@ if __name__=="__main__":
                                 if predicted_class == "Others" and "-" in product:
                                     subclasses = set()
                                     for subproduct in product.split("-"):
-                                        sub_class = sort_bgc(subproduct)
-                                        if sub_class.lower() in valid_classes:
-                                            subclasses.add(sub_class)
+                                        subclass = sort_bgc(subproduct)
+                                        if subclass.lower() in valid_classes:
+                                            subclasses.add(subclass)
                                         
                                     for subclass in subclasses:
-                                        BGC_classes[sub_class].append(clusterNames2idx[cluster])
+                                        BGC_classes[subclass].append(clusterNames2idx[cluster])
                                     subclasses.clear()
 
                         for bgc_class in BGC_classes:
@@ -1830,19 +1827,11 @@ if __name__=="__main__":
 
                             if len(BGC_classes[bgc_class]) > 1:
                                 pairs = set(map(tuple, map(sorted, combinations(BGC_classes[bgc_class], 2))))
-
-                                ## Can't use this with new data structure
-                                # if options_all and options_classify:
-                                #     print("    Using distances calculated in the 'all' analysis")
-                                #     for pair in pairs:
-                                #         network_matrix_sample[pair[0], pair[1], bgc_class] = network_matrix_complete[pair[0], pair[1], bgc_class]
-                                # else:
-                                #     print("    Calculating all pairwise distances")
-                                #     cluster_pairs = [(x, y, bgc_class) for (x, y) in pairs]
-                                #     network_matrix_sample = generate_network(cluster_pairs, cores)
-
+                                del BGC_classes[bgc_class][:]
                                 cluster_pairs = [(x, y, bgcClassName2idx[bgc_class]) for (x, y) in pairs]
+                                pairs.clear()
                                 network_matrix_sample = generate_network(cluster_pairs, cores)
+                                del cluster_pairs[:]
                                 print("    Writing output files")
                                 pathBase = os.path.join(output_folder, networks_folder_samples, sample, folder_name,
                                                         "sample_" + sample + "_" + folder_name)
@@ -1852,6 +1841,9 @@ if __name__=="__main__":
                                 cutoffs_and_filenames = zip(cutoff_list, filenames)
                                 clusterJsonBatch(pathBase, network_matrix_sample, cutoffs=cutoff_list)
                                 write_network_matrix(network_matrix_sample, cutoffs_and_filenames, include_singletons, clusterNames,bgc_info)
+                                del network_matrix_sample[:]
+                                
+                            del BGC_classes[bgc_class][:]
 
 
     runtime = time.time()-time1
