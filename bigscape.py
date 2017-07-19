@@ -112,7 +112,9 @@ def get_gbk_files(inputdir, min_bgc_size, exclude_gbk_str, bgc_info):
                 del product_list_per_record[:]
                 
                 max_width = 0 # This will be used for the SVG figure
+                record_count = 0
                 for record in records:
+                    record_count += 1
                     bgc_size += len(record.seq)
                     if len(record.seq) > max_width:
                         max_width = len(record.seq)
@@ -120,10 +122,10 @@ def get_gbk_files(inputdir, min_bgc_size, exclude_gbk_str, bgc_info):
                     for feature in record.features:
                         if "cluster" in feature.type and "product" in feature.qualifiers:
                             if len(feature.qualifiers["product"]) > 1:
-                                print("  WARNING: more than product annotated in record " + str(record_cound) + ", " + fname)
+                                print("  WARNING: more than product annotated in record " + str(record_count) + ", " + fname)
                                 break
                             else:
-                                product_list_per_record.append(feature.qualifiers["product"][0])
+                                product_list_per_record.append(feature.qualifiers["product"][0].replace(" ",""))
                 
                 if bgc_size > min_bgc_size:  # exclude the bgc if it's too small
                     file_counter += 1
@@ -194,23 +196,28 @@ def timeit(f):
 
 @timeit
 def generate_network(cluster_pairs, cores):
-    #Contents of the network file: clustername1 clustername2, group1, group2, -log2score, dist, squared similarity
-    "saves the distances as the log2 of the similarity"
+    """Distributes the distance calculation part
+    cluster_pairs is a list of triads (cluster1_index, cluster2_index, BGC class)
+    """
+    
     pool = Pool(cores, maxtasksperchild=100)
     
     #Assigns the data to the different workers and pools the results back into
     # the network_matrix variable
     network_matrix = pool.map(generate_dist_matrix, cluster_pairs)
+
     # --- Serialized version of distance calculation ---
     # For the time being, use this if you have memory issues
     #network_matrix = []
     #for pair in cluster_pairs:
       #network_matrix.append(generate_dist_matrix(pair))
+
     return network_matrix
 
 
 def generate_dist_matrix(parms):
-    #Get the values from the parameters
+    """Unpack data to actually launch cluster_distance for one pair of BGCs"""
+    
     cluster1Idx,cluster2Idx,bgcClassIdx = map(int,parms)
     cluster1 = clusterNames[cluster1Idx]
     cluster2 = clusterNames[cluster2Idx]
@@ -241,35 +248,23 @@ def generate_dist_matrix(parms):
         # last two values (S, Sa) should really be zero but this could give rise to errors when parsing 
         # the network file (unless we catched the case S = Sa = 0
 
-        # cluster1Idx, cluster2Idx, bgcClassIdx, distance, jaccard, DDS, AI, rDDSNa, rDDSa, S, Sa
+        # cluster1Idx, cluster2Idx, bgcClassIdx, distance, jaccard, DSS, AI, rDSSNa, rDSSa, S, Sa
         return array('f',[cluster1Idx,cluster2Idx,bgcClassIdx,  1,0,0,0,0,0,1,1])
     
 
-    dist, jaccard, dds, ai, rDDSna, rDDS, S, Sa = cluster_distance(cluster1, cluster2,
+    dist, jaccard, dss, ai, rDSSna, rDSS, S, Sa = cluster_distance(cluster1, cluster2,
                                                                    domain_list_A, domain_list_B, bgc_class) #sequence dist
         
-    # if dist == 0:
-    #     logscore = float("inf")
-    # else:
-    #     logscore = 0
-    #     try:
-    #         logscore = log(dist, 2) #Write exception, ValueError
-    #         logscore = -1.0*logscore
-    #     except ValueError:
-    #         print("ERROR: Unexpected issue when calculating logscore.")
-    #         print(cluster1 + " - " + cluster2 + ": " + str(dist))
-            
-    #cluster1Idx, cluster2Idx, bgcClassIdx, distance, jaccard, DDS, AI, rDDSNa, rDDSa, S, Sa
-
-    network_row = array('f',[cluster1Idx, cluster2Idx, bgcClassIdx, dist, (1-dist)**2, jaccard, dds, ai, rDDSna, rDDS, S, Sa])
+    network_row = array('f',[cluster1Idx, cluster2Idx, bgcClassIdx, dist, (1-dist)**2, jaccard, dss, ai, rDSSna, rDSS, S, Sa])
     
     return network_row
     
 
 def cluster_distance(a, b, a_domlist, b_domlist, bgc_class): 
-    """Compare two clusters using information on their domains, and the sequences of the domains"""
-    
-    Jaccardw, DDSw, AIw, anchorboost = bgc_class_weight[bgc_class]
+    """Compare two clusters using information on their domains, and the 
+    sequences of the domains"""
+
+    Jaccardw, DSSw, AIw, anchorboost = bgc_class_weight[bgc_class]
 
     temp_domain_fastas = {}
     
@@ -287,18 +282,19 @@ def cluster_distance(a, b, a_domlist, b_domlist, bgc_class):
     
     # Detect totally unrelated pairs from the beginning
     if len(intersect) == 0:
-        not_intersect = setA.symmetric_difference(setB)
-        
-        # Count total number of anchor and non-anchor domain to report in the network file
-        # Apart from that, these BGCs are totally unrelated.
+        # Count total number of anchor and non-anchor domain to report in the 
+        # network file. Apart from that, these BGCs are totally unrelated.
         for domain in setA:
-            if domain.split(".")[0] in anchor_domains:
+            # This is a bit of a hack. If pfam domain ids ever change in size
+            # we'd be in trouble. The previous approach was to .split(".")[0]
+            # but it's more costly
+            if domain[:7] in anchor_domains:
                 S_anchor += len(BGCs[A][domain])
             else:
                 S += len(BGCs[A][domain])
                 
         for domain in setB:
-            if domain.split(".")[0] in anchor_domains:
+            if domain[:7] in anchor_domains:
                 S_anchor += len(BGCs[B][domain])
             else:
                 S += len(BGCs[B][domain])
@@ -307,16 +303,16 @@ def cluster_distance(a, b, a_domlist, b_domlist, bgc_class):
 
     
     # define the subset of domain sequence tags to include in
-    # the DDS calculation. This is done for every domain.
+    # the DSS calculation. This is done for every domain.
     A_domain_sequence_slice_bottom = defaultdict(int)
     A_domain_sequence_slice_top = defaultdict(int)
     B_domain_sequence_slice_bottom = defaultdict(int)
     B_domain_sequence_slice_top = defaultdict(int)
     
     
-    # In metagenomic mode, try to align the shorter BGC ("BGC-fragment") to the
+    # In local mode, try to align the shorter BGC ("BGC-fragment") to the
     # best matching slice of the larger BGC
-    if metagenomic:
+    if local:
         # BGC A will be the shortest
         if len(a_domlist) < len(b_domlist):
             A = a
@@ -375,9 +371,11 @@ def cluster_distance(a, b, a_domlist, b_domlist, bgc_class):
     Jaccard = len(intersect)/ float( len(setA) + len(setB) - len(intersect))
 
 
-    # DDS INDEX
-    #domain_difference: Difference in sequence per domain. If one cluster doesn't have a domain at all, but the other does, 
-    #this is a sequence difference of 1. If both clusters contain the domain once, and the sequence is the same, there is a seq diff of 0.
+    # DSS INDEX
+    #domain_difference: Difference in sequence per domain. If one cluster does
+    # not have a domain at all, but the other does, this is a (complete) 
+    # difference in sequence 1. If both clusters contain the domain once, and 
+    # the sequence is the same, there is a seq diff of 0.
     #S: Max occurence of each domain
     domain_difference_anchor,S_anchor = 0,0
     domain_difference,S = 0,0
@@ -385,8 +383,10 @@ def cluster_distance(a, b, a_domlist, b_domlist, bgc_class):
     not_intersect = setA.symmetric_difference(setB)
         
     # Case 1
-    for unshared_domain in not_intersect: #no need to look at seq identity, since these domains are unshared
-        #for each occurence of an unshared domain do domain_difference += count of domain and S += count of domain
+    #no need to look at seq identity, since these domains are unshared
+    for unshared_domain in not_intersect:
+        #for each occurence of an unshared domain do domain_difference += count 
+        # of domain and S += count of domain
         unshared_occurrences = []
 
         try:
@@ -395,11 +395,11 @@ def cluster_distance(a, b, a_domlist, b_domlist, bgc_class):
             unshared_occurrences = BGCs[B][unshared_domain]
             
         # don't look at domain version, hence the split
-        if unshared_domain.split(".")[0] in anchor_domains:
+        if unshared_domain[:7] in anchor_domains:
             domain_difference_anchor += len(unshared_occurrences)
         else:
             domain_difference += len(unshared_occurrences)
-        
+                    
     S = domain_difference # can be done because it's the first use of these
     S_anchor = domain_difference_anchor
         
@@ -465,8 +465,8 @@ def cluster_distance(a, b, a_domlist, b_domlist, bgc_class):
                 # wrong elsewhere
                 if len(aligned_seqA) != len(aligned_seqB):
                     print("\tWARNING: mismatch in sequences' lengths while calculating sequence identity (" + shared_domain + ")")
-                    print("\t  Specific domain 1: " + aligned_seqA + " len: " + str(len(aligned_seqA)))
-                    print("\t  Specific domain 2: " + aligned_seqB + " len: " + str(len(aligned_seqB)))
+                    print("\t  Specific domain 1: " + sequence_tag_a + " len: " + str(len(aligned_seqA)))
+                    print("\t  Specific domain 2: " + sequence_tag_b + " len: " + str(len(aligned_seqB)))
                     seq_length = min(len(aligned_seqA), len(aligned_seqB))
                 else:
                     seq_length = len(aligned_seqA)
@@ -480,33 +480,25 @@ def cluster_distance(a, b, a_domlist, b_domlist, bgc_class):
                             
                 DistanceMatrix[domsa][domsb] = 1 - ( float(matches)/float(seq_length-gaps) )
                 
-        #print(shared_domain)
-        #for row in DistanceMatrix:
-            #print("\t".join(map(str,row)))
-        #print("")
         #Only use the best scoring pairs
         Hungarian = Munkres()
-        #print "DistanceMatrix", DistanceMatrix
         BestIndexes = Hungarian.compute(DistanceMatrix)
-        #print "BestIndexes", BestIndexes
         accumulated_distance = sum([DistanceMatrix[bi[0]][bi[1]] for bi in BestIndexes])
-        #print "accumulated_distance", accumulated_distance
         
         # the difference in number of domains accounts for the "lost" (or not duplicated) domains
         sum_seq_dist = (abs(num_copies_a-num_copies_b) + accumulated_distance)  #essentially 1-sim
         normalization_element = max(num_copies_a, num_copies_b)
             
-        if shared_domain.split(".")[0] in anchor_domains:
+        if shared_domain[:7] in anchor_domains:
             S_anchor += normalization_element
             domain_difference_anchor += sum_seq_dist
         else:
             S += normalization_element
             domain_difference += sum_seq_dist
-        
-        
+            
     if S_anchor != 0 and S != 0:
-        DDS_non_anchor = domain_difference / float(S)
-        DDS_anchor = domain_difference_anchor / float(S_anchor)
+        DSS_non_anchor = domain_difference / float(S)
+        DSS_anchor = domain_difference_anchor / float(S_anchor)
         
         # Calculate proper, proportional weight to each kind of domain
         non_anchor_prct = S / float(S + S_anchor)
@@ -516,22 +508,22 @@ def cluster_distance(a, b, a_domlist, b_domlist, bgc_class):
         non_anchor_weight = non_anchor_prct / (anchor_prct*anchorboost + non_anchor_prct)
         anchor_weight = anchor_prct*anchorboost / (anchor_prct*anchorboost + non_anchor_prct)
 
-        # Use anchorboost parameter to boost percieved rDDS_anchor
-        DDS = (non_anchor_weight*DDS_non_anchor) + (anchor_weight*DDS_anchor)
+        # Use anchorboost parameter to boost percieved rDSS_anchor
+        DSS = (non_anchor_weight*DSS_non_anchor) + (anchor_weight*DSS_anchor)
         
     elif S_anchor == 0:
-        DDS_non_anchor = domain_difference / float(S)
-        DDS_anchor = 0.0
+        DSS_non_anchor = domain_difference / float(S)
+        DSS_anchor = 0.0
         
-        DDS = DDS_non_anchor
+        DSS = DSS_non_anchor
         
     else: #only anchor domains were found
-        DDS_non_anchor = 0.0
-        DDS_anchor = domain_difference_anchor / float(S_anchor)
+        DSS_non_anchor = 0.0
+        DSS_anchor = domain_difference_anchor / float(S_anchor)
         
-        DDS = DDS_anchor
+        DSS = DSS_anchor
  
-    DDS = 1-DDS #transform into similarity
+    DSS = 1-DSS #transform into similarity
  
 
     # ADJACENCY INDEX
@@ -551,14 +543,7 @@ def cluster_distance(a, b, a_domlist, b_domlist, bgc_class):
         # same treatment as in Jaccard
         AI = float(len(setA_pairs.intersection(setB_pairs))) / float(len(setA_pairs.union(setB_pairs)))
 
-    
-    # GK INDEX
-    #  calculate the Goodman-Kruskal gamma index
-    #Ar = [item for item in A_domlist]
-    #Ar.reverse()
-    #GK = max([calculate_GK(A_domlist, B_domlist, nbhood), calculate_GK(Ar, B_domlist, nbhood)])
-    
-    Distance = 1 - (Jaccardw * Jaccard) - (DDSw * DDS) - (AIw * AI)
+    Distance = 1 - (Jaccardw * Jaccard) - (DSSw * DSS) - (AIw * AI)
     
     # This could happen due to numerical innacuracies
     if Distance < 0.0:
@@ -566,11 +551,11 @@ def cluster_distance(a, b, a_domlist, b_domlist, bgc_class):
             print("Negative distance detected!")
             print(Distance)
             print(A + " - " + B)
-            print("J: " + str(Jaccard) + "\tDDS: " + str(DDS) + "\tAI: " + str(AI))
-            print("Jw: " + str(Jaccardw) + "\tDDSw: " + str(DDSw) + "\tAIw: " + str(AIw))
+            print("J: " + str(Jaccard) + "\tDSS: " + str(DSS) + "\tAI: " + str(AI))
+            print("Jw: " + str(Jaccardw) + "\tDSSw: " + str(DSSw) + "\tAIw: " + str(AIw))
         Distance = 0.0
         
-    return Distance, Jaccard, DDS, AI, DDS_non_anchor, DDS_anchor, S, S_anchor
+    return Distance, Jaccard, DSS, AI, DSS_non_anchor, DSS_anchor, S, S_anchor
 
 
 """
@@ -773,7 +758,8 @@ def generateFasta(gbkfilePath, outputdir):
     return outputfile
 
 def runHmmScan(fastaPath, hmmPath, outputdir, verbose):
-    ## will run hmmscan command on a fasta file with a single core and generate a domtable file
+    """ will run hmmscan command on a fasta file with a single core to generate a
+    domtable file"""
     hmmFile = os.path.join(hmmPath,"Pfam-A.hmm")
     if os.path.isfile(fastaPath):
         name = ".".join(fastaPath.split(os.sep)[-1].split(".")[:-1])
@@ -789,16 +775,20 @@ def runHmmScan(fastaPath, hmmPath, outputdir, verbose):
 
 def parseHmmScan(hmmscanResults, pfd_folder, pfs_folder, overlapCutoff):
     outputbase = ".".join(hmmscanResults.split(os.sep)[-1].split(".")[:-1])
-    # try to read the domtable file to find out if this gbk has domains. Domains need to be parsed into fastas anyway.
+    # try to read the domtable file to find out if this gbk has domains. Domains
+    # need to be parsed into fastas anyway.
     if os.path.isfile(hmmscanResults):
         pfd_matrix = domtable_parser(outputbase, hmmscanResults)
-        num_domains = len(pfd_matrix) # these might still be overlapped, but we need at least 1
+        
+        # get number of domains to decide if this BGC should be removed
+        num_domains = len(pfd_matrix)
 
         if num_domains > 0:
             print("  Processing domtable file: " + outputbase)
 
-            # check_overlap also sorts the filtered_matrix results
-            filtered_matrix, domains = check_overlap(pfd_matrix,overlapCutoff)  #removes overlapping domains, and keeps the highest scoring domain
+            # check_overlap also sorts the filtered_matrix results and removes
+            # overlapping domains, keeping the highest scoring one
+            filtered_matrix, domains = check_overlap(pfd_matrix,overlapCutoff)
             
             # Save list of domains per BGC
             pfsoutput = os.path.join(pfs_folder, outputbase + ".pfs")
@@ -936,6 +926,8 @@ class FloatRange(object):
         self.end = end
     def __eq__(self, other):
         return self.start <= other <= self.end
+    def __repr__(self):
+        return '{0}-{1}'.format(self.start, self.end)
 
 def CMD_parser():
     parser = ArgumentParser()
@@ -961,9 +953,13 @@ def CMD_parser():
     
     parser.add_argument("--mix", dest="mix", action="store_true", default=False, help="By default, BiG-SCAPE separates the analysis according to the BGC product (PKS Type I, NRPS, RiPPs, etc.) and will create network directories for each class. Toggle to include an analysis mixing all classes")
     
-    parser.add_argument("--hybrids", dest="hybrids", action="store_true", default=False, help="Toggle to also add PKS/NRPS Hybrids to the PKSI, PKSother and NRPS class analysis")
+    parser.add_argument("--hybrids", dest="hybrids", action="store_true", 
+                        default=False, help="Toggle to also add BGCs with hybrid\
+                        predicted products from the PKS/NRPS Hybrids and Others\
+                        classes to each subclass (e.g. a 'terpene-nrps' BGC from\
+                        Others would be added to the Terpene and NRPS classes")
     
-    parser.add_argument("--metagenomic", dest="metagenomic", action="store_true", default=False, help="Activate metagenomic mode. BiG-SCAPE will change the logic in the distance calculation phase to try to perform local alignments of shorter, fragmented BGCs.")
+    parser.add_argument("--local", dest="local", action="store_true", default=False, help="Activate local mode. BiG-SCAPE will change the logic in the distance calculation phase to try to perform local alignments of shorter, 'fragmented' BGCs by finding the maximum overlap in domain content.")
 
     parser.add_argument("--no_classify", dest="no_classify", action="store_true", default=False, help="By default, BiG-SCAPE classifies the output files analysis based on the BGC product. Toggle to deactivate (in that case, if the --no_classify parameter is not activated, BiG-SCAPE will not create any network file).")
 
@@ -986,17 +982,14 @@ def CMD_parser():
     parser.add_argument("--mafft_threads", dest="mafft_threads", default=0,
                       help="Set the number of threads in MAFFT, -1 sets the number of threads as the number of physical cores. Default: same as --cores parameter")
     parser.add_argument("--use_mafft", dest="use_mafft", action="store_true", default=False, help="Use MAFFT instead of hmmalign for multiple alignment of domain sequences")
-    
     parser.add_argument("--force_hmmscan", dest="force_hmmscan", action="store_true", default=False, 
                       help="Force domain prediction using hmmscan even if BiG-SCAPE finds processed domtable files (e.g. to use a new version of PFAM).")
-    parser.add_argument("--skip_hmmscan", dest="skip_hmmscan", action="store_true", default=False,
-                      help="When skipping hmmscan, the GBK files should be available, and the domain tables need to be in the output folder.")
     parser.add_argument("--skip_ma", dest="skip_ma", action="store_true", default=False, 
                       help="Skip multiple alignment of domains' sequences. Use if alignments have been generated in a previous run.")
     parser.add_argument("--skip_all", dest="skip_all", action="store_true",
                       default = False, help = "Only generate new network files. ")
     parser.add_argument("--cutoffs", dest="cutoffs", nargs="+", default=[0.10, 0.15, 0.20, 0.25, 0.30, 0.35, 0.40, 0.45, 0.50, 0.55, 0.60, 0.65, 0.70, 0.75, 0.80], type=float, choices=[FloatRange(0.0, 1.0)],
-                      help="Generate networks using multiple raw distance cutoff values, example: \"0.1, 0.25, 0.5, 1.0\". Default: 1.0 (all distances are included)")
+                      help="Generate networks using multiple raw distance cutoff values, example: \"0.1, 0.25, 0.5, 1.0\". Default: all values from 0.10 to 0.80 with 0.05 intervals.")
 
     options = parser.parse_args()
     return options
@@ -1029,7 +1022,7 @@ if __name__=="__main__":
     global pfam_dir
     global timings_file
     global cores
-    global metagenomic
+    global local
     global clusterNames, bgcClassNames
     
     include_singletons = options.include_singletons
@@ -1041,7 +1034,7 @@ if __name__=="__main__":
     
     options_mix = options.mix
     options_classify = not options.no_classify
-    metagenomic = options.metagenomic
+    local = options.local
     
     cutoff_list = options.cutoffs
     for c in cutoff_list:
@@ -1072,13 +1065,18 @@ if __name__=="__main__":
     verbose = options.verbose
     
     networks_folder_all = "networks_all"
-    networks_folder_samples = "networks_samples"
+    networks_folder_samples = "networks_samples"    
+    if options.hybrids:
+        networks_folder_all += "_hybrids"
+        networks_folder_samples += "_hybrids"
+    if local:
+        networks_folder_all += "_local"
+        networks_folder_samples += "_local"
     
-    if options.skip_all:
-        if options.skip_hmmscan or options.skip_ma:
-            print("Overriding --skip_hmmscan/--skip_ma with --skip_all parameter")
-            options.skip_hmmscan = False
-            options.skip_ma = False
+    if options.skip_all and options.skip_ma:
+        print("Overriding --skip_ma with --skip_all parameter")
+        options.skip_hmmscan = False
+        options.skip_ma = False
     
     time1 = time.time()
     print("\n   - - Obtaining input files - -")
@@ -1135,7 +1133,7 @@ if __name__=="__main__":
     BGCs = {} #will contain the BGCs
     
     
-    # Weights in the format J, DDS, AI, anchorboost
+    # Weights in the format J, DSS, AI, anchorboost
     # Generated with optimization results 2016-12-05. 
     # Used the basic list of 4 anchor domains.
     bgc_class_weight = {}
@@ -1320,11 +1318,83 @@ if __name__=="__main__":
         # We could try to make it so it's not necessary to re-calculate every alignment,
         #  either by expanding previous alignment files or at the very least, 
         #  re-aligning only the domain files of the newly added BGCs
+        print(" New domain sequences to be added; cleaning domains folder")
         for thing in os.listdir(domains_folder):
             os.remove(os.path.join(domains_folder,thing))
 
     print " Finished generating generating pfs and pfd files."
     
+
+    ### Step 4: Parse the pfs, pfd files to generate BGC dictionary, clusters, and clusters per sample objects
+    print("\nProcessing domains sequence files")
+    
+    # All available pfd files
+    allPfdFiles = set(glob(os.path.join(pfd_folder,"*.pfd")))
+    
+    # pfdFiles: all pfd files corresponding to the input files
+    # (some input files could've been removed due to not having predicted domains)
+    pfdFiles = set()
+    for name in baseNames:
+        pfdFiles.add(os.path.join(pfd_folder, name+".pfd"))
+    
+    # pfdBases: the actual set of input files that have pfd files
+    pfdBases = allPfdFiles.intersection(pfdFiles)
+    
+    # verify previous step. 
+    # All BGCs without predicted domains should no longer be in baseNames    
+    if len(pfdFiles - pfdBases) > 0:
+        sys.exit("Error! The following files did NOT have their domtable files processed: " + ", ".join(pfdFiles - pfdBases))
+
+    filtered_matrix = []
+    if options.skip_ma:
+        print(" Running with skip_ma parameter: Assuming that the domains folder has all the fasta files")
+        try:
+            with open(os.path.join(output_folder, "BGCs.dict"), "r") as BGC_file:
+                BGCs = pickle.load(BGC_file)
+                BGC_file.close()
+        except IOError:
+            sys.exit("BGCs file not found...")
+    else:
+        print(" Adding sequences to corresponding domains file")
+            
+        for outputbase in baseNames:
+            if verbose:
+                print("   Processing: " + outputbase)
+
+            pfdFile = os.path.join(pfd_folder, outputbase + ".pfd")
+            filtered_matrix = [map(lambda x: x.strip(), line.split('\t')) for line in open(pfdFile)]
+
+            # save each domain sequence from a single BGC in its corresponding file
+            fasta_file = os.path.join(bgc_fasta_folder, outputbase + ".fasta")
+
+            # only create domain fasta if the pfd content is different from original and 
+            #  domains folder has been emptied. Else, if trying to resume alignment phase,
+            #  domain fasta files will contain duplicate sequence labels
+            if not try_MA_resume:
+                with open(fasta_file, "r") as fasta_file_handle:
+                    fasta_dict = fasta_parser(fasta_file_handle) # all fasta info from a BGC
+                save_domain_seqs(filtered_matrix, fasta_dict, domains_folder, outputbase)
+
+            BGCs[outputbase] = BGC_dic_gen(filtered_matrix)
+            
+            del filtered_matrix[:]
+            
+        # store processed BGCs dictionary for future re-runs
+        with open(os.path.join(output_folder, "BGCs.dict"), "w") as BGC_file:
+            pickle.dump(BGCs, BGC_file)
+            BGC_file.close()
+
+    # Get the ordered list of domains
+    print(" Reading the ordered list of domains from the pfs files")
+    for outputbase in baseNames:
+        pfsfile = os.path.join(pfs_folder, outputbase + ".pfs")
+        if os.path.isfile(pfsfile):
+            DomainList[outputbase] = get_domain_list(pfsfile)
+        else:
+            sys.exit(" Error: could not open " + outputbase + ".pfs")
+                
+                
+    ### Step 5: Create SVG figures
     print(" Creating arrower-like figures for each BGC")
     
     # verify if there are figures already generated
@@ -1376,73 +1446,6 @@ if __name__=="__main__":
     
     availableSVGs.clear()
     print(" Finished creating figures")
-
-
-    ### Step 4: Parse the pfs, pfd files to generate BGC dictionary, clusters, and clusters per sample objects
-    print("\nProcessing domains sequence files")
-    
-    # All available pfd files
-    allPfdFiles = set(glob(os.path.join(pfd_folder,"*.pfd")))
-    
-    # pfdFiles: all pfd files corresponding to the input files
-    # (some input files could've been removed due to not having predicted domains)
-    pfdFiles = set()
-    for name in baseNames:
-        pfdFiles.add(os.path.join(pfd_folder, name+".pfd"))
-    
-    # pfdBases: the actual set of input files that have pfd files
-    pfdBases = allPfdFiles.intersection(pfdFiles)
-    
-    # verify previous step. 
-    # All BGCs without predicted domains should no longer be in baseNames    
-    if len(pfdFiles - pfdBases) > 0:
-        sys.exit("Error! The following files did NOT have their domtable files processed: " + ", ".join(pfdFiles - pfdBases))
-
-    if options.skip_ma:
-        print(" Running with skip_ma parameter: Assuming that the domains folder has all the fasta files")
-        print(" Only extracting BGC group from input file")
-    else:
-        print(" Adding sequences to corresponding domains file")
-            
-        for outputbase in baseNames:
-            if verbose:
-                print("   Processing: " + outputbase)
-
-            pfdFile = os.path.join(pfd_folder, outputbase + ".pfd")
-            filtered_matrix = [map(lambda x: x.strip(), line.split('\t')) for line in open(pfdFile)]
-
-            # save each domain sequence from a single BGC in its corresponding file
-            fasta_file = os.path.join(bgc_fasta_folder, outputbase + ".fasta")
-
-            # only create domain fasta if the pfd content is different from original and 
-            #  domains folder has been emptied. Else, if trying to resume alignment phase,
-            #  domain fasta files will contain duplicate sequence labels
-            if not try_MA_resume:
-                with open(fasta_file, "r") as fasta_file_handle:
-                    fasta_dict = fasta_parser(fasta_file_handle) # all fasta info from a BGC
-                save_domain_seqs(filtered_matrix, fasta_dict, domains_folder, outputbase)
-
-            BGCs[outputbase] = BGC_dic_gen(filtered_matrix)
-
-    # Get the ordered list of domains
-    print(" Reading the ordered list of domains from the pfs files")
-    for outputbase in baseNames:
-        pfsfile = os.path.join(pfs_folder, outputbase + ".pfs")
-        if os.path.isfile(pfsfile):
-            DomainList[outputbase] = get_domain_list(pfsfile)
-        else:
-            sys.exit(" Error: could not open " + outputbase + ".pfs")
-
-    #Write or retrieve BGC dictionary
-    if not options.skip_all:
-        if options.skip_hmmscan or options.skip_ma:
-            with open(os.path.join(output_folder, "BGCs.dict"), "r") as BGC_file:
-                BGCs = pickle.load(BGC_file)
-                BGC_file.close()
-        else:
-            with open(os.path.join(output_folder, "BGCs.dict"), "w") as BGC_file:
-                pickle.dump(BGCs, BGC_file)
-                BGC_file.close()
     
     
     print("\n\n   - - Calculating distance matrix - -")
@@ -1532,8 +1535,6 @@ if __name__=="__main__":
     clusterNames = tuple(sorted(list(clusters)))
     clusterNames2idx = dict(zip(clusterNames,range(len(clusterNames))))
 
-    network_matrix_complete = []
-
     # Try to make default analysis using all files found inside the input folder
     if options_all:
         print("\nGenerating distance network files with ALL available input files")
@@ -1545,29 +1546,43 @@ if __name__=="__main__":
         if options_mix:
             print("\n Mixing all BGC classes")
             
+            # only choose from valid classes
+            mix_set = []
+            for clusterIdx,cluster in enumerate(clusterNames):
+                product = bgc_info[cluster][0]
+                predicted_class = sort_bgc(product)
+                if predicted_class.lower() in valid_classes:
+                    mix_set.append(clusterIdx)
+            
             # Create an additional file with the list of all clusters in the class + other info
             print("   Writing annotation file")
             path_list = os.path.join(output_folder, networks_folder_all, "Network_Annotations_ALL_mix.tsv")
             with open(path_list, "w") as list_file:
                 list_file.write("BGC\tAccesion ID\tDescription\tProduct Prediction\tBiG-SCAPE class\n")
-                for bgc in clusterNames:
+                for idx in mix_set:
+                    bgc = clusterNames[idx]
                     product = bgc_info[bgc][0]
-                    list_file.write("\t".join([bgc, bgc_info[bgc][4], bgc_info[bgc][1], product, sort_bgc(product)]) + "\n")                    
+                    list_file.write("\t".join([bgc, bgc_info[bgc][4], bgc_info[bgc][1], product, sort_bgc(product)]) + "\n")
             
             print("  Calculating all pairwise distances")
-            pairs = set(map(tuple, map(sorted, combinations(range(len(clusterNames)), 2))))
+            
+            pairs = set(map(tuple, map(sorted, combinations(mix_set, 2))))
+            del mix_set[:]
             cluster_pairs = [(x, y, -1) for (x, y) in pairs]
+            pairs.clear()
             network_matrix_mix = generate_network(cluster_pairs, cores)
+            del cluster_pairs[:]
                 
             print("  Writing output files")
             pathBase = os.path.join(output_folder, networks_folder_all, "all_mix")
             filenames = []
             for cutoff in cutoff_list:
                 filenames.append(pathBase + "_c%.2f.network" % cutoff)
-            clusterJsonBatch(pathBase, network_matrix_mix,cutoffs=cutoff_list)
+            clusterJsonBatch(pathBase, network_matrix_mix, cutoffs=cutoff_list)
             cutoffs_and_filenames = zip(cutoff_list, filenames)
-            write_network_matrix(network_matrix_mix, cutoffs_and_filenames, include_singletons, clusterNames,bgc_info)
-                
+            del filenames[:]
+            write_network_matrix(network_matrix_mix, cutoffs_and_filenames, include_singletons, clusterNames, bgc_info)
+            
             del network_matrix_mix[:]
             
         # Making network files separating by BGC class
@@ -1586,19 +1601,29 @@ if __name__=="__main__":
                     BGC_classes[predicted_class].append(clusterIdx)
                 
                 # possibly add hybrids to 'pure' classes
-                if options.hybrids and predicted_class == "PKS-NRP_Hybrids":
-                    if "nrps" in valid_classes:
-                        BGC_classes["NRPS"].append(clusterIdx)
-                    if "t1pks" in product and "pksi" in valid_classes:
-                        BGC_classes["PKSI"].append(clusterIdx)
-                    if "t1pks" not in product and "pksother" in valid_classes:
-                        BGC_classes["PKSother"].append(clusterIdx)
+                if options.hybrids:
+                    if predicted_class == "PKS-NRP_Hybrids":
+                        if "nrps" in valid_classes:
+                            BGC_classes["NRPS"].append(clusterIdx)
+                        if "t1pks" in product and "pksi" in valid_classes:
+                            BGC_classes["PKSI"].append(clusterIdx)
+                        if "t1pks" not in product and "pksother" in valid_classes:
+                            BGC_classes["PKSother"].append(clusterIdx)
+                    
+                    if predicted_class == "Others" and "-" in product:
+                        subclasses = set()
+                        for subproduct in product.split("-"):
+                            subclass = sort_bgc(subproduct)
+                            if subclass.lower() in valid_classes:
+                                subclasses.add(subclass)
+                            
+                        for subclass in subclasses:
+                            BGC_classes[subclass].append(clusterIdx)
+                        subclasses.clear()
 
             # only make folders for the BGC_classes that are found
             for bgc_class in BGC_classes:
                 folder_name = bgc_class
-                if options.hybrids and bgc_class in ("PKSI", "PKSother", "NRPS"):
-                    folder_name += "+hybrids"
                     
                 print("\n  " + folder_name + " (" + str(len(BGC_classes[bgc_class])) + " BGCs)")
                 
@@ -1619,8 +1644,11 @@ if __name__=="__main__":
                 if len(BGC_classes[bgc_class]) > 1:
                     print("   Calculating all pairwise distances")
                     pairs = set(map(tuple, map(sorted, combinations(BGC_classes[bgc_class], 2))))
+                    del BGC_classes[bgc_class][:]
                     cluster_pairs = [(x, y, bgcClassName2idx[bgc_class]) for (x, y) in pairs]
+                    pairs.clear()
                     network_matrix = generate_network(cluster_pairs, cores)
+                    del cluster_pairs[:]
                         
                     print("   Writing output files")
                     pathBase = os.path.join(output_folder, networks_folder_all, folder_name, "all" + folder_name)
@@ -1628,12 +1656,12 @@ if __name__=="__main__":
                     for cutoff in cutoff_list:
                         filenames.append(pathBase + "_c%.2f.network" % cutoff)
                     cutoffs_and_filenames = zip(cutoff_list, filenames)
+                    del filenames[:]
                     clusterJsonBatch(pathBase, network_matrix, cutoffs=cutoff_list)
                     write_network_matrix(network_matrix, cutoffs_and_filenames, include_singletons,clusterNames, bgc_info)
-                        
-                    # keep the data if we have to reuse it
-                    if options_samples:
-                        network_matrix_complete.append(network_matrix)
+                    
+                    del network_matrix[:]
+                
 
     # Try to make analysis for each sample
     if options_samples:
@@ -1658,35 +1686,30 @@ if __name__=="__main__":
                     # Making network files mixing all classes
                     if options_mix:
                         print("\n  Mixing all BGC classes")
-                        sampleClusterIdxs = [clusterNames2idx[cluster] for cluster in sampleClusters]
-                        pairs = set(map(tuple, map(sorted, combinations(sampleClusterIdxs, 2))))
+                        
+                        mix_set = []
+                        for clusterIdx, sampleCluster in enumerate(sampleClusters):
+                            product = bgc_info[sampleCluster][0]
+                            predicted_class = sort_bgc(product)
+                            if predicted_class.lower() in valid_classes:
+                                mix_set.append(clusterIdx)
                         
                         # Create an additional file with the list of all clusters in the class + other info
                         print("   Writing annotation files")
                         path_list = os.path.join(output_folder, networks_folder_samples, sample, "Network_Annotations_Sample_" + sample + "_mix.tsv")
                         with open(path_list, "w") as list_file:
                             list_file.write("BGC\tAccesion ID\tDescription\tProduct Prediction\tBiG-SCAPE class\n")
-                            for bgc in sampleClusters:
+                            for idx in mix_set:
+                                bgc = clusterName[idx]
                                 product = bgc_info[bgc][0]
                                 list_file.write("\t".join([bgc, bgc_info[bgc][4], bgc_info[bgc][1], product, sort_bgc(product)]) + "\n")
             
-                        
-                        # If we did the 'all' case and didn't mix 'classify' and 'mix', 
-                        # the pairs' distances should be ready
-
-                        ## Can't use this anymore with changed data structure, will have to redo calculations
-
-                        # if options_all and options_mix:
-                        #     print("   Using distances calculated in the 'all' analysis")
-                        #     for pair in pairs:
-                        #         network_matrix_sample[pair[0], pair[1], "mix"] = network_matrix_mix[pair[0], pair[1], "mix"]
-                        #     network_matrix_mix.clear()
-                        # else:
-                        #     print("   Calculating all pairwise distances")
-                        #     cluster_pairs = [(x, y, "mix") for (x, y) in pairs]
-                        #     network_matrix_sample = generate_network(cluster_pairs, cores)
+                        pairs = set(map(tuple, map(sorted, combinations(mix_set, 2))))
+                        del mix_set[:]
                         cluster_pairs = [(x, y, -1) for (x, y) in pairs]
+                        pairs.clear()
                         network_matrix_sample = generate_network(cluster_pairs, cores)
+                        del cluster_pairs[:]
 
                         print("   Writing output files")
                         pathBase = os.path.join(output_folder, networks_folder_samples, sample, "sample_" + sample + "_mix")
@@ -1696,6 +1719,8 @@ if __name__=="__main__":
                         cutoffs_and_filenames = zip(cutoff_list, filenames)
                         clusterJsonBatch(pathBase, network_matrix_sample, cutoffs=cutoff_list)
                         write_network_matrix(network_matrix_sample, cutoffs_and_filenames, include_singletons, clusterNames,bgc_info)
+                        
+                        del network_matrix_sample[:]
                     
                     # Making network files separating by BGC class
                     if options_classify:
@@ -1713,18 +1738,28 @@ if __name__=="__main__":
                                 BGC_classes[predicted_class].append(clusterNames2idx[cluster])
                             
                             # possibly add hybrids to 'pure' classes
-                            if options.hybrids and predicted_class == "PKS-NRP_Hybrids":
-                                if "nrps" in valid_classes:
-                                    BGC_classes["NRPS"].append(clusterNames2idx[cluster])
-                                if "t1pks" in product and "pksi" in valid_classes:
-                                    BGC_classes["PKSI"].append(clusterNames2idx[cluster])
-                                if "t1pks" not in product and "pksother" in valid_classes:
-                                    BGC_classes["PKSother"].append(clusterNames2idx[cluster])
-                        
+                            if options.hybrids:
+                                if predicted_class == "PKS-NRP_Hybrids":
+                                    if "nrps" in valid_classes:
+                                        BGC_classes["NRPS"].append(clusterNames2idx[cluster])
+                                    if "t1pks" in product and "pksi" in valid_classes:
+                                        BGC_classes["PKSI"].append(clusterNames2idx[cluster])
+                                    if "t1pks" not in product and "pksother" in valid_classes:
+                                        BGC_classes["PKSother"].append(clusterNames2idx[cluster])
+                                
+                                if predicted_class == "Others" and "-" in product:
+                                    subclasses = set()
+                                    for subproduct in product.split("-"):
+                                        subclass = sort_bgc(subproduct)
+                                        if subclass.lower() in valid_classes:
+                                            subclasses.add(subclass)
+                                        
+                                    for subclass in subclasses:
+                                        BGC_classes[subclass].append(clusterNames2idx[cluster])
+                                    subclasses.clear()
+
                         for bgc_class in BGC_classes:
                             folder_name = bgc_class
-                            if options.hybrids and bgc_class in ("PKSI", "PKSother", "NRPS"):
-                                folder_name += "+hybrids"
                                 
                             print("\n   " + folder_name + " (" + str(len(BGC_classes[bgc_class])) + " BGCs)")
                             network_matrix_sample = []
@@ -1743,19 +1778,11 @@ if __name__=="__main__":
 
                             if len(BGC_classes[bgc_class]) > 1:
                                 pairs = set(map(tuple, map(sorted, combinations(BGC_classes[bgc_class], 2))))
-
-                                ## Can't use this with new data structure
-                                # if options_all and options_classify:
-                                #     print("    Using distances calculated in the 'all' analysis")
-                                #     for pair in pairs:
-                                #         network_matrix_sample[pair[0], pair[1], bgc_class] = network_matrix_complete[pair[0], pair[1], bgc_class]
-                                # else:
-                                #     print("    Calculating all pairwise distances")
-                                #     cluster_pairs = [(x, y, bgc_class) for (x, y) in pairs]
-                                #     network_matrix_sample = generate_network(cluster_pairs, cores)
-
+                                del BGC_classes[bgc_class][:]
                                 cluster_pairs = [(x, y, bgcClassName2idx[bgc_class]) for (x, y) in pairs]
+                                pairs.clear()
                                 network_matrix_sample = generate_network(cluster_pairs, cores)
+                                del cluster_pairs[:]
                                 print("    Writing output files")
                                 pathBase = os.path.join(output_folder, networks_folder_samples, sample, folder_name,
                                                         "sample_" + sample + "_" + folder_name)
@@ -1765,6 +1792,9 @@ if __name__=="__main__":
                                 cutoffs_and_filenames = zip(cutoff_list, filenames)
                                 clusterJsonBatch(pathBase, network_matrix_sample, cutoffs=cutoff_list)
                                 write_network_matrix(network_matrix_sample, cutoffs_and_filenames, include_singletons, clusterNames,bgc_info)
+                                del network_matrix_sample[:]
+                                
+                            del BGC_classes[bgc_class][:]
 
     pickle.dump(bgc_info,open(os.path.join(output_folder,'bgc_info.dict'),'w'))
     runtime = time.time()-time1

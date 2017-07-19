@@ -28,23 +28,28 @@ domain_contour_thickness = 1
 gene_contour_thickness = 1 # thickness grows outwards
 stripe_thickness = 3
 
+gene_color_file = os.path.join(os.path.dirname(os.path.realpath(__file__)), "gene_color_file.tsv")
+domains_color_file = os.path.join(os.path.dirname(os.path.realpath(__file__)), "domains_color_file.tsv")
+pfam_domain_categories = os.path.join(os.path.dirname(os.path.realpath(__file__)), "pfam_domain_categories.tsv")
 
 # read various color data
 def read_color_genes_file():
     # Try to read already-generated colors for genes
     color_genes = {}
     
-    if os.path.isfile(os.path.join(os.path.dirname(os.path.realpath(__file__)), "gene_color_file.tsv")):
+    if os.path.isfile(gene_color_file):
         print("  Found file with gene colors")
-        with open("gene_color_file.tsv", "r") as color_genes_handle:
+        with open(gene_color_file, "r") as color_genes_handle:
             for line in color_genes_handle:
-                row = line.strip().split("\t")
-                name = row[0]
-                rgb = row[1].split(",")
-                color_genes[name] = [int(rgb[x]) for x in range(3)]
+                # handle comments and empty lines
+                if line[0] != "#" and line.strip():
+                    row = line.strip().split("\t")
+                    name = row[0]
+                    rgb = row[1].split(",")
+                    color_genes[name] = [int(rgb[x]) for x in range(3)]
     else:
         print("  Gene color file was not found. A new file will be created")
-        with open("gene_color_file.tsv", "w") as color_genes_handle:
+        with open(gene_color_file, "w") as color_genes_handle:
             color_genes_handle.write("NoName\t255,255,255\n")
         color_genes = {"NoName":[255, 255, 255]}
     
@@ -55,17 +60,19 @@ def read_color_domains_file():
     # Try to read colors for domains
     color_domains = {}
     
-    if os.path.isfile(os.path.join(os.path.dirname(os.path.realpath(__file__)), "domains_color_file.tsv")):
+    if os.path.isfile(domains_color_file):
         print("  Found file with domains colors")
-        with open("domains_color_file.tsv", "r") as color_domains_handle:
+        with open(domains_color_file, "r") as color_domains_handle:
             for line in color_domains_handle:
-                row = line.strip().split("\t")
-                name = row[0]
-                rgb = row[1].split(",")
-                color_domains[name] = [int(rgb[x]) for x in range(3)]
+                # handle comments and empty lines
+                if line[0] != "#" and line.strip():
+                    row = line.strip().split("\t")
+                    name = row[0]
+                    rgb = row[1].split(",")
+                    color_domains[name] = [int(rgb[x]) for x in range(3)]
     else:
         print("  Domains colors file was not found. An empty file will be created")
-        color_domains_handle = open("domains_color_file.tsv", "a+")
+        color_domains_handle = open(domains_color_file, "a+")
         
     return color_domains
 
@@ -74,11 +81,12 @@ def read_color_domains_file():
 def read_pfam_domain_categories():
     pfam_category = {}
     
-    if os.path.isfile(os.path.join(os.path.dirname(os.path.realpath(__file__)), "pfam_domain_categories.tsv")):
+    if os.path.isfile(pfam_domain_categories):
         print("  Found file with Pfam domain categories")
-        with open("pfam_domain_categories.tsv", "r") as cat_handle:            
+        with open(pfam_domain_categories, "r") as cat_handle:            
             for line in cat_handle:
-                if line[0] != "#":
+                # handle comments and empty lines
+                if line[0] != "#" and line.strip():
                     row = line.strip().split("\t")
                     domain = row[1]
                     category = row[0]
@@ -642,7 +650,7 @@ def SVG(write_html, outputfile, GenBankFile, pfdFile, use_pfd, color_genes, colo
         else:
             print("  Saving new color names for 10+ genes...")
             
-        with open("gene_color_file.tsv", "a") as color_genes_handle:
+        with open(gene_color_file, "a") as color_genes_handle:
             for new_names in new_color_genes:
                 color_genes_handle.write(new_names + "\t" + ",".join(map(str,new_color_genes[new_names])) + "\n")
     
@@ -652,7 +660,7 @@ def SVG(write_html, outputfile, GenBankFile, pfdFile, use_pfd, color_genes, colo
         else:
             print("   Saving new color names for 10+ domains")
             
-        with open("domains_color_file.tsv", "a") as color_domains_handle:
+        with open(domains_color_file, "a") as color_domains_handle:
             for new_names in new_color_domains:
                 color_domains_handle.write(new_names + "\t" + ",".join(map(str,new_color_domains[new_names])) + "\n")
 
@@ -763,10 +771,10 @@ def main():
     # Try to read already-generated colors for consistency
     color_genes = {}
     try:
-        color_genes_handle = open("gene_color_file.tsv", "r")
+        color_genes_handle = open(gene_color_file, "r")
     except IOError:
         #first time using the color file
-        color_genes_handle = open("gene_color_file.tsv", "w")
+        color_genes_handle = open(gene_color_file, "w")
         color_genes_handle.write("NoName\t255,255,255\n")
         color_genes_handle.close()
         color_genes = {"NoName":[255, 255, 255]}
@@ -781,10 +789,10 @@ def main():
     
     color_domains = {}
     try:
-        color_domains_handle = open("domains_color_file.tsv", "r")
+        color_domains_handle = open(domains_color_file, "r")
     except IOError:
         # first time use
-        color_domains_handle = open("domains_color_file.tsv", "w")
+        color_domains_handle = open(domains_color_file, "w")
         color_domains_handle.close()
     else:
         for line in color_domains_handle:

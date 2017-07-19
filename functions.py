@@ -48,23 +48,24 @@ def create_directory(path, kind, clean):
 
 def get_anchor_domains(filename):
     """Get the anchor/marker domains from a txt file.
-    This text file should contain one Pfam id per line"""
+    This text file should contain one Pfam id per line.
+    A second column (separated by a tab) with more comments is allowed"""
 
     domains = []
     
     try:
-        handle = open(filename, 'r')
+        with open(filename, "r") as handle:
+            for line in handle:
+                # handle comments and empty lines
+                if line[0] != "#" and line.strip():
+                    # ignore domain versions
+                    domains.append(line.strip().split("\t")[0].split(".")[0])
+        return domains
     except IOError:
         print "You have not provided the anchor_domains.txt file."
-        print "if you want to make use of the anchor domains in the DDS distance metric,\
+        print "if you want to make use of the anchor domains in the DSS distance metric,\
         make a file that contains a Pfam domain on each line."
         return []
-        
-    raw_domains = handle.readlines()
-    for line in raw_domains:
-        domains.append(line.strip())
-    handle.close()
-    return domains
         
 
 def get_domain_list(filename):
@@ -96,7 +97,7 @@ def check_overlap(pfd_matrix, overlap_cutoff):
                     overlap_perc_loc2 = overlap_perc(overlapping_nucleotides, int(row2[4])-int(row2[3]))
                     #check if the amount of overlap is significant
                     if overlap_perc_loc1 > overlap_cutoff or overlap_perc_loc2 > overlap_cutoff:
-                        if float(row1[1]) > float(row2[1]): #see which has a better score
+                        if float(row1[1]) >= float(row2[1]): #see which has a better score
                             delete_list.append(row2)
                         elif float(row1[1]) < float(row2[1]):
                             delete_list.append(row1)
@@ -139,6 +140,8 @@ def check_overlap(pfd_matrix, overlap_cutoff):
         
     domains = []
     for row in pfd_matrix:
+        # removing the domain version at this point is not a very good idea
+        # because we need it complete for hmmalign
         domains.append(row[5]) #save the pfam domains for the .pfs file
 
     return pfd_matrix, domains                       
@@ -152,17 +155,6 @@ def write_pfd(pfd_handle, matrix):
     pfd_handle.close() 
     
 
-def hmmscan(pfam_dir, fastafile, outputdir, name, cores):
-    """Runs hmmscan"""
-    #removed --noali par
-
-    hmmscan_cmd = "hmmscan --cpu " + str(cores) + " --domtblout " + os.path.join(outputdir, name+".domtable") + " --cut_tc " + os.path.join(pfam_dir,"Pfam-A.hmm") + " " + str(fastafile)
-    if verbose == True:
-        print("   "+hmmscan_cmd)
-    
-    subprocess.check_output(hmmscan_cmd, shell=True)
-    
-    
 def get_domains(filename):
     handle = open(filename, 'r')
     domains = []
@@ -209,14 +201,21 @@ def overlap(locA1, locA2, locB1, locB2):
 def BGC_dic_gen(filtered_matrix):
     """Generates the: { 'general_domain_name_x' : ['specific_domain_name_1',
      'specific_domain_name_2'] } part of the BGCs variable."""
+    
+    # It would be tempting to do `bgc_dict = defaultdict(list)` but then the 
+    # dictionary keeps the defaultdict definition. Later on in the distance
+    # calculation function, we do a 
+    #  ```try: unshared_occurrences = BGCs[A][unshared_domain]
+    #  except KeyError: unshared_occurrences = BGCs[B][unshared_domain]```
+    # Problem is the `try` would always be successful because of defaultdict and
+    # an empty list is added for the unshared_domain!
     bgc_dict = {}
     for row in filtered_matrix:
-        header = row[-1] + ":" + row[3] + ":" + row[4]
-        try: #Should be faster than performing if key in dictionary.keys()
-            bgc_dict[row[5]]
+        header = row[-1] + ":" + row[3] + ":" + row[4] # add domain positions
+        try: #Should be faster than performing `if key in dictionary.keys()`
             bgc_dict[row[5]].append(header)
-        except KeyError: #In case of this error, this is the first occurrence of this domain in the cluster
-           bgc_dict[row[5]]=[header]
+        except KeyError: # First occurrence of this domain in the cluster
+           bgc_dict[row[5]] = [header]
             
     return bgc_dict
 
@@ -236,7 +235,7 @@ def save_domain_seqs(filtered_matrix, fasta_dict, domains_folder, outputbase):
         domain_file.close()
 
 
-def network_parser(network_file, Jaccardw, DDSw, GKw, anchorboost):
+def network_parser(network_file, Jaccardw, DSSw, GKw, anchorboost):
     network = {}
     
     try:
@@ -257,15 +256,15 @@ def network_parser(network_file, Jaccardw, DDSw, GKw, anchorboost):
     # re-calculate raw distance with potentially new weights
     for (a, b) in network:
         Jaccard = network[a,b][7]
-        #DDS = network[a,b][8] <- will be recalculated
+        #DSS = network[a,b][8] <- will be recalculated
         AI = network[a,b][9]
         
-        DDS_non_anchor = network[a,b][10]
-        DDS_anchor = network[a,b][11]
+        DSS_non_anchor = network[a,b][10]
+        DSS_anchor = network[a,b][11]
         S_anchor = network[a,b][12]
         S = network[a,b][13]
         
-        # Calculate DDS
+        # Calculate DSS
         if S_anchor != 0 and S != 0:
             non_anchor_prct = S / (S + S_anchor)
             anchor_prct = S_anchor / (S + S_anchor)
@@ -273,17 +272,17 @@ def network_parser(network_file, Jaccardw, DDSw, GKw, anchorboost):
             non_anchor_weight = non_anchor_prct / (anchor_prct*anchorboost + non_anchor_prct)
             anchor_weight = anchor_prct*anchorboost / (anchor_prct*anchorboost + non_anchor_prct)
         
-            DDS = (non_anchor_weight*DDS_non_anchor) + (anchor_weight*DDS_anchor)
+            DSS = (non_anchor_weight*DSS_non_anchor) + (anchor_weight*DSS_anchor)
             
         elif S_anchor == 0:
-            DDS = DDS_non_anchor
+            DSS = DSS_non_anchor
             
         else: #only anchor domains were found
-            DDS = DDS_anchor
+            DSS = DSS_anchor
             
-        DDS = 1 - DDS
+        DSS = 1 - DSS
         
-        distance = 1- (Jaccardw * Jaccard) - (DDSw * DDS) - (AIw * AI)
+        distance = 1- (Jaccardw * Jaccard) - (DSSw * DSS) - (AIw * AI)
         
         if distance <= 0:
             logscore = float("inf")
@@ -295,7 +294,7 @@ def network_parser(network_file, Jaccardw, DDSw, GKw, anchorboost):
         network[a,b][4] = logscore
         network[a,b][5] = distance
         network[a,b][6] = sqrd_similarity
-        network[a,b][8] = DDS
+        network[a,b][8] = DSS
         
     return network
 
@@ -304,19 +303,19 @@ def write_network_matrix(matrix, cutoffs_and_filenames, include_singletons, clus
     """
     An entry in the distance matrix is currently (all floats):
       0         1           2      3      4       5    6    7    8      9     10   11
-    clus1Idx clus2Idx bgcClassIdx rawD  sqrtSim  Jac  DDS  AI rDDSna  rDDSa   S    Sa
+    clus1Idx clus2Idx bgcClassIdx rawD  sqrtSim  Jac  DSS  AI rDSSna  rDSSa   S    Sa
     
     The final row in the network file is currently:
       0      1      2     3      4   5   6     7       8    9   10    11       12
-    clus1  clus2  rawD  sqrtSim  J  DDS  AI  rDDSna  rDDSa  S   Sa  combGrp  ShrdGrp
+    clus1  clus2  rawD  sqrtSim  J  DSS  AI  rDSSna  rDSSa  S   Sa  combGrp  ShrdGrp
     """
     
     #Open file handles for each cutoff
     networkfiles = {}
     cutoffs, filenames = zip(*cutoffs_and_filenames)
     for cutoff, filename in cutoffs_and_filenames:
-        with open(filename, "w") as networkfile:
-            networkfile.write("Clustername 1\tClustername 2\tRaw distance\tSquared similarity\tJaccard index\tDDS index\tAdjacency index\traw DDS non-anchor\traw DDS anchor\tNon-anchor domains\tAnchor domains\tCombined group\tShared group\n")
+        networkfiles[cutoff] = open(filename, "w")
+        networkfiles[cutoff].write("Clustername 1\tClustername 2\tRaw distance\tSquared similarity\tJaccard index\tDSS index\tAdjacency index\traw DSS non-anchor\traw DSS anchor\tNon-anchor domains\tAnchor domains\tCombined group\tShared group\n")
       
     #Dictionaries to keep track of connected nodes, to know which are singletons
     clusterSetAllDict = {}
@@ -357,7 +356,7 @@ def write_network_matrix(matrix, cutoffs_and_filenames, include_singletons, clus
         else:
             row.append("")
 
-        for cutoff, filename in cutoffs_and_filenames:
+        for cutoff in cutoffs:
             clusterSetAllDict[cutoff].add(gc1)
             clusterSetAllDict[cutoff].add(gc2)
             
@@ -365,18 +364,16 @@ def write_network_matrix(matrix, cutoffs_and_filenames, include_singletons, clus
                 clusterSetConnectedDict[cutoff].add(gc1)
                 clusterSetConnectedDict[cutoff].add(gc2)
                 
-                with open(filename, "a") as networkfile:
-                    networkfile.write("\t".join(map(str,row)) + "\n")
+                networkfiles[cutoff].write("\t".join(map(str,row)) + "\n")
 
 
     #Add the nodes without any edges, give them an edge to themselves with a distance of 0
     if include_singletons == True:
-        for cutoff, filename in cutoffs_and_filenames:
+        for cutoff in cutoffs:
             for gc in clusterSetAllDict[cutoff]-clusterSetConnectedDict[cutoff]:
                 #Arbitrary numbers for S and Sa domains: 1 of each (logical would be 0,0 but 
-                # that could mess re-analysis;
-                with open(filename, "a") as networkfile:
-                    networkfile.write("\t".join([gc, gc, "0", "1", "1", "1", "1", "0", "0", "1", "1", "", ""]) + "\n")
+                # that could mess re-analysis with divisions-by-zero;
+                networkfiles[cutoff].write("\t".join([gc, gc, "0", "1", "1", "1", "1", "0", "0", "1", "1", "", ""]) + "\n")
 
     #Close all files
     for networkfile in networkfiles.values():
@@ -499,7 +496,7 @@ def sort_bgc(product):
         else:
             return("Others") # other hybrid
     # Others
-    elif product in ('arylpolyene', 'aminocoumarin', 'ectoine', 'butyrolactone', 'nucleoside', 'melanin', 'phosphoglycolipid', 'phenazine', 'phosphonate', 'other', 'cf_putative', 'resorcinol', 'indole', 'ladderane', 'PUFA', 'furan', 'hserlactone', 'fused', 'cf_fatty_acid ', 'siderophore', 'blactam'):
+    elif product in ('arylpolyene', 'aminocoumarin', 'ectoine', 'butyrolactone', 'nucleoside', 'melanin', 'phosphoglycolipid', 'phenazine', 'phosphonate', 'other', 'cf_putative', 'resorcinol', 'indole', 'ladderane', 'PUFA', 'furan', 'hserlactone', 'fused', 'cf_fatty_acid', 'siderophore', 'blactam'):
         return("Others")
     # ??
     else:
@@ -557,8 +554,8 @@ def write_parameters(output_folder, options):
     #else:
         #pf.write("\n")
         
-    #pf.write("DDS weight:\t" + str(options.DDSw))
-    #if options.DDSw == 0.75:
+    #pf.write("DSS weight:\t" + str(options.DSSw))
+    #if options.DSSw == 0.75:
         #pf.write("\t(default)\n")
     #else:
         #pf.write("\n")
@@ -595,12 +592,6 @@ def write_parameters(output_folder, options):
         
     pf.write("String for exclusion of gbk files:\t" + options.exclude_gbk_str)
     if options.exclude_gbk_str == "final":
-        pf.write("\t(default)\n")
-    else:
-        pf.write("\n")
-    
-    pf.write("Skip hmmscan?:\t" + ("True" if options.skip_hmmscan else "False"))
-    if not options.skip_hmmscan:
         pf.write("\t(default)\n")
     else:
         pf.write("\n")
