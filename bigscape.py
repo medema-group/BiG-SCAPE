@@ -857,7 +857,43 @@ def clusterJsonBatch(outputFileBase,matrix,cutoffs=[1.0],damping=0.8):
         numBGCs = len(bgcs)
         bs_distances = [[float('%.3f' % simMatrix[row, col]) for col in xrange(row+1)] for row in
                         xrange(numBGCs)]
-        bs_data = [{"id": clusterNames[int(bgc)]} for bgc in bgcs]
+        #bs_data = [{"id": clusterNames[int(bgc)]} for bgc in bgcs]
+        bs_data = []
+        bgcJsonDict = {}
+        for bgc in bgcs:
+            bgcName = clusterNames[int(bgc)]
+            bgcJsonDict[bgcName] = {}
+            bgcJsonDict[bgcName]["id"] = clusterNames[int(bgc)]
+            bgcJsonDict[bgcName]["desc"] = bgc_info[bgcName][1]
+            bgcJsonDict[bgcName]["start"] = int(bgc_info[bgcName][2])
+            bgcJsonDict[bgcName]["end"] = int(bgc_info[bgcName][3])
+            pfdFile = os.path.join(pfd_folder, bgcName + ".pfd")
+            fastaFile = os.path.join(bgc_fasta_folder, bgcName + ".fasta")
+            orfDict = defaultdict(dict)
+            ## read fasta file first to get orfs
+            for line in open(fastaFile):
+                if line[0] == ">":
+                    header = line.strip()[1:].split(':')
+                    if header[2]:
+                        orfDict[header[0]]["id"] = header[2]
+                    elif header[4]:
+                        orfDict[header[0]]["id"] = header[4]
+                    else:
+                        orfDict[header[0]]["id"] = header[0]
+                    orfDict[header[0]]["start"] = int(header[6])
+                    orfDict[header[0]]["end"] = int(header[7])
+                    if header[-1] == '+':
+                        orfDict[header[0]]["strand"] = 1
+                    else:
+                        orfDict[header[0]]["strand"] = 1
+                    orfDict[header[0]]["domains"] = []
+            ## now read pfd file to add the domains to each of the orfs
+            for line in open(pfdFile):
+                entry = line.split('\t')
+                orf = entry[-1].strip().split(':')[0]
+                orfDict[orf]["domains"].append({'code': entry[5],'start':int(entry[3]),'end':int(entry[4]),'bitscore': float(entry[1]) })
+            bgcJsonDict[bgcName]['orfs'] = orfDict.values()
+        bs_data = bgcJsonDict.values()
         familiesDict = {}
         for idx, label in enumerate(labels):
             members = familiesDict.setdefault(label, [])
@@ -874,7 +910,7 @@ def clusterJsonBatch(outputFileBase,matrix,cutoffs=[1.0],damping=0.8):
                 i += 1
                 for x in familiesDict[label]:
                     clustering_file.write(clusterNames[int(bgcs[x])] + "\t" + str(i) + "\n")
-                        
+
         if verbose:
             print("  Writing JS file")
         outputFile = "{}_cutoff{}.js".format(outputFileBase,cutoff)
@@ -882,101 +918,6 @@ def clusterJsonBatch(outputFileBase,matrix,cutoffs=[1.0],damping=0.8):
             outfile.write('var bs_similarity=%s\n' % str(bs_distances))
             outfile.write('var bs_data=%s\n' % str(bs_data))
             outfile.write('var bs_families=%s' % str(bs_families))
-    return
-
-
-def clusterJson_sparse(outputFile,matrix,cutoff=1.0,damping=0.8):
-    ## implementation of clusterJson using csr sparce matrices
-    bgcs = set()
-    simDict = {}
-    # Doing this so it only has to go through the matrix once
-    for row in matrix:
-        gc1 = row[0]
-        gc2 = row[1]
-        distance = row[3]
-        bgcs.add(gc1)
-        bgcs.add(gc2)
-        if distance < cutoff:
-            similarity = 1 - distance
-        else:
-            similarity = 0
-        gcSimilarities = simDict.setdefault(gc1, {})
-        gcSimilarities[gc2] = similarity
-    # preserve order
-    bgcs = sorted(list(bgcs))
-    bgc2simIdx = dict(zip(bgcs, range(len(bgcs))))
-    simMatrix = lil_matrix((len(bgc2simIdx), len(bgc2simIdx)), dtype=np.float32)
-    for bgc1 in bgcs:
-        # first make sure it is similar to itself
-        simMatrix[bgc2simIdx[bgc1],bgc2simIdx[bgc1]] = 1
-        for bgc2 in simDict.get(bgc1,{}).keys():
-            # you might get 0 values if there were matrix entries under the cutoff don't need to input these in
-            # the sparse matrix
-            if simDict[bgc1][bgc2] > 0:
-                # Ensure symmetry
-                simMatrix[bgc2simIdx[bgc1], bgc2simIdx[bgc2]] = simDict[bgc1][bgc2]
-                simMatrix[bgc2simIdx[bgc2], bgc2simIdx[bgc1]] = simDict[bgc1][bgc2]
-    labels = pysapc.SAP(damping=damping, max_iter=500,
-                        preference='min').fit_predict(simMatrix)
-    numBGCs = len(bgcs)
-    bs_distances = [[float('%.3f' % simMatrix[row,col]) for col in xrange(row,numBGCs)] for row in xrange(numBGCs)]
-    bs_data = [{"id":clusterNames[int(bgc)]} for bgc in bgcs]
-    familiesDict = {}
-    for idx,label in enumerate(labels):
-        members = familiesDict.setdefault(label,[])
-        members.append(idx)
-        familiesDict[label] = members
-    bs_families = [{'id':'FAM_%.3d' % family,'members':members} for family,members in enumerate(familiesDict.itervalues())]
-    with open(outputFile,'w') as outfile:
-        outfile.write('var bs_similarity=%s\n' % str(bs_distances))
-        outfile.write('var bs_data=%s\n' % str(bs_data))
-        outfile.write('var bs_families=%s' % str(bs_families))
-    return
-
-def clusterJson(outputFile,matrix,cutoff=1.0,damping=0.8):
-    # From the data structure compute a similarity matrix for clustering, cluster using AP and then output a json
-    # file with the results of the clustering for visualization
-    # any distance higher than the distance cutoff will result in a similarity score of 0
-    bgcs = set()
-    simDict = {}
-    # Doing this so it only has to go through the matrix once
-    for row in matrix:
-        gc1 = row[0]
-        gc2 = row[1]
-        distance = row[3]
-        bgcs.add(gc1)
-        bgcs.add(gc2)
-        if distance < cutoff:
-            similarity = 1 - distance
-        else:
-            similarity = 0
-        gcSimilarities = simDict.setdefault(gc1,{})
-        gcSimilarities[gc2] = similarity
-    # preserve order
-    bgcs = sorted(list(bgcs))
-    for bgc in bgcs:
-        if bgc in simDict.keys():
-            simDict[bgc][bgc] = 1
-        else:
-            simDict[bgc] = {bgc:1}
-
-    triUdistMatrix = np.array([[simDict[bgc2].get(bgc1,0) for bgc1 in bgcs] for bgc2 in bgcs])
-    symDistMatrix = triUdistMatrix + triUdistMatrix.T - np.diag(triUdistMatrix.diagonal())
-    labels = AffinityPropagation(damping=damping, max_iter=500,
-                                 preference=None,affinity='precomputed').fit_predict(symDistMatrix)
-    numBGCs = len(bgcs)
-    bs_distances = [[float('%.3f' % sim) for sim in triUdistMatrix[idx,idx:numBGCs]] for idx in xrange(numBGCs)]
-    bs_data = [{"id":clusterNames[int(bgc)]} for bgc in bgcs]
-    familiesDict = {}
-    for idx,label in enumerate(labels):
-        members = familiesDict.setdefault(label,[])
-        members.append(idx)
-        familiesDict[label] = members
-    bs_families = [{'id':'FAM_%.3d' % family,'members':members} for family,members in familiesDict.iteritems()]
-    with open(outputFile,'w') as outfile:
-        outfile.write('var bs_distances=%s\n' % str(bs_distances))
-        outfile.write('var bs_data=%s\n' % str(bs_data))
-        outfile.write('var bs_families=%s' % str(bs_families))
     return
 
 class FloatRange(object):
@@ -1425,7 +1366,7 @@ if __name__=="__main__":
 
             # save each domain sequence from a single BGC in its corresponding file
             fasta_file = os.path.join(bgc_fasta_folder, outputbase + ".fasta")
-            
+
             # only create domain fasta if the pfd content is different from original and 
             #  domains folder has been emptied. Else, if trying to resume alignment phase,
             #  domain fasta files will contain duplicate sequence labels
@@ -1855,7 +1796,7 @@ if __name__=="__main__":
                                 
                             del BGC_classes[bgc_class][:]
 
-
+    pickle.dump(bgc_info,open(os.path.join(output_folder,'bgc_info.dict'),'w'))
     runtime = time.time()-time1
     runtime_string = '\n\n\tMain function took %0.3f s' % (runtime)
     with open(os.path.join(output_folder, "runtimes.txt"), 'a') as timings_file:
