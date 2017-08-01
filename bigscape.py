@@ -893,7 +893,7 @@ def clusterJsonBatch(outputFileBase,matrix,cutoffs=[1.0],damping=0.8):
                 orf = entry[-1].strip().split(':')[0]
                 orfDict[orf]["domains"].append({'code': entry[5],'start':int(entry[3]),'end':int(entry[4]),'bitscore': float(entry[1]) })
             bgcJsonDict[bgcName]['orfs'] = orfDict.values()
-        bs_data = bgcJsonDict.values()
+        bs_data = [bgcJsonDict[clusterNames[int(bgc)]] for bgc in bgcs]
         familiesDict = {}
         for idx, label in enumerate(labels):
             members = familiesDict.setdefault(label, [])
