@@ -1707,7 +1707,7 @@ if __name__=="__main__":
                         with open(path_list, "w") as list_file:
                             list_file.write("BGC\tAccesion ID\tDescription\tProduct Prediction\tBiG-SCAPE class\n")
                             for idx in mix_set:
-                                bgc = clusterName[idx]
+                                bgc = clusterNames[idx]
                                 product = bgc_info[bgc][0]
                                 list_file.write("\t".join([bgc, bgc_info[bgc][4], bgc_info[bgc][1], product, sort_bgc(product)]) + "\n")
             
