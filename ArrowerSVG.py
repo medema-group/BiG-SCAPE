@@ -310,7 +310,10 @@ def draw_arrow(additional_tabs, X, Y, L, l, H, h, strand, color, color_contour, 
                     
                 # handle middle/end
                 if dX + dL < collision_x + x_margin_offset:
-                    end_y_offset = round((h + H/2)*(dX + dL - x_margin_offset)/head_length)
+                    if head_length != 0:
+                        end_y_offset = round((h + H/2)*(dX + dL - x_margin_offset)/head_length)
+                    else:
+                        end_y_offset = 0
                     points.append([X + dX + dL, Y + H/2 - end_y_offset])
                     points.append([X + dX + dL, Y + H/2 + end_y_offset])
                 else:

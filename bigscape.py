@@ -836,6 +836,8 @@ def clusterJsonBatch(outputFileBase,matrix,cutoffs=[1.0],damping=0.8):
     # preserve order
     bgcs = sorted(list(bgcs))
     bgc2simIdx = dict(zip(bgcs, range(len(bgcs))))
+    pfam_domain_categories = os.path.join(os.path.dirname(os.path.realpath(__file__)), "Pfam-A.clans.tsv")
+    pfam_descrs = generatePfamDescriptionsMatrix(pfam_domain_categories)
     for cutoff in cutoffs:
         simMatrix = lil_matrix((len(bgc2simIdx), len(bgc2simIdx)), dtype=np.float32)
         for bgc1 in bgcs:
@@ -891,7 +893,12 @@ def clusterJsonBatch(outputFileBase,matrix,cutoffs=[1.0],damping=0.8):
             for line in open(pfdFile):
                 entry = line.split('\t')
                 orf = entry[-1].strip().split(':')[0]
-                orfDict[orf]["domains"].append({'code': entry[5],'start':int(entry[3]),'end':int(entry[4]),'bitscore': float(entry[1]) })
+                pfamID = entry[5].split('.')[0]
+                pfamDescr = pfam_descrs.get(pfamID,None)
+                if pfamDescr:
+                    orfDict[orf]["domains"].append({'code': '{} : {}'.format(pfamID,pfamDescr),'start':int(entry[3]),'end':int(entry[4]),'bitscore': float(entry[1])})
+                else:
+                    orfDict[orf]["domains"].append({'code': entry[5], 'start': int(entry[3]), 'end': int(entry[4]), 'bitscore': float(entry[1])})
             bgcJsonDict[bgcName]['orfs'] = orfDict.values()
         bs_data = [bgcJsonDict[clusterNames[int(bgc)]] for bgc in bgcs]
         familiesDict = {}
