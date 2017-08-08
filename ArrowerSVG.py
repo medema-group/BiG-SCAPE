@@ -113,51 +113,50 @@ def draw_arrow(additional_tabs, X, Y, L, l, H, h, strand, color, color_contour, 
     """
 
     if strand == '+':
-        A = [X,Y]
-        B = [X+L-l,Y]
-        C = [X+L-l,Y-h]
-        D = [X+L,Y+H/2]
-        E = [X+L-l,Y+H+h]
-        F = [X+L-l,Y+H]
-        G = [X,Y+H]
-        head_start = L - l # relative to the start of the gene, not absolute coords.
         head_end = L
-
         if L < l:
             # squeeze arrow if length shorter than head length
-            B = [X,Y]
-            C = [X,Y-h]
-            D = [X+L,Y+H/2]
-            E = [X,Y+H+h]
-            F = [X,Y+H]
+            A = [X,Y-h]
+            B = [X+L,Y+H/2]
+            C = [X,Y+H+h]
             head_start = 0
+            points = [A, B, C]
+        else:
+            A = [X,Y]
+            B = [X+L-l,Y]
+            C = [X+L-l,Y-h]
+            D = [X+L,Y+H/2]
+            E = [X+L-l,Y+H+h]
+            F = [X+L-l,Y+H]
+            G = [X,Y+H]
+            head_start = L - l # relative to the start of the gene, not absolute coords.
+            points = [A, B, C, D, E, F, G]
 
     elif strand == '-':
-        A = [X+L,Y]
-        B = [X+l,Y]
-        C = [X+l,Y-h]
-        D = [X,Y+H/2]
-        E = [X+l,Y+H+h]
-        F = [X+l,Y+H]
-        G = [X+L,Y+H]
         head_start = 0
-        head_end = l
-
         if L < l:
             # squeeze arrow if length shorter than head length
-            B = [X+L,Y]
-            C = [X+L,Y-h]
-            D = [X,Y+H/2]
-            E = [X+L,Y+H+h]
-            F = [X+L,Y+H]
+            A = [X,Y+H/2]
+            B = [X+L,Y-h]
+            C = [X+L,Y+H+h]
             head_end = L
-    
+            points = [A, B, C]
+        else:
+            A = [X+L,Y]
+            B = [X+l,Y]
+            C = [X+l,Y-h]
+            D = [X,Y+H/2]
+            E = [X+l,Y+H+h]
+            F = [X+l,Y+H]
+            G = [X+L,Y+H]
+            head_end = l
+            points = [A, B, C, D, E, F, G]
+
     else:
         return ""
     
     head_length = head_end - head_start
     
-    points = [A, B, C, D, E, F, G]
     points_coords = []
     for point in points:
         points_coords.append(str(int(point[0])) + "," + str(int(point[1])))
