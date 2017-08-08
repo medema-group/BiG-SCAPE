@@ -1014,7 +1014,7 @@ if __name__=="__main__":
         anchor_domains = get_anchor_domains(options.anchorfile)
     else:
         print("File with list of anchor domains not found")
-        anchor_domains = []
+        anchor_domains = set()
     
     global bgc_class_weight
     global AlignedDomainSequences
@@ -1045,7 +1045,7 @@ if __name__=="__main__":
     
     cutoff_list = options.cutoffs
     for c in cutoff_list:
-        if c <= 0.0:
+        if c <= 0.0 or c > 1.0:
             cutoff_list.remove(c)
 
     output_folder = str(options.outputdir)

@@ -29,7 +29,6 @@ global verbose
 verbose = False
 
 
-
 def create_directory(path, kind, clean):
     try:
         os.mkdir(path)
@@ -52,7 +51,7 @@ def get_anchor_domains(filename):
     This text file should contain one Pfam id per line.
     A second column (separated by a tab) with more comments is allowed"""
 
-    domains = []
+    domains = set()
     
     try:
         with open(filename, "r") as handle:
@@ -60,22 +59,24 @@ def get_anchor_domains(filename):
                 # handle comments and empty lines
                 if line[0] != "#" and line.strip():
                     # ignore domain versions
-                    domains.append(line.strip().split("\t")[0].split(".")[0])
+                    domains.add(line.strip().split("\t")[0].split(".")[0])
         return domains
     except IOError:
         print "You have not provided the anchor_domains.txt file."
         print "if you want to make use of the anchor domains in the DSS distance metric,\
         make a file that contains a Pfam domain on each line."
-        return []
+        return set()
         
 
 def get_domain_list(filename):
     """Convert the Pfam string in the .pfs files to a Pfam list"""
-    handle = open(filename, 'r')
-    domains_string = handle.readline().strip()
-    domains = domains_string.split(" ")
-    handle.close()
     
+    domains = []
+    with open(filename, "r") as handle:
+        # note: cannot filter the domain version as the BGCs dictionary needs the
+        # complete Pfam id
+        domains = handle.readline().strip().split(" ")
+        
     return domains
 
 
@@ -648,6 +649,7 @@ def write_parameters(output_folder, options):
         pf.write("\n")
 
     pf.close()
+
 
 def generatePfamDescriptionsMatrix(pfam_domain_categories):
     '''
