@@ -989,7 +989,7 @@ def CMD_parser():
     
     parser.add_argument("--local", dest="local", action="store_true", default=False, help="Activate local mode. BiG-SCAPE will change the logic in the distance calculation phase to try to perform local alignments of shorter, 'fragmented' BGCs by finding the maximum overlap in domain content.")
 
-    parser.add_argument("--no_classify", dest="no_classify", action="store_true", default=False, help="By default, BiG-SCAPE classifies the output files analysis based on the BGC product. Toggle to deactivate (in that case, if the --no_classify parameter is not activated, BiG-SCAPE will not create any network file).")
+    parser.add_argument("--no_classify", dest="no_classify", action="store_true", default=False, help="By default, BiG-SCAPE classifies the output files analysis based on the BGC product. Toggle to deactivate (note that if the --mix parameter is not activated, BiG-SCAPE will not create any network file).")
 
     parser.add_argument("--banned_classes", nargs='+', dest="banned_classes", default=[], choices=["PKSI", "PKSother", "NRPS", "RiPPs", "Saccharides", "Terpene", "PKS-NRP_Hybrids", "Others"], help="Classes that should NOT be included in the classification. E.g. \"--banned_classes PKSI PKSOther\"")
 
