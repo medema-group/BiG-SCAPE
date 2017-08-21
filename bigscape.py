@@ -920,7 +920,7 @@ def clusterJsonBatch(outputFileBase,matrix,cutoffs=[1.0],damping=0.8):
                     if header[-1] == '+':
                         orfDict[header[0]]["strand"] = 1
                     else:
-                        orfDict[header[0]]["strand"] = 1
+                        orfDict[header[0]]["strand"] = -1
                     orfDict[header[0]]["domains"] = []
             ## now read pfd file to add the domains to each of the orfs
             for line in open(pfdFile):
