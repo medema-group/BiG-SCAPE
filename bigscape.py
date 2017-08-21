@@ -71,10 +71,11 @@ def get_gbk_files(inputdir, bgc_fasta_folder, min_bgc_size, exclude_gbk_str, bgc
 
     file_counter = 0
     processed_sequences = 0
-    #biosynthetic_genes = set()
+    biosynthetic_genes = set()
     product_list_per_record = []
     fasta_data = []
     save_fasta = True
+    contig_edge = False
     
     print("\nImporting GenBank files")
     if exclude_gbk_str != "":
@@ -122,7 +123,7 @@ def get_gbk_files(inputdir, bgc_fasta_folder, min_bgc_size, exclude_gbk_str, bgc
             else:
                 bgc_size = 0
                 cds_ctr = 0
-                group = "no type"
+                product = "no type"
                 del product_list_per_record[:]
                 
                 max_width = 0 # This will be used for the SVG figure
@@ -135,7 +136,6 @@ def get_gbk_files(inputdir, bgc_fasta_folder, min_bgc_size, exclude_gbk_str, bgc
                         max_width = len(record.seq)
                     
                     for feature in record.features:
-                        #is_biosynthetic = False
                         if "cluster" in feature.type and "product" in feature.qualifiers:
                             if len(feature.qualifiers["product"]) > 1:
                                 print("  WARNING: more than product annotated in record " + str(record_count) + ", " + fname)
@@ -144,12 +144,8 @@ def get_gbk_files(inputdir, bgc_fasta_folder, min_bgc_size, exclude_gbk_str, bgc
                                 product_list_per_record.append(feature.qualifiers["product"][0].replace(" ",""))
                 
                         # Get biosynthetic genes + sequences
-                        if feature.type == "CDS" and save_fasta:
+                        if feature.type == "CDS":
                             cds_ctr += 1
-                            
-                            #if "sec_met" in feature.qualifiers:
-                                #if "Kind: biosynthetic" in feature.qualifiers["sec_met"]:
-                                    #is_biosynthetic = True
                                     
                             CDS = feature
                             gene_id = ""
@@ -173,70 +169,76 @@ def get_gbk_files(inputdir, bgc_fasta_folder, min_bgc_size, exclude_gbk_str, bgc
                                 strand = '+'
                             else:
                                 strand = '-'
-
-                            if 'translation' in CDS.qualifiers.keys():
-                                prot_seq = CDS.qualifiers['translation'][0]
-                            # If translation isn't available translate manually, this will take longer
-                            else:
-                                nt_seq = CDS.location.extract(record.seq)
                                 
-                                # If we know sequence is an ORF (like all CDSs), codon table can be
-                                #  used to correctly translate alternative start codons.
-                                #  see http://biopython.org/DIST/docs/tutorial/Tutorial.html#htoc25
-                                # If the sequence has a fuzzy start/end, it might not be complete,
-                                # (therefore it might not be the true start codon)
-                                # However, in this case, if 'translation' not available, assume 
-                                #  this is just a random sequence 
-                                complete_cds = False 
-                                
-                                # More about fuzzy positions
-                                # http://biopython.org/DIST/docs/tutorial/Tutorial.html#htoc39
-                                fuzzy_start = False 
-                                if str(CDS.location.start)[0] in "<>":
-                                    complete_cds = False
-                                    fuzzy_start = True
-                                    
-                                fuzzy_end = False
-                                if str(CDS.location.end)[0] in "<>":
-                                    fuzzy_end = True
-                                
-                                #for protein sequence if it is at the start of the entry assume 
-                                # that end of sequence is in frame and trim from the beginning
-                                #if it is at the end of the genbank entry assume that the start 
-                                # of the sequence is in frame
-                                reminder = len(nt_seq)%3
-                                if reminder > 0:
-                                    if fuzzy_start and fuzzy_end:
-                                        print("Warning, CDS (" + clusterName + ", " + CDS.qualifiers.get('locus_tag',"")[0] + ") has fuzzy start and end positions, and a sequence length not multiple of three. Skipping")
-                                        break
-                                    
-                                    if fuzzy_start:
-                                        if reminder == 1:
-                                            nt_seq = nt_seq[1:]
-                                        else:
-                                            nt_seq = nt_seq[2:]
-                                    # fuzzy end
-                                    else:
-                                        #same logic reverse direction
-                                        if reminder == 1:
-                                            nt_seq = nt_seq[:-1]
-                                        else:
-                                            nt_seq = nt_seq[:-2]
-                                
-                                # The Genetic Codes: www.ncbi.nlm.nih.gov/Taxonomy/Utils/wprintgc.cgi
-                                if "transl_table" in CDS.qualifiers.keys():
-                                    CDStable = CDS.qualifiers.get("transl_table", "")[0]
-                                    prot_seq = str(nt_seq.translate(table=CDStable, to_stop=True, cds=complete_cds))
-                                else:
-                                    prot_seq = str(nt_seq.translate(to_stop=True, cds=complete_cds))
-                                    
                             fasta_header = clusterName + "_ORF" + str(cds_ctr)+ ":gid:" + str(gene_id) + ":pid:" + str(protein_id) + ":loc:" + str(gene_start) + ":" + str(gene_end) + ":strand:" + strand
                             fasta_header = fasta_header.replace(">","") #the coordinates might contain larger than signs, tools upstream don't like this
-                            fasta_header = ">"+(fasta_header.replace(" ", "")) #the domtable output format (hmmscan) uses spaces as a delimiter, so these cannot be present in the fasta header
-                            fasta_data.append((fasta_header, prot_seq))
+                            fasta_header = fasta_header.replace(" ", "") #the domtable output format (hmmscan) uses spaces as a delimiter, so these cannot be present in the fasta header
+
+                            if "sec_met" in feature.qualifiers:
+                                if "Kind: biosynthetic" in feature.qualifiers["sec_met"]:
+                                    biosynthetic_genes.add(fasta_header)
+
+                            fasta_header = ">"+fasta_header
                             
-                            #if is_biosynthetic:
-                                #biosynthetic_genes.add(fasta_header[1:])
+
+                            if save_fasta:
+                                if 'translation' in CDS.qualifiers.keys():
+                                    prot_seq = CDS.qualifiers['translation'][0]
+                                # If translation isn't available translate manually, this will take longer
+                                else:
+                                    nt_seq = CDS.location.extract(record.seq)
+                                    
+                                    # If we know sequence is an ORF (like all CDSs), codon table can be
+                                    #  used to correctly translate alternative start codons.
+                                    #  see http://biopython.org/DIST/docs/tutorial/Tutorial.html#htoc25
+                                    # If the sequence has a fuzzy start/end, it might not be complete,
+                                    # (therefore it might not be the true start codon)
+                                    # However, in this case, if 'translation' not available, assume 
+                                    #  this is just a random sequence 
+                                    complete_cds = False 
+                                    
+                                    # More about fuzzy positions
+                                    # http://biopython.org/DIST/docs/tutorial/Tutorial.html#htoc39
+                                    fuzzy_start = False 
+                                    if str(CDS.location.start)[0] in "<>":
+                                        complete_cds = False
+                                        fuzzy_start = True
+                                        
+                                    fuzzy_end = False
+                                    if str(CDS.location.end)[0] in "<>":
+                                        fuzzy_end = True
+                                    
+                                    #for protein sequence if it is at the start of the entry assume 
+                                    # that end of sequence is in frame and trim from the beginning
+                                    #if it is at the end of the genbank entry assume that the start 
+                                    # of the sequence is in frame
+                                    reminder = len(nt_seq)%3
+                                    if reminder > 0:
+                                        if fuzzy_start and fuzzy_end:
+                                            print("Warning, CDS (" + clusterName + ", " + CDS.qualifiers.get('locus_tag',"")[0] + ") has fuzzy start and end positions, and a sequence length not multiple of three. Skipping")
+                                            break
+                                        
+                                        if fuzzy_start:
+                                            if reminder == 1:
+                                                nt_seq = nt_seq[1:]
+                                            else:
+                                                nt_seq = nt_seq[2:]
+                                        # fuzzy end
+                                        else:
+                                            #same logic reverse direction
+                                            if reminder == 1:
+                                                nt_seq = nt_seq[:-1]
+                                            else:
+                                                nt_seq = nt_seq[:-2]
+                                    
+                                    # The Genetic Codes: www.ncbi.nlm.nih.gov/Taxonomy/Utils/wprintgc.cgi
+                                    if "transl_table" in CDS.qualifiers.keys():
+                                        CDStable = CDS.qualifiers.get("transl_table", "")[0]
+                                        prot_seq = str(nt_seq.translate(table=CDStable, to_stop=True, cds=complete_cds))
+                                    else:
+                                        prot_seq = str(nt_seq.translate(to_stop=True, cds=complete_cds))
+                                        
+                                fasta_data.append((fasta_header, prot_seq))
                 
                 if bgc_size > min_bgc_size:  # exclude the bgc if it's too small
                     file_counter += 1
@@ -244,26 +246,35 @@ def get_gbk_files(inputdir, bgc_fasta_folder, min_bgc_size, exclude_gbk_str, bgc
                     # In particular, handle different products for multi-record files
                     product_set = set(product_list_per_record)
                     if len(product_set) == 1: # only one type of product
-                        group = product_list_per_record[0]
+                        product = product_list_per_record[0]
                     elif "other" in product_set: # more than one, and it contains "other"
                         if len(product_set) == 2:
-                            group = list(product_set - set(['other']))[0] # group = not "other"
+                            product = list(product_set - set(['other']))[0] # product = not "other"
                         else:
-                            group = "-".join(product_set - set(['other'])) # likely a hybrid
+                            product = "-".join(product_set - set(['other'])) # likely a hybrid
                     else:
-                        group = "-".join(product_set) # likely a hybrid
+                        product = "-".join(product_set) # likely a hybrid
                      
                     
                     # assuming that the definition field is the same in all records
-                    # group: antiSMASH predicted class of metabolite
+                    # product: antiSMASH predicted class of metabolite
                     # gbk definition
                     # number of records (for Arrower figures)
                     # max_width: width of the largest record (for Arrower figures)
                     # id: the GenBank's accession
-                    # Change this tuple into a nice object. TODO
-                    bgc_info[clusterName] = (group, records[0].description, len(records), max_width, records[0].id)
-                    #bgc_info[clusterName] = (group, records[0].description, len(records), max_width, records[0].id, biosynthetic_genes.copy())
+                    #bgc_info[clusterName] = (product, records[0].description, len(records), max_width, records[0].id, biosynthetic_genes.copy())
+                    # TODO contig_edge annotation is not present for antiSMASH v < 4
+                    # Perhaps we can try to infer if it's in a contig edge: if
+                    # - first biosynthetic gene start < 10kb or
+                    # - max_width - last biosynthetic gene end < 10kb (but this will work only for the largest record)
+                    bgc_info[clusterName] = bgc_data(records[0].id, records[0].description, product, len(records), max_width, biosynthetic_genes.copy(), contig_edge)
 
+                    if len(bgc_info[clusterName].biosynthetic_genes) == 0:
+                        print("  Warning: No Biosynthetic Genes found in " + clusterName)
+
+                    # TODO why re-process everything if it was already in the list?
+                    # if name already in genbankDict.keys -> add current_dir
+                    # else: extract all info
                     if clusterName in genbankDict.keys():
                         # Name was already in use. Use current_dir as the new sample's name
                         genbankDict[clusterName][1].add(current_dir) 
@@ -272,13 +283,14 @@ def get_gbk_files(inputdir, bgc_fasta_folder, min_bgc_size, exclude_gbk_str, bgc
                         genbankDict.setdefault(clusterName, [os.path.join(dirpath, fname), set([current_dir])])
                         
                         # See if we need to write down the sequence
-                        if save_fasta:
+                        outputfile = os.path.join(bgc_fasta_folder, clusterName + '.fasta')
+                        if os.path.isfile(outputfile) and os.path.getsize(outputfile) > 0:
+                            processed_sequences += 1
+                        else:
                             with open(outputfile,'w') as fastaHandle:
                                 for header_sequence in fasta_data:
                                     fastaHandle.write('%s\n' % header_sequence[0])
                                     fastaHandle.write('%s\n' % header_sequence[1])
-                        else:
-                            processed_sequences += 1
                             
                             
                     if verbose:
@@ -288,7 +300,7 @@ def get_gbk_files(inputdir, bgc_fasta_folder, min_bgc_size, exclude_gbk_str, bgc
                     print(" Discarding " + clusterName +  " (size less than " + str(min_bgc_size) + " bp, was " + str(bgc_size) + ")")
                 
                 del fasta_data[:]
-                #biosynthetic_genes.clear()
+                biosynthetic_genes.clear()
     
     if file_counter == 0:
         sys.exit("\nError: There are no files to process")
@@ -887,9 +899,9 @@ def clusterJsonBatch(outputFileBase,matrix,cutoffs=[1.0],damping=0.8):
             bgcName = clusterNames[int(bgc)]
             bgcJsonDict[bgcName] = {}
             bgcJsonDict[bgcName]["id"] = clusterNames[int(bgc)]
-            bgcJsonDict[bgcName]["desc"] = bgc_info[bgcName][1]
-            bgcJsonDict[bgcName]["start"] = int(bgc_info[bgcName][2])
-            bgcJsonDict[bgcName]["end"] = int(bgc_info[bgcName][3])
+            bgcJsonDict[bgcName]["desc"] = bgc_info[bgcName].description
+            bgcJsonDict[bgcName]["start"] = 1
+            bgcJsonDict[bgcName]["end"] = bgc_info[bgcName].max_width
             pfdFile = os.path.join(pfd_folder, bgcName + ".pfd")
             fastaFile = os.path.join(bgc_fasta_folder, bgcName + ".fasta")
             orfDict = defaultdict(dict)
@@ -1025,6 +1037,25 @@ def CMD_parser():
 
 if __name__=="__main__":
     options = CMD_parser()
+    
+    class bgc_data:
+        def __init__(self, accession_id, description, product, records, max_width, biosynthetic_genes, contig_edge):
+            # These two properties come from the genbank file:
+            self.accession_id = accession_id
+            self.description = description
+            # AntiSMASH predicted class of compound:
+            self.product = product
+            # number of records in the genbank file (think of multi-locus BGCs):
+            self.records = records
+            # length of largest record (it will be used for ArrowerSVG):
+            self.max_width = int(max_width)
+            # Internal set of tags corresponding to genes that AntiSMASH marked 
+            # as "Kind: Biosynthetic". It is formed as
+            # clusterName + "_ORF" + cds_number + ":gid:" + gene_id + ":pid:" + protein_id + ":loc:" + gene_start + ":" + gene_end + ":strand:" + {+,-}
+            self.biosynthetic_genes = biosynthetic_genes
+            # AntiSMASH 4+ marks BGCs that sit on the edge of a contig
+            self.contig_edge = contig_edge
+    
     
     if options.outputdir == "":
         print "please provide a name for an output folder using parameter -o or --outputdir"
@@ -1433,7 +1464,7 @@ if __name__=="__main__":
         # is not found, the text files with colors need to be updated
         print("  Reading BGC information and writing SVG")
         for bgc in working_set:
-            SVG(False, os.path.join(svg_folder,bgc+".svg"), genbankDict[bgc][0], os.path.join(pfd_folder,bgc+".pfd"), True, color_genes, color_domains, pfam_domain_categories, pfam_info, bgc_info[bgc][2], bgc_info[bgc][3])
+            SVG(False, os.path.join(svg_folder,bgc+".svg"), genbankDict[bgc][0], os.path.join(pfd_folder,bgc+".pfd"), True, color_genes, color_domains, pfam_domain_categories, pfam_info, bgc_info[bgc].records, bgc_info[bgc].max_width)
             
         color_genes.clear()
         color_domains.clear()
@@ -1546,7 +1577,7 @@ if __name__=="__main__":
             # only choose from valid classes
             mix_set = []
             for clusterIdx,cluster in enumerate(clusterNames):
-                product = bgc_info[cluster][0]
+                product = bgc_info[cluster].product
                 predicted_class = sort_bgc(product)
                 if predicted_class.lower() in valid_classes:
                     mix_set.append(clusterIdx)
@@ -1558,8 +1589,8 @@ if __name__=="__main__":
                 list_file.write("BGC\tAccesion ID\tDescription\tProduct Prediction\tBiG-SCAPE class\n")
                 for idx in mix_set:
                     bgc = clusterNames[idx]
-                    product = bgc_info[bgc][0]
-                    list_file.write("\t".join([bgc, bgc_info[bgc][4], bgc_info[bgc][1], product, sort_bgc(product)]) + "\n")
+                    product = bgc_info[bgc].product
+                    list_file.write("\t".join([bgc, bgc_info[bgc].accession_id, bgc_info[bgc].description, product, sort_bgc(product)]) + "\n")
             
             print("  Calculating all pairwise distances")
             
@@ -1592,7 +1623,7 @@ if __name__=="__main__":
             # Preparing gene cluster classes
             print("  Sorting the input BGCs\n")
             for clusterIdx,cluster in enumerate(clusterNames):
-                product = bgc_info[cluster][0]
+                product = bgc_info[cluster].product
                 predicted_class = sort_bgc(product)
                 if predicted_class.lower() in valid_classes:
                     BGC_classes[predicted_class].append(clusterIdx)
@@ -1634,8 +1665,8 @@ if __name__=="__main__":
                     list_file.write("BGC\tAccesion ID\tDescription\tProduct Prediction\tBiG-SCAPE class\n")
                     for idx in BGC_classes[bgc_class]:
                         bgc = clusterNames[idx]
-                        product = bgc_info[bgc][0]
-                        list_file.write("\t".join([bgc, bgc_info[bgc][4], bgc_info[bgc][1], product, sort_bgc(product)]) + "\n")
+                        product = bgc_info[bgc].product
+                        list_file.write("\t".join([bgc, bgc_info[bgc].accession_id, bgc_info[bgc].description, product, sort_bgc(product)]) + "\n")
             
                     
                 if len(BGC_classes[bgc_class]) > 1:
@@ -1686,7 +1717,7 @@ if __name__=="__main__":
                         
                         mix_set = []
                         for clusterIdx, sampleCluster in enumerate(sampleClusters):
-                            product = bgc_info[sampleCluster][0]
+                            product = bgc_info[sampleCluster].product
                             predicted_class = sort_bgc(product)
                             if predicted_class.lower() in valid_classes:
                                 mix_set.append(clusterIdx)
@@ -1698,8 +1729,8 @@ if __name__=="__main__":
                             list_file.write("BGC\tAccesion ID\tDescription\tProduct Prediction\tBiG-SCAPE class\n")
                             for idx in mix_set:
                                 bgc = clusterNames[idx]
-                                product = bgc_info[bgc][0]
-                                list_file.write("\t".join([bgc, bgc_info[bgc][4], bgc_info[bgc][1], product, sort_bgc(product)]) + "\n")
+                                product = bgc_info[bgc].product
+                                list_file.write("\t".join([bgc, bgc_info[bgc].accession_id, bgc_info[bgc].description, product, sort_bgc(product)]) + "\n")
             
                         pairs = set(map(tuple, map(sorted, combinations(mix_set, 2))))
                         del mix_set[:]
@@ -1729,7 +1760,7 @@ if __name__=="__main__":
                         # Preparing gene cluster classes
                         print("   Sorting the input BGCs\n")
                         for cluster in sampleClusters:
-                            product = bgc_info[cluster][0]
+                            product = bgc_info[cluster].product
                             predicted_class = sort_bgc(product)
                             if predicted_class.lower() in valid_classes:
                                 BGC_classes[predicted_class].append(clusterNames2idx[cluster])
@@ -1770,8 +1801,8 @@ if __name__=="__main__":
                                 list_file.write("BGC\tAccesion ID\tDescription\tProduct Prediction\tBiG-SCAPE class\n")
                                 for idx in BGC_classes[bgc_class]:
                                     bgc = clusterNames[idx]
-                                    product = bgc_info[bgc][0]
-                                    list_file.write("\t".join([bgc, bgc_info[bgc][4], bgc_info[bgc][1], product, sort_bgc(product)]) + "\n")
+                                    product = bgc_info[bgc].product
+                                    list_file.write("\t".join([bgc, bgc_info[bgc].accession_id, bgc_info[bgc].description, product, sort_bgc(product)]) + "\n")
 
                             if len(BGC_classes[bgc_class]) > 1:
                                 pairs = set(map(tuple, map(sorted, combinations(BGC_classes[bgc_class], 2))))

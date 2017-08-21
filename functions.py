@@ -301,7 +301,7 @@ def network_parser(network_file, Jaccardw, DSSw, GKw, anchorboost):
     return network
 
 
-def write_network_matrix(matrix, cutoffs_and_filenames, include_singletons, clusterNames, group_dict):
+def write_network_matrix(matrix, cutoffs_and_filenames, include_singletons, clusterNames, bgc_info):
     """
     An entry in the distance matrix is currently (all floats):
       0         1           2      3      4       5    6    7    8      9     10   11
@@ -332,8 +332,8 @@ def write_network_matrix(matrix, cutoffs_and_filenames, include_singletons, clus
         row = [gc1, gc2]
         
         # get AntiSMASH annotations
-        clus1group = group_dict[gc1][0]
-        clus2group = group_dict[gc2][0]
+        clus1group = bgc_info[gc1].product
+        clus2group = bgc_info[gc2].product
         
         # add all the other floats
         row.extend(matrix_entry[3:-2])
