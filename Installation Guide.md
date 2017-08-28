@@ -29,7 +29,8 @@ installation using Miniconda
 ```
 > conda install numpy scipy
 > conda install -c bioconda hmmer biopython mafft
-> pip intall pysapc
 ```
+
+* The Affinity Propagation algorithm used currently is [pySAPC](https://pypi.python.org/pypi/pysapc/1.1.0). If you are using a Mac: `conda install -c https://conda.anaconda.org/bioinfocao pysapc`, otherwise: `pip install pysapc`
 
 (pysapc also installs pandas, cython, pytz, six and python-dateutil)
