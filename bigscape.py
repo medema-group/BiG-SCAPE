@@ -985,7 +985,11 @@ def clusterJsonBatch(outputFileBase,matrix,cutoffs=[1.0],damping=0.8,clusterClan
                         orfDict[header[0]]["id"] = header[4]
                     else:
                         orfDict[header[0]]["id"] = header[0]
-                    orfDict[header[0]]["start"] = int(header[6])
+                    ## broken gene goes into cluster, need this so js doesn't throw an error
+                    if int(header[6]) <= 1:
+                        orfDict[header[0]]["start"] = 1
+                    else:
+                        orfDict[header[0]]["start"] = int(header[6])
                     orfDict[header[0]]["end"] = int(header[7])
                     if header[-1] == '+':
                         orfDict[header[0]]["strand"] = 1
