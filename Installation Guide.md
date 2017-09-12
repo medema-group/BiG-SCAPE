@@ -29,7 +29,14 @@ installation using Miniconda
 ```
 > conda install numpy scipy
 > conda install -c bioconda hmmer biopython mafft
-> pip intall pysapc
 ```
 
-(pysapc also installs pandas, cython, pytz, six and python-dateutil)
+* The Affinity Propagation algorithm used currently is [pySAPC](https://pypi.python.org/pypi/pysapc/1.1.0). Install cython first:
+
+```
+> conda install cython
+```
+
+then, if you are using a Mac: `conda install -c https://conda.anaconda.org/bioinfocao pysapc`, otherwise: `pip install pysapc`
+
+(pysapc also installs pandas, pytz, six and python-dateutil)

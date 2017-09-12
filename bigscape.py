@@ -1008,7 +1008,7 @@ def CMD_parser():
     parser.add_argument("--pfam_dir", dest="pfam_dir",
                       default=os.path.dirname(os.path.realpath(__file__)), 
                       help="Location of hmmpress-processed Pfam files. Default is same location of BiG-SCAPE")
-    parser.add_argument("--anchorfile", dest="anchorfile", default="anchor_domains.txt",
+    parser.add_argument("--anchorfile", dest="anchorfile", default=os.path.join(os.path.dirname(os.path.realpath(__file__)),"anchor_domains.txt"),
                       help="Provide a custom location for the anchor domains file, default is anchor_domains.txt.")
     parser.add_argument("--exclude_gbk_str", dest="exclude_gbk_str", default="",
                       help="If this string occurs in the gbk filename, this file will not be used for the analysis.")
