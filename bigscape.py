@@ -859,8 +859,11 @@ def parseHmmScan(hmmscanResults, pfd_folder, pfs_folder, overlapCutoff):
 
     return("")
 
-def clusterJsonBatch(outputFileBase,matrix,cutoffs=[1.0],damping=0.8,clusterClans=False,clanCutoff=0.5):
+def clusterJsonBatch(outputFileBase,matrix,cutoffs=[1.0],damping=0.8,clusterClans=False,clanCutoff=(0.5,0.8)):
     ## implementation of clusterJson using csr sparce matrices
+
+    ### cutoff value is in distance (i.e. if two clusters are further than cutoff value, similarity is 0),
+    ##  larger cutoff values are more permissive
     bgcs = set() # contains the indices (as floats!) of all the BGCs in this class
     simDict = {}
     # Doing this so it only has to go through the matrix once
@@ -876,6 +879,12 @@ def clusterJsonBatch(outputFileBase,matrix,cutoffs=[1.0],damping=0.8,clusterClan
             similarity = 0
         gcSimilarities = simDict.setdefault(gc1, {})
         gcSimilarities[gc2] = similarity
+    clanClassificationCutoff, clanDistanceCutoff = clanCutoff
+    if clusterClans and verbose:
+        print('Clustering Clans Enabled with paramters clanClassificationCutoff: {}, clanDistanceCutoff: {}'.format(clanClassificationCutoff,clanDistanceCutoff))
+    # if we want to classify by clans make sure that the clanCutoff is included in the cutoffs to do AP in
+    if clusterClans and clanClassificationCutoff not in cutoffs:
+        cutoffs.append(clanClassificationCutoff)
     # preserve order
     bgcs = sorted(list(bgcs))
     bgc2simIdx = dict(zip(bgcs, range(len(bgcs))))
@@ -916,7 +925,7 @@ def clusterJsonBatch(outputFileBase,matrix,cutoffs=[1.0],damping=0.8,clusterClan
         familyIdxs = range(len(familiesDictReIdxd))
         
         ### Use the 0.5 distance cutoff to cluster clans by default
-        if clusterClans and cutoff == clanCutoff:
+        if clusterClans and cutoff == clanClassificationCutoff:
             famSimDict = dict()
             for familyI in familyIdxs:
                 membersI = familiesDictReIdxd[familyI]
@@ -930,7 +939,7 @@ def clusterJsonBatch(outputFileBase,matrix,cutoffs=[1.0],damping=0.8,clusterClan
                         # can change this to min or mean
                         famSimilarities.append(sum(similarities, 0.0) / len(similarities))
                     ## can change this as well
-                    famSimDict[familyI][familyJ] = max(similarities)
+                    famSimDict[familyI][familyJ] = sum(famSimilarities,0.0)/len(famSimilarities)
 
             famSimMatrix = lil_matrix((len(familyIdxs), len(familyIdxs)), dtype=np.float32)
             for familyI in familyIdxs:
@@ -939,7 +948,7 @@ def clusterJsonBatch(outputFileBase,matrix,cutoffs=[1.0],damping=0.8,clusterClan
                 for familyJ in famSimDict.get(familyI, {}).keys():
                     # you might get 0 values if there were matrix entries under the cutoff don't need to input these in
                     # the sparse matrix
-                    if famSimDict[familyI].get(familyJ, 0) > 1 - clanCutoff:
+                    if famSimDict[familyI].get(familyJ, 0) > 1 - clanDistanceCutoff:
                         # Ensure symmetry
                         famSimMatrix[familyI, familyJ] = famSimDict[familyI][familyJ]
                         famSimMatrix[familyJ, familyI] = famSimDict[familyI][familyJ]
@@ -1009,12 +1018,17 @@ def clusterJsonBatch(outputFileBase,matrix,cutoffs=[1.0],damping=0.8,clusterClan
         if verbose:
             print("  Writing clustering file")
         with open("{}_clustering_c{:4.2f}.tsv".format(outputFileBase, cutoff), "w") as clustering_file:
-            i = 0
-            for label in familiesDictReIdxd:
-                i += 1
-                for x in familiesDictReIdxd[label]:
-                    clustering_file.write(clusterNames[int(bgcs[x])] + "\t" + str(i) + "\n")
-
+            clustering_file.write('##BGC Name\tFamily Number\n')
+            for familyNum,family in enumerate(bs_families):
+                for label in family['members']:
+                    clustering_file.write('{}\t{}\n'.format(clusterNames[int(bgcs[label])],familyNum))
+            #
+            # i = 0
+            # for label in familiesDictReIdxd:
+            #     # moved down so counting starts at 0 (for consistency with everything else)
+            #     for x in familiesDictReIdxd[label]:
+            #         clustering_file.write(clusterNames[int(bgcs[x])] + "\t" + str(i) + "\n")
+            #     i += 1
         if verbose:
             print("  Writing JS file")
         outputFile = "{}_cutoff{:4.2f}.js".format(outputFileBase,cutoff)
@@ -1024,6 +1038,18 @@ def clusterJsonBatch(outputFileBase,matrix,cutoffs=[1.0],damping=0.8,clusterClan
             outfile.write("var bs_families={}".format(str(bs_families)))
             if len(clanLabels) > 0:
                 outfile.write("\nvar bs_clans={}\n".format(str(bs_clans)))
+        if len(clanLabels) > 0:
+            if verbose:
+                print("   Writing Clans file")
+            outputFile = "{}_clans_{:4.2f}_{:4.2f}.tsv".format(outputFileBase,clanClassificationCutoff,clanDistanceCutoff)
+            with open(outputFile,'w') as clansFile:
+                clansFile.write('##BGC Name\tClan Number\tFamily Number\n')
+                for clanNum,clan in enumerate(bs_clans):
+                    for familyNum in clan['members']:
+                        for BGC_label in bs_families[familyNum]['members']:
+                            clansFile.write('{}\t{}\t{}\n'.format(clusterNames[int(bgcs[BGC_label])],clanNum,familyNum))
+
+
     return
 
 class FloatRange(object):
@@ -1061,7 +1087,11 @@ def CMD_parser():
 
     parser.add_argument("--cluster_family", dest="cluster_family",action="store_true", default=False, help="BiG-SCAPE will perform a second layer of clustering and attempt to group families assigned from clustering with cutoff of 0.5 to clans")
 
-    parser.add_argument("--clan_cutoff",dest="clan_cutoff",default=0.5,help="Distance Cutoff to use for Family Clustering")
+    parser.add_argument("--clan_cutoff",dest="clan_cutoff",default=[0.5,0.8], type=float, choices=[FloatRange(0.0, 1.0)],nargs=2,
+                        help="Cutoff Parameters for which clustering families into clans will be performed in raw distance.\
+                             First value is the cutoff value family assignments for BGCs used in clan clustering (default: 0.5). \
+                             Second value is the cutoff value for clustering families into clans (default: 0.8). \
+                             Average linkage for BGCs in a family is used for distances between families. Example: --clan_cutoff 0.5 0.8)")
 
     parser.add_argument("--hybrids", dest="hybrids", action="store_true", 
                         default=False, help="Toggle to also add BGCs with hybrid\
