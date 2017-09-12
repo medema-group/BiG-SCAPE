@@ -849,7 +849,7 @@ def parseHmmScan(hmmscanResults, pfd_folder, pfs_folder, overlapCutoff):
 
     return("")
 
-def clusterJsonBatch(outputFileBase,matrix,cutoffs=[1.0],damping=0.8):
+def clusterJsonBatch(outputFileBase,matrix,cutoffs=[1.0],damping=0.8,clusterClans=False,clanCutoff=0.5):
     ## implementation of clusterJson using csr sparce matrices
     bgcs = set() # contains the indices (as floats!) of all the BGCs in this class
     simDict = {}
@@ -895,6 +895,58 @@ def clusterJsonBatch(outputFileBase,matrix,cutoffs=[1.0],damping=0.8):
         #bs_data = [{"id": clusterNames[int(bgc)]} for bgc in bgcs]
         bs_data = []
         bgcJsonDict = {}
+        familiesDict = {}
+        for idx, label in enumerate(labels):
+            members = familiesDict.setdefault(label, [])
+            members.append(idx)
+            familiesDict[label] = members
+
+        ## guarantee order of families and indices for later assignment
+        # Families should be indexed from 0 to # families - 1
+        familiesDictReIdxd = {idx:members for idx,members in enumerate(familiesDict.values())}
+        familyIdxs = range(len(familiesDictReIdxd))
+
+        ### Use the 0.5 distance cutoff to cluster clans by default
+        if clusterClans and cutoff == clanCutoff:
+            famSimDict = dict()
+            for familyI in familyIdxs:
+                membersI = familiesDictReIdxd[familyI]
+                for familyJ in familyIdxs:
+                    membersJ = familiesDictReIdxd[familyJ]
+                    famSimDict.setdefault(familyI, {})
+                    ### Need to check all of the distances between members, option to get the min, max or mean distances
+                    famSimilarities = [0]
+                    for memberI in membersI:
+                        similarities = [simMatrix[memberI, memberJ] for memberJ in membersJ]
+                        # can change this to min or mean
+                        famSimilarities.append(sum(similarities, 0.0) / len(similarities))
+                    ## can change this as well
+                    famSimDict[familyI][familyJ] = max(similarities)
+
+            famSimMatrix = lil_matrix((len(familyIdxs), len(familyIdxs)), dtype=np.float32)
+            for familyI in familyIdxs:
+                # first make sure it is similar to itself
+                famSimMatrix[familyI, familyI] = 1
+                for familyJ in famSimDict.get(familyI, {}).keys():
+                    # you might get 0 values if there were matrix entries under the cutoff don't need to input these in
+                    # the sparse matrix
+                    if famSimDict[familyI].get(familyJ, 0) > 1 - clanCutoff:
+                        # Ensure symmetry
+                        famSimMatrix[familyI, familyJ] = famSimDict[familyI][familyJ]
+                        famSimMatrix[familyJ, familyI] = famSimDict[familyI][familyJ]
+            clanLabels = pysapc.SAP(damping=damping, max_iter=500,
+                                preference='min').fit_predict(famSimMatrix)
+        else:
+            clanLabels = []
+    
+        if len(clanLabels) > 0:
+            clansDict = {}
+            for idx,clanLabel in enumerate(clanLabels):
+                clanMembers = clansDict.setdefault(clanLabel,[])
+                clanMembers.append(idx)
+                clansDict[clanLabel] = clanMembers
+            fam2clan = dict(zip(familyIdxs,clanLabels))
+
         for bgc in bgcs:
             bgcName = clusterNames[int(bgc)]
             bgcJsonDict[bgcName] = {}
@@ -934,21 +986,24 @@ def clusterJsonBatch(outputFileBase,matrix,cutoffs=[1.0],damping=0.8):
                     orfDict[orf]["domains"].append({'code': entry[5], 'start': int(entry[3]), 'end': int(entry[4]), 'bitscore': float(entry[1])})
             bgcJsonDict[bgcName]['orfs'] = orfDict.values()
         bs_data = [bgcJsonDict[clusterNames[int(bgc)]] for bgc in bgcs]
-        familiesDict = {}
-        for idx, label in enumerate(labels):
-            members = familiesDict.setdefault(label, [])
-            members.append(idx)
-            familiesDict[label] = members
-        bs_families = [{'id': 'FAM_%.3d' % family, 'members': members} for family, members in enumerate(familiesDict.values())]
-        
+
+        if len(clanLabels) > 0:
+            bs_families = [{'id': 'FAM_%.3d' % family, 'members': members, 'clan': 'CLAN_%.3d' % fam2clan[family]}
+                           for family, members in familiesDictReIdxd.items()]
+            bs_clans = [{'id': 'CLAN_%.3d' % clan, 'members': members}
+                           for clan, members in enumerate(clansDict.values())]
+        else:
+            bs_families = [{'id': 'FAM_%.3d' % family, 'members': members, }
+                           for family, members in familiesDictReIdxd.items()]
+
         # column1: BGC, column2: clustering pseudo family
         if verbose:
             print("  Writing clustering file")
         with open(outputFileBase + "_clustering_c" + str(cutoff) + ".tsv", "w") as clustering_file:
             i = 0
-            for label in familiesDict:
+            for label in familiesDictReIdxd:
                 i += 1
-                for x in familiesDict[label]:
+                for x in familiesDictReIdxd[label]:
                     clustering_file.write(clusterNames[int(bgcs[x])] + "\t" + str(i) + "\n")
 
         if verbose:
@@ -957,7 +1012,9 @@ def clusterJsonBatch(outputFileBase,matrix,cutoffs=[1.0],damping=0.8):
         with open(outputFile, 'w') as outfile:
             outfile.write('var bs_similarity=%s\n' % str(bs_distances))
             outfile.write('var bs_data=%s\n' % str(bs_data))
-            outfile.write('var bs_families=%s' % str(bs_families))
+            outfile.write('var bs_families=%s\n' % str(bs_families))
+            if len(clanLabels) > 0:
+                outfile.write('var bs_clans=%s' % str(bs_clans))
     return
 
 class FloatRange(object):
@@ -992,7 +1049,11 @@ def CMD_parser():
     parser.add_argument("--no_all", dest="no_all", action="store_true", default=False, help="By default, BiG-SCAPE uses a single data set comprised of all input files available recursively within the input folder. Toggle to disactivate this behaviour (in that case, if the --samples parameter is not activated, BiG-SCAPE will not create any network file)")
     
     parser.add_argument("--mix", dest="mix", action="store_true", default=False, help="By default, BiG-SCAPE separates the analysis according to the BGC product (PKS Type I, NRPS, RiPPs, etc.) and will create network directories for each class. Toggle to include an analysis mixing all classes")
-    
+
+    parser.add_argument("--cluster_family", dest="cluster_family",action="store_true", default=False, help="BiG-SCAPE will perform a second layer of clustering and attempt to group families assigned from clustering with cutoff of 0.5 to clans")
+
+    parser.add_argument("--clan_cutoff",dest="clan_cutoff",default=0.5,help="Distance Cutoff to use for Family Clustering")
+
     parser.add_argument("--hybrids", dest="hybrids", action="store_true", 
                         default=False, help="Toggle to also add BGCs with hybrid\
                         predicted products from the PKS/NRPS Hybrids and Others\
@@ -1606,7 +1667,7 @@ if __name__=="__main__":
             filenames = []
             for cutoff in cutoff_list:
                 filenames.append(pathBase + "_c%.2f.network" % cutoff)
-            clusterJsonBatch(pathBase, network_matrix_mix, cutoffs=cutoff_list)
+            clusterJsonBatch(pathBase, network_matrix_mix, cutoffs=cutoff_list,clusterClans=options.cluster_family,clanCutoff=options.clan_cutoff)
             cutoffs_and_filenames = zip(cutoff_list, filenames)
             del filenames[:]
             write_network_matrix(network_matrix_mix, cutoffs_and_filenames, include_singletons, clusterNames, bgc_info)
@@ -1685,7 +1746,7 @@ if __name__=="__main__":
                         filenames.append(pathBase + "_c%.2f.network" % cutoff)
                     cutoffs_and_filenames = zip(cutoff_list, filenames)
                     del filenames[:]
-                    clusterJsonBatch(pathBase, network_matrix, cutoffs=cutoff_list)
+                    clusterJsonBatch(pathBase, network_matrix, cutoffs=cutoff_list,clusterClans=options.cluster_family,clanCutoff=options.clan_cutoff)
                     write_network_matrix(network_matrix, cutoffs_and_filenames, include_singletons,clusterNames, bgc_info)
                     
                     del network_matrix[:]
@@ -1745,7 +1806,7 @@ if __name__=="__main__":
                         for cutoff in cutoff_list:
                             filenames.append(pathBase + "_c%.2f.network" % cutoff)
                         cutoffs_and_filenames = zip(cutoff_list, filenames)
-                        clusterJsonBatch(pathBase, network_matrix_sample, cutoffs=cutoff_list)
+                        clusterJsonBatch(pathBase, network_matrix_sample, cutoffs=cutoff_list,clusterClans=options.cluster_family,clanCutoff=options.clan_cutoff)
                         write_network_matrix(network_matrix_sample, cutoffs_and_filenames, include_singletons, clusterNames,bgc_info)
                         
                         del network_matrix_sample[:]
@@ -1818,7 +1879,7 @@ if __name__=="__main__":
                                 for cutoff in cutoff_list:
                                     filenames.append(pathBase + "_c%.2f.network" % cutoff)
                                 cutoffs_and_filenames = zip(cutoff_list, filenames)
-                                clusterJsonBatch(pathBase, network_matrix_sample, cutoffs=cutoff_list)
+                                clusterJsonBatch(pathBase, network_matrix_sample, cutoffs=cutoff_list,clusterClans=options.cluster_family,clanCutoff=options.clan_cutoff)
                                 write_network_matrix(network_matrix_sample, cutoffs_and_filenames, include_singletons, clusterNames,bgc_info)
                                 del network_matrix_sample[:]
                                 
