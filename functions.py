@@ -16,6 +16,11 @@ Functions used by bigscape.py
 # License: GNU Affero General Public License v3 or later
 # A copy of GNU AGPL v3 should have been included in this software package in LICENSE.txt.
 """
+# Makes sure the script can be used with Python 2 as well as Python 3.
+from __future__ import print_function
+from sys import version_info
+if version_info[0]==2:
+    range = xrange
 
 import os
 import subprocess
@@ -62,9 +67,9 @@ def get_anchor_domains(filename):
                     domains.add(line.strip().split("\t")[0].split(".")[0])
         return domains
     except IOError:
-        print "You have not provided the anchor_domains.txt file."
-        print "if you want to make use of the anchor domains in the DSS distance metric,\
-        make a file that contains a Pfam domain on each line."
+        print("You have not provided the anchor_domains.txt file.")
+        print("if you want to make use of the anchor domains in the DSS distance metric, \
+make a file that contains a Pfam domain on each line.")
         return set()
         
 
@@ -157,15 +162,6 @@ def write_pfd(pfd_handle, matrix):
     pfd_handle.close() 
     
 
-def get_domains(filename):
-    handle = open(filename, 'r')
-    domains = []
-    for line in handle:
-        if line[0] != "#":
-            domains.append(filter(None, line.split(" "))[1])
-            
-    return domains
-
 
 def no_overlap(locA1, locA2, locB1, locB2):
     """Return True if there is no overlap between two regions"""
@@ -229,11 +225,9 @@ def save_domain_seqs(filtered_matrix, fasta_dict, domains_folder, outputbase):
         header = row[-1].strip()
         seq = fasta_dict[header] #access the sequence by using the header
         
-
         domain_file = open(os.path.join(domains_folder, domain + ".fasta"), 'a') #append to existing file
-        domain_file.write(">" + header + ":" + row[3] + ":" + row[4] \
-        + "\n" + seq[int(row[3]):int(row[4])] + "\n") #only use the range of the pfam domain within the sequence
-            
+        domain_file.write(">{}:{}:{}\n{}\n".format(header, row[3], row[4],
+            seq[int(row[3]):int(row[4])])) #only use the range of the pfam domain within the sequence
         domain_file.close()
 
 
@@ -430,7 +424,7 @@ def domtable_parser(gbk, dom_file):
     else:
         for line in dom_handle:        
             if line[0] != "#":
-                splitline = filter(None, line.split(" "))
+                splitline = line.split()
                 pfd_row = []
                 pfd_row.append(gbk)         #add clustername or gbk filename
                 
@@ -440,7 +434,7 @@ def domtable_parser(gbk, dom_file):
                 try:
                     pfd_row.append(header_list[header_list.index("gid")+1]) #add gene ID if known
                 except ValueError:
-                    print "No gene ID in ", gbk
+                    print("No gene ID in " + gbk)
                     pfd_row.append('')
                     
                 pfd_row.append(splitline[19])#first coordinate, env coord from
