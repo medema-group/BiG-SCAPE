@@ -162,6 +162,8 @@ def draw_arrow(additional_tabs, X, Y, L, l, H, h, strand, color, color_contour, 
         return ""
     
     head_length = head_end - head_start
+    if head_length == 0:
+        return ""
     
     points_coords = []
     for point in points:
@@ -616,7 +618,8 @@ def SVG(write_html, outputfile, GenBankFile, pfdFile, use_pfd, color_genes, colo
                 
                 #X, Y, L, l, H, h, strand, color, color_contour, category, gid, domain_list
                 arrow = draw_arrow(additional_tabs, start+mX, add_origin_Y+mY+h, int(feature.location.end-feature.location.start)/scaling, l, H, h, strand, color, color_contour, gene_category, GeneName, identifiers[identifier])
-                
+                if arrow == "":
+                    print("  (ArrowerSVG) Warning: something went wrong with {}".format(GenBankFile))
                 SVG_TEXT += arrow
                 
                 feature_counter += 1

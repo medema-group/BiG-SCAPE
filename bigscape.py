@@ -65,7 +65,7 @@ from scipy.optimize import linear_sum_assignment
 import pysapc
 
 
-def get_gbk_files(inputdir, bgc_fasta_folder, min_bgc_size, exclude_gbk_str, bgc_info):
+def get_gbk_files(inputdir, outputdir, bgc_fasta_folder, min_bgc_size, exclude_gbk_str, bgc_info):
     """Searches given directory for genbank files recursively, will assume that
     the genbank files that have the same name are the same genbank file. 
     Returns a dictionary that contains the names of the clusters found as keys
@@ -85,6 +85,9 @@ def get_gbk_files(inputdir, bgc_fasta_folder, min_bgc_size, exclude_gbk_str, bgc
     fasta_data = []
     save_fasta = True
     contig_edge = False
+    total_seq_length = 0
+    files_no_proteins = []
+    files_no_biosynthetic_genes = []
     
     print("\nImporting GenBank files")
     if exclude_gbk_str != "":
@@ -115,7 +118,7 @@ def get_gbk_files(inputdir, bgc_fasta_folder, min_bgc_size, exclude_gbk_str, bgc
             if " " in fname:
                 sys.exit("\nError: Input GenBank files should not have spaces in their filenames as HMMscan cannot process them properly ('too many arguments').")
             
-            # See if we need to write down the sequence
+            # See if we need to keep the sequence
             outputfile = os.path.join(bgc_fasta_folder, clusterName + '.fasta')
             if os.path.isfile(outputfile) and os.path.getsize(outputfile) > 0:
                 save_fasta = False
@@ -130,6 +133,7 @@ def get_gbk_files(inputdir, bgc_fasta_folder, min_bgc_size, exclude_gbk_str, bgc
                 print("    (This file will be excluded from the analysis)")
                 continue
             else:
+                total_seq_length = 0
                 bgc_size = 0
                 cds_ctr = 0
                 product = "no type"
@@ -189,67 +193,70 @@ def get_gbk_files(inputdir, bgc_fasta_folder, min_bgc_size, exclude_gbk_str, bgc
                             fasta_header = ">"+fasta_header
                             
 
-                            if save_fasta:
-                                if 'translation' in CDS.qualifiers.keys():
-                                    prot_seq = CDS.qualifiers['translation'][0]
-                                # If translation isn't available translate manually, this will take longer
-                                else:
-                                    nt_seq = CDS.location.extract(record.seq)
+                            if 'translation' in CDS.qualifiers.keys():
+                                prot_seq = CDS.qualifiers['translation'][0]
+                            # If translation isn't available translate manually, this will take longer
+                            else:
+                                nt_seq = CDS.location.extract(record.seq)
+                                
+                                # If we know sequence is an ORF (like all CDSs), codon table can be
+                                #  used to correctly translate alternative start codons.
+                                #  see http://biopython.org/DIST/docs/tutorial/Tutorial.html#htoc25
+                                # If the sequence has a fuzzy start/end, it might not be complete,
+                                # (therefore it might not be the true start codon)
+                                # However, in this case, if 'translation' not available, assume 
+                                #  this is just a random sequence 
+                                complete_cds = False 
+                                
+                                # More about fuzzy positions
+                                # http://biopython.org/DIST/docs/tutorial/Tutorial.html#htoc39
+                                fuzzy_start = False 
+                                if str(CDS.location.start)[0] in "<>":
+                                    complete_cds = False
+                                    fuzzy_start = True
                                     
-                                    # If we know sequence is an ORF (like all CDSs), codon table can be
-                                    #  used to correctly translate alternative start codons.
-                                    #  see http://biopython.org/DIST/docs/tutorial/Tutorial.html#htoc25
-                                    # If the sequence has a fuzzy start/end, it might not be complete,
-                                    # (therefore it might not be the true start codon)
-                                    # However, in this case, if 'translation' not available, assume 
-                                    #  this is just a random sequence 
-                                    complete_cds = False 
+                                fuzzy_end = False
+                                if str(CDS.location.end)[0] in "<>":
+                                    fuzzy_end = True
+                                
+                                #for protein sequence if it is at the start of the entry assume 
+                                # that end of sequence is in frame and trim from the beginning
+                                #if it is at the end of the genbank entry assume that the start 
+                                # of the sequence is in frame
+                                reminder = len(nt_seq)%3
+                                if reminder > 0:
+                                    if fuzzy_start and fuzzy_end:
+                                        print("Warning, CDS ({}, {}) has fuzzy start and end positions, and a sequence length not multiple of three. Skipping".format(clusterName, CDS.qualifiers.get('locus_tag',"")[0]))
+                                        break
                                     
-                                    # More about fuzzy positions
-                                    # http://biopython.org/DIST/docs/tutorial/Tutorial.html#htoc39
-                                    fuzzy_start = False 
-                                    if str(CDS.location.start)[0] in "<>":
-                                        complete_cds = False
-                                        fuzzy_start = True
-                                        
-                                    fuzzy_end = False
-                                    if str(CDS.location.end)[0] in "<>":
-                                        fuzzy_end = True
-                                    
-                                    #for protein sequence if it is at the start of the entry assume 
-                                    # that end of sequence is in frame and trim from the beginning
-                                    #if it is at the end of the genbank entry assume that the start 
-                                    # of the sequence is in frame
-                                    reminder = len(nt_seq)%3
-                                    if reminder > 0:
-                                        if fuzzy_start and fuzzy_end:
-                                            print("Warning, CDS ({}, {}) has fuzzy start and end positions, and a sequence length not multiple of three. Skipping".format(clusterName, CDS.qualifiers.get('locus_tag',"")[0]))
-                                            break
-                                        
-                                        if fuzzy_start:
-                                            if reminder == 1:
-                                                nt_seq = nt_seq[1:]
-                                            else:
-                                                nt_seq = nt_seq[2:]
-                                        # fuzzy end
+                                    if fuzzy_start:
+                                        if reminder == 1:
+                                            nt_seq = nt_seq[1:]
                                         else:
-                                            #same logic reverse direction
-                                            if reminder == 1:
-                                                nt_seq = nt_seq[:-1]
-                                            else:
-                                                nt_seq = nt_seq[:-2]
-                                    
-                                    # The Genetic Codes: www.ncbi.nlm.nih.gov/Taxonomy/Utils/wprintgc.cgi
-                                    if "transl_table" in CDS.qualifiers.keys():
-                                        CDStable = CDS.qualifiers.get("transl_table", "")[0]
-                                        prot_seq = str(nt_seq.translate(table=CDStable, to_stop=True, cds=complete_cds))
+                                            nt_seq = nt_seq[2:]
+                                    # fuzzy end
                                     else:
-                                        prot_seq = str(nt_seq.translate(to_stop=True, cds=complete_cds))
-                                        
+                                        #same logic reverse direction
+                                        if reminder == 1:
+                                            nt_seq = nt_seq[:-1]
+                                        else:
+                                            nt_seq = nt_seq[:-2]
+                                
+                                # The Genetic Codes: www.ncbi.nlm.nih.gov/Taxonomy/Utils/wprintgc.cgi
+                                if "transl_table" in CDS.qualifiers.keys():
+                                    CDStable = CDS.qualifiers.get("transl_table", "")[0]
+                                    prot_seq = str(nt_seq.translate(table=CDStable, to_stop=True, cds=complete_cds))
+                                else:
+                                    prot_seq = str(nt_seq.translate(to_stop=True, cds=complete_cds))
+                                    
+                            total_seq_length += len(prot_seq)
+                            if save_fasta:
                                 fasta_data.append((fasta_header, prot_seq))
         
                     # TODO: if len(biosynthetic_genes) == 0, traverse record again
                     # and add CDS with genes that contain domains labeled sec_met
+                    # we'll probably have to have a list of domains if we allow
+                    # fasta files as input
         
                 if bgc_size > min_bgc_size:  # exclude the bgc if it's too small
                     file_counter += 1
@@ -281,7 +288,7 @@ def get_gbk_files(inputdir, bgc_fasta_folder, min_bgc_size, exclude_gbk_str, bgc
                     bgc_info[clusterName] = bgc_data(records[0].id, records[0].description, product, len(records), max_width, biosynthetic_genes.copy(), contig_edge)
 
                     if len(bgc_info[clusterName].biosynthetic_genes) == 0:
-                        print("  Warning: No Biosynthetic Genes found in " + clusterName)
+                        files_no_biosynthetic_genes.append(fname)
 
                     # TODO why re-process everything if it was already in the list?
                     # if name already in genbankDict.keys -> add current_dir
@@ -290,17 +297,20 @@ def get_gbk_files(inputdir, bgc_fasta_folder, min_bgc_size, exclude_gbk_str, bgc
                         # Name was already in use. Use current_dir as the new sample's name
                         genbankDict[clusterName][1].add(current_dir) 
                     else:
-                        # location of first instance of the file is genbankDict[clustername][0]
-                        genbankDict.setdefault(clusterName, [os.path.join(dirpath, fname), set([current_dir])])
-                        
                         # See if we need to write down the sequence
-                        if save_fasta:
-                            with open(outputfile,'w') as fastaHandle:
-                                for header_sequence in fasta_data:
-                                    fastaHandle.write("{}\n".format(str(header_sequence[0])))
-                                    fastaHandle.write("{}\n".format(str(header_sequence[1])))
-                            
-                            
+                        if total_seq_length > 0:
+                            # location of first instance of the file is genbankDict[clustername][0]
+                            genbankDict.setdefault(clusterName, [os.path.join(dirpath, fname), set([current_dir])])
+
+                            if save_fasta:
+                                processed_sequences += 1
+                                with open(outputfile,'w') as fastaHandle:
+                                    for header_sequence in fasta_data:
+                                        fastaHandle.write("{}\n".format(str(header_sequence[0])))
+                                        fastaHandle.write("{}\n".format(str(header_sequence[1])))
+                        else:
+                            files_no_proteins.append(fname)
+
                     if verbose:
                         print("  Adding {} ({} bps)".format(fname, str(bgc_size)))
                         
@@ -315,9 +325,23 @@ def get_gbk_files(inputdir, bgc_fasta_folder, min_bgc_size, exclude_gbk_str, bgc
         
     if file_counter == 1:
         sys.exit("\nError: Only one file found. Please input at least two files")
+        
+    if len(files_no_proteins) > 0:
+        print("  Warning: Input set has files without protein sequences. They will be discarded")
+        print("   (See no_sequences_list.txt)")
+        with open(os.path.join(outputdir, "no_sequences_list.txt"), "w") as noseqs:
+            for f in sorted(files_no_proteins):
+                noseqs.write("{}\n".format(f))
+        
+    if len(files_no_biosynthetic_genes) > 0 and (lcs or local):
+        print("  Warning: Input set has files with no Biosynthetic Genes (affects alignment mode)")
+        print("   See no_biosynthetic_genes_list.txt")
+        with open(os.path.join(outputdir, "no_biosynthetic_genes_list.txt"), "w") as nobiogenes:
+            for f in sorted(files_no_biosynthetic_genes):
+                nobiogenes.write("{}\n".format(f))
     
-    print("\n Starting with {} files".format(str(file_counter)))
-    print(" Files that had its sequence extracted: " + str(file_counter - processed_sequences))
+    print("\n Starting with {:d} files".format(file_counter))
+    print(" Files that had its sequence extracted: {:d}".format(processed_sequences))
 
     return genbankDict
 
@@ -2118,7 +2142,7 @@ if __name__=="__main__":
     
     # genbankDict: {cluster_name:[genbank_path_to_1st_instance,[sample_1,sample_2,...]]}
     bgc_info = {} # Stores, per BGC: predicted type, gbk Description, number of records, width of longest record, GenBank's accession, Biosynthetic Genes' ids
-    genbankDict = get_gbk_files(options.inputdir, bgc_fasta_folder, int(options.min_bgc_size), options.exclude_gbk_str, bgc_info)
+    genbankDict = get_gbk_files(options.inputdir, output_folder, bgc_fasta_folder, int(options.min_bgc_size), options.exclude_gbk_str, bgc_info)
 
     # clusters and sampleDict contain the necessary structure for all-vs-all and sample analysis
     clusters = genbankDict.keys()
@@ -2363,7 +2387,7 @@ if __name__=="__main__":
                 print("   Processing: " + outputbase)
 
             pfdFile = os.path.join(pfd_folder, outputbase + ".pfd")
-            filtered_matrix = [map(lambda x: x.strip(), line.split('\t')) for line in open(pfdFile)]
+            filtered_matrix = [[part.strip() for part in line.split('\t')] for line in open(pfdFile)]
             
             if local_extended or lcs or auto:
                 DomainCountGene[outputbase] = array('B') # unsigned int
