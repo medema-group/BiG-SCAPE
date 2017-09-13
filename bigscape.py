@@ -27,8 +27,16 @@ https://git.wageningenur.nl/medema-group/BiG-SCAPE
 # License: GNU Affero General Public License v3 or later
 # A copy of GNU AGPL v3 should have been included in this software package in LICENSE.txt.
 """
+# Makes sure the script can be used with Python 2 as well as Python 3.
+from __future__ import print_function
+from __future__ import division
+from sys import version_info
+if version_info[0]==2:
+    range = xrange
+    import cPickle as pickle # for storing and retrieving dictionaries
+elif version_info[0]==3:
+    import pickle # for storing and retrieving dictionaries
 
-import cPickle as pickle  # for storing and retrieving dictionaries
 from math import exp, log
 import os
 import subprocess
@@ -47,12 +55,12 @@ from Bio import pairwise2
 from Bio.SubsMat.MatrixInfo import pam250 as scoring_matrix
 
 from functions import *
-from munkres import Munkres
 from ArrowerSVG import *
 
 import numpy as np
 from array import array
 from scipy.sparse import lil_matrix
+from scipy.optimize import linear_sum_assignment
 import pysapc
 
 
@@ -100,7 +108,7 @@ def get_gbk_files(inputdir, bgc_fasta_folder, min_bgc_size, exclude_gbk_str, bgc
                 print(" Skipping file " + fname)
                 continue
             if "_ORF" in fname:
-                print(" Skipping file " + fname + " (string '_ORF' is used internally)")
+                print(" Skipping file {} (string '_ORF' is used internally)".format(fname))
                 continue
             
             if " " in fname:
@@ -117,7 +125,7 @@ def get_gbk_files(inputdir, bgc_fasta_folder, min_bgc_size, exclude_gbk_str, bgc
                 # basic file verification. Substitutes check_data_integrity
                 records = list(SeqIO.parse(os.path.join(dirpath,fname), "genbank"))
             except ValueError as e:
-                print("   Error with file " + os.path.join(dirpath, fname) + ": \n    '" + str(e) + "'")
+                print("   Error with file {}: \n    '{}'".format(os.path.join(dirpath, fname), str(e)))
                 print("    (This file will be excluded from the analysis)")
                 continue
             else:
@@ -169,8 +177,7 @@ def get_gbk_files(inputdir, bgc_fasta_folder, min_bgc_size, exclude_gbk_str, bgc
                                 strand = '+'
                             else:
                                 strand = '-'
-                                
-                            fasta_header = clusterName + "_ORF" + str(cds_ctr)+ ":gid:" + str(gene_id) + ":pid:" + str(protein_id) + ":loc:" + str(gene_start) + ":" + str(gene_end) + ":strand:" + strand
+                            fasta_header = "{}_ORF{}:gid:{}:pid:{}:loc:{}:{}:strand:{}".format(clusterName, str(cds_ctr), str(gene_id), str(protein_id), str(gene_start), str(gene_end), strand)
                             fasta_header = fasta_header.replace(">","") #the coordinates might contain larger than signs, tools upstream don't like this
                             fasta_header = fasta_header.replace(" ", "") #the domtable output format (hmmscan) uses spaces as a delimiter, so these cannot be present in the fasta header
 
@@ -215,7 +222,7 @@ def get_gbk_files(inputdir, bgc_fasta_folder, min_bgc_size, exclude_gbk_str, bgc
                                     reminder = len(nt_seq)%3
                                     if reminder > 0:
                                         if fuzzy_start and fuzzy_end:
-                                            print("Warning, CDS (" + clusterName + ", " + CDS.qualifiers.get('locus_tag',"")[0] + ") has fuzzy start and end positions, and a sequence length not multiple of three. Skipping")
+                                            print("Warning, CDS ({}, {}) has fuzzy start and end positions, and a sequence length not multiple of three. Skipping".format(clusterName, CDS.qualifiers.get('locus_tag',"")[0]))
                                             break
                                         
                                         if fuzzy_start:
@@ -289,15 +296,15 @@ def get_gbk_files(inputdir, bgc_fasta_folder, min_bgc_size, exclude_gbk_str, bgc
                         else:
                             with open(outputfile,'w') as fastaHandle:
                                 for header_sequence in fasta_data:
-                                    fastaHandle.write('%s\n' % header_sequence[0])
-                                    fastaHandle.write('%s\n' % header_sequence[1])
+                                    fastaHandle.write("{}\n".format(str(header_sequence[0])))
+                                    fastaHandle.write("{}\n".format(str(header_sequence[1])))
                             
                             
                     if verbose:
-                        print("  Adding " + fname + " (" + str(bgc_size) + " bps)")
+                        print("  Adding {} ({} bps)".format(fname, str(bgc_size)))
                         
                 else:
-                    print(" Discarding " + clusterName +  " (size less than " + str(min_bgc_size) + " bp, was " + str(bgc_size) + ")")
+                    print(" Discarding {} (size less than {} bp, was {})".format(clusterName, str(min_bgc_size), str(bgc_size)))
                 
                 del fasta_data[:]
                 biosynthetic_genes.clear()
@@ -308,29 +315,34 @@ def get_gbk_files(inputdir, bgc_fasta_folder, min_bgc_size, exclude_gbk_str, bgc
     if file_counter == 1:
         sys.exit("\nError: Only one file found. Please input at least two files")
     
-    print("\n Starting with " + str(file_counter) + " files")
+    print("\n Starting with {} files".format(str(file_counter)))
     print(" Files that had its sequence extracted: " + str(file_counter - processed_sequences))
 
     return genbankDict
 
 
-def timeit(f):
-    def wrap(*args):
-        insignificant_runtime = 1 #prevents an overload 
-        time1 = time.time()
-        ret = f(*args)
-        time2 = time.time()
-        runtime = time2-time1
-        
-        runtime_string = '\t%s function took %0.3f s' % (f.func_name, runtime)
-        
-        if runtime > insignificant_runtime:
+def timeit(funct):
+    """Writes the runtimes of functions to a file and prints them on screen.
+
+    Input:
+    - funct: a function
+    Output:
+    - That function its output.
+    - Runtime of that function in a file called commands.txt and on screen.
+    """
+    def _wrap(*args):
+        start_time = time.time()
+        ret = funct(*args)
+        runtime = time.time()-start_time
+        runtime_string = '{} took {:.3f} seconds'.format(funct.__name__, runtime)
+        # To prevent insignificant runtimes from ending up in the file.
+        if runtime > 1:
             with open(os.path.join(output_folder, "runtimes.txt"), 'a') as timings_file:
                 timings_file.write(runtime_string + "\n")
-            print runtime_string
-            
+            print(runtime_string)
         return ret
-    return wrap
+    
+    return _wrap
 
 
 @timeit
@@ -357,7 +369,7 @@ def generate_network(cluster_pairs, cores):
 def generate_dist_matrix(parms):
     """Unpack data to actually launch cluster_distance for one pair of BGCs"""
     
-    cluster1Idx,cluster2Idx,bgcClassIdx = map(int,parms)
+    cluster1Idx,cluster2Idx,bgcClassIdx = [int(parm) for parm in parms]
     cluster1 = clusterNames[cluster1Idx]
     cluster2 = clusterNames[cluster2Idx]
     bgc_class = bgcClassNames[bgcClassIdx]
@@ -366,7 +378,7 @@ def generate_dist_matrix(parms):
         domain_list_A = DomainList[cluster1]
         domain_list_B = DomainList[cluster2]
     except KeyError:
-        print(" Warning: domain list for " + cluster1 + " or " + cluster2 + " was not found. Extracting from pfs files")
+        print(" Warning: domain list for {} or {} was not found. Extracting from pfs files".format(cluster1, cluster2))
         
         cluster_file1 = os.path.join(output_folder, cluster1 + ".pfs")
         cluster_file2 = os.path.join(output_folder, cluster2 + ".pfs")
@@ -376,13 +388,13 @@ def generate_dist_matrix(parms):
     
     # this really shouldn't happen if we've filtered domain-less gene clusters already
     if len(domain_list_A) == 0 or len(domain_list_B) == 0:
-        print("   Warning: Regarding distance between clusters " + cluster1 + " and " + cluster2 + ":")
+        print("   Warning: Regarding distance between clusters {} and {}:".format(cluster1, cluster2))
         if len(domain_list_A) == 0 and len(domain_list_B) == 0:
             print("   None have identified domains. Distance cannot be calculated")
         elif (domain_list_A) == 0:            
-            print("   Cluster " + cluster1 + " has no identified domains. Distance set to 1")
+            print("   Cluster {} has no identified domains. Distance set to 1".format(cluster1))
         else:
-            print("   Cluster " + cluster2 + " has no identified domains. Distance set to 1")
+            print("   Cluster {} has no identified domains. Distance set to 1".format(cluster2))
             
         # last two values (S, Sa) should really be zero but this could give rise to errors when parsing 
         # the network file (unless we catched the case S = Sa = 0
@@ -414,7 +426,7 @@ def cluster_distance(a, b, a_domlist, b_domlist, bgc_class):
     
     setA = set(A_domlist)
     setB = set(B_domlist)
-    intersect = setA.intersection(setB)
+    intersect = setA & setB
     
     S = 0
     S_anchor = 0
@@ -505,10 +517,9 @@ def cluster_distance(a, b, a_domlist, b_domlist, bgc_class):
             B_domain_sequence_slice_top[domain] = len(BGCs[B][domain])
         
     
-    
     # JACCARD INDEX
-    Jaccard = len(intersect)/ float( len(setA) + len(setB) - len(intersect))
-
+    Jaccard = len(intersect)/ len(setA|setB)
+    
 
     # DSS INDEX
     #domain_difference: Difference in sequence per domain. If one cluster does
@@ -541,9 +552,10 @@ def cluster_distance(a, b, a_domlist, b_domlist, bgc_class):
                     
     S = domain_difference # can be done because it's the first use of these
     S_anchor = domain_difference_anchor
-        
+    
     # Cases 2 and 3 (now merged)
     missing_aligned_domain_files = []
+    
     for shared_domain in intersect:
         specific_domain_list_A = BGCs[A][shared_domain]
         specific_domain_list_B = BGCs[B][shared_domain]
@@ -556,8 +568,7 @@ def cluster_distance(a, b, a_domlist, b_domlist, bgc_class):
         accumulated_distance = 0
             
         # Fill distance matrix between domain's A and B versions
-        DistanceMatrix = [[1 for col in range(num_copies_b)] for row in range(num_copies_a)]
-        
+        DistanceMatrix = np.ndarray((num_copies_a,num_copies_b))
         for domsa in range(num_copies_a):
             for domsb in range(num_copies_b):
                 sequence_tag_a = specific_domain_list_A[domsa + A_domain_sequence_slice_bottom[shared_domain]]
@@ -577,7 +588,7 @@ def cluster_distance(a, b, a_domlist, b_domlist, bgc_class):
                     if shared_domain not in missing_aligned_domain_files and verbose:
                         # this will print everytime an unfound <domain>.algn is not found for every
                         # distance calculation (but at least, not for every domain pair!)
-                        print("  Warning: " + shared_domain + ".algn not found. Trying pairwise alignment...")
+                        print("  Warning: {}.algn not found. Trying pairwise alignment...".format(shared_domain))
                         missing_aligned_domain_files.append(shared_domain)
                     
                     try:
@@ -603,9 +614,9 @@ def cluster_distance(a, b, a_domlist, b_domlist, bgc_class):
                 # Sequences *should* be of the same length unless something went
                 # wrong elsewhere
                 if len(aligned_seqA) != len(aligned_seqB):
-                    print("\tWARNING: mismatch in sequences' lengths while calculating sequence identity (" + shared_domain + ")")
-                    print("\t  Specific domain 1: " + sequence_tag_a + " len: " + str(len(aligned_seqA)))
-                    print("\t  Specific domain 2: " + sequence_tag_b + " len: " + str(len(aligned_seqB)))
+                    print("\tWARNING: mismatch in sequences' lengths while calculating sequence identity ({})".format(shared_domain))
+                    print("\t  Specific domain 1: {} len: {}".format(sequence_tag_a, str(len(aligned_seqA))))
+                    print("\t  Specific domain 2: {} len: {}".format(sequence_tag_b, str(len(aligned_seqB))))
                     seq_length = min(len(aligned_seqA), len(aligned_seqB))
                 else:
                     seq_length = len(aligned_seqA)
@@ -617,17 +628,16 @@ def cluster_distance(a, b, a_domlist, b_domlist, bgc_class):
                         else:
                             gaps += 1
                             
-                DistanceMatrix[domsa][domsb] = 1 - ( float(matches)/float(seq_length-gaps) )
+                DistanceMatrix[domsa][domsb] = 1- ( matches/(seq_length-gaps) )
                 
         #Only use the best scoring pairs
-        Hungarian = Munkres()
-        BestIndexes = Hungarian.compute(DistanceMatrix)
-        accumulated_distance = sum([DistanceMatrix[bi[0]][bi[1]] for bi in BestIndexes])
+        BestIndexes = linear_sum_assignment(DistanceMatrix)
+        accumulated_distance = DistanceMatrix[BestIndexes].sum()
         
         # the difference in number of domains accounts for the "lost" (or not duplicated) domains
         sum_seq_dist = (abs(num_copies_a-num_copies_b) + accumulated_distance)  #essentially 1-sim
         normalization_element = max(num_copies_a, num_copies_b)
-            
+                    
         if shared_domain[:7] in anchor_domains:
             S_anchor += normalization_element
             domain_difference_anchor += sum_seq_dist
@@ -636,12 +646,12 @@ def cluster_distance(a, b, a_domlist, b_domlist, bgc_class):
             domain_difference += sum_seq_dist
             
     if S_anchor != 0 and S != 0:
-        DSS_non_anchor = domain_difference / float(S)
-        DSS_anchor = domain_difference_anchor / float(S_anchor)
+        DSS_non_anchor = domain_difference / S
+        DSS_anchor = domain_difference_anchor / S_anchor
         
         # Calculate proper, proportional weight to each kind of domain
-        non_anchor_prct = S / float(S + S_anchor)
-        anchor_prct = S_anchor / float(S + S_anchor)
+        non_anchor_prct = S / (S + S_anchor)
+        anchor_prct = S_anchor / (S + S_anchor)
         
         # boost anchor subcomponent and re-normalize
         non_anchor_weight = non_anchor_prct / (anchor_prct*anchorboost + non_anchor_prct)
@@ -651,19 +661,19 @@ def cluster_distance(a, b, a_domlist, b_domlist, bgc_class):
         DSS = (non_anchor_weight*DSS_non_anchor) + (anchor_weight*DSS_anchor)
         
     elif S_anchor == 0:
-        DSS_non_anchor = domain_difference / float(S)
+        DSS_non_anchor = domain_difference / S
         DSS_anchor = 0.0
-        
+                
         DSS = DSS_non_anchor
         
     else: #only anchor domains were found
         DSS_non_anchor = 0.0
-        DSS_anchor = domain_difference_anchor / float(S_anchor)
+        DSS_anchor = domain_difference_anchor / S_anchor
         
         DSS = DSS_anchor
  
     DSS = 1-DSS #transform into similarity
- 
+    
 
     # ADJACENCY INDEX
     # calculates the Tanimoto similarity of pairs of adjacent domains
@@ -680,7 +690,7 @@ def cluster_distance(a, b, a_domlist, b_domlist, bgc_class):
             setB_pairs.add(tuple(sorted([B_domlist[l],B_domlist[l+1]])))
 
         # same treatment as in Jaccard
-        AI = float(len(setA_pairs.intersection(setB_pairs))) / float(len(setA_pairs.union(setB_pairs)))
+        AI = len(setA_pairs & setB_pairs) / len(setA_pairs | setB_pairs)
 
     Distance = 1 - (Jaccardw * Jaccard) - (DSSw * DSS) - (AIw * AI)
     
@@ -689,9 +699,9 @@ def cluster_distance(a, b, a_domlist, b_domlist, bgc_class):
         if Distance < -0.000001: # this definitely is something else...
             print("Negative distance detected!")
             print(Distance)
-            print(A + " - " + B)
-            print("J: " + str(Jaccard) + "\tDSS: " + str(DSS) + "\tAI: " + str(AI))
-            print("Jw: " + str(Jaccardw) + "\tDSSw: " + str(DSSw) + "\tAIw: " + str(AIw))
+            print("{} - {}".format(A, B))
+            print("J: {}\tDSS: {}\tAI: {}".format(str(Jaccard), str(DSS), str(AI)))
+            print("Jw: {}\tDSSw: {}\tAIw: {}".format(str(Jaccardw), str(DSSw), str(AIw)))
         Distance = 0.0
         
     return Distance, Jaccard, DSS, AI, DSS_non_anchor, DSS_anchor, S, S_anchor
@@ -798,7 +808,7 @@ def runHmmScan(fastaPath, hmmPath, outputdir, verbose):
         name = ".".join(fastaPath.split(os.sep)[-1].split(".")[:-1])
         outputName = os.path.join(outputdir, name+".domtable")
         
-        hmmscan_cmd = "hmmscan --cpu 0 --domtblout %s --cut_tc %s %s" % (outputName,hmmFile,fastaPath)
+        hmmscan_cmd = "hmmscan --cpu 0 --domtblout {} --cut_tc {} {}".format(outputName, hmmFile, fastaPath)
         if verbose == True:
             print("   " + hmmscan_cmd)
         subprocess.check_output(hmmscan_cmd, shell=True)
@@ -825,17 +835,17 @@ def parseHmmScan(hmmscanResults, pfd_folder, pfs_folder, overlapCutoff):
             
             # Save list of domains per BGC
             pfsoutput = os.path.join(pfs_folder, outputbase + ".pfs")
-            with open(pfsoutput, 'wb') as pfs_handle:
+            with open(pfsoutput, 'w') as pfs_handle:
                 pfs_handle.write(" ".join(domains))
             
             # Save more complete information of each domain per BGC
             pfdoutput = os.path.join(pfd_folder, outputbase + ".pfd")
-            with open(pfdoutput,'wb') as pfd_handle:
+            with open(pfdoutput,'w') as pfd_handle:
                 write_pfd(pfd_handle, filtered_matrix)
         else:
             # there aren't any domains in this BGC
             # delete from all data structures
-            print("  No domains where found in " + outputbase + ".domtable. Removing it from further analysis")
+            print("  No domains where found in {}.domtable. Removing it from further analysis".format(outputbase))
             info = genbankDict.get(outputbase)
             clusters.remove(outputbase)
             baseNames.remove(outputbase)
@@ -849,8 +859,11 @@ def parseHmmScan(hmmscanResults, pfd_folder, pfs_folder, overlapCutoff):
 
     return("")
 
-def clusterJsonBatch(outputFileBase,matrix,cutoffs=[1.0],damping=0.8,clusterClans=False,clanCutoff=0.5):
+def clusterJsonBatch(outputFileBase,matrix,cutoffs=[1.0],damping=0.8,clusterClans=False,clanCutoff=(0.5,0.8)):
     ## implementation of clusterJson using csr sparce matrices
+
+    ### cutoff value is in distance (i.e. if two clusters are further than cutoff value, similarity is 0),
+    ##  larger cutoff values are more permissive
     bgcs = set() # contains the indices (as floats!) of all the BGCs in this class
     simDict = {}
     # Doing this so it only has to go through the matrix once
@@ -866,6 +879,12 @@ def clusterJsonBatch(outputFileBase,matrix,cutoffs=[1.0],damping=0.8,clusterClan
             similarity = 0
         gcSimilarities = simDict.setdefault(gc1, {})
         gcSimilarities[gc2] = similarity
+    clanClassificationCutoff, clanDistanceCutoff = clanCutoff
+    if clusterClans and verbose:
+        print('Clustering Clans Enabled with paramters clanClassificationCutoff: {}, clanDistanceCutoff: {}'.format(clanClassificationCutoff,clanDistanceCutoff))
+    # if we want to classify by clans make sure that the clanCutoff is included in the cutoffs to do AP in
+    if clusterClans and clanClassificationCutoff not in cutoffs:
+        cutoffs.append(clanClassificationCutoff)
     # preserve order
     bgcs = sorted(list(bgcs))
     bgc2simIdx = dict(zip(bgcs, range(len(bgcs))))
@@ -890,8 +909,7 @@ def clusterJsonBatch(outputFileBase,matrix,cutoffs=[1.0],damping=0.8,clusterClan
         if verbose:
             print("   ...done")
         numBGCs = len(bgcs)
-        bs_distances = [[float('%.3f' % simMatrix[row, col]) for col in xrange(row+1)] for row in
-                        xrange(numBGCs)]
+        bs_distances = [[float("{:.3f}".format(simMatrix[row, col])) for col in range(row+1)] for row in range(numBGCs)]
         #bs_data = [{"id": clusterNames[int(bgc)]} for bgc in bgcs]
         bs_data = []
         bgcJsonDict = {}
@@ -900,14 +918,14 @@ def clusterJsonBatch(outputFileBase,matrix,cutoffs=[1.0],damping=0.8,clusterClan
             members = familiesDict.setdefault(label, [])
             members.append(idx)
             familiesDict[label] = members
-
+            
         ## guarantee order of families and indices for later assignment
         # Families should be indexed from 0 to # families - 1
         familiesDictReIdxd = {idx:members for idx,members in enumerate(familiesDict.values())}
         familyIdxs = range(len(familiesDictReIdxd))
-
+        
         ### Use the 0.5 distance cutoff to cluster clans by default
-        if clusterClans and cutoff == clanCutoff:
+        if clusterClans and cutoff == clanClassificationCutoff:
             famSimDict = dict()
             for familyI in familyIdxs:
                 membersI = familiesDictReIdxd[familyI]
@@ -921,7 +939,7 @@ def clusterJsonBatch(outputFileBase,matrix,cutoffs=[1.0],damping=0.8,clusterClan
                         # can change this to min or mean
                         famSimilarities.append(sum(similarities, 0.0) / len(similarities))
                     ## can change this as well
-                    famSimDict[familyI][familyJ] = max(similarities)
+                    famSimDict[familyI][familyJ] = sum(famSimilarities,0.0)/len(famSimilarities)
 
             famSimMatrix = lil_matrix((len(familyIdxs), len(familyIdxs)), dtype=np.float32)
             for familyI in familyIdxs:
@@ -930,7 +948,7 @@ def clusterJsonBatch(outputFileBase,matrix,cutoffs=[1.0],damping=0.8,clusterClan
                 for familyJ in famSimDict.get(familyI, {}).keys():
                     # you might get 0 values if there were matrix entries under the cutoff don't need to input these in
                     # the sparse matrix
-                    if famSimDict[familyI].get(familyJ, 0) > 1 - clanCutoff:
+                    if famSimDict[familyI].get(familyJ, 0) > 1 - clanDistanceCutoff:
                         # Ensure symmetry
                         famSimMatrix[familyI, familyJ] = famSimDict[familyI][familyJ]
                         famSimMatrix[familyJ, familyI] = famSimDict[familyI][familyJ]
@@ -938,7 +956,7 @@ def clusterJsonBatch(outputFileBase,matrix,cutoffs=[1.0],damping=0.8,clusterClan
                                 preference='min').fit_predict(famSimMatrix)
         else:
             clanLabels = []
-    
+            
         if len(clanLabels) > 0:
             clansDict = {}
             for idx,clanLabel in enumerate(clanLabels):
@@ -946,7 +964,7 @@ def clusterJsonBatch(outputFileBase,matrix,cutoffs=[1.0],damping=0.8,clusterClan
                 clanMembers.append(idx)
                 clansDict[clanLabel] = clanMembers
             fam2clan = dict(zip(familyIdxs,clanLabels))
-
+        
         for bgc in bgcs:
             bgcName = clusterNames[int(bgc)]
             bgcJsonDict[bgcName] = {}
@@ -967,7 +985,11 @@ def clusterJsonBatch(outputFileBase,matrix,cutoffs=[1.0],damping=0.8,clusterClan
                         orfDict[header[0]]["id"] = header[4]
                     else:
                         orfDict[header[0]]["id"] = header[0]
-                    orfDict[header[0]]["start"] = int(header[6])
+                    ## broken gene goes into cluster, need this so js doesn't throw an error
+                    if int(header[6]) <= 1:
+                        orfDict[header[0]]["start"] = 1
+                    else:
+                        orfDict[header[0]]["start"] = int(header[6])
                     orfDict[header[0]]["end"] = int(header[7])
                     if header[-1] == '+':
                         orfDict[header[0]]["strand"] = 1
@@ -984,37 +1006,54 @@ def clusterJsonBatch(outputFileBase,matrix,cutoffs=[1.0],damping=0.8,clusterClan
                     orfDict[orf]["domains"].append({'code': '{} : {}'.format(pfamID,pfamDescr),'start':int(entry[3]),'end':int(entry[4]),'bitscore': float(entry[1])})
                 else:
                     orfDict[orf]["domains"].append({'code': entry[5], 'start': int(entry[3]), 'end': int(entry[4]), 'bitscore': float(entry[1])})
-            bgcJsonDict[bgcName]['orfs'] = orfDict.values()
+            bgcJsonDict[bgcName]['orfs'] = list(orfDict.values())
         bs_data = [bgcJsonDict[clusterNames[int(bgc)]] for bgc in bgcs]
-
+        
         if len(clanLabels) > 0:
-            bs_families = [{'id': 'FAM_%.3d' % family, 'members': members, 'clan': 'CLAN_%.3d' % fam2clan[family]}
+            bs_families = [{"id": "FAM_{:03d}".format(family), 'members': members, "clan": "CLAN_{:03d}".format(fam2clan[family])}
                            for family, members in familiesDictReIdxd.items()]
-            bs_clans = [{'id': 'CLAN_%.3d' % clan, 'members': members}
+            bs_clans = [{"id": "CLAN_{:03d}".format(clan), 'members': members}
                            for clan, members in enumerate(clansDict.values())]
         else:
-            bs_families = [{'id': 'FAM_%.3d' % family, 'members': members, }
+            bs_families = [{"id": "FAM_{:03d}".format(family), 'members': members, }
                            for family, members in familiesDictReIdxd.items()]
-
+        
         # column1: BGC, column2: clustering pseudo family
         if verbose:
             print("  Writing clustering file")
-        with open(outputFileBase + "_clustering_c" + str(cutoff) + ".tsv", "w") as clustering_file:
-            i = 0
-            for label in familiesDictReIdxd:
-                i += 1
-                for x in familiesDictReIdxd[label]:
-                    clustering_file.write(clusterNames[int(bgcs[x])] + "\t" + str(i) + "\n")
-
+        with open("{}_clustering_c{:4.2f}.tsv".format(outputFileBase, cutoff), "w") as clustering_file:
+            clustering_file.write('##BGC Name\tFamily Number\n')
+            for familyNum,family in enumerate(bs_families):
+                for label in family['members']:
+                    clustering_file.write('{}\t{}\n'.format(clusterNames[int(bgcs[label])],familyNum))
+            #
+            # i = 0
+            # for label in familiesDictReIdxd:
+            #     # moved down so counting starts at 0 (for consistency with everything else)
+            #     for x in familiesDictReIdxd[label]:
+            #         clustering_file.write(clusterNames[int(bgcs[x])] + "\t" + str(i) + "\n")
+            #     i += 1
         if verbose:
             print("  Writing JS file")
-        outputFile = "{}_cutoff{}.js".format(outputFileBase,cutoff)
+        outputFile = "{}_cutoff{:4.2f}.js".format(outputFileBase,cutoff)
         with open(outputFile, 'w') as outfile:
-            outfile.write('var bs_similarity=%s\n' % str(bs_distances))
-            outfile.write('var bs_data=%s\n' % str(bs_data))
-            outfile.write('var bs_families=%s\n' % str(bs_families))
+            outfile.write("var bs_similarity={}\n".format(str(bs_distances)))
+            outfile.write("var bs_data={}\n".format(str(bs_data)))
+            outfile.write("var bs_families={}".format(str(bs_families)))
             if len(clanLabels) > 0:
-                outfile.write('var bs_clans=%s' % str(bs_clans))
+                outfile.write("\nvar bs_clans={}\n".format(str(bs_clans)))
+        if len(clanLabels) > 0:
+            if verbose:
+                print("   Writing Clans file")
+            outputFile = "{}_clans_{:4.2f}_{:4.2f}.tsv".format(outputFileBase,clanClassificationCutoff,clanDistanceCutoff)
+            with open(outputFile,'w') as clansFile:
+                clansFile.write('##BGC Name\tClan Number\tFamily Number\n')
+                for clanNum,clan in enumerate(bs_clans):
+                    for familyNum in clan['members']:
+                        for BGC_label in bs_families[familyNum]['members']:
+                            clansFile.write('{}\t{}\t{}\n'.format(clusterNames[int(bgcs[BGC_label])],clanNum,familyNum))
+
+
     return
 
 class FloatRange(object):
@@ -1024,7 +1063,7 @@ class FloatRange(object):
     def __eq__(self, other):
         return self.start <= other <= self.end
     def __repr__(self):
-        return '{0}-{1}'.format(self.start, self.end)
+        return '{}-{}'.format(self.start, self.end)
 
 def CMD_parser():
     parser = ArgumentParser()
@@ -1052,7 +1091,11 @@ def CMD_parser():
 
     parser.add_argument("--cluster_family", dest="cluster_family",action="store_true", default=False, help="BiG-SCAPE will perform a second layer of clustering and attempt to group families assigned from clustering with cutoff of 0.5 to clans")
 
-    parser.add_argument("--clan_cutoff",dest="clan_cutoff",default=0.5,help="Distance Cutoff to use for Family Clustering")
+    parser.add_argument("--clan_cutoff",dest="clan_cutoff",default=[0.5,0.8], type=float, choices=[FloatRange(0.0, 1.0)],nargs=2,
+                        help="Cutoff Parameters for which clustering families into clans will be performed in raw distance.\
+                             First value is the cutoff value family assignments for BGCs used in clan clustering (default: 0.5). \
+                             Second value is the cutoff value for clustering families into clans (default: 0.8). \
+                             Average linkage for BGCs in a family is used for distances between families. Example: --clan_cutoff 0.5 0.8)")
 
     parser.add_argument("--hybrids", dest="hybrids", action="store_true", 
                         default=False, help="Toggle to also add BGCs with hybrid\
@@ -1119,7 +1162,7 @@ if __name__=="__main__":
     
     
     if options.outputdir == "":
-        print "please provide a name for an output folder using parameter -o or --outputdir"
+        print("please provide a name for an output folder using parameter -o or --outputdir")
         sys.exit(0)
     
     global anchor_domains
@@ -1221,7 +1264,7 @@ if __name__=="__main__":
     
     sampleDict = {} # {sampleName:set(bgc1,bgc2,...)}
     gbk_files = [] # raw list of gbk file locations
-    for (cluster, (path, clusterSample)) in genbankDict.iteritems():
+    for (cluster, (path, clusterSample)) in genbankDict.items():
         gbk_files.append(path)
         for sample in clusterSample:
             clustersInSample = sampleDict.get(sample, set())
@@ -1243,7 +1286,7 @@ if __name__=="__main__":
     create_directory(pfd_folder, "pfd", False)
     create_directory(svg_folder, "SVG", False)
 
-    print("\nTrying threading on %i cores" % cores)
+    print("\nTrying threading on {} cores".format(str(cores)))
     
     """BGCs -- 
     dictionary of this structure:
@@ -1326,27 +1369,23 @@ if __name__=="__main__":
             outputfile = os.path.join(domtable_folder,outputbase + '.domtable')
             if os.path.isfile(outputfile) and os.path.getsize(outputfile) > 0:
                 alreadyDone.add(fasta)
-            
-        if len(fastaFiles - alreadyDone) == 0:
+        task_set = fastaFiles - alreadyDone
+        if len(task_set) == 0:
             print(" All fasta files had already been processed")
         elif len(alreadyDone) > 0:
-            if len(fastaFiles-alreadyDone) < 20:
-                print " Warning! The following NEW fasta file(s) will be processed: %s" % ", ".join(".".join(x.split(os.sep)[-1].split(".")[:-1]) for x in fastaFiles - alreadyDone)
+            if len(task_set) < 20:
+                print(" Warning! The following NEW fasta file(s) will be processed: {}".format(", ".join(".".join(x.split(os.sep)[-1].split(".")[:-1]) for x in task_set)))
             else:
-                print(" Warning: " + str(len(fastaFiles-alreadyDone)) + " NEW fasta files will be processed")
+                print(" Warning: {} NEW fasta files will be processed".format(str(len(task_set))))
         else:
-            print(" Predicting domains for " + str(len(fastaFiles)) + " fasta files")
-
-        task_set = fastaFiles - alreadyDone
+            print(" Predicting domains for {} fasta files".format(str(len(fastaFiles))))
         
     pool = Pool(cores,maxtasksperchild=1)
     for fastaFile in task_set:
         pool.apply_async(runHmmScan,args=(fastaFile, pfam_dir, domtable_folder, verbose))
     pool.close()
     pool.join()
-
-    print " Finished generating domtable files."
-
+    print(" Finished generating domtable files.")
 
     ### Step 3: Parse hmmscan domtable results and generate pfs and pfd files
     print("\nParsing hmmscan domtable files")
@@ -1374,16 +1413,16 @@ if __name__=="__main__":
             outputfile = os.path.join(pfd_folder, outputbase + '.pfd')
             if os.path.isfile(outputfile) and os.path.getsize(outputfile) > 0:
                 alreadyDone.add(domtable)
-                
-    if len(domtableFiles - alreadyDone) == 0: # Re-run
+    domtableFilesUnprocessed = domtableFiles - alreadyDone
+    if len(domtableFilesUnprocessed) == 0: # Re-run
         print(" All domtable files had already been processed")
     elif len(alreadyDone) > 0: # Incomplete run
-        if len(domtableFiles-alreadyDone) < 20:
-            print " Warning! The following domtable files had not been processed: %s" % ", ".join(".".join(x.split(os.sep)[-1].split(".")[:-1]) for x in domtableFiles - alreadyDone)
+        if len(domtableFilesUnprocessed) < 20:
+            print(" Warning! The following domtable files had not been processed: {}".format(", ".join(".".join(x.split(os.sep)[-1].split(".")[:-1]) for x in domtableFilesUnprocessed)))
         else:
-            print(" Warning: " + str(len(domtableFiles-alreadyDone)) + " domtable files will be processed")
+            print(" Warning: {} domtable files will be processed".format(str(len(domtableFilesUnprocessed))))
     else: # First run
-        print(" Processing " + str(len(domtableFiles)) + " domtable files")
+        print(" Processing {} domtable files".format(str(len(domtableFiles))))
 
     # If using the multiprocessing version and outputbase doesn't have any
     #  predicted domains, it's not as easy to remove if from the analysis
@@ -1411,7 +1450,7 @@ if __name__=="__main__":
         for thing in os.listdir(domains_folder):
             os.remove(os.path.join(domains_folder,thing))
 
-    print " Finished generating generating pfs and pfd files."
+    print(" Finished generating generating pfs and pfd files.")
     
 
     ### Step 4: Parse the pfs, pfd files to generate BGC dictionary, clusters, and clusters per sample objects
@@ -1451,7 +1490,7 @@ if __name__=="__main__":
                 print("   Processing: " + outputbase)
 
             pfdFile = os.path.join(pfd_folder, outputbase + ".pfd")
-            filtered_matrix = [map(lambda x: x.strip(), line.split('\t')) for line in open(pfdFile)]
+            filtered_matrix = [[part.strip() for part in line.split('\t')] for line in open(pfdFile)]
 
             # save each domain sequence from a single BGC in its corresponding file
             fasta_file = os.path.join(bgc_fasta_folder, outputbase + ".fasta")
@@ -1469,7 +1508,7 @@ if __name__=="__main__":
             del filtered_matrix[:]
             
         # store processed BGCs dictionary for future re-runs
-        with open(os.path.join(output_folder, "BGCs.dict"), "w") as BGC_file:
+        with open(os.path.join(output_folder, "BGCs.dict"), "wb") as BGC_file:
             pickle.dump(BGCs, BGC_file)
             BGC_file.close()
 
@@ -1580,7 +1619,7 @@ if __name__=="__main__":
                 # avoid multiple alignment if the domains all belong to the same BGC
                 fasta_domains.remove(domain_file)
                 if verbose:
-                    print(" Skipping Multiple Alignment for " + domain_name + " (appears only in one BGC)")
+                    print(" Skipping Multiple Alignment for {} (appears only in one BGC)".format(domain_name))
         
         sequence_tag_list.clear()
         del header_list[:]
@@ -1603,7 +1642,7 @@ if __name__=="__main__":
             # verify all tasks were completed by checking existance of alignment files
             for domain in fasta_domains:
                 if not os.path.isfile(domain[:-6]+".algn"):
-                    print("   WARNING, " + domain[:-6] + ".algn could not be found (possible issue with aligner).")
+                    print("   WARNING, {}.algn could not be found (possible issue with aligner).".format(domain[:-6]))
                        
         else:
             print(" No domain fasta files found to align")
@@ -1654,8 +1693,7 @@ if __name__=="__main__":
                     list_file.write("\t".join([bgc, bgc_info[bgc].accession_id, bgc_info[bgc].description, product, sort_bgc(product)]) + "\n")
             
             print("  Calculating all pairwise distances")
-            
-            pairs = set(map(tuple, map(sorted, combinations(mix_set, 2))))
+            pairs = set([tuple(sorted(combo)) for combo in combinations(mix_set, 2)])
             del mix_set[:]
             cluster_pairs = [(x, y, -1) for (x, y) in pairs]
             pairs.clear()
@@ -1666,9 +1704,9 @@ if __name__=="__main__":
             pathBase = os.path.join(output_folder, networks_folder_all, "all_mix")
             filenames = []
             for cutoff in cutoff_list:
-                filenames.append(pathBase + "_c%.2f.network" % cutoff)
+                filenames.append("{}_c{:.2f}.network".format(pathBase, cutoff))
             clusterJsonBatch(pathBase, network_matrix_mix, cutoffs=cutoff_list,clusterClans=options.cluster_family,clanCutoff=options.clan_cutoff)
-            cutoffs_and_filenames = zip(cutoff_list, filenames)
+            cutoffs_and_filenames = list(zip(cutoff_list, filenames))
             del filenames[:]
             write_network_matrix(network_matrix_mix, cutoffs_and_filenames, include_singletons, clusterNames, bgc_info)
             
@@ -1714,7 +1752,7 @@ if __name__=="__main__":
             for bgc_class in BGC_classes:
                 folder_name = bgc_class
                     
-                print("\n  " + folder_name + " (" + str(len(BGC_classes[bgc_class])) + " BGCs)")
+                print("\n  {} ({} BGCs)".format(folder_name, str(len(BGC_classes[bgc_class]))))
                 
                 # create output directory   
                 create_directory(os.path.join(output_folder, networks_folder_all, folder_name), "  All - " + bgc_class, False)
@@ -1732,7 +1770,7 @@ if __name__=="__main__":
                     
                 if len(BGC_classes[bgc_class]) > 1:
                     print("   Calculating all pairwise distances")
-                    pairs = set(map(tuple, map(sorted, combinations(BGC_classes[bgc_class], 2))))
+                    pairs = set([tuple(sorted(combo)) for combo in combinations(BGC_classes[bgc_class], 2)])
                     del BGC_classes[bgc_class][:]
                     cluster_pairs = [(x, y, bgcClassName2idx[bgc_class]) for (x, y) in pairs]
                     pairs.clear()
@@ -1743,11 +1781,11 @@ if __name__=="__main__":
                     pathBase = os.path.join(output_folder, networks_folder_all, folder_name, "all" + folder_name)
                     filenames = []
                     for cutoff in cutoff_list:
-                        filenames.append(pathBase + "_c%.2f.network" % cutoff)
-                    cutoffs_and_filenames = zip(cutoff_list, filenames)
+                        filenames.append("{}_c{:.2f}.network".format(pathBase, cutoff))
+                    cutoffs_and_filenames = list(zip(cutoff_list, filenames))
                     del filenames[:]
                     clusterJsonBatch(pathBase, network_matrix, cutoffs=cutoff_list,clusterClans=options.cluster_family,clanCutoff=options.clan_cutoff)
-                    write_network_matrix(network_matrix, cutoffs_and_filenames, include_singletons,clusterNames, bgc_info)
+                    write_network_matrix(network_matrix, cutoffs_and_filenames, include_singletons, clusterNames, bgc_info)
                     
                     del network_matrix[:]
                 
@@ -1764,10 +1802,10 @@ if __name__=="__main__":
             # create output directory for all samples
             create_directory(os.path.join(output_folder, networks_folder_samples), "Samples", False)
             
-            for sample, sampleClusters in sampleDict.iteritems():
+            for sample, sampleClusters in sampleDict.items():
                 print("\n Sample: " + sample)
                 if len(sampleClusters) == 1:
-                    print(" Warning: Sample size = 1 detected. Not generating network for this sample (" + sample + ")")
+                    print(" Warning: Sample size = 1 detected. Not generating network for this sample ({})".format(sample))
                 else:
                     # create output directory for this sample
                     create_directory(os.path.join(output_folder, networks_folder_samples, sample), " Samples - " + sample, False)
@@ -1793,7 +1831,7 @@ if __name__=="__main__":
                                 product = bgc_info[bgc].product
                                 list_file.write("\t".join([bgc, bgc_info[bgc].accession_id, bgc_info[bgc].description, product, sort_bgc(product)]) + "\n")
             
-                        pairs = set(map(tuple, map(sorted, combinations(mix_set, 2))))
+                        pairs = set([tuple(sorted(combo)) for combo in combinations(mix_set, 2)])
                         del mix_set[:]
                         cluster_pairs = [(x, y, -1) for (x, y) in pairs]
                         pairs.clear()
@@ -1804,10 +1842,10 @@ if __name__=="__main__":
                         pathBase = os.path.join(output_folder, networks_folder_samples, sample, "sample_" + sample + "_mix")
                         filenames = []
                         for cutoff in cutoff_list:
-                            filenames.append(pathBase + "_c%.2f.network" % cutoff)
-                        cutoffs_and_filenames = zip(cutoff_list, filenames)
+                            filenames.append("{}_c{:.2f}.network".format(pathBase, cutoff))
+                        cutoffs_and_filenames = list(zip(cutoff_list, filenames))
                         clusterJsonBatch(pathBase, network_matrix_sample, cutoffs=cutoff_list,clusterClans=options.cluster_family,clanCutoff=options.clan_cutoff)
-                        write_network_matrix(network_matrix_sample, cutoffs_and_filenames, include_singletons, clusterNames,bgc_info)
+                        write_network_matrix(network_matrix_sample, cutoffs_and_filenames, include_singletons, clusterNames, bgc_info)
                         
                         del network_matrix_sample[:]
                     
@@ -1866,7 +1904,7 @@ if __name__=="__main__":
                                     list_file.write("\t".join([bgc, bgc_info[bgc].accession_id, bgc_info[bgc].description, product, sort_bgc(product)]) + "\n")
 
                             if len(BGC_classes[bgc_class]) > 1:
-                                pairs = set(map(tuple, map(sorted, combinations(BGC_classes[bgc_class], 2))))
+                                pairs = set([tuple(sorted(combo)) for combo in combinations(BGC_classes[bgc_class], 2)])
                                 del BGC_classes[bgc_class][:]
                                 cluster_pairs = [(x, y, bgcClassName2idx[bgc_class]) for (x, y) in pairs]
                                 pairs.clear()
@@ -1877,18 +1915,18 @@ if __name__=="__main__":
                                                         "sample_" + sample + "_" + folder_name)
                                 filenames = []
                                 for cutoff in cutoff_list:
-                                    filenames.append(pathBase + "_c%.2f.network" % cutoff)
-                                cutoffs_and_filenames = zip(cutoff_list, filenames)
+                                    filenames.append("{}_c{:.2f}.network".format(pathBase, cutoff))
+                                cutoffs_and_filenames = list(zip(cutoff_list, filenames))
                                 clusterJsonBatch(pathBase, network_matrix_sample, cutoffs=cutoff_list,clusterClans=options.cluster_family,clanCutoff=options.clan_cutoff)
                                 write_network_matrix(network_matrix_sample, cutoffs_and_filenames, include_singletons, clusterNames,bgc_info)
                                 del network_matrix_sample[:]
                                 
                             del BGC_classes[bgc_class][:]
 
-    pickle.dump(bgc_info,open(os.path.join(output_folder,'bgc_info.dict'),'w'))
+    pickle.dump(bgc_info,open(os.path.join(output_folder,'bgc_info.dict'),'wb'))
     runtime = time.time()-time1
-    runtime_string = '\n\n\tMain function took %0.3f s' % (runtime)
+    runtime_string = "\n\n\tMain function took {:.3f} s".format(runtime)
     with open(os.path.join(output_folder, "runtimes.txt"), 'a') as timings_file:
         timings_file.write(runtime_string + "\n")
-    print runtime_string
+    print(runtime_string)
     

@@ -8,6 +8,12 @@
 #                heavily modified by Jorge Navarro 2016              #
 ######################################################################
 
+# Makes sure the script can be used with Python 2 as well as Python 3.
+from __future__ import print_function, division
+from sys import version_info
+if version_info[0]==2:
+    range = xrange
+
 import os
 import sys
 import argparse
@@ -169,15 +175,10 @@ def draw_arrow(additional_tabs, X, Y, L, l, H, h, strand, color, color_contour, 
     else:
         color_contour = [50, 50, 50]
         
-    arrow += additional_tabs + "\t\t<polygon "
-    arrow += "class=\"" + gid + "\" "
-    arrow += "points=\"" + " ".join(points_coords) + "\" "
-    arrow += "fill=\"rgb(" + ",".join(map(str,color)) +")\" "
-    arrow += "fill-opacity=\"1.0\" "
-    arrow += "stroke=\"rgb(" + ",".join(map(str,color_contour)) + ")\" "
-    arrow += "stroke-width=\"" + str(gene_contour_thickness) + "\" " 
-    arrow += category + " />\n"
-
+    arrow += "{}\t\t<polygon class=\"{}\" ".format(additional_tabs, gid)
+    arrow += "points=\"{}\" fill=\"rgb({})\" ".format(" ".join(points_coords), ",".join([str(val) for val in color]))
+    arrow += "fill-opacity=\"1.0\" stroke=\"rgb({})\" ".format(",".join([str(val) for val in color_contour]))
+    arrow += "stroke-width=\"{}\" {} />\n".format(str(gene_contour_thickness), category)
     
     # paint domains. Domains on the tip of the arrow should not have corners sticking
     #  out of them
@@ -193,8 +194,7 @@ def draw_arrow(additional_tabs, X, Y, L, l, H, h, strand, color, color_contour, 
         dccolour = domain[6]
         
         arrow += additional_tabs + "\t\t<g>\n"
-        arrow += additional_tabs + "\t\t\t<title>" + dname + " (" + dacc + ")\n\"" + ddesc + "\"</title>\n"
-        
+        arrow += "{}\t\t\t<title>{} ({})\n\"{}\"</title>\n".format(additional_tabs, dname, dacc, ddesc)
         
         if strand == "+":
             # calculate how far from head_start we (the horizontal guide at y=Y+internal_domain_margin)
@@ -211,16 +211,11 @@ def draw_arrow(additional_tabs, X, Y, L, l, H, h, strand, color, color_contour, 
             x_margin_offset = internal_domain_margin/sin(pi - atan2(h+H/2.0,-head_length))
 
             if (dX + dL) < head_start + collision_x - x_margin_offset:
-                arrow += additional_tabs + "\t\t\t<rect class=\"" + dacc + "\" "
-                arrow += "x=\"" + str(X+dX) + "\" "
-                arrow += "y=\"" + str(Y + internal_domain_margin) + "\" "
-                arrow += "stroke-linejoin=\"round\" "
-                arrow += "width=\"" + str(dL) + "\" "
-                arrow += "height=\"" + str(dH) + "\" "
-                arrow += "fill=\"rgb(" + ",".join(map(str,dcolor)) + ")\" "
-                arrow += "stroke=\"rgb(" + ",".join(map(str,dccolour)) + ")\" "
-                arrow += "stroke-width=\"" + str(domain_contour_thickness) + "\" "
-                arrow += "opacity=\"0.75\" />\n"
+                arrow += "{}\t\t\t<rect class=\"{}\" x=\"{}\" ".format(additional_tabs, dacc, str(X+dX))
+                arrow += "y=\"{}\" stroke-linejoin=\"round\" ".format(str(Y + internal_domain_margin))
+                arrow += "width=\"{}\" height=\"{}\" ".format(str(dL), str(dH))
+                arrow += "fill=\"rgb({})\" stroke=\"rgb({})\" ".format(",".join([str(val) for val in dcolor]), ",".join([str(val) for val in dccolour]))
+                arrow += "stroke-width=\"{}\" opacity=\"0.75\" />\n".format(str(domain_contour_thickness))
             else:
                 del points[:]
                 
@@ -263,15 +258,12 @@ def draw_arrow(additional_tabs, X, Y, L, l, H, h, strand, color, color_contour, 
                 for point in points:
                     points_coords.append(str(int(point[0])) + "," + str(int(point[1])))
                     
-                arrow += additional_tabs + "\t\t\t<polygon class=\"" + dacc + "\" "
-                arrow += "points=\"" + " ".join(points_coords) + "\" "
-                arrow += "stroke-linejoin=\"round\" "
-                arrow += "width=\"" + str(dL) + "\" "
-                arrow += "height=\"" + str(dH) + "\" "
-                arrow += "fill=\"rgb(" + ",".join(map(str,dcolor)) + ")\" "
-                arrow += "stroke=\"rgb(" + ",".join(map(str,dccolour)) + ")\" "
-                arrow += "stroke-width=\"" + str(domain_contour_thickness) + "\" "
-                arrow += "opacity=\"0.75\" />\n"    
+                arrow += "{}\t\t\t<polygon class=\"{}\" ".format(additional_tabs, dacc)
+                arrow += "points=\"{}\" stroke-linejoin=\"round\" ".format(" ".join(points_coords))
+                arrow += "width=\"{}\" height=\"{}\" ".format(str(dL), str(dH))
+                arrow += "fill=\"rgb({})\" ".format(",".join([str(val) for val in dcolor]))
+                arrow += "stroke=\"rgb({})\" ".format(",".join([str(val) for val in dccolour]))
+                arrow += "stroke-width=\"{}\" opacity=\"0.75\" />\n".format(str(domain_contour_thickness))
             
         # now check other direction
         else:
@@ -286,16 +278,12 @@ def draw_arrow(additional_tabs, X, Y, L, l, H, h, strand, color, color_contour, 
             
             # nice, blocky domains
             if dX > collision_x + x_margin_offset:
-                arrow += additional_tabs + "\t\t\t<rect class=\"" + dacc + "\" "
-                arrow += "x=\"" + str(X+dX) + "\" "
-                arrow += "y=\"" + str(Y + internal_domain_margin) + "\" "
-                arrow += "stroke-linejoin=\"round\" "
-                arrow += "width=\"" + str(dL) + "\" "
-                arrow += "height=\"" + str(dH) + "\" "
-                arrow += "fill=\"rgb(" + ",".join(map(str,dcolor)) + ")\" "
-                arrow += "stroke=\"rgb(" + ",".join(map(str,dccolour)) + ")\" "
-                arrow += "stroke-width=\"" + str(domain_contour_thickness) + "\" "
-                arrow += "opacity=\"0.75\" />\n"
+                arrow += "{}\t\t\t<rect class=\"{}\" ".format(additional_tabs, dacc)
+                arrow += "x=\"{}\" y=\"{}\" ".format(str(X+dX), str(Y + internal_domain_margin))
+                arrow += "stroke-linejoin=\"round\" width=\"{}\" height=\"{}\" ".format(str(dL), str(dH))
+                arrow += "fill=\"rgb({})\" ".format(",".join([str(val) for val in dcolor]))
+                arrow += "stroke=\"rgb({})\" ".format(",".join([str(val) for val in dccolour]))
+                arrow += "stroke-width=\"{}\" opacity=\"0.75\" />\n".format(str(domain_contour_thickness))
             else:
                 del points[:]
                 
@@ -329,15 +317,12 @@ def draw_arrow(additional_tabs, X, Y, L, l, H, h, strand, color, color_contour, 
                 for point in points:
                     points_coords.append(str(int(point[0])) + "," + str(int(point[1])))
                     
-                arrow += additional_tabs + "\t\t\t<polygon class=\"" + dacc + "\" "
-                arrow += "points=\"" + " ".join(points_coords) + "\" "
-                arrow += "stroke-linejoin=\"round\" "
-                arrow += "width=\"" + str(dL) + "\" "
-                arrow += "height=\"" + str(dH) + "\" "
-                arrow += "fill=\"rgb(" + ",".join(map(str,dcolor)) + ")\" "
-                arrow += "stroke=\"rgb(" + ",".join(map(str,dccolour)) + ")\" "
-                arrow += "stroke-width=\"" + str(domain_contour_thickness) + "\" "
-                arrow += "opacity=\"0.75\" />\n"
+                arrow += "{}\t\t\t<polygon class=\"{}\" ".format(additional_tabs, dacc)
+                arrow += "points=\"{}\" stroke-linejoin=\"round\" ".format(" ".join(points_coords))
+                arrow += "width=\"{}\" height=\"{}\" ".format(str(dL), str(dH))
+                arrow += "fill=\"rgb({})\" ".format(",".join([str(val) for val in dcolor]))
+                arrow += "stroke=\"rgb({})\" ".format(",".join([str(val) for val in dccolour]))
+                arrow += "stroke-width=\"{}\" opacity=\"0.75\" />\n".format(str(domain_contour_thickness))
         
         arrow += additional_tabs + "\t\t</g>\n"
     
@@ -351,7 +336,7 @@ def draw_line(X,Y,L):
     Draw a line below genes
     """
     
-    line = "<line x1=\"" + str(X) + "\" y1=\"" + str(Y) + "\" x2=\"" + str(X+L) + "\" y2=\"" + str(Y) + "\" style=\"stroke:rgb(50,50,50); stroke-width:" + str(stripe_thickness) + " \"/>\n"
+    line = "<line x1=\"{}\" y1=\"{}\" x2=\"{}\" y2=\"{}\" style=\"stroke:rgb(50,50,50); stroke-width:{} \"/>\n".format(str(X), str(Y), str(X+L), str(Y), str(stripe_thickness))
     
     return line
 
@@ -426,7 +411,7 @@ def SVG(write_html, outputfile, GenBankFile, pfdFile, use_pfd, color_genes, colo
         header = "\t\t<div title=\"" + GenBankFile[:-4] + "\">\n"
         additional_tabs = "\t\t\t"
         
-        header += additional_tabs + "<svg width=\"" + str(max_width + 2*(mX)) + "\" height=\"" + str(loci*(2*h + H + 2*mY)) + "\">\n"
+        header += "{}<svg width=\"{}\" height=\"{}\">\n".format(additional_tabs, str(max_width + 2*(mX)), str(loci*(2*h + H + 2*mY)))
 
         addY = loci*(2*h + H + 2*mY)
     else:
@@ -654,7 +639,7 @@ def SVG(write_html, outputfile, GenBankFile, pfdFile, use_pfd, color_genes, colo
             
         with open(gene_color_file, "a") as color_genes_handle:
             for new_names in new_color_genes:
-                color_genes_handle.write(new_names + "\t" + ",".join(map(str,new_color_genes[new_names])) + "\n")
+                color_genes_handle.write(new_names + "\t" + ",".join([str(ncg) for ncg in new_color_genes[new_names]]) + "\n")
     
     if len(new_color_domains) > 0:
         if len(new_color_domains) < 10:
@@ -664,7 +649,7 @@ def SVG(write_html, outputfile, GenBankFile, pfdFile, use_pfd, color_genes, colo
             
         with open(domains_color_file, "a") as color_domains_handle:
             for new_names in new_color_domains:
-                color_domains_handle.write(new_names + "\t" + ",".join(map(str,new_color_domains[new_names])) + "\n")
+                color_domains_handle.write(new_names + "\t" + ",".join([str(ncdom) for ncdom in new_color_domains[new_names]]) + "\n")
 
     
     mode = "a" if write_html == True else "w"
