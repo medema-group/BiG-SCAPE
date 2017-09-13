@@ -870,8 +870,7 @@ def cluster_distance_lcs(A, B, A_domlist, B_domlist, dcg_A, dcg_b, core_pos_A, c
         accumulated_distance = 0
             
         # Fill distance matrix between domain's A and B versions
-        DistanceMatrix = [[1 for col in range(num_copies_b)] for row in range(num_copies_a)]
-        
+        DistanceMatrix = np.ndarray((num_copies_a,num_copies_b))
         for domsa in range(num_copies_a):
             for domsb in range(num_copies_b):
                 sequence_tag_a = specific_domain_list_A[domsa + A_domain_sequence_slice_bottom[shared_domain]]
@@ -891,7 +890,7 @@ def cluster_distance_lcs(A, B, A_domlist, B_domlist, dcg_A, dcg_b, core_pos_A, c
                     if shared_domain not in missing_aligned_domain_files and verbose:
                         # this will print everytime an unfound <domain>.algn is not found for every
                         # distance calculation (but at least, not for every domain pair!)
-                        print("  Warning: " + shared_domain + ".algn not found. Trying pairwise alignment...")
+                        print("  Warning: {}.algn not found. Trying pairwise alignment...".format(shared_domain))
                         missing_aligned_domain_files.append(shared_domain)
                     
                     try:
@@ -917,9 +916,9 @@ def cluster_distance_lcs(A, B, A_domlist, B_domlist, dcg_A, dcg_b, core_pos_A, c
                 # Sequences *should* be of the same length unless something went
                 # wrong elsewhere
                 if len(aligned_seqA) != len(aligned_seqB):
-                    print("\tWARNING: mismatch in sequences' lengths while calculating sequence identity (" + shared_domain + ")")
-                    print("\t  Specific domain 1: " + sequence_tag_a + " len: " + str(len(aligned_seqA)))
-                    print("\t  Specific domain 2: " + sequence_tag_b + " len: " + str(len(aligned_seqB)))
+                    print("\tWARNING: mismatch in sequences' lengths while calculating sequence identity ({})".format(shared_domain))
+                    print("\t  Specific domain 1: {} len: {}".format(sequence_tag_a, str(len(aligned_seqA))))
+                    print("\t  Specific domain 2: {} len: {}".format(sequence_tag_b, str(len(aligned_seqB))))
                     seq_length = min(len(aligned_seqA), len(aligned_seqB))
                 else:
                     seq_length = len(aligned_seqA)
@@ -931,12 +930,11 @@ def cluster_distance_lcs(A, B, A_domlist, B_domlist, dcg_A, dcg_b, core_pos_A, c
                         else:
                             gaps += 1
                             
-                DistanceMatrix[domsa][domsb] = 1 - ( float(matches)/float(seq_length-gaps) )
+                DistanceMatrix[domsa][domsb] = 1 - ( matches/(seq_length-gaps) )
                 
         #Only use the best scoring pairs
-        Hungarian = Munkres()
-        BestIndexes = Hungarian.compute(DistanceMatrix)
-        accumulated_distance = sum([DistanceMatrix[bi[0]][bi[1]] for bi in BestIndexes])
+        BestIndexes = linear_sum_assignment(DistanceMatrix)
+        accumulated_distance = DistanceMatrix[BestIndexes].sum()
         
         # the difference in number of domains accounts for the "lost" (or not duplicated) domains
         sum_seq_dist = (abs(num_copies_a-num_copies_b) + accumulated_distance)  #essentially 1-sim
@@ -950,12 +948,12 @@ def cluster_distance_lcs(A, B, A_domlist, B_domlist, dcg_A, dcg_b, core_pos_A, c
             domain_difference += sum_seq_dist
             
     if S_anchor != 0 and S != 0:
-        DSS_non_anchor = domain_difference / float(S)
-        DSS_anchor = domain_difference_anchor / float(S_anchor)
+        DSS_non_anchor = domain_difference / S
+        DSS_anchor = domain_difference_anchor / S_anchor
         
         # Calculate proper, proportional weight to each kind of domain
-        non_anchor_prct = S / float(S + S_anchor)
-        anchor_prct = S_anchor / float(S + S_anchor)
+        non_anchor_prct = S / (S + S_anchor)
+        anchor_prct = S_anchor / (S + S_anchor)
         
         # boost anchor subcomponent and re-normalize
         non_anchor_weight = non_anchor_prct / (anchor_prct*anchorboost + non_anchor_prct)
@@ -965,14 +963,14 @@ def cluster_distance_lcs(A, B, A_domlist, B_domlist, dcg_A, dcg_b, core_pos_A, c
         DSS = (non_anchor_weight*DSS_non_anchor) + (anchor_weight*DSS_anchor)
         
     elif S_anchor == 0:
-        DSS_non_anchor = domain_difference / float(S)
+        DSS_non_anchor = domain_difference / S
         DSS_anchor = 0.0
         
         DSS = DSS_non_anchor
         
     else: #only anchor domains were found
         DSS_non_anchor = 0.0
-        DSS_anchor = domain_difference_anchor / float(S_anchor)
+        DSS_anchor = domain_difference_anchor / S_anchor
         
         DSS = DSS_anchor
  
@@ -994,7 +992,7 @@ def cluster_distance_lcs(A, B, A_domlist, B_domlist, dcg_A, dcg_b, core_pos_A, c
             setB_pairs.add(tuple(sorted([B_domlist[l],B_domlist[l+1]])))
 
         # same treatment as in Jaccard
-        AI = float(len(setA_pairs.intersection(setB_pairs))) / float(len(setA_pairs.union(setB_pairs)))
+        AI = len(setA_pairs & setB_pairs) / len(setA_pairs | setB_pairs)
 
     Distance = 1 - (Jaccardw * Jaccard) - (DSSw * DSS) - (AIw * AI)
     
@@ -1003,9 +1001,9 @@ def cluster_distance_lcs(A, B, A_domlist, B_domlist, dcg_A, dcg_b, core_pos_A, c
         if Distance < -0.000001: # this definitely is something else...
             print("Negative distance detected!")
             print(Distance)
-            print(A + " - " + B)
-            print("J: " + str(Jaccard) + "\tDSS: " + str(DSS) + "\tAI: " + str(AI))
-            print("Jw: " + str(Jaccardw) + "\tDSSw: " + str(DSSw) + "\tAIw: " + str(AIw))
+            print("{} - {}".format(A, B))
+            print("J: {}\tDSS: {}\tAI: {}".format(str(Jaccard), str(DSS), str(AI)))
+            print("Jw: {}\tDSSw: {}\tAIw: {}".format(str(Jaccardw), str(DSSw), str(AIw)))
         Distance = 0.0
         
     return Distance, Jaccard, DSS, AI, DSS_non_anchor, DSS_anchor, S, S_anchor
@@ -1496,7 +1494,7 @@ def cluster_distance(a, b, a_domlist, b_domlist, dcg_a, dcg_b, core_pos_a, core_
         # the difference in number of domains accounts for the "lost" (or not duplicated) domains
         sum_seq_dist = (abs(num_copies_a-num_copies_b) + accumulated_distance)  #essentially 1-sim
         normalization_element = max(num_copies_a, num_copies_b)
-                    
+        
         if shared_domain[:7] in anchor_domains:
             S_anchor += normalization_element
             domain_difference_anchor += sum_seq_dist
