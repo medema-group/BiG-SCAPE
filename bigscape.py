@@ -63,6 +63,7 @@ from array import array
 from scipy.sparse import lil_matrix
 from scipy.optimize import linear_sum_assignment
 import pysapc
+import json
 
 
 def get_gbk_files(inputdir, outputdir, bgc_fasta_folder, min_bgc_size, exclude_gbk_str, bgc_info):
@@ -1716,40 +1717,102 @@ def parseHmmScan(hmmscanResults, pfd_folder, pfs_folder, overlapCutoff):
 
     return("")
 
-def clusterJsonBatch(outputFileBase,matrix,cutoffs=[1.0],damping=0.8,clusterClans=False,clanCutoff=(0.5,0.8)):
-    ## implementation of clusterJson using csr sparce matrices
-
-    ### cutoff value is in distance (i.e. if two clusters are further than cutoff value, similarity is 0),
-    ##  larger cutoff values are more permissive
-    bgcs = set() # contains the indices (as floats!) of all the BGCs in this class
+def clusterJsonBatch(bgcs, outputFileBase,matrix,cutoffs=[1.0],damping=0.8,clusterClans=False,clanCutoff=(0.5,0.8)):
+    """BGC Family calling
+    Uses csr sparse matrices to call Gene Cluster Families (GCFs) using Affinity
+    Propagation.
+    
+    Cutoff values are in distance (i.e. if two clusters are further than cutoff 
+    value, similarity is 0)
+    Larger cutoff values are more permissive
+    
+    bgcs: ordered list of integers representing the index in the main cluster list
+    """
+    
     simDict = {}
     # Doing this so it only has to go through the matrix once
     for row in matrix:
-        gc1 = row[0]
-        gc2 = row[1]
-        distance = row[3]
-        bgcs.add(gc1)
-        bgcs.add(gc2)
+        gc1, gc2, distance = row
+        
         if distance < 1.0:
             similarity = 1 - distance
         else:
             similarity = 0
         gcSimilarities = simDict.setdefault(gc1, {})
         gcSimilarities[gc2] = similarity
+
     clanClassificationCutoff, clanDistanceCutoff = clanCutoff
     if clusterClans and verbose:
-        print('Clustering Clans Enabled with paramters clanClassificationCutoff: {}, clanDistanceCutoff: {}'.format(clanClassificationCutoff,clanDistanceCutoff))
-    # if we want to classify by clans make sure that the clanCutoff is included in the cutoffs to do AP in
-    if clusterClans and clanClassificationCutoff not in cutoffs:
-        cutoffs.append(clanClassificationCutoff)
-    # preserve order
-    bgcs = sorted(list(bgcs))
+        print('Clustering Clans Enabled with parameters clanClassificationCutoff: {}, clanDistanceCutoff: {}'.format(clanClassificationCutoff,clanDistanceCutoff))
+    
     bgc2simIdx = dict(zip(bgcs, range(len(bgcs))))
     pfam_domain_categories = os.path.join(os.path.dirname(os.path.realpath(__file__)), "Pfam-A.clans.tsv")
     pfam_descrs = generatePfamDescriptionsMatrix(pfam_domain_categories)
+    
+    # Get info on all BGCs to export to .js for visualization
+    bs_data = []
+    bgcJsonDict = {}
+    for bgc in bgcs:
+        bgcName = clusterNames[int(bgc)]
+        bgcJsonDict[bgcName] = {}
+        bgcJsonDict[bgcName]["id"] = clusterNames[int(bgc)]
+        bgcJsonDict[bgcName]["desc"] = bgc_info[bgcName].description
+        bgcJsonDict[bgcName]["start"] = 1
+        bgcJsonDict[bgcName]["end"] = bgc_info[bgcName].max_width
+        
+        pfdFile = os.path.join(pfd_folder, bgcName + ".pfd")
+        fastaFile = os.path.join(bgc_fasta_folder, bgcName + ".fasta")
+        
+        orfDict = defaultdict(dict)
+        
+        ## read fasta file first to get orfs
+        # We cannot get all the info exclusively from the pfd because that only
+        # contains ORFs with predicted domains (and we need to draw empty genes
+        # as well)
+        for line in open(fastaFile):
+            if line[0] == ">":
+                header = line.strip()[1:].split(':')
+                
+                if header[2]:
+                    orfDict[header[0]]["id"] = header[2]
+                elif header[4]:
+                    orfDict[header[0]]["id"] = header[4]
+                else:
+                    orfDict[header[0]]["id"] = header[0]
+                    
+                ## broken gene goes into cluster, need this so js doesn't throw an error
+                if int(header[6]) <= 1:
+                    orfDict[header[0]]["start"] = 1
+                else:
+                    orfDict[header[0]]["start"] = int(header[6])
+                    
+                orfDict[header[0]]["end"] = int(header[7])
+                
+                if header[-1] == '+':
+                    orfDict[header[0]]["strand"] = 1
+                else:
+                    orfDict[header[0]]["strand"] = -1
+                    
+                orfDict[header[0]]["domains"] = []
+    
+        ## now read pfd file to add the domains to each of the orfs
+        for line in open(pfdFile):
+            entry = line.split('\t')
+            orf = entry[-1].strip().split(':')[0]
+            pfamID = entry[5].split('.')[0]
+            pfamDescr = pfam_descrs.get(pfamID,None)
+            if pfamDescr:
+                orfDict[orf]["domains"].append({'code': '{} : {}'.format(pfamID,pfamDescr),'start':int(entry[3]),'end':int(entry[4]),'bitscore': float(entry[1])})
+            else:
+                orfDict[orf]["domains"].append({'code': entry[5], 'start': int(entry[3]), 'end': int(entry[4]), 'bitscore': float(entry[1])})
+        bgcJsonDict[bgcName]['orfs'] = list(orfDict.values())
+    bs_data = [bgcJsonDict[clusterNames[int(bgc)]] for bgc in bgcs]
+    
+    
     for cutoff in cutoffs:
-        simMatrix = lil_matrix((len(bgc2simIdx), len(bgc2simIdx)), dtype=np.float32)
-        for bgc1 in bgcs:
+        simMatrix = lil_matrix((len(bgcs), len(bgcs)), dtype=np.float32)
+        for i in range(len(bgcs)):
+            bgc1 = bgcs[i]
             # first make sure it is similar to itself
             simMatrix[bgc2simIdx[bgc1],bgc2simIdx[bgc1]] = 1
             for bgc2 in simDict.get(bgc1,{}).keys():
@@ -1767,9 +1830,7 @@ def clusterJsonBatch(outputFileBase,matrix,cutoffs=[1.0],damping=0.8,clusterClan
             print("   ...done")
         numBGCs = len(bgcs)
         bs_distances = [[float("{:.3f}".format(simMatrix[row, col])) for col in range(row+1)] for row in range(numBGCs)]
-        #bs_data = [{"id": clusterNames[int(bgc)]} for bgc in bgcs]
-        bs_data = []
-        bgcJsonDict = {}
+        
         familiesDict = {}
         for idx, label in enumerate(labels):
             members = familiesDict.setdefault(label, [])
@@ -1822,50 +1883,6 @@ def clusterJsonBatch(outputFileBase,matrix,cutoffs=[1.0],damping=0.8,clusterClan
                 clansDict[clanLabel] = clanMembers
             fam2clan = dict(zip(familyIdxs,clanLabels))
         
-        for bgc in bgcs:
-            bgcName = clusterNames[int(bgc)]
-            bgcJsonDict[bgcName] = {}
-            bgcJsonDict[bgcName]["id"] = clusterNames[int(bgc)]
-            bgcJsonDict[bgcName]["desc"] = bgc_info[bgcName].description
-            bgcJsonDict[bgcName]["start"] = 1
-            bgcJsonDict[bgcName]["end"] = bgc_info[bgcName].max_width
-            pfdFile = os.path.join(pfd_folder, bgcName + ".pfd")
-            fastaFile = os.path.join(bgc_fasta_folder, bgcName + ".fasta")
-            orfDict = defaultdict(dict)
-            ## read fasta file first to get orfs
-            for line in open(fastaFile):
-                if line[0] == ">":
-                    header = line.strip()[1:].split(':')
-                    if header[2]:
-                        orfDict[header[0]]["id"] = header[2]
-                    elif header[4]:
-                        orfDict[header[0]]["id"] = header[4]
-                    else:
-                        orfDict[header[0]]["id"] = header[0]
-                    ## broken gene goes into cluster, need this so js doesn't throw an error
-                    if int(header[6]) <= 1:
-                        orfDict[header[0]]["start"] = 1
-                    else:
-                        orfDict[header[0]]["start"] = int(header[6])
-                    orfDict[header[0]]["end"] = int(header[7])
-                    if header[-1] == '+':
-                        orfDict[header[0]]["strand"] = 1
-                    else:
-                        orfDict[header[0]]["strand"] = -1
-                    orfDict[header[0]]["domains"] = []
-            ## now read pfd file to add the domains to each of the orfs
-            for line in open(pfdFile):
-                entry = line.split('\t')
-                orf = entry[-1].strip().split(':')[0]
-                pfamID = entry[5].split('.')[0]
-                pfamDescr = pfam_descrs.get(pfamID,None)
-                if pfamDescr:
-                    orfDict[orf]["domains"].append({'code': '{} : {}'.format(pfamID,pfamDescr),'start':int(entry[3]),'end':int(entry[4]),'bitscore': float(entry[1])})
-                else:
-                    orfDict[orf]["domains"].append({'code': entry[5], 'start': int(entry[3]), 'end': int(entry[4]), 'bitscore': float(entry[1])})
-            bgcJsonDict[bgcName]['orfs'] = list(orfDict.values())
-        bs_data = [bgcJsonDict[clusterNames[int(bgc)]] for bgc in bgcs]
-        
         if len(clanLabels) > 0:
             bs_families = [{"id": "FAM_{:03d}".format(family), 'members': members, "clan": "CLAN_{:03d}".format(fam2clan[family])}
                            for family, members in familiesDictReIdxd.items()]
@@ -1879,7 +1896,7 @@ def clusterJsonBatch(outputFileBase,matrix,cutoffs=[1.0],damping=0.8,clusterClan
         if verbose:
             print("  Writing clustering file")
         with open("{}_clustering_c{:4.2f}.tsv".format(outputFileBase, cutoff), "w") as clustering_file:
-            clustering_file.write('##BGC Name\tFamily Number\n')
+            clustering_file.write('#BGC Name\tFamily Number\n')
             for familyNum,family in enumerate(bs_families):
                 for label in family['members']:
                     clustering_file.write('{}\t{}\n'.format(clusterNames[int(bgcs[label])],familyNum))
@@ -1893,23 +1910,24 @@ def clusterJsonBatch(outputFileBase,matrix,cutoffs=[1.0],damping=0.8,clusterClan
         if verbose:
             print("  Writing JS file")
         outputFile = "{}_cutoff{:4.2f}.js".format(outputFileBase,cutoff)
+            
         with open(outputFile, 'w') as outfile:
-            outfile.write("var bs_similarity={}\n".format(str(bs_distances)))
-            outfile.write("var bs_data={}\n".format(str(bs_data)))
-            outfile.write("var bs_families={}".format(str(bs_families)))
+            outfile.write("var bs_similarity={}\n".format(json.dumps(bs_distances, indent=4, separators=(',', ':'), sort_keys=True)))
+            outfile.write("var bs_data={}\n".format(json.dumps(bs_data, indent=4, separators=(',', ':'), sort_keys=True)))
+            outfile.write("var bs_families={}\n".format(json.dumps(bs_families, indent=4, separators=(',', ':'), sort_keys=True)))
             if len(clanLabels) > 0:
-                outfile.write("\nvar bs_clans={}\n".format(str(bs_clans)))
+                outfile.write("var bs_clans={}\n".format(json.dumps(bs_clans, indent=4, separators=(',', ':'), sort_keys=True)))
+        
         if len(clanLabels) > 0:
             if verbose:
                 print("   Writing Clans file")
             outputFile = "{}_clans_{:4.2f}_{:4.2f}.tsv".format(outputFileBase,clanClassificationCutoff,clanDistanceCutoff)
             with open(outputFile,'w') as clansFile:
-                clansFile.write('##BGC Name\tClan Number\tFamily Number\n')
+                clansFile.write('#BGC Name\tClan Number\tFamily Number\n')
                 for clanNum,clan in enumerate(bs_clans):
                     for familyNum in clan['members']:
                         for BGC_label in bs_families[familyNum]['members']:
                             clansFile.write('{}\t{}\t{}\n'.format(clusterNames[int(bgcs[BGC_label])],clanNum,familyNum))
-
 
     return
 
@@ -1924,36 +1942,94 @@ class FloatRange(object):
         return '{}-{}'.format(self.start, self.end)
 
 def CMD_parser():
-    parser = ArgumentParser()
+    parser = ArgumentParser(prog="BiG-SCAPE")
     
-    parser.add_argument("-o", "--outputdir", dest="outputdir", default="", required=True,
-                      help="Output directory, this will contain your pfd, pfs, network and hmmscan output files.")
-    parser.add_argument("-i", "--inputdir", dest="inputdir", default=os.path.dirname(os.path.realpath(__file__)),
-                      help="Input directory of gbk files, if left empty, all gbk files in current and lower directories will be used.")
-    parser.add_argument("-c", "--cores", dest="cores", default=cpu_count(),
-                      help="Set the number of cores the script may use (default: use all available cores)")
-    parser.add_argument("-v", "--verbose", dest="verbose", action="store_true", default=False,
-                      help="Prints more detailed information. Toggle to true.")
-    parser.add_argument("--include_singletons", dest="include_singletons", action="store_true", default=False,
-                      help="Include nodes that have no edges to other nodes from the network. Toggle to activate.")
-    parser.add_argument("-d", "--domain_overlap_cutoff", dest="domain_overlap_cutoff", default=0.1,
-                      help="Specify at which overlap percentage domains are considered to overlap.")
-    parser.add_argument("-m", "--min_bgc_size", dest="min_bgc_size", default=0,
-                      help="Provide the minimum size of a BGC to be included in the analysis. Default is 0 base pairs")
-    
-    parser.add_argument("-s", "--samples", dest="samples", action="store_true", default=False, help="Separate the input files into samples according to their containing folder within the input folder. Toggle to activate")
-    
-    parser.add_argument("--no_all", dest="no_all", action="store_true", default=False, help="By default, BiG-SCAPE uses a single data set comprised of all input files available recursively within the input folder. Toggle to disactivate this behaviour (in that case, if the --samples parameter is not activated, BiG-SCAPE will not create any network file)")
-    
-    parser.add_argument("--mix", dest="mix", action="store_true", default=False, help="By default, BiG-SCAPE separates the analysis according to the BGC product (PKS Type I, NRPS, RiPPs, etc.) and will create network directories for each class. Toggle to include an analysis mixing all classes")
-    
-    parser.add_argument("--cluster_family", dest="cluster_family",action="store_true", default=False, help="BiG-SCAPE will perform a second layer of clustering and attempt to group families assigned from clustering with cutoff of 0.5 to clans")
+    parser.add_argument("-i", "--inputdir", dest="inputdir", 
+                        default=os.path.dirname(os.path.realpath(__file__)),
+                        help="Input directory of gbk files, if left empty, all \
+                        gbk files in current and lower directories will be used.")
 
-    parser.add_argument("--clan_cutoff",dest="clan_cutoff",default=[0.5,0.8], type=float, choices=[FloatRange(0.0, 1.0)],nargs=2,
-                        help="Cutoff Parameters for which clustering families into clans will be performed in raw distance.\
-                             First value is the cutoff value family assignments for BGCs used in clan clustering (default: 0.5). \
-                             Second value is the cutoff value for clustering families into clans (default: 0.8). \
-                             Average linkage for BGCs in a family is used for distances between families. Example: --clan_cutoff 0.5 0.8)")
+    parser.add_argument("-o", "--outputdir", dest="outputdir", default="", 
+                        required=True, help="Output directory, this will contain \
+                        all output data files.")
+    
+    parser.add_argument("--pfam_dir", dest="pfam_dir",
+                      default=os.path.dirname(os.path.realpath(__file__)), 
+                      help="Location of hmmpress-processed Pfam files. Default \
+                      is same location of BiG-SCAPE")
+    
+    parser.add_argument("-c", "--cores", dest="cores", default=cpu_count(),
+                      help="Set the number of cores the script may use (default:\
+                      use all available cores)")
+    
+    parser.add_argument("-v", "--verbose", dest="verbose", action="store_true", 
+                        default=False, help="Prints more detailed information. \
+                        Toggle to true.")
+    
+    parser.add_argument("--include_singletons", dest="include_singletons", 
+                        action="store_true", default=False, help="Include nodes \
+                        that have no edges to other nodes from the network. \
+                        Toggle to activate.")
+    
+    parser.add_argument("-d", "--domain_overlap_cutoff", 
+                        dest="domain_overlap_cutoff", default=0.1, help="Specify\
+                        at which overlap percentage domains are considered to \
+                        overlap. Domain with the best score is kept \
+                        (default=0.1).")
+    
+    parser.add_argument("-m", "--min_bgc_size", dest="min_bgc_size", default=0,
+                      help="Provide the minimum size of a BGC to be included in\
+                      the analysis. Default is 0 base pairs")
+    
+    parser.add_argument("-s", "--samples", dest="samples", action="store_true", 
+                        default=False, help="Separate the input files into \
+                        samples according to their containing folder within the \
+                        input folder. Toggle to activate")
+    
+    parser.add_argument("--no_all", dest="no_all", action="store_true", 
+                        default=False, help="By default, BiG-SCAPE uses a single\
+                        data set comprised of all input files available \
+                        recursively within the input folder. Toggle to \
+                        disactivate this behaviour (in that case, if the \
+                        --samples parameter is not activated, BiG-SCAPE will not\
+                        create any network file)")
+    
+    parser.add_argument("--mix", dest="mix", action="store_true", default=False, 
+                        help="By default, BiG-SCAPE separates the analysis accor\
+                        ding to the BGC product (PKS Type I, NRPS, RiPPs, etc.) \
+                        and will create network directories for each class. \
+                        Toggle to include an analysis mixing all classes")
+    
+    parser.add_argument("--no_classify", dest="no_classify", action="store_true", 
+                        default=False, help="By default, BiG-SCAPE classifies \
+                        the output files analysis based on the BGC product. \
+                        Toggle to deactivate (note that if the --mix parameter \
+                        is not activated, BiG-SCAPE will not create any network \
+                        file).")
+    
+    parser.add_argument("--banned_classes", nargs='+', dest="banned_classes", 
+                        default=[], choices=["PKSI", "PKSother", "NRPS", "RiPPs", 
+                                             "Saccharides", "Terpene", 
+                                             "PKS-NRP_Hybrids", "Others"], 
+                        help="Classes that should NOT be included in the \
+                        classification. E.g. \"--banned_classes PKSI PKSOther\"")
+
+    
+    parser.add_argument("--clans", dest="clans",action="store_true", 
+                        default=False, help="BiG-SCAPE will perform a second \
+                        layer of clustering and attempt to group families \
+                        assigned from clustering with cutoff of 0.5 to clans")
+
+    parser.add_argument("--clan_cutoff",dest="clan_cutoff",default=[0.5,0.8], 
+                        type=float, choices=[FloatRange(0.0, 1.0)],nargs=2,
+                        help="Cutoff Parameters for which clustering families \
+                        into clans will be performed in raw distance. First \
+                        value is the cutoff value family assignments for BGCs \
+                        used in clan clustering (default: 0.5). Second value is \
+                        the cutoff value for clustering families into clans \
+                        (default: 0.8). Average linkage for BGCs in a family is\
+                        used for distances between families. Example: \
+                        --clan_cutoff 0.5 0.8)")
 
     parser.add_argument("--hybrids", dest="hybrids", action="store_true", 
                         default=False, help="Toggle to also add BGCs with hybrid\
@@ -1961,46 +2037,73 @@ def CMD_parser():
                         classes to each subclass (e.g. a 'terpene-nrps' BGC from\
                         Others would be added to the Terpene and NRPS classes")
     
-    parser.add_argument("--local", dest="local", action="store_true", default=False, help="Activate local mode. BiG-SCAPE will change the logic in the distance calculation phase to try to perform local alignments of shorter, 'fragmented' BGCs by finding the maximum overlap in domain content.")
-    parser.add_argument("--local-extended", dest="local_extended", action="store_true",
-        default=False, help="Activate local-core mode. BiG-SCAPE will try to\
-        align both sequences of domains to maximize overlap, even sequences\
-        overflow (i.e. both BGCs may be sliced)")
-    parser.add_argument("--lcs", dest="lcs", action="store_true", default=False, help="Activate Longest Common Subcluster mode. BiG-SCAPE will try to align both sequences by first finding the longest slice of common domain content per gene in both BGCs, and then trying to expand to either side. A Core Biosynthetic gene (marked by antiSMASH) must be present in both final slices to consider them for distance calculation.") 
+    parser.add_argument("--local", dest="local", action="store_true", 
+                        default=False, help="Activate local mode. BiG-SCAPE will\
+                        change the logic in the distance calculation phase to \
+                        try to perform local alignments of shorter, 'fragmented'\
+                        BGCs by finding the maximum overlap in domain content.")
     
+    parser.add_argument("--local-extended", dest="local_extended", 
+                        action="store_true", default=False, help="Activate \
+                        local-core mode. BiG-SCAPE will try to align both \
+                        sequences of domains to maximize overlap, even sequences\
+                        overflow (i.e. both BGCs may be sliced)")
     
-    parser.add_argument("--no_classify", dest="no_classify", action="store_true", default=False, help="By default, BiG-SCAPE classifies the output files analysis based on the BGC product. Toggle to deactivate (note that if the --mix parameter is not activated, BiG-SCAPE will not create any network file).")
+    parser.add_argument("--lcs", dest="lcs", action="store_true", default=False, 
+                        help="Activate Longest Common Subcluster mode. BiG-SCAPE\
+                        will try to align both sequences by first finding the \
+                        longest slice of common domain content per gene in both \
+                        BGCs, and then trying to expand to either side. A Core \
+                        Biosynthetic gene (marked by antiSMASH) must be present \
+                        in both final slices to consider them for distance \
+                        calculation.") 
     
-    parser.add_argument("--banned_classes", nargs='+', dest="banned_classes", default=[], choices=["PKSI", "PKSother", "NRPS", "RiPPs", "Saccharides", "Terpene", "PKS-NRP_Hybrids", "Others"], help="Classes that should NOT be included in the classification. E.g. \"--banned_classes PKSI PKSOther\"")
-
-    parser.add_argument("--pfam_dir", dest="pfam_dir",
-                      default=os.path.dirname(os.path.realpath(__file__)), 
-                      help="Location of hmmpress-processed Pfam files. Default is same location of BiG-SCAPE")
-    parser.add_argument("--anchorfile", dest="anchorfile", default=os.path.join(os.path.dirname(os.path.realpath(__file__)),"anchor_domains.txt"),
-                      help="Provide a custom location for the anchor domains file, default is anchor_domains.txt.")
-    parser.add_argument("--exclude_gbk_str", dest="exclude_gbk_str", default="",
-                      help="If this string occurs in the gbk filename, this file will not be used for the analysis.")
+    parser.add_argument("--anchorfile", dest="anchorfile", 
+                        default=os.path.join(os.path.dirname(os.path.realpath(__file__)),"anchor_domains.txt"),
+                        help="Provide a custom location for the anchor domains \
+                        file, default is anchor_domains.txt.")
     
-    parser.add_argument("--mafft_pars", dest="mafft_pars", default="",
-                      help="Add single/multiple parameters for MAFFT specific enclosed by quotation marks e.g. \"--nofft --parttree\"")
+    parser.add_argument("--exclude_gbk_str", dest="exclude_gbk_str", default="final",
+                      help="If this string occurs in the gbk filename, this file\
+                      will not be used for the analysis.")
+    
+    parser.add_argument("--mafft_pars", dest="mafft_pars", default="", help="Add\
+                        single/multiple parameters for MAFFT specific enclosed \
+                        by quotation marks e.g. \"--nofft --parttree\"")
     parser.add_argument("--al_method", dest="al_method", default="--retree 2",
-                      help="alignment method for MAFFT, if there's a space in the method's name, enclose by quotation marks. default: \"--retree 2\" corresponds to the FFT-NS-2 method")
-    parser.add_argument("--maxiterate", dest="maxit", default=1000,
-                      help="Maxiterate parameter in MAFFT, default is 1000, corresponds to the FFT-NS-2 method")
+                      help="alignment method for MAFFT, if there's a space in \
+                      the method's name, enclose by quotation marks. default: \
+                      \"--retree 2\" corresponds to the FFT-NS-2 method")
+    parser.add_argument("--maxiterate", dest="maxit", default=1000, help="\
+                        Maxiterate parameter in MAFFT, default is 1000, \
+                        corresponds to the FFT-NS-2 method")
     parser.add_argument("--mafft_threads", dest="mafft_threads", default=0,
-                      help="Set the number of threads in MAFFT, -1 sets the number of threads as the number of physical cores. Default: same as --cores parameter")
-    parser.add_argument("--use_mafft", dest="use_mafft", action="store_true", default=False, help="Use MAFFT instead of hmmalign for multiple alignment of domain sequences")
-    parser.add_argument("--force_hmmscan", dest="force_hmmscan", action="store_true", default=False, 
-                      help="Force domain prediction using hmmscan even if BiG-SCAPE finds processed domtable files (e.g. to use a new version of PFAM).")
-    parser.add_argument("--skip_ma", dest="skip_ma", action="store_true", default=False, 
-                      help="Skip multiple alignment of domains' sequences. Use if alignments have been generated in a previous run.")
+                      help="Set the number of threads in MAFFT, -1 sets the \
+                      number of threads as the number of physical cores. \
+                      Default: same as --cores parameter")
+    parser.add_argument("--use_mafft", dest="use_mafft", action="store_true", 
+                        default=False, help="Use MAFFT instead of hmmalign for \
+                        multiple alignment of domain sequences")
+    parser.add_argument("--force_hmmscan", dest="force_hmmscan", action="store_true", 
+                        default=False, help="Force domain prediction using \
+                        hmmscan even if BiG-SCAPE finds processed domtable files\
+                        (e.g. to use a new version of PFAM).")
+    parser.add_argument("--skip_ma", dest="skip_ma", action="store_true", 
+                        default=False, help="Skip multiple alignment of domains'\
+                        sequences. Use if alignments have been generated in a \
+                        previous run.")
     parser.add_argument("--skip_all", dest="skip_all", action="store_true",
-                      default = False, help = "Only generate new network files. ")
-    parser.add_argument("--cutoffs", dest="cutoffs", nargs="+", default=[0.10, 0.15, 0.20, 0.25, 0.30, 0.35, 0.40, 0.45, 0.50, 0.55, 0.60, 0.65, 0.70, 0.75, 0.80], type=float, choices=[FloatRange(0.0, 1.0)],
-                      help="Generate networks using multiple raw distance cutoff values, example: \"0.1, 0.25, 0.5, 1.0\". Default: all values from 0.10 to 0.80 with 0.05 intervals.")
+                      default = False, help ="Only generate new network files.")
+    parser.add_argument("--cutoffs", dest="cutoffs", nargs="+", default=[0.10, 
+                    0.15, 0.20, 0.25, 0.30, 0.35, 0.40, 0.45, 0.50, 0.55, 0.60, 
+                    0.65, 0.70, 0.75, 0.80], type=float, choices=[FloatRange(0.0, 
+                    1.0)], help="Generate networks using multiple raw distance \
+                    cutoff values, example: \"0.1, 0.25, 0.5, 1.0\". Default: \
+                    all values from 0.10 to 0.80 with 0.05 intervals.")
 
-    options = parser.parse_args()
-    return options
+    parser.add_argument("--version", action="version", version="%(prog)s 201709")
+
+    return parser.parse_args()
 
 
 if __name__=="__main__":
@@ -2079,7 +2182,22 @@ if __name__=="__main__":
     cutoff_list = options.cutoffs
     for c in cutoff_list:
         if c <= 0.0 or c > 1.0:
+            print(" Removing invalid cutoff value {}".format(str(c)))
             cutoff_list.remove(c)
+            
+            
+    # if we want to classify by clans make sure that the clanCutoff is included in the cutoffs to do AP in
+    if options.clans:
+        fc, cc = options.clan_cutoff
+        if c not in cutoff_list:
+            if fc <= 0.0 or fc > 1.0:
+                sys.exit("Error: invalid cutoff value for GCF calling")
+            else:
+                cutoff_list = sorted(cutoff_list.append(fc))
+            
+        if cc <= 0.0 or fc > 1.0:
+            sys.exit("Error: invalid cutoff value for GCC calling")
+        
 
     output_folder = str(options.outputdir)
     
@@ -2660,8 +2778,7 @@ if __name__=="__main__":
                 for header in fasta_dict:
                     AlignedDomainSequences[header] = fasta_dict[header]
 
-    clusterNames = tuple(sorted(list(clusters)))
-    clusterNames2idx = dict(zip(clusterNames,range(len(clusterNames))))
+    clusterNames = tuple(sorted(clusters))
 
     # Try to make default analysis using all files found inside the input folder
     if options_all:
@@ -2676,8 +2793,10 @@ if __name__=="__main__":
             
             # only choose from valid classes
             mix_set = []
-            for clusterIdx,cluster in enumerate(clusterNames):
-                product = bgc_info[cluster].product
+            
+            # Indexes ALL cluster names in the working set
+            for clusterIdx,clusterName in enumerate(clusterNames):
+                product = bgc_info[clusterName].product
                 predicted_class = sort_bgc(product)
                 if predicted_class.lower() in valid_classes:
                     mix_set.append(clusterIdx)
@@ -2694,7 +2813,7 @@ if __name__=="__main__":
             
             print("  Calculating all pairwise distances")
             pairs = set([tuple(sorted(combo)) for combo in combinations(mix_set, 2)])
-            del mix_set[:]
+            
             cluster_pairs = [(x, y, -1) for (x, y) in pairs]
             pairs.clear()
             network_matrix_mix = generate_network(cluster_pairs, cores)
@@ -2705,12 +2824,19 @@ if __name__=="__main__":
             filenames = []
             for cutoff in cutoff_list:
                 filenames.append("{}_c{:.2f}.network".format(pathBase, cutoff))
-            clusterJsonBatch(pathBase, network_matrix_mix, cutoffs=cutoff_list,clusterClans=options.cluster_family,clanCutoff=options.clan_cutoff)
             cutoffs_and_filenames = list(zip(cutoff_list, filenames))
             del filenames[:]
             write_network_matrix(network_matrix_mix, cutoffs_and_filenames, include_singletons, clusterNames, bgc_info)
-            
+               
+            print("  Calling Gene Cluster Families")
+            reduced_network = []
+            for row in network_matrix_mix:
+                reduced_network.append([int(row[0]), int(row[1]), row[3]])
             del network_matrix_mix[:]
+            clusterJsonBatch(mix_set, pathBase, reduced_network, cutoffs=cutoff_list,clusterClans=options.clans,clanCutoff=options.clan_cutoff)
+            del mix_set[:]
+            del reduced_network[:]
+            
             
         # Making network files separating by BGC class
         if options_classify:
@@ -2721,8 +2847,10 @@ if __name__=="__main__":
         
             # Preparing gene cluster classes
             print("  Sorting the input BGCs\n")
-            for clusterIdx,cluster in enumerate(clusterNames):
-                product = bgc_info[cluster].product
+            
+            # Indexes ALL cluster names in the working set
+            for clusterIdx,clusterName in enumerate(clusterNames):
+                product = bgc_info[clusterName].product
                 predicted_class = sort_bgc(product)
                 if predicted_class.lower() in valid_classes:
                     BGC_classes[predicted_class].append(clusterIdx)
@@ -2743,6 +2871,13 @@ if __name__=="__main__":
                             subclass = sort_bgc(subproduct)
                             if subclass.lower() in valid_classes:
                                 subclasses.add(subclass)
+                                
+                        # Prevent mixed BGCs with sub-Others annotations to get
+                        # added twice (e.g. indole-cf_fatty_acid has already gone
+                        # to Others at this point)
+                        if "Others" in subclasses:
+                            subclasses.remove("Others")
+                            
                             
                         for subclass in subclasses:
                             BGC_classes[subclass].append(clusterIdx)
@@ -2771,7 +2906,6 @@ if __name__=="__main__":
                 if len(BGC_classes[bgc_class]) > 1:
                     print("   Calculating all pairwise distances")
                     pairs = set([tuple(sorted(combo)) for combo in combinations(BGC_classes[bgc_class], 2)])
-                    del BGC_classes[bgc_class][:]
                     cluster_pairs = [(x, y, bgcClassName2idx[bgc_class]) for (x, y) in pairs]
                     pairs.clear()
                     network_matrix = generate_network(cluster_pairs, cores)
@@ -2784,15 +2918,22 @@ if __name__=="__main__":
                         filenames.append("{}_c{:.2f}.network".format(pathBase, cutoff))
                     cutoffs_and_filenames = list(zip(cutoff_list, filenames))
                     del filenames[:]
-                    clusterJsonBatch(pathBase, network_matrix, cutoffs=cutoff_list,clusterClans=options.cluster_family,clanCutoff=options.clan_cutoff)
                     write_network_matrix(network_matrix, cutoffs_and_filenames, include_singletons, clusterNames, bgc_info)
-                    
+
+                    print("  Calling Gene Cluster Families")
+                    reduced_network = []
+                    for row in network_matrix:
+                        reduced_network.append([int(row[0]), int(row[1]), row[3]])
                     del network_matrix[:]
-                
+
+                    clusterJsonBatch(BGC_classes[bgc_class], pathBase, reduced_network, cutoffs=cutoff_list,clusterClans=options.clans,clanCutoff=options.clan_cutoff)
+                    del BGC_classes[bgc_class][:]
+                    del reduced_network[:]
 
     # Try to make analysis for each sample
     if options_samples:
         network_matrix_sample = []
+        clusterNames2idx = dict(zip(clusterNames,range(len(clusterNames))))
         
         if len(sampleDict) == 1 and options_all:
             print("\nNOT generating networks per sample (only one sample, covered in the all-vs-all case)")
@@ -2832,7 +2973,7 @@ if __name__=="__main__":
                                 list_file.write("\t".join([bgc, bgc_info[bgc].accession_id, bgc_info[bgc].description, product, sort_bgc(product)]) + "\n")
             
                         pairs = set([tuple(sorted(combo)) for combo in combinations(mix_set, 2)])
-                        del mix_set[:]
+                        
                         cluster_pairs = [(x, y, -1) for (x, y) in pairs]
                         pairs.clear()
                         network_matrix_sample = generate_network(cluster_pairs, cores)
@@ -2844,11 +2985,18 @@ if __name__=="__main__":
                         for cutoff in cutoff_list:
                             filenames.append("{}_c{:.2f}.network".format(pathBase, cutoff))
                         cutoffs_and_filenames = list(zip(cutoff_list, filenames))
-                        clusterJsonBatch(pathBase, network_matrix_sample, cutoffs=cutoff_list,clusterClans=options.cluster_family,clanCutoff=options.clan_cutoff)
                         write_network_matrix(network_matrix_sample, cutoffs_and_filenames, include_singletons, clusterNames, bgc_info)
                         
+                        print("  Calling Gene Cluster Families")
+                        reduced_network = []
+                        for row in network_matrix_sample:
+                            reduced_network.append([int(row[0]), int(row[1]), row[3]])
                         del network_matrix_sample[:]
-                    
+                        
+                        clusterJsonBatch(mix_set, pathBase, reduced_network, cutoffs=cutoff_list,clusterClans=options.clans,clanCutoff=options.clan_cutoff)
+                        del mix_set[:]
+                        del reduced_network[:]
+                        
                     # Making network files separating by BGC class
                     if options_classify:
                         print("\n  Working for each BGC class")
@@ -2881,6 +3029,12 @@ if __name__=="__main__":
                                         if subclass.lower() in valid_classes:
                                             subclasses.add(subclass)
                                         
+                                    # Prevent mixed BGCs with sub-Others annotations to get
+                                    # added twice (e.g. indole-cf_fatty_acid has already gone
+                                    # to Others at this point)
+                                    if "Others" in subclasses:
+                                        subclasses.remove("Others")
+                                        
                                     for subclass in subclasses:
                                         BGC_classes[subclass].append(clusterNames2idx[cluster])
                                     subclasses.clear()
@@ -2905,7 +3059,7 @@ if __name__=="__main__":
 
                             if len(BGC_classes[bgc_class]) > 1:
                                 pairs = set([tuple(sorted(combo)) for combo in combinations(BGC_classes[bgc_class], 2)])
-                                del BGC_classes[bgc_class][:]
+                                
                                 cluster_pairs = [(x, y, bgcClassName2idx[bgc_class]) for (x, y) in pairs]
                                 pairs.clear()
                                 network_matrix_sample = generate_network(cluster_pairs, cores)
@@ -2917,11 +3071,19 @@ if __name__=="__main__":
                                 for cutoff in cutoff_list:
                                     filenames.append("{}_c{:.2f}.network".format(pathBase, cutoff))
                                 cutoffs_and_filenames = list(zip(cutoff_list, filenames))
-                                clusterJsonBatch(pathBase, network_matrix_sample, cutoffs=cutoff_list,clusterClans=options.cluster_family,clanCutoff=options.clan_cutoff)
                                 write_network_matrix(network_matrix_sample, cutoffs_and_filenames, include_singletons, clusterNames,bgc_info)
+                                
+                                print("  Calling Gene Cluster Families")
+                                reduced_network = []
+                                for row in network_matrix_sample:
+                                    reduced_network.append([int(row[0]), int(row[1]), row[3]])
                                 del network_matrix_sample[:]
                                 
-                            del BGC_classes[bgc_class][:]
+                                clusterJsonBatch(BGC_classes[bgc_class], pathBase, reduced_network, cutoffs=cutoff_list,clusterClans=options.clans,clanCutoff=options.clan_cutoff)
+                                
+                                del BGC_classes[bgc_class][:]
+                                del reduced_network[:]
+                            
 
     pickle.dump(bgc_info,open(os.path.join(output_folder,'bgc_info.dict'),'wb'))
     runtime = time.time()-time1
