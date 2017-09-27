@@ -68,8 +68,8 @@ def get_anchor_domains(filename):
         return domains
     except IOError:
         print("You have not provided the anchor_domains.txt file.")
-        print("if you want to make use of the anchor domains in the DSS distance metric, \
-make a file that contains a Pfam domain on each line.")
+        print("if you want to make use of the anchor domains in the DSS distance\
+            metric, make a file that contains a Pfam domain on each line.")
         return set()
         
 
@@ -463,16 +463,16 @@ def sort_bgc(product):
     if product == 't1pks':
         return("PKSI")
     # PKS Other Types
-    elif product in ('transatpks', 't2pks', 't3pks', 'otherks', 'hglks'):
+    elif product in set(['transatpks', 't2pks', 't3pks', 'otherks', 'hglks']):
         return("PKSother")
     # NRPs
     elif product == 'nrps':
         return("NRPS")
     # RiPPs
-    elif product in ('lantipeptide', 'thiopeptide', 'bacteriocin', 'linaridin', 'cyanobactin', 'glycocin', 'LAP', 'lassopeptide', 'sactipeptide', 'bottromycin', 'head_to_tail', 'microcin', 'microviridin', 'proteusin'):
+    elif product in set(['lantipeptide', 'thiopeptide', 'bacteriocin', 'linaridin', 'cyanobactin', 'glycocin', 'LAP', 'lassopeptide', 'sactipeptide', 'bottromycin', 'head_to_tail', 'microcin', 'microviridin', 'proteusin']):
         return("RiPPs")
     # Saccharides
-    elif product in ('amglyccycl', 'oligosaccharide', 'cf_saccharide'):
+    elif product in set(['amglyccycl', 'oligosaccharide', 'cf_saccharide']):
         return("Saccharides")
     # Terpenes
     elif product == 'terpene':
@@ -489,13 +489,16 @@ def sort_bgc(product):
                 return("PKSother") # pks hybrids
         elif len(subtypes - set(['lantipeptide', 'thiopeptide', 'bacteriocin', 'linaridin', 'cyanobactin', 'glycocin', 'LAP', 'lassopeptide', 'sactipeptide', 'bottromycin', 'head_to_tail', 'microcin', 'microviridin', 'proteusin'])) == 0:
             return("RiPPs")
+        elif len(subtypes - set(['amglyccycl', 'oligosaccharide', 'cf_saccharide'])) == 0:
+            return("Saccharide")
         else:
             return("Others") # other hybrid
     # Others
-    elif product in ('arylpolyene', 'aminocoumarin', 'ectoine', 'butyrolactone', 'nucleoside', 'melanin', 'phosphoglycolipid', 'phenazine', 'phosphonate', 'other', 'cf_putative', 'resorcinol', 'indole', 'ladderane', 'PUFA', 'furan', 'hserlactone', 'fused', 'cf_fatty_acid', 'siderophore', 'blactam'):
+    elif product in set(['arylpolyene', 'aminocoumarin', 'ectoine', 'butyrolactone', 'nucleoside', 'melanin', 'phosphoglycolipid', 'phenazine', 'phosphonate', 'other', 'cf_putative', 'resorcinol', 'indole', 'ladderane', 'PUFA', 'furan', 'hserlactone', 'fused', 'cf_fatty_acid', 'siderophore', 'blactam')]:
         return("Others")
     # ??
     else:
+        print("  Warning: unknown product {}".format(product))
         return("Others")
 
 
