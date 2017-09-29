@@ -286,7 +286,7 @@ def get_gbk_files(inputdir, outputdir, bgc_fasta_folder, min_bgc_size, exclude_g
                     # Perhaps we can try to infer if it's in a contig edge: if
                     # - first biosynthetic gene start < 10kb or
                     # - max_width - last biosynthetic gene end < 10kb (but this will work only for the largest record)
-                    bgc_info[clusterName] = bgc_data(records[0].id, records[0].description, product, len(records), max_width, ",".join(records[0].annotations["taxonomy"]), biosynthetic_genes.copy(), contig_edge)
+                    bgc_info[clusterName] = bgc_data(records[0].id, records[0].description, product, len(records), max_width, records[0].annotations["organism"], ",".join(records[0].annotations["taxonomy"]), biosynthetic_genes.copy(), contig_edge)
 
                     if len(bgc_info[clusterName].biosynthetic_genes) == 0:
                         files_no_biosynthetic_genes.append(fname)
@@ -2110,7 +2110,7 @@ if __name__=="__main__":
     options = CMD_parser()
     
     class bgc_data:
-        def __init__(self, accession_id, description, product, records, max_width, taxonomy, biosynthetic_genes, contig_edge):
+        def __init__(self, accession_id, description, product, records, max_width, organism, taxonomy, biosynthetic_genes, contig_edge):
             # These two properties come from the genbank file:
             self.accession_id = accession_id
             self.description = description
@@ -2120,6 +2120,8 @@ if __name__=="__main__":
             self.records = records
             # length of largest record (it will be used for ArrowerSVG):
             self.max_width = int(max_width)
+            # organism
+            self.organism = organism
             # taxonomy as a string (of comma-separated values)
             self.taxonomy = taxonomy
             # Internal set of tags corresponding to genes that AntiSMASH marked 
@@ -2807,11 +2809,11 @@ if __name__=="__main__":
             print("   Writing annotation file")
             path_list = os.path.join(output_folder, networks_folder_all, "Network_Annotations_ALL_mix.tsv")
             with open(path_list, "w") as list_file:
-                list_file.write("BGC\tAccesion ID\tDescription\tProduct Prediction\tBiG-SCAPE class\tTaxonomy\n")
+                list_file.write("BGC\tAccesion ID\tDescription\tProduct Prediction\tBiG-SCAPE class\tOrganism\tTaxonomy\n")
                 for idx in mix_set:
                     bgc = clusterNames[idx]
                     product = bgc_info[bgc].product
-                    list_file.write("\t".join([bgc, bgc_info[bgc].accession_id, bgc_info[bgc].description, product, sort_bgc(product), bgc_info[bgc].taxonomy]) + "\n")
+                    list_file.write("\t".join([bgc, bgc_info[bgc].accession_id, bgc_info[bgc].description, product, sort_bgc(product), bgc_info[bgc].organism, bgc_info[bgc].taxonomy]) + "\n")
             
             print("  Calculating all pairwise distances")
             pairs = set([tuple(sorted(combo)) for combo in combinations(mix_set, 2)])
@@ -2898,11 +2900,11 @@ if __name__=="__main__":
                 print("   Writing annotation files")
                 path_list = os.path.join(output_folder, networks_folder_all, folder_name, "Network_Annotations_All_" + folder_name + ".tsv")
                 with open(path_list, "w") as list_file:
-                    list_file.write("BGC\tAccesion ID\tDescription\tProduct Prediction\tBiG-SCAPE class\tTaxonomy\n")
+                    list_file.write("BGC\tAccesion ID\tDescription\tProduct Prediction\tBiG-SCAPE class\tOrganism\tTaxonomy\n")
                     for idx in BGC_classes[bgc_class]:
                         bgc = clusterNames[idx]
                         product = bgc_info[bgc].product
-                        list_file.write("\t".join([bgc, bgc_info[bgc].accession_id, bgc_info[bgc].description, product, sort_bgc(product), bgc_info[bgc].taxonomy]) + "\n")
+                        list_file.write("\t".join([bgc, bgc_info[bgc].accession_id, bgc_info[bgc].description, product, sort_bgc(product), bgc_info[bgc].organism, bgc_info[bgc].taxonomy]) + "\n")
                     
                 if len(BGC_classes[bgc_class]) > 1:
                     print("   Calculating all pairwise distances")
@@ -2967,11 +2969,11 @@ if __name__=="__main__":
                         print("   Writing annotation files")
                         path_list = os.path.join(output_folder, networks_folder_samples, sample, "Network_Annotations_Sample_" + sample + "_mix.tsv")
                         with open(path_list, "w") as list_file:
-                            list_file.write("BGC\tAccesion ID\tDescription\tProduct Prediction\tBiG-SCAPE class\tTaxonomy\n")
+                            list_file.write("BGC\tAccesion ID\tDescription\tProduct Prediction\tBiG-SCAPE class\tOrganism\tTaxonomy\n")
                             for idx in mix_set:
                                 bgc = clusterNames[idx]
                                 product = bgc_info[bgc].product
-                                list_file.write("\t".join([bgc, bgc_info[bgc].accession_id, bgc_info[bgc].description, product, sort_bgc(product), bgc_info[bgc].taxonomy]) + "\n")
+                                list_file.write("\t".join([bgc, bgc_info[bgc].accession_id, bgc_info[bgc].description, product, sort_bgc(product), bgc_info[bgc].organism, bgc_info[bgc].taxonomy]) + "\n")
             
                         pairs = set([tuple(sorted(combo)) for combo in combinations(mix_set, 2)])
                         
@@ -3053,11 +3055,11 @@ if __name__=="__main__":
                             print("   Writing annotation files")
                             path_list = os.path.join(output_folder, networks_folder_samples, sample, folder_name, "Network_Annotations_Sample_" + sample + "_" + folder_name + ".tsv")
                             with open(path_list, "w") as list_file:
-                                list_file.write("BGC\tAccesion ID\tDescription\tProduct Prediction\tBiG-SCAPE class\tTaxonomy\n")
+                                list_file.write("BGC\tAccesion ID\tDescription\tProduct Prediction\tBiG-SCAPE class\tOrganism\tTaxonomy\n")
                                 for idx in BGC_classes[bgc_class]:
                                     bgc = clusterNames[idx]
                                     product = bgc_info[bgc].product
-                                    list_file.write("\t".join([bgc, bgc_info[bgc].accession_id, bgc_info[bgc].description, product, sort_bgc(product), bgc_info[bgc].taxonomy]) + "\n")
+                                    list_file.write("\t".join([bgc, bgc_info[bgc].accession_id, bgc_info[bgc].description, product, sort_bgc(product), bgc_info[bgc].organism, bgc_info[bgc].taxonomy]) + "\n")
 
                             if len(BGC_classes[bgc_class]) > 1:
                                 pairs = set([tuple(sorted(combo)) for combo in combinations(BGC_classes[bgc_class], 2)])
