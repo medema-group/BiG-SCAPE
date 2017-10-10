@@ -1807,8 +1807,7 @@ def clusterJsonBatch(bgcs, outputFileBase,matrix,cutoffs=[1.0],damping=0.8,clust
                 orfDict[orf]["domains"].append({'code': entry[5], 'start': int(entry[3]), 'end': int(entry[4]), 'bitscore': float(entry[1])})
         bgcJsonDict[bgcName]['orfs'] = list(orfDict.values())
     bs_data = [bgcJsonDict[clusterNames[int(bgc)]] for bgc in bgcs]
-    
-    
+        
     for cutoff in cutoffs:
         simMatrix = lil_matrix((len(bgcs), len(bgcs)), dtype=np.float32)
         for i in range(len(bgcs)):
@@ -1824,8 +1823,10 @@ def clusterJsonBatch(bgcs, outputFileBase,matrix,cutoffs=[1.0],damping=0.8,clust
                     simMatrix[bgc2simIdx[bgc2], bgc2simIdx[bgc1]] = simDict[bgc1][bgc2]
         if verbose:
             print("  Clustering (c=" + str(cutoff) + ")")
+
         labels = pysapc.SAP(damping=damping, max_iter=500,
                             preference='min').fit_predict(simMatrix)
+        
         if verbose:
             print("   ...done")
         numBGCs = len(bgcs)
@@ -1836,12 +1837,12 @@ def clusterJsonBatch(bgcs, outputFileBase,matrix,cutoffs=[1.0],damping=0.8,clust
             members = familiesDict.setdefault(label, [])
             members.append(idx)
             familiesDict[label] = members
-            
+        
         ## guarantee order of families and indices for later assignment
         # Families should be indexed from 0 to # families - 1
         familiesDictReIdxd = {idx:members for idx,members in enumerate(familiesDict.values())}
         familyIdxs = range(len(familiesDictReIdxd))
-        
+
         ### Use the 0.5 distance cutoff to cluster clans by default
         if clusterClans and cutoff == clanClassificationCutoff:
             famSimDict = dict()
@@ -1859,6 +1860,11 @@ def clusterJsonBatch(bgcs, outputFileBase,matrix,cutoffs=[1.0],damping=0.8,clust
                     ## can change this as well
                     famSimDict[familyI][familyJ] = sum(famSimilarities,0.0)/len(famSimilarities)
 
+            # Detect if there's only 1 GCF. It makes pySAPC crash
+            if len(familyIdxs) == 1:
+                print("  Gene Cluster Clans: Only 1 GCF")
+                clanLabels = [1]
+                continue
             famSimMatrix = lil_matrix((len(familyIdxs), len(familyIdxs)), dtype=np.float32)
             for familyI in familyIdxs:
                 # first make sure it is similar to itself
@@ -1874,7 +1880,7 @@ def clusterJsonBatch(bgcs, outputFileBase,matrix,cutoffs=[1.0],damping=0.8,clust
                                 preference='min').fit_predict(famSimMatrix)
         else:
             clanLabels = []
-            
+        
         if len(clanLabels) > 0:
             clansDict = {}
             for idx,clanLabel in enumerate(clanLabels):
