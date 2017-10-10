@@ -298,8 +298,8 @@ def network_parser(network_file, Jaccardw, DSSw, GKw, anchorboost):
 def write_network_matrix(matrix, cutoffs_and_filenames, include_singletons, clusterNames, bgc_info):
     """
     An entry in the distance matrix is currently (all floats):
-      0         1           2      3      4       5    6    7    8      9     10   11
-    clus1Idx clus2Idx bgcClassIdx rawD  sqrtSim  Jac  DSS  AI rDSSna  rDSSa   S    Sa
+      0         1       2      3      4    5    6    7    8        9    10 
+    clus1Idx clus2Idx  rawD  sqrtSim  Jac  DSS  AI rDSSna  rDSSa   S    Sa
     
     The final row in the network file is currently:
       0      1      2     3      4   5   6     7       8    9   10    11       12
@@ -330,7 +330,7 @@ def write_network_matrix(matrix, cutoffs_and_filenames, include_singletons, clus
         clus2group = bgc_info[gc2].product
         
         # add all the other floats
-        row.extend(matrix_entry[3:-2])
+        row.extend(matrix_entry[2:-2])
         
         # add number of anchor/non-anchor domains as integers
         row.append(int(matrix_entry[-2]))
@@ -497,155 +497,21 @@ def sort_bgc(product):
     elif product in set(['arylpolyene', 'aminocoumarin', 'ectoine', 'butyrolactone', 'nucleoside', 'melanin', 'phosphoglycolipid', 'phenazine', 'phosphonate', 'other', 'cf_putative', 'resorcinol', 'indole', 'ladderane', 'PUFA', 'furan', 'hserlactone', 'fused', 'cf_fatty_acid', 'siderophore', 'blactam']):
         return("Others")
     # ??
+    elif product == "":
+        print("  Warning: empty product annotation")
+        return("Others")
     else:
-        print("  Warning: unknown product {}".format(product))
+        print("  Warning: unknown product '{}'".format(product))
         return("Others")
 
 
-def write_parameters(output_folder, options):
+def write_parameters(output_folder, parameters):
     """Write a file with all the details of the run.
     Will overwrite previous versions"""
     
-    pf = open(os.path.join(output_folder,"parameters.txt"), "w")
-    
-    pf.write("Input directory:\t" + options.inputdir + "\n")
-    pf.write("Cores:\t" + str(options.cores) + "\n")
-    
-    pf.write("Verbose:\t" + ("True" if options.verbose else "False"))
-    if not options.verbose:
-        pf.write("\t(default)\n")
-    else:
-        pf.write("\n")
-    
-    pf.write("Include disc nodes:\t" + ("True" if options.include_singletons else "False"))
-    if not options.include_singletons:
-        pf.write("\t(default)\n")
-    else:
-        pf.write("\n")
-    
-    pf.write("Domain overlap cutoff:\t" + str(options.domain_overlap_cutoff))
-    if options.domain_overlap_cutoff == 0.1:
-        pf.write("\t(default)\n")
-    else:
-        pf.write("\n")
-        
-    pf.write("Minimum size of BGC:\t" + str(options.min_bgc_size))
-    if options.min_bgc_size == 0:
-        pf.write("\t(default)\n")
-    else:
-        pf.write("\n")
-
-    #pf.write("Sequence distance networks:\t\"" + str(options.seqdist_networks) + "\"")
-    #if options.seqdist_networks == "A":
-        #pf.write("\t(default)\n")
-    #else:
-        #pf.write("\n")
-    
-    #pf.write("Domain distance networks:\t\"" + str(options.domaindist_networks) + "\"")
-    #if options.domaindist_networks == "":
-        #pf.write("\t(default)\n")
-    #else:
-        #pf.write("\n")
-
-    #pf.write("Jaccard weight:\t" + str(options.Jaccardw))
-    #if options.Jaccardw == 0.2:
-        #pf.write("\t(default)\n")
-    #else:
-        #pf.write("\n")
-        
-    #pf.write("DSS weight:\t" + str(options.DSSw))
-    #if options.DSSw == 0.75:
-        #pf.write("\t(default)\n")
-    #else:
-        #pf.write("\n")
-        
-    #pf.write("GK weight:\t" + str(options.GKw))
-    #if options.GKw == 0.05:
-        #pf.write("\t(default)\n")
-    #else:
-        #pf.write("\n")
-        
-    #pf.write("Anchor domain weight:\t" + str(options.anchorboost))
-    #if options.anchorboost == 0.1:
-        #pf.write("\t(default)\n")
-    #else:
-        #pf.write("\n")
-
-    #pf.write("Output folder for domain fasta files:\t" + options.domainsout)
-    #if options.domainsout == "domains":
-        #pf.write("\t(default)\n")
-    #else:
-        #pf.write("\n")
-        
-    pf.write("Location of Pfam files:\t" + options.pfam_dir)
-    if options.pfam_dir == os.path.dirname(os.path.realpath(__file__)):
-        pf.write("\t(default)\n")
-    else:
-        pf.write("\n")
-        
-    pf.write("Anchor domains file:\t" + options.anchorfile)
-    if options.anchorfile == "anchor_domains.txt":
-        pf.write("\t(default)\n")
-    else:
-        pf.write("\n")
-        
-    pf.write("String for exclusion of gbk files:\t" + options.exclude_gbk_str)
-    if options.exclude_gbk_str == "final":
-        pf.write("\t(default)\n")
-    else:
-        pf.write("\n")
-        
-    pf.write("Skip Multiple Alignment?:\t" + ("True" if options.skip_ma else "False"))
-    if not options.skip_ma:
-        pf.write("\t(default)\n")
-    else:
-        pf.write("\n")
-        
-    pf.write("Skip all?:\t" + ("True" if options.skip_all else "False"))
-    if not options.skip_all:
-        pf.write("\t(default)\n")
-    else:
-        pf.write("\n")
-    
-    pf.write("Cutoff values for final network:\t" + ",".join([str(c) for c in options.cutoffs]))
-    #if options.cutoffs == "1.0":
-        #pf.write("\t(default)\n")
-    #else:
-        #pf.write("\n")
-        
-    #pf.write("Neighborhood variable for GK:\t" + str(options.nbhood))
-    #if options.nbhood == 4:
-        #pf.write("\t(default)\n")
-    #else:
-        #pf.write("\n")
-    
-    pf.write("\nMA parameters:\n")
-    
-    pf.write("Additional MAFFT parameters:\t\"" + options.mafft_pars + "\"")
-    if options.mafft_pars == "":
-        pf.write("\t(default)\n")
-    else:
-        pf.write("\n")
-
-    pf.write("Alignment method for MAFFT:\t\"" + options.al_method + "\"")
-    if options.al_method == "--retree 2":
-        pf.write("\t(default)\n")
-    else:
-        pf.write("\n")
-
-    pf.write("Maxiterate:\t" + str(options.maxit))
-    if options.maxit == 1000:
-        pf.write("\t(default)\n")
-    else:
-        pf.write("\n")
-        
-    pf.write("Threads in MAFFT:\t" + str(options.mafft_threads))
-    if options.mafft_threads == -1:
-        pf.write("\t(default)\n")
-    else:
-        pf.write("\n")
-
-    pf.close()
+    with open(os.path.join(output_folder,"parameters.txt"), "w") as parameters_file:
+        parameters_file.write(" ".join(parameters))
+ 
 
 
 def generatePfamDescriptionsMatrix(pfam_domain_categories):
