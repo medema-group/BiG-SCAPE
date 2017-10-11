@@ -433,8 +433,9 @@ def generate_dist_matrix(parms):
         # last two values (S, Sa) should really be zero but this could give rise to errors when parsing 
         # the network file (unless we catched the case S = Sa = 0
 
-        # cluster1Idx, cluster2Idx, alignment, distance, jaccard, DSS, AI, rDSSNa, rDSSa, S, Sa
-        return array('f',[cluster1Idx,cluster2Idx,0,1,0,0,0,0,0,1,1])
+        # cluster1Idx, cluster2Idx, distance, jaccard, DSS, AI, rDSSNa, rDSSa, 
+        #   S, Sa, lcsStartA, lcsStartB
+        return array('f',[cluster1Idx,cluster2Idx,1,0,0,0,0,0,1,1,0,0])
     
     # "Domain Count per Gene". List of simple labels (integers) indicating number
     # of domains belonging to each gene
@@ -451,13 +452,12 @@ def generate_dist_matrix(parms):
     go_a = BGCGeneOrientation[cluster1]
     go_b = BGCGeneOrientation[cluster2]
     
-    dist, jaccard, dss, ai, rDSSna, rDSS, S, Sa = cluster_distance_lcs(cluster1, 
+    dist, jaccard, dss, ai, rDSSna, rDSS, S, Sa, lcsStartA, lcsStartB = cluster_distance_lcs(cluster1, 
             cluster2, domain_list_A, domain_list_B, dcg_a, dcg_b, core_pos_a, 
             core_pos_b, go_a, go_b, bgc_class)
         
     network_row = array('f',[cluster1Idx, cluster2Idx, dist, (1-dist)**2, jaccard, 
-                             dss, ai, rDSSna, rDSS, S, Sa])
-    
+                             dss, ai, rDSSna, rDSS, S, Sa, lcsStartA, lcsStartB])
     return network_row
     
 
@@ -602,92 +602,93 @@ def cluster_distance_lcs(A, B, A_domlist, B_domlist, dcg_A, dcg_b, core_pos_A, c
     domB_start = 0
     domB_end = len(B_domlist)
 
+    # always find lcs seed to use for offset alignment in visualization
+    
+    # Compress the list of domains according to gene information. For example:
+    # A_domlist = a b c d e f g
+    # dcg_a =   1  3  1  2 Number of domains per each gene in the BGC
+    # go_a =    1 -1 -1  1 Orientation of each gene
+    # A_string = a dcb e fg List of concatenated domains
+    # Takes into account gene orientation. This works effectively as putting all
+    # genes in the same direction in order to be able to compare their domain content
+    A_string = []
+    start = 0
+    for g in range(lenG_A):
+        domain_count = dcg_A[g]
+        if go_A[g] == 1:
+            # x[2:] <- small optimization, drop the "PF" from the pfam ids
+            A_string.append("".join(x[2:] for x in A_domlist[start:start+domain_count]))
+        else:
+            A_string.append("".join(A_domlist[x][2:] for x in range(start+domain_count-1, start-1 ,-1)))
+        start += domain_count
+        
+    b_string = []
+    start = 0
+    for g in range(lenG_B):
+        domain_count = dcg_b[g]
+        if go_b[g] == 1:
+            b_string.append("".join(x[2:] for x in B_domlist[start:start+domain_count]))
+        else:
+            b_string.append("".join(B_domlist[x][2:] for x in range(start+domain_count-1, start-1 ,-1)))
+        start += domain_count
+        
+    b_string_reverse = list(reversed(b_string))
+        
+    seqmatch = SequenceMatcher(None, A_string, b_string)
+    # a: start position in A
+    # b: start position in B
+    # s: length of the match
+    a, b, s = seqmatch.find_longest_match(0, lenG_A, 0, lenG_B)
+    #print(A, B)
+    #print(a, b, s)
+    
+    seqmatch = SequenceMatcher(None, A_string, b_string_reverse)
+    ar, br, sr = seqmatch.find_longest_match(0, lenG_A, 0, lenG_B)
+    #print(ar, br, sr)
+    
+    # We need to keep working with the correct orientation
+    if s >= sr:
+        dcg_B = dcg_b
+        B_string = b_string
+        # note: these slices are in terms of genes, not domains (which are 
+        # ultimately what is used for distance)
+        # Currently, the following values represent the Core Overlap
+        sliceStartA = a
+        sliceStartB = b
+        sliceLengthA = s
+        sliceLengthB = s
+        
+        reverse = False
+        b_name = B
+        
+    else:
+        dcg_B = list(reversed(dcg_b))
+        B_string = b_string_reverse
+        
+        sliceStartA = ar
+        sliceStartB = br
+        sliceLengthA = sr
+        sliceLengthB = sr
+        
+        # We'll need to know if we're working in reverse so that the start 
+        # postion of the final slice can be transformed to the original orientation
+        reverse = True
+        b_name = B + "*"
+        
+    # paint stuff on screen
+    #if sliceStartB > sliceStartA:
+        #offset_A = sliceStartB - sliceStartA
+        #offset_B = 0
+    #else:
+        #offset_A = 0
+        #offset_B = sliceStartA - sliceStartB
+    #print(A, B)
+    #print("  "*offset_A + " ".join(map(str,dcg_A[:sliceStartA])) + "[" + " ".join(map(str,dcg_A[sliceStartA:sliceStartA+sliceLengthA])) + "]" + " ".join(map(str,dcg_A[sliceStartA+sliceLengthA:])) + "\t" + A )
+    #print("  "*offset_B + " ".join(map(str,dcg_B[:sliceStartB])) + "[" + " ".join(map(str,dcg_B[sliceStartB:sliceStartB+sliceLengthB])) + "]" + " ".join(map(str,dcg_B[sliceStartB+sliceLengthB:])) + "\t" + b_name)
+    ##print(sliceStartA, sliceStartB, sliceLengthA)
+    #print("")
+
     if mode=="lcs" or (mode=="auto" and (bgc_info[A].contig_edge or bgc_info[B].contig_edge)):
-        # Compress the list of domains according to gene information. For example:
-        # A_domlist = a b c d e f g
-        # dcg_a =   1  3  1  2 Number of domains per each gene in the BGC
-        # go_a =    1 -1 -1  1 Orientation of each gene
-        # A_string = a dcb e fg List of concatenated domains
-        # Takes into account gene orientation. This works effectively as putting all
-        # genes in the same direction in order to be able to compare their domain content
-        A_string = []
-        start = 0
-        for g in range(lenG_A):
-            domain_count = dcg_A[g]
-            if go_A[g] == 1:
-                A_string.append("".join(A_domlist[start:start+domain_count]))
-            else:
-                A_string.append("".join(A_domlist[x] for x in range(start+domain_count-1, start-1 ,-1)))
-            start += domain_count
-            
-        b_string = []
-        start = 0
-        for g in range(lenG_B):
-            domain_count = dcg_b[g]
-            if go_b[g] == 1:
-                b_string.append("".join(B_domlist[start:start+domain_count]))
-            else:
-                b_string.append("".join(B_domlist[x] for x in range(start+domain_count-1, start-1 ,-1)))
-            start += domain_count
-            
-        b_string_reverse = list(reversed(b_string))
-            
-        seqmatch = SequenceMatcher(None, A_string, b_string)
-        # a: start position in A
-        # b: start position in B
-        # s: length of the match
-        a, b, s = seqmatch.find_longest_match(0, lenG_A, 0, lenG_B)
-        #print(A, B)
-        #print(a, b, s)
-        
-        seqmatch = SequenceMatcher(None, A_string, b_string_reverse)
-        ar, br, sr = seqmatch.find_longest_match(0, lenG_A, 0, lenG_B)
-        #print(ar, br, sr)
-        
-        # We need to keep working with the correct orientation
-        if s >= sr:
-            dcg_B = dcg_b
-            B_string = b_string
-            # note: these slices are in terms of genes, not domains (which are 
-            # ultimately what is used for distance)
-            # Currently, the following values represent the Core Overlap
-            sliceStartA = a
-            sliceStartB = b
-            sliceLengthA = s
-            sliceLengthB = s
-            
-            reverse = False
-            b_name = B
-            
-        else:
-            dcg_B = list(reversed(dcg_b))
-            B_string = b_string_reverse
-            
-            sliceStartA = ar
-            sliceStartB = br
-            sliceLengthA = sr
-            sliceLengthB = sr
-            
-            # We'll need to know if we're working in reverse so that the start 
-            # postion of the final slice can be transformed to the original orientation
-            reverse = True
-            b_name = B + "*"
-            
-        # paint stuff on screen
-        if sliceStartB > sliceStartA:
-            offset_A = sliceStartB - sliceStartA
-            offset_B = 0
-        else:
-            offset_A = 0
-            offset_B = sliceStartA - sliceStartB
-            
-        #print(A, B)
-        #print("  "*offset_A + " ".join(map(str,dcg_A[:sliceStartA])) + "[" + " ".join(map(str,dcg_A[sliceStartA:sliceStartA+sliceLengthA])) + "]" + " ".join(map(str,dcg_A[sliceStartA+sliceLengthA:])) + "\t" + A )
-        #print("  "*offset_B + " ".join(map(str,dcg_B[:sliceStartB])) + "[" + " ".join(map(str,dcg_B[sliceStartB:sliceStartB+sliceLengthB])) + "]" + " ".join(map(str,dcg_B[sliceStartB+sliceLengthB:])) + "\t" + b_name)
-        ##print(sliceStartA, sliceStartB, sliceLengthA)
-        #print("")
-
-
         #X: bgc that drive expansion
         #Y: the other bgc
         # forward: True if expansion is to the right
@@ -836,6 +837,7 @@ def cluster_distance_lcs(A, B, A_domlist, B_domlist, dcg_A, dcg_b, core_pos_A, c
                     
     # JACCARD INDEX
     Jaccard = len(intersect) / len(setA | setB)
+
 
     # DSS INDEX
     #domain_difference: Difference in sequence per domain. If one cluster does
@@ -1019,7 +1021,10 @@ def cluster_distance_lcs(A, B, A_domlist, B_domlist, dcg_A, dcg_b, core_pos_A, c
             print("Jw: {}\tDSSw: {}\tAIw: {}".format(str(Jaccardw), str(DSSw), str(AIw)))
         Distance = 0.0
         
-    return Distance, Jaccard, DSS, AI, DSS_non_anchor, DSS_anchor, S, S_anchor
+    if reverse:
+        sliceStartB = -1*sliceStartB
+        
+    return Distance, Jaccard, DSS, AI, DSS_non_anchor, DSS_anchor, S, S_anchor, sliceStartA, sliceStartB
 
 
 def launch_hmmalign(cores, domains):

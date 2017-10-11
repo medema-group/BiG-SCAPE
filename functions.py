@@ -231,6 +231,7 @@ def save_domain_seqs(filtered_matrix, fasta_dict, domains_folder, outputbase):
         domain_file.close()
 
 
+# TODO: marked for deletion
 def network_parser(network_file, Jaccardw, DSSw, GKw, anchorboost):
     network = {}
     
@@ -298,8 +299,8 @@ def network_parser(network_file, Jaccardw, DSSw, GKw, anchorboost):
 def write_network_matrix(matrix, cutoffs_and_filenames, include_singletons, clusterNames, bgc_info):
     """
     An entry in the distance matrix is currently (all floats):
-      0         1       2      3      4    5    6    7    8        9    10 
-    clus1Idx clus2Idx  rawD  sqrtSim  Jac  DSS  AI rDSSna  rDSSa   S    Sa
+      0         1       2      3      4    5    6    7    8        9    10    11        12
+    clus1Idx clus2Idx  rawD  sqrtSim  Jac  DSS  AI rDSSna  rDSSa   S    Sa lcsStartA lcsStartB
     
     The final row in the network file is currently:
       0      1      2     3      4   5   6     7       8    9   10    11       12
@@ -330,11 +331,11 @@ def write_network_matrix(matrix, cutoffs_and_filenames, include_singletons, clus
         clus2group = bgc_info[gc2].product
         
         # add all the other floats
-        row.extend(matrix_entry[2:-2])
+        row.extend(matrix_entry[2:-4])
         
         # add number of anchor/non-anchor domains as integers
-        row.append(int(matrix_entry[-2]))
-        row.append(int(matrix_entry[-1]))
+        row.append(int(matrix_entry[-4]))
+        row.append(int(matrix_entry[-3]))
 
         # prepare combined group
         if clus1group != "" and clus2group != "": #group1, group2
