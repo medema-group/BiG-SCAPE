@@ -583,7 +583,7 @@ def cluster_distance_lcs(A, B, A_domlist, B_domlist, dcg_A, dcg_b, core_pos_A, c
             else:
                 S += len(BGCs[B][domain])
         
-        return 1.0, 0.0, 0.0, 0.0, 1.0, 1.0, S, S_anchor
+        return 1.0, 0.0, 0.0, 0.0, 1.0, 1.0, S, S_anchor, 0, 0
 
 
     # initialize domain sequence slices
@@ -1646,6 +1646,7 @@ if __name__=="__main__":
     pfd_folder = os.path.join(output_folder, "pfd")    
     domains_folder = os.path.join(output_folder, "domains")
     svg_folder = os.path.join(output_folder, "SVG")
+    html_folder = os.path.join(output_folder, "html")
     
     create_directory(domtable_folder, "Domtable", False)
     create_directory(domains_folder, "Domains", False)
@@ -1653,6 +1654,7 @@ if __name__=="__main__":
     create_directory(pfs_folder, "pfs", False)
     create_directory(pfd_folder, "pfd", False)
     create_directory(svg_folder, "SVG", False)
+    copy_html_template(html_folder)
 
     print("\nTrying threading on {} cores".format(str(cores)))
     

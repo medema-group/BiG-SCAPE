@@ -29,6 +29,7 @@ from encodings import gbk
 from Bio import SeqIO
 import copy
 import math
+import shutil
 
 global verbose
 verbose = False
@@ -537,3 +538,9 @@ def generatePfamDescriptionsMatrix(pfam_domain_categories):
         print("  File pfam_domain_categories was NOT found")
 
     return pfam_descriptions
+
+
+def copy_html_template(html_folder):
+    if (os.path.isdir(html_folder)):
+        shutil.rmtree(html_folder)
+    shutil.copytree(os.path.join(os.path.realpath(os.path.dirname(__file__)), "html_template"), html_folder)
