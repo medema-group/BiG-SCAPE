@@ -583,7 +583,7 @@ def cluster_distance_lcs(A, B, A_domlist, B_domlist, dcg_A, dcg_b, core_pos_A, c
             else:
                 S += len(BGCs[B][domain])
         
-        return 1.0, 0.0, 0.0, 0.0, 1.0, 1.0, S, S_anchor
+        return 1.0, 0.0, 0.0, 0.0, 1.0, 1.0, S, S_anchor, 0, 0
 
 
     # initialize domain sequence slices
