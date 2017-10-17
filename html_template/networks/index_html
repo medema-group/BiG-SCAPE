@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>BiG-SCAPE Result</title>
+    <link rel="stylesheet" type="text/css" href="../../../css/style.css">
+  </head>
+  <body>
+    <div id="network-container" style="position: fixed; top: 0px; bottom: 0px; right: 0px; left: 0px;">
+  </body>
+  <!-- javascripts -->
+  <script type="text/javascript" src="../../../js/jquery-3.2.1.min.js"></script>
+  <script type="text/javascript" src="../../../js/vivagraph.js"></script>
+  <script type="text/javascript" src="../../../js/svg.js"></script>
+  <script type="text/javascript" src="../../../js/arrower.js"></script>
+  <script type="text/javascript" src="../../../js/fuse.min.js"></script>
+  <script type="text/javascript" src="../../../js/bigscape.js"></script>
+  <script type="text/javascript" src="../bs_data.js"></script>
+  <script type="text/javascript" src="bs_networks.js"></script>
+  <script type="text/javascript">
+    $(document).ready(function(){
+      var bs_alignment = [];
+      for (var a in bs_similarity) {
+        bs_alignment.push([]);
+        for (var b in bs_similarity[a]) {
+          bs_alignment[a].push(parseInt(bs_similarity[a][b] * 10000) - 10000);
+        }
+      }
+      var bs = new Bigscape(bs_data, bs_families, bs_alignment, bs_similarity, "network-container", "desc-container", {});
+      $(".loadingtext").addClass("hidden");
+    });
+  </script>
+</html>

@@ -630,10 +630,10 @@ a:visited {
 .fused a {
   color: white;
 }
-.other {
+.other,.Others {
   background-color: midnightblue;
 }
-.other a {
+.other,.Others a {
   color: lightsteelblue;
 }
 .cf_saccharide {

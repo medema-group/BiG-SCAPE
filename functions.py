@@ -30,6 +30,7 @@ from Bio import SeqIO
 import copy
 import math
 import shutil
+import json
 
 global verbose
 verbose = False
@@ -544,3 +545,15 @@ def copy_html_template(html_folder):
     if (os.path.isdir(html_folder)):
         shutil.rmtree(html_folder)
     shutil.copytree(os.path.join(os.path.realpath(os.path.dirname(__file__)), "html_template"), html_folder)
+    
+    
+def add_to_bigscape_classes_js(module_name, className, results, htmlFolder):
+    bigscape_classes = [];
+    with open(os.path.join(htmlFolder, "js", "bigscape_classes.js"), "r") as bs_js:
+        line = bs_js.read()
+        assert line.startswith("var bigscape_classes = ")
+        assert line.endswith(";")
+        bigscape_classes = json.loads(line[23:-1])
+    bigscape_classes.append({ "name" : module_name, "label" : module_name, "css": className, "results" : results})
+    with open(os.path.join(htmlFolder, "js", "bigscape_classes.js"), "w") as bs_js:
+        bs_js.write("var bigscape_classes = {};".format(json.dumps(bigscape_classes, separators=(',',':'))))
