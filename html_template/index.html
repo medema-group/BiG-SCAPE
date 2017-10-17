@@ -55,8 +55,8 @@
   <script type="text/javascript" src="js/jquery-3.2.1.min.js"></script>
   <script type="text/javascript" src="js/bigscape_classes.js"></script>
   <script type="text/javascript">
-    function loadNetwork(name) {
-      $('#contentframe').attr('src', './networks/' + name + '/index.html')
+    function loadNetwork(name, res) {
+      $('#contentframe').attr('src', './networks/' + name + '/' + res + '/index.html');
       $('#contentframe').trigger("focus");
     }
     function loadOverview() {
@@ -66,17 +66,25 @@
     $(document).ready(function(){
       for (var i in bigscape_classes) {
         var module = bigscape_classes[i];
-        var li = $("<li class='clbutton inactive'>");
-        var a =$("<a href='#' module='" + module["name"] + "'>" + module["label"] + "</>");
-        li.addClass(module["css"]);
-        li.append(a);
-        a.click(function(handler){
-          $(".clbutton").removeClass("selected");
-          $(handler.target).parent().addClass("selected");
-          $(".clbutton:not(.selected)").addClass("inactive");
-          loadNetwork($(handler.target).attr("module"));
-        });
-        $("#clusterbuttons").append(li);
+        if (module.hasOwnProperty("results") && module["results"].length > 0) {
+          var li = $("<li class='clbutton inactive'>");
+          var a =$("<a href='#'>" + module["label"] + "</>");
+          var dropmenu = $("<div class='cldropdown'></div>");
+          for (var j in module["results"]) {
+            var res = module["results"][j];
+            dropmenu.append($("<a href='#'>" + res + "</a>"));
+          }
+          li.addClass(module["css"]);
+          li.append(a);
+          li.append(dropmenu);
+          a.click({ module: module }, function(handler){
+            $(".clbutton").removeClass("selected");
+            $(handler.target).parent().addClass("selected");
+            $(".clbutton:not(.selected)").addClass("inactive");
+            loadNetwork(handler.data.module["name"], handler.data.module["results"][0]);
+          });
+          $("#clusterbuttons").append(li);
+        }
       }
       $("#clusterbuttons .clbutton.overview").find("a").click(function(handler){
         $(".clbutton").removeClass("selected");

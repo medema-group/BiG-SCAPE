@@ -657,10 +657,33 @@ a:visited {
 .clbutton.inactive {
   background-color: #ccc;
 }
-.clbutton.inactive a {
+.clbutton.inactive > a {
   color: white;
 }
 /* done with sec met types */
+.cldropdown {
+  display: none;
+  position: absolute;
+  background-color: #f9f9f9;
+  min-width: 160px;
+  box-shadow: 0px 8px 16px 0px rgba(0,0,0,0.2);
+  z-index: 1;
+}
+.cldropdown a {
+  color: black;
+  padding: 3px 5px;
+  text-decoration: none;
+  display: block;
+  text-align: left;
+}
+.cldropdown a:hover {
+  background-color: #d2d2d2;
+  color: rebeccapurple;
+}
+.clbutton:hover .cldropdown {
+    display: block;
+    color: black;
+  }
 .dha {
   font-weight: bold;
   color: mediumseagreen;
