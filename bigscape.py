@@ -163,7 +163,8 @@ def get_gbk_files(inputdir, outputdir, bgc_fasta_folder, min_bgc_size, exclude_g
                                 # in multi-record files. Turn on contig_edge when
                                 # there's at least one annotation
                                 if feature.qualifiers["contig_edge"][0] == "True":
-                                    print(" Contig edge detected in {}".format(fname))
+                                    if verbose:
+                                        print(" Contig edge detected in {}".format(fname))
                                     contig_edge = True
                 
                         # Get biosynthetic genes + sequences
