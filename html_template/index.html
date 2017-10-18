@@ -2,6 +2,9 @@
 <html>
   <head>
     <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+    <meta http-equiv='cache-control' content='no-cache'>
+    <meta http-equiv='expires' content='0'>
+    <meta http-equiv='pragma' content='no-cache'>
     <title>BiG-SCAPE result XXX</title>
     <link rel="stylesheet" type="text/css" href="./css/style.css">
   </head>
@@ -72,14 +75,14 @@
           var dropmenu = $("<div class='cldropdown'></div>");
           for (var j in module["results"]) {
             var res = module["results"][j];
-			var a2 = $("<a href='#'>" + res + "</a>");
-			a2.click({ module: module }, function(handler){
-				$(".clbutton").removeClass("selected");
-				$(handler.target).parent().parent().addClass("selected");
-				$(".clbutton:not(.selected)").addClass("inactive");
-				$(handler.target).parent().parent().removeClass("inactive");
-				loadNetwork(handler.data.module["name"], res);
-			  });
+            var a2 = $("<a href='#'>" + res + "</a>");
+            a2.click({ module: module, res: res }, function(handler){
+              $(".clbutton").removeClass("selected");
+              $(handler.target).parent().parent().addClass("selected");
+              $(".clbutton:not(.selected)").addClass("inactive");
+              $(handler.target).parent().parent().removeClass("inactive");
+              loadNetwork(handler.data.module["name"], handler.data.res);
+			      });
             dropmenu.append(a2);
           }
           li.addClass(module["css"]);
