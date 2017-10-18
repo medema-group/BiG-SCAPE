@@ -515,7 +515,7 @@ BigscapeFunc.updateDescription = function(ids, bs_svg, bs_data, bs_to_cl, bs_fam
     desc_ui.append(top);
     // bottom part of the desc_ui
     var bot = $("<div style='position: absolute; bottom: 10px; right: 10px; left: 10px; top: 51%; z-index: 9; overflow: scroll;'>");
-    var filterList = $("<div>Filter: <input type='radio' name='bs-desc_ui-li_show' value='all' checked='true' /> all <input type='radio' name='bs-desc_ui-li_show' value='selected'> selected</div>");
+    var filterList = $("<div>Filter: <input type='radio' name='bs-desc_ui-li_show' value='all' /> all <input type='radio' name='bs-desc_ui-li_show' value='selected' checked='true' /> selected</div>");
     filterList.change({bigscape: bigscape}, function(handler){
       var highlighted_nodes = handler.data.bigscape.getHighlightedNodes();
       handler.data.bigscape.updateDescription();
