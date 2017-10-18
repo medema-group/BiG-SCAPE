@@ -1148,6 +1148,7 @@ def clusterJsonBatch(bgcs, outputFileBase,matrix,cutoffs=[1.0],damping=0.8,clust
     bgc2simIdx = dict(zip(bgcs, range(len(bgcs))))
     pfam_domain_categories = os.path.join(os.path.dirname(os.path.realpath(__file__)), "Pfam-A.clans.tsv")
     pfam_descrs = generatePfamDescriptionsMatrix(pfam_domain_categories)
+    pfam_colors = generatePfamColorsMatrix(os.path.join(os.path.dirname(os.path.realpath(__file__)), "domains_color_file.tsv"))
     
     # Get info on all BGCs to export to .js for visualization
     bs_data = []
@@ -1200,16 +1201,13 @@ def clusterJsonBatch(bgcs, outputFileBase,matrix,cutoffs=[1.0],damping=0.8,clust
             entry = line.split('\t')
             orf = entry[-1].strip().split(':')[0]
             pfamID = entry[5].split('.')[0]
-            pfamDescr = pfam_descrs.get(pfamID,None)
-            if pfamDescr:
-                orfDict[orf]["domains"].append({'code': '{} : {}'.format(pfamID,pfamDescr),'start':int(entry[3]),'end':int(entry[4]),'bitscore': float(entry[1])})
-            else:
-                orfDict[orf]["domains"].append({'code': entry[5], 'start': int(entry[3]), 'end': int(entry[4]), 'bitscore': float(entry[1])})
+            orfDict[orf]["domains"].append({'code': pfamID, 'start': int(entry[3]), 'end': int(entry[4]), 'bitscore': float(entry[1])})
         bgcJsonDict[bgcName]['orfs'] = list(orfDict.values())
     bs_data = [bgcJsonDict[clusterNames[int(bgc)]] for bgc in bgcs]
     
     ## Write html output folder structure (and update bigscape_classes.js) for this module
     ## Write {modulename}/bgcs.js
+    ## Write js/pfams.js
     assert htmlFolder != None
     module_name = outputFileBase.split(os.path.sep)[-1]
     module_html_path = os.path.join(html_folder, "networks", module_name)
@@ -1217,6 +1215,16 @@ def clusterJsonBatch(bgcs, outputFileBase,matrix,cutoffs=[1.0],damping=0.8,clust
     with open(os.path.join(module_html_path, "bs_data.js"), "w") as bs_data_js:
         bs_data_js.write("var bs_data={};\n".format(json.dumps(bs_data, indent=4, separators=(',', ':'), sort_keys=True)))
     add_to_bigscape_classes_js(module_name, className, ["cutoff{:4.2f}".format(cutoff) for cutoff in cutoffs], htmlFolder)
+    with open(os.path.join(html_folder, "js", "pfams.js"), "w") as pfams_js:
+        pfam_json = {}
+        for pfam_code in pfam_colors:
+            pfam_obj = {}
+            pfam_obj["col"] = pfam_colors[pfam_code]
+            pfam_obj["desc"] = ""
+            if pfam_code in pfam_descrs:
+                pfam_obj["desc"] = pfam_descrs[pfam_code]
+            pfam_json[pfam_code] = pfam_obj
+        pfams_js.write("var pfams={};\n".format(json.dumps(pfam_json, indent=4, separators=(',', ':'), sort_keys=True)))
     
     for cutoff in cutoffs:
         simMatrix = lil_matrix((len(bgcs), len(bgcs)), dtype=np.float32)
