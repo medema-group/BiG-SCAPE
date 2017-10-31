@@ -1210,12 +1210,12 @@ def clusterJsonBatch(bgcs, outputFileBase,matrix,cutoffs=[1.0],damping=0.8,clust
     ## Write js/pfams.js
     assert htmlFolder != None
     module_name = outputFileBase.split(os.path.sep)[-1]
-    module_html_path = os.path.join(html_folder, "networks", module_name)
+    module_html_path = os.path.join(htmlFolder, "networks", module_name)
     os.mkdir(module_html_path)
     with open(os.path.join(module_html_path, "bs_data.js"), "w") as bs_data_js:
         bs_data_js.write("var bs_data={};\n".format(json.dumps(bs_data, indent=4, separators=(',', ':'), sort_keys=True)))
     add_to_bigscape_classes_js(module_name, className, ["cutoff{:4.2f}".format(cutoff) for cutoff in cutoffs], htmlFolder)
-    with open(os.path.join(html_folder, "js", "pfams.js"), "w") as pfams_js:
+    with open(os.path.join(htmlFolder, "js", "pfams.js"), "w") as pfams_js:
         pfam_json = {}
         for pfam_code in pfam_colors:
             pfam_obj = {}
@@ -1334,7 +1334,7 @@ def clusterJsonBatch(bgcs, outputFileBase,matrix,cutoffs=[1.0],damping=0.8,clust
         ## Write {modulename}/{cutoff}/bgc_networks.js
         result_html_path = os.path.join(module_html_path, "cutoff{:4.2f}".format(cutoff))
         os.mkdir(result_html_path)
-        shutil.copy(os.path.join(html_folder, "networks", "index_html"), os.path.join(result_html_path, "index.html"))
+        shutil.copy(os.path.join(htmlFolder, "networks", "index_html"), os.path.join(result_html_path, "index.html"))
 		
         with open(os.path.join(result_html_path, "bs_networks.js"), "w") as bs_networks_js:
             bs_networks_js.write("var bs_similarity={};\n".format(json.dumps(bs_distances, indent=4, separators=(',', ':'), sort_keys=True)))
@@ -1667,7 +1667,6 @@ if __name__=="__main__":
     pfd_folder = os.path.join(output_folder, "pfd")    
     domains_folder = os.path.join(output_folder, "domains")
     svg_folder = os.path.join(output_folder, "SVG")
-    html_folder = os.path.join(output_folder, "html")
     
     create_directory(domtable_folder, "Domtable", False)
     create_directory(domains_folder, "Domains", False)
@@ -1675,7 +1674,6 @@ if __name__=="__main__":
     create_directory(pfs_folder, "pfs", False)
     create_directory(pfd_folder, "pfd", False)
     create_directory(svg_folder, "SVG", False)
-    copy_html_template(html_folder)
 
     print("\nTrying threading on {} cores".format(str(cores)))
     
@@ -2116,7 +2114,11 @@ if __name__=="__main__":
     
         # create output directory
         create_directory(os.path.join(output_folder, networks_folder_all), "Networks_all", False)
-    
+
+        # create output directory for html visualization
+        html_folder = os.path.join(output_folder, networks_folder_all, "html")
+        copy_html_template(html_folder)
+
         # Making network files mixing all classes
         if options_mix:
             print("\n Mixing all BGC classes")
@@ -2271,7 +2273,11 @@ if __name__=="__main__":
             
             # create output directory for all samples
             create_directory(os.path.join(output_folder, networks_folder_samples), "Samples", False)
-            
+
+            # create output directory for html visualization
+            html_folder = os.path.join(output_folder, networks_folder_samples, "html")
+            copy_html_template(html_folder)
+
             for sample, sampleClusters in sampleDict.items():
                 print("\n Sample: " + sample)
                 if len(sampleClusters) == 1:
