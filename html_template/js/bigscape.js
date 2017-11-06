@@ -804,13 +804,96 @@ BigscapeFunc.openFamDetail = function(id_fam, ids_highlighted, bs_svg, bs_data, 
   det_ui.html("");
   det_ui.append("<h2>" + bs_families[id_fam]["id"] + "<h2>");
   if ((id_fam > -1) && (id_fam < bs_families.length)) {
-    for (var i in bs_families[id_fam]["members"]) {
-      var id = bs_families[id_fam]["members"][i];
-      var obj = bs_svg[id].clone(true, true).appendTo(det_ui);
-      if (ids_highlighted.indexOf(id) > -1) {
-        obj.css("background-color", "yellow");
+    var fam_aln = bs_families_alignment[id_fam];
+    /* FUNCTION BLOCK, DRAWING THE TREE */
+    function getBGCOffset(bgc_ref, bgc, genes_ref, aln) {
+      function scaleBGC(val, height = 20) { // << default: 40, scale x 0.5
+        return parseInt(val / (1000 / height)); // PLEASE DO SOMETHING WITH THIS
+      }
+      for (var i = 0; i < genes_ref.length; i++) {
+        var ref_gene = genes_ref[i];
+        for (var j = 0; j < aln.length; j++) {
+          if (aln[j][0] === ref_gene) {
+            var match_gene = j;
+            return [scaleBGC((bgc_ref["orfs"][ref_gene]["start"] - bgc_ref["start"]) - (bgc["orfs"][match_gene]["start"] - bgc["start"])), scaleBGC(bgc["orfs"][match_gene]["start"] - bgc["start"])];
+          }
+        }
+      }
+      return [0, scaleBGC(bgc["orfs"][match_gene]["start"] - bgc["start"])];
+    }
+    var treeData = new Tree();
+    treeData.Parse(fam_aln["newick"]);
+    var treeSVG = $("<svg id='det_fam_tree' width='3000' height='" + ((bs_families[id_fam]["members"].length * 15) + 50) + "'></svg>").appendTo(det_ui);
+    var treeDrawer = new PhylogramTreeDrawer();
+    treeDrawer.Init(treeData, { svg_id: 'det_fam_tree', height: (bs_families[id_fam]["members"].length * 15), width: 400 } );
+    treeDrawer.draw_scale_bar = false;
+		treeDrawer.CalcCoordinates();
+    treeDrawer.Draw();    
+    // draw leaves
+    var n = new NodeIterator(treeData.root);
+    var q = n.Begin();
+    var bgcOffsets = [];
+    var minOffset = 0;
+    while (q != null) {
+			if (q.IsLeaf()) {
+        var bgcId = parseInt(q.label);
+        var bgcFamIdx = -1;
+        for (var i = 0; i < bs_families[id_fam]["members"].length; i++) {
+          if (bs_families[id_fam]["members"][i] === bgcId) {
+            bgcFamIdx = i;
+            break;
+          }
+        }
+        var bgcOffset = getBGCOffset(bs_data[fam_aln["ref"]], bs_data[bgcId], fam_aln["ref_genes"], fam_aln["aln"][bgcFamIdx]);
+        if (bgcOffset[0] < minOffset) {
+          minOffset = bgcOffset[0];
+        }
+        bgcOffsets.push([bgcId, q, bgcOffset[0], bgcOffset[1]]);
+			}
+			q = n.Next();
+    }
+    var lastY = 0;
+    for (var i = 0; i < bgcOffsets.length; i++) {
+      var bgcId = bgcOffsets[i][0];
+      var q = bgcOffsets[i][1];
+      var bgcOffset = bgcOffsets[i][2] - minOffset;
+      var startGeneX = bgcOffsets[i][3];
+      if (q.xy["y"] > lastY) {
+        lastY = q.xy["y"];
+      }
+      drawDashedLine('det_fam_tree', '1,10', q.xy, {'x': 500, 'y': q.xy['y']});
+      drawDashedLine('det_fam_tree', '1,3', {'x': 510, 'y': q.xy['y']}, {'x': (510 + bgcOffset), 'y': q.xy['y']});
+      var jqG = bs_svg[bgcId].clone(true, true).children("g");
+      jqG.attr('transform', 'translate(' + (510 + bgcOffset) + ',' + (q.xy['y'] - 10) + ') scale(0.5)');
+      jqG.appendTo(treeSVG);
+      drawDashedLine('det_fam_tree', '1,1', {'x': (510 + bgcOffset + startGeneX), 'y': (q.xy['y'] - 15)}, {'x': (510 + bgcOffset + startGeneX), 'y': (q.xy['y'] + 15)});
+    }
+    // draw the rest of the bgcs
+    for (var i = 0; i < bs_families[id_fam]["members"].length; i++) {
+      var isInTree = false;
+      for (var j = 0; j < bgcOffsets.length; j++) {
+        if (bgcOffsets[j][0] === bs_families[id_fam]["members"][i]) {
+          isInTree = true;
+          break;
+        }
+      }
+      if (!isInTree) {
+        var jqG = bs_svg[bs_families[id_fam]["members"][i]].clone(true, true).children("g");
+        jqG.attr('transform', 'translate(' + (510) + ',' + (lastY + 50 - 10) + ') scale(0.5)');
+        jqG.appendTo(treeSVG);
+        lastY += 40;
       }
     }
+    // move tree svg into a <g> so that it can be collectively manipulated
+    var tempG = document.createElementNS('http://www.w3.org/2000/svg','g');
+    tempG.setAttribute('transform', 'translate(5,10) scale(0.5)');
+    treeSVG.children().each(function(idx, elm){
+      tempG.appendChild(elm);
+    });
+    treeSVG.html("");
+    treeSVG.append($(tempG));
+    /* END OF FUNCTION BLOCK, DRAWING THE TREE */
+    /* FUNCTION BLOCK, DRAWING THE CONTROL PANEL */
   }
 }
 
