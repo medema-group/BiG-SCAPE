@@ -1319,13 +1319,13 @@ def clusterJsonBatch(bgcs, outputFileBase,matrix,cutoffs=[1.0],damping=0.8,clust
         from random import randint # TODO: remove this when real data is implemented
         def make_random_tree(bgc_ids): # TODO: remove this when real data is implemented
             if len(bgc_ids) == 1:
-                return "()"
+                return "();"
             else:
                 randtree = "({}:0.5,{}:0.5)".format(bgc_ids.pop(), bgc_ids.pop())
                 for bgc_id in bgc_ids:
                     if (randint(0,9) > 7):
-                        randtree = "({}:0.5," + randtree + ":0.5)".format(bgc_id)
-                return randtree
+                        randtree = "({}:0.5,{}:0.5)".format(bgc_id, randtree)
+                return "{};".format(randtree)
         def make_random_alignment(bgc_genes, ref_gene):
             aln = []
             selected_idx = bgc_genes[randint(0, len(bgc_genes) - 1)]
