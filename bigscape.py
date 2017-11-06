@@ -1317,13 +1317,13 @@ def clusterJsonBatch(bgcs, outputFileBase,matrix,cutoffs=[1.0],damping=0.8,clust
         ## BGC Family alignment information
         bs_families_alignment = []
         from random import randint # TODO: remove this when real data is implemented
-        def make_random_tree(bgc_ids): # TODO: remove this when real data is implemented
+        def make_random_tree(bgc_ids, ref_bgc): # TODO: remove this when real data is implemented
             if len(bgc_ids) == 1:
                 return "();"
             else:
                 randtree = "({}:0.5,{}:0.5)".format(bgc_ids.pop(), bgc_ids.pop())
                 for bgc_id in bgc_ids:
-                    if (randint(0,9) > 7):
+                    if ((randint(0,9) > 7) or (bgc_id == ref_bgc)):
                         randtree = "({}:0.5,{}:0.5)".format(bgc_id, randtree)
                 return "{};".format(randtree)
         def make_random_alignment(bgc_genes, ref_gene):
@@ -1339,9 +1339,14 @@ def clusterJsonBatch(bgcs, outputFileBase,matrix,cutoffs=[1.0],damping=0.8,clust
             assert (len(bs_fam["members"]) > 0), "Error: bs_families[{}] have no members, something went wrong?".format(fam_idx)
             ## TODO: please fill this with the real values
             ref_bgc = bs_fam["members"][randint(0, len(bs_fam["members"]) - 1)]
-            newick_tree = make_random_tree(bs_fam["members"])
             ref_genes = [randint(0, len(bs_data[ref_bgc]["orfs"]) - 1)]
-            aln = make_random_alignment([gidx for gidx in xrange(0, len(bs_data[ref_bgc]["orfs"]))], ref_genes[0])
+            newick_tree = make_random_tree(list(bs_fam["members"]), ref_bgc)
+            aln = []
+            for bgc_id in bs_fam["members"]:
+                if bgc_id != ref_bgc:
+                    aln.append(make_random_alignment([gidx for gidx in xrange(0, len(bs_data[bgc_id]["orfs"]))], ref_genes[0]))    
+                else:
+                    aln.append([[-1, 0.00] for gidx in xrange(0, len(bs_data[bgc_id]["orfs"]))])
             ### TODO: remove (TODO) comments when done
             fam_alignment = {
                 "id" : bs_fam["id"],
