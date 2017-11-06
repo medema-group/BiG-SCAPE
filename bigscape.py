@@ -1314,6 +1314,45 @@ def clusterJsonBatch(bgcs, outputFileBase,matrix,cutoffs=[1.0],damping=0.8,clust
             bs_families = [{"id": "FAM_{:03d}".format(family), 'members': members, }
                            for family, members in familiesDictReIdxd.items()]
         
+        ## BGC Family alignment information
+        bs_families_alignment = []
+        from random import randint # TODO: remove this when real data is implemented
+        def make_random_tree(bgc_ids): # TODO: remove this when real data is implemented
+            if len(bgc_ids) == 1:
+                return "()"
+            else:
+                randtree = "({}:0.5,{}:0.5)".format(bgc_ids.pop(), bgc_ids.pop())
+                for bgc_id in bgc_ids:
+                    if (randint(0,9) > 7):
+                        randtree = "({}:0.5," + randtree + ":0.5)".format(bgc_id)
+                return randtree
+        def make_random_alignment(bgc_genes, ref_gene):
+            aln = []
+            selected_idx = bgc_genes[randint(0, len(bgc_genes) - 1)]
+            for bgc_gene in bgc_genes:
+                if bgc_gene == selected_idx:
+                    aln.append([ref_gene, 100.00])
+                else:
+                    aln.append([-1, 0.00])
+            return aln
+        for fam_idx, bs_fam in enumerate(bs_families):
+            assert (len(bs_fam["members"]) > 0), "Error: bs_families[{}] have no members, something went wrong?".format(fam_idx)
+            ## TODO: please fill this with the real values
+            ref_bgc = bs_fam["members"][randint(0, len(bs_fam["members"]) - 1)]
+            newick_tree = make_random_tree(bs_fam["members"])
+            ref_genes = [randint(0, len(bs_data[ref_bgc]["orfs"]) - 1)]
+            aln = make_random_alignment([gidx for gidx in xrange(0, len(bs_data[ref_bgc]["orfs"]))], ref_genes[0])
+            ### TODO: remove (TODO) comments when done
+            fam_alignment = {
+                "id" : bs_fam["id"],
+                "ref" : ref_bgc,
+                "newick" : newick_tree,
+                "ref_genes" : ref_genes,
+                "aln" : aln
+            }
+            bs_families_alignment.append(fam_alignment)
+        ## End of BGC Family alignment information
+
         # column1: BGC, column2: clustering pseudo family
         if verbose:
             print("  Writing clustering file")
@@ -1339,6 +1378,7 @@ def clusterJsonBatch(bgcs, outputFileBase,matrix,cutoffs=[1.0],damping=0.8,clust
         with open(os.path.join(result_html_path, "bs_networks.js"), "w") as bs_networks_js:
             bs_networks_js.write("var bs_similarity={};\n".format(json.dumps(bs_distances, indent=4, separators=(',', ':'), sort_keys=True)))
             bs_networks_js.write("var bs_families={};\n".format(json.dumps(bs_families, indent=4, separators=(',', ':'), sort_keys=True)))
+            bs_networks_js.write("var bs_families_alignment={};\n".format(json.dumps(bs_families_alignment, indent=4, separators=(',', ':'), sort_keys=True)))
             if len(clanLabels) > 0:
                 bs_networks_js.write("var bs_clans={};\n".format(json.dumps(bs_clans, indent=4, separators=(',', ':'), sort_keys=True)))
         
