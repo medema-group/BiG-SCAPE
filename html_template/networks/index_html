@@ -16,6 +16,7 @@
   <script type="text/javascript" src="../../../js/vivagraph.js"></script>
   <script type="text/javascript" src="../../../js/svg.js"></script>
   <script type="text/javascript" src="../../../js/fuse.min.js"></script>
+  <script type="text/javascript" src="../../../js/treelib.js"></script>
   <script type="text/javascript" src="../../../js/pfams.js"></script>
   <script type="text/javascript" src="../../../js/arrower.js"></script>
   <script type="text/javascript" src="../../../js/bigscape.js"></script>
