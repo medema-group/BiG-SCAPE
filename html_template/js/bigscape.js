@@ -819,7 +819,7 @@ BigscapeFunc.openFamDetail = function(id_fam, ids_highlighted, bs_svg, bs_data, 
           }
         }
       }
-      return [0, scaleBGC(bgc["orfs"][match_gene]["start"] - bgc["start"])];
+      return [0, 0];
     }
     var treeData = new Tree();
     treeData.Parse(fam_aln["newick"]);

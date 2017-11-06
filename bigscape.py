@@ -1347,6 +1347,8 @@ def clusterJsonBatch(bgcs, outputFileBase,matrix,cutoffs=[1.0],damping=0.8,clust
                     aln.append(make_random_alignment([gidx for gidx in xrange(0, len(bs_data[bgc_id]["orfs"]))], ref_genes[0]))    
                 else:
                     aln.append([[-1, 0.00] for gidx in xrange(0, len(bs_data[bgc_id]["orfs"]))])
+                    for gidx in ref_genes:
+                        aln[-1][gidx] = [gidx, 100.00]
             ### TODO: remove (TODO) comments when done
             fam_alignment = {
                 "id" : bs_fam["id"],
