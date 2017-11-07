@@ -1335,12 +1335,15 @@ def clusterJsonBatch(bgcs, outputFileBase,matrix,cutoffs=[1.0],damping=0.8,clust
                     if ((randint(0,9) > 7) or (bgc_id == ref_bgc)):
                         randtree = "({}:0.5,{}:0.5)".format(bgc_id, randtree)
                 return "{};".format(randtree)
-        def make_random_alignment(bgc_genes, ref_gene):
+        def make_random_alignment(bgc_genes, ref_gene, orfs_bgc, orfs_ref):
             aln = []
             selected_idx = bgc_genes[randint(0, len(bgc_genes) - 1)]
             for bgc_gene in bgc_genes:
                 if bgc_gene == selected_idx:
-                    aln.append([ref_gene, 100.00])
+                    if (orfs_bgc[bgc_gene]["strand"] * orfs_ref[ref_gene]["strand"]) > 0:
+                        aln.append([ref_gene, 50.00])
+                    else:
+                        aln.append([ref_gene, -50.00])
                 else:
                     aln.append([-1, 0.00])
             return aln
@@ -1353,7 +1356,7 @@ def clusterJsonBatch(bgcs, outputFileBase,matrix,cutoffs=[1.0],damping=0.8,clust
             aln = []
             for bgc_id in bs_fam["members"]:
                 if bgc_id != ref_bgc:
-                    aln.append(make_random_alignment([gidx for gidx in xrange(0, len(bs_data[bgc_id]["orfs"]))], ref_genes[0]))    
+                    aln.append(make_random_alignment([gidx for gidx in xrange(0, len(bs_data[bgc_id]["orfs"]))], ref_genes[0], bs_data[bgc_id]["orfs"], bs_data[ref_bgc]["orfs"]))
                 else:
                     aln.append([[-1, 0.00] for gidx in xrange(0, len(bs_data[bgc_id]["orfs"]))])
                     for gidx in ref_genes:

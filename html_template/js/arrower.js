@@ -15,12 +15,25 @@ pfams = {};
 }
 Arrower.drawClusterSVG = (function(cluster, height = 40) {
 var container = document.createElement("div");
-var draw = SVG(container).size('100%', height).group();
+var draw = SVG(container).size('100%', height).group().addClass("arrower-bgc");
 var scale = (function(val) { return parseInt(val / (1000 / height)); })
 
 // draw line
-draw.line(0, parseInt(height / 2), scale(cluster.end - cluster.start), parseInt(height / 2)).stroke({width: 1});
+draw.line(0, parseInt(height / 2), scale(cluster.end - cluster.start), parseInt(height / 2))
+  .stroke({width: 1})
+  .addClass("arrower-line");
 var width = scale(cluster.end - cluster.start);
+
+// draw label
+var cluster_label = cluster["id"];
+if (cluster.hasOwnProperty("desc")) {
+  cluster_label += ": " + cluster["desc"];
+}
+draw.text(cluster_label).addClass("arrower-label")
+  .font({
+    "size": height / 2
+  })
+  .y(-1 * (height / 1.5));
 
 if (cluster.hasOwnProperty("orfs")) {
   // draw arrows
@@ -34,6 +47,7 @@ if (cluster.hasOwnProperty("orfs")) {
                 .fill(orf_color)
                 .stroke({width: 1})
                 .addClass("arrower-orf");
+    $(pol.node).attr("idx", i);
     $(pol.node).mouseover({orf: orf}, function(handler){
       var start = handler.data.orf.start;
       var end = handler.data.orf.end;
@@ -62,6 +76,7 @@ if (cluster.hasOwnProperty("orfs")) {
                     .fill(color)
                     .stroke({width: 1})
                     .addClass("arrower-domain");
+        $(dom.node).attr("idx", j);
         $(dom.node).mouseover({domain: domain}, function(handler){
           var start = handler.data.domain.start;
           var end = handler.data.domain.end;

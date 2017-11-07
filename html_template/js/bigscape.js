@@ -3,7 +3,9 @@
 var BigscapeFunc = {
   ver: "1.0",
   requires: [
-    "fusejs"
+    "fusejs",
+    "treelib",
+    "vivagraph"
   ]
 };
 
@@ -815,7 +817,11 @@ BigscapeFunc.openFamDetail = function(id_fam, ids_highlighted, bs_svg, bs_data, 
         for (var j = 0; j < aln.length; j++) {
           if (aln[j][0] === ref_gene) {
             var match_gene = j;
-            return [scaleBGC((bgc_ref["orfs"][ref_gene]["start"] - bgc_ref["start"]) - (bgc["orfs"][match_gene]["start"] - bgc["start"])), scaleBGC(bgc["orfs"][match_gene]["start"] - bgc["start"])];
+            if (aln[j][1] < 0) {
+              return [scaleBGC((bgc_ref["orfs"][ref_gene]["start"] - bgc_ref["start"]) - (bgc["end"] - bgc["orfs"][match_gene]["end"])), aln[j][1]];
+            } else {
+              return [scaleBGC((bgc_ref["orfs"][ref_gene]["start"] - bgc_ref["start"]) - (bgc["orfs"][match_gene]["start"] - bgc["start"])), aln[j][1]];
+            }
           }
         }
       }
@@ -823,9 +829,9 @@ BigscapeFunc.openFamDetail = function(id_fam, ids_highlighted, bs_svg, bs_data, 
     }
     var treeData = new Tree();
     treeData.Parse(fam_aln["newick"]);
-    var treeSVG = $("<svg id='det_fam_tree' width='3000' height='" + ((bs_families[id_fam]["members"].length * 15) + 50) + "'></svg>").appendTo(det_ui);
+    var treeSVG = $("<svg id='det_fam_tree' width='3000' height='" + ((bs_families[id_fam]["members"].length * 20) + 50) + "'></svg>").appendTo(det_ui);
     var treeDrawer = new PhylogramTreeDrawer();
-    treeDrawer.Init(treeData, { svg_id: 'det_fam_tree', height: (bs_families[id_fam]["members"].length * 15), width: 400 } );
+    treeDrawer.Init(treeData, { svg_id: 'det_fam_tree', height: (treeData.nodes.length * 20), width: 400 } );
     treeDrawer.draw_scale_bar = false;
 		treeDrawer.CalcCoordinates();
     treeDrawer.Draw();    
@@ -834,7 +840,7 @@ BigscapeFunc.openFamDetail = function(id_fam, ids_highlighted, bs_svg, bs_data, 
     var q = n.Begin();
     var bgcOffsets = [];
     var minOffset = 0;
-    while (q != null) {
+    while (q != null) { // UGLY IMPLEMENTATION, PLEASE FIX
 			if (q.IsLeaf()) {
         var bgcId = parseInt(q.label);
         var bgcFamIdx = -1;
@@ -848,26 +854,68 @@ BigscapeFunc.openFamDetail = function(id_fam, ids_highlighted, bs_svg, bs_data, 
         if (bgcOffset[0] < minOffset) {
           minOffset = bgcOffset[0];
         }
-        bgcOffsets.push([bgcId, q, bgcOffset[0], bgcOffset[1]]);
+        var bgcReverse = bgcOffset[1] < 0;
+        bgcOffsets.push([bgcId, q, bgcOffset[0], bgcReverse]);
 			}
 			q = n.Next();
     }
     var lastY = 0;
-    for (var i = 0; i < bgcOffsets.length; i++) {
+    for (var i = 0; i < bgcOffsets.length; i++) { // UGLY IMPLEMENTATION, PLEASE FIX
       var bgcId = bgcOffsets[i][0];
       var q = bgcOffsets[i][1];
       var bgcOffset = bgcOffsets[i][2] - minOffset;
-      var startGeneX = bgcOffsets[i][3];
+      var bgcReverse = bgcOffsets[i][3];
       if (q.xy["y"] > lastY) {
         lastY = q.xy["y"];
       }
       drawDashedLine('det_fam_tree', '1,10', q.xy, {'x': 500, 'y': q.xy['y']});
       drawDashedLine('det_fam_tree', '1,3', {'x': 510, 'y': q.xy['y']}, {'x': (510 + bgcOffset), 'y': q.xy['y']});
       var jqG = bs_svg[bgcId].clone(true, true).children("g");
-      jqG.attr('transform', 'translate(' + (510 + bgcOffset) + ',' + (q.xy['y'] - 10) + ') scale(0.5)');
+      jqG.attr('transform', 'translate(' + (510 + bgcOffset) + ',' + (q.xy['y'] - 10) + ')');
+      if (bgcReverse) {
+        var bgcLength = parseInt(parseInt(jqG.find("line.arrower-line").attr("x2")) / 2);
+        jqG.attr('transform', jqG.attr('transform') + ' scale(-1,1)' + ' translate(' + (-1 * bgcLength) + ',0)');
+        jqG.find(".arrower-label").attr('transform', 'scale(-1,1)' + ' translate(' + (-2 * bgcLength) + ',0)')
+            .attr("font-style", "italic");
+      }
+      jqG.attr('transform', jqG.attr('transform') + ' scale(0.5)');
+      jqG.attr('idx', bgcId);
       jqG.appendTo(treeSVG);
-      drawDashedLine('det_fam_tree', '1,1', {'x': (510 + bgcOffset + startGeneX), 'y': (q.xy['y'] - 15)}, {'x': (510 + bgcOffset + startGeneX), 'y': (q.xy['y'] + 15)});
     }
+    // make Ref BGC label bold and red
+    treeSVG.find("g[idx='" + fam_aln["ref"] + "'] text.arrower-label")
+      .attr("font-weight", "bold")
+      .attr("fill", "red");
+    // recolor other BGCs ORFs based on alignment data
+    var orfColors = {};
+    function random(min, max) {
+      min = Math.ceil(min);
+      max = Math.floor(max);
+      return Math.floor(Math.random() * (max - min)) + min;
+    }
+    for (var i = 0; i < fam_aln["aln"].length; i++) {
+      if (i != fam_aln["ref"]) {
+        var bgcId = bs_families[id_fam]["members"][i];
+        for (var j = 0; j < fam_aln["aln"][i].length; j++) {
+          var orf_aln = fam_aln["aln"][i][j];
+          if (orf_aln[0] > -1) {
+            if (!orfColors.hasOwnProperty(orf_aln[0])) {
+              orfColors[orf_aln[0]] = { "r": random(0, 256), "g": random(0, 256), "b": random(0, 256) };
+            }
+            var orfColor = "rgb(" + orfColors[orf_aln[0]]["r"] + "," + orfColors[orf_aln[0]]["g"] + "," + orfColors[orf_aln[0]]["b"] + ")";            
+            treeSVG.find("g[idx='" + bgcId + "'] polygon.arrower-orf[idx='" + j + "']")
+              .attr("fill", orfColor);
+          }
+        }
+      }
+    }
+    // recolor ref BGC ORFs with homologs from other BGCs
+    for (var refGeneIdx in orfColors) {
+      var orfColor = "rgb(" + orfColors[refGeneIdx]["r"] + "," + orfColors[refGeneIdx]["g"] + "," + orfColors[refGeneIdx]["b"] + ")";
+      treeSVG.find("g[idx='" + fam_aln["ref"] + "'] polygon.arrower-orf[idx='" + refGeneIdx + "']")
+        .attr("fill", orfColor);
+    }
+
     // draw the rest of the bgcs
     for (var i = 0; i < bs_families[id_fam]["members"].length; i++) {
       var isInTree = false;
@@ -881,17 +929,21 @@ BigscapeFunc.openFamDetail = function(id_fam, ids_highlighted, bs_svg, bs_data, 
         var jqG = bs_svg[bs_families[id_fam]["members"][i]].clone(true, true).children("g");
         jqG.attr('transform', 'translate(' + (510) + ',' + (lastY + 50 - 10) + ') scale(0.5)');
         jqG.appendTo(treeSVG);
-        lastY += 40;
+        lastY += 50;
       }
     }
     // move tree svg into a <g> so that it can be collectively manipulated
     var tempG = document.createElementNS('http://www.w3.org/2000/svg','g');
-    tempG.setAttribute('transform', 'translate(5,10) scale(0.5)');
+    tempG.setAttribute('transform', 'translate(5,25) scale(0.5)');
     treeSVG.children().each(function(idx, elm){
       tempG.appendChild(elm);
     });
     treeSVG.html("");
     treeSVG.append($(tempG));
+
+    // hide domains....*temp*
+    //treeSVG.find("polygon.arrower-domain").css("display", "none");
+      
     /* END OF FUNCTION BLOCK, DRAWING THE TREE */
     /* FUNCTION BLOCK, DRAWING THE CONTROL PANEL */
   }
