@@ -92,8 +92,12 @@ def get_gbk_files(inputdir, outputdir, bgc_fasta_folder, min_bgc_size, exclude_g
     files_no_biosynthetic_genes = []
     
     print("\nImporting GenBank files")
-    if exclude_gbk_str != "":
-        print(" Skipping files with '" + exclude_gbk_str + "' in their filename")
+    if type(exclude_gbk_str) == str and exclude_gbk_str != "":
+        print(" Skipping files with '{}' \
+in their filename".format(exclude_gbk_str))
+    elif type(exclude_gbk_str) == list and exclude_gbk_str != []:
+        print(" Skipping files with one or more of the following strings in \
+their filename: {}".format(", ".join(exclude_gbk_str)))
 
     current_dir = ""
     for dirpath, dirnames, filenames in os.walk(inputdir):
@@ -110,7 +114,12 @@ def get_gbk_files(inputdir, outputdir, bgc_fasta_folder, min_bgc_size, exclude_g
             
             clusterName = fname[:-4]
             
-            if exclude_gbk_str != "" and exclude_gbk_str in fname:
+            if type(exclude_gbk_str) == str and exclude_gbk_str != "" and \
+                                                exclude_gbk_str in fname:
+                print(" Skipping file " + fname)
+                continue
+            elif type(exclude_gbk_str) == list and exclude_gbk_str != [] and \
+                            any([word in fname for word in exclude_gbk_str]):
                 print(" Skipping file " + fname)
                 continue
             if "_ORF" in fname:
@@ -1528,9 +1537,10 @@ def CMD_parser():
                         help="Provide a custom location for the anchor domains \
                         file, default is anchor_domains.txt.")
     
-    parser.add_argument("--exclude_gbk_str", dest="exclude_gbk_str", default="final",
-                      help="If this string occurs in the gbk filename, this file\
-                      will not be used for the analysis.")
+    parser.add_argument("--exclude_gbk_str", dest="exclude_gbk_str", 
+                        default="final", nargs="+",
+                        help="If this string occurs in the gbk filename, this \
+                        file will not be used for the analysis.")
                     
     parser.add_argument("--force_hmmscan", dest="force_hmmscan", action="store_true", 
                         default=False, help="Force domain prediction using \
@@ -1970,7 +1980,7 @@ if __name__=="__main__":
         corebiosynthetic_position[outputbase] = array('B')
         BGCGeneOrientation[outputbase] = array('b')
         pfdFile = os.path.join(pfd_folder, outputbase + ".pfd")
-        filtered_matrix = [map(lambda x: x.strip(), line.split('\t')) for line in open(pfdFile)]
+        filtered_matrix = [[part.strip() for part in line.split('\t')] for line in open(pfdFile)]
         
         domain_counter = 0
         gene_number = 0
