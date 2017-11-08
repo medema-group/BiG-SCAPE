@@ -1539,8 +1539,9 @@ def CMD_parser():
     
     parser.add_argument("--exclude_gbk_str", dest="exclude_gbk_str", 
                         default="final", nargs="+",
-                        help="If this string occurs in the gbk filename, this \
-                        file will not be used for the analysis.")
+                        help="If any string in this list occurs in the gbk \
+                        filename, this file will not be used for the analysis.\
+                        (default: final)")
                     
     parser.add_argument("--force_hmmscan", dest="force_hmmscan", action="store_true", 
                         default=False, help="Force domain prediction using \
