@@ -1,0 +1,39 @@
+FROM ubuntu:14.04
+
+MAINTAINER Jindrich Vimr <jvimr@softeu.com>
+
+RUN echo "1.565.1" > .lts-version-number
+
+RUN apt-get update && apt-get install -y wget curl git
+
+
+RUN curl -LO http://repo.continuum.io/miniconda/Miniconda-latest-Linux-x86_64.sh
+RUN bash Miniconda-latest-Linux-x86_64.sh -p /miniconda -b
+RUN rm Miniconda-latest-Linux-x86_64.sh
+ENV PATH=/miniconda/bin:${PATH}
+RUN conda update -y conda
+
+RUN conda install -y \ 
+	numpy  \
+	scipy \
+	cython  
+RUN conda install -c bioconda hmmer biopython 
+
+#RUN pip install pysapc
+RUN apt-get -y install build-essential \
+    && rm -rf /var/lib/apt/lists/* \
+    && pip install pysapc \
+    && apt-get purge -y --auto-remove build-essential
+
+WORKDIR /usr/src
+
+RUN git clone https://git.wur.nl/medema-group/BiG-SCAPE.git
+
+## geting pFAMi 
+RUN wget ftp://ftp.ebi.ac.uk/pub/databases/Pfam/releases/Pfam31.0/Pfam-A.hmm.gz
+#ftp://ftp.ebi.ac.uk/pub/databases/Pfam/current_release/Pfam-A.hmm.gz.
+RUN gunzip Pfam-A.hmm.gz && hmmpress Pfam-A.hmm && mv Pfam-A.* /usr/src/BiG-SCAPE/.
+#RUN mv BiG-SCAPE /opt/BiG-SCAPE
+
+ENV PATH=/usr/src/BiG-SCAPE:${PATH}
+WORKDIR /home
