@@ -501,7 +501,7 @@ def sort_bgc(product):
         return("Others")
     # ??
     elif product == "":
-        print("  Warning: empty product annotation")
+        #print("  Warning: empty product annotation")
         return("Others")
     else:
         print("  Warning: unknown product '{}'".format(product))
@@ -515,30 +515,6 @@ def write_parameters(output_folder, parameters):
     with open(os.path.join(output_folder,"parameters.txt"), "w") as parameters_file:
         parameters_file.write(" ".join(parameters))
  
-
-
-def generatePfamDescriptionsMatrix(pfam_domain_categories):
-    '''
-
-    :param pfam_domain_categories: tab-delimited file
-    :return: dictionary with pfam ID as key and pfam description as value
-    '''
-    pfam_descriptions = {}
-
-    if os.path.isfile(pfam_domain_categories):
-        print("  Found file with Pfam domain categories")
-        with open(pfam_domain_categories, "r") as cat_handle:
-            for line in cat_handle:
-                # handle comments and empty lines
-                if line[0] != "#" and line.strip():
-                    row = line.strip().split("\t")
-                    domain = row[0]
-                    desc = row[-1]
-                    pfam_descriptions[domain] = desc
-    else:
-        print("  File pfam_domain_categories was NOT found")
-
-    return pfam_descriptions
 
 
 def generatePfamColorsMatrix(pfam_domain_colors):

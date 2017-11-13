@@ -93,11 +93,11 @@ def get_gbk_files(inputdir, outputdir, bgc_fasta_folder, min_bgc_size, exclude_g
     
     print("\nImporting GenBank files")
     if type(exclude_gbk_str) == str and exclude_gbk_str != "":
-        print(" Skipping files with '{}' \
-in their filename".format(exclude_gbk_str))
+        print(" Skipping files with '{}' in their \
+              filename".format(exclude_gbk_str))
     elif type(exclude_gbk_str) == list and exclude_gbk_str != []:
         print(" Skipping files with one or more of the following strings in \
-their filename: {}".format(", ".join(exclude_gbk_str)))
+            their filename: {}".format(", ".join(exclude_gbk_str)))
 
     current_dir = ""
     for dirpath, dirnames, filenames in os.walk(inputdir):
@@ -1135,7 +1135,11 @@ def clusterJsonBatch(bgcs, outputFileBase,matrix,cutoffs=[1.0],damping=0.8,clust
     value, similarity is 0)
     Larger cutoff values are more permissive
     
-    bgcs: ordered list of integers representing the index in the main cluster list
+    bgcs: ordered list of integers (ascending and unique) representing the index
+        in the main clusterNames list
+    matrix: list of lists of idx0, idx1, d where the first two elements correspond
+        to indices from `bgcs`
+    outputFileBase: folder where GCF files will be deposited
     """
     
     simDict = {}
@@ -1155,17 +1159,15 @@ def clusterJsonBatch(bgcs, outputFileBase,matrix,cutoffs=[1.0],damping=0.8,clust
         print('Clustering Clans Enabled with parameters clanClassificationCutoff: {}, clanDistanceCutoff: {}'.format(clanClassificationCutoff,clanDistanceCutoff))
     
     bgc2simIdx = dict(zip(bgcs, range(len(bgcs))))
-    pfam_domain_categories = os.path.join(os.path.dirname(os.path.realpath(__file__)), "Pfam-A.clans.tsv")
-    pfam_descrs = generatePfamDescriptionsMatrix(pfam_domain_categories)
     pfam_colors = generatePfamColorsMatrix(os.path.join(os.path.dirname(os.path.realpath(__file__)), "domains_color_file.tsv"))
     
     # Get info on all BGCs to export to .js for visualization
     bs_data = []
     bgcJsonDict = {}
     for bgc in bgcs:
-        bgcName = clusterNames[int(bgc)]
+        bgcName = clusterNames[bgc]
         bgcJsonDict[bgcName] = {}
-        bgcJsonDict[bgcName]["id"] = clusterNames[int(bgc)]
+        bgcJsonDict[bgcName]["id"] = bgcName
         bgcJsonDict[bgcName]["desc"] = bgc_info[bgcName].description
         bgcJsonDict[bgcName]["start"] = 1
         bgcJsonDict[bgcName]["end"] = bgc_info[bgcName].max_width
@@ -1182,28 +1184,28 @@ def clusterJsonBatch(bgcs, outputFileBase,matrix,cutoffs=[1.0],damping=0.8,clust
         for line in open(fastaFile):
             if line[0] == ">":
                 header = line.strip()[1:].split(':')
-                
+                orf = header[0]
                 if header[2]:
-                    orfDict[header[0]]["id"] = header[2]
+                    orfDict[orf]["id"] = header[2]
                 elif header[4]:
-                    orfDict[header[0]]["id"] = header[4]
+                    orfDict[orf]["id"] = header[4]
                 else:
-                    orfDict[header[0]]["id"] = header[0]
+                    orfDict[orf]["id"] = orf
                     
                 ## broken gene goes into cluster, need this so js doesn't throw an error
                 if int(header[6]) <= 1:
-                    orfDict[header[0]]["start"] = 1
+                    orfDict[orf]["start"] = 1
                 else:
-                    orfDict[header[0]]["start"] = int(header[6])
+                    orfDict[orf]["start"] = int(header[6])
                     
-                orfDict[header[0]]["end"] = int(header[7])
+                orfDict[orf]["end"] = int(header[7])
                 
                 if header[-1] == '+':
-                    orfDict[header[0]]["strand"] = 1
+                    orfDict[orf]["strand"] = 1
                 else:
-                    orfDict[header[0]]["strand"] = -1
+                    orfDict[orf]["strand"] = -1
                     
-                orfDict[header[0]]["domains"] = []
+                orfDict[orf]["domains"] = []
     
         ## now read pfd file to add the domains to each of the orfs
         for line in open(pfdFile):
@@ -1230,8 +1232,8 @@ def clusterJsonBatch(bgcs, outputFileBase,matrix,cutoffs=[1.0],damping=0.8,clust
             pfam_obj = {}
             pfam_obj["col"] = pfam_colors[pfam_code]
             pfam_obj["desc"] = ""
-            if pfam_code in pfam_descrs:
-                pfam_obj["desc"] = pfam_descrs[pfam_code]
+            if pfam_code in pfam_info:
+                pfam_obj["desc"] = pfam_info[pfam_code][1]
             pfam_json[pfam_code] = pfam_obj
         pfams_js.write("var pfams={};\n".format(json.dumps(pfam_json, indent=4, separators=(',', ':'), sort_keys=True)))
     
@@ -1356,9 +1358,9 @@ def clusterJsonBatch(bgcs, outputFileBase,matrix,cutoffs=[1.0],damping=0.8,clust
             aln = []
             for bgc_id in bs_fam["members"]:
                 if bgc_id != ref_bgc:
-                    aln.append(make_random_alignment([gidx for gidx in xrange(0, len(bs_data[bgc_id]["orfs"]))], ref_genes[0], bs_data[bgc_id]["orfs"], bs_data[ref_bgc]["orfs"]))
+                    aln.append(make_random_alignment([gidx for gidx in range(0, len(bs_data[bgc_id]["orfs"]))], ref_genes[0], bs_data[bgc_id]["orfs"], bs_data[ref_bgc]["orfs"]))
                 else:
-                    aln.append([[-1, 0.00] for gidx in xrange(0, len(bs_data[bgc_id]["orfs"]))])
+                    aln.append([[-1, 0.00] for gidx in range(0, len(bs_data[bgc_id]["orfs"]))])
                     for gidx in ref_genes:
                         aln[-1][gidx] = [gidx, 100.00]
             ### TODO: remove (TODO) comments when done
@@ -2040,6 +2042,26 @@ if __name__=="__main__":
     ### Step 5: Create SVG figures
     print(" Creating arrower-like figures for each BGC")
     
+    # read hmm file. We'll need that info anyway for final visualization
+    print("  Parsing hmm file for domain information")
+    pfam_info = {}
+    with open(os.path.join(pfam_dir, "Pfam-A.hmm"), "r") as pfam:
+        putindict = False
+        # assuming that the order of the information never changes
+        for line in pfam:
+            if line[:4] == "NAME":
+                name = line.strip()[6:]
+            if line[:3] == "ACC":
+                acc = line.strip()[6:].split(".")[0]
+            if line[:4] == "DESC":
+                desc = line.strip()[6:]
+                putindict = True
+                
+            if putindict:
+                putindict = False
+                pfam_info[acc] = (name, desc)
+    print("    Done")
+    
     # verify if there are figures already generated
     
     # All available SVG files
@@ -2055,25 +2077,6 @@ if __name__=="__main__":
         color_genes = read_color_genes_file()
         color_domains = read_color_domains_file()
         pfam_domain_categories = read_pfam_domain_categories()
-        
-        print("  Parsing hmm file for domain names")
-        pfam_info = {}
-        with open(os.path.join(pfam_dir, "Pfam-A.hmm"), "r") as pfam:
-            putindict = False
-            # assuming that the order of the information never changes
-            for line in pfam:
-                if line[:4] == "NAME":
-                    name = line.strip()[6:]
-                if line[:3] == "ACC":
-                    acc = line.strip()[6:].split(".")[0]
-                if line[:4] == "DESC":
-                    desc = line.strip()[6:]
-                    putindict = True
-                    
-                if putindict:
-                    putindict = False
-                    pfam_info[acc] = (name, desc)
-        print("    Done")
         
         #This must be done serially, because if a color for a gene/domain
         # is not found, the text files with colors need to be updated
