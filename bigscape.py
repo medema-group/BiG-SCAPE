@@ -1621,6 +1621,8 @@ if __name__=="__main__":
     global cores
     global mode
     
+    global run_name
+
     global clusterNames, bgcClassNames
     
     include_singletons = options.include_singletons
@@ -1692,6 +1694,8 @@ if __name__=="__main__":
         options.skip_ma = False
 
     time1 = time.time()
+
+    run_name = time.strftime("%Y-%m-%d %H-%M-%S", time.gmtime())
     
     # Make the following available for possibly deleting entries within parseHmmScan
     global genbankDict, gbk_files, sampleDict, clusters, baseNames
@@ -1741,6 +1745,8 @@ if __name__=="__main__":
     print("\nCreating output directories")
     svg_folder = os.path.join(output_folder, "SVG")    
     create_directory(svg_folder, "SVG", False)
+    network_folder = os.path.join(output_folder, "network_files")
+    create_directory(network_folder, "Networks", False)
 
     print("\nTrying threading on {} cores".format(str(cores)))
     
@@ -2176,13 +2182,13 @@ if __name__=="__main__":
 
     clusterNames = tuple(sorted(clusters))
 
+    network_files_folder = os.path.join(network_folder, run_name)
+    create_directory(network_files_folder, "Network Files", False)
+
     # Try to make default analysis using all files found inside the input folder
     if options_all:
         print("\nGenerating distance network files with ALL available input files")
     
-        # create output directory
-        create_directory(os.path.join(output_folder, networks_folder_all), "Networks_all", False)
-
         # create output directory for html visualization
         html_folder = os.path.join(output_folder, networks_folder_all, "html")
         copy_html_template(html_folder)
@@ -2203,7 +2209,7 @@ if __name__=="__main__":
             
             # Create an additional file with the list of all clusters in the class + other info
             print("   Writing annotation file")
-            path_list = os.path.join(output_folder, networks_folder_all, "Network_Annotations_ALL_mix.tsv")
+            path_list = os.path.join(network_files_folder, "Network_Annotations_ALL_mix.tsv")
             with open(path_list, "w") as list_file:
                 list_file.write("BGC\tAccesion ID\tDescription\tProduct Prediction\tBiG-SCAPE class\tOrganism\tTaxonomy\n")
                 for idx in mix_set:
@@ -2220,7 +2226,7 @@ if __name__=="__main__":
             del cluster_pairs[:]
                 
             print("  Writing output files")
-            pathBase = os.path.join(output_folder, networks_folder_all, "all_mix")
+            pathBase = os.path.join(network_files_folder, "all_mix")
             filenames = []
             for cutoff in cutoff_list:
                 filenames.append("{}_c{:.2f}.network".format(pathBase, cutoff))
@@ -2290,11 +2296,11 @@ if __name__=="__main__":
                 print("\n  {} ({} BGCs)".format(folder_name, str(len(BGC_classes[bgc_class]))))
                 
                 # create output directory   
-                create_directory(os.path.join(output_folder, networks_folder_all, folder_name), "  All - " + bgc_class, False)
+                create_directory(os.path.join(network_files_folder, folder_name), "  All - " + bgc_class, False)
                 
                 # Create an additional file with the final list of all clusters in the class
                 print("   Writing annotation files")
-                path_list = os.path.join(output_folder, networks_folder_all, folder_name, "Network_Annotations_All_" + folder_name + ".tsv")
+                path_list = os.path.join(network_files_folder, folder_name, "Network_Annotations_All_" + folder_name + ".tsv")
                 with open(path_list, "w") as list_file:
                     list_file.write("BGC\tAccesion ID\tDescription\tProduct Prediction\tBiG-SCAPE class\tOrganism\tTaxonomy\n")
                     for idx in BGC_classes[bgc_class]:
@@ -2311,7 +2317,7 @@ if __name__=="__main__":
                     del cluster_pairs[:]
                         
                     print("   Writing output files")
-                    pathBase = os.path.join(output_folder, networks_folder_all, folder_name, "all" + folder_name)
+                    pathBase = os.path.join(network_files_folder, folder_name, "all" + folder_name)
                     filenames = []
                     for cutoff in cutoff_list:
                         filenames.append("{}_c{:.2f}.network".format(pathBase, cutoff))
@@ -2340,7 +2346,7 @@ if __name__=="__main__":
             print("\nGenerating distance network files for each sample")
             
             # create output directory for all samples
-            create_directory(os.path.join(output_folder, networks_folder_samples), "Samples", False)
+            create_directory(os.path.join(network_files_folder), "Samples", False)
 
             # create output directory for html visualization
             html_folder = os.path.join(output_folder, networks_folder_samples, "html")
@@ -2352,7 +2358,7 @@ if __name__=="__main__":
                     print(" Warning: Sample size = 1 detected. Not generating network for this sample ({})".format(sample))
                 else:
                     # create output directory for this sample
-                    create_directory(os.path.join(output_folder, networks_folder_samples, sample), " Samples - " + sample, False)
+                    create_directory(os.path.join(network_files_folder, sample), " Samples - " + sample, False)
                         
                     # Making network files mixing all classes
                     if options_mix:
@@ -2367,7 +2373,7 @@ if __name__=="__main__":
                         
                         # Create an additional file with the list of all clusters in the class + other info
                         print("   Writing annotation files")
-                        path_list = os.path.join(output_folder, networks_folder_samples, sample, "Network_Annotations_Sample_" + sample + "_mix.tsv")
+                        path_list = os.path.join(network_files_folder, sample, "Network_Annotations_Sample_" + sample + "_mix.tsv")
                         with open(path_list, "w") as list_file:
                             list_file.write("BGC\tAccesion ID\tDescription\tProduct Prediction\tBiG-SCAPE class\tOrganism\tTaxonomy\n")
                             for idx in mix_set:
@@ -2383,7 +2389,7 @@ if __name__=="__main__":
                         del cluster_pairs[:]
 
                         print("   Writing output files")
-                        pathBase = os.path.join(output_folder, networks_folder_samples, sample, "sample_" + sample + "_mix")
+                        pathBase = os.path.join(network_files_folder, sample, "sample_" + sample + "_mix")
                         filenames = []
                         for cutoff in cutoff_list:
                             filenames.append("{}_c{:.2f}.network".format(pathBase, cutoff))
@@ -2449,11 +2455,11 @@ if __name__=="__main__":
                             network_matrix_sample = []
                             
                             # create output directory
-                            create_directory(os.path.join(output_folder, networks_folder_samples, sample, folder_name), "   Sample " + sample + " - " + bgc_class, False)
+                            create_directory(os.path.join(network_files_folder, sample, folder_name), "   Sample " + sample + " - " + bgc_class, False)
 
                             # Create an additional file with the final list of all clusters in the class
                             print("   Writing annotation files")
-                            path_list = os.path.join(output_folder, networks_folder_samples, sample, folder_name, "Network_Annotations_Sample_" + sample + "_" + folder_name + ".tsv")
+                            path_list = os.path.join(network_files_folder, sample, folder_name, "Network_Annotations_Sample_" + sample + "_" + folder_name + ".tsv")
                             with open(path_list, "w") as list_file:
                                 list_file.write("BGC\tAccesion ID\tDescription\tProduct Prediction\tBiG-SCAPE class\tOrganism\tTaxonomy\n")
                                 for idx in BGC_classes[bgc_class]:
@@ -2469,7 +2475,7 @@ if __name__=="__main__":
                                 network_matrix_sample = generate_network(cluster_pairs, cores)
                                 del cluster_pairs[:]
                                 print("    Writing output files")
-                                pathBase = os.path.join(output_folder, networks_folder_samples, sample, folder_name,
+                                pathBase = os.path.join(network_files_folder, sample, folder_name,
                                                         "sample_" + sample + "_" + folder_name)
                                 filenames = []
                                 for cutoff in cutoff_list:
