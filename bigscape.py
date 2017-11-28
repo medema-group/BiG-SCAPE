@@ -356,7 +356,7 @@ def get_gbk_files(inputdir, outputdir, bgc_fasta_folder, min_bgc_size, exclude_g
     if len(files_no_biosynthetic_genes) > 0 and (mode == "lcs" or mode == "local"):
         print("  Warning: Input set has files with no Biosynthetic Genes (affects alignment mode)")
         print("   See no_biosynthetic_genes_list.txt")
-        with open(os.path.join(outputdir, "no_biosynthetic_genes_list.txt"), "w") as nobiogenes:
+        with open(os.path.join(outputdir, "logs", "no_biosynthetic_genes_list.txt"), "w") as nobiogenes:
             for f in sorted(files_no_biosynthetic_genes):
                 nobiogenes.write("{}\n".format(f))
     
@@ -382,7 +382,7 @@ def timeit(funct):
         runtime_string = '{} took {:.3f} seconds'.format(funct.__name__, runtime)
         # To prevent insignificant runtimes from ending up in the file.
         if runtime > 1:
-            with open(os.path.join(output_folder, "runtimes.txt"), 'a') as timings_file:
+            with open(os.path.join(log_folder, "runtimes.txt"), 'a') as timings_file:
                 timings_file.write(runtime_string + "\n")
             print(runtime_string)
         return ret
@@ -1701,10 +1701,26 @@ if __name__=="__main__":
     print("\n\n   - - Processing input files - -")
     
     create_directory(output_folder, "Output", False)
-    write_parameters(output_folder, sys.argv)
-    bgc_fasta_folder = os.path.join(output_folder, "fasta")
+
+    # logs
+    log_folder = os.path.join(output_folder, "logs")
+    create_directory(log_folder, "Logs", False)
+    write_parameters(log_folder, sys.argv)
+
+    # cached stuff
+    cache_folder = os.path.join(output_folder, "cache")
+    bgc_fasta_folder = os.path.join(cache_folder, "fasta")
+    domtable_folder = os.path.join(cache_folder, "domtable")    
+    pfs_folder = os.path.join(cache_folder, "pfs")
+    pfd_folder = os.path.join(cache_folder, "pfd")    
+    domains_folder = os.path.join(cache_folder, "domains")
+    create_directory(cache_folder, "Cache", False)
     create_directory(bgc_fasta_folder, "BGC fastas", False)
-    
+    create_directory(domtable_folder, "Domtable", False)
+    create_directory(domains_folder, "Domains", False)    
+    create_directory(pfs_folder, "pfs", False)
+    create_directory(pfd_folder, "pfd", False)
+
     # genbankDict: {cluster_name:[genbank_path_to_1st_instance,[sample_1,sample_2,...]]}
     bgc_info = {} # Stores, per BGC: predicted type, gbk Description, number of records, width of longest record, GenBank's accession, Biosynthetic Genes' ids
     genbankDict = get_gbk_files(options.inputdir, output_folder, bgc_fasta_folder, int(options.min_bgc_size), options.exclude_gbk_str, bgc_info)
@@ -1723,19 +1739,7 @@ if __name__=="__main__":
 
     
     print("\nCreating output directories")
-    
-    domtable_folder = os.path.join(output_folder, "domtable")
-    
-    pfs_folder = os.path.join(output_folder, "pfs")
-    pfd_folder = os.path.join(output_folder, "pfd")    
-    domains_folder = os.path.join(output_folder, "domains")
-    svg_folder = os.path.join(output_folder, "SVG")
-    
-    create_directory(domtable_folder, "Domtable", False)
-    create_directory(domains_folder, "Domains", False)
-    
-    create_directory(pfs_folder, "pfs", False)
-    create_directory(pfd_folder, "pfd", False)
+    svg_folder = os.path.join(output_folder, "SVG")    
     create_directory(svg_folder, "SVG", False)
 
     print("\nTrying threading on {} cores".format(str(cores)))
@@ -1939,7 +1943,7 @@ if __name__=="__main__":
     if options.skip_ma:
         print(" Running with skip_ma parameter: Assuming that the domains folder has all the fasta files")
         try:
-            with open(os.path.join(output_folder, "BGCs.dict"), "r") as BGC_file:
+            with open(os.path.join(cache_folder, "BGCs.dict"), "r") as BGC_file:
                 BGCs = pickle.load(BGC_file)
                 BGC_file.close()
         except IOError:
@@ -1970,7 +1974,7 @@ if __name__=="__main__":
             del filtered_matrix[:]
             
         # store processed BGCs dictionary for future re-runs
-        with open(os.path.join(output_folder, "BGCs.dict"), "wb") as BGC_file:
+        with open(os.path.join(cache_folder, "BGCs.dict"), "wb") as BGC_file:
             pickle.dump(BGCs, BGC_file)
             BGC_file.close()
             
@@ -2485,10 +2489,10 @@ if __name__=="__main__":
                                 del reduced_network[:]
                             
 
-    pickle.dump(bgc_info,open(os.path.join(output_folder,'bgc_info.dict'),'wb'))
+    pickle.dump(bgc_info,open(os.path.join(cache_folder,'bgc_info.dict'),'wb'))
     runtime = time.time()-time1
     runtime_string = "\n\n\tMain function took {:.3f} s".format(runtime)
-    with open(os.path.join(output_folder, "runtimes.txt"), 'a') as timings_file:
+    with open(os.path.join(log_folder, "runtimes.txt"), 'a') as timings_file:
         timings_file.write(runtime_string + "\n")
     print(runtime_string)
     
