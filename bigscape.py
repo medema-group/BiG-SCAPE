@@ -93,8 +93,7 @@ def get_gbk_files(inputdir, outputdir, bgc_fasta_folder, min_bgc_size, exclude_g
     
     print("\nImporting GenBank files")
     if type(exclude_gbk_str) == str and exclude_gbk_str != "":
-        print(" Skipping files with '{}' in their \
-              filename".format(exclude_gbk_str))
+        print(" Skipping files with '{}' in their filename".format(exclude_gbk_str))
     elif type(exclude_gbk_str) == list and exclude_gbk_str != []:
         print(" Skipping files with one or more of the following strings in \
             their filename: {}".format(", ".join(exclude_gbk_str)))
@@ -1038,23 +1037,23 @@ def cluster_distance_lcs(A, B, A_domlist, B_domlist, dcg_A, dcg_b, core_pos_A, c
     return Distance, Jaccard, DSS, AI, DSS_non_anchor, DSS_anchor, S, S_anchor, sliceStartA, sliceStartB
 
 
-def launch_hmmalign(cores, domains):
+def launch_hmmalign(cores, domain_sequence_list):
     """
     Launches instances of hmmalign with multiprocessing.
     Note that the domains parameter contains the .fasta extension
     """
     pool = Pool(cores, maxtasksperchild=32)
-    pool.map(run_hmmalign, domains)
+    pool.map(run_hmmalign, domain_sequence_list)
     pool.close()
     pool.join()
     
-def run_hmmalign(domain):
-    #domain already contains the full path, with the file extension
-    domain_base = domain.split(os.sep)[-1][:-6]
+def run_hmmalign(domain_file):
+    #domain_file already contains the full path, with the file extension
+    domain_base = domain_file.split(os.sep)[-1][:-6]
     hmmfetch_pars = ["hmmfetch", os.path.join(pfam_dir,"Pfam-A.hmm.h3m"), domain_base]
     proc_hmmfetch = subprocess.Popen(hmmfetch_pars, stdout=subprocess.PIPE, shell=False)
     
-    hmmalign_pars = ["hmmalign", "-o", domain.replace(".fasta",".stk"), "-", domain]
+    hmmalign_pars = ["hmmalign", "-o", domain_file.replace(".fasta",".stk"), "-", domain_file]
     proc_hmmalign = subprocess.Popen(hmmalign_pars, stdin=proc_hmmfetch.stdout, stdout=subprocess.PIPE, shell=False)
     
     proc_hmmfetch.stdout.close()
@@ -1064,7 +1063,7 @@ def run_hmmalign(domain):
     if verbose:
         print(" ".join(hmmfetch_pars) + " | " + " ".join(hmmalign_pars))
     
-    SeqIO.convert(domain[:-6]+".stk", "stockholm", domain[:-6]+".algn", "fasta")
+    SeqIO.convert(domain_file[:-6]+".stk", "stockholm", domain_file[:-6]+".algn", "fasta")
     
 
 def runHmmScan(fastaPath, hmmPath, outputdir, verbose):
@@ -1094,7 +1093,8 @@ def parseHmmScan(hmmscanResults, pfd_folder, pfs_folder, overlapCutoff):
         num_domains = len(pfd_matrix)
 
         if num_domains > 0:
-            print("  Processing domtable file: " + outputbase)
+            if verbose:
+                print("  Processing domtable file: " + outputbase)
 
             # check_overlap also sorts the filtered_matrix results and removes
             # overlapping domains, keeping the highest scoring one
@@ -2111,7 +2111,7 @@ if __name__=="__main__":
         print("Performing multiple alignment of domain sequences")
         
         # obtain all fasta files with domain sequences
-        fasta_domains = set(glob(os.path.join(domains_folder,"*.fasta")))
+        domain_sequence_list = set(glob(os.path.join(domains_folder,"*.fasta")))
         
         # compare with .algn set of files. Maybe resuming is possible if
         # no new sequences were added
@@ -2123,15 +2123,15 @@ if __name__=="__main__":
                 
                 for a in temp_aligned:
                     if os.path.getsize(a) > 0:
-                        fasta_domains.remove(a[:-5]+".fasta")
+                        domain_sequence_list.remove(a[:-5]+".fasta")
             
             temp_aligned.clear()
         
         # Try to further reduce the set of domain fastas that need alignment
         sequence_tag_list = set()
         header_list = []
-        fasta_domains_temp = fasta_domains.copy()
-        for domain_file in fasta_domains_temp:
+        domain_sequence_list_temp = domain_sequence_list.copy()
+        for domain_file in domain_sequence_list_temp:
             domain_name = ".".join(domain_file.split(os.sep)[-1].split(".")[:-1])
             
             # fill fasta_dict...
@@ -2145,24 +2145,28 @@ if __name__=="__main__":
             # ...to find out how many sequences do we actually have
             if len(sequence_tag_list) == 1:
                 # avoid multiple alignment if the domains all belong to the same BGC
-                fasta_domains.remove(domain_file)
+                domain_sequence_list.remove(domain_file)
                 if verbose:
                     print(" Skipping Multiple Alignment for {} (appears only in one BGC)".format(domain_name))
         
         sequence_tag_list.clear()
         del header_list[:]
         
-        fasta_domains_temp.clear()
+        domain_sequence_list_temp.clear()
             
         # Do the multiple alignment
-        if len(fasta_domains) > 0:
+        stop_flag = False
+        if len(domain_sequence_list) > 0:
             print("\n Using hmmalign")
-            launch_hmmalign(cores, fasta_domains)
+            launch_hmmalign(cores, domain_sequence_list)
                 
             # verify all tasks were completed by checking existance of alignment files
-            for domain in fasta_domains:
-                if not os.path.isfile(domain[:-6]+".algn"):
-                    print("   WARNING, {}.algn could not be found (possible issue with aligner).".format(domain[:-6]))
+            for domain_file in domain_sequence_list:
+                if not os.path.isfile(domain_file[:-6]+".algn"):
+                    print("   ERROR, {}.algn could not be found (possible issue with aligner).".format(domain_file[:-6]))
+                    stop_flag = True
+            if stop_flag:
+                sys.exit()
                        
         else:
             print(" No domain fasta files found to align")
