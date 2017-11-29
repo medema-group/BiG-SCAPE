@@ -1664,17 +1664,17 @@ if __name__=="__main__":
     if options.hybrids:
         networks_folder_all += "_hybrids"
         networks_folder_samples += "_hybrids"
-        run_mode_string += "hybrid"
+        run_mode_string += "_hybrids"
     if mode == "auto":
         networks_folder_all += "_auto"
-        networks_folder_samples += "auto"
-        run_mode_string += "auto"
+        networks_folder_samples += "_auto"
+        run_mode_string += "_auto"
     elif mode == "lcs":
         networks_folder_all += "_lcs"
         networks_folder_samples += "_lcs"
-        run_mode_string += "lcs-glocal"
+        run_mode_string += "_glocal"
     else:
-        run_mode_string += "full"
+        run_mode_string += "_full"
     
     if options.skip_all and options.skip_ma:
         print("Overriding --skip_ma with --skip_all parameter")
@@ -1683,7 +1683,7 @@ if __name__=="__main__":
 
     time1 = time.time()
 
-    run_name = "{}_{}".format(time.strftime("%Y-%m-%d_%H-%M-%S", time.gmtime()), run_mode_string)
+    run_name = "{}{}".format(time.strftime("%Y-%m-%d_%H-%M-%S", time.gmtime()), run_mode_string)
     
     # Make the following available for possibly deleting entries within parseHmmScan
     global genbankDict, gbk_files, sampleDict, clusters, baseNames
