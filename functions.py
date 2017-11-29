@@ -38,7 +38,7 @@ verbose = False
 
 def create_directory(path, kind, clean):
     try:
-        os.mkdir(path)
+        os.makedirs(path)
     except OSError as e:
         # 17 (Linux): "[Errno 17] File exists";
         # 183 (Windows) "[Error 183] Cannot create a file when that file already exists"
@@ -49,7 +49,7 @@ def create_directory(path, kind, clean):
                 for thing in os.listdir(path):
                     os.remove(os.path.join(path,thing))
         else:
-            print("Error: unexpected error when " + kind + " folder")
+            print("Error: unexpected error creating " + kind + " folder")
             sys.exit(str(e))
 
 
