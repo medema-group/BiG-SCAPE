@@ -20,7 +20,7 @@
   <script type="text/javascript" src="../../../js/pfams.js"></script>
   <script type="text/javascript" src="../../../js/arrower.js"></script>
   <script type="text/javascript" src="../../../js/bigscape.js"></script>
-  <script type="text/javascript" src="../bs_data.js"></script>
+  <script type="text/javascript" src="bs_data.js"></script>
   <script type="text/javascript" src="bs_networks.js"></script>
   <script type="text/javascript">
     $(document).ready(function(){

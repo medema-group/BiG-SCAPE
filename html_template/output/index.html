@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+    <meta http-equiv='cache-control' content='no-cache'>
+    <meta http-equiv='expires' content='0'>
+    <meta http-equiv='pragma' content='no-cache'>
+    <title>BiG-SCAPE result XXX</title>
+    <link rel="stylesheet" type="text/css" href="./html_content/css/style.css">
+  </head>
+  <body>
+    <div id="header">
+      <div class="top-header" style="padding-top: 0.5em;">
+        <img class="bigscape-logo" src="./html_content/img/bigscape.png" style="height: 80px;" alt="BiG-SCAPE">
+        <span class="bigscape-title"><a href="http://plantismash.secondarymetabolites.org/">Biosynthetic Genes Similarity Clustering and Prospecting Engine</a><br>
+            <span>Version 0.0.0r<span id="antismash-version" style="display: none;">3.0.5-50957c3</span></span>
+        </span>
+        <!--div id="icons">
+          <a href="#"><img src="./img/home.png" alt="home" title="Go to start page"></a>
+          <a href="#"><img src="./img/help.png" alt="help" title="Get help using BiG-SCAPE"></a>
+          <a href="#"><img src="./img/about.png" alt="about" title="About BiG-SCAPE"></a>
+          <a href="#" id="download"><img src="./img/download.png" alt="download" title="Download results"></a>
+        </div-->
+      </div>
+    </div>
+    <div class="page">
+      <div id="buttons">
+        <span id="cluster-type" style="float: left; padding-top: 0.2em;">Networks:</span>
+        <ul id="clusterbuttons" style="float: left;">          
+        </ul>
+        <span id="cluster-type" style="float: right; padding-top: 0.2em; padding-left: 1em;">
+          Runs:
+          <select id="bigscape-runs">
+          </select>
+        </span>
+      </div>
+      <div style="position: relative; padding-bottom: 52.5%; padding-top: 0px; height: 0;">
+        <iframe style="position: absolute; top: 0; left: 0; width: 100%; height: 100%;" id="contentframe" src=""></iframe>
+      </div>
+    </div>
+    <div>
+      <div id="logos">
+      	<table id="logo-table">
+      		<tbody><tr>
+      			<td>
+        			<img src="./html_content/img/wur-logo.png">
+        		</td>
+        		<td>
+        			<img src="./html_content/img/warwick-logo.png">
+        		</td>
+        		<td>
+        			<img src="./html_content/img/cfb-logo.png">
+        		</td>
+        	</tr>
+        </tbody></table>
+      </div>
+      <div id="copyright">
+        If you have found BiG-SCAPE useful, please <a href="#">cite us</a>.
+      </div>
+    </div>
+  </body>
+  <script type="text/javascript" src="./html_content/js/jquery-3.2.1.min.js"></script>
+  <script type="text/javascript" src="./html_content/js/bigscape_results.js"></script>
+  <script type="text/javascript">
+    function loadNetwork(name, sub) {
+      $('#contentframe').attr('src', './html_content/networks/' + name + '/' + sub + '/index.html');
+      $('#contentframe').trigger("focus");
+    }
+    function loadOverview(name) {
+      $('#contentframe').attr('src', './html_content/networks/' + name + '/overview.html');
+      $('#contentframe').trigger("focus");
+    }
+    function loadRun(idx) {
+      var run_name = bigscape_results[idx]["label"];
+      $("#clusterbuttons").html("");
+      $("#clusterbuttons").append($("<li class='clbutton overview selected'><a href='javascript:loadOverview(\"" + run_name + "\");'>Overview</a></li>"));
+      for (var i in bigscape_results[idx]["networks"]) {
+        var sub = bigscape_results[idx]["networks"][i];
+        $("#clusterbuttons").append($("<li class='clbutton " + sub["css"] + " inactive'><a href='javascript:loadNetwork(\"" + run_name + "\",\"" + sub["name"] + "\");'>" + sub["label"] + "</a></li>"));
+      }
+      $(".clbutton").find("a").hover(function(handler){
+          var node = $(handler.target).parent();
+          $(".clbutton:not(.selected)").addClass("inactive");
+          node.removeClass("inactive");
+        }, function(handler){
+          $(".clbutton:not(.selected)").addClass("inactive");
+      });
+      $(".clbutton").click(function(handler){
+        $(".clbutton").removeClass("selected");
+        $(handler.target).parent().addClass("selected");
+        $(".clbutton:not(.selected)").addClass("inactive");
+      })
+      loadOverview(run_name);
+    }
+    $(document).ready(function(){
+      for (var i in bigscape_results) {
+        var module = bigscape_results[i];
+        $("#bigscape-runs").append("<option value='" + i + "'>" + module["label"] + "</option>");        
+      }
+      $("#bigscape-runs").on("change", function() {
+        loadRun(parseInt(this.value));
+      })
+      $("#bigscape-runs").trigger("change");
+    });
+  </script>
+</html>

@@ -541,19 +541,14 @@ def generatePfamColorsMatrix(pfam_domain_colors):
     return pfam_colors
 
 
-def copy_html_template(html_folder):
-    if (os.path.isdir(html_folder)):
-        shutil.rmtree(html_folder)
-    shutil.copytree(os.path.join(os.path.realpath(os.path.dirname(__file__)), "html_template"), html_folder)
-    
-    
-def add_to_bigscape_classes_js(module_name, className, results, htmlFolder):
-    bigscape_classes = [];
-    with open(os.path.join(htmlFolder, "js", "bigscape_classes.js"), "r") as bs_js:
-        line = bs_js.read()
-        assert line.startswith("var bigscape_classes = ")
-        assert line.endswith(";")
-        bigscape_classes = json.loads(line[23:-1])
-    bigscape_classes.append({ "name" : module_name, "label" : module_name, "css": className, "results" : results})
-    with open(os.path.join(htmlFolder, "js", "bigscape_classes.js"), "w") as bs_js:
-        bs_js.write("var bigscape_classes = {};".format(json.dumps(bigscape_classes, separators=(',',':'))))
+def add_to_bigscape_results_js(module_name, subs, result_js_file):
+    bigscape_results = [];
+    if os.path.isfile(result_js_file):
+        with open(result_js_file, "r") as bs_js:
+            line = bs_js.read()
+            assert line.startswith("var bigscape_results = ")
+            assert line.endswith(";")
+            bigscape_results = json.loads(line[23:-1])
+    bigscape_results.append({ "label" : module_name, "networks" : subs })
+    with open(result_js_file, "w") as bs_js:
+        bs_js.write("var bigscape_results = {};".format(json.dumps(bigscape_results, indent=4, separators=(',', ':'), sort_keys=True)))
