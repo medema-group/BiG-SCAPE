@@ -65,6 +65,7 @@ from scipy.optimize import linear_sum_assignment
 import pysapc
 import json
 import shutil
+from distutils import dir_util
 
 
 def get_gbk_files(inputdir, outputdir, bgc_fasta_folder, min_bgc_size, exclude_gbk_str, bgc_info):
@@ -1126,7 +1127,7 @@ def parseHmmScan(hmmscanResults, pfd_folder, pfs_folder, overlapCutoff):
 
     return("")
 
-def clusterJsonBatch(bgcs, outputFileBase,matrix,cutoffs=[1.0],damping=0.8,clusterClans=False,clanCutoff=(0.5,0.8),className="Others",htmlFolder=None):
+def clusterJsonBatch(bgcs, outputFileBase,matrix,cutoffs=[1.0],damping=0.8,clusterClans=False,clanCutoff=(0.5,0.8),className="Others",htmlFolder=None,subName="Undefined"):
     """BGC Family calling
     Uses csr sparse matrices to call Gene Cluster Families (GCFs) using Affinity
     Propagation.
@@ -1159,7 +1160,6 @@ def clusterJsonBatch(bgcs, outputFileBase,matrix,cutoffs=[1.0],damping=0.8,clust
         print('Clustering Clans Enabled with parameters clanClassificationCutoff: {}, clanDistanceCutoff: {}'.format(clanClassificationCutoff,clanDistanceCutoff))
     
     bgc2simIdx = dict(zip(bgcs, range(len(bgcs))))
-    pfam_colors = generatePfamColorsMatrix(os.path.join(os.path.dirname(os.path.realpath(__file__)), "domains_color_file.tsv"))
     
     # Get info on all BGCs to export to .js for visualization
     bs_data = []
@@ -1216,26 +1216,13 @@ def clusterJsonBatch(bgcs, outputFileBase,matrix,cutoffs=[1.0],damping=0.8,clust
         bgcJsonDict[bgcName]['orfs'] = list(orfDict.values())
     bs_data = [bgcJsonDict[clusterNames[int(bgc)]] for bgc in bgcs]
     
-    ## Write html output folder structure (and update bigscape_classes.js) for this module
-    ## Write {modulename}/bgcs.js
-    ## Write js/pfams.js
-    assert htmlFolder != None
-    module_name = outputFileBase.split(os.path.sep)[-1]
-    module_html_path = os.path.join(htmlFolder, "networks", module_name)
-    os.mkdir(module_html_path)
+    ## Write html output folder structure (and update bigscape_results.js) for this module
+    assert os.path.isdir(htmlFolder)
+    module_html_path = os.path.join(htmlFolder, subName)
+    create_directory(module_html_path, "Network HTML", False)
     with open(os.path.join(module_html_path, "bs_data.js"), "w") as bs_data_js:
         bs_data_js.write("var bs_data={};\n".format(json.dumps(bs_data, indent=4, separators=(',', ':'), sort_keys=True)))
-    add_to_bigscape_classes_js(module_name, className, ["cutoff{:4.2f}".format(cutoff) for cutoff in cutoffs], htmlFolder)
-    with open(os.path.join(htmlFolder, "js", "pfams.js"), "w") as pfams_js:
-        pfam_json = {}
-        for pfam_code in pfam_colors:
-            pfam_obj = {}
-            pfam_obj["col"] = pfam_colors[pfam_code]
-            pfam_obj["desc"] = ""
-            if pfam_code in pfam_info:
-                pfam_obj["desc"] = pfam_info[pfam_code][1]
-            pfam_json[pfam_code] = pfam_obj
-        pfams_js.write("var pfams={};\n".format(json.dumps(pfam_json, indent=4, separators=(',', ':'), sort_keys=True)))
+    shutil.copy(os.path.join(os.path.realpath(os.path.dirname(__file__)), "html_template", "index_html"), os.path.join(module_html_path, "index.html"))
     
     for cutoff in cutoffs:
         simMatrix = lil_matrix((len(bgcs), len(bgcs)), dtype=np.float32)
@@ -1390,13 +1377,8 @@ def clusterJsonBatch(bgcs, outputFileBase,matrix,cutoffs=[1.0],damping=0.8,clust
             #         clustering_file.write(clusterNames[int(bgcs[x])] + "\t" + str(i) + "\n")
             #     i += 1
 
-        ## Write html output folder structure for this cutoff
-        ## Write {modulename}/{cutoff}/bgc_networks.js
-        result_html_path = os.path.join(module_html_path, "cutoff{:4.2f}".format(cutoff))
-        os.mkdir(result_html_path)
-        shutil.copy(os.path.join(htmlFolder, "networks", "index_html"), os.path.join(result_html_path, "index.html"))
-		
-        with open(os.path.join(result_html_path, "bs_networks.js"), "w") as bs_networks_js:
+        ## Write bgc_networks.js		
+        with open(os.path.join(module_html_path, "bs_networks.js"), "w") as bs_networks_js:
             bs_networks_js.write("var bs_similarity={};\n".format(json.dumps(bs_distances, indent=4, separators=(',', ':'), sort_keys=True)))
             bs_networks_js.write("var bs_families={};\n".format(json.dumps(bs_families, indent=4, separators=(',', ':'), sort_keys=True)))
             bs_networks_js.write("var bs_families_alignment={};\n".format(json.dumps(bs_families_alignment, indent=4, separators=(',', ':'), sort_keys=True)))
@@ -1676,17 +1658,23 @@ if __name__=="__main__":
                     
     verbose = options.verbose
     
+    run_mode_string = ""
     networks_folder_all = "networks_all"
     networks_folder_samples = "networks_samples"    
     if options.hybrids:
         networks_folder_all += "_hybrids"
         networks_folder_samples += "_hybrids"
+        run_mode_string += "hybrid"
     if mode == "auto":
         networks_folder_all += "_auto"
         networks_folder_samples += "auto"
-    if mode == "lcs":
+        run_mode_string += "auto"
+    elif mode == "lcs":
         networks_folder_all += "_lcs"
         networks_folder_samples += "_lcs"
+        run_mode_string += "lcs-glocal"
+    else:
+        run_mode_string += "full"
     
     if options.skip_all and options.skip_ma:
         print("Overriding --skip_ma with --skip_all parameter")
@@ -1695,7 +1683,7 @@ if __name__=="__main__":
 
     time1 = time.time()
 
-    run_name = time.strftime("%Y-%m-%d %H-%M-%S", time.gmtime())
+    run_name = "{}_{}".format(time.strftime("%Y-%m-%d_%H-%M-%S", time.gmtime()), run_mode_string)
     
     # Make the following available for possibly deleting entries within parseHmmScan
     global genbankDict, gbk_files, sampleDict, clusters, baseNames
@@ -2182,17 +2170,41 @@ if __name__=="__main__":
 
     clusterNames = tuple(sorted(clusters))
 
+    # create output directory for network files
     network_files_folder = os.path.join(network_folder, run_name)
     create_directory(network_files_folder, "Network Files", False)
+
+    # copy html templates
+    dir_util.copy_tree(os.path.join(os.path.realpath(os.path.dirname(__file__)), "html_template", "output"), output_folder)
+
+    # make a new run folder in the html output & copy the overview_html
+    network_html_folder = os.path.join(output_folder, "html_content", "networks", run_name)
+    create_directory(network_html_folder, "Network HTML Files", False)
+    shutil.copy(os.path.join(os.path.realpath(os.path.dirname(__file__)), "html_template", "overview_html"), os.path.join(network_html_folder, "overview.html"))
+
+    # create pfams.js
+    pfams_js_file = os.path.join(output_folder, "html_content", "js", "pfams.js")
+    if not os.path.isfile(pfams_js_file):
+        with open(pfams_js_file, "w") as pfams_js:
+            pfam_json = {}
+            pfam_colors = generatePfamColorsMatrix(os.path.join(os.path.dirname(os.path.realpath(__file__)), "domains_color_file.tsv"))
+            for pfam_code in pfam_info:
+                pfam_obj = {}
+                if pfam_code in pfam_colors:
+                    pfam_obj["col"] = pfam_colors[pfam_code]
+                else:
+                    pfam_obj["col"] = "255,255,255"
+                pfam_obj["desc"] = pfam_info[pfam_code][1]
+                pfam_json[pfam_code] = pfam_obj
+            pfams_js.write("var pfams={};\n".format(json.dumps(pfam_json, indent=4, separators=(',', ':'), sort_keys=True)))
+
+    # track the sub modules (i.e. allOthers, allNRPS, ...)
+    html_subs = []
 
     # Try to make default analysis using all files found inside the input folder
     if options_all:
         print("\nGenerating distance network files with ALL available input files")
     
-        # create output directory for html visualization
-        html_folder = os.path.join(output_folder, networks_folder_all, "html")
-        copy_html_template(html_folder)
-
         # Making network files mixing all classes
         if options_mix:
             print("\n Mixing all BGC classes")
@@ -2239,7 +2251,8 @@ if __name__=="__main__":
             for row in network_matrix_mix:
                 reduced_network.append([int(row[0]), int(row[1]), row[2]])
             del network_matrix_mix[:]
-            clusterJsonBatch(mix_set, pathBase, reduced_network, cutoffs=cutoff_list,clusterClans=options.clans,clanCutoff=options.clan_cutoff,htmlFolder=html_folder)
+            html_subs.append({ "name" : "all_mix", "css" : "Others", "label" : "All-Mixed"})
+            clusterJsonBatch(mix_set, pathBase, reduced_network, subName="all_mix", cutoffs=cutoff_list,clusterClans=options.clans,clanCutoff=options.clan_cutoff,htmlFolder=network_html_folder)
             del mix_set[:]
             del reduced_network[:]
             
@@ -2331,7 +2344,8 @@ if __name__=="__main__":
                         reduced_network.append([int(row[0]), int(row[1]), row[2]])
                     del network_matrix[:]
 
-                    clusterJsonBatch(BGC_classes[bgc_class], pathBase, reduced_network, cutoffs=cutoff_list,clusterClans=options.clans,clanCutoff=options.clan_cutoff,htmlFolder=html_folder,className=bgc_class)
+                    html_subs.append({ "name" : "all_" + folder_name, "css" : folder_name, "label" : "All-" + folder_name})
+                    clusterJsonBatch(BGC_classes[bgc_class], pathBase, reduced_network, subName="all_" + folder_name, cutoffs=cutoff_list,clusterClans=options.clans,clanCutoff=options.clan_cutoff,htmlFolder=network_html_folder,className=bgc_class)
                     del BGC_classes[bgc_class][:]
                     del reduced_network[:]
 
@@ -2344,13 +2358,6 @@ if __name__=="__main__":
             print("\nNOT generating networks per sample (only one sample, covered in the all-vs-all case)")
         else:
             print("\nGenerating distance network files for each sample")
-            
-            # create output directory for all samples
-            create_directory(os.path.join(network_files_folder), "Samples", False)
-
-            # create output directory for html visualization
-            html_folder = os.path.join(output_folder, networks_folder_samples, "html")
-            copy_html_template(html_folder)
 
             for sample, sampleClusters in sampleDict.items():
                 print("\n Sample: " + sample)
@@ -2401,8 +2408,9 @@ if __name__=="__main__":
                         for row in network_matrix_sample:
                             reduced_network.append([int(row[0]), int(row[1]), row[2]])
                         del network_matrix_sample[:]
-                        
-                        clusterJsonBatch(mix_set, pathBase, reduced_network, cutoffs=cutoff_list,clusterClans=options.clans,clanCutoff=options.clan_cutoff,htmlFolder=html_folder)
+
+                        html_subs.append({ "name" : "sample_" + sample + "_mix", "css" : "Others", "label" : "S-" + sample + "-Mixed"})
+                        clusterJsonBatch(mix_set, pathBase, reduced_network, subName="sample_" + sample + "_mix", cutoffs=cutoff_list,clusterClans=options.clans,clanCutoff=options.clan_cutoff,htmlFolder=network_html_folder)
                         del mix_set[:]
                         del reduced_network[:]
                         
@@ -2489,11 +2497,14 @@ if __name__=="__main__":
                                     reduced_network.append([int(row[0]), int(row[1]), row[2]])
                                 del network_matrix_sample[:]
                                 
-                                clusterJsonBatch(BGC_classes[bgc_class], pathBase, reduced_network, cutoffs=cutoff_list,clusterClans=options.clans,clanCutoff=options.clan_cutoff,htmlFolder=html_folder,className=bgc_class)
+                                html_subs.append({ "name" : "sample_" + sample + "_" + folder_name, "css" : folder_name, "label" : "S-" + sample + "-" + folder_name})
+                                clusterJsonBatch(BGC_classes[bgc_class], pathBase, reduced_network, subName="sample_" + sample + "_" + folder_name, cutoffs=cutoff_list,clusterClans=options.clans,clanCutoff=options.clan_cutoff,htmlFolder=network_html_folder,className=bgc_class)
                                 
                                 del BGC_classes[bgc_class][:]
                                 del reduced_network[:]
-                            
+
+    # update bgc_results.js
+    add_to_bigscape_results_js(run_name, html_subs, os.path.join(output_folder, "html_content", "js", "bigscape_results.js"))
 
     pickle.dump(bgc_info,open(os.path.join(cache_folder,'bgc_info.dict'),'wb'))
     runtime = time.time()-time1
