@@ -55,6 +55,7 @@ from Bio.SeqFeature import BeforePosition, AfterPosition
 from Bio import AlignIO
 from Bio import pairwise2
 from Bio.SubsMat.MatrixInfo import pam250 as scoring_matrix
+from Bio import Phylo
 
 from functions import *
 from ArrowerSVG import *
@@ -464,12 +465,12 @@ def generate_dist_matrix(parms):
     go_a = BGCGeneOrientation[cluster1]
     go_b = BGCGeneOrientation[cluster2]
     
-    dist, jaccard, dss, ai, rDSSna, rDSS, S, Sa, lcsStartA, lcsStartB, reverse = cluster_distance_lcs(cluster1, 
+    dist, jaccard, dss, ai, rDSSna, rDSS, S, Sa, lcsStartA, lcsStartB, seedLength, reverse = cluster_distance_lcs(cluster1, 
             cluster2, domain_list_A, domain_list_B, dcg_a, dcg_b, core_pos_a, 
             core_pos_b, go_a, go_b, bgc_class)
         
     network_row = array('f',[cluster1Idx, cluster2Idx, dist, (1-dist)**2, jaccard, 
-                             dss, ai, rDSSna, rDSS, S, Sa, lcsStartA, lcsStartB, reverse])
+                             dss, ai, rDSSna, rDSS, S, Sa, lcsStartA, lcsStartB, seedLength, reverse])
     return network_row
     
 
@@ -672,6 +673,7 @@ def cluster_distance_lcs(A, B, A_domlist, B_domlist, dcg_A, dcg_b, core_pos_A, c
         
         reverse = False
         b_name = B
+        
     else:
         dcg_B = list(reversed(dcg_b))
         B_string = b_string_reverse
@@ -688,7 +690,9 @@ def cluster_distance_lcs(A, B, A_domlist, B_domlist, dcg_A, dcg_b, core_pos_A, c
         
     lcsStartA = sliceStartA
     lcsStartB = sliceStartB
-
+    seedLength = sliceLengthA
+    
+    
     # paint stuff on screen
     #if sliceStartB > sliceStartA:
         #offset_A = sliceStartB - sliceStartA
@@ -1039,7 +1043,7 @@ def cluster_distance_lcs(A, B, A_domlist, B_domlist, dcg_A, dcg_b, core_pos_A, c
     if reverse:
         rev = 1.0
         
-    return Distance, Jaccard, DSS, AI, DSS_non_anchor, DSS_anchor, S, S_anchor, lcsStartA, lcsStartB, rev
+    return Distance, Jaccard, DSS, AI, DSS_non_anchor, DSS_anchor, S, S_anchor, lcsStartA, lcsStartB, seedLength, rev
 
 
 def launch_hmmalign(cores, domain_sequence_list):
@@ -1438,7 +1442,8 @@ def clusterJsonBatch(bgcs, pathBase, className, matrix, pos_alignments,
             
 
             # launch fasttree to make tree
-            print("Working GCF {}, cutoff {}".format(exemplar_idx, cutoff))
+            if verbose:
+                print("  Working GCF {}, cutoff {}".format(exemplar_idx, cutoff))
             newick_file_path = os.path.join(gcf_trees_path, "GCF_c{:4.2f}_{:05d}.newick".format(cutoff,exemplar_idx))
             with open(newick_file_path, "w") as newick_file:
                 command = ["fasttree", "-nopr", "-quiet", alignment_file_path]
@@ -1451,12 +1456,28 @@ def clusterJsonBatch(bgcs, pathBase, className, matrix, pos_alignments,
                 sys.exit(" ERROR: newick file not created (GCF_c{:4.2f}_{:05d})".format(cutoff,exemplar_idx))
             else:
                 # change bgc names to (internal) indices
+                #with open(newick_file_path,"r") as newick_file:
+                    #newick = newick_file.read().strip()
+                    #print(newick)
+                    #print("")
+                    #for name in bgc_name_to_idx:
+                        #newick = newick.replace(name, str(bgcExt2Int[bgc_name_to_idx[name]]))
+                    #newick_trees[exemplar_idx] = newick
+                    
+                    #print(newick)
+                    #print("")
+                    
                 with open(newick_file_path,"r") as newick_file:
-                    newick = newick_file.read().strip()
+                    tree = Phylo.read(newick_file, 'newick')
+                    #print(tree.format("newick"))
+                    #print("")
+                    tree.root_at_midpoint()
+                    newick = tree.format("newick")
                     for name in bgc_name_to_idx:
+                        #print("Replace {} with {}".format(name, str(bgcExt2Int[bgc_name_to_idx[name]])))
                         newick = newick.replace(name, str(bgcExt2Int[bgc_name_to_idx[name]]))
+                    #print(newick)
                     newick_trees[exemplar_idx] = newick
-            
        
         ### Use the 0.5 distance cutoff to cluster clans by default
         if clusterClans and cutoff == clanClassificationCutoff:
@@ -1520,17 +1541,17 @@ def clusterJsonBatch(bgcs, pathBase, className, matrix, pos_alignments,
         #print(pos_alignments)
         bs_families_alignment = []
         for family, members in familiesDict.items():
-            #print(family)
-            for member in members:
-                #print(member, clusterNames[member])
-                domainGenes2allGenes[member] = {}
+            #print("FAMILY {}".format(family))
+            for bgc in members:
+                #print(bgc, clusterNames[bgc])
+                domainGenes2allGenes[bgc] = {}
                 has_domains = 0
-                for orf in range(len(bs_data[bgcExt2Int[member]]["orfs"])):
-                    #print("{} domains in orf {}".format(len(bs_data[bgcExt2Int[member]]["orfs"][orf]["domains"]), orf))
-                    if len(bs_data[bgcExt2Int[member]]["orfs"][orf]["domains"]) > 0:
-                        domainGenes2allGenes[member][has_domains] = orf
+                for orf in range(len(bs_data[bgcExt2Int[bgc]]["orfs"])):
+                    #print("{} domains in orf {}".format(len(bs_data[bgcExt2Int[bgc]]["orfs"][orf]["domains"]), orf))
+                    if len(bs_data[bgcExt2Int[bgc]]["orfs"][orf]["domains"]) > 0:
+                        domainGenes2allGenes[bgc][has_domains] = orf
                         has_domains += 1
-                #print(len(bs_data[bgcExt2Int[member]]["orfs"]))
+                #print(len(bs_data[bgcExt2Int[bgc]]["orfs"]))
             #print(domainGenes2allGenes)
             assert (len(members) > 0), "Error: bs_families[{}] have no members, something went wrong?".format(fam_idx)
             
@@ -1538,15 +1559,38 @@ def clusterJsonBatch(bgcs, pathBase, className, matrix, pos_alignments,
             aln = []
             for bgc in members:
                 if bgc == family:
-                    aln.append([ [gene_num, 0] for gene_num in range(len(DomainCountGene[clusterNames[family]]))])
+                    aln.append([ [gene_num, 0] for gene_num in range(len(bs_data[bgcExt2Int[family]]["orfs"]))])
                 else:
                     try:
-                        a, b, reverse = pos_alignments[family][bgc]
+                        a, b, length, reverse = pos_alignments[family][bgc]
                     except:
-                        b, a, reverse = pos_alignments[bgc][family]
-
-                    a = domainGenes2allGenes[family][a]
-                    b = domainGenes2allGenes[bgc][b]
+                        b, a, length, reverse = pos_alignments[bgc][family]
+                        
+                        if reverse:
+                            # special case. bgc was reference (first) in lcs
+                            a = domainGenes2allGenes[family][len(DomainCountGene[clusterNames[family]])-a-length]
+                            b = domainGenes2allGenes[bgc][b+length-1] # -1 go to 0-index
+                            
+                            #if clusterNames[family] == "P207.1.cluster032" and clusterNames[bgc] == "LGCW01000001.1.cluster034":
+                                #print(length)
+                                #print(DomainCountGene[clusterNames[family]], len(DomainCountGene[clusterNames[family]]))
+                                #print(domainGenes2allGenes[family])
+                                #print(DomainCountGene[clusterNames[bgc]], len(DomainCountGene[clusterNames[bgc]]))
+                                #print(domainGenes2allGenes[bgc])
+                        else:
+                            a = domainGenes2allGenes[family][a]
+                            b = domainGenes2allGenes[bgc][b]
+                    else:
+                        #print(clusterNames[family], a, clusterNames[bgc], b)
+                        a = domainGenes2allGenes[family][a]
+                        
+                        if reverse:
+                            b = domainGenes2allGenes[bgc][len(DomainCountGene[clusterNames[bgc]])-b-1]
+                            #print(a, b)
+                        else:
+                            b = domainGenes2allGenes[bgc][b]
+                            
+                            
                     ref_genes_.add(a)
                     bgc_algn = []
                     
@@ -2484,7 +2528,8 @@ if __name__=="__main__":
                 if row[-1] == 1.0:
                     reverse = True
                 pa = pos_alignments.setdefault(int(row[0]),{})
-                pa[int(row[1])] = (int(row[-3]), int(row[-2]), reverse)
+                # lcsStartA, lcsStartB, seedLength, reverse={True,False}
+                pa[int(row[1])] = (int(row[-4]), int(row[-3]), int(row[-2]), reverse)
             del network_matrix_mix[:]
             html_subs.append({ "name" : "mix", "css" : "Others", "label" : "Mixed"})
             clusterJsonBatch(mix_set, pathBase, "mix", reduced_network, pos_alignments,
@@ -2582,7 +2627,8 @@ if __name__=="__main__":
                         if row[-1] == 1.0:
                             reverse = True
                         pa = pos_alignments.setdefault(int(row[0]),{})
-                        pa[int(row[1])] = (int(row[-3]), int(row[-2]), reverse)
+                        # lcsStartA, lcsStartB, seedLength, reverse={True,False}
+                        pa[int(row[1])] = (int(row[-4]), int(row[-3]), int(row[-2]), reverse)
                     del network_matrix[:]
 
                     html_subs.append({ "name" : bgc_class, "css" : bgc_class, "label" : bgc_class})
