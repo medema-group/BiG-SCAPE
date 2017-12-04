@@ -48,6 +48,7 @@ from collections import defaultdict
 from multiprocessing import Pool, cpu_count
 from argparse import ArgumentParser
 from difflib import SequenceMatcher
+from operator import itemgetter
 
 from Bio import SeqIO
 from Bio.SeqFeature import BeforePosition, AfterPosition
@@ -66,7 +67,7 @@ import pysapc
 import json
 import shutil
 from distutils import dir_util
-
+from sklearn.cluster import AffinityPropagation
 
 def get_gbk_files(inputdir, outputdir, bgc_fasta_folder, min_bgc_size, exclude_gbk_str, bgc_info):
     """Searches given directory for genbank files recursively, will assume that
@@ -463,12 +464,12 @@ def generate_dist_matrix(parms):
     go_a = BGCGeneOrientation[cluster1]
     go_b = BGCGeneOrientation[cluster2]
     
-    dist, jaccard, dss, ai, rDSSna, rDSS, S, Sa, lcsStartA, lcsStartB = cluster_distance_lcs(cluster1, 
+    dist, jaccard, dss, ai, rDSSna, rDSS, S, Sa, lcsStartA, lcsStartB, reverse = cluster_distance_lcs(cluster1, 
             cluster2, domain_list_A, domain_list_B, dcg_a, dcg_b, core_pos_a, 
             core_pos_b, go_a, go_b, bgc_class)
         
     network_row = array('f',[cluster1Idx, cluster2Idx, dist, (1-dist)**2, jaccard, 
-                             dss, ai, rDSSna, rDSS, S, Sa, lcsStartA, lcsStartB])
+                             dss, ai, rDSSna, rDSS, S, Sa, lcsStartA, lcsStartB, reverse])
     return network_row
     
 
@@ -671,7 +672,6 @@ def cluster_distance_lcs(A, B, A_domlist, B_domlist, dcg_A, dcg_b, core_pos_A, c
         
         reverse = False
         b_name = B
-        
     else:
         dcg_B = list(reversed(dcg_b))
         B_string = b_string_reverse
@@ -686,6 +686,9 @@ def cluster_distance_lcs(A, B, A_domlist, B_domlist, dcg_A, dcg_b, core_pos_A, c
         reverse = True
         b_name = B + "*"
         
+    lcsStartA = sliceStartA
+    lcsStartB = sliceStartB
+
     # paint stuff on screen
     #if sliceStartB > sliceStartA:
         #offset_A = sliceStartB - sliceStartA
@@ -1032,10 +1035,11 @@ def cluster_distance_lcs(A, B, A_domlist, B_domlist, dcg_A, dcg_b, core_pos_A, c
             print("Jw: {}\tDSSw: {}\tAIw: {}".format(str(Jaccardw), str(DSSw), str(AIw)))
         Distance = 0.0
         
+    rev = 0.0
     if reverse:
-        sliceStartB = -1*sliceStartB
+        rev = 1.0
         
-    return Distance, Jaccard, DSS, AI, DSS_non_anchor, DSS_anchor, S, S_anchor, sliceStartA, sliceStartB
+    return Distance, Jaccard, DSS, AI, DSS_non_anchor, DSS_anchor, S, S_anchor, lcsStartA, lcsStartB, rev
 
 
 def launch_hmmalign(cores, domain_sequence_list):
@@ -1127,7 +1131,9 @@ def parseHmmScan(hmmscanResults, pfd_folder, pfs_folder, overlapCutoff):
 
     return("")
 
-def clusterJsonBatch(bgcs, outputFileBase,matrix,cutoffs=[1.0],damping=0.8,clusterClans=False,clanCutoff=(0.5,0.8),className="Others",htmlFolder=None,subName="Undefined"):
+def clusterJsonBatch(bgcs, pathBase, className, matrix, pos_alignments, 
+                     cutoffs=[1.0], damping=0.8, clusterClans=False, 
+                     clanCutoff=(0.5,0.8), htmlFolder=None):
     """BGC Family calling
     Uses csr sparse matrices to call Gene Cluster Families (GCFs) using Affinity
     Propagation.
@@ -1136,14 +1142,16 @@ def clusterJsonBatch(bgcs, outputFileBase,matrix,cutoffs=[1.0],damping=0.8,clust
     value, similarity is 0)
     Larger cutoff values are more permissive
     
-    bgcs: ordered list of integers (ascending and unique) representing the index
-        in the main clusterNames list
+    bgcs: ordered list of integers (ascending, unique, but not necessarily 
+        consecutive) representing the index in the main clusterNames list. Every
+        number here is an "external" index
     matrix: list of lists of idx0, idx1, d where the first two elements correspond
         to indices from `bgcs`
-    outputFileBase: folder where GCF files will be deposited
+    pathBase: folder where GCF files will be deposited
     """
+    numBGCs = len(bgcs)
     
-    simDict = {}
+    simDict = {} # dictionary of dictionaries
     # Doing this so it only has to go through the matrix once
     for row in matrix:
         gc1, gc2, distance = row
@@ -1159,7 +1167,8 @@ def clusterJsonBatch(bgcs, outputFileBase,matrix,cutoffs=[1.0],damping=0.8,clust
     if clusterClans and verbose:
         print('Clustering Clans Enabled with parameters clanClassificationCutoff: {}, clanDistanceCutoff: {}'.format(clanClassificationCutoff,clanDistanceCutoff))
     
-    bgc2simIdx = dict(zip(bgcs, range(len(bgcs))))
+    # External index number to Internal, consecutive, index
+    bgcExt2Int = dict(zip(bgcs, range(numBGCs)))
     
     # Get info on all BGCs to export to .js for visualization
     bs_data = []
@@ -1213,148 +1222,351 @@ def clusterJsonBatch(bgcs, outputFileBase,matrix,cutoffs=[1.0],damping=0.8,clust
             orf = entry[-1].strip().split(':')[0]
             pfamID = entry[5].split('.')[0]
             orfDict[orf]["domains"].append({'code': pfamID, 'start': int(entry[3]), 'end': int(entry[4]), 'bitscore': float(entry[1])})
-        bgcJsonDict[bgcName]['orfs'] = list(orfDict.values())
-    bs_data = [bgcJsonDict[clusterNames[int(bgc)]] for bgc in bgcs]
+        # order of ORFs is important here because I use it to get a translation
+        # between the "list of ORFs with domains" to "list of all ORFs" later on
+        bgcJsonDict[bgcName]['orfs'] = sorted(orfDict.values(), key=itemgetter("start"))
+    bs_data = [bgcJsonDict[clusterNames[bgc]] for bgc in bgcs]
     
     ## Write html output folder structure (and update bigscape_results.js) for this module
     assert os.path.isdir(htmlFolder)
-    module_html_path = os.path.join(htmlFolder, subName)
+    module_html_path = os.path.join(htmlFolder, className)
     create_directory(module_html_path, "Network HTML", False)
     with open(os.path.join(module_html_path, "bs_data.js"), "w") as bs_data_js:
         bs_data_js.write("var bs_data={};\n".format(json.dumps(bs_data, indent=4, separators=(',', ':'), sort_keys=True)))
     shutil.copy(os.path.join(os.path.realpath(os.path.dirname(__file__)), "html_template", "index_html"), os.path.join(module_html_path, "index.html"))
     
     for cutoff in cutoffs:
-        simMatrix = lil_matrix((len(bgcs), len(bgcs)), dtype=np.float32)
-        for i in range(len(bgcs)):
-            bgc1 = bgcs[i]
+        #simMatrix = lil_matrix((numBGCs, numBGCs), dtype=np.float32)
+        simMatrix = np.zeros((numBGCs, numBGCs), dtype=np.float32)
+        for bgc1 in bgcs:
             # first make sure it is similar to itself
-            simMatrix[bgc2simIdx[bgc1],bgc2simIdx[bgc1]] = 1
+            simMatrix[bgcExt2Int[bgc1],bgcExt2Int[bgc1]] = 1
             for bgc2 in simDict.get(bgc1,{}).keys():
-                # you might get 0 values if there were matrix entries under the cutoff don't need to input these in
-                # the sparse matrix
+                # you might get 0 values if there were matrix entries under the
+                # cutoff. No need to input these in the sparse matrix
                 if simDict[bgc1][bgc2] > 1-cutoff:
                     # Ensure symmetry
-                    simMatrix[bgc2simIdx[bgc1], bgc2simIdx[bgc2]] = simDict[bgc1][bgc2]
-                    simMatrix[bgc2simIdx[bgc2], bgc2simIdx[bgc1]] = simDict[bgc1][bgc2]
+                    simMatrix[bgcExt2Int[bgc1], bgcExt2Int[bgc2]] = simDict[bgc1][bgc2]
+                    simMatrix[bgcExt2Int[bgc2], bgcExt2Int[bgc1]] = simDict[bgc1][bgc2]
         if verbose:
             print("  Clustering (c=" + str(cutoff) + ")")
-        labels = pysapc.SAP(damping=damping, max_iter=500,
-                            preference='min').fit_predict(simMatrix)
+        #labels = pysapc.SAP(damping=damping, max_iter=500,
+                            #preference='min').fit_predict(simMatrix)
+        af = AffinityPropagation(damping=damping, max_iter=500).fit(simMatrix)
+        # labels_: labels for each node. Same label means same cluster. Value is also
+        #   the index in the cluster_centers_indices_ list. Goes from 0 to number of 
+        #   clusters-1
+        # cluster_centers_indices_: list of exemplars
+        labels = [af.cluster_centers_indices_[af.labels_[i]] for i in range(numBGCs)]
+        
         if verbose:
             print("   ...done")
-        numBGCs = len(bgcs)
-        bs_distances = [[float("{:.3f}".format(simMatrix[row, col])) for col in range(row+1)] for row in range(numBGCs)]
+
+        bs_distances = [[float("{:.3f}".format(simMatrix[row, col])) for col in 
+                         range(row+1)] for row in range(numBGCs)]
         
-        familiesDict = {}
-        for idx, label in enumerate(labels):
-            members = familiesDict.setdefault(label, [])
-            members.append(idx)
-            familiesDict[label] = members
+        
+        
+        familiesDict = defaultdict(list)
+        for i in range(numBGCs):
+            familiesDict[bgcs[labels[i]]].append(bgcs[i])
+        familyIdx = sorted(familiesDict.keys()) # identifiers for each family
+        
+        #write_error = False
+        #for ex in familiesDict:
+            #if ex not in familiesDict[ex]:
+                #write_error = True
+                #print(ex, familiesDict[ex])
+        #if write_error:
+            #print("Errors where found in scikit-learn, writing errorfile")
+            #with open("errorfile.txt","w") as err:
+                #err.write("Original bgc index\tInternal indexes (0-numBGCs-1)\tLabel (internal index)\n")
+                #for i in range(numBGCs):
+                    #err.write("{}\t{}\t{}\n".format(bgcs[i],i,labels[i]))
+            #sys.exit("stop...")
+
+        ##
+        ## Get conserved domain core information to build phylogenetic tree
+        ## 
+        gcf_trees_path = os.path.join(pathBase, "GCF_trees")
+        if not os.path.exists(gcf_trees_path):
+            os.makedirs(gcf_trees_path)
             
-        ## guarantee order of families and indices for later assignment
-        # Families should be indexed from 0 to # families - 1
-        familiesDictReIdxd = {idx:members for idx,members in enumerate(familiesDict.values())}
-        familyIdxs = range(len(familiesDictReIdxd))
-        
+        newick_trees = {} # key:original bgc index
+        for exemplar_idx in familiesDict:
+            exemplar = clusterNames[exemplar_idx]
+            gcf = familiesDict[exemplar_idx][:]
+            if len(gcf) < 3:
+                newick_trees[exemplar_idx] = "({});".format(",".join([str(bgcExt2Int[x])+":0.0" for x in gcf]))
+                
+                #print(newick_trees[exemplar_idx])
+                #TODO make some default alignment data to send to the json file
+                continue
+            
+            domain_sets = {}
+            
+            # make a frequency table (not counting copies):
+            frequency_table = defaultdict(int)
+            for bgc in gcf:
+                domain_sets[bgc] = set(DomainList[clusterNames[bgc]])
+                for domain in domain_sets[bgc]:
+                    frequency_table[domain] += 1
+            
+            # Remove all PKS/NRPS domains
+            # TODO but this was intended to be done when we were considering
+            # directly using Corason. Should these domains still be removed?
+            # We are now able to include them accurately with the Hungarian
+            # matching
+            # If implemented, fill nrps_pks_domains first!
+            #domains_in_gcf = set(frequency_table.keys())
+            #for erase_domain in (nrps_pks_domains & domains_in_gcf):
+                #del frequency_table[erase_domain]
+                
+            # Find the set of [(tree domains)]. They should 1) be in the exemplar
+            # and 2) appear with the most frequency. Iterate over the different
+            # frequencies (descending) until set is not empty
+            tree_domains = set()
+            frequencies = sorted(set(frequency_table.values()), reverse=True)            
+            
+            # first try with domain(s) with max frequency, even if it's just one
+            f = 0 
+            while len(tree_domains) == 0 and f < len(frequencies):
+                for domain in frequency_table:
+                    if frequency_table[domain] == frequencies[f] and domain in domain_sets[exemplar_idx]:
+                            tree_domains.add(domain)
+                    
+                f += 1
+            
+            
+            if len(tree_domains) == 1:
+                print("  Warning: core shared domains for GCF {} consists of a single domain ({})".format(exemplar_idx, [x for x in tree_domains][0]))
+            
+            # Get the alignments of the core domains
+            alignments = {}
+            # initialize every sequence alignment entry. Don't do defaultdict!
+            alignments[exemplar_idx] = ""
+            
+            out_of_tree_bgcs = [] # bgcs that don't share a common domain core
+            delete_list = []
+            gcf.remove(exemplar_idx) # separate exemplar from the rest of the bgcs
+            for bgc in gcf:
+                alignments[bgc] = ""
+
+            match_dict = {}
+            for domain in tree_domains:
+                #print(domain)
+                specific_domain_list_A = BGCs[exemplar][domain]
+                num_copies_a = len(specific_domain_list_A)
+                for exemplar_domain_copy in specific_domain_list_A:
+                    alignments[exemplar_idx] += AlignedDomainSequences[exemplar_domain_copy]
+                
+                for bgc in gcf:
+                    match_dict.clear()
+                    if domain not in domain_sets[bgc]:
+                        print("BGC {} does not share a common domain core (domain: {})".format(clusterNames[bgc], domain))
+                        out_of_tree_bgcs.append(bgc)
+                        delete_list.append(bgc)
+                    else:
+                        specific_domain_list_B = BGCs[clusterNames[bgc]][domain]
+                        
+                        num_copies_b = len(specific_domain_list_B)
+                        
+                        DistanceMatrix = np.ndarray((num_copies_a,num_copies_b))
+                        for domsa in range(num_copies_a):
+                            for domsb in range(num_copies_b):
+                                # TODO NOT taking into consideration any LCS slicing
+                                # i.e. we're comparing ALL copies of this domain
+                                sequence_tag_a = specific_domain_list_A[domsa]
+                                sequence_tag_b = specific_domain_list_B[domsb]
+                                
+                                aligned_seqA = AlignedDomainSequences[sequence_tag_a]
+                                aligned_seqB = AlignedDomainSequences[sequence_tag_b]
+                                
+                                seq_length = 0
+                                matches = 0
+                                gaps = 0
+                                
+                                seq_length = len(aligned_seqA)
+                                
+                                for position in range(seq_length):
+                                    if aligned_seqA[position] == aligned_seqB[position]:
+                                        if aligned_seqA[position] != "-":
+                                            matches += 1
+                                        else:
+                                            gaps += 1
+                                            
+                                DistanceMatrix[domsa][domsb] = 1 - ( matches/(seq_length-gaps) )
+
+                        BestIndexes = linear_sum_assignment(DistanceMatrix)
+                        # at this point is not ensured that we have the same order
+                        # for the exemplar's copies (rows in BestIndexes)
+                        # ideally they should go from 0-numcopies. Better make sure
+                        for x in range(len(BestIndexes[0])):
+                            match_dict[BestIndexes[0][x]] = BestIndexes[1][x]
+                            
+                        for copy in range(num_copies_a):
+                            try:
+                                alignments[bgc] += AlignedDomainSequences[specific_domain_list_B[match_dict[copy]]]
+                            except KeyError:
+                                # This means that this copy of exemplar did not
+                                # have a match in bgc (i.e. bgc has less copies
+                                # of this domain than exemplar)
+                                alignments[bgc] += "-"*seq_length
+                        
+                for bgc in delete_list:
+                    try:
+                        del alignments[bgc]
+                    except KeyError:
+                        # if using defaultdict, the except will always add the
+                        # key when except'ing
+                        pass
+                del delete_list[:]
+                 
+            # need this to change the labels in the trees that are read from files
+            bgc_name_to_idx = {}
+            
+            # save compiled alignments of the GCF domain core as fastas
+            alignment_file_path = os.path.join(gcf_trees_path,"GCF_c{:4.2f}_{:05d}_alignment.fasta".format(cutoff,exemplar_idx))
+            with open(alignment_file_path, "w") as gcf_alignment_file:
+                gcf_alignment_file.write(">{}\n{}\n".format(exemplar, alignments[exemplar_idx]))
+                bgc_name_to_idx[exemplar] = exemplar_idx
+                
+                for bgc in alignments:
+                    if bgc != exemplar_idx:
+                        gcf_alignment_file.write(">{}\n{}\n".format(clusterNames[bgc], alignments[bgc]))
+                        bgc_name_to_idx[clusterNames[bgc]] = bgc
+            
+
+            # launch fasttree to make tree
+            print("Working GCF {}, cutoff {}".format(exemplar_idx, cutoff))
+            newick_file_path = os.path.join(gcf_trees_path, "GCF_c{:4.2f}_{:05d}.newick".format(cutoff,exemplar_idx))
+            with open(newick_file_path, "w") as newick_file:
+                command = ["fasttree", "-nopr", "-quiet", alignment_file_path]
+                p = subprocess.Popen(command, stdout=newick_file, shell=False)
+                p.wait() # only with process has terminated will the file be ready
+
+            
+            if not os.path.isfile(newick_file_path):
+                print(newick_file_path)
+                sys.exit(" ERROR: newick file not created (GCF_c{:4.2f}_{:05d})".format(cutoff,exemplar_idx))
+            else:
+                # change bgc names to (internal) indices
+                with open(newick_file_path,"r") as newick_file:
+                    newick = newick_file.read().strip()
+                    for name in bgc_name_to_idx:
+                        newick = newick.replace(name, str(bgcExt2Int[bgc_name_to_idx[name]]))
+                    newick_trees[exemplar_idx] = newick
+            
+       
         ### Use the 0.5 distance cutoff to cluster clans by default
         if clusterClans and cutoff == clanClassificationCutoff:
-            famSimDict = dict()
-            for familyI in familyIdxs:
-                membersI = familiesDictReIdxd[familyI]
-                for familyJ in familyIdxs:
-                    membersJ = familiesDictReIdxd[familyJ]
-                    famSimDict.setdefault(familyI, {})
-                    ### Need to check all of the distances between members, option to get the min, max or mean distances
-                    famSimilarities = [0]
-                    for memberI in membersI:
-                        similarities = [simMatrix[memberI, memberJ] for memberJ in membersJ]
-                        # can change this to min or mean
-                        famSimilarities.append(sum(similarities, 0.0) / len(similarities))
-                    ## can change this as well
-                    famSimDict[familyI][familyJ] = sum(famSimilarities,0.0)/len(famSimilarities)
-
             # Detect if there's only 1 GCF. It makes pySAPC crash
-            if len(familyIdxs) == 1:
-                print("  Gene Cluster Clans: Only 1 GCF")
+            if len(familyIdx) == 1:
+                #print("  Gene Cluster Clans: Only 1 GCF")
                 clanLabels = [1]
                 continue
-            famSimMatrix = lil_matrix((len(familyIdxs), len(familyIdxs)), dtype=np.float32)
-            for familyI in familyIdxs:
-                # first make sure it is similar to itself
-                famSimMatrix[familyI, familyI] = 1
-                for familyJ in famSimDict.get(familyI, {}).keys():
-                    # you might get 0 values if there were matrix entries under the cutoff don't need to input these in
-                    # the sparse matrix
-                    if famSimDict[familyI].get(familyJ, 0) > 1 - clanDistanceCutoff:
-                        # Ensure symmetry
-                        famSimMatrix[familyI, familyJ] = famSimDict[familyI][familyJ]
-                        famSimMatrix[familyJ, familyI] = famSimDict[familyI][familyJ]
+            
+            famSimMatrix = lil_matrix((len(familyIdx), len(familyIdx)), dtype=np.float32)
+            #famSimMatrix = np.zeros((len(familyIdx), len(familyIdx)), dtype=np.float32)
+            familiesExt2Int = {gcfExtIdx:gcfIntIdx for gcfIntIdx,gcfExtIdx in enumerate(familyIdx)}
+                                                                                        
+            for familyI, familyJ in [tuple(sorted(combo)) for combo in combinations(familyIdx, 2)]:
+                famSimilarities = []
+                # currently uses the average distance of all average distances
+                # between bgc from gcf I to all bgcs from gcf J
+                for bgcI in familiesDict[familyI]:
+                    similarities = [simMatrix[bgcExt2Int[bgcI], bgcExt2Int[bgcJ]] for bgcJ in familiesDict[familyJ]]
+                    famSimilarities.append(sum(similarities, 0.0) / len(similarities))
+                try:
+                    familySimilarityIJ = sum(famSimilarities, 0.0)/len(famSimilarities)
+                except ZeroDivisionError:
+                    familySimilarityIJ = 0.0
+                if familySimilarityIJ > 1 - clanDistanceCutoff:
+                    # Ensure symmetry
+                    famSimMatrix[familiesExt2Int[familyI], familiesExt2Int[familyJ]] = familySimilarityIJ
+                    famSimMatrix[familiesExt2Int[familyJ], familiesExt2Int[familyI]] = familySimilarityIJ
+            # add main diagonal
+            for family in range(familyIdx):
+                famSimMatrix[family,family] = 1.0
+            
             clanLabels = pysapc.SAP(damping=damping, max_iter=500,
                                 preference='min').fit_predict(famSimMatrix)
         else:
             clanLabels = []
             
         if len(clanLabels) > 0:
-            clansDict = {}
-            for idx,clanLabel in enumerate(clanLabels):
-                clanMembers = clansDict.setdefault(clanLabel,[])
-                clanMembers.append(idx)
-                clansDict[clanLabel] = clanMembers
-            fam2clan = dict(zip(familyIdxs,clanLabels))
+            clansDict = defaultdict(list)
+            for i in range(familyIdx):
+                clansDict[clanLabels[i]].append(familyIdx[i])
+
+            fam2clan = dict(zip(familyIdx,clanLabels))
         
-        if len(clanLabels) > 0:
-            bs_families = [{"id": "FAM_{:03d}".format(family), 'members': members, "clan": "CLAN_{:03d}".format(fam2clan[family])}
-                           for family, members in familiesDictReIdxd.items()]
+            bs_families = [{"id": "FAM_{:05d}".format(family), 
+                            'members': [bgcExt2Int[member] for member in members], 
+                            "clan": "CLAN_{:03d}".format(fam2clan[family])}
+                           for family, members in familiesDict.items()]
             bs_clans = [{"id": "CLAN_{:03d}".format(clan), 'members': members}
-                           for clan, members in enumerate(clansDict.values())]
+                           for clan, members in clansDict.items()]
         else:
-            bs_families = [{"id": "FAM_{:03d}".format(family), 'members': members, }
-                           for family, members in familiesDictReIdxd.items()]
+            bs_families = [{"id": "FAM_{:05d}".format(family), 
+                            'members': [bgcExt2Int[member] for member in members], }
+                           for family, members in familiesDict.items()]
+        
+        # Positional alignment information is based on DomainCountGene, which
+        # does not contain empty genes (i.e. with no domains). 
+        domainGenes2allGenes = {}
         
         ## BGC Family alignment information
+        #print(pos_alignments)
         bs_families_alignment = []
-        from random import randint # TODO: remove this when real data is implemented
-        def make_random_tree(bgc_ids, ref_bgc): # TODO: remove this when real data is implemented
-            if len(bgc_ids) == 1:
-                return "();"
-            else:
-                randtree = "({}:0.5,{}:0.5)".format(bgc_ids.pop(), bgc_ids.pop())
-                for bgc_id in bgc_ids:
-                    if ((randint(0,9) > 7) or (bgc_id == ref_bgc)):
-                        randtree = "({}:0.5,{}:0.5)".format(bgc_id, randtree)
-                return "{};".format(randtree)
-        def make_random_alignment(bgc_genes, ref_gene, orfs_bgc, orfs_ref):
+        for family, members in familiesDict.items():
+            #print(family)
+            for member in members:
+                #print(member, clusterNames[member])
+                domainGenes2allGenes[member] = {}
+                has_domains = 0
+                for orf in range(len(bs_data[bgcExt2Int[member]]["orfs"])):
+                    #print("{} domains in orf {}".format(len(bs_data[bgcExt2Int[member]]["orfs"][orf]["domains"]), orf))
+                    if len(bs_data[bgcExt2Int[member]]["orfs"][orf]["domains"]) > 0:
+                        domainGenes2allGenes[member][has_domains] = orf
+                        has_domains += 1
+                #print(len(bs_data[bgcExt2Int[member]]["orfs"]))
+            #print(domainGenes2allGenes)
+            assert (len(members) > 0), "Error: bs_families[{}] have no members, something went wrong?".format(fam_idx)
+            
+            ref_genes_ = set()
             aln = []
-            selected_idx = bgc_genes[randint(0, len(bgc_genes) - 1)]
-            for bgc_gene in bgc_genes:
-                if bgc_gene == selected_idx:
-                    if (orfs_bgc[bgc_gene]["strand"] * orfs_ref[ref_gene]["strand"]) > 0:
-                        aln.append([ref_gene, 50.00])
-                    else:
-                        aln.append([ref_gene, -50.00])
+            for bgc in members:
+                if bgc == family:
+                    aln.append([ [gene_num, 0] for gene_num in range(len(DomainCountGene[clusterNames[family]]))])
                 else:
-                    aln.append([-1, 0.00])
-            return aln
-        for fam_idx, bs_fam in enumerate(bs_families):
-            assert (len(bs_fam["members"]) > 0), "Error: bs_families[{}] have no members, something went wrong?".format(fam_idx)
-            ## TODO: please fill this with the real values
-            ref_bgc = bs_fam["members"][randint(0, len(bs_fam["members"]) - 1)]
-            ref_genes = [randint(0, len(bs_data[ref_bgc]["orfs"]) - 1)]
-            newick_tree = make_random_tree(list(bs_fam["members"]), ref_bgc)
-            aln = []
-            for bgc_id in bs_fam["members"]:
-                if bgc_id != ref_bgc:
-                    aln.append(make_random_alignment([gidx for gidx in range(0, len(bs_data[bgc_id]["orfs"]))], ref_genes[0], bs_data[bgc_id]["orfs"], bs_data[ref_bgc]["orfs"]))
-                else:
-                    aln.append([[-1, 0.00] for gidx in range(0, len(bs_data[bgc_id]["orfs"]))])
-                    for gidx in ref_genes:
-                        aln[-1][gidx] = [gidx, 100.00]
-            ### TODO: remove (TODO) comments when done
+                    try:
+                        a, b, reverse = pos_alignments[family][bgc]
+                    except:
+                        b, a, reverse = pos_alignments[bgc][family]
+
+                    a = domainGenes2allGenes[family][a]
+                    b = domainGenes2allGenes[bgc][b]
+                    ref_genes_.add(a)
+                    bgc_algn = []
+                    
+                    for gene_num in range(len(bs_data[bgcExt2Int[bgc]]["orfs"])):
+                        if gene_num == b: # this is the reference gene for this bgc
+                            if reverse:
+                                bgc_algn.append([a, -100])
+                            else:
+                                bgc_algn.append([a, 100])
+                        else:
+                            bgc_algn.append([-1, 100])
+                    
+                    aln.append(bgc_algn)
+                        
+            ref_genes = list(ref_genes_)
+            
             fam_alignment = {
-                "id" : bs_fam["id"],
-                "ref" : ref_bgc,
-                "newick" : newick_tree,
+                "id" : "FAM_{:05d}".format(family),
+                "ref" : bgcExt2Int[family],
+                "newick" : newick_trees[family],
                 "ref_genes" : ref_genes,
                 "aln" : aln
             }
@@ -1364,18 +1576,12 @@ def clusterJsonBatch(bgcs, outputFileBase,matrix,cutoffs=[1.0],damping=0.8,clust
         # column1: BGC, column2: clustering pseudo family
         if verbose:
             print("  Writing clustering file")
-        with open("{}_clustering_c{:4.2f}.tsv".format(outputFileBase, cutoff), "w") as clustering_file:
+        clustering_file_path = os.path.join(pathBase, "{}_clustering_c{:4.2f}.tsv".format(className, cutoff))
+        with open(clustering_file_path, "w") as clustering_file:
             clustering_file.write('#BGC Name\tFamily Number\n')
-            for familyNum,family in enumerate(bs_families):
-                for label in family['members']:
-                    clustering_file.write('{}\t{}\n'.format(clusterNames[int(bgcs[label])],familyNum))
-            #
-            # i = 0
-            # for label in familiesDictReIdxd:
-            #     # moved down so counting starts at 0 (for consistency with everything else)
-            #     for x in familiesDictReIdxd[label]:
-            #         clustering_file.write(clusterNames[int(bgcs[x])] + "\t" + str(i) + "\n")
-            #     i += 1
+            for family in familyIdx:
+                for bgc in familiesDict[family]:
+                    clustering_file.write("{}\t{}\n".format(clusterNames[bgc], family))
 
         ## Write bgc_networks.js		
         with open(os.path.join(module_html_path, "bs_networks.js"), "w") as bs_networks_js:
@@ -1388,14 +1594,14 @@ def clusterJsonBatch(bgcs, outputFileBase,matrix,cutoffs=[1.0],damping=0.8,clust
         if len(clanLabels) > 0:
             if verbose:
                 print("   Writing Clans file")
-            outputFile = "{}_clans_{:4.2f}_{:4.2f}.tsv".format(outputFileBase,clanClassificationCutoff,clanDistanceCutoff)
-            with open(outputFile,'w') as clansFile:
+            clans_file_path = os.path.join(pathBase, "{}_clans_{:4.2f}_{:4.2f}.tsv".format(className,clanClassificationCutoff,clanDistanceCutoff))
+            with open(clans_file_path,'w') as clansFile:
                 clansFile.write('#BGC Name\tClan Number\tFamily Number\n')
-                for clanNum,clan in enumerate(bs_clans):
-                    for familyNum in clan['members']:
-                        for BGC_label in bs_families[familyNum]['members']:
-                            clansFile.write('{}\t{}\t{}\n'.format(clusterNames[int(bgcs[BGC_label])],clanNum,familyNum))
-
+                for clan in clansDict.keys():
+                    for family in clansDict[clan]:
+                        for bgc in familiesDict[family]:
+                            clansFile.write("{}\t{}\t{}\n".format(clusterNames[bgc], clan, family))
+                    
     return
 
 
@@ -1683,7 +1889,7 @@ if __name__=="__main__":
 
     time1 = time.time()
 
-    run_name = "{}{}".format(time.strftime("%Y-%m-%d_%H-%M-%S", time.gmtime()), run_mode_string)
+    run_name = "{}{}".format(time.strftime("%Y-%m-%d_%H-%M-%S", time.localtime()), run_mode_string)
     
     # Make the following available for possibly deleting entries within parseHmmScan
     global genbankDict, gbk_files, sampleDict, clusters, baseNames
@@ -2205,9 +2411,21 @@ if __name__=="__main__":
     # track the sub modules (i.e. allOthers, allNRPS, ...)
     html_subs = []
 
+
     # Try to make default analysis using all files found inside the input folder
     if options_all:
         print("\nGenerating distance network files with ALL available input files")
+    
+        # This version contains *all* bgcs, including the ones from excluded classes
+        # TODO: BiG-SCAPE class should contain ALL possible classes the bgc might
+        # end up in
+        print("   Writing the complete Annotations file for the complete set")
+        network_annotation_path = os.path.join(network_files_folder, "Network_Annotations_Full.tsv")
+        with open(network_annotation_path, "w") as network_annotation_file:
+            network_annotation_file.write("BGC\tAccesion ID\tDescription\tProduct Prediction\tBiG-SCAPE class\tOrganism\tTaxonomy\n")
+            for bgc in clusterNames:
+                product = bgc_info[bgc].product
+                network_annotation_file.write("\t".join([bgc, bgc_info[bgc].accession_id, bgc_info[bgc].description, product, sort_bgc(product), bgc_info[bgc].organism, bgc_info[bgc].taxonomy]) + "\n")
     
         # Making network files mixing all classes
         if options_mix:
@@ -2223,16 +2441,23 @@ if __name__=="__main__":
                 if predicted_class.lower() in valid_classes:
                     mix_set.append(clusterIdx)
             
+            # create output directory   
+            create_directory(os.path.join(network_files_folder, "mix"), "  Mix", False)
+            
             # Create an additional file with the list of all clusters in the class + other info
             print("   Writing annotation file")
-            path_list = os.path.join(network_files_folder, "Network_Annotations_ALL_mix.tsv")
-            with open(path_list, "w") as list_file:
-                list_file.write("BGC\tAccesion ID\tDescription\tProduct Prediction\tBiG-SCAPE class\tOrganism\tTaxonomy\n")
+            network_annotation_path = os.path.join(network_files_folder, "mix", "Network_Annotations_mix.tsv")
+            with open(network_annotation_path, "w") as network_annotation_file:
+                network_annotation_file.write("BGC\tAccesion ID\tDescription\tProduct Prediction\tBiG-SCAPE class\tOrganism\tTaxonomy\n")
                 for idx in mix_set:
                     bgc = clusterNames[idx]
                     product = bgc_info[bgc].product
-                    list_file.write("\t".join([bgc, bgc_info[bgc].accession_id, bgc_info[bgc].description, product, sort_bgc(product), bgc_info[bgc].organism, bgc_info[bgc].taxonomy]) + "\n")
-            
+                    network_annotation_file.write("\t".join([bgc, 
+                        bgc_info[bgc].accession_id, bgc_info[bgc].description, 
+                        product, sort_bgc(product), bgc_info[bgc].organism, 
+                        bgc_info[bgc].taxonomy]) + "\n")
+                           
+                
             print("  Calculating all pairwise distances")
             pairs = set([tuple(sorted(combo)) for combo in combinations(mix_set, 2)])
             
@@ -2242,21 +2467,29 @@ if __name__=="__main__":
             del cluster_pairs[:]
                 
             print("  Writing output files")
-            pathBase = os.path.join(network_files_folder, "all_mix")
+            pathBase = os.path.join(network_files_folder, "mix")
             filenames = []
             for cutoff in cutoff_list:
-                filenames.append("{}_c{:.2f}.network".format(pathBase, cutoff))
+                filenames.append(os.path.join(pathBase, "mix_c{:.2f}.network".format(cutoff)))
             cutoffs_and_filenames = list(zip(cutoff_list, filenames))
             del filenames[:]
             write_network_matrix(network_matrix_mix, cutoffs_and_filenames, include_singletons, clusterNames, bgc_info)
                
             print("  Calling Gene Cluster Families")
             reduced_network = []
+            pos_alignments = {}
             for row in network_matrix_mix:
                 reduced_network.append([int(row[0]), int(row[1]), row[2]])
+                reverse = False
+                if row[-1] == 1.0:
+                    reverse = True
+                pa = pos_alignments.setdefault(int(row[0]),{})
+                pa[int(row[1])] = (int(row[-3]), int(row[-2]), reverse)
             del network_matrix_mix[:]
-            html_subs.append({ "name" : "all_mix", "css" : "Others", "label" : "All-Mixed"})
-            clusterJsonBatch(mix_set, pathBase, reduced_network, subName="all_mix", cutoffs=cutoff_list,clusterClans=options.clans,clanCutoff=options.clan_cutoff,htmlFolder=network_html_folder)
+            html_subs.append({ "name" : "mix", "css" : "Others", "label" : "Mixed"})
+            clusterJsonBatch(mix_set, pathBase, "mix", reduced_network, pos_alignments,
+                             cutoffs=cutoff_list, clusterClans=options.clans,
+                             clanCutoff=options.clan_cutoff, htmlFolder=network_html_folder)
             del mix_set[:]
             del reduced_network[:]
             
@@ -2308,22 +2541,20 @@ if __name__=="__main__":
 
             # only make folders for the BGC_classes that are found
             for bgc_class in BGC_classes:
-                folder_name = bgc_class
-                    
-                print("\n  {} ({} BGCs)".format(folder_name, str(len(BGC_classes[bgc_class]))))
+                print("\n  {} ({} BGCs)".format(bgc_class, str(len(BGC_classes[bgc_class]))))
                 
                 # create output directory   
-                create_directory(os.path.join(network_files_folder, folder_name), "  All - " + bgc_class, False)
+                create_directory(os.path.join(network_files_folder, bgc_class), "  All - " + bgc_class, False)
                 
                 # Create an additional file with the final list of all clusters in the class
                 print("   Writing annotation files")
-                path_list = os.path.join(network_files_folder, folder_name, "Network_Annotations_All_" + folder_name + ".tsv")
-                with open(path_list, "w") as list_file:
-                    list_file.write("BGC\tAccesion ID\tDescription\tProduct Prediction\tBiG-SCAPE class\tOrganism\tTaxonomy\n")
+                network_annotation_path = os.path.join(network_files_folder, bgc_class, "Network_Annotations_" + bgc_class + ".tsv")
+                with open(network_annotation_path, "w") as network_annotation_file:
+                    network_annotation_file.write("BGC\tAccesion ID\tDescription\tProduct Prediction\tBiG-SCAPE class\tOrganism\tTaxonomy\n")
                     for idx in BGC_classes[bgc_class]:
                         bgc = clusterNames[idx]
                         product = bgc_info[bgc].product
-                        list_file.write("\t".join([bgc, bgc_info[bgc].accession_id, bgc_info[bgc].description, product, sort_bgc(product), bgc_info[bgc].organism, bgc_info[bgc].taxonomy]) + "\n")
+                        network_annotation_file.write("\t".join([bgc, bgc_info[bgc].accession_id, bgc_info[bgc].description, product, sort_bgc(product), bgc_info[bgc].organism, bgc_info[bgc].taxonomy]) + "\n")
                     
                 if len(BGC_classes[bgc_class]) > 1:
                     print("   Calculating all pairwise distances")
@@ -2334,178 +2565,188 @@ if __name__=="__main__":
                     del cluster_pairs[:]
                         
                     print("   Writing output files")
-                    pathBase = os.path.join(network_files_folder, folder_name, "all" + folder_name)
+                    pathBase = os.path.join(network_files_folder, bgc_class)
                     filenames = []
                     for cutoff in cutoff_list:
-                        filenames.append("{}_c{:.2f}.network".format(pathBase, cutoff))
+                        filenames.append(os.path.join(pathBase, "{}_c{:.2f}.network".format(bgc_class, cutoff)))
                     cutoffs_and_filenames = list(zip(cutoff_list, filenames))
                     del filenames[:]
                     write_network_matrix(network_matrix, cutoffs_and_filenames, include_singletons, clusterNames, bgc_info)
 
                     print("  Calling Gene Cluster Families")
                     reduced_network = []
+                    pos_alignments = {}
                     for row in network_matrix:
                         reduced_network.append([int(row[0]), int(row[1]), row[2]])
+                        reverse = False
+                        if row[-1] == 1.0:
+                            reverse = True
+                        pa = pos_alignments.setdefault(int(row[0]),{})
+                        pa[int(row[1])] = (int(row[-3]), int(row[-2]), reverse)
                     del network_matrix[:]
 
-                    html_subs.append({ "name" : "all_" + folder_name, "css" : folder_name, "label" : "All-" + folder_name})
-                    clusterJsonBatch(BGC_classes[bgc_class], pathBase, reduced_network, subName="all_" + folder_name, cutoffs=cutoff_list,clusterClans=options.clans,clanCutoff=options.clan_cutoff,htmlFolder=network_html_folder,className=bgc_class)
+                    html_subs.append({ "name" : bgc_class, "css" : bgc_class, "label" : bgc_class})
+                    clusterJsonBatch(BGC_classes[bgc_class], pathBase, bgc_class,
+                                     reduced_network, pos_alignments, cutoffs=cutoff_list, 
+                                     clusterClans=options.clans, clanCutoff=options.clan_cutoff, 
+                                     htmlFolder=network_html_folder)
                     del BGC_classes[bgc_class][:]
                     del reduced_network[:]
 
-    # Try to make analysis for each sample
+    ## Try to make analysis for each sample
     if options_samples:
-        network_matrix_sample = []
-        clusterNames2idx = dict(zip(clusterNames,range(len(clusterNames))))
+        pass
+        #network_matrix_sample = []
+        #clusterNames2idx = dict(zip(clusterNames,range(len(clusterNames))))
         
-        if len(sampleDict) == 1 and options_all:
-            print("\nNOT generating networks per sample (only one sample, covered in the all-vs-all case)")
-        else:
-            print("\nGenerating distance network files for each sample")
+        #if len(sampleDict) == 1 and options_all:
+            #print("\nNOT generating networks per sample (only one sample, covered in the all-vs-all case)")
+        #else:
+            #print("\nGenerating distance network files for each sample")
 
-            for sample, sampleClusters in sampleDict.items():
-                print("\n Sample: " + sample)
-                if len(sampleClusters) == 1:
-                    print(" Warning: Sample size = 1 detected. Not generating network for this sample ({})".format(sample))
-                else:
-                    # create output directory for this sample
-                    create_directory(os.path.join(network_files_folder, sample), " Samples - " + sample, False)
+            #for sample, sampleClusters in sampleDict.items():
+                #print("\n Sample: " + sample)
+                #if len(sampleClusters) == 1:
+                    #print(" Warning: Sample size = 1 detected. Not generating network for this sample ({})".format(sample))
+                #else:
+                    ## create output directory for this sample
+                    #create_directory(os.path.join(network_files_folder, sample), " Samples - " + sample, False)
                         
-                    # Making network files mixing all classes
-                    if options_mix:
-                        print("\n  Mixing all BGC classes")
+                    ## Making network files mixing all classes
+                    #if options_mix:
+                        #print("\n  Mixing all BGC classes")
                         
-                        mix_set = []
-                        for clusterIdx, sampleCluster in enumerate(sampleClusters):
-                            product = bgc_info[sampleCluster].product
-                            predicted_class = sort_bgc(product)
-                            if predicted_class.lower() in valid_classes:
-                                mix_set.append(clusterIdx)
+                        #mix_set = []
+                        #for clusterIdx, sampleCluster in enumerate(sampleClusters):
+                            #product = bgc_info[sampleCluster].product
+                            #predicted_class = sort_bgc(product)
+                            #if predicted_class.lower() in valid_classes:
+                                #mix_set.append(clusterIdx)
                         
-                        # Create an additional file with the list of all clusters in the class + other info
-                        print("   Writing annotation files")
-                        path_list = os.path.join(network_files_folder, sample, "Network_Annotations_Sample_" + sample + "_mix.tsv")
-                        with open(path_list, "w") as list_file:
-                            list_file.write("BGC\tAccesion ID\tDescription\tProduct Prediction\tBiG-SCAPE class\tOrganism\tTaxonomy\n")
-                            for idx in mix_set:
-                                bgc = clusterNames[idx]
-                                product = bgc_info[bgc].product
-                                list_file.write("\t".join([bgc, bgc_info[bgc].accession_id, bgc_info[bgc].description, product, sort_bgc(product), bgc_info[bgc].organism, bgc_info[bgc].taxonomy]) + "\n")
+                        ## Create an additional file with the list of all clusters in the class + other info
+                        #print("   Writing annotation files")
+                        #path_list = os.path.join(network_files_folder, sample, "Network_Annotations_Sample_" + sample + "_mix.tsv")
+                        #with open(path_list, "w") as list_file:
+                            #list_file.write("BGC\tAccesion ID\tDescription\tProduct Prediction\tBiG-SCAPE class\tOrganism\tTaxonomy\n")
+                            #for idx in mix_set:
+                                #bgc = clusterNames[idx]
+                                #product = bgc_info[bgc].product
+                                #list_file.write("\t".join([bgc, bgc_info[bgc].accession_id, bgc_info[bgc].description, product, sort_bgc(product), bgc_info[bgc].organism, bgc_info[bgc].taxonomy]) + "\n")
             
-                        pairs = set([tuple(sorted(combo)) for combo in combinations(mix_set, 2)])
+                        #pairs = set([tuple(sorted(combo)) for combo in combinations(mix_set, 2)])
                         
-                        cluster_pairs = [(x, y, -1) for (x, y) in pairs]
-                        pairs.clear()
-                        network_matrix_sample = generate_network(cluster_pairs, cores)
-                        del cluster_pairs[:]
+                        #cluster_pairs = [(x, y, -1) for (x, y) in pairs]
+                        #pairs.clear()
+                        #network_matrix_sample = generate_network(cluster_pairs, cores)
+                        #del cluster_pairs[:]
 
-                        print("   Writing output files")
-                        pathBase = os.path.join(network_files_folder, sample, "sample_" + sample + "_mix")
-                        filenames = []
-                        for cutoff in cutoff_list:
-                            filenames.append("{}_c{:.2f}.network".format(pathBase, cutoff))
-                        cutoffs_and_filenames = list(zip(cutoff_list, filenames))
-                        write_network_matrix(network_matrix_sample, cutoffs_and_filenames, include_singletons, clusterNames, bgc_info)
+                        #print("   Writing output files")
+                        #pathBase = os.path.join(network_files_folder, sample, "sample_" + sample + "_mix")
+                        #filenames = []
+                        #for cutoff in cutoff_list:
+                            #filenames.append("{}_c{:.2f}.network".format(pathBase, cutoff))
+                        #cutoffs_and_filenames = list(zip(cutoff_list, filenames))
+                        #write_network_matrix(network_matrix_sample, cutoffs_and_filenames, include_singletons, clusterNames, bgc_info)
                         
-                        print("  Calling Gene Cluster Families")
-                        reduced_network = []
-                        for row in network_matrix_sample:
-                            reduced_network.append([int(row[0]), int(row[1]), row[2]])
-                        del network_matrix_sample[:]
+                        #print("  Calling Gene Cluster Families")
+                        #reduced_network = []
+                        #for row in network_matrix_sample:
+                            #reduced_network.append([int(row[0]), int(row[1]), row[2]])
+                        #del network_matrix_sample[:]
 
-                        html_subs.append({ "name" : "sample_" + sample + "_mix", "css" : "Others", "label" : "S-" + sample + "-Mixed"})
-                        clusterJsonBatch(mix_set, pathBase, reduced_network, subName="sample_" + sample + "_mix", cutoffs=cutoff_list,clusterClans=options.clans,clanCutoff=options.clan_cutoff,htmlFolder=network_html_folder)
-                        del mix_set[:]
-                        del reduced_network[:]
+                        #html_subs.append({ "name" : "sample_" + sample + "_mix", "css" : "Others", "label" : "S-" + sample + "-Mixed"})
+                        #clusterJsonBatch(mix_set, pathBase, reduced_network, subName="sample_" + sample + "_mix", cutoffs=cutoff_list,clusterClans=options.clans,clanCutoff=options.clan_cutoff,htmlFolder=network_html_folder)
+                        #del mix_set[:]
+                        #del reduced_network[:]
                         
-                    # Making network files separating by BGC class
-                    if options_classify:
-                        print("\n  Working for each BGC class")
+                    ## Making network files separating by BGC class
+                    #if options_classify:
+                        #print("\n  Working for each BGC class")
 
-                        # reinitialize BGC_classes to make sure the bgc lists are empty
-                        BGC_classes = defaultdict(list)
+                        ## reinitialize BGC_classes to make sure the bgc lists are empty
+                        #BGC_classes = defaultdict(list)
                     
-                        # Preparing gene cluster classes
-                        print("   Sorting the input BGCs\n")
-                        for cluster in sampleClusters:
-                            product = bgc_info[cluster].product
-                            predicted_class = sort_bgc(product)
-                            if predicted_class.lower() in valid_classes:
-                                BGC_classes[predicted_class].append(clusterNames2idx[cluster])
+                        ## Preparing gene cluster classes
+                        #print("   Sorting the input BGCs\n")
+                        #for cluster in sampleClusters:
+                            #product = bgc_info[cluster].product
+                            #predicted_class = sort_bgc(product)
+                            #if predicted_class.lower() in valid_classes:
+                                #BGC_classes[predicted_class].append(clusterNames2idx[cluster])
                             
-                            # possibly add hybrids to 'pure' classes
-                            if options.hybrids:
-                                if predicted_class == "PKS-NRP_Hybrids":
-                                    if "nrps" in valid_classes:
-                                        BGC_classes["NRPS"].append(clusterNames2idx[cluster])
-                                    if "t1pks" in product and "pksi" in valid_classes:
-                                        BGC_classes["PKSI"].append(clusterNames2idx[cluster])
-                                    if "t1pks" not in product and "pksother" in valid_classes:
-                                        BGC_classes["PKSother"].append(clusterNames2idx[cluster])
+                            ## possibly add hybrids to 'pure' classes
+                            #if options.hybrids:
+                                #if predicted_class == "PKS-NRP_Hybrids":
+                                    #if "nrps" in valid_classes:
+                                        #BGC_classes["NRPS"].append(clusterNames2idx[cluster])
+                                    #if "t1pks" in product and "pksi" in valid_classes:
+                                        #BGC_classes["PKSI"].append(clusterNames2idx[cluster])
+                                    #if "t1pks" not in product and "pksother" in valid_classes:
+                                        #BGC_classes["PKSother"].append(clusterNames2idx[cluster])
                                 
-                                if predicted_class == "Others" and "-" in product:
-                                    subclasses = set()
-                                    for subproduct in product.split("-"):
-                                        subclass = sort_bgc(subproduct)
-                                        if subclass.lower() in valid_classes:
-                                            subclasses.add(subclass)
+                                #if predicted_class == "Others" and "-" in product:
+                                    #subclasses = set()
+                                    #for subproduct in product.split("-"):
+                                        #subclass = sort_bgc(subproduct)
+                                        #if subclass.lower() in valid_classes:
+                                            #subclasses.add(subclass)
                                         
-                                    # Prevent mixed BGCs with sub-Others annotations to get
-                                    # added twice (e.g. indole-cf_fatty_acid has already gone
-                                    # to Others at this point)
-                                    if "Others" in subclasses:
-                                        subclasses.remove("Others")
+                                    ## Prevent mixed BGCs with sub-Others annotations to get
+                                    ## added twice (e.g. indole-cf_fatty_acid has already gone
+                                    ## to Others at this point)
+                                    #if "Others" in subclasses:
+                                        #subclasses.remove("Others")
                                         
-                                    for subclass in subclasses:
-                                        BGC_classes[subclass].append(clusterNames2idx[cluster])
-                                    subclasses.clear()
+                                    #for subclass in subclasses:
+                                        #BGC_classes[subclass].append(clusterNames2idx[cluster])
+                                    #subclasses.clear()
 
-                        for bgc_class in BGC_classes:
-                            folder_name = bgc_class
+                        #for bgc_class in BGC_classes:
+                            #folder_name = bgc_class
                                 
-                            print("\n   " + folder_name + " (" + str(len(BGC_classes[bgc_class])) + " BGCs)")
-                            network_matrix_sample = []
+                            #print("\n   " + folder_name + " (" + str(len(BGC_classes[bgc_class])) + " BGCs)")
+                            #network_matrix_sample = []
                             
-                            # create output directory
-                            create_directory(os.path.join(network_files_folder, sample, folder_name), "   Sample " + sample + " - " + bgc_class, False)
+                            ## create output directory
+                            #create_directory(os.path.join(network_files_folder, sample, folder_name), "   Sample " + sample + " - " + bgc_class, False)
 
-                            # Create an additional file with the final list of all clusters in the class
-                            print("   Writing annotation files")
-                            path_list = os.path.join(network_files_folder, sample, folder_name, "Network_Annotations_Sample_" + sample + "_" + folder_name + ".tsv")
-                            with open(path_list, "w") as list_file:
-                                list_file.write("BGC\tAccesion ID\tDescription\tProduct Prediction\tBiG-SCAPE class\tOrganism\tTaxonomy\n")
-                                for idx in BGC_classes[bgc_class]:
-                                    bgc = clusterNames[idx]
-                                    product = bgc_info[bgc].product
-                                    list_file.write("\t".join([bgc, bgc_info[bgc].accession_id, bgc_info[bgc].description, product, sort_bgc(product), bgc_info[bgc].organism, bgc_info[bgc].taxonomy]) + "\n")
+                            ## Create an additional file with the final list of all clusters in the class
+                            #print("   Writing annotation files")
+                            #path_list = os.path.join(network_files_folder, sample, folder_name, "Network_Annotations_Sample_" + sample + "_" + folder_name + ".tsv")
+                            #with open(path_list, "w") as list_file:
+                                #list_file.write("BGC\tAccesion ID\tDescription\tProduct Prediction\tBiG-SCAPE class\tOrganism\tTaxonomy\n")
+                                #for idx in BGC_classes[bgc_class]:
+                                    #bgc = clusterNames[idx]
+                                    #product = bgc_info[bgc].product
+                                    #list_file.write("\t".join([bgc, bgc_info[bgc].accession_id, bgc_info[bgc].description, product, sort_bgc(product), bgc_info[bgc].organism, bgc_info[bgc].taxonomy]) + "\n")
 
-                            if len(BGC_classes[bgc_class]) > 1:
-                                pairs = set([tuple(sorted(combo)) for combo in combinations(BGC_classes[bgc_class], 2)])
+                            #if len(BGC_classes[bgc_class]) > 1:
+                                #pairs = set([tuple(sorted(combo)) for combo in combinations(BGC_classes[bgc_class], 2)])
                                 
-                                cluster_pairs = [(x, y, bgcClassName2idx[bgc_class]) for (x, y) in pairs]
-                                pairs.clear()
-                                network_matrix_sample = generate_network(cluster_pairs, cores)
-                                del cluster_pairs[:]
-                                print("    Writing output files")
-                                pathBase = os.path.join(network_files_folder, sample, folder_name,
-                                                        "sample_" + sample + "_" + folder_name)
-                                filenames = []
-                                for cutoff in cutoff_list:
-                                    filenames.append("{}_c{:.2f}.network".format(pathBase, cutoff))
-                                cutoffs_and_filenames = list(zip(cutoff_list, filenames))
-                                write_network_matrix(network_matrix_sample, cutoffs_and_filenames, include_singletons, clusterNames,bgc_info)
+                                #cluster_pairs = [(x, y, bgcClassName2idx[bgc_class]) for (x, y) in pairs]
+                                #pairs.clear()
+                                #network_matrix_sample = generate_network(cluster_pairs, cores)
+                                #del cluster_pairs[:]
+                                #print("    Writing output files")
+                                #pathBase = os.path.join(network_files_folder, sample, folder_name,
+                                                        #"sample_" + sample + "_" + folder_name)
+                                #filenames = []
+                                #for cutoff in cutoff_list:
+                                    #filenames.append("{}_c{:.2f}.network".format(pathBase, cutoff))
+                                #cutoffs_and_filenames = list(zip(cutoff_list, filenames))
+                                #write_network_matrix(network_matrix_sample, cutoffs_and_filenames, include_singletons, clusterNames,bgc_info)
                                 
-                                print("  Calling Gene Cluster Families")
-                                reduced_network = []
-                                for row in network_matrix_sample:
-                                    reduced_network.append([int(row[0]), int(row[1]), row[2]])
-                                del network_matrix_sample[:]
+                                #print("  Calling Gene Cluster Families")
+                                #reduced_network = []
+                                #for row in network_matrix_sample:
+                                    #reduced_network.append([int(row[0]), int(row[1]), row[2]])
+                                #del network_matrix_sample[:]
                                 
-                                html_subs.append({ "name" : "sample_" + sample + "_" + folder_name, "css" : folder_name, "label" : "S-" + sample + "-" + folder_name})
-                                clusterJsonBatch(BGC_classes[bgc_class], pathBase, reduced_network, subName="sample_" + sample + "_" + folder_name, cutoffs=cutoff_list,clusterClans=options.clans,clanCutoff=options.clan_cutoff,htmlFolder=network_html_folder,className=bgc_class)
+                                #html_subs.append({ "name" : "sample_" + sample + "_" + folder_name, "css" : folder_name, "label" : "S-" + sample + "-" + folder_name})
+                                #clusterJsonBatch(BGC_classes[bgc_class], pathBase, reduced_network, subName="sample_" + sample + "_" + folder_name, cutoffs=cutoff_list,clusterClans=options.clans,clanCutoff=options.clan_cutoff,htmlFolder=network_html_folder,className=bgc_class)
                                 
-                                del BGC_classes[bgc_class][:]
-                                del reduced_network[:]
+                                #del BGC_classes[bgc_class][:]
+                                #del reduced_network[:]
 
     # update bgc_results.js
     add_to_bigscape_results_js(run_name, html_subs, os.path.join(output_folder, "html_content", "js", "bigscape_results.js"))
