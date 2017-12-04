@@ -465,9 +465,8 @@ def generate_dist_matrix(parms):
     go_a = BGCGeneOrientation[cluster1]
     go_b = BGCGeneOrientation[cluster2]
     
-    dist, jaccard, dss, ai, rDSSna, rDSS, S, Sa, lcsStartA, lcsStartB, seedLength, reverse = cluster_distance_lcs(cluster1, 
-            cluster2, domain_list_A, domain_list_B, dcg_a, dcg_b, core_pos_a, 
-            core_pos_b, go_a, go_b, bgc_class)
+    dist, jaccard, dss, ai, rDSSna, rDSS, S, Sa, lcsStartA, lcsStartB, seedLength, reverse = cluster_distance_lcs(cluster1, cluster2, domain_list_A,
+        domain_list_B, dcg_a, dcg_b, core_pos_a, core_pos_b, go_a, go_b, bgc_class)
         
     network_row = array('f',[cluster1Idx, cluster2Idx, dist, (1-dist)**2, jaccard, 
                              dss, ai, rDSSna, rDSS, S, Sa, lcsStartA, lcsStartB, seedLength, reverse])
@@ -595,8 +594,8 @@ def cluster_distance_lcs(A, B, A_domlist, B_domlist, dcg_A, dcg_b, core_pos_A, c
                 S_anchor += len(BGCs[B][domain])
             else:
                 S += len(BGCs[B][domain])
-        
-        return 1.0, 0.0, 0.0, 0.0, 1.0, 1.0, S, S_anchor, 0, 0
+
+        return 1.0, 0.0, 0.0, 0.0, 1.0, 1.0, S, S_anchor, 0, 0, 0, 0
 
 
     # initialize domain sequence slices
