@@ -829,9 +829,9 @@ BigscapeFunc.openFamDetail = function(id_fam, ids_highlighted, bs_svg, bs_data, 
     }
     var treeData = new Tree();
     treeData.Parse(fam_aln["newick"]);
-    var treeSVG = $("<svg id='det_fam_tree' width='3000' height='" + ((bs_families[id_fam]["members"].length * 20) + 50) + "'></svg>").appendTo(det_ui);
+    var treeSVG = $("<svg id='det_fam_tree' width='3000' height='" + ((bs_families[id_fam]["members"].length * 40) + 50) + "'></svg>").appendTo(det_ui);
     var treeDrawer = new PhylogramTreeDrawer();
-    treeDrawer.Init(treeData, { svg_id: 'det_fam_tree', height: (treeData.nodes.length * 20), width: 400 } );
+    treeDrawer.Init(treeData, { svg_id: 'det_fam_tree', height: ((treeData.num_leaves - 1) * 40), width: 400 } );
     treeDrawer.draw_scale_bar = false;
 		treeDrawer.CalcCoordinates();
     treeDrawer.Draw();    
