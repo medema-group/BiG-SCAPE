@@ -903,8 +903,8 @@ BigscapeFunc.openFamDetail = function(id_fam, ids_highlighted, bs_svg, bs_data, 
               orfColors[orf_aln[0]] = { "r": random(0, 256), "g": random(0, 256), "b": random(0, 256) };
             }
             var orfColor = "rgb(" + orfColors[orf_aln[0]]["r"] + "," + orfColors[orf_aln[0]]["g"] + "," + orfColors[orf_aln[0]]["b"] + ")";            
-            treeSVG.find("g[idx='" + bgcId + "'] polygon.arrower-orf[idx='" + j + "']")
-              .attr("fill", orfColor);
+            //treeSVG.find("g[idx='" + bgcId + "'] polygon.arrower-orf[idx='" + j + "']")
+            //  .attr("fill", orfColor);
           }
         }
       }
@@ -912,8 +912,8 @@ BigscapeFunc.openFamDetail = function(id_fam, ids_highlighted, bs_svg, bs_data, 
     // recolor ref BGC ORFs with homologs from other BGCs
     for (var refGeneIdx in orfColors) {
       var orfColor = "rgb(" + orfColors[refGeneIdx]["r"] + "," + orfColors[refGeneIdx]["g"] + "," + orfColors[refGeneIdx]["b"] + ")";
-      treeSVG.find("g[idx='" + fam_aln["ref"] + "'] polygon.arrower-orf[idx='" + refGeneIdx + "']")
-        .attr("fill", orfColor);
+      //treeSVG.find("g[idx='" + fam_aln["ref"] + "'] polygon.arrower-orf[idx='" + refGeneIdx + "']")
+      //  .attr("fill", orfColor);
     }
 
     // draw the rest of the bgcs
