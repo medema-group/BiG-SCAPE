@@ -321,7 +321,7 @@ def get_gbk_files(inputdir, outputdir, bgc_fasta_folder, min_bgc_size, exclude_g
                     # Perhaps we can try to infer if it's in a contig edge: if
                     # - first biosynthetic gene start < 10kb or
                     # - max_width - last biosynthetic gene end < 10kb (but this will work only for the largest record)
-                    bgc_info[clusterName] = bgc_data(records[0].id, records[0].description, product, len(records), max_width, records[0].annotations["organism"], ",".join(records[0].annotations["taxonomy"]), biosynthetic_genes.copy(), contig_edge)
+                    bgc_info[clusterName] = bgc_data(records[0].id, records[0].description, product, len(records), max_width, bgc_size, records[0].annotations["organism"], ",".join(records[0].annotations["taxonomy"]), biosynthetic_genes.copy(), contig_edge)
 
                     if len(bgc_info[clusterName].biosynthetic_genes) == 0:
                         files_no_biosynthetic_genes.append(fname)
@@ -1197,7 +1197,7 @@ def clusterJsonBatch(bgcs, pathBase, className, matrix, pos_alignments,
         bgcJsonDict[bgcName]["id"] = bgcName
         bgcJsonDict[bgcName]["desc"] = bgc_info[bgcName].description
         bgcJsonDict[bgcName]["start"] = 1
-        bgcJsonDict[bgcName]["end"] = bgc_info[bgcName].max_width
+        bgcJsonDict[bgcName]["end"] = bgc_info[bgcName].bgc_size
         
         pfdFile = os.path.join(pfd_folder, bgcName + ".pfd")
         fastaFile = os.path.join(bgc_fasta_folder, bgcName + ".fasta")
@@ -1365,31 +1365,38 @@ def clusterJsonBatch(bgcs, pathBase, className, matrix, pos_alignments,
             alignments[exemplar_idx] = ""
             
             out_of_tree_bgcs = [] # bgcs that don't share a common domain core
-            delete_list = []
+            delete_list = set() # remove this bgcs from alignment
             gcf.remove(exemplar_idx) # separate exemplar from the rest of the bgcs
             for bgc in gcf:
                 alignments[bgc] = ""
 
             match_dict = {}
             for domain in tree_domains:
-                #print(domain)
                 specific_domain_list_A = BGCs[exemplar][domain]
                 num_copies_a = len(specific_domain_list_A)
                 for exemplar_domain_copy in specific_domain_list_A:
                     alignments[exemplar_idx] += AlignedDomainSequences[exemplar_domain_copy]
                 
-                for bgc in gcf:
+                seq_length = len(AlignedDomainSequences[specific_domain_list_A[0]])
+                
+                for bgc in alignments:
                     match_dict.clear()
-                    if domain not in domain_sets[bgc]:
-                        print("BGC {} does not share a common domain core (domain: {})".format(clusterNames[bgc], domain))
+                    if bgc == exemplar_idx:
+                        pass
+                    elif domain not in domain_sets[bgc]:
+                        if verbose:
+                        print("   BGC {} ({}) does not share a common domain core (GCF: {}, domain: {})".format(clusterNames[bgc], bgc, exemplar_idx, domain))
                         out_of_tree_bgcs.append(bgc)
-                        delete_list.append(bgc)
+                        delete_list.add(bgc)
+                    elif bgc in delete_list:
+                        pass
                     else:
                         specific_domain_list_B = BGCs[clusterNames[bgc]][domain]
                         
                         num_copies_b = len(specific_domain_list_B)
                         
                         DistanceMatrix = np.ndarray((num_copies_a,num_copies_b))
+                        
                         for domsa in range(num_copies_a):
                             for domsb in range(num_copies_b):
                                 # TODO NOT taking into consideration any LCS slicing
@@ -1400,12 +1407,9 @@ def clusterJsonBatch(bgcs, pathBase, className, matrix, pos_alignments,
                                 aligned_seqA = AlignedDomainSequences[sequence_tag_a]
                                 aligned_seqB = AlignedDomainSequences[sequence_tag_b]
                                 
-                                seq_length = 0
                                 matches = 0
                                 gaps = 0
-                                
-                                seq_length = len(aligned_seqA)
-                                
+                                                                
                                 for position in range(seq_length):
                                     if aligned_seqA[position] == aligned_seqB[position]:
                                         if aligned_seqA[position] != "-":
@@ -1430,16 +1434,11 @@ def clusterJsonBatch(bgcs, pathBase, className, matrix, pos_alignments,
                                 # have a match in bgc (i.e. bgc has less copies
                                 # of this domain than exemplar)
                                 alignments[bgc] += "-"*seq_length
-                        
-                for bgc in delete_list:
-                    try:
-                        del alignments[bgc]
-                    except KeyError:
-                        # if using defaultdict, the except will always add the
-                        # key when except'ing
-                        pass
-                del delete_list[:]
-                 
+                    
+                for bgc in list(delete_list):
+                    del alignments[bgc]
+                delete_list.clear()
+                
             # need this to change the labels in the trees that are read from files
             bgc_name_to_idx = {}
             
@@ -1454,7 +1453,6 @@ def clusterJsonBatch(bgcs, pathBase, className, matrix, pos_alignments,
                         gcf_alignment_file.write(">{}\n{}\n".format(clusterNames[bgc], alignments[bgc]))
                         bgc_name_to_idx[clusterNames[bgc]] = bgc
             
-
             # launch fasttree to make tree
             if verbose:
                 print("  Working GCF {}, cutoff {}".format(exemplar_idx, cutoff))
@@ -1558,21 +1556,16 @@ def clusterJsonBatch(bgcs, pathBase, className, matrix, pos_alignments,
         domainGenes2allGenes = {}
         
         ## BGC Family alignment information
-        #print(pos_alignments)
         bs_families_alignment = []
         for family, members in familiesDict.items():
-            #print("FAMILY {}".format(family))
             for bgc in members:
-                #print(bgc, clusterNames[bgc])
                 domainGenes2allGenes[bgc] = {}
                 has_domains = 0
                 for orf in range(len(bs_data[bgcExt2Int[bgc]]["orfs"])):
-                    #print("{} domains in orf {}".format(len(bs_data[bgcExt2Int[bgc]]["orfs"][orf]["domains"]), orf))
                     if len(bs_data[bgcExt2Int[bgc]]["orfs"][orf]["domains"]) > 0:
                         domainGenes2allGenes[bgc][has_domains] = orf
                         has_domains += 1
-                #print(len(bs_data[bgcExt2Int[bgc]]["orfs"]))
-            #print(domainGenes2allGenes)
+                        
             assert (len(members) > 0), "Error: bs_families[{}] have no members, something went wrong?".format(fam_idx)
             
             ref_genes_ = set()
@@ -1587,7 +1580,11 @@ def clusterJsonBatch(bgcs, pathBase, className, matrix, pos_alignments,
                     except:
                         b, a, length, reverse = pos_alignments[bgc][family]
                         
-                        if reverse:
+                        # these pair share no common gene (domain-wise)
+                        if length == 0:
+                            length = 1 
+                            
+                        if reverse and length != 0:
                             # special case. bgc was reference (first) in lcs
                             a = domainGenes2allGenes[family][len(DomainCountGene[clusterNames[family]])-a-length]
                             b = domainGenes2allGenes[bgc][b+length-1] # -1 go to 0-index
@@ -1596,13 +1593,13 @@ def clusterJsonBatch(bgcs, pathBase, className, matrix, pos_alignments,
                             a = domainGenes2allGenes[family][a]
                             b = domainGenes2allGenes[bgc][b]
                     else:
+                        if length == 0:
+                            length = 1
                         a = domainGenes2allGenes[family][a]
                         if reverse:
                             b = domainGenes2allGenes[bgc][len(DomainCountGene[clusterNames[bgc]])-b-1]
                         else:
                             b = domainGenes2allGenes[bgc][b]
-                            
-                        
                             
                     ref_genes_.add(a)
                     bgc_algn = []
@@ -1816,7 +1813,7 @@ if __name__=="__main__":
     options = CMD_parser()
     
     class bgc_data:
-        def __init__(self, accession_id, description, product, records, max_width, organism, taxonomy, biosynthetic_genes, contig_edge):
+        def __init__(self, accession_id, description, product, records, max_width, bgc_size, organism, taxonomy, biosynthetic_genes, contig_edge):
             # These two properties come from the genbank file:
             self.accession_id = accession_id
             self.description = description
@@ -1826,6 +1823,8 @@ if __name__=="__main__":
             self.records = records
             # length of largest record (it will be used for ArrowerSVG):
             self.max_width = int(max_width)
+            # length of the entire bgc (can include several records/subclusters)
+            self.bgc_size = bgc_size
             # organism
             self.organism = organism
             # taxonomy as a string (of comma-separated values)
