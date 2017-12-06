@@ -93,6 +93,8 @@ def get_gbk_files(inputdir, outputdir, bgc_fasta_folder, min_bgc_size, exclude_g
     total_seq_length = 0
     files_no_proteins = []
     files_no_biosynthetic_genes = []
+    record_end = 0
+    offset_record_position = 0
     
     print("\nImporting GenBank files")
     if type(exclude_gbk_str) == str and exclude_gbk_str != "":
@@ -133,7 +135,7 @@ def get_gbk_files(inputdir, outputdir, bgc_fasta_folder, min_bgc_size, exclude_g
             
             # See if we need to keep the sequence
             outputfile = os.path.join(bgc_fasta_folder, clusterName + '.fasta')
-            if os.path.isfile(outputfile) and os.path.getsize(outputfile) > 0:
+            if os.path.isfile(outputfile) and os.path.getsize(outputfile) > 0 and not force_hmmscan:
                 save_fasta = False
             else:
                 save_fasta = True
@@ -151,6 +153,7 @@ def get_gbk_files(inputdir, outputdir, bgc_fasta_folder, min_bgc_size, exclude_g
                 cds_ctr = 0
                 product = "no type"
                 del product_list_per_record[:]
+                offset_record_position = 0
                 
                 max_width = 0 # This will be used for the SVG figure
                 record_count = 0
@@ -196,8 +199,10 @@ def get_gbk_files(inputdir, outputdir, bgc_fasta_folder, min_bgc_size, exclude_g
                             
                             # nofuzzy_start/nofuzzy_end are obsolete
                             # http://biopython.org/DIST/docs/api/Bio.SeqFeature.FeatureLocation-class.html#nofuzzy_start
-                            gene_start = max(0, int(CDS.location.start))
-                            gene_end = max(0, int(CDS.location.end))
+                            gene_start = offset_record_position + max(0, int(CDS.location.start))
+                            gene_end = offset_record_position + max(0, int(CDS.location.end))
+                            record_end = gene_end
+                            
                             direction = CDS.location.strand
                             
                             if direction == 1:
@@ -248,7 +253,11 @@ def get_gbk_files(inputdir, outputdir, bgc_fasta_folder, min_bgc_size, exclude_g
                                 reminder = len(nt_seq)%3
                                 if reminder > 0:
                                     if fuzzy_start and fuzzy_end:
-                                        print("Warning, CDS ({}, {}) has fuzzy start and end positions, and a sequence length not multiple of three. Skipping".format(clusterName, CDS.qualifiers.get('locus_tag',"")[0]))
+                                        print("Warning, CDS ({}, {}) has fuzzy\
+                                              start and end positions, and a \
+                                              sequence length not multiple of \
+                                              three. Skipping".format(clusterName, 
+                                            CDS.qualifiers.get('locus_tag',"")[0]))
                                         break
                                     
                                     if fuzzy_start:
@@ -272,6 +281,7 @@ def get_gbk_files(inputdir, outputdir, bgc_fasta_folder, min_bgc_size, exclude_g
                                     prot_seq = str(nt_seq.translate(to_stop=True, cds=complete_cds))
                                     
                             total_seq_length += len(prot_seq)
+                            
                             if save_fasta:
                                 fasta_data.append((fasta_header, prot_seq))
         
@@ -279,7 +289,11 @@ def get_gbk_files(inputdir, outputdir, bgc_fasta_folder, min_bgc_size, exclude_g
                     # and add CDS with genes that contain domains labeled sec_met
                     # we'll probably have to have a list of domains if we allow
                     # fasta files as input
-        
+                    
+                    # make absolute positions for ORFs in next records
+                    offset_record_position += record_end + 1000
+                    
+                    
                 if bgc_size > min_bgc_size:  # exclude the bgc if it's too small
                     file_counter += 1
                     # check what we have product-wise
@@ -659,7 +673,7 @@ def cluster_distance_lcs(A, B, A_domlist, B_domlist, dcg_A, dcg_b, core_pos_A, c
     #print(ar, br, sr)
     
     # We need to keep working with the correct orientation
-    if s >= sr:
+    if s > sr or (s == sr and go_A[a] == go_b[b]):
         dcg_B = dcg_b
         B_string = b_string
         # note: these slices are in terms of genes, not domains (which are 
@@ -686,6 +700,7 @@ def cluster_distance_lcs(A, B, A_domlist, B_domlist, dcg_A, dcg_b, core_pos_A, c
         # postion of the final slice can be transformed to the original orientation
         reverse = True
         b_name = B + "*"
+        
         
     lcsStartA = sliceStartA
     lcsStartB = sliceStartB
@@ -1470,7 +1485,13 @@ def clusterJsonBatch(bgcs, pathBase, className, matrix, pos_alignments,
                     tree = Phylo.read(newick_file, 'newick')
                     #print(tree.format("newick"))
                     #print("")
-                    tree.root_at_midpoint()
+                    try:
+                        tree.root_at_midpoint()
+                    except UnboundLocalError:
+                        # Noticed this could happen if the sequences are exactly
+                        # the same and all distances == 0
+                        print(" Warning: Unable to root at midpoint file {}".format(newick_file_path))
+                        pass
                     newick = tree.format("newick")
                     for name in bgc_name_to_idx:
                         #print("Replace {} with {}".format(name, str(bgcExt2Int[bgc_name_to_idx[name]])))
@@ -1556,6 +1577,7 @@ def clusterJsonBatch(bgcs, pathBase, className, matrix, pos_alignments,
             
             ref_genes_ = set()
             aln = []
+            
             for bgc in members:
                 if bgc == family:
                     aln.append([ [gene_num, 0] for gene_num in range(len(bs_data[bgcExt2Int[family]]["orfs"]))])
@@ -1569,26 +1591,18 @@ def clusterJsonBatch(bgcs, pathBase, className, matrix, pos_alignments,
                             # special case. bgc was reference (first) in lcs
                             a = domainGenes2allGenes[family][len(DomainCountGene[clusterNames[family]])-a-length]
                             b = domainGenes2allGenes[bgc][b+length-1] # -1 go to 0-index
-                            
-                            #if clusterNames[family] == "P207.1.cluster032" and clusterNames[bgc] == "LGCW01000001.1.cluster034":
-                                #print(length)
-                                #print(DomainCountGene[clusterNames[family]], len(DomainCountGene[clusterNames[family]]))
-                                #print(domainGenes2allGenes[family])
-                                #print(DomainCountGene[clusterNames[bgc]], len(DomainCountGene[clusterNames[bgc]]))
-                                #print(domainGenes2allGenes[bgc])
+                             
                         else:
                             a = domainGenes2allGenes[family][a]
                             b = domainGenes2allGenes[bgc][b]
                     else:
-                        #print(clusterNames[family], a, clusterNames[bgc], b)
                         a = domainGenes2allGenes[family][a]
-                        
                         if reverse:
                             b = domainGenes2allGenes[bgc][len(DomainCountGene[clusterNames[bgc]])-b-1]
-                            #print(a, b)
                         else:
                             b = domainGenes2allGenes[bgc][b]
                             
+                        
                             
                     ref_genes_.add(a)
                     bgc_algn = []
@@ -1835,6 +1849,7 @@ if __name__=="__main__":
         print("File with list of anchor domains not found")
         anchor_domains = set()
     
+    global force_hmmscan
     global bgc_class_weight
     global AlignedDomainSequences
     global DomainList
@@ -1865,6 +1880,8 @@ if __name__=="__main__":
     
     options_mix = options.mix
     options_classify = not options.no_classify
+    
+    force_hmmscan = options.force_hmmscan
     
     mode = options.mode
     
@@ -1967,7 +1984,7 @@ if __name__=="__main__":
     genbankDict = get_gbk_files(options.inputdir, output_folder, bgc_fasta_folder, int(options.min_bgc_size), options.exclude_gbk_str, bgc_info)
 
     # clusters and sampleDict contain the necessary structure for all-vs-all and sample analysis
-    clusters = genbankDict.keys()
+    clusters = list(genbankDict.keys())
     
     sampleDict = {} # {sampleName:set(bgc1,bgc2,...)}
     gbk_files = [] # raw list of gbk file locations
@@ -2066,7 +2083,7 @@ if __name__=="__main__":
     
     # Make a list of all fasta files that need to be processed
     # (i.e., they don't yet have a corresponding .domtable)
-    if options.force_hmmscan:
+    if force_hmmscan:
         # process all files, regardless of whether they already existed
         task_set = fastaFiles
         print(" Forcing domain prediction on ALL fasta files (--force_hmmscan)")
@@ -2078,6 +2095,23 @@ if __name__=="__main__":
             outputfile = os.path.join(domtable_folder,outputbase + '.domtable')
             if os.path.isfile(outputfile) and os.path.getsize(outputfile) > 0:
                 alreadyDone.add(fasta)
+        
+        if len(alreadyDone) > 0 and not os.path.isfile(os.path.join(output_folder,"warning_2017-12-06.txt")):
+            warning_text = " - IMPORTANT NOTICE - \n\
+            BiG-SCAPE has detected that you are re-using data from a previous \n\
+            run. However, some sequence identifiers that are used internally \n\
+            have change to avoid conflicts when using multi-record files (such\n\
+            as some entries in MIBiG)\n\
+            If your results were produced after 2017-12-06, please re-run BiG-SCAPE\n\
+            as usual. If your results are older than this date, please use the \n\
+            --force_hmmscan parameter.\n\
+            We are sorry for the inconvenience.\n\
+            This warning will only appear once.\n"
+            print(warning_text)
+            with open(os.path.join(output_folder,"warning_2017-12-06.txt"), "w") as warning_file:
+                warning_file.write(warning_text)
+            sys.exit()
+                
         task_set = fastaFiles - alreadyDone
         if len(task_set) == 0:
             print(" All fasta files had already been processed")
@@ -2116,7 +2150,7 @@ if __name__=="__main__":
     
     # find already processed files (assuming that if the pfd file exists, the pfs should too)
     alreadyDone = set()
-    if not options.force_hmmscan:
+    if not force_hmmscan:
         for domtable in domtableFiles:
             outputbase = ".".join(domtable.split(os.sep)[-1].split(".")[:-1])
             outputfile = os.path.join(pfd_folder, outputbase + '.pfd')
