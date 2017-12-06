@@ -321,7 +321,7 @@ def get_gbk_files(inputdir, outputdir, bgc_fasta_folder, min_bgc_size, exclude_g
                     # Perhaps we can try to infer if it's in a contig edge: if
                     # - first biosynthetic gene start < 10kb or
                     # - max_width - last biosynthetic gene end < 10kb (but this will work only for the largest record)
-                    bgc_info[clusterName] = bgc_data(records[0].id, records[0].description, product, len(records), max_width, bgc_size, records[0].annotations["organism"], ",".join(records[0].annotations["taxonomy"]), biosynthetic_genes.copy(), contig_edge)
+                    bgc_info[clusterName] = bgc_data(records[0].id, records[0].description, product, len(records), max_width, bgc_size + (record_count-1)*1000, records[0].annotations["organism"], ",".join(records[0].annotations["taxonomy"]), biosynthetic_genes.copy(), contig_edge)
 
                     if len(bgc_info[clusterName].biosynthetic_genes) == 0:
                         files_no_biosynthetic_genes.append(fname)
@@ -1385,7 +1385,7 @@ def clusterJsonBatch(bgcs, pathBase, className, matrix, pos_alignments,
                         pass
                     elif domain not in domain_sets[bgc]:
                         if verbose:
-                        print("   BGC {} ({}) does not share a common domain core (GCF: {}, domain: {})".format(clusterNames[bgc], bgc, exemplar_idx, domain))
+                            print("   BGC {} ({}) does not share a common domain core (GCF: {}, domain: {})".format(clusterNames[bgc], bgc, exemplar_idx, domain))
                         out_of_tree_bgcs.append(bgc)
                         delete_list.add(bgc)
                     elif bgc in delete_list:
