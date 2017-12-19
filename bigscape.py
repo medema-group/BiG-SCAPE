@@ -64,11 +64,11 @@ import numpy as np
 from array import array
 from scipy.sparse import lil_matrix
 from scipy.optimize import linear_sum_assignment
-import pysapc
 import json
 import shutil
 from distutils import dir_util
 from sklearn.cluster import AffinityPropagation
+import networkx as nx
 
 def get_gbk_files(inputdir, outputdir, bgc_fasta_folder, min_bgc_size, exclude_gbk_str, bgc_info):
     """Searches given directory for genbank files recursively, will assume that
@@ -1186,6 +1186,7 @@ def clusterJsonBatch(bgcs, pathBase, className, matrix, pos_alignments,
         print('Clustering Clans Enabled with parameters clanClassificationCutoff: {}, clanDistanceCutoff: {}'.format(clanClassificationCutoff,clanDistanceCutoff))
     
     # External index number to Internal, consecutive, index
+    # If needed, bgcInt2Ext[i] would simply be bgcs[i]
     bgcExt2Int = dict(zip(bgcs, range(numBGCs)))
     
     # Get info on all BGCs to export to .js for visualization
@@ -1253,7 +1254,54 @@ def clusterJsonBatch(bgcs, pathBase, className, matrix, pos_alignments,
         bs_data_js.write("var bs_data={};\n".format(json.dumps(bs_data, indent=4, separators=(',', ':'), sort_keys=True)))
     shutil.copy(os.path.join(os.path.realpath(os.path.dirname(__file__)), "html_template", "index_html"), os.path.join(module_html_path, "index.html"))
     
+    # Create network
+    g = nx.Graph()
+    
     for cutoff in cutoffs:
+        print("  Cutoff: {}".format(cutoff))
+        # first task is to find labels (exemplars) for each node.
+        # Assign disconnected (singleton) BGCs to themselves
+        labels = [0 for i in range(numBGCs)]
+        
+        # clear all edges from network
+        g.clear()
+        
+        # add all nodes
+        g.add_nodes_from(bgcs)
+        
+        # add all (allowed) edges
+        for bgc1 in bgcs:
+            for bgc2 in simDict.get(bgc1,{}).keys():
+                if simDict[bgc1][bgc2] > 1 - cutoff:
+                    g.add_edge(bgc1, bgc2)
+                    
+        for subgraph in nx.connected_components(g):
+            numBGCs_subgraph = len(subgraph)
+            # smaller subgraphs don't need to be clustered
+            if numBGCs_subgraph < 3:
+                temp = list(subgraph)
+                for bgc in temp:
+                    labels[bgcExt2Int[bgc]] = bgcExt2Int[temp[0]]
+            else:
+                bgcExt2Sub_ = dict(zip([c for c in subgraph], range(numBGCs_subgraph)))
+                bgcSub2Ext_ = dict(zip(range(numBGCs_subgraph), [c for c in subgraph]))
+                                   
+                simMatrix = np.zeros((numBGCs_subgraph, numBGCs_subgraph), dtype=np.float32)
+                for bgc1, bgc2 in combinations(subgraph,2):
+                    try:
+                        simMatrix[bgcExt2Sub_[bgc1], bgcExt2Sub_[bgc2]] = simDict[bgc1][bgc2]
+                    except KeyError:
+                        simMatrix[bgcExt2Sub_[bgc1], bgcExt2Sub_[bgc2]] = simDict[bgc2][bgc1]
+                        
+                af = AffinityPropagation(damping=damping, max_iter=500, affinity="precomputed").fit(simMatrix)
+                labelsSub = af.labels_
+                exemplarsSub = af.cluster_centers_indices_
+                
+                # TODO go straight to familiesDict
+                for i in range(numBGCs_subgraph):
+                    labels[bgcExt2Int[bgcSub2Ext_[i]]] = bgcExt2Int[bgcSub2Ext_[exemplarsSub[labelsSub[i]]]]
+         
+        # Recalculate distance matrix as we'll need it with clans
         #simMatrix = lil_matrix((numBGCs, numBGCs), dtype=np.float32)
         simMatrix = np.zeros((numBGCs, numBGCs), dtype=np.float32)
         for bgc1 in bgcs:
@@ -1266,19 +1314,27 @@ def clusterJsonBatch(bgcs, pathBase, className, matrix, pos_alignments,
                     # Ensure symmetry
                     simMatrix[bgcExt2Int[bgc1], bgcExt2Int[bgc2]] = simDict[bgc1][bgc2]
                     simMatrix[bgcExt2Int[bgc2], bgcExt2Int[bgc1]] = simDict[bgc1][bgc2]
-        if verbose:
-            print("  Clustering (c=" + str(cutoff) + ")")
-        #labels = pysapc.SAP(damping=damping, max_iter=500,
-                            #preference='min').fit_predict(simMatrix)
-        af = AffinityPropagation(damping=damping, max_iter=500).fit(simMatrix)
-        # labels_: labels for each node. Same label means same cluster. Value is also
-        #   the index in the cluster_centers_indices_ list. Goes from 0 to number of 
-        #   clusters-1
-        # cluster_centers_indices_: list of exemplars
-        labels = [af.cluster_centers_indices_[af.labels_[i]] for i in range(numBGCs)]
+        #if verbose:
+            #print("  Clustering (c=" + str(cutoff) + ")")
+        ##labels = pysapc.SAP(damping=damping, max_iter=500,
+                            ##preference='min').fit_predict(simMatrix)
+        #af = AffinityPropagation(damping=damping, max_iter=500, affinity="precomputed").fit(simMatrix)
+        ## labels_: labels for each node. Same label means same cluster. Value is also
+        ##   the index in the cluster_centers_indices_ list. Goes from 0 to number of 
+        ##   clusters-1
+        ## cluster_centers_indices_: list of exemplars
+        #labels = [af.cluster_centers_indices_[af.labels_[i]] for i in range(numBGCs)]
+        #print(len(af.labels_))
+        #print(af.labels_)
+        #print(len(af.cluster_centers_indices_))
+        #print(af.cluster_centers_indices_)
+        #for i in range(numBGCs):
+            #print(i, clusterNames[bgcs[i]], labels[i])
+        #sys.exit()
         
         if verbose:
             print("   ...done")
+
 
         bs_distances = [[float("{:.3f}".format(simMatrix[row, col])) for col in 
                          range(row+1)] for row in range(numBGCs)]
@@ -1505,8 +1561,8 @@ def clusterJsonBatch(bgcs, pathBase, className, matrix, pos_alignments,
                 clanLabels = [1]
                 continue
             
-            famSimMatrix = lil_matrix((len(familyIdx), len(familyIdx)), dtype=np.float32)
-            #famSimMatrix = np.zeros((len(familyIdx), len(familyIdx)), dtype=np.float32)
+            #famSimMatrix = lil_matrix((len(familyIdx), len(familyIdx)), dtype=np.float32)
+            famSimMatrix = np.zeros((len(familyIdx), len(familyIdx)), dtype=np.float32)
             familiesExt2Int = {gcfExtIdx:gcfIntIdx for gcfIntIdx,gcfExtIdx in enumerate(familyIdx)}
                                                                                         
             for familyI, familyJ in [tuple(sorted(combo)) for combo in combinations(familyIdx, 2)]:
@@ -1525,17 +1581,23 @@ def clusterJsonBatch(bgcs, pathBase, className, matrix, pos_alignments,
                     famSimMatrix[familiesExt2Int[familyI], familiesExt2Int[familyJ]] = familySimilarityIJ
                     famSimMatrix[familiesExt2Int[familyJ], familiesExt2Int[familyI]] = familySimilarityIJ
             # add main diagonal
-            for family in range(familyIdx):
+            for family in range(len(familyIdx)):
                 famSimMatrix[family,family] = 1.0
             
-            clanLabels = pysapc.SAP(damping=damping, max_iter=500,
-                                preference='min').fit_predict(famSimMatrix)
+            #clanLabels = pysapc.SAP(damping=damping, max_iter=500,
+                                #preference='min').fit_predict(famSimMatrix)
+            af = AffinityPropagation(damping=damping, max_iter=500, affinity="precomputed").fit(famSimMatrix)
+            labelsClans = af.labels_
+            exemplarsClans = af.cluster_centers_indices_
+            
+            clanLabels = [exemplarsClans[labelsClans[i]] for i in range(len(familyIdx))]
+            
         else:
             clanLabels = []
             
         if len(clanLabels) > 0:
             clansDict = defaultdict(list)
-            for i in range(familyIdx):
+            for i in range(len(familyIdx)):
                 clansDict[clanLabels[i]].append(familyIdx[i])
 
             fam2clan = dict(zip(familyIdx,clanLabels))
@@ -2640,6 +2702,7 @@ if __name__=="__main__":
                     pairs.clear()
                     network_matrix = generate_network(cluster_pairs, cores)
                     del cluster_pairs[:]
+                    #network_matrix = pickle.load(open("pksother.ntwrk", "rb"))
                         
                     print("   Writing output files")
                     pathBase = os.path.join(network_files_folder, bgc_class)
