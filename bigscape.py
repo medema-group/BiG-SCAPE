@@ -1558,46 +1558,41 @@ def clusterJsonBatch(bgcs, pathBase, className, matrix, pos_alignments,
             # launch fasttree to make tree
             if verbose:
                 print("  Working GCF {}, cutoff {}".format(exemplar_idx, cutoff))
+                
+            # make tree
             newick_file_path = os.path.join(gcf_trees_path, "GCF_c{:4.2f}_{:05d}.newick".format(cutoff,exemplar_idx))
             with open(newick_file_path, "w") as newick_file:
                 command = ["fasttree", "-nopr", "-quiet", alignment_file_path]
                 p = subprocess.Popen(command, stdout=newick_file, shell=False)
                 p.wait() # only with process has terminated will the file be ready
 
-            
-            if not os.path.isfile(newick_file_path):
+            # read tree, post-process it and save it
+            if not os.path.isfile(newick_file_path) or os.path.getsize(newick_file_path) == 0:
                 print(newick_file_path)
-                sys.exit(" ERROR: newick file not created (GCF_c{:4.2f}_{:05d})".format(cutoff,exemplar_idx))
-            else:
-                # change bgc names to (internal) indices
-                #with open(newick_file_path,"r") as newick_file:
-                    #newick = newick_file.read().strip()
-                    #print(newick)
-                    #print("")
-                    #for name in bgc_name_to_idx:
-                        #newick = newick.replace(name, str(bgcExt2Int[bgc_name_to_idx[name]]))
-                    #newick_trees[exemplar_idx] = newick
-                    
-                    #print(newick)
-                    #print("")
-                    
+                sys.exit(" ERROR: newick file not created or empty (GCF_c{:4.2f}_{:05d})".format(cutoff,exemplar_idx))
+            else:   
                 with open(newick_file_path,"r") as newick_file:
-                    tree = Phylo.read(newick_file, 'newick')
-                    #print(tree.format("newick"))
-                    #print("")
                     try:
-                        tree.root_at_midpoint()
-                    except UnboundLocalError:
-                        # Noticed this could happen if the sequences are exactly
-                        # the same and all distances == 0
-                        print(" Warning: Unable to root at midpoint file {}".format(newick_file_path))
-                        pass
-                    newick = tree.format("newick")
-                    for name in bgc_name_to_idx:
-                        #print("Replace {} with {}".format(name, str(bgcExt2Int[bgc_name_to_idx[name]])))
-                        newick = newick.replace(name, str(bgcExt2Int[bgc_name_to_idx[name]]))
-                    #print(newick)
-                    newick_trees[exemplar_idx] = newick
+                        tree = Phylo.read(newick_file, 'newick')
+                    except ValueError as e:
+                        print(" Warning! There was an error while reading tree file {}".format(newick_file))
+                        print(str(e))
+                        newick_trees[exemplar_idx] = ""
+                    else:
+                        try:
+                            tree.root_at_midpoint()
+                        except UnboundLocalError:
+                            # Noticed this could happen if the sequences are exactly
+                            # the same and all distances == 0
+                            print(" Warning: Unable to root at midpoint file {}".format(newick_file_path))
+                            pass
+                        newick = tree.format("newick")
+                        
+                        # convert branches' names to indices for visualization
+                        for name in bgc_name_to_idx:
+                            newick = newick.replace(name, str(bgcExt2Int[bgc_name_to_idx[name]]))
+
+                        newick_trees[exemplar_idx] = newick
        
         ### Use the 0.5 distance cutoff to cluster clans by default
         if clusterClans and cutoff == clanClassificationCutoff:
