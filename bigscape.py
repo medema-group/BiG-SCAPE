@@ -1076,7 +1076,8 @@ def run_hmmalign(domain_file):
     hmmfetch_pars = ["hmmfetch", os.path.join(pfam_dir,"Pfam-A.hmm.h3m"), domain_base]
     proc_hmmfetch = subprocess.Popen(hmmfetch_pars, stdout=subprocess.PIPE, shell=False)
     
-    hmmalign_pars = ["hmmalign", "-o", domain_file.replace(".fasta",".stk"), "-", domain_file]
+    domain_file_stk = domain_file[:-6]+".stk"
+    hmmalign_pars = ["hmmalign", "-o", domain_file_stk, "-", domain_file]
     proc_hmmalign = subprocess.Popen(hmmalign_pars, stdin=proc_hmmfetch.stdout, stdout=subprocess.PIPE, shell=False)
     
     proc_hmmfetch.stdout.close()
@@ -1086,8 +1087,53 @@ def run_hmmalign(domain_file):
     if verbose:
         print(" ".join(hmmfetch_pars) + " | " + " ".join(hmmalign_pars))
     
-    SeqIO.convert(domain_file[:-6]+".stk", "stockholm", domain_file[:-6]+".algn", "fasta")
+    stockholm_parser(domain_file_stk)
+    #SeqIO.convert(domain_file_stk, "stockholm", domain_file[:-6]+".algn", "fasta")
     
+    
+def stockholm_parser(stkFile):
+    reference = ""
+    algnDict = defaultdict(str)
+    algnFile = stkFile[:-3] + 'algn'
+    if not os.path.isfile(algnFile): # prevents overwriting algn files
+        with open(stkFile, 'r') as infile:
+            for l in infile:
+                line = l.strip()
+                if line.startswith("#=GC RF"):
+                    reference += line[7:].strip()
+                elif line == "":
+                    continue
+                elif line[0] == "/" or line[0] == "#":
+                    continue
+                else:
+                    a = line.split(" ")
+                    header = a[0]
+                    algn = a[-1]
+                    algnDict[header] += algn
+                    
+        # get start-end coordinates of every "x" island (original consensus)
+        # in the reference
+        state_reference = False
+        slicing_tuples = []
+        for pos in range(len(reference)):
+            if reference[pos] == "x" and not state_reference:
+                state_reference = True
+                start = pos
+            if reference[pos] == "." and state_reference:
+                state_reference = False
+                slicing_tuples.append((start,pos))
+        if state_reference:
+            slicing_tuples.append((start, len(reference)))
+    
+    if len(algnDict) > 0:
+        with open(algnFile, "w") as outfile:
+            for header in algnDict:
+                sequence = ""
+                for a,b in slicing_tuples:
+                    sequence += algnDict[header][a:b]
+                outfile.write(">{}\n".format(header))
+                outfile.write(sequence + "\n")
+    return
 
 def runHmmScan(fastaPath, hmmPath, outputdir, verbose):
     """ Runs hmmscan command on a fasta file with a single core to generate a
@@ -1512,46 +1558,41 @@ def clusterJsonBatch(bgcs, pathBase, className, matrix, pos_alignments,
             # launch fasttree to make tree
             if verbose:
                 print("  Working GCF {}, cutoff {}".format(exemplar_idx, cutoff))
+                
+            # make tree
             newick_file_path = os.path.join(gcf_trees_path, "GCF_c{:4.2f}_{:05d}.newick".format(cutoff,exemplar_idx))
             with open(newick_file_path, "w") as newick_file:
                 command = ["fasttree", "-nopr", "-quiet", alignment_file_path]
                 p = subprocess.Popen(command, stdout=newick_file, shell=False)
                 p.wait() # only with process has terminated will the file be ready
 
-            
-            if not os.path.isfile(newick_file_path):
+            # read tree, post-process it and save it
+            if not os.path.isfile(newick_file_path) or os.path.getsize(newick_file_path) == 0:
                 print(newick_file_path)
-                sys.exit(" ERROR: newick file not created (GCF_c{:4.2f}_{:05d})".format(cutoff,exemplar_idx))
-            else:
-                # change bgc names to (internal) indices
-                #with open(newick_file_path,"r") as newick_file:
-                    #newick = newick_file.read().strip()
-                    #print(newick)
-                    #print("")
-                    #for name in bgc_name_to_idx:
-                        #newick = newick.replace(name, str(bgcExt2Int[bgc_name_to_idx[name]]))
-                    #newick_trees[exemplar_idx] = newick
-                    
-                    #print(newick)
-                    #print("")
-                    
+                sys.exit(" ERROR: newick file not created or empty (GCF_c{:4.2f}_{:05d})".format(cutoff,exemplar_idx))
+            else:   
                 with open(newick_file_path,"r") as newick_file:
-                    tree = Phylo.read(newick_file, 'newick')
-                    #print(tree.format("newick"))
-                    #print("")
                     try:
-                        tree.root_at_midpoint()
-                    except UnboundLocalError:
-                        # Noticed this could happen if the sequences are exactly
-                        # the same and all distances == 0
-                        print(" Warning: Unable to root at midpoint file {}".format(newick_file_path))
-                        pass
-                    newick = tree.format("newick")
-                    for name in bgc_name_to_idx:
-                        #print("Replace {} with {}".format(name, str(bgcExt2Int[bgc_name_to_idx[name]])))
-                        newick = newick.replace(name, str(bgcExt2Int[bgc_name_to_idx[name]]))
-                    #print(newick)
-                    newick_trees[exemplar_idx] = newick
+                        tree = Phylo.read(newick_file, 'newick')
+                    except ValueError as e:
+                        print(" Warning! There was an error while reading tree file {}".format(newick_file))
+                        print(str(e))
+                        newick_trees[exemplar_idx] = ""
+                    else:
+                        try:
+                            tree.root_at_midpoint()
+                        except UnboundLocalError:
+                            # Noticed this could happen if the sequences are exactly
+                            # the same and all distances == 0
+                            print(" Warning: Unable to root at midpoint file {}".format(newick_file_path))
+                            pass
+                        newick = tree.format("newick")
+                        
+                        # convert branches' names to indices for visualization
+                        for name in bgc_name_to_idx:
+                            newick = newick.replace(name, str(bgcExt2Int[bgc_name_to_idx[name]]))
+
+                        newick_trees[exemplar_idx] = newick
        
         ### Use the 0.5 distance cutoff to cluster clans by default
         if clusterClans and cutoff == clanClassificationCutoff:
@@ -1646,11 +1687,10 @@ def clusterJsonBatch(bgcs, pathBase, className, matrix, pos_alignments,
                         if length == 0:
                             length = 1 
                             
-                        if reverse and length != 0:
+                        if reverse:
                             # special case. bgc was reference (first) in lcs
                             a = domainGenes2allGenes[family][len(DomainCountGene[clusterNames[family]])-a-length]
                             b = domainGenes2allGenes[bgc][b+length-1] # -1 go to 0-index
-                             
                         else:
                             a = domainGenes2allGenes[family][a]
                             b = domainGenes2allGenes[bgc][b]
@@ -2564,7 +2604,7 @@ if __name__=="__main__":
             for bgc in clusterNames:
                 product = bgc_info[bgc].product
                 network_annotation_file.write("\t".join([bgc, bgc_info[bgc].accession_id, bgc_info[bgc].description, product, sort_bgc(product), bgc_info[bgc].organism, bgc_info[bgc].taxonomy]) + "\n")
-    
+        
         # Making network files mixing all classes
         if options_mix:
             print("\n Mixing all BGC classes")

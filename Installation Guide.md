@@ -12,7 +12,7 @@ installation using Miniconda
 > ./Miniconda2-latest-Linux-x86_64.sh
 ```
 
-* Create new environmnent:
+* Create new environmnent (you can choose Python 3 using ``python=3`` at the end of the next command):
 
 ```
 > conda create --name bigscape
@@ -27,16 +27,7 @@ installation using Miniconda
 * Install packages:
 
 ```
-> conda install numpy scipy
-> conda install -c bioconda hmmer biopython mafft
+> conda install numpy scipy scikit-learn
+> conda install -c bioconda hmmer biopython mafft fasttree
+> conda install -c anaconda networkx
 ```
-
-* The Affinity Propagation algorithm used currently is [pySAPC](https://pypi.python.org/pypi/pysapc/1.1.0). Install cython first:
-
-```
-> conda install cython
-```
-
-then, if you are using a Mac: `conda install -c https://conda.anaconda.org/bioinfocao pysapc`, otherwise: `pip install pysapc`
-
-(pysapc also installs pandas, pytz, six and python-dateutil)
