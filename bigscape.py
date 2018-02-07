@@ -95,6 +95,9 @@ def get_gbk_files(inputdir, outputdir, bgc_fasta_folder, min_bgc_size, exclude_g
     files_no_biosynthetic_genes = []
     record_end = 0
     offset_record_position = 0
+    bgc_locus_tags = []
+    locus_headers = {}
+    locus_sequences = {}
     
     print("\nImporting GenBank files")
     if type(exclude_gbk_str) == str and exclude_gbk_str != "":
@@ -134,12 +137,16 @@ def get_gbk_files(inputdir, outputdir, bgc_fasta_folder, min_bgc_size, exclude_g
                 sys.exit("\nError: Input GenBank files should not have spaces in their filenames as HMMscan cannot process them properly ('too many arguments').")
             
             # See if we need to keep the sequence
+            # (Currently) we have to open the file anyway to read all its 
+            # properties for bgc_info anyway...
             outputfile = os.path.join(bgc_fasta_folder, clusterName + '.fasta')
             if os.path.isfile(outputfile) and os.path.getsize(outputfile) > 0 and not force_hmmscan:
+                if verbose:
+                    print(" File {} already processed".format(outputfile))
                 save_fasta = False
             else:
                 save_fasta = True
-                
+            
             try:
                 # basic file verification. Substitutes check_data_integrity
                 records = list(SeqIO.parse(os.path.join(dirpath,fname), "genbank"))
@@ -180,18 +187,16 @@ def get_gbk_files(inputdir, outputdir, bgc_fasta_folder, min_bgc_size, exclude_g
                                     if verbose:
                                         print(" Contig edge detected in {}".format(fname))
                                     contig_edge = True
-                
+                                
                         # Get biosynthetic genes + sequences
                         if feature.type == "CDS":
                             cds_ctr += 1
-                                    
                             CDS = feature
+                            
                             gene_id = ""
                             if "gene" in CDS.qualifiers:
-                                # In principle, we should keep a list of genes with
-                                # the same id (isoforms) and only keep the largest
-                                # TODO
                                 gene_id = CDS.qualifiers.get('gene',"")[0]
+                                
                             
                             protein_id = ""
                             if "protein_id" in CDS.qualifiers:
@@ -204,11 +209,11 @@ def get_gbk_files(inputdir, outputdir, bgc_fasta_folder, min_bgc_size, exclude_g
                             record_end = gene_end
                             
                             direction = CDS.location.strand
-                            
                             if direction == 1:
                                 strand = '+'
                             else:
                                 strand = '-'
+                                
                             fasta_header = "{}_ORF{}:gid:{}:pid:{}:loc:{}:{}:strand:{}".format(clusterName, str(cds_ctr), str(gene_id), str(protein_id), str(gene_start), str(gene_end), strand)
                             fasta_header = fasta_header.replace(">","") #the coordinates might contain larger than signs, tools upstream don't like this
                             fasta_header = fasta_header.replace(" ", "") #the domtable output format (hmmscan) uses spaces as a delimiter, so these cannot be present in the fasta header
@@ -254,9 +259,9 @@ def get_gbk_files(inputdir, outputdir, bgc_fasta_folder, min_bgc_size, exclude_g
                                 if reminder > 0:
                                     if fuzzy_start and fuzzy_end:
                                         print("Warning, CDS ({}, {}) has fuzzy\
-                                              start and end positions, and a \
-                                              sequence length not multiple of \
-                                              three. Skipping".format(clusterName, 
+                                            start and end positions, and a \
+                                            sequence length not multiple of \
+                                            three. Skipping".format(clusterName, 
                                             CDS.qualifiers.get('locus_tag',"")[0]))
                                         break
                                     
@@ -281,9 +286,31 @@ def get_gbk_files(inputdir, outputdir, bgc_fasta_folder, min_bgc_size, exclude_g
                                     prot_seq = str(nt_seq.translate(to_stop=True, cds=complete_cds))
                                     
                             total_seq_length += len(prot_seq)
+                        
+                        
+                            if "locus_tag" in CDS.qualifiers:
+                                locus_tag = CDS.qualifiers["locus_tag"][0]
+                            elif gene_id != "":
+                                locus_tag = gene_id
+                            else:
+                                # TODO it could be that the CDS does not contain
+                                # either a gene or a locus qualifier (e.g. fasta
+                                # + gff). Assume all CDS come from different 
+                                # locus. Actually, we should check against all
+                                # other CDS for potential overlap.
+                                locus_tag = str(gene_start)
+                        
+                        
+                            # if we have splicing events, get the CDS with the most length
+                            if locus_tag in bgc_locus_tags:
+                                if len(prot_seq) > len(locus_sequences[locus_tag]):
+                                    locus_headers[locus_tag] = fasta_header
+                                    locus_sequences[locus_tag] = prot_seq
+                            else:
+                                bgc_locus_tags.append(locus_tag)
+                                locus_headers[locus_tag] = fasta_header
+                                locus_sequences[locus_tag] = prot_seq
                             
-                            if save_fasta:
-                                fasta_data.append((fasta_header, prot_seq))
         
                     # TODO: if len(biosynthetic_genes) == 0, traverse record again
                     # and add CDS with genes that contain domains labeled sec_met
@@ -341,9 +368,9 @@ def get_gbk_files(inputdir, outputdir, bgc_fasta_folder, min_bgc_size, exclude_g
                             if save_fasta:
                                 processed_sequences += 1
                                 with open(outputfile,'w') as fastaHandle:
-                                    for header_sequence in fasta_data:
-                                        fastaHandle.write("{}\n".format(str(header_sequence[0])))
-                                        fastaHandle.write("{}\n".format(str(header_sequence[1])))
+                                    for locus in bgc_locus_tags:
+                                        fastaHandle.write("{}\n".format(locus_headers[locus]))
+                                        fastaHandle.write("{}\n".format(locus_sequences[locus]))
                         else:
                             files_no_proteins.append(fname)
 
@@ -353,15 +380,12 @@ def get_gbk_files(inputdir, outputdir, bgc_fasta_folder, min_bgc_size, exclude_g
                 else:
                     print(" Discarding {} (size less than {} bp, was {})".format(clusterName, str(min_bgc_size), str(bgc_size)))
                 
-                del fasta_data[:]
+                del bgc_locus_tags[:]
+                locus_headers.clear()
+                locus_sequences.clear()
+                
                 biosynthetic_genes.clear()
     
-    if file_counter == 0:
-        sys.exit("\nError: There are no files to process")
-        
-    if file_counter == 1:
-        sys.exit("\nError: Only one file found. Please input at least two files")
-        
     if len(files_no_proteins) > 0:
         print("  Warning: Input set has files without protein sequences. They will be discarded")
         print("   (See no_sequences_list.txt)")
@@ -1684,6 +1708,7 @@ def clusterJsonBatch(bgcs, pathBase, className, matrix, pos_alignments,
                         b, a, length, reverse = pos_alignments[bgc][family]
                         
                         # these pair share no common gene (domain-wise)
+                        # align using first gene
                         if length == 0:
                             length = 1 
                             
@@ -2741,8 +2766,9 @@ if __name__=="__main__":
                     cluster_pairs = [(x, y, bgcClassName2idx[bgc_class]) for (x, y) in pairs]
                     pairs.clear()
                     network_matrix = generate_network(cluster_pairs, cores)
+                    #pickle.dump(network_matrix,open("others.ntwrk",'wb'))
                     del cluster_pairs[:]
-                    #network_matrix = pickle.load(open("pksother.ntwrk", "rb"))
+                    #network_matrix = pickle.load(open("others.ntwrk", "rb"))
                         
                     print("   Writing output files")
                     pathBase = os.path.join(network_files_folder, bgc_class)
