@@ -96,8 +96,8 @@ def get_gbk_files(inputdir, outputdir, bgc_fasta_folder, min_bgc_size, exclude_g
     record_end = 0
     offset_record_position = 0
     bgc_locus_tags = []
-    locus_headers = {}
     locus_sequences = {}
+    locus_coordinates = {}
     
     print("\nImporting GenBank files")
     if type(exclude_gbk_str) == str and exclude_gbk_str != "":
@@ -288,28 +288,10 @@ def get_gbk_files(inputdir, outputdir, bgc_fasta_folder, min_bgc_size, exclude_g
                             total_seq_length += len(prot_seq)
                         
                         
-                            if "locus_tag" in CDS.qualifiers:
-                                locus_tag = CDS.qualifiers["locus_tag"][0]
-                            elif gene_id != "":
-                                locus_tag = gene_id
-                            else:
-                                # TODO it could be that the CDS does not contain
-                                # either a gene or a locus qualifier (e.g. fasta
-                                # + gff). Assume all CDS come from different 
-                                # locus. Actually, we should check against all
-                                # other CDS for potential overlap.
-                                locus_tag = str(gene_start)
-                        
-                        
-                            # if we have splicing events, get the CDS with the most length
-                            if locus_tag in bgc_locus_tags:
-                                if len(prot_seq) > len(locus_sequences[locus_tag]):
-                                    locus_headers[locus_tag] = fasta_header
-                                    locus_sequences[locus_tag] = prot_seq
-                            else:
-                                bgc_locus_tags.append(locus_tag)
-                                locus_headers[locus_tag] = fasta_header
-                                locus_sequences[locus_tag] = prot_seq
+                            bgc_locus_tags.append(fasta_header)
+                            locus_sequences[fasta_header] = prot_seq
+                            locus_coordinates[fasta_header] = (gene_start, gene_end, len(prot_seq))
+
                             
         
                     # TODO: if len(biosynthetic_genes) == 0, traverse record again
@@ -319,8 +301,8 @@ def get_gbk_files(inputdir, outputdir, bgc_fasta_folder, min_bgc_size, exclude_g
                     
                     # make absolute positions for ORFs in next records
                     offset_record_position += record_end + 1000
-                    
-                    
+                
+                
                 if bgc_size > min_bgc_size:  # exclude the bgc if it's too small
                     file_counter += 1
                     # check what we have product-wise
@@ -366,10 +348,34 @@ def get_gbk_files(inputdir, outputdir, bgc_fasta_folder, min_bgc_size, exclude_g
                             genbankDict.setdefault(clusterName, [os.path.join(dirpath, fname), set([current_dir])])
 
                             if save_fasta:
+                                # Find overlaps in CDS regions and delete the shortest ones.
+                                # This is thought as a solution for selecting genes with 
+                                # alternate splicing events
+                                # Food for thought: imagine CDS A overlapping CDS B overlapping
+                                # CDS C. If len(A) > len(B) > len(C) and we first compare A vs B
+                                # and delete A, then B vs C and delete B: would that be a better
+                                # solution than removing B? Could this actually happen?
+                                del_list = []
+                                for a, b in combinations(bgc_locus_tags, 2):
+                                    a_start, a_end, a_len = locus_coordinates[a]
+                                    b_start, b_end, b_len = locus_coordinates[b]
+                                    
+                                    if b_end <= a_start or b_start >= a_end:
+                                        pass
+                                    else:
+                                        if a_len > b_len:
+                                            del_list.append(b)
+                                        else:
+                                            del_list.append(a)
+                                
+                                for locus in del_list:
+                                    bgc_locus_tags.remove(locus)
+                                
+                                
                                 processed_sequences += 1
                                 with open(outputfile,'w') as fastaHandle:
                                     for locus in bgc_locus_tags:
-                                        fastaHandle.write("{}\n".format(locus_headers[locus]))
+                                        fastaHandle.write("{}\n".format(locus))
                                         fastaHandle.write("{}\n".format(locus_sequences[locus]))
                         else:
                             files_no_proteins.append(fname)
@@ -381,8 +387,8 @@ def get_gbk_files(inputdir, outputdir, bgc_fasta_folder, min_bgc_size, exclude_g
                     print(" Discarding {} (size less than {} bp, was {})".format(clusterName, str(min_bgc_size), str(bgc_size)))
                 
                 del bgc_locus_tags[:]
-                locus_headers.clear()
                 locus_sequences.clear()
+                locus_coordinates.clear()
                 
                 biosynthetic_genes.clear()
     
@@ -1722,6 +1728,7 @@ def clusterJsonBatch(bgcs, pathBase, className, matrix, pos_alignments,
                     else:
                         if length == 0:
                             length = 1
+                            
                         a = domainGenes2allGenes[family][a]
                         if reverse:
                             b = domainGenes2allGenes[bgc][len(DomainCountGene[clusterNames[bgc]])-b-1]
