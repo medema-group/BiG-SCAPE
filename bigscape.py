@@ -717,7 +717,7 @@ def cluster_distance_lcs(A, B, A_domlist, B_domlist, dcg_A, dcg_b, core_pos_A, c
         reverse = False
         b_name = B
         
-    else:
+    elif s < sr:
         dcg_B = list(reversed(dcg_b))
         B_string = b_string_reverse
         
@@ -730,6 +730,56 @@ def cluster_distance_lcs(A, B, A_domlist, B_domlist, dcg_A, dcg_b, core_pos_A, c
         # postion of the final slice can be transformed to the original orientation
         reverse = True
         b_name = B + "*"
+        
+    # special cases: s == sr
+    
+    # if only one gene matches, choose the one with the most domains
+    elif s == 1:
+        seqmatch = SequenceMatcher(None, A_string, b_string)
+        max_domains = 0
+        x = 0   # index in A with the gene with most domains
+        y = 0   # index in B with the gene with most domains
+        for a, b, z in seqmatch.get_matching_blocks():
+            if z != 0:
+                if DomainCountGene[A][a] > max_domains:
+                    x = a
+                    y = b
+                    max_domains = DomainCountGene[A][a]
+        
+        # note: these slices are in terms of genes, not domains (which are 
+        # ultimately what is used for distance)
+        # Currently, the following values represent the Core Overlap
+        sliceStartA = x
+        sliceLengthA = 1
+        sliceLengthB = 1
+        
+        if BGCGeneOrientation[A][x] == BGCGeneOrientation[B][y]:
+            sliceStartB = y
+            dcg_B = dcg_b
+            B_string = b_string
+            reverse = False
+            b_name = B
+        else:
+            sliceStartB = len(BGCGeneOrientation[B]) - y - 1
+            dcg_B = list(reversed(dcg_b))
+            B_string = b_string_reverse
+            reverse = True
+            b_name = B + "*"
+               
+    # s == sr and (s == 0 or s > 1)
+    else:
+        dcg_B = dcg_b
+        B_string = b_string
+        # note: these slices are in terms of genes, not domains (which are 
+        # ultimately what is used for distance)
+        # Currently, the following values represent the Core Overlap
+        sliceStartA = a
+        sliceStartB = b
+        sliceLengthA = s
+        sliceLengthB = s
+        
+        reverse = False
+        b_name = B
         
         
     lcsStartA = sliceStartA
@@ -1705,6 +1755,7 @@ def clusterJsonBatch(bgcs, pathBase, className, matrix, pos_alignments,
             ref_genes_ = set()
             aln = []
             
+            
             for bgc in members:
                 if bgc == family:
                     aln.append([ [gene_num, 0] for gene_num in range(len(bs_data[bgcExt2Int[family]]["orfs"]))])
@@ -1714,6 +1765,27 @@ def clusterJsonBatch(bgcs, pathBase, className, matrix, pos_alignments,
                     except:
                         b, a, length, reverse = pos_alignments[bgc][family]
                         
+                        if length == 0:
+                            pass
+                        elif reverse:
+                            # special case. bgc was reference (first) in lcs
+                            a = domainGenes2allGenes[family][len(DomainCountGene[clusterNames[family]])-a-length]
+                            b = domainGenes2allGenes[bgc][b+length-1] # -1 go to 0-index
+                        else:
+                            a = domainGenes2allGenes[family][a]
+                            b = domainGenes2allGenes[bgc][b]
+                    else:
+                        a = domainGenes2allGenes[family][a]
+                        if length == 0:
+                            pass
+                        
+                        elif reverse:
+                            
+                            b = domainGenes2allGenes[bgc][len(DomainCountGene[clusterNames[bgc]])-b-1]
+                        else:
+                            b = domainGenes2allGenes[bgc][b]
+                    
+                    
                     if length == 0:
                         length = 1
                         # let's try aligning using the genes with most domains
@@ -1733,22 +1805,6 @@ def clusterJsonBatch(bgcs, pathBase, className, matrix, pos_alignments,
                         else:
                             b = domainGenes2allGenes[bgc][len(DomainCountGene[clusterNames[bgc]])-y-1]
                             reverse = True
-                        
-                        
-                    elif reverse:
-                        if reverse:
-                            # special case. bgc was reference (first) in lcs
-                            a = domainGenes2allGenes[family][len(DomainCountGene[clusterNames[family]])-a-length]
-                            b = domainGenes2allGenes[bgc][b+length-1] # -1 go to 0-index
-                        else:
-                            a = domainGenes2allGenes[family][a]
-                            b = domainGenes2allGenes[bgc][b]
-                    else:
-                        a = domainGenes2allGenes[family][a]
-                        if reverse:
-                            b = domainGenes2allGenes[bgc][len(DomainCountGene[clusterNames[bgc]])-b-1]
-                        else:
-                            b = domainGenes2allGenes[bgc][b]
                             
                     ref_genes_.add(a)
                     bgc_algn = []
