@@ -355,7 +355,7 @@ def get_gbk_files(inputdir, outputdir, bgc_fasta_folder, min_bgc_size, exclude_g
                                 # CDS C. If len(A) > len(B) > len(C) and we first compare A vs B
                                 # and delete A, then B vs C and delete B: would that be a better
                                 # solution than removing B? Could this actually happen?
-                                del_list = []
+                                del_list = set()
                                 for a, b in combinations(bgc_locus_tags, 2):
                                     a_start, a_end, a_len = locus_coordinates[a]
                                     b_start, b_end, b_len = locus_coordinates[b]
@@ -364,9 +364,9 @@ def get_gbk_files(inputdir, outputdir, bgc_fasta_folder, min_bgc_size, exclude_g
                                         pass
                                     else:
                                         if a_len > b_len:
-                                            del_list.append(b)
+                                            del_list.add(b)
                                         else:
-                                            del_list.append(a)
+                                            del_list.add(a)
                                 
                                 for locus in del_list:
                                     bgc_locus_tags.remove(locus)
