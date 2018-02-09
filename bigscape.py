@@ -1489,7 +1489,8 @@ def clusterJsonBatch(bgcs, pathBase, className, matrix, pos_alignments,
             
             
             if len(tree_domains) == 1:
-                print("  Warning: core shared domains for GCF {} consists of a single domain ({})".format(exemplar_idx, [x for x in tree_domains][0]))
+                if verbose:
+                    print("  Warning: core shared domains for GCF {} consists of a single domain ({})".format(exemplar_idx, [x for x in tree_domains][0]))
             
             # Get the alignments of the core domains
             alignments = {}
@@ -1713,11 +1714,28 @@ def clusterJsonBatch(bgcs, pathBase, className, matrix, pos_alignments,
                     except:
                         b, a, length, reverse = pos_alignments[bgc][family]
                         
-                        # these pair share no common gene (domain-wise)
-                        # align using first gene
-                        if length == 0:
-                            length = 1 
-                            
+                    if length == 0:
+                        length = 1
+                        # let's try aligning using the genes with most domains
+                        # after all, they ended up being in the same GCF
+                        # for some reason
+                        x = max(DomainCountGene[clusterNames[family]])
+                        x = DomainCountGene[clusterNames[family]].index(x)
+                        a = domainGenes2allGenes[family][x]
+                        
+                        y = max(list(DomainCountGene[clusterNames[bgc]]))
+                        y = DomainCountGene[clusterNames[bgc]].index(y)
+                        
+                        #check orientation
+                        if BGCGeneOrientation[clusterNames[family]][x] == BGCGeneOrientation[clusterNames[bgc]][y]:
+                            b = domainGenes2allGenes[bgc][y]
+                            reverse = False
+                        else:
+                            b = domainGenes2allGenes[bgc][len(DomainCountGene[clusterNames[bgc]])-y-1]
+                            reverse = True
+                        
+                        
+                    elif reverse:
                         if reverse:
                             # special case. bgc was reference (first) in lcs
                             a = domainGenes2allGenes[family][len(DomainCountGene[clusterNames[family]])-a-length]
@@ -1726,9 +1744,6 @@ def clusterJsonBatch(bgcs, pathBase, className, matrix, pos_alignments,
                             a = domainGenes2allGenes[family][a]
                             b = domainGenes2allGenes[bgc][b]
                     else:
-                        if length == 0:
-                            length = 1
-                            
                         a = domainGenes2allGenes[family][a]
                         if reverse:
                             b = domainGenes2allGenes[bgc][len(DomainCountGene[clusterNames[bgc]])-b-1]
