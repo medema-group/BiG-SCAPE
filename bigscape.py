@@ -300,7 +300,7 @@ def get_gbk_files(inputdir, outputdir, bgc_fasta_folder, min_bgc_size, exclude_g
                     # fasta files as input
                     
                     # make absolute positions for ORFs in next records
-                    offset_record_position += record_end + 1000
+                    offset_record_position += record_end + 100
                 
                 
                 if bgc_size > min_bgc_size:  # exclude the bgc if it's too small
@@ -2397,7 +2397,7 @@ if __name__=="__main__":
         for thing in os.listdir(domains_folder):
             os.remove(os.path.join(domains_folder,thing))
 
-    print(" Finished generating generating pfs and pfd files.")
+    print(" Finished generating pfs and pfd files.")
     
 
     ### Step 4: Parse the pfs, pfd files to generate BGC dictionary, clusters, and clusters per sample objects
@@ -2559,9 +2559,9 @@ if __name__=="__main__":
     working_set = baseNames - availableSVGs
     
     if len(working_set) > 0:
-        color_genes = read_color_genes_file()
+        color_genes = {}
         color_domains = read_color_domains_file()
-        pfam_domain_categories = read_pfam_domain_categories()
+        pfam_domain_categories = {}
         
         #This must be done serially, because if a color for a gene/domain
         # is not found, the text files with colors need to be updated

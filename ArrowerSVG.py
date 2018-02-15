@@ -544,17 +544,19 @@ def SVG(write_html, outputfile, GenBankFile, pfdFile, use_pfd, color_genes, colo
                 except KeyError: GeneName = 'NoName'                
                 
                 # Get color
-                try:
-                    color = color_genes[GeneName]
-                except KeyError:
-                    color = new_color("gene")
-                    new_color_genes[GeneName] = color
-                    color_genes[GeneName] = color
-                    pass
+                color = (255,255,255)
+                #try:
+                    #color = color_genes[GeneName]
+                #except KeyError:
+                    #color = new_color("gene")
+                    #new_color_genes[GeneName] = color
+                    #color_genes[GeneName] = color
+                    #pass
                 
+                color_contour = (0,0,0)
                 # change to hsv color palette to lower shade for contour color
-                h_, s, v = rgb_to_hsv(float(color[0])/255.0, float(color[1])/255.0, float(color[2])/255.0)
-                color_contour = tuple(int(c * 255) for c in hsv_to_rgb(h_, s, 0.4*v))
+                #h_, s, v = rgb_to_hsv(float(color[0])/255.0, float(color[1])/255.0, float(color[2])/255.0)
+                #color_contour = tuple(int(c * 255) for c in hsv_to_rgb(h_, s, 0.4*v))
                 
                 # Get strand
                 strand = feature.strand
@@ -584,36 +586,36 @@ def SVG(write_html, outputfile, GenBankFile, pfdFile, use_pfd, color_genes, colo
                 identifier = identifier.replace("<","").replace(">","")
 
                 # gene category according to domain content
-                has_core = False
-                has_otherbio = False
-                has_transporter = False
-                has_regulator = False
-                for row in identifiers[identifier]:
-                    dom_acc = row[3]
-                    cat = ""
-                    try:
-                        cat = pfam_domain_categories[dom_acc]
-                    except KeyError:
-                        pass
+                #has_core = False
+                #has_otherbio = False
+                #has_transporter = False
+                #has_regulator = False
+                #for row in identifiers[identifier]:
+                    #dom_acc = row[3]
+                    #cat = ""
+                    #try:
+                        #cat = pfam_domain_categories[dom_acc]
+                    #except KeyError:
+                        #pass
                     
-                    if cat == "Core Biosynthetic":
-                        has_core = True
-                    if cat == "Other Biosynthetic":
-                        has_otherbio = True
-                    if cat == "Transporter":
-                        has_transporter = True
-                    if cat == "Regulator":
-                        has_regulator = True
+                    #if cat == "Core Biosynthetic":
+                        #has_core = True
+                    #if cat == "Other Biosynthetic":
+                        #has_otherbio = True
+                    #if cat == "Transporter":
+                        #has_transporter = True
+                    #if cat == "Regulator":
+                        #has_regulator = True
                             
                 gene_category = ""
-                if has_core:
-                    gene_category = "filter=\"url(#shadow_CoreBio)\""
-                if has_otherbio and not (has_core or has_transporter or has_regulator):
-                    gene_category = "filter=\"url(#shadow_OtherBio)\""
-                if has_transporter and not (has_core or has_otherbio or has_regulator):
-                    gene_category = "filter=\"url(#shadow_Transporter)\""
-                if has_regulator and not (has_core or has_otherbio or has_transporter):
-                    gene_category = "filter=\"url(#shadow_Regulator)\""
+                #if has_core:
+                    #gene_category = "filter=\"url(#shadow_CoreBio)\""
+                #if has_otherbio and not (has_core or has_transporter or has_regulator):
+                    #gene_category = "filter=\"url(#shadow_OtherBio)\""
+                #if has_transporter and not (has_core or has_otherbio or has_regulator):
+                    #gene_category = "filter=\"url(#shadow_Transporter)\""
+                #if has_regulator and not (has_core or has_otherbio or has_transporter):
+                    #gene_category = "filter=\"url(#shadow_Regulator)\""
                         
                 
                 #X, Y, L, l, H, h, strand, color, color_contour, category, gid, domain_list
@@ -634,21 +636,21 @@ def SVG(write_html, outputfile, GenBankFile, pfdFile, use_pfd, color_genes, colo
         SVG_TEXT += "\t\t</div>\n"
     
     # finally append new colors to file:
-    if len(new_color_genes) > 0:
-        if len(new_color_genes) < 10:
-            print("  Saving new color names for genes " + ", ".join(new_color_genes.keys()))
-        else:
-            print("  Saving new color names for 10+ genes...")
+    #if len(new_color_genes) > 0:
+        #if len(new_color_genes) < 10:
+            #print("  Saving new color names for genes " + ", ".join(new_color_genes.keys()))
+        #else:
+            #print("  Saving new color names for 10+ genes...")
             
-        with open(gene_color_file, "a") as color_genes_handle:
-            for new_names in new_color_genes:
-                color_genes_handle.write(new_names + "\t" + ",".join([str(ncg) for ncg in new_color_genes[new_names]]) + "\n")
+        #with open(gene_color_file, "a") as color_genes_handle:
+            #for new_names in new_color_genes:
+                #color_genes_handle.write(new_names + "\t" + ",".join([str(ncg) for ncg in new_color_genes[new_names]]) + "\n")
     
     if len(new_color_domains) > 0:
-        if len(new_color_domains) < 10:
-            print("   Saving new color names for domains " + ", ".join(new_color_domains.keys()))
-        else:
-            print("   Saving new color names for 10+ domains")
+        #if len(new_color_domains) < 10:
+            #print("   Saving new color names for domains " + ", ".join(new_color_domains.keys()))
+        #else:
+            #print("   Saving new color names for 10+ domains")
             
         with open(domains_color_file, "a") as color_domains_handle:
             for new_names in new_color_domains:
