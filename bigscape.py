@@ -1436,35 +1436,17 @@ def clusterJsonBatch(bgcs, pathBase, className, matrix, pos_alignments,
             for bgc2 in simDict.get(bgc1,{}).keys():
                 # you might get 0 values if there were matrix entries under the
                 # cutoff. No need to input these in the sparse matrix
+                
                 if simDict[bgc1][bgc2] > 1-cutoff:
                     # Ensure symmetry
                     simMatrix[bgcExt2Int[bgc1], bgcExt2Int[bgc2]] = simDict[bgc1][bgc2]
                     simMatrix[bgcExt2Int[bgc2], bgcExt2Int[bgc1]] = simDict[bgc1][bgc2]
-        #if verbose:
-            #print("  Clustering (c=" + str(cutoff) + ")")
-        ##labels = pysapc.SAP(damping=damping, max_iter=500,
-                            ##preference='min').fit_predict(simMatrix)
-        #af = AffinityPropagation(damping=damping, max_iter=500, affinity="precomputed").fit(simMatrix)
-        ## labels_: labels for each node. Same label means same cluster. Value is also
-        ##   the index in the cluster_centers_indices_ list. Goes from 0 to number of 
-        ##   clusters-1
-        ## cluster_centers_indices_: list of exemplars
-        #labels = [af.cluster_centers_indices_[af.labels_[i]] for i in range(numBGCs)]
-        #print(len(af.labels_))
-        #print(af.labels_)
-        #print(len(af.cluster_centers_indices_))
-        #print(af.cluster_centers_indices_)
-        #for i in range(numBGCs):
-            #print(i, clusterNames[bgcs[i]], labels[i])
-        #sys.exit()
         
         if verbose:
             print("   ...done")
 
-
         bs_distances = [[float("{:.3f}".format(simMatrix[row, col])) for col in 
                          range(row+1)] for row in range(numBGCs)]
-        
         
         
         familiesDict = defaultdict(list)
@@ -1472,18 +1454,6 @@ def clusterJsonBatch(bgcs, pathBase, className, matrix, pos_alignments,
             familiesDict[bgcs[labels[i]]].append(bgcs[i])
         familyIdx = sorted(familiesDict.keys()) # identifiers for each family
         
-        #write_error = False
-        #for ex in familiesDict:
-            #if ex not in familiesDict[ex]:
-                #write_error = True
-                #print(ex, familiesDict[ex])
-        #if write_error:
-            #print("Errors where found in scikit-learn, writing errorfile")
-            #with open("errorfile.txt","w") as err:
-                #err.write("Original bgc index\tInternal indexes (0-numBGCs-1)\tLabel (internal index)\n")
-                #for i in range(numBGCs):
-                    #err.write("{}\t{}\t{}\n".format(bgcs[i],i,labels[i]))
-            #sys.exit("stop...")
 
         ##
         ## Get conserved domain core information to build phylogenetic tree
@@ -1679,14 +1649,13 @@ def clusterJsonBatch(bgcs, pathBase, className, matrix, pos_alignments,
         if clusterClans and cutoff == clanClassificationCutoff:
             # Detect if there's only 1 GCF. It makes pySAPC crash
             if len(familyIdx) == 1:
-                #print("  Gene Cluster Clans: Only 1 GCF")
                 clanLabels = [1]
                 continue
             
             #famSimMatrix = lil_matrix((len(familyIdx), len(familyIdx)), dtype=np.float32)
             famSimMatrix = np.zeros((len(familyIdx), len(familyIdx)), dtype=np.float32)
             familiesExt2Int = {gcfExtIdx:gcfIntIdx for gcfIntIdx,gcfExtIdx in enumerate(familyIdx)}
-                                                                                        
+            
             for familyI, familyJ in [tuple(sorted(combo)) for combo in combinations(familyIdx, 2)]:
                 famSimilarities = []
                 # currently uses the average distance of all average distances
@@ -1694,14 +1663,24 @@ def clusterJsonBatch(bgcs, pathBase, className, matrix, pos_alignments,
                 for bgcI in familiesDict[familyI]:
                     similarities = [simMatrix[bgcExt2Int[bgcI], bgcExt2Int[bgcJ]] for bgcJ in familiesDict[familyJ]]
                     famSimilarities.append(sum(similarities, 0.0) / len(similarities))
+                
                 try:
                     familySimilarityIJ = sum(famSimilarities, 0.0)/len(famSimilarities)
                 except ZeroDivisionError:
                     familySimilarityIJ = 0.0
+                
                 if familySimilarityIJ > 1 - clanDistanceCutoff:
                     # Ensure symmetry
                     famSimMatrix[familiesExt2Int[familyI], familiesExt2Int[familyJ]] = familySimilarityIJ
                     famSimMatrix[familiesExt2Int[familyJ], familiesExt2Int[familyI]] = familySimilarityIJ
+                    
+            # if we have the identity matrix here, it means all GCFs are separate
+            # (nothing to cluster). Note: still can crash if values are 
+            # sufficiently low. Catch this error later
+            #if np.count_nonzero(simMatrix) == 0:
+                #clanLabels = []
+                #continue
+            
             # add main diagonal
             for family in range(len(familyIdx)):
                 famSimMatrix[family,family] = 1.0
@@ -1712,7 +1691,11 @@ def clusterJsonBatch(bgcs, pathBase, className, matrix, pos_alignments,
             labelsClans = af.labels_
             exemplarsClans = af.cluster_centers_indices_
             
-            clanLabels = [exemplarsClans[labelsClans[i]] for i in range(len(familyIdx))]
+            # affinity propagation can fail in some circumstances (e.g. only singletons)
+            if exemplarsClans is not None:
+                clanLabels = [exemplarsClans[labelsClans[i]] for i in range(len(familyIdx))]
+            else:
+                clanLabels = []
             
         else:
             clanLabels = []
