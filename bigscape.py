@@ -1276,7 +1276,7 @@ def parseHmmScan(hmmscanResults, pfd_folder, pfs_folder, overlapCutoff):
     return("")
 
 def clusterJsonBatch(bgcs, pathBase, className, matrix, pos_alignments, 
-                     cutoffs=[1.0], damping=0.8, clusterClans=False, 
+                     cutoffs=[1.0], damping=0.9, clusterClans=False, 
                      clanCutoff=(0.5,0.8), htmlFolder=None):
     """BGC Family calling
     Uses csr sparse matrices to call Gene Cluster Families (GCFs) using Affinity
@@ -1419,7 +1419,7 @@ def clusterJsonBatch(bgcs, pathBase, className, matrix, pos_alignments,
                     except KeyError:
                         simMatrix[bgcExt2Sub_[bgc1], bgcExt2Sub_[bgc2]] = simDict[bgc2][bgc1]
                         
-                af = AffinityPropagation(damping=damping, max_iter=500, affinity="precomputed").fit(simMatrix)
+                af = AffinityPropagation(damping=damping, max_iter=1000, convergence_iter=200, affinity="precomputed").fit(simMatrix)
                 labelsSub = af.labels_
                 exemplarsSub = af.cluster_centers_indices_
                 
@@ -1687,7 +1687,7 @@ def clusterJsonBatch(bgcs, pathBase, className, matrix, pos_alignments,
             
             #clanLabels = pysapc.SAP(damping=damping, max_iter=500,
                                 #preference='min').fit_predict(famSimMatrix)
-            af = AffinityPropagation(damping=damping, max_iter=500, affinity="precomputed").fit(famSimMatrix)
+            af = AffinityPropagation(damping=damping, max_iter=1000, convergence_iter=200, affinity="precomputed").fit(famSimMatrix)
             labelsClans = af.labels_
             exemplarsClans = af.cluster_centers_indices_
             
@@ -1825,7 +1825,7 @@ def clusterJsonBatch(bgcs, pathBase, className, matrix, pos_alignments,
                 for bgc in familiesDict[family]:
                     clustering_file.write("{}\t{}\n".format(clusterNames[bgc], family))
 
-        ## Write bgc_networks.js		
+        ## Write bgc_networks.js
         with open(os.path.join(module_html_path, "bs_networks.js"), "w") as bs_networks_js:
             bs_networks_js.write("var bs_similarity={};\n".format(json.dumps(bs_distances, indent=4, separators=(',', ':'), sort_keys=True)))
             bs_networks_js.write("var bs_families={};\n".format(json.dumps(bs_families, indent=4, separators=(',', ':'), sort_keys=True)))
