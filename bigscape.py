@@ -95,6 +95,9 @@ def get_gbk_files(inputdir, outputdir, bgc_fasta_folder, min_bgc_size, exclude_g
     files_no_biosynthetic_genes = []
     record_end = 0
     offset_record_position = 0
+    bgc_locus_tags = []
+    locus_sequences = {}
+    locus_coordinates = {}
     
     print("\nImporting GenBank files")
     if type(exclude_gbk_str) == str and exclude_gbk_str != "":
@@ -134,12 +137,16 @@ def get_gbk_files(inputdir, outputdir, bgc_fasta_folder, min_bgc_size, exclude_g
                 sys.exit("\nError: Input GenBank files should not have spaces in their filenames as HMMscan cannot process them properly ('too many arguments').")
             
             # See if we need to keep the sequence
+            # (Currently) we have to open the file anyway to read all its 
+            # properties for bgc_info anyway...
             outputfile = os.path.join(bgc_fasta_folder, clusterName + '.fasta')
             if os.path.isfile(outputfile) and os.path.getsize(outputfile) > 0 and not force_hmmscan:
+                if verbose:
+                    print(" File {} already processed".format(outputfile))
                 save_fasta = False
             else:
                 save_fasta = True
-                
+            
             try:
                 # basic file verification. Substitutes check_data_integrity
                 records = list(SeqIO.parse(os.path.join(dirpath,fname), "genbank"))
@@ -180,18 +187,16 @@ def get_gbk_files(inputdir, outputdir, bgc_fasta_folder, min_bgc_size, exclude_g
                                     if verbose:
                                         print(" Contig edge detected in {}".format(fname))
                                     contig_edge = True
-                
+                                
                         # Get biosynthetic genes + sequences
                         if feature.type == "CDS":
                             cds_ctr += 1
-                                    
                             CDS = feature
+                            
                             gene_id = ""
                             if "gene" in CDS.qualifiers:
-                                # In principle, we should keep a list of genes with
-                                # the same id (isoforms) and only keep the largest
-                                # TODO
                                 gene_id = CDS.qualifiers.get('gene',"")[0]
+                                
                             
                             protein_id = ""
                             if "protein_id" in CDS.qualifiers:
@@ -204,11 +209,11 @@ def get_gbk_files(inputdir, outputdir, bgc_fasta_folder, min_bgc_size, exclude_g
                             record_end = gene_end
                             
                             direction = CDS.location.strand
-                            
                             if direction == 1:
                                 strand = '+'
                             else:
                                 strand = '-'
+                                
                             fasta_header = "{}_ORF{}:gid:{}:pid:{}:loc:{}:{}:strand:{}".format(clusterName, str(cds_ctr), str(gene_id), str(protein_id), str(gene_start), str(gene_end), strand)
                             fasta_header = fasta_header.replace(">","") #the coordinates might contain larger than signs, tools upstream don't like this
                             fasta_header = fasta_header.replace(" ", "") #the domtable output format (hmmscan) uses spaces as a delimiter, so these cannot be present in the fasta header
@@ -254,9 +259,9 @@ def get_gbk_files(inputdir, outputdir, bgc_fasta_folder, min_bgc_size, exclude_g
                                 if reminder > 0:
                                     if fuzzy_start and fuzzy_end:
                                         print("Warning, CDS ({}, {}) has fuzzy\
-                                              start and end positions, and a \
-                                              sequence length not multiple of \
-                                              three. Skipping".format(clusterName, 
+                                            start and end positions, and a \
+                                            sequence length not multiple of \
+                                            three. Skipping".format(clusterName, 
                                             CDS.qualifiers.get('locus_tag',"")[0]))
                                         break
                                     
@@ -281,9 +286,13 @@ def get_gbk_files(inputdir, outputdir, bgc_fasta_folder, min_bgc_size, exclude_g
                                     prot_seq = str(nt_seq.translate(to_stop=True, cds=complete_cds))
                                     
                             total_seq_length += len(prot_seq)
+                        
+                        
+                            bgc_locus_tags.append(fasta_header)
+                            locus_sequences[fasta_header] = prot_seq
+                            locus_coordinates[fasta_header] = (gene_start, gene_end, len(prot_seq))
+
                             
-                            if save_fasta:
-                                fasta_data.append((fasta_header, prot_seq))
         
                     # TODO: if len(biosynthetic_genes) == 0, traverse record again
                     # and add CDS with genes that contain domains labeled sec_met
@@ -291,9 +300,9 @@ def get_gbk_files(inputdir, outputdir, bgc_fasta_folder, min_bgc_size, exclude_g
                     # fasta files as input
                     
                     # make absolute positions for ORFs in next records
-                    offset_record_position += record_end + 1000
-                    
-                    
+                    offset_record_position += record_end + 100
+                
+                
                 if bgc_size > min_bgc_size:  # exclude the bgc if it's too small
                     file_counter += 1
                     # check what we have product-wise
@@ -339,11 +348,35 @@ def get_gbk_files(inputdir, outputdir, bgc_fasta_folder, min_bgc_size, exclude_g
                             genbankDict.setdefault(clusterName, [os.path.join(dirpath, fname), set([current_dir])])
 
                             if save_fasta:
+                                # Find overlaps in CDS regions and delete the shortest ones.
+                                # This is thought as a solution for selecting genes with 
+                                # alternate splicing events
+                                # Food for thought: imagine CDS A overlapping CDS B overlapping
+                                # CDS C. If len(A) > len(B) > len(C) and we first compare A vs B
+                                # and delete A, then B vs C and delete B: would that be a better
+                                # solution than removing B? Could this actually happen?
+                                del_list = set()
+                                for a, b in combinations(bgc_locus_tags, 2):
+                                    a_start, a_end, a_len = locus_coordinates[a]
+                                    b_start, b_end, b_len = locus_coordinates[b]
+                                    
+                                    if b_end <= a_start or b_start >= a_end:
+                                        pass
+                                    else:
+                                        if a_len > b_len:
+                                            del_list.add(b)
+                                        else:
+                                            del_list.add(a)
+                                
+                                for locus in del_list:
+                                    bgc_locus_tags.remove(locus)
+                                
+                                
                                 processed_sequences += 1
                                 with open(outputfile,'w') as fastaHandle:
-                                    for header_sequence in fasta_data:
-                                        fastaHandle.write("{}\n".format(str(header_sequence[0])))
-                                        fastaHandle.write("{}\n".format(str(header_sequence[1])))
+                                    for locus in bgc_locus_tags:
+                                        fastaHandle.write("{}\n".format(locus))
+                                        fastaHandle.write("{}\n".format(locus_sequences[locus]))
                         else:
                             files_no_proteins.append(fname)
 
@@ -353,15 +386,12 @@ def get_gbk_files(inputdir, outputdir, bgc_fasta_folder, min_bgc_size, exclude_g
                 else:
                     print(" Discarding {} (size less than {} bp, was {})".format(clusterName, str(min_bgc_size), str(bgc_size)))
                 
-                del fasta_data[:]
+                del bgc_locus_tags[:]
+                locus_sequences.clear()
+                locus_coordinates.clear()
+                
                 biosynthetic_genes.clear()
     
-    if file_counter == 0:
-        sys.exit("\nError: There are no files to process")
-        
-    if file_counter == 1:
-        sys.exit("\nError: Only one file found. Please input at least two files")
-        
     if len(files_no_proteins) > 0:
         print("  Warning: Input set has files without protein sequences. They will be discarded")
         print("   (See no_sequences_list.txt)")
@@ -687,7 +717,7 @@ def cluster_distance_lcs(A, B, A_domlist, B_domlist, dcg_A, dcg_b, core_pos_A, c
         reverse = False
         b_name = B
         
-    else:
+    elif s < sr:
         dcg_B = list(reversed(dcg_b))
         B_string = b_string_reverse
         
@@ -700,6 +730,56 @@ def cluster_distance_lcs(A, B, A_domlist, B_domlist, dcg_A, dcg_b, core_pos_A, c
         # postion of the final slice can be transformed to the original orientation
         reverse = True
         b_name = B + "*"
+        
+    # special cases: s == sr
+    
+    # if only one gene matches, choose the one with the most domains
+    elif s == 1:
+        seqmatch = SequenceMatcher(None, A_string, b_string)
+        max_domains = 0
+        x = 0   # index in A with the gene with most domains
+        y = 0   # index in B with the gene with most domains
+        for a, b, z in seqmatch.get_matching_blocks():
+            if z != 0:
+                if DomainCountGene[A][a] > max_domains:
+                    x = a
+                    y = b
+                    max_domains = DomainCountGene[A][a]
+        
+        # note: these slices are in terms of genes, not domains (which are 
+        # ultimately what is used for distance)
+        # Currently, the following values represent the Core Overlap
+        sliceStartA = x
+        sliceLengthA = 1
+        sliceLengthB = 1
+        
+        if BGCGeneOrientation[A][x] == BGCGeneOrientation[B][y]:
+            sliceStartB = y
+            dcg_B = dcg_b
+            B_string = b_string
+            reverse = False
+            b_name = B
+        else:
+            sliceStartB = len(BGCGeneOrientation[B]) - y - 1
+            dcg_B = list(reversed(dcg_b))
+            B_string = b_string_reverse
+            reverse = True
+            b_name = B + "*"
+               
+    # s == sr and (s == 0 or s > 1)
+    else:
+        dcg_B = dcg_b
+        B_string = b_string
+        # note: these slices are in terms of genes, not domains (which are 
+        # ultimately what is used for distance)
+        # Currently, the following values represent the Core Overlap
+        sliceStartA = a
+        sliceStartB = b
+        sliceLengthA = s
+        sliceLengthB = s
+        
+        reverse = False
+        b_name = B
         
         
     lcsStartA = sliceStartA
@@ -1196,7 +1276,7 @@ def parseHmmScan(hmmscanResults, pfd_folder, pfs_folder, overlapCutoff):
     return("")
 
 def clusterJsonBatch(bgcs, pathBase, className, matrix, pos_alignments, 
-                     cutoffs=[1.0], damping=0.8, clusterClans=False, 
+                     cutoffs=[1.0], damping=0.9, clusterClans=False, 
                      clanCutoff=(0.5,0.8), htmlFolder=None):
     """BGC Family calling
     Uses csr sparse matrices to call Gene Cluster Families (GCFs) using Affinity
@@ -1339,7 +1419,7 @@ def clusterJsonBatch(bgcs, pathBase, className, matrix, pos_alignments,
                     except KeyError:
                         simMatrix[bgcExt2Sub_[bgc1], bgcExt2Sub_[bgc2]] = simDict[bgc2][bgc1]
                         
-                af = AffinityPropagation(damping=damping, max_iter=500, affinity="precomputed").fit(simMatrix)
+                af = AffinityPropagation(damping=damping, max_iter=1000, convergence_iter=200, affinity="precomputed").fit(simMatrix)
                 labelsSub = af.labels_
                 exemplarsSub = af.cluster_centers_indices_
                 
@@ -1356,35 +1436,17 @@ def clusterJsonBatch(bgcs, pathBase, className, matrix, pos_alignments,
             for bgc2 in simDict.get(bgc1,{}).keys():
                 # you might get 0 values if there were matrix entries under the
                 # cutoff. No need to input these in the sparse matrix
+                
                 if simDict[bgc1][bgc2] > 1-cutoff:
                     # Ensure symmetry
                     simMatrix[bgcExt2Int[bgc1], bgcExt2Int[bgc2]] = simDict[bgc1][bgc2]
                     simMatrix[bgcExt2Int[bgc2], bgcExt2Int[bgc1]] = simDict[bgc1][bgc2]
-        #if verbose:
-            #print("  Clustering (c=" + str(cutoff) + ")")
-        ##labels = pysapc.SAP(damping=damping, max_iter=500,
-                            ##preference='min').fit_predict(simMatrix)
-        #af = AffinityPropagation(damping=damping, max_iter=500, affinity="precomputed").fit(simMatrix)
-        ## labels_: labels for each node. Same label means same cluster. Value is also
-        ##   the index in the cluster_centers_indices_ list. Goes from 0 to number of 
-        ##   clusters-1
-        ## cluster_centers_indices_: list of exemplars
-        #labels = [af.cluster_centers_indices_[af.labels_[i]] for i in range(numBGCs)]
-        #print(len(af.labels_))
-        #print(af.labels_)
-        #print(len(af.cluster_centers_indices_))
-        #print(af.cluster_centers_indices_)
-        #for i in range(numBGCs):
-            #print(i, clusterNames[bgcs[i]], labels[i])
-        #sys.exit()
         
         if verbose:
             print("   ...done")
 
-
         bs_distances = [[float("{:.3f}".format(simMatrix[row, col])) for col in 
                          range(row+1)] for row in range(numBGCs)]
-        
         
         
         familiesDict = defaultdict(list)
@@ -1392,18 +1454,6 @@ def clusterJsonBatch(bgcs, pathBase, className, matrix, pos_alignments,
             familiesDict[bgcs[labels[i]]].append(bgcs[i])
         familyIdx = sorted(familiesDict.keys()) # identifiers for each family
         
-        #write_error = False
-        #for ex in familiesDict:
-            #if ex not in familiesDict[ex]:
-                #write_error = True
-                #print(ex, familiesDict[ex])
-        #if write_error:
-            #print("Errors where found in scikit-learn, writing errorfile")
-            #with open("errorfile.txt","w") as err:
-                #err.write("Original bgc index\tInternal indexes (0-numBGCs-1)\tLabel (internal index)\n")
-                #for i in range(numBGCs):
-                    #err.write("{}\t{}\t{}\n".format(bgcs[i],i,labels[i]))
-            #sys.exit("stop...")
 
         ##
         ## Get conserved domain core information to build phylogenetic tree
@@ -1459,7 +1509,8 @@ def clusterJsonBatch(bgcs, pathBase, className, matrix, pos_alignments,
             
             
             if len(tree_domains) == 1:
-                print("  Warning: core shared domains for GCF {} consists of a single domain ({})".format(exemplar_idx, [x for x in tree_domains][0]))
+                if verbose:
+                    print("  Warning: core shared domains for GCF {} consists of a single domain ({})".format(exemplar_idx, [x for x in tree_domains][0]))
             
             # Get the alignments of the core domains
             alignments = {}
@@ -1598,14 +1649,13 @@ def clusterJsonBatch(bgcs, pathBase, className, matrix, pos_alignments,
         if clusterClans and cutoff == clanClassificationCutoff:
             # Detect if there's only 1 GCF. It makes pySAPC crash
             if len(familyIdx) == 1:
-                #print("  Gene Cluster Clans: Only 1 GCF")
                 clanLabels = [1]
                 continue
             
             #famSimMatrix = lil_matrix((len(familyIdx), len(familyIdx)), dtype=np.float32)
             famSimMatrix = np.zeros((len(familyIdx), len(familyIdx)), dtype=np.float32)
             familiesExt2Int = {gcfExtIdx:gcfIntIdx for gcfIntIdx,gcfExtIdx in enumerate(familyIdx)}
-                                                                                        
+            
             for familyI, familyJ in [tuple(sorted(combo)) for combo in combinations(familyIdx, 2)]:
                 famSimilarities = []
                 # currently uses the average distance of all average distances
@@ -1613,25 +1663,39 @@ def clusterJsonBatch(bgcs, pathBase, className, matrix, pos_alignments,
                 for bgcI in familiesDict[familyI]:
                     similarities = [simMatrix[bgcExt2Int[bgcI], bgcExt2Int[bgcJ]] for bgcJ in familiesDict[familyJ]]
                     famSimilarities.append(sum(similarities, 0.0) / len(similarities))
+                
                 try:
                     familySimilarityIJ = sum(famSimilarities, 0.0)/len(famSimilarities)
                 except ZeroDivisionError:
                     familySimilarityIJ = 0.0
+                
                 if familySimilarityIJ > 1 - clanDistanceCutoff:
                     # Ensure symmetry
                     famSimMatrix[familiesExt2Int[familyI], familiesExt2Int[familyJ]] = familySimilarityIJ
                     famSimMatrix[familiesExt2Int[familyJ], familiesExt2Int[familyI]] = familySimilarityIJ
+                    
+            # if we have the identity matrix here, it means all GCFs are separate
+            # (nothing to cluster). Note: still can crash if values are 
+            # sufficiently low. Catch this error later
+            #if np.count_nonzero(simMatrix) == 0:
+                #clanLabels = []
+                #continue
+            
             # add main diagonal
             for family in range(len(familyIdx)):
                 famSimMatrix[family,family] = 1.0
             
             #clanLabels = pysapc.SAP(damping=damping, max_iter=500,
                                 #preference='min').fit_predict(famSimMatrix)
-            af = AffinityPropagation(damping=damping, max_iter=500, affinity="precomputed").fit(famSimMatrix)
+            af = AffinityPropagation(damping=damping, max_iter=1000, convergence_iter=200, affinity="precomputed").fit(famSimMatrix)
             labelsClans = af.labels_
             exemplarsClans = af.cluster_centers_indices_
             
-            clanLabels = [exemplarsClans[labelsClans[i]] for i in range(len(familyIdx))]
+            # affinity propagation can fail in some circumstances (e.g. only singletons)
+            if exemplarsClans is not None:
+                clanLabels = [exemplarsClans[labelsClans[i]] for i in range(len(familyIdx))]
+            else:
+                clanLabels = []
             
         else:
             clanLabels = []
@@ -1674,6 +1738,7 @@ def clusterJsonBatch(bgcs, pathBase, className, matrix, pos_alignments,
             ref_genes_ = set()
             aln = []
             
+            
             for bgc in members:
                 if bgc == family:
                     aln.append([ [gene_num, 0] for gene_num in range(len(bs_data[bgcExt2Int[family]]["orfs"]))])
@@ -1683,11 +1748,9 @@ def clusterJsonBatch(bgcs, pathBase, className, matrix, pos_alignments,
                     except:
                         b, a, length, reverse = pos_alignments[bgc][family]
                         
-                        # these pair share no common gene (domain-wise)
                         if length == 0:
-                            length = 1 
-                            
-                        if reverse:
+                            pass
+                        elif reverse:
                             # special case. bgc was reference (first) in lcs
                             a = domainGenes2allGenes[family][len(DomainCountGene[clusterNames[family]])-a-length]
                             b = domainGenes2allGenes[bgc][b+length-1] # -1 go to 0-index
@@ -1695,13 +1758,36 @@ def clusterJsonBatch(bgcs, pathBase, className, matrix, pos_alignments,
                             a = domainGenes2allGenes[family][a]
                             b = domainGenes2allGenes[bgc][b]
                     else:
-                        if length == 0:
-                            length = 1
                         a = domainGenes2allGenes[family][a]
-                        if reverse:
+                        if length == 0:
+                            pass
+                        
+                        elif reverse:
+                            
                             b = domainGenes2allGenes[bgc][len(DomainCountGene[clusterNames[bgc]])-b-1]
                         else:
                             b = domainGenes2allGenes[bgc][b]
+                    
+                    
+                    if length == 0:
+                        length = 1
+                        # let's try aligning using the genes with most domains
+                        # after all, they ended up being in the same GCF
+                        # for some reason
+                        x = max(DomainCountGene[clusterNames[family]])
+                        x = DomainCountGene[clusterNames[family]].index(x)
+                        a = domainGenes2allGenes[family][x]
+                        
+                        y = max(list(DomainCountGene[clusterNames[bgc]]))
+                        y = DomainCountGene[clusterNames[bgc]].index(y)
+                        
+                        #check orientation
+                        if BGCGeneOrientation[clusterNames[family]][x] == BGCGeneOrientation[clusterNames[bgc]][y]:
+                            b = domainGenes2allGenes[bgc][y]
+                            reverse = False
+                        else:
+                            b = domainGenes2allGenes[bgc][len(DomainCountGene[clusterNames[bgc]])-y-1]
+                            reverse = True
                             
                     ref_genes_.add(a)
                     bgc_algn = []
@@ -1739,7 +1825,7 @@ def clusterJsonBatch(bgcs, pathBase, className, matrix, pos_alignments,
                 for bgc in familiesDict[family]:
                     clustering_file.write("{}\t{}\n".format(clusterNames[bgc], family))
 
-        ## Write bgc_networks.js		
+        ## Write bgc_networks.js
         with open(os.path.join(module_html_path, "bs_networks.js"), "w") as bs_networks_js:
             bs_networks_js.write("var bs_similarity={};\n".format(json.dumps(bs_distances, indent=4, separators=(',', ':'), sort_keys=True)))
             bs_networks_js.write("var bs_families={};\n".format(json.dumps(bs_families, indent=4, separators=(',', ':'), sort_keys=True)))
@@ -2294,7 +2380,7 @@ if __name__=="__main__":
         for thing in os.listdir(domains_folder):
             os.remove(os.path.join(domains_folder,thing))
 
-    print(" Finished generating generating pfs and pfd files.")
+    print(" Finished generating pfs and pfd files.")
     
 
     ### Step 4: Parse the pfs, pfd files to generate BGC dictionary, clusters, and clusters per sample objects
@@ -2456,9 +2542,9 @@ if __name__=="__main__":
     working_set = baseNames - availableSVGs
     
     if len(working_set) > 0:
-        color_genes = read_color_genes_file()
+        color_genes = {}
         color_domains = read_color_domains_file()
-        pfam_domain_categories = read_pfam_domain_categories()
+        pfam_domain_categories = {}
         
         #This must be done serially, because if a color for a gene/domain
         # is not found, the text files with colors need to be updated
@@ -2741,8 +2827,9 @@ if __name__=="__main__":
                     cluster_pairs = [(x, y, bgcClassName2idx[bgc_class]) for (x, y) in pairs]
                     pairs.clear()
                     network_matrix = generate_network(cluster_pairs, cores)
+                    #pickle.dump(network_matrix,open("others.ntwrk",'wb'))
                     del cluster_pairs[:]
-                    #network_matrix = pickle.load(open("pksother.ntwrk", "rb"))
+                    #network_matrix = pickle.load(open("others.ntwrk", "rb"))
                         
                     print("   Writing output files")
                     pathBase = os.path.join(network_files_folder, bgc_class)
