@@ -37,6 +37,7 @@ verbose = False
 
 
 def create_directory(path, kind, clean):
+    # TODO consider makedirs(path,exists_ok=True)
     try:
         os.makedirs(path)
     except OSError as e:
