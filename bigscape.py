@@ -249,7 +249,6 @@ def process_gbk_files(gbk, clusterName, dirpath, current_dir, min_bgc_size, bgc_
                     bgc_locus_tags.append(fasta_header)
                     locus_sequences[fasta_header] = prot_seq
                     locus_coordinates[fasta_header] = (gene_start, gene_end, len(prot_seq))
-
                     
 
             # TODO: if len(biosynthetic_genes) == 0, traverse record again
@@ -274,6 +273,18 @@ def process_gbk_files(gbk, clusterName, dirpath, current_dir, min_bgc_size, bgc_
             else:
                 product = "-".join(product_set) # likely a hybrid
                 
+            # Don't keep this bgc if its type not in valid classes specified by user
+            # This will avoid redundant tasks like domain detection
+            subproduct = set()
+            for p in product.split("-"):
+                subproduct.add(sort_bgc(p).lower())
+            if "nrps" in subproduct and ("pksi" in subproduct or "pksother" in subproduct):
+                subproduct.add("pks-nrp_hybrids")
+                
+            if len(valid_classes & subproduct) == 0:
+                if verbose:
+                    print(" Skipping {} (type: {})".format(clusterName, product))
+                return False
             
             # assuming that the definition field is the same in all records
             # product: antiSMASH predicted class of metabolite
@@ -311,6 +322,10 @@ def process_gbk_files(gbk, clusterName, dirpath, current_dir, min_bgc_size, bgc_
                         # CDS C. If len(A) > len(B) > len(C) and we first compare A vs B
                         # and delete A, then B vs C and delete B: would that be a better
                         # solution than removing B? Could this actually happen?
+                        # TODO What if the overlapping CDS is in the reverse strand?
+                        #  maybe it should be kept as it is
+                        # TODO what are the characterized differences in prokarytote
+                        #  vs eukaryote CDS overlap?
                         del_list = set()
                         for a, b in combinations(bgc_locus_tags, 2):
                             a_start, a_end, a_len = locus_coordinates[a]
@@ -319,12 +334,32 @@ def process_gbk_files(gbk, clusterName, dirpath, current_dir, min_bgc_size, bgc_
                             if b_end <= a_start or b_start >= a_end:
                                 pass
                             else:
-                                if a_len > b_len:
-                                    del_list.add(b)
+                                # calculate overlap
+                                if a_start > b_start:
+                                    ov_start = a_start
                                 else:
-                                    del_list.add(a)
+                                    ov_start = b_start
+
+                                if a_end < b_end:
+                                    ov_end = a_end
+                                else:
+                                    ov_end = b_end
+
+                                overlap_length = ov_end - ov_start
+                                
+                                # allow the overlap to be as large as 10% of the
+                                # shortest CDS. Overlap length is in nucleotides
+                                # here, whereas a_len, b_len are protein 
+                                # sequence lengths
+                                if overlap_length/3 > 0.1*min(a_len,b_len):
+                                    if a_len > b_len:
+                                        del_list.add(b)
+                                    else:
+                                        del_list.add(a)
                         
                         for locus in del_list:
+                            if verbose:
+                                print("   Removing {} because it overlaps with other ORF".format(locus))
                             bgc_locus_tags.remove(locus)
                         
                         with open(outputfile,'w') as fastaHandle:
@@ -820,7 +855,12 @@ def cluster_distance_lcs(A, B, A_domlist, B_domlist, dcg_A, dcg_b, core_pos_A, c
             
         # Expansion is relatively costly. We ask for a minimum of 3 genes
         # for the core overlap before proceeding with expansion.
-        if sliceLengthA >= 3:
+        biosynthetic_hit_A = False        
+        for biosynthetic_position in core_pos_A:
+            if biosynthetic_position >= sliceStartA and biosynthetic_position <= (sliceStartA+sliceLengthA):
+                biosynthetic_hit_A = True
+                break
+        if sliceLengthA >= 3 or biosynthetic_hit_A:
             # LEFT SIDE
             # Find which bgc has the least genes to the left. If both have the same 
             # number, find the one that drives the expansion with highest possible score
@@ -2260,7 +2300,6 @@ if __name__=="__main__":
     
     get_gbk_files(options.inputdir, output_folder, bgc_fasta_folder, int(options.min_bgc_size), options.exclude_gbk_str, bgc_info)
     
-
     # clusters and sampleDict contain the necessary structure for all-vs-all and sample analysis
     clusters = list(genbankDict.keys())
     
@@ -2509,57 +2548,50 @@ if __name__=="__main__":
     # is activated. We have to open the pfd files to get the gene labels for
     # each domain
     # We now always have to have this data so the alignments are produced
+    pfd_dict_domains = defaultdict(int)
+    orf_keys = {}
     for outputbase in baseNames:
         DomainCountGene[outputbase] = array('B')
         corebiosynthetic_position[outputbase] = array('B')
         BGCGeneOrientation[outputbase] = array('b')
         pfdFile = os.path.join(pfd_folder, outputbase + ".pfd")
-        filtered_matrix = [[part.strip() for part in line.split('\t')] for line in open(pfdFile)]
         
-        domain_counter = 0
-        gene_number = 0
-        gene_label = filtered_matrix[0][-1] # initialize with first label
-        has_corebio = False
-        for row in filtered_matrix:
-            if row[-1] != gene_label:
-                # we changed to a new gene. Check whether previous has a 
-                # core biosynthetic / anchor domain hit
-                if has_corebio:
-                    corebiosynthetic_position[outputbase].append(gene_number)
-                    has_corebio = False
-                
-                if gene_label[-1] == "+":
-                    BGCGeneOrientation[outputbase].append(1)
-                else:
-                    BGCGeneOrientation[outputbase].append(-1)
-                    
-                gene_label = row[-1] # update current label
-                gene_number += 1 # advance gene number
-                
-                # record number of domains in previous gene
-                DomainCountGene[outputbase].append(domain_counter)
-                domain_counter = 1 # reset domain counter
+        #pfd_dict_domains contains the number of domains annotated in the
+        # pfd file for each orf tag        
+        with open(pfdFile,"r") as pfdf:
+            for line in pfdf:
+                pfd_dict_domains[line.strip().split("\t")[-1]] += 1
+        
+        # extract the orf number from the tag and use it to traverse the BGC
+        for orf in pfd_dict_domains.keys():
+            orf_num = int(orf.split(":")[0].split("_ORF")[1])
+            orf_keys[orf_num] = orf
+        
+        orf_num = 0
+        for orf_key in sorted(orf_keys.keys()):
+            orf = orf_keys[orf_key]
+            if orf[-1] == "+":
+                BGCGeneOrientation[outputbase].append(1)
             else:
-                domain_counter += 1 # increase domain counter
+                BGCGeneOrientation[outputbase].append(-1)
                 
-            # TODO: if len(corebiosynthetic_position[outputbase]) == 0
-            # do something with the list of pfam ids. Specifically, mark
-            # (in this case TODO or always?) as biosynthetic genes, the ones that contain
-            # domains from a special list. This list of special domains
-            # comes from predicted domains within the CDSs marked as 'sec_met'
-            # by antismash
-            if row[-1] in bgc_info[outputbase].biosynthetic_genes:
-                has_corebio = True
+            DomainCountGene[outputbase].append(pfd_dict_domains[orf])
             
-        # There is no transition when we finish, so analyze last gene
-        if gene_label[-1] == "+":
-            BGCGeneOrientation[outputbase].append(1)
-        else:
-            BGCGeneOrientation[outputbase].append(-1)
-        DomainCountGene[outputbase].append(domain_counter)
-        if has_corebio:
-            corebiosynthetic_position[outputbase].append(gene_number)
+            if orf in bgc_info[outputbase].biosynthetic_genes:
+                corebiosynthetic_position[outputbase].append(orf_num)
+            orf_num += 1
+        
+        pfd_dict_domains.clear()
+        orf_keys.clear()
 
+        ## TODO: if len(corebiosynthetic_position[outputbase]) == 0
+        ## do something with the list of pfam ids. Specifically, mark
+        ## (in this case TODO or always?) as biosynthetic genes, the ones that contain
+        ## domains from a special list. This list of special domains
+        ## comes from predicted domains within the CDSs marked as 'sec_met'
+        ## by antismash
+            
+            
     # Get the ordered list of domains
     print(" Reading the ordered list of domains from the pfs files")
     for outputbase in baseNames:
@@ -2768,6 +2800,8 @@ if __name__=="__main__":
                 predicted_class = sort_bgc(product)
                 if predicted_class.lower() in valid_classes:
                     mix_set.append(clusterIdx)
+            
+            print("\n  {} ({} BGCs)".format(bgc_class, str(len(mix_set))))
             
             # create output directory   
             create_directory(os.path.join(network_files_folder, "mix"), "  Mix", False)
