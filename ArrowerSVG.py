@@ -29,9 +29,9 @@ global gene_contour_thickness
 global stripe_thickness
 global gene_categories_color
 
-internal_domain_margin = 2
+internal_domain_margin = 3
 domain_contour_thickness = 1
-gene_contour_thickness = 1 # thickness grows outwards
+gene_contour_thickness = 2 # thickness grows outwards
 stripe_thickness = 3
 
 domains_color_file = os.path.join(os.path.dirname(os.path.realpath(__file__)), "domains_color_file.tsv")
