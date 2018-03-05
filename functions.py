@@ -462,7 +462,7 @@ def domtable_parser(gbk, dom_file):
 
 def sort_bgc(product):
     """Sort BGC by its type. Uses AntiSMASH annotations
-    (see http://antismash.secondarymetabolites.org/help.html#secmettypes)"""
+    (see https://docs.antismash.secondarymetabolites.org/glossary/#cluster-types)"""
     # PKS_Type I
     if product == 't1pks':
         return("PKSI")
@@ -498,7 +498,7 @@ def sort_bgc(product):
         else:
             return("Others") # other hybrid
     # Others
-    elif product in set(['arylpolyene', 'aminocoumarin', 'ectoine', 'butyrolactone', 'nucleoside', 'melanin', 'phosphoglycolipid', 'phenazine', 'phosphonate', 'other', 'cf_putative', 'resorcinol', 'indole', 'ladderane', 'PUFA', 'furan', 'hserlactone', 'fused', 'cf_fatty_acid', 'siderophore', 'blactam']):
+    elif product in set(['acyl_amino_acids', 'arylpolyene', 'aminocoumarin', 'ectoine', 'butyrolactone', 'nucleoside', 'melanin', 'phosphoglycolipid', 'phenazine', 'phosphonate', 'other', 'cf_putative', 'resorcinol', 'indole', 'ladderane', 'PUFA', 'furan', 'hserlactone', 'fused', 'cf_fatty_acid', 'siderophore', 'blactam']):
         return("Others")
     # ??
     elif product == "":
