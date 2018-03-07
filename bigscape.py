@@ -2801,7 +2801,7 @@ if __name__=="__main__":
                 if predicted_class.lower() in valid_classes:
                     mix_set.append(clusterIdx)
             
-            print("\n  {} ({} BGCs)".format(bgc_class, str(len(mix_set))))
+            print("\n  {} ({} BGCs)".format("Mix", str(len(mix_set))))
             
             # create output directory   
             create_directory(os.path.join(network_files_folder, "mix"), "  Mix", False)
