@@ -2552,7 +2552,7 @@ if __name__=="__main__":
     orf_keys = {}
     for outputbase in baseNames:
         DomainCountGene[outputbase] = array('B')
-        corebiosynthetic_position[outputbase] = array('B')
+        corebiosynthetic_position[outputbase] = array('H')
         BGCGeneOrientation[outputbase] = array('b')
         pfdFile = os.path.join(pfd_folder, outputbase + ".pfd")
         
