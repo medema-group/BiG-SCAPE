@@ -539,9 +539,18 @@ def SVG(write_html, outputfile, GenBankFile, BGCname, pfdFile, use_pfd, color_ge
         for feature in [feature for feature in seq_record.features if feature.location.start >= absolute_start and feature.location.end <= absolute_end]:
             if feature.type == 'CDS':
                 # Get name
-                try: GeneName = feature.qualifiers['gene'][0]
-                except KeyError: GeneName = 'NoName'                
+                try:
+                    GeneName = feature.qualifiers['gene'][0]
+                    cds_tag = GeneName
+                except KeyError:
+                    GeneName = 'NoName'
+                    cds_tag = ""
                 
+                if "locus_tag" in feature.qualifiers:
+                    cds_tag += " (" + feature.qualifiers["locus_tag"][0] + ")"
+                if "product" in feature.qualifiers:
+                    cds_tag += "\n" + feature.qualifiers["product"][0]
+                    
                 # Get color
                 color = (255,255,255)
                 #try:
@@ -618,7 +627,7 @@ def SVG(write_html, outputfile, GenBankFile, BGCname, pfdFile, use_pfd, color_ge
                         
                 
                 #X, Y, L, l, H, h, strand, color, color_contour, category, gid, domain_list
-                arrow = draw_arrow(additional_tabs, start+mX, add_origin_Y+mY+h, int(feature.location.end-feature.location.start)/scaling, l, H, h, strand, color, color_contour, gene_category, GeneName, identifiers[identifier])
+                arrow = draw_arrow(additional_tabs, start+mX, add_origin_Y+mY+h, int(feature.location.end-feature.location.start)/scaling, l, H, h, strand, color, color_contour, gene_category, cds_tag, identifiers[identifier])
                 if arrow == "":
                     print("  (ArrowerSVG) Warning: something went wrong with {}".format(BGCname))
                 SVG_TEXT += arrow
