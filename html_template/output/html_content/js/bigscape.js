@@ -303,7 +303,7 @@ function Bigscape(bs_data, bs_families, bs_alignment, bs_similarity, network_con
   this.setHighlightedNodes = function(ids) { highlighted_nodes = ids; };
   this.getHighlightedNodes = function() { return highlighted_nodes; };
   var updateDescription = function(ids = highlighted_nodes) {
-    BigscapeFunc.updateDescription(ids, bs_svg, bs_data, bs_to_cl, bs_families, bs_alignment, desc_ui, nav_ui, det_ui, bigscape);
+    BigscapeFunc.updateDescription(ids, bs_svg, bs_data, bs_to_cl, bs_families, bs_similarity, bs_alignment, desc_ui, nav_ui, det_ui, bigscape);
   };
   this.updateDescription = updateDescription;
 
@@ -373,7 +373,7 @@ function Bigscape(bs_data, bs_families, bs_alignment, bs_similarity, network_con
       updateDescription(highlighted_nodes);
       handler.stopPropagation();
     });
-    $(ui).contextmenu({id: node.id, bs_svg: bs_svg, bs_data: bs_data, bs_families: bs_families, bs_to_cl: bs_to_cl, det_ui: det_ui, context_ui: context_ui}, function(handler) {
+    $(ui).contextmenu({id: node.id, bs_svg: bs_svg, bs_data: bs_data, bs_families: bs_families, bs_similarity: bs_similarity, bs_to_cl: bs_to_cl, det_ui: det_ui, context_ui: context_ui}, function(handler) {
       var ul = $("<ul>");
       //
       var aShowDetail = $("<a href='##'>Show details</a>");
@@ -390,8 +390,8 @@ function Bigscape(bs_data, bs_families, bs_alignment, bs_similarity, network_con
       ($("<li>").appendTo(ul)).append(aShowDetail);
       //
       var aShowFamDetail = $("<a href='##'>Show family details</a>");
-      aShowFamDetail.click({id: handler.data.id, id_fam: bs_to_cl[handler.data.id], bs_svg: handler.data.bs_svg, bs_data: handler.data.bs_data, bs_families: handler.data.bs_families, bs_to_cl: handler.data.bs_to_cl, det_ui: handler.data.det_ui, context_ui: handler.data.context_ui}, function(handler){
-        BigscapeFunc.openFamDetail(handler.data.id_fam, [handler.data.id], handler.data.bs_svg, handler.data.bs_data, handler.data.bs_to_cl, handler.data.bs_families, handler.data.det_ui);;
+      aShowFamDetail.click({id: handler.data.id, id_fam: bs_to_cl[handler.data.id], bs_svg: handler.data.bs_svg, bs_data: handler.data.bs_data, bs_families: handler.data.bs_families, bs_similarity: handler.data.bs_similarity, bs_to_cl: handler.data.bs_to_cl, det_ui: handler.data.det_ui, context_ui: handler.data.context_ui}, function(handler){
+        BigscapeFunc.openFamDetail(handler.data.id_fam, [handler.data.id], handler.data.bs_svg, handler.data.bs_data, handler.data.bs_to_cl, handler.data.bs_families, handler.data.bs_similarity, handler.data.det_ui);;
         handler.data.context_ui.addClass("hidden");
         handler.data.det_ui.parent().removeClass("hidden");
         handler.data.det_ui.find("svg.arrower-svg").each(function(){
@@ -494,7 +494,7 @@ BigscapeFunc.showSingletons = function(graph, graphics, net_ui, isOn) {
 }
 
 // ...
-BigscapeFunc.updateDescription = function(ids, bs_svg, bs_data, bs_to_cl, bs_families, bs_alignment, desc_ui, nav_ui, det_ui, bigscape) {
+BigscapeFunc.updateDescription = function(ids, bs_svg, bs_data, bs_to_cl, bs_families, bs_similarity, bs_alignment, desc_ui, nav_ui, det_ui, bigscape) {
   if (desc_ui.children().length < 1) {
     // first time rendering desc_ui
     desc_ui.html("");
@@ -527,8 +527,8 @@ BigscapeFunc.updateDescription = function(ids, bs_svg, bs_data, bs_to_cl, bs_fam
       var li = $("<li id='bs-desc_ui-li_fam-" + i + "'>");
       li.append("<a href='##' class='li-check'></a>");
       li.append("<a href='##' class='li-opendetail'>" + bs_families[i]["id"] + "</a>");
-      li.find("a.li-opendetail").click({id_fam: i, ids_highlighted: ids, bs_svg: bs_svg, bs_data: bs_data, bs_families: bs_families, bs_to_cl: bs_to_cl, det_ui: det_ui}, function(handler){
-        BigscapeFunc.openFamDetail(handler.data.id_fam, handler.data.ids_highlighted, handler.data.bs_svg, handler.data.bs_data, handler.data.bs_to_cl, handler.data.bs_families, handler.data.det_ui);
+      li.find("a.li-opendetail").click({id_fam: i, ids_highlighted: ids, bs_svg: bs_svg, bs_data: bs_data, bs_families: bs_families, bs_to_cl: bs_to_cl, det_ui: det_ui, bs_similarity: bs_similarity}, function(handler){
+        BigscapeFunc.openFamDetail(handler.data.id_fam, handler.data.ids_highlighted, handler.data.bs_svg, handler.data.bs_data, handler.data.bs_to_cl, handler.data.bs_families, handler.data.bs_similarity, handler.data.det_ui);
         handler.data.det_ui.parent().removeClass("hidden");
         handler.data.det_ui.find("svg.arrower-svg").each(function(){
           $(this).attr("width", $(this).find("g")[0].getBoundingClientRect().width);
@@ -802,10 +802,66 @@ BigscapeFunc.openCompDetail = function(ids, bs_svg, bs_data, bs_to_cl, bs_famili
 }
 
 // ...
-BigscapeFunc.openFamDetail = function(id_fam, ids_highlighted, bs_svg, bs_data, bs_to_cl, bs_families, det_ui) {
+BigscapeFunc.openFamDetail = function(id_fam, ids_highlighted, bs_svg, bs_data, bs_to_cl, bs_families, bs_similarity, det_ui) {
   det_ui.html("");
   det_ui.append("<h2>" + bs_families[id_fam]["id"] + "<h2>");
+  var treeContainer = $("<div><h3>Members</h3></div>").appendTo(det_ui);
+  treeContainer.css({
+    "margin-left": 10
+  });
+  var relatedFamily = $("<div><h3>Related Families</h3></div").appendTo(det_ui);
+  relatedFamily.css({
+    "margin-left": 10
+  });
   if ((id_fam > -1) && (id_fam < bs_families.length)) {
+    // get clan info
+    var clanTab = $("<table><thead><tr><th>Family</th><th>Members</th><th>Closest distance</th><th>Furthest distance</th><th>Average distance</th></tr></thead><tbody></tbody></table>").appendTo(relatedFamily);
+    clanTab.css({
+      "border": "1px solid black",
+      "width": "100%"
+    });
+    if (true) {//(bs_families[id_fam].hasOwnProperty("clan")) {
+      var related_families = [];
+      for (var i in bs_families) {
+        if (bs_families[i]["id"] !== bs_families[id_fam]["id"]) {
+          if (true) {//(bs_families[i].hasOwnProperty("clan")) {
+            if (true) {//(bs_families[i]["clan"] === bs_families[id_fam]["clan"]) {
+              var bs_sim = (i < id_fam)? bs_similarity_families[id_fam][i]:bs_similarity_families[i][id_fam];
+              related_families.push({
+                "idx": i,
+                "id": bs_families[i]["id"],
+                "members": bs_families[i]["members"].length,
+                "shortest": bs_sim[2],
+                "longest": bs_sim[1],
+                "average": bs_sim[0]
+              });
+            }
+          }  
+        }
+      }
+      related_families = related_families.sort(function(a, b) { return b["average"] - a["average"] });
+      for (var i in related_families) {
+        if (related_families[i]["average"] > 0.5) {
+          var famLink = $("<a href='##'>" + related_families[i]["id"] +"</a>");
+          famLink.click({id_fam: related_families[i]["idx"], bs_svg: bs_svg, bs_data: bs_data, bs_families: bs_families, bs_to_cl: bs_to_cl, det_ui: det_ui, bs_similarity: bs_similarity}, function(handler){
+            BigscapeFunc.openFamDetail(handler.data.id_fam, [], handler.data.bs_svg, handler.data.bs_data, handler.data.bs_to_cl, handler.data.bs_families, handler.data.bs_similarity, handler.data.det_ui);;
+            handler.data.det_ui.parent().removeClass("hidden");
+            handler.data.det_ui.find("svg.arrower-svg").each(function(){
+              $(this).attr("width", $(this).find("g")[0].getBoundingClientRect().width);
+              $(this).attr("height", $(this).find("g")[0].getBoundingClientRect().height);
+            });
+            handler.stopPropagation();
+          });
+          $("<tr>").appendTo(clanTab.find("tbody"))
+            .append($("<td>").append(famLink))
+            .append("<td>" + related_families[i]["members"] + "</td>")
+            .append("<td>" + (1.00 - related_families[i]["shortest"][0]).toFixed(2) + "</td>")
+            .append("<td>" + (1.00 - related_families[i]["longest"][0]).toFixed(2) + "</td>")
+            .append("<td>" + (1.00 - related_families[i]["average"]).toFixed(2) + "</td>");
+        }
+      }
+    }
+    // get tree info
     var fam_aln = bs_families_alignment[id_fam];
     /* FUNCTION BLOCK, DRAWING THE TREE */
     function getBGCOffset(bgc_ref, bgc, genes_ref, aln) {
@@ -829,7 +885,7 @@ BigscapeFunc.openFamDetail = function(id_fam, ids_highlighted, bs_svg, bs_data, 
     }
     var treeData = new Tree();
     treeData.Parse(fam_aln["newick"]);
-    var treeSVG = $("<svg id='det_fam_tree' width='3000' height='" + ((bs_families[id_fam]["members"].length * 40) + 50) + "'></svg>").appendTo(det_ui);
+    var treeSVG = $("<svg id='det_fam_tree' width='3000' height='" + ((bs_families[id_fam]["members"].length * 20) + 30) + "'></svg>").appendTo(treeContainer);
     var treeDrawer = new PhylogramTreeDrawer();
     treeDrawer.Init(treeData, { svg_id: 'det_fam_tree', height: ((treeData.num_leaves - 1) * 40), width: 400 } );
     treeDrawer.draw_scale_bar = false;

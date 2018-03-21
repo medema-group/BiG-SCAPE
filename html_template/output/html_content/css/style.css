@@ -941,3 +941,56 @@ table {
 .hidden {
   display: none;
 }
+
+/* Overview page */
+
+.overviewpage {
+}
+
+.overviewleft {
+  width: 600px;
+  float: left;
+}
+.overviewright {
+  width: 600px;
+  float: left;
+}
+
+.infocontainer {
+  margin: 5px;
+}
+
+.infocontainer h3 {
+  border-radius: 10px;
+  padding: 5px;
+  margin: 0px;
+  background-color: rgba(234, 234, 233, 1);
+}
+
+.infobar {
+  margin: 5px 10px;
+  width: 550px;
+  height: 1.2em;
+  clear: both;
+  font-size: small;
+}
+
+.infobar .infoleft {
+  width: 200px;
+  display: block;
+  float: left;
+}
+
+
+.infobar .inforight {
+  width: 350px;
+  display: block;
+  float: right;
+  text-align: right;
+}
+
+.network-overview .tablink {
+  width: 6.5em;
+  float: left;
+  font-size: smaller;
+}

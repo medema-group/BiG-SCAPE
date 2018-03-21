@@ -1294,6 +1294,12 @@ def clusterJsonBatch(bgcs, pathBase, className, matrix, pos_alignments,
     pathBase: folder where GCF files will be deposited
     """
     numBGCs = len(bgcs)
+
+    family_data = { # will be returned, for use in overview.js
+        "label": className,
+        "families_newick": "()",
+        "families": []
+    }
     
     simDict = {} # dictionary of dictionaries
     # Doing this so it only has to go through the matrix once
@@ -1646,6 +1652,7 @@ def clusterJsonBatch(bgcs, pathBase, className, matrix, pos_alignments,
                         newick_trees[exemplar_idx] = newick
        
         ### Use the 0.5 distance cutoff to cluster clans by default
+        bs_similarity_families = []
         if clusterClans and cutoff == clanClassificationCutoff:
             # Detect if there's only 1 GCF. It makes pySAPC crash
             if len(familyIdx) == 1:
@@ -1684,6 +1691,8 @@ def clusterJsonBatch(bgcs, pathBase, className, matrix, pos_alignments,
             # add main diagonal
             for family in range(len(familyIdx)):
                 famSimMatrix[family,family] = 1.0
+                
+            bs_similarity_families = famSimMatrix.tolist()
             
             #clanLabels = pysapc.SAP(damping=damping, max_iter=500,
                                 #preference='min').fit_predict(famSimMatrix)
@@ -1698,8 +1707,8 @@ def clusterJsonBatch(bgcs, pathBase, className, matrix, pos_alignments,
                 clanLabels = []
             
         else:
-            clanLabels = []
-            
+            clanLabels = []        
+
         if len(clanLabels) > 0:
             clansDict = defaultdict(list)
             for i in range(len(familyIdx)):
@@ -1718,6 +1727,14 @@ def clusterJsonBatch(bgcs, pathBase, className, matrix, pos_alignments,
                             'members': [bgcExt2Int[member] for member in members], }
                            for family, members in familiesDict.items()]
         
+        family_data["families"] = []
+        family_data["families_newick"] = "()"
+        for family, members in familiesDict.items():
+            family_data["families"].append({
+                "label": "FAM_{:05d}".format(family),
+                "members": members # use external indexing
+            })
+
         # Positional alignment information is based on DomainCountGene, which
         # does not contain empty genes (i.e. with no domains). 
         domainGenes2allGenes = {}
@@ -1825,11 +1842,16 @@ def clusterJsonBatch(bgcs, pathBase, className, matrix, pos_alignments,
                 for bgc in familiesDict[family]:
                     clustering_file.write("{}\t{}\n".format(clusterNames[bgc], family))
 
+        # get family-family similarity matrix
+        bs_similarity_families = [[get_composite_bgc_similarities([bgcs[bid] for bid in bs_families[row]["members"]], [bgcs[bid] for bid in bs_families[col]["members"]], simDict) if (row != col) else (1.00, (1.00, bgcs[bs_families[row]["members"][0]], bgcs[bs_families[row]["members"][0]]), (1.00, bgcs[bs_families[row]["members"][0]], bgcs[bs_families[row]["members"][0]])) for col in 
+                         range(row+1)] for row in range(len(bs_families))]
+
         ## Write bgc_networks.js
         with open(os.path.join(module_html_path, "bs_networks.js"), "w") as bs_networks_js:
             bs_networks_js.write("var bs_similarity={};\n".format(json.dumps(bs_distances, indent=4, separators=(',', ':'), sort_keys=True)))
             bs_networks_js.write("var bs_families={};\n".format(json.dumps(bs_families, indent=4, separators=(',', ':'), sort_keys=True)))
             bs_networks_js.write("var bs_families_alignment={};\n".format(json.dumps(bs_families_alignment, indent=4, separators=(',', ':'), sort_keys=True)))
+            bs_networks_js.write("var bs_similarity_families={};\n".format(json.dumps(bs_similarity_families, indent=4, separators=(',', ':'), sort_keys=True)))
             if len(clanLabels) > 0:
                 bs_networks_js.write("var bs_clans={};\n".format(json.dumps(bs_clans, indent=4, separators=(',', ':'), sort_keys=True)))
         
@@ -1844,7 +1866,7 @@ def clusterJsonBatch(bgcs, pathBase, className, matrix, pos_alignments,
                         for bgc in familiesDict[family]:
                             clansFile.write("{}\t{}\t{}\n".format(clusterNames[bgc], clan, family))
                     
-    return
+    return family_data
 
 
 class FloatRange(object):
@@ -2055,6 +2077,8 @@ if __name__=="__main__":
     global mode
     
     global run_name
+    global run_data
+    run_data = {}
 
     global clusterNames, bgcClassNames
     
@@ -2136,8 +2160,12 @@ if __name__=="__main__":
 
     time1 = time.time()
 
-    run_name = "{}{}".format(time.strftime("%Y-%m-%d_%H-%M-%S", time.localtime()), run_mode_string)
-    
+    start_time = time.localtime()
+    run_name = "{}{}".format(time.strftime("%Y-%m-%d_%H-%M-%S", start_time), run_mode_string)
+    run_data["start_time"] = time.strftime("%d/%m/%Y %H:%M:%S", start_time)
+    run_data["parameters"] = " ".join(sys.argv[1:])
+    run_data["input"] = {}
+
     # Make the following available for possibly deleting entries within parseHmmScan
     global genbankDict, gbk_files, sampleDict, clusters, baseNames
     
@@ -2644,9 +2672,46 @@ if __name__=="__main__":
 
     clusterNames = tuple(sorted(clusters))
 
+    # fetch genome list for overview.js
+    genomes = []
+    classes = []
+    clusterNamesToGenomes = {}
+    clusterNamesToClasses = {}
+    for bgc in clusterNames:
+        # get class info
+        product = bgc_info[bgc].product
+        predicted_class = sort_bgc(product)
+        if predicted_class not in classes:
+            clusterNamesToClasses[bgc] = len(classes)
+            classes.append(predicted_class)
+        else:
+            clusterNamesToClasses[bgc] = classes.index(predicted_class)
+        # get identifier info
+        identifier = ""
+        if len(bgc_info[bgc].organism) > 1:
+            identifier = bgc_info[bgc].organism
+        elif len(bgc_info[bgc].accession_id) > 1:
+            if (bgc_info[bgc].accession_id[2] == "_"): # is a refseq accession
+                identifier = bgc_info[bgc].accession_id[2].split(".")[0]
+            elif len(bgc_info[bgc].accession_id) > 6: # *assume* a genbank WGS accession
+                # todo: use more robust check / assumption e.g. other types of genbank data?
+                identifier = bgc_info[bgc].accession_id[0:6]
+        if len(identifier) < 1:
+            identifier = "Unknown Genome {}".format(len(genomes))
+        if identifier not in genomes:
+            clusterNamesToGenomes[bgc] = len(genomes)
+            genomes.append(identifier)
+        else:
+            clusterNamesToGenomes[bgc] = genomes.index(identifier)
+    run_data["input"]["accession"] = [{ "id": "genome_{}".format(i), "label": acc } for i, acc in enumerate(genomes)]
+    run_data["input"]["accession_newick"] = "()" # todo ...
+    run_data["input"]["classes"] = [{ "label": cl } for cl in classes ] # todo : colors
+    run_data["input"]["bgc"] = [{ "id": bgc, "acc": clusterNamesToGenomes[bgc], "class": clusterNamesToClasses[bgc] } for bgc in clusterNames]
+
     # create output directory for network files
     network_files_folder = os.path.join(network_folder, run_name)
     create_directory(network_files_folder, "Network Files", False)
+    run_data["networks"] = []
 
     # copy html templates
     dir_util.copy_tree(os.path.join(os.path.realpath(os.path.dirname(__file__)), "html_template", "output"), output_folder)
@@ -2752,9 +2817,10 @@ if __name__=="__main__":
                 pa[int(row[1])] = (int(row[-4]), int(row[-3]), int(row[-2]), reverse)
             del network_matrix_mix[:]
             html_subs.append({ "name" : "mix", "css" : "Others", "label" : "Mixed"})
-            clusterJsonBatch(mix_set, pathBase, "mix", reduced_network, pos_alignments,
+            family_data = clusterJsonBatch(mix_set, pathBase, "mix", reduced_network, pos_alignments,
                              cutoffs=cutoff_list, clusterClans=options.clans,
                              clanCutoff=options.clan_cutoff, htmlFolder=network_html_folder)
+            run_data["networks"].append(family_data)
             del mix_set[:]
             del reduced_network[:]
             
@@ -2854,10 +2920,11 @@ if __name__=="__main__":
                     del network_matrix[:]
 
                     html_subs.append({ "name" : bgc_class, "css" : bgc_class, "label" : bgc_class})
-                    clusterJsonBatch(BGC_classes[bgc_class], pathBase, bgc_class,
+                    family_data = clusterJsonBatch(BGC_classes[bgc_class], pathBase, bgc_class,
                                      reduced_network, pos_alignments, cutoffs=cutoff_list, 
                                      clusterClans=options.clans, clanCutoff=options.clan_cutoff, 
                                      htmlFolder=network_html_folder)
+                    run_data["networks"].append(family_data)
                     del BGC_classes[bgc_class][:]
                     del reduced_network[:]
 
@@ -3015,6 +3082,14 @@ if __name__=="__main__":
                                 
                                 #del BGC_classes[bgc_class][:]
                                 #del reduced_network[:]
+
+    # generate overview data
+    end_time = time.localtime()
+    duration = int(time.mktime(end_time)) - int(time.mktime(start_time))
+    run_data["end_time"] = time.strftime("%d/%m/%Y %H:%M:%S", end_time)
+    run_data["duration"] = "{}h{}m{}s".format((duration // 3600), ((duration % 3600) // 60), ((duration % 3600) % 60))
+    with open(os.path.join(network_html_folder, "run_data.js"), "w") as run_data_js:
+        run_data_js.write("var run_data={};\n".format(json.dumps(run_data, indent=4, separators=(',', ':'), sort_keys=True)))
 
     # update bgc_results.js
     add_to_bigscape_results_js(run_name, html_subs, os.path.join(output_folder, "html_content", "js", "bigscape_results.js"))

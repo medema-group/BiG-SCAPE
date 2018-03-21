@@ -552,3 +552,20 @@ def add_to_bigscape_results_js(module_name, subs, result_js_file):
     bigscape_results.append({ "label" : module_name, "networks" : subs })
     with open(result_js_file, "w") as bs_js:
         bs_js.write("var bigscape_results = {};".format(json.dumps(bigscape_results, indent=4, separators=(',', ':'), sort_keys=True)))
+
+
+def get_composite_bgc_similarities(bgcs_1, bgcs_2, sim_matrix):
+    num_pairs = 0
+    sum_sim = 0.00
+    min_sim = (1.00, -1, -1)
+    max_sim = (0.00, -1, -1)
+    for bgc_1 in bgcs_1:
+        for bgc_2 in bgcs_2:
+            sim = 0.00 if (bgc_1 == bgc_2) else (sim_matrix[bgc_1][bgc_2] if ((bgc_1 in sim_matrix) and (bgc_2 in sim_matrix[bgc_1])) else sim_matrix[bgc_2][bgc_1])
+            sum_sim += sim
+            if (sim < min_sim[0]):
+                min_sim = (sim, bgc_1, bgc_2) if (bgc_2 > bgc_1) else (sim, bgc_2, bgc_1)            
+            if (sim > max_sim[0]):
+                max_sim = (sim, bgc_1, bgc_2) if (bgc_2 > bgc_1) else (sim, bgc_2, bgc_1)
+            num_pairs += 1
+    return ((sum_sim / num_pairs), min_sim, max_sim) # let it throw infinite division error by itself
