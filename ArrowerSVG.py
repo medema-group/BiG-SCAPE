@@ -29,14 +29,13 @@ global gene_contour_thickness
 global stripe_thickness
 global gene_categories_color
 
-internal_domain_margin = 2
+internal_domain_margin = 3
 domain_contour_thickness = 1
-gene_contour_thickness = 1 # thickness grows outwards
+gene_contour_thickness = 2 # thickness grows outwards
 stripe_thickness = 3
 
-gene_color_file = os.path.join(os.path.dirname(os.path.realpath(__file__)), "gene_color_file.tsv")
 domains_color_file = os.path.join(os.path.dirname(os.path.realpath(__file__)), "domains_color_file.tsv")
-pfam_domain_categories = os.path.join(os.path.dirname(os.path.realpath(__file__)), "pfam_domain_categories.tsv")
+
 
 # read various color data
 def read_color_genes_file():
@@ -338,7 +337,7 @@ def draw_line(X,Y,L):
     Draw a line below genes
     """
     
-    line = "<line x1=\"{}\" y1=\"{}\" x2=\"{}\" y2=\"{}\" style=\"stroke:rgb(50,50,50); stroke-width:{} \"/>\n".format(str(X), str(Y), str(X+L), str(Y), str(stripe_thickness))
+    line = "<line x1=\"{}\" y1=\"{}\" x2=\"{}\" y2=\"{}\" style=\"stroke:rgb(70,70,70); stroke-width:{} \"/>\n".format(str(X), str(Y), str(X+L), str(Y), str(stripe_thickness))
     
     return line
 
@@ -363,11 +362,11 @@ def new_color(gene_or_domain):
     return [r, g, b]
 
 
-def SVG(write_html, outputfile, GenBankFile, pfdFile, use_pfd, color_genes, color_domains, pfam_domain_categories, pfam_info, loci, max_width, H=30, h=15, l=30, mX=10, mY=10, scaling=30, absolute_start=0, absolute_end=-1):
+def SVG(write_html, outputfile, GenBankFile, BGCname, pfdFile, use_pfd, color_genes, color_domains, pfam_domain_categories, pfam_info, loci, max_width, H=30, h=15, l=30, mX=10, mY=10, scaling=30, absolute_start=0, absolute_end=-1):
     '''
     Create the main SVG document:
         - read pfd file with domain information (pfdFile contains complete path)
-        - read GenBank document (GenBankFile contains complete path)
+        - read GenBank document (GenBankFile contains handle of opened file)
         - record genes, start and stop positions, and strands, and associate domains
         - write the SVG files
     '''
@@ -410,7 +409,7 @@ def SVG(write_html, outputfile, GenBankFile, pfdFile, use_pfd, color_genes, colo
     max_width /= scaling
             
     if write_html:
-        header = "\t\t<div title=\"" + GenBankFile[:-4] + "\">\n"
+        header = "\t\t<div title=\"" + BGCname + "\">\n"
         additional_tabs = "\t\t\t"
         
         header += "{}<svg width=\"{}\" height=\"{}\">\n".format(additional_tabs, str(max_width + 2*(mX)), str(loci*(2*h + H + 2*mY)))
@@ -540,9 +539,18 @@ def SVG(write_html, outputfile, GenBankFile, pfdFile, use_pfd, color_genes, colo
         for feature in [feature for feature in seq_record.features if feature.location.start >= absolute_start and feature.location.end <= absolute_end]:
             if feature.type == 'CDS':
                 # Get name
-                try: GeneName = feature.qualifiers['gene'][0]
-                except KeyError: GeneName = 'NoName'                
+                try:
+                    GeneName = feature.qualifiers['gene'][0]
+                    cds_tag = GeneName
+                except KeyError:
+                    GeneName = 'NoName'
+                    cds_tag = ""
                 
+                if "locus_tag" in feature.qualifiers:
+                    cds_tag += " (" + feature.qualifiers["locus_tag"][0] + ")"
+                if "product" in feature.qualifiers:
+                    cds_tag += "\n" + feature.qualifiers["product"][0]
+                    
                 # Get color
                 color = (255,255,255)
                 #try:
@@ -580,7 +588,7 @@ def SVG(write_html, outputfile, GenBankFile, pfdFile, use_pfd, color_genes, colo
                 except KeyError:
                     protein_id = ""
                     pass
-                identifier = GenBankFile.split(os.sep)[-1][:-4] + "_ORF" + str(feature_counter)
+                identifier = BGCname + "_ORF" + str(feature_counter)
                 identifier += ":gid::" if GeneName == "NoName" else ":gid:" + str(GeneName) + ":"
                 identifier += "pid:" + str(protein_id) + ":loc:" + str(feature.location.start) + ":" + str(feature.location.end)
                 identifier = identifier.replace("<","").replace(">","")
@@ -619,9 +627,9 @@ def SVG(write_html, outputfile, GenBankFile, pfdFile, use_pfd, color_genes, colo
                         
                 
                 #X, Y, L, l, H, h, strand, color, color_contour, category, gid, domain_list
-                arrow = draw_arrow(additional_tabs, start+mX, add_origin_Y+mY+h, int(feature.location.end-feature.location.start)/scaling, l, H, h, strand, color, color_contour, gene_category, GeneName, identifiers[identifier])
+                arrow = draw_arrow(additional_tabs, start+mX, add_origin_Y+mY+h, int(feature.location.end-feature.location.start)/scaling, l, H, h, strand, color, color_contour, gene_category, cds_tag, identifiers[identifier])
                 if arrow == "":
-                    print("  (ArrowerSVG) Warning: something went wrong with {}".format(GenBankFile))
+                    print("  (ArrowerSVG) Warning: something went wrong with {}".format(BGCname))
                 SVG_TEXT += arrow
                 
                 feature_counter += 1
@@ -661,186 +669,3 @@ def SVG(write_html, outputfile, GenBankFile, pfdFile, use_pfd, color_genes, colo
     with open(outputfile, mode) as handle:
         handle.write(SVG_TEXT)
 
-
-def main():
-    parser = argparse.ArgumentParser()
-    parser.add_argument("-v", "--verbose", 
-                        help="Output SVG text and other messages to terminal", 
-                        action="store_true", 
-                        default=False)
-    parser.add_argument("-H", "--ArrowHeight", 
-                        help="Arrow Height. The width of the arrow central part. (default: 30)", 
-                        type=int, 
-                        default=30)
-    parser.add_argument("-ah", "--ArrowHeadHeight", 
-                        help="Additional width of the arrow's head. (default: 15)", 
-                        type=int, 
-                        default=15)
-    parser.add_argument("-l", "--HeadLength", 
-                        help="Head length. (default: 30)", 
-                        type=int, 
-                        default=30)
-    parser.add_argument("-mX", "--marginX", 
-                        help="Lateral margins for each loci. (default: 1)", 
-                        type=int, 
-                        default=1)
-    parser.add_argument("-mY", "--marginY", 
-                        help="Top/bottom margins for each loci. (default: 1)", 
-                        type=int, 
-                        default=1)
-    parser.add_argument("-s", "--start", 
-                        help="Start position to visualize. If a gene is cut by this position, it will not be printed at all. (default: 0)", 
-                        type=int, 
-                        default=0)
-    parser.add_argument("-e", "--end", 
-                        help="Ending position to visualize. If a gene is cut by this position, it will not be printed at all. (default: visualize everything)", 
-                        type=int, 
-                        default=-1)
-    parser.add_argument("--scaling", 
-                        help="Horizontal scaling; px per bp (default: 30 ppbp)", 
-                        type=int, 
-                        default=30)
-    parser.add_argument("-f", "--file", 
-                        help="Parse a single GenBank file (default: parse all GenBank files from inputdir)", 
-                        type=str, 
-                        default="")
-    parser.add_argument("-i", "--inputdir", 
-                        help="Directory where GenBank files will be read. (default: same directory as this script)", 
-                        type=str, 
-                        default=os.path.dirname(os.path.realpath(__file__)))
-    parser.add_argument("-o", "--outputdir", 
-                        help="Directory where SVG files will be created. (this option is required)", 
-                        type=str, 
-                        required=True)
-    parser.add_argument("--pfddir", 
-                        help="If given, this script will attempt to find .pfd files in this location with information about domains (from BiG-SCAPE) (default: same as --inputdir)", 
-                        default="")
-    parser.add_argument("--skip_pfd", 
-                        help="Don't use for pfd file, even if present (default: False)", 
-                        action="store_true", 
-                        default=False)
-    parser.add_argument("--html",
-                       help="Toggle to write an html file with the SVG(s) instead",
-                       action="store_true",
-                       default=False)
-    
-    args = parser.parse_args()
-    
-    verbose = args.verbose
-    H = args.ArrowHeight
-    h = args.ArrowHeadHeight
-    l = args.HeadLength
-    mX = args.marginX
-    mY = args.marginY
-    start = args.start
-    end = args.end
-    scaling = args.scaling
-    f = args.file
-    inputdir = args.inputdir
-    outputdir = args.outputdir
-    pfddir = inputdir if args.pfddir == "" else args.pfddir
-    use_pfd = not args.skip_pfd
-    write_html = args.html
-    
-    # Do some basic checking
-    if end < 0:
-        if start <= end:
-            sys.exit("Start position should be positive or zero")
-    elif end <= start:
-        sys.exit("end should be greater than start")
-    
-    # Attempt to create output folder
-    if outputdir != "./":
-        try:
-            os.mkdir(outputdir)
-        except OSError as e:
-            # don't care if error refers to the folder being already there
-            if "Errno 17" in str(e) or "Error 183" in str(e):
-                pass
-            else:
-                sys.exit("Unknown error while trying to create output folder: " + str(e))
-    
-    # Try to read already-generated colors for consistency
-    color_genes = {}
-    try:
-        color_genes_handle = open(gene_color_file, "r")
-    except IOError:
-        #first time using the color file
-        color_genes_handle = open(gene_color_file, "w")
-        color_genes_handle.write("NoName\t255,255,255\n")
-        color_genes_handle.close()
-        color_genes = {"NoName":[255, 255, 255]}
-    else:
-        for line in color_genes_handle:
-            row = line.strip().split("\t")
-            name = row[0]
-            rgb = row[1].split(",")
-            color_genes[name] = [int(rgb[x]) for x in range(3)]
-        color_genes_handle.close()
-        
-    
-    color_domains = {}
-    try:
-        color_domains_handle = open(domains_color_file, "r")
-    except IOError:
-        # first time use
-        color_domains_handle = open(domains_color_file, "w")
-        color_domains_handle.close()
-    else:
-        for line in color_domains_handle:
-            row = line.strip().split("\t")
-            name = row[0]
-            rgb = row[1].split(",")
-            color_domains[name] = [int(rgb[x]) for x in range(3)]
-        color_domains_handle.close()   
-        
-    if write_html:
-        html_handle = open(os.path.join(outputdir, "Arrows.html"), "w")
-        html_handle.write("<!DOCTYPE html>\n")
-        html_handle.write("<html>\n")
-        html_handle.write("\t<body>\n")
-        
-    # Create SVG
-    files_found = 0
-    if f != "":
-        inputdir = os.sep.join(f.split(os.sep)[:-1])
-        f = f.split(os.sep)[-1]
-        if f[-4:] == ".gbk":
-            files_found += 1
-            
-            if write_html:
-                handle = html_handle
-            else:
-                svg_name = os.path.join(outputdir, f[:-3] + "svg")
-                handle = open(svg_name, "w")
-                
-            SVG(handle, write_html, f, inputdir, pfddir, use_pfd, H, h, l, mX, mY, scaling, start, end, color_genes, color_domains, verbose)
-            
-            if not write_html:
-                handle.close()
-    else:
-        for path, dirnames, filenames in os.walk(inputdir):
-            for f in sorted(filenames):
-                if f[-4:] == ".gbk":
-                    files_found += 1
-                    
-                    if write_html:
-                        handle = html_handle
-                    else:
-                        svg_name = os.path.join(outputdir, f[:-3] + "svg")
-                        handle = open(svg_name, "w")
-                    
-                    SVG(handle, write_html, path, f, inputdir, pfddir, use_pfd, H, h, l, mX, mY, scaling, start, end, color_genes, color_domains, verbose)
-                    
-                    if not write_html:
-                        handle.close()
-                    
-    if write_html:
-        html_handle.write("\t</body>\n")
-        html_handle.write("</html>\n")
-        html_handle.close()
-
-    print("Found " + str(files_found) + " gbk files")
-
-if __name__ == "__main__":
-    main()

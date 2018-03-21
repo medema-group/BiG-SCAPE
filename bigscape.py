@@ -6,30 +6,29 @@ BiG-SCAPE
 
 PI: Marnix Medema               marnix.medema@wur.nl
 
-Developers:
-Jorge Navarro                   jorge.navarromunoz@wur.nl
+Main developers:
+Jorge Navarro                   j.navarro@westerdijkinstitute.nl
 Emmanuel (Emzo) de los Santos   E.De-Los-Santos@warwick.ac.uk
-Marley Yeong                    marleyyeong@live.nl
 
-
-Dependencies: hmmer, biopython, (mafft), munkres.py
 
 Usage:   Please see `python bigscape.py -h`
 
 Example: python bigscape.py -c 8 --pfam_dir ./ -i ./inputfiles -o ./results
 
-Status: development/testing
+Status: beta
 
-See more info on
+Official repository:
 https://git.wageningenur.nl/medema-group/BiG-SCAPE
 
 
 # License: GNU Affero General Public License v3 or later
 # A copy of GNU AGPL v3 should have been included in this software package in LICENSE.txt.
 """
+
 # Makes sure the script can be used with Python 2 as well as Python 3.
 from __future__ import print_function
 from __future__ import division
+
 from sys import version_info
 if version_info[0]==2:
     range = xrange
@@ -49,6 +48,7 @@ from multiprocessing import Pool, cpu_count
 from argparse import ArgumentParser
 from difflib import SequenceMatcher
 from operator import itemgetter
+import zipfile
 
 from Bio import SeqIO
 from Bio.SeqFeature import BeforePosition, AfterPosition
@@ -70,6 +70,315 @@ from distutils import dir_util
 from sklearn.cluster import AffinityPropagation
 import networkx as nx
 
+
+global use_relevant_mibig
+global mibig_set
+global genbankDict
+global valid_classes
+
+def process_gbk_files(gbk, clusterName, dirpath, current_dir, min_bgc_size, bgc_info, files_no_proteins, files_no_biosynthetic_genes):
+    """ Given a file handle of a GenBank file, reads information about the BGC"""
+
+    biosynthetic_genes = set()
+    product_list_per_record = []
+    fasta_data = []
+    save_fasta = True
+    adding_sequence = False
+    contig_edge = False
+    total_seq_length = 0
+    record_end = 0
+    offset_record_position = 0
+    bgc_locus_tags = []
+    locus_sequences = {}
+    locus_coordinates = {}
+    outputfile = os.path.join(bgc_fasta_folder, clusterName + '.fasta')
+    fname = clusterName + ".gbk"
+
+    # See if we need to keep the sequence
+    # (Currently) we have to open the file anyway to read all its 
+    # properties for bgc_info anyway...
+    outputfile = os.path.join(bgc_fasta_folder, clusterName + '.fasta')
+    if os.path.isfile(outputfile) and os.path.getsize(outputfile) > 0 and not force_hmmscan:
+        if verbose:
+            print(" File {} already processed".format(outputfile))
+        save_fasta = False
+    else:
+        save_fasta = True
+    
+    try:
+        # basic file verification. Substitutes check_data_integrity
+        records = list(SeqIO.parse(gbk, "genbank"))
+    except ValueError as e:
+        print("   Error with file {}: \n    '{}'".format(os.path.join(dirpath, fname), str(e)))
+        print("    (This file will be excluded from the analysis)")
+        return
+    else:
+        total_seq_length = 0
+        bgc_size = 0
+        cds_ctr = 0
+        product = "no type"
+        del product_list_per_record[:]
+        offset_record_position = 0
+        
+        max_width = 0 # This will be used for the SVG figure
+        record_count = 0
+        
+        for record in records:
+            record_count += 1
+            bgc_size += len(record.seq)
+            if len(record.seq) > max_width:
+                max_width = len(record.seq)
+            
+            for feature in record.features:
+                if "cluster" in feature.type:
+                    if "product" in feature.qualifiers:
+                        if len(feature.qualifiers["product"]) > 1:
+                            print("  WARNING: more than product annotated in record " + str(record_count) + ", " + fname)
+                            break
+                        else:
+                            product_list_per_record.append(feature.qualifiers["product"][0].replace(" ",""))
+                    if "contig_edge" in feature.qualifiers:
+                        # there might be mixed contig_edge annotations
+                        # in multi-record files. Turn on contig_edge when
+                        # there's at least one annotation
+                        if feature.qualifiers["contig_edge"][0] == "True":
+                            if verbose:
+                                print(" Contig edge detected in {}".format(fname))
+                            contig_edge = True
+                        
+                # Get biosynthetic genes + sequences
+                if feature.type == "CDS":
+                    cds_ctr += 1
+                    CDS = feature
+                    
+                    gene_id = ""
+                    if "gene" in CDS.qualifiers:
+                        gene_id = CDS.qualifiers.get('gene',"")[0]
+                        
+                    
+                    protein_id = ""
+                    if "protein_id" in CDS.qualifiers:
+                        protein_id = CDS.qualifiers.get('protein_id',"")[0]
+                    
+                    # nofuzzy_start/nofuzzy_end are obsolete
+                    # http://biopython.org/DIST/docs/api/Bio.SeqFeature.FeatureLocation-class.html#nofuzzy_start
+                    gene_start = offset_record_position + max(0, int(CDS.location.start))
+                    gene_end = offset_record_position + max(0, int(CDS.location.end))
+                    record_end = gene_end
+                    
+                    direction = CDS.location.strand
+                    if direction == 1:
+                        strand = '+'
+                    else:
+                        strand = '-'
+                        
+                    fasta_header = "{}_ORF{}:gid:{}:pid:{}:loc:{}:{}:strand:{}".format(clusterName, str(cds_ctr), str(gene_id), str(protein_id), str(gene_start), str(gene_end), strand)
+                    fasta_header = fasta_header.replace(">","") #the coordinates might contain larger than signs, tools upstream don't like this
+                    fasta_header = fasta_header.replace(" ", "") #the domtable output format (hmmscan) uses spaces as a delimiter, so these cannot be present in the fasta header
+
+                    if "sec_met" in feature.qualifiers:
+                        if "Kind: biosynthetic" in feature.qualifiers["sec_met"]:
+                            biosynthetic_genes.add(fasta_header)
+
+                    fasta_header = ">"+fasta_header
+                    
+
+                    if 'translation' in CDS.qualifiers.keys():
+                        prot_seq = CDS.qualifiers['translation'][0]
+                    # If translation isn't available translate manually, this will take longer
+                    else:
+                        nt_seq = CDS.location.extract(record.seq)
+                        
+                        # If we know sequence is an ORF (like all CDSs), codon table can be
+                        #  used to correctly translate alternative start codons.
+                        #  see http://biopython.org/DIST/docs/tutorial/Tutorial.html#htoc25
+                        # If the sequence has a fuzzy start/end, it might not be complete,
+                        # (therefore it might not be the true start codon)
+                        # However, in this case, if 'translation' not available, assume 
+                        #  this is just a random sequence 
+                        complete_cds = False 
+                        
+                        # More about fuzzy positions
+                        # http://biopython.org/DIST/docs/tutorial/Tutorial.html#htoc39
+                        fuzzy_start = False 
+                        if str(CDS.location.start)[0] in "<>":
+                            complete_cds = False
+                            fuzzy_start = True
+                            
+                        fuzzy_end = False
+                        if str(CDS.location.end)[0] in "<>":
+                            fuzzy_end = True
+                        
+                        #for protein sequence if it is at the start of the entry assume 
+                        # that end of sequence is in frame and trim from the beginning
+                        #if it is at the end of the genbank entry assume that the start 
+                        # of the sequence is in frame
+                        reminder = len(nt_seq)%3
+                        if reminder > 0:
+                            if fuzzy_start and fuzzy_end:
+                                print("Warning, CDS ({}, {}) has fuzzy\
+                                    start and end positions, and a \
+                                    sequence length not multiple of \
+                                    three. Skipping".format(clusterName, 
+                                    CDS.qualifiers.get('locus_tag',"")[0]))
+                                break
+                            
+                            if fuzzy_start:
+                                if reminder == 1:
+                                    nt_seq = nt_seq[1:]
+                                else:
+                                    nt_seq = nt_seq[2:]
+                            # fuzzy end
+                            else:
+                                #same logic reverse direction
+                                if reminder == 1:
+                                    nt_seq = nt_seq[:-1]
+                                else:
+                                    nt_seq = nt_seq[:-2]
+                        
+                        # The Genetic Codes: www.ncbi.nlm.nih.gov/Taxonomy/Utils/wprintgc.cgi
+                        if "transl_table" in CDS.qualifiers.keys():
+                            CDStable = CDS.qualifiers.get("transl_table", "")[0]
+                            prot_seq = str(nt_seq.translate(table=CDStable, to_stop=True, cds=complete_cds))
+                        else:
+                            prot_seq = str(nt_seq.translate(to_stop=True, cds=complete_cds))
+                            
+                    total_seq_length += len(prot_seq)
+                
+                
+                    bgc_locus_tags.append(fasta_header)
+                    locus_sequences[fasta_header] = prot_seq
+                    locus_coordinates[fasta_header] = (gene_start, gene_end, len(prot_seq))
+                    
+
+            # TODO: if len(biosynthetic_genes) == 0, traverse record again
+            # and add CDS with genes that contain domains labeled sec_met
+            # we'll probably have to have a list of domains if we allow
+            # fasta files as input
+            
+            # make absolute positions for ORFs in next records
+            offset_record_position += record_end + 100
+        
+        if bgc_size > min_bgc_size:  # exclude the bgc if it's too small
+            # check what we have product-wise
+            # In particular, handle different products for multi-record files
+            product_set = set(product_list_per_record)
+            if len(product_set) == 1: # only one type of product
+                product = product_list_per_record[0]
+            elif "other" in product_set: # more than one, and it contains "other"
+                if len(product_set) == 2:
+                    product = list(product_set - set(['other']))[0] # product = not "other"
+                else:
+                    product = "-".join(product_set - set(['other'])) # likely a hybrid
+            else:
+                product = "-".join(product_set) # likely a hybrid
+                
+            # Don't keep this bgc if its type not in valid classes specified by user
+            # This will avoid redundant tasks like domain detection
+            subproduct = set()
+            for p in product.split("-"):
+                subproduct.add(sort_bgc(p).lower())
+            if "nrps" in subproduct and ("pksi" in subproduct or "pksother" in subproduct):
+                subproduct.add("pks-nrp_hybrids")
+                
+            if len(valid_classes & subproduct) == 0:
+                if verbose:
+                    print(" Skipping {} (type: {})".format(clusterName, product))
+                return False
+            
+            # assuming that the definition field is the same in all records
+            # product: antiSMASH predicted class of metabolite
+            # gbk definition
+            # number of records (for Arrower figures)
+            # max_width: width of the largest record (for Arrower figures)
+            # id: the GenBank's accession
+            #bgc_info[clusterName] = (product, records[0].description, len(records), max_width, records[0].id, biosynthetic_genes.copy())
+            # TODO contig_edge annotation is not present for antiSMASH v < 4
+            # Perhaps we can try to infer if it's in a contig edge: if
+            # - first biosynthetic gene start < 10kb or
+            # - max_width - last biosynthetic gene end < 10kb (but this will work only for the largest record)
+            bgc_info[clusterName] = bgc_data(records[0].id, records[0].description, product, len(records), max_width, bgc_size + (record_count-1)*1000, records[0].annotations["organism"], ",".join(records[0].annotations["taxonomy"]), biosynthetic_genes.copy(), contig_edge)
+
+            if len(bgc_info[clusterName].biosynthetic_genes) == 0:
+                files_no_biosynthetic_genes.append(clusterName+".gbk")
+
+            # TODO why re-process everything if it was already in the list?
+            # if name already in genbankDict.keys -> add current_dir
+            # else: extract all info
+            if clusterName in genbankDict.keys():
+                # Name was already in use. Use current_dir as the new sample's name
+                genbankDict[clusterName][1].add(current_dir) 
+            else:
+                # See if we need to write down the sequence
+                if total_seq_length > 0:
+                    # location of first instance of the file is genbankDict[clustername][0]
+                    genbankDict.setdefault(clusterName, [os.path.join(dirpath, clusterName+".gbk"), set([current_dir])])
+
+                    if save_fasta:
+                        # Find overlaps in CDS regions and delete the shortest ones.
+                        # This is thought as a solution for selecting genes with 
+                        # alternate splicing events
+                        # Food for thought: imagine CDS A overlapping CDS B overlapping
+                        # CDS C. If len(A) > len(B) > len(C) and we first compare A vs B
+                        # and delete A, then B vs C and delete B: would that be a better
+                        # solution than removing B? Could this actually happen?
+                        # TODO What if the overlapping CDS is in the reverse strand?
+                        #  maybe it should be kept as it is
+                        # TODO what are the characterized differences in prokarytote
+                        #  vs eukaryote CDS overlap?
+                        del_list = set()
+                        for a, b in combinations(bgc_locus_tags, 2):
+                            a_start, a_end, a_len = locus_coordinates[a]
+                            b_start, b_end, b_len = locus_coordinates[b]
+                            
+                            if b_end <= a_start or b_start >= a_end:
+                                pass
+                            else:
+                                # calculate overlap
+                                if a_start > b_start:
+                                    ov_start = a_start
+                                else:
+                                    ov_start = b_start
+
+                                if a_end < b_end:
+                                    ov_end = a_end
+                                else:
+                                    ov_end = b_end
+
+                                overlap_length = ov_end - ov_start
+                                
+                                # allow the overlap to be as large as 10% of the
+                                # shortest CDS. Overlap length is in nucleotides
+                                # here, whereas a_len, b_len are protein 
+                                # sequence lengths
+                                if overlap_length/3 > 0.1*min(a_len,b_len):
+                                    if a_len > b_len:
+                                        del_list.add(b)
+                                    else:
+                                        del_list.add(a)
+                        
+                        for locus in del_list:
+                            if verbose:
+                                print("   Removing {} because it overlaps with other ORF".format(locus))
+                            bgc_locus_tags.remove(locus)
+                        
+                        with open(outputfile,'w') as fastaHandle:
+                            for locus in bgc_locus_tags:
+                                fastaHandle.write("{}\n".format(locus))
+                                fastaHandle.write("{}\n".format(locus_sequences[locus]))
+                            adding_sequence = True
+                else:
+                    files_no_proteins.append(fname)
+
+            if verbose:
+                print("  Adding {} ({} bps)".format(fname, str(bgc_size)))
+                                
+        else:
+            print(" Discarding {} (size less than {} bp, was {})".format(clusterName, str(min_bgc_size), str(bgc_size)))        
+    
+    return adding_sequence
+
+
 def get_gbk_files(inputdir, outputdir, bgc_fasta_folder, min_bgc_size, exclude_gbk_str, bgc_info):
     """Searches given directory for genbank files recursively, will assume that
     the genbank files that have the same name are the same genbank file. 
@@ -80,28 +389,17 @@ def get_gbk_files(inputdir, outputdir, bgc_fasta_folder, min_bgc_size, exclude_g
     folder.
     return: {cluster_name:[genbank_path,[s_a,s_b...]]}
     """
-
-    genbankDict = {}
-
     file_counter = 0
     processed_sequences = 0
-    biosynthetic_genes = set()
-    product_list_per_record = []
-    fasta_data = []
-    save_fasta = True
-    contig_edge = False
-    total_seq_length = 0
     files_no_proteins = []
     files_no_biosynthetic_genes = []
-    record_end = 0
-    offset_record_position = 0
-    bgc_locus_tags = []
-    locus_sequences = {}
-    locus_coordinates = {}
     
     print("\nImporting GenBank files")
+    
+    # Exclude single string
     if type(exclude_gbk_str) == str and exclude_gbk_str != "":
         print(" Skipping files with '{}' in their filename".format(exclude_gbk_str))
+    # Exclude from list of strings
     elif type(exclude_gbk_str) == list and exclude_gbk_str != []:
         print(" Skipping files with one or more of the following strings in \
             their filename: {}".format(", ".join(exclude_gbk_str)))
@@ -113,8 +411,6 @@ def get_gbk_files(inputdir, outputdir, bgc_fasta_folder, min_bgc_size, exclude_g
         if current_dir != tail:
             current_dir = tail
 
-        genbankfilelist = []
-
         for fname in filenames:
             if fname[-3:] != "gbk":
                 continue
@@ -123,7 +419,8 @@ def get_gbk_files(inputdir, outputdir, bgc_fasta_folder, min_bgc_size, exclude_g
             
             if type(exclude_gbk_str) == str and exclude_gbk_str != "" and \
                                                 exclude_gbk_str in fname:
-                print(" Skipping file " + fname)
+                if verbose:
+                    print(" Skipping file " + fname)
                 continue
             elif type(exclude_gbk_str) == list and exclude_gbk_str != [] and \
                             any([word in fname for word in exclude_gbk_str]):
@@ -136,261 +433,10 @@ def get_gbk_files(inputdir, outputdir, bgc_fasta_folder, min_bgc_size, exclude_g
             if " " in fname:
                 sys.exit("\nError: Input GenBank files should not have spaces in their filenames as HMMscan cannot process them properly ('too many arguments').")
             
-            # See if we need to keep the sequence
-            # (Currently) we have to open the file anyway to read all its 
-            # properties for bgc_info anyway...
-            outputfile = os.path.join(bgc_fasta_folder, clusterName + '.fasta')
-            if os.path.isfile(outputfile) and os.path.getsize(outputfile) > 0 and not force_hmmscan:
-                if verbose:
-                    print(" File {} already processed".format(outputfile))
-                save_fasta = False
-            else:
-                save_fasta = True
-            
-            try:
-                # basic file verification. Substitutes check_data_integrity
-                records = list(SeqIO.parse(os.path.join(dirpath,fname), "genbank"))
-            except ValueError as e:
-                print("   Error with file {}: \n    '{}'".format(os.path.join(dirpath, fname), str(e)))
-                print("    (This file will be excluded from the analysis)")
-                continue
-            else:
-                total_seq_length = 0
-                bgc_size = 0
-                cds_ctr = 0
-                product = "no type"
-                del product_list_per_record[:]
-                offset_record_position = 0
-                
-                max_width = 0 # This will be used for the SVG figure
-                record_count = 0
-                
-                for record in records:
-                    record_count += 1
-                    bgc_size += len(record.seq)
-                    if len(record.seq) > max_width:
-                        max_width = len(record.seq)
-                    
-                    for feature in record.features:
-                        if "cluster" in feature.type:
-                            if "product" in feature.qualifiers:
-                                if len(feature.qualifiers["product"]) > 1:
-                                    print("  WARNING: more than product annotated in record " + str(record_count) + ", " + fname)
-                                    break
-                                else:
-                                    product_list_per_record.append(feature.qualifiers["product"][0].replace(" ",""))
-                            if "contig_edge" in feature.qualifiers:
-                                # there might be mixed contig_edge annotations
-                                # in multi-record files. Turn on contig_edge when
-                                # there's at least one annotation
-                                if feature.qualifiers["contig_edge"][0] == "True":
-                                    if verbose:
-                                        print(" Contig edge detected in {}".format(fname))
-                                    contig_edge = True
-                                
-                        # Get biosynthetic genes + sequences
-                        if feature.type == "CDS":
-                            cds_ctr += 1
-                            CDS = feature
-                            
-                            gene_id = ""
-                            if "gene" in CDS.qualifiers:
-                                gene_id = CDS.qualifiers.get('gene',"")[0]
-                                
-                            
-                            protein_id = ""
-                            if "protein_id" in CDS.qualifiers:
-                                protein_id = CDS.qualifiers.get('protein_id',"")[0]
-                            
-                            # nofuzzy_start/nofuzzy_end are obsolete
-                            # http://biopython.org/DIST/docs/api/Bio.SeqFeature.FeatureLocation-class.html#nofuzzy_start
-                            gene_start = offset_record_position + max(0, int(CDS.location.start))
-                            gene_end = offset_record_position + max(0, int(CDS.location.end))
-                            record_end = gene_end
-                            
-                            direction = CDS.location.strand
-                            if direction == 1:
-                                strand = '+'
-                            else:
-                                strand = '-'
-                                
-                            fasta_header = "{}_ORF{}:gid:{}:pid:{}:loc:{}:{}:strand:{}".format(clusterName, str(cds_ctr), str(gene_id), str(protein_id), str(gene_start), str(gene_end), strand)
-                            fasta_header = fasta_header.replace(">","") #the coordinates might contain larger than signs, tools upstream don't like this
-                            fasta_header = fasta_header.replace(" ", "") #the domtable output format (hmmscan) uses spaces as a delimiter, so these cannot be present in the fasta header
-
-                            if "sec_met" in feature.qualifiers:
-                                if "Kind: biosynthetic" in feature.qualifiers["sec_met"]:
-                                    biosynthetic_genes.add(fasta_header)
-
-                            fasta_header = ">"+fasta_header
-                            
-
-                            if 'translation' in CDS.qualifiers.keys():
-                                prot_seq = CDS.qualifiers['translation'][0]
-                            # If translation isn't available translate manually, this will take longer
-                            else:
-                                nt_seq = CDS.location.extract(record.seq)
-                                
-                                # If we know sequence is an ORF (like all CDSs), codon table can be
-                                #  used to correctly translate alternative start codons.
-                                #  see http://biopython.org/DIST/docs/tutorial/Tutorial.html#htoc25
-                                # If the sequence has a fuzzy start/end, it might not be complete,
-                                # (therefore it might not be the true start codon)
-                                # However, in this case, if 'translation' not available, assume 
-                                #  this is just a random sequence 
-                                complete_cds = False 
-                                
-                                # More about fuzzy positions
-                                # http://biopython.org/DIST/docs/tutorial/Tutorial.html#htoc39
-                                fuzzy_start = False 
-                                if str(CDS.location.start)[0] in "<>":
-                                    complete_cds = False
-                                    fuzzy_start = True
-                                    
-                                fuzzy_end = False
-                                if str(CDS.location.end)[0] in "<>":
-                                    fuzzy_end = True
-                                
-                                #for protein sequence if it is at the start of the entry assume 
-                                # that end of sequence is in frame and trim from the beginning
-                                #if it is at the end of the genbank entry assume that the start 
-                                # of the sequence is in frame
-                                reminder = len(nt_seq)%3
-                                if reminder > 0:
-                                    if fuzzy_start and fuzzy_end:
-                                        print("Warning, CDS ({}, {}) has fuzzy\
-                                            start and end positions, and a \
-                                            sequence length not multiple of \
-                                            three. Skipping".format(clusterName, 
-                                            CDS.qualifiers.get('locus_tag',"")[0]))
-                                        break
-                                    
-                                    if fuzzy_start:
-                                        if reminder == 1:
-                                            nt_seq = nt_seq[1:]
-                                        else:
-                                            nt_seq = nt_seq[2:]
-                                    # fuzzy end
-                                    else:
-                                        #same logic reverse direction
-                                        if reminder == 1:
-                                            nt_seq = nt_seq[:-1]
-                                        else:
-                                            nt_seq = nt_seq[:-2]
-                                
-                                # The Genetic Codes: www.ncbi.nlm.nih.gov/Taxonomy/Utils/wprintgc.cgi
-                                if "transl_table" in CDS.qualifiers.keys():
-                                    CDStable = CDS.qualifiers.get("transl_table", "")[0]
-                                    prot_seq = str(nt_seq.translate(table=CDStable, to_stop=True, cds=complete_cds))
-                                else:
-                                    prot_seq = str(nt_seq.translate(to_stop=True, cds=complete_cds))
-                                    
-                            total_seq_length += len(prot_seq)
-                        
-                        
-                            bgc_locus_tags.append(fasta_header)
-                            locus_sequences[fasta_header] = prot_seq
-                            locus_coordinates[fasta_header] = (gene_start, gene_end, len(prot_seq))
-
-                            
-        
-                    # TODO: if len(biosynthetic_genes) == 0, traverse record again
-                    # and add CDS with genes that contain domains labeled sec_met
-                    # we'll probably have to have a list of domains if we allow
-                    # fasta files as input
-                    
-                    # make absolute positions for ORFs in next records
-                    offset_record_position += record_end + 100
-                
-                
-                if bgc_size > min_bgc_size:  # exclude the bgc if it's too small
-                    file_counter += 1
-                    # check what we have product-wise
-                    # In particular, handle different products for multi-record files
-                    product_set = set(product_list_per_record)
-                    if len(product_set) == 1: # only one type of product
-                        product = product_list_per_record[0]
-                    elif "other" in product_set: # more than one, and it contains "other"
-                        if len(product_set) == 2:
-                            product = list(product_set - set(['other']))[0] # product = not "other"
-                        else:
-                            product = "-".join(product_set - set(['other'])) # likely a hybrid
-                    else:
-                        product = "-".join(product_set) # likely a hybrid
-                     
-                    
-                    # assuming that the definition field is the same in all records
-                    # product: antiSMASH predicted class of metabolite
-                    # gbk definition
-                    # number of records (for Arrower figures)
-                    # max_width: width of the largest record (for Arrower figures)
-                    # id: the GenBank's accession
-                    #bgc_info[clusterName] = (product, records[0].description, len(records), max_width, records[0].id, biosynthetic_genes.copy())
-                    # TODO contig_edge annotation is not present for antiSMASH v < 4
-                    # Perhaps we can try to infer if it's in a contig edge: if
-                    # - first biosynthetic gene start < 10kb or
-                    # - max_width - last biosynthetic gene end < 10kb (but this will work only for the largest record)
-                    bgc_info[clusterName] = bgc_data(records[0].id, records[0].description, product, len(records), max_width, bgc_size + (record_count-1)*1000, records[0].annotations["organism"], ",".join(records[0].annotations["taxonomy"]), biosynthetic_genes.copy(), contig_edge)
-
-                    if len(bgc_info[clusterName].biosynthetic_genes) == 0:
-                        files_no_biosynthetic_genes.append(fname)
-
-                    # TODO why re-process everything if it was already in the list?
-                    # if name already in genbankDict.keys -> add current_dir
-                    # else: extract all info
-                    if clusterName in genbankDict.keys():
-                        # Name was already in use. Use current_dir as the new sample's name
-                        genbankDict[clusterName][1].add(current_dir) 
-                    else:
-                        # See if we need to write down the sequence
-                        if total_seq_length > 0:
-                            # location of first instance of the file is genbankDict[clustername][0]
-                            genbankDict.setdefault(clusterName, [os.path.join(dirpath, fname), set([current_dir])])
-
-                            if save_fasta:
-                                # Find overlaps in CDS regions and delete the shortest ones.
-                                # This is thought as a solution for selecting genes with 
-                                # alternate splicing events
-                                # Food for thought: imagine CDS A overlapping CDS B overlapping
-                                # CDS C. If len(A) > len(B) > len(C) and we first compare A vs B
-                                # and delete A, then B vs C and delete B: would that be a better
-                                # solution than removing B? Could this actually happen?
-                                del_list = set()
-                                for a, b in combinations(bgc_locus_tags, 2):
-                                    a_start, a_end, a_len = locus_coordinates[a]
-                                    b_start, b_end, b_len = locus_coordinates[b]
-                                    
-                                    if b_end <= a_start or b_start >= a_end:
-                                        pass
-                                    else:
-                                        if a_len > b_len:
-                                            del_list.add(b)
-                                        else:
-                                            del_list.add(a)
-                                
-                                for locus in del_list:
-                                    bgc_locus_tags.remove(locus)
-                                
-                                
-                                processed_sequences += 1
-                                with open(outputfile,'w') as fastaHandle:
-                                    for locus in bgc_locus_tags:
-                                        fastaHandle.write("{}\n".format(locus))
-                                        fastaHandle.write("{}\n".format(locus_sequences[locus]))
-                        else:
-                            files_no_proteins.append(fname)
-
-                    if verbose:
-                        print("  Adding {} ({} bps)".format(fname, str(bgc_size)))
-                        
-                else:
-                    print(" Discarding {} (size less than {} bp, was {})".format(clusterName, str(min_bgc_size), str(bgc_size)))
-                
-                del bgc_locus_tags[:]
-                locus_sequences.clear()
-                locus_coordinates.clear()
-                
-                biosynthetic_genes.clear()
+            with open(os.path.join(dirpath,fname),"r") as gbk:
+                file_counter += 1
+                if process_gbk_files(gbk, clusterName, dirpath, current_dir, min_bgc_size, bgc_info, files_no_proteins, files_no_biosynthetic_genes):
+                    processed_sequences += 1
     
     if len(files_no_proteins) > 0:
         print("  Warning: Input set has files without protein sequences. They will be discarded")
@@ -409,7 +455,7 @@ def get_gbk_files(inputdir, outputdir, bgc_fasta_folder, min_bgc_size, exclude_g
     print("\n Starting with {:d} files".format(file_counter))
     print(" Files that had its sequence extracted: {:d}".format(processed_sequences))
 
-    return genbankDict
+    return
 
 
 def timeit(funct):
@@ -809,7 +855,12 @@ def cluster_distance_lcs(A, B, A_domlist, B_domlist, dcg_A, dcg_b, core_pos_A, c
             
         # Expansion is relatively costly. We ask for a minimum of 3 genes
         # for the core overlap before proceeding with expansion.
-        if sliceLengthA >= 3:
+        biosynthetic_hit_A = False        
+        for biosynthetic_position in core_pos_A:
+            if biosynthetic_position >= sliceStartA and biosynthetic_position <= (sliceStartA+sliceLengthA):
+                biosynthetic_hit_A = True
+                break
+        if sliceLengthA >= 3 or biosynthetic_hit_A:
             # LEFT SIDE
             # Find which bgc has the least genes to the left. If both have the same 
             # number, find the one that drives the expansion with highest possible score
@@ -1149,7 +1200,8 @@ def launch_hmmalign(cores, domain_sequence_list):
     pool.map(run_hmmalign, domain_sequence_list)
     pool.close()
     pool.join()
-    
+   
+
 def run_hmmalign(domain_file):
     #domain_file already contains the full path, with the file extension
     domain_base = domain_file.split(os.sep)[-1][:-6]
@@ -1215,6 +1267,7 @@ def stockholm_parser(stkFile):
                 outfile.write(sequence + "\n")
     return
 
+
 def runHmmScan(fastaPath, hmmPath, outputdir, verbose):
     """ Runs hmmscan command on a fasta file with a single core to generate a
     domtable file"""
@@ -1230,6 +1283,7 @@ def runHmmScan(fastaPath, hmmPath, outputdir, verbose):
 
     else:
         sys.exit("Error running hmmscan: Fasta file " + fastaPath + " doesn't exist")
+
 
 def parseHmmScan(hmmscanResults, pfd_folder, pfs_folder, overlapCutoff):
     outputbase = ".".join(hmmscanResults.split(os.sep)[-1].split(".")[:-1])
@@ -1275,9 +1329,8 @@ def parseHmmScan(hmmscanResults, pfd_folder, pfs_folder, overlapCutoff):
 
     return("")
 
-def clusterJsonBatch(bgcs, pathBase, className, matrix, pos_alignments, 
-                     cutoffs=[1.0], damping=0.9, clusterClans=False, 
-                     clanCutoff=(0.5,0.8), htmlFolder=None):
+
+def clusterJsonBatch(bgcs, pathBase, className, matrix, pos_alignments, cutoffs=[1.0], damping=0.9, clusterClans=False, clanCutoff=(0.5,0.8), htmlFolder=None):
     """BGC Family calling
     Uses csr sparse matrices to call Gene Cluster Families (GCFs) using Affinity
     Propagation.
@@ -1878,6 +1931,7 @@ class FloatRange(object):
     def __repr__(self):
         return '{}-{}'.format(self.start, self.end)
 
+
 def CMD_parser():
     parser = ArgumentParser(prog="BiG-SCAPE")
     
@@ -2013,8 +2067,15 @@ def CMD_parser():
                     1.0)], help="Generate networks using multiple raw distance \
                     cutoff values, example: --cutoffs 0.1, 0.25, 0.5, 1.0. Default: \
                     all values from 0.10 to 0.80 with 0.05 intervals.")
+    parser.add_argument("--mibig", dest="use_relevant_mibig", action=
+        "store_true", default=False, help="Use included BGCs from MIBiG bundle\
+         (version 1.3). See https://mibig.secondarymetabolites.org/")
+    #parser.add_argument("--mibig_relevant", dest="use_relevant_mibig", action=
+        #"store_true", default=False, help="Use included BGCs from MIBiG bundle\
+         #(version 1.3). BGCs not connected with your data will be removed in the\
+         #final network files")
 
-    parser.add_argument("--version", action="version", version="%(prog)s 201709")
+    parser.add_argument("--version", action="version", version="%(prog)s 201802")
 
     return parser.parse_args()
 
@@ -2115,7 +2176,7 @@ if __name__=="__main__":
         if cc <= 0.0 or fc > 1.0:
             sys.exit("Error: invalid cutoff value for GCC calling")
         
-
+    
     output_folder = str(options.outputdir)
     
     pfam_dir = str(options.pfam_dir)
@@ -2167,7 +2228,7 @@ if __name__=="__main__":
     run_data["input"] = {}
 
     # Make the following available for possibly deleting entries within parseHmmScan
-    global genbankDict, gbk_files, sampleDict, clusters, baseNames
+    global gbk_files, sampleDict, clusters, baseNames
     
     
     ### Step 1: Get all the input files. Write extract sequence and write fasta if necessary
@@ -2193,41 +2254,6 @@ if __name__=="__main__":
     create_directory(domains_folder, "Domains", False)    
     create_directory(pfs_folder, "pfs", False)
     create_directory(pfd_folder, "pfd", False)
-
-    # genbankDict: {cluster_name:[genbank_path_to_1st_instance,[sample_1,sample_2,...]]}
-    bgc_info = {} # Stores, per BGC: predicted type, gbk Description, number of records, width of longest record, GenBank's accession, Biosynthetic Genes' ids
-    genbankDict = get_gbk_files(options.inputdir, output_folder, bgc_fasta_folder, int(options.min_bgc_size), options.exclude_gbk_str, bgc_info)
-
-    # clusters and sampleDict contain the necessary structure for all-vs-all and sample analysis
-    clusters = list(genbankDict.keys())
-    
-    sampleDict = {} # {sampleName:set(bgc1,bgc2,...)}
-    gbk_files = [] # raw list of gbk file locations
-    for (cluster, (path, clusterSample)) in genbankDict.items():
-        gbk_files.append(path)
-        for sample in clusterSample:
-            clustersInSample = sampleDict.get(sample, set())
-            clustersInSample.add(cluster)
-            sampleDict[sample] = clustersInSample
-
-    
-    print("\nCreating output directories")
-    svg_folder = os.path.join(output_folder, "SVG")    
-    create_directory(svg_folder, "SVG", False)
-    network_folder = os.path.join(output_folder, "network_files")
-    create_directory(network_folder, "Networks", False)
-
-    print("\nTrying threading on {} cores".format(str(cores)))
-    
-    """BGCs -- 
-    dictionary of this structure:
-    BGCs = {'cluster_name_x': { 'general_domain_name_x' : ['specific_domain_name_1',
-     'specific_domain_name_2'] } }
-    - cluster_name_x: cluster name (can be anything)
-    - general_domain_name_x: PFAM ID, for example 'PF00550'
-    - specific_domain_name_x: ID of a specific domain that will allow to you to map it to names in DMS unequivocally
-     (for example, 'PF00550_start_end', where start and end are genomic positions)."""     
-    BGCs = {} #will contain the BGCs
     
     
     # Weights in the format J, DSS, AI, anchorboost
@@ -2249,12 +2275,88 @@ if __name__=="__main__":
         valid_classes.add(key.lower())
     user_banned_classes = set([a.strip().lower() for a in options.banned_classes])
     valid_classes = valid_classes - user_banned_classes
-
+    
+    # finally, define weights for mix
     bgc_class_weight["mix"] = (0.2, 0.75, 0.05, 2.0) # default when not separating in classes
     BGC_classes = defaultdict(list)
     # mix class will always be the last element of the tuple
     bgcClassNames = tuple(sorted(list(bgc_class_weight)) + ["mix"])
     assert bgcClassNames[-1] == 'mix'
+
+
+    # genbankDict: {cluster_name:[genbank_path_to_1st_instance,[sample_1,sample_2,...]]}
+    bgc_info = {} # Stores, per BGC: predicted type, gbk Description, number of records, width of longest record, GenBank's accession, Biosynthetic Genes' ids
+    genbankDict = {}
+    
+    
+    # Read included MIBiG
+    # Change this for every officially curated MIBiG bundle
+    # (file, final folder, number of bgcs)
+    mibig_zipfile_numbgcs = ("MIBiG_1.3_gbks.zip", "1.3+_final_gbks", 1393)
+    use_relevant_mibig = options.use_relevant_mibig
+    if use_relevant_mibig:
+        print("\n Trying to read bundled MIBiG BGCs as reference")
+        mibig_path = os.path.join(os.path.dirname(os.path.realpath(__file__)),"Annotated MIBiG reference")
+        bgcs_path = os.path.join(mibig_path,mibig_zipfile_numbgcs[1])
+        
+        # try to see if the zip file has already been decompressed
+        numbgcs = len(glob(os.path.join(bgcs_path,"*.gbk")))
+        if numbgcs == 0:
+            if not zipfile.is_zipfile(os.path.join(mibig_path,mibig_zipfile_numbgcs[0])):
+                sys.exit("Did not find file {}. Please re-download it from the official repository".format(mibig_zipfile_numbgcs[0]))
+                
+            with zipfile.ZipFile(os.path.join(mibig_path,mibig_zipfile_numbgcs[0]), 'r') as mibig_zip:
+                for fname in mibig_zip.namelist():
+                    if fname[-3:] != "gbk":
+                        continue
+                
+                    extractedbgc = mibig_zip.extract(fname,path=mibig_path)
+                    if verbose:
+                        print("  Extracted {}".format(extractedbgc))
+        
+        elif mibig_zipfile_numbgcs[2] == numbgcs:
+            print("  MIBiG BGCs seem to have been extracted already")
+        else:
+            sys.exit("Did not find the correct number of MIBiG BGCs ({}). Please clean the 'Annotated MIBiG reference' folder from any .gbk files first".format(mibig_zipfile_numbgcs[2]))
+        
+        get_gbk_files(bgcs_path, output_folder, bgc_fasta_folder, int(options.min_bgc_size), options.exclude_gbk_str, bgc_info)
+        
+        mibig_set = set()
+        for i in genbankDict.keys():
+            mibig_set.add(i)
+            
+    
+    get_gbk_files(options.inputdir, output_folder, bgc_fasta_folder, int(options.min_bgc_size), options.exclude_gbk_str, bgc_info)
+    
+    # clusters and sampleDict contain the necessary structure for all-vs-all and sample analysis
+    clusters = list(genbankDict.keys())
+    
+    sampleDict = {} # {sampleName:set(bgc1,bgc2,...)}
+    gbk_files = [] # raw list of gbk file locations
+    for (cluster, (path, clusterSample)) in genbankDict.items():
+        gbk_files.append(path)
+        for sample in clusterSample:
+            clustersInSample = sampleDict.get(sample, set())
+            clustersInSample.add(cluster)
+            sampleDict[sample] = clustersInSample
+    
+    print("\nCreating output directories")
+    svg_folder = os.path.join(output_folder, "SVG")    
+    create_directory(svg_folder, "SVG", False)
+    network_folder = os.path.join(output_folder, "network_files")
+    create_directory(network_folder, "Networks", False)
+
+    print("\nTrying threading on {} cores".format(str(cores)))
+    
+    """BGCs -- 
+    dictionary of this structure:
+    BGCs = {'cluster_name_x': { 'general_domain_name_x' : ['specific_domain_name_1',
+     'specific_domain_name_2'] } }
+    - cluster_name_x: cluster name (can be anything)
+    - general_domain_name_x: PFAM ID, for example 'PF00550'
+    - specific_domain_name_x: ID of a specific domain that will allow to you to map it to names in DMS unequivocally
+     (for example, 'PF00550_start_end', where start and end are genomic positions)."""     
+    BGCs = {} #will contain the BGCs
 
     bgcClassName2idx = dict(zip(bgcClassNames,range(len(bgcClassNames))))
 
@@ -2474,57 +2576,50 @@ if __name__=="__main__":
     # is activated. We have to open the pfd files to get the gene labels for
     # each domain
     # We now always have to have this data so the alignments are produced
+    pfd_dict_domains = defaultdict(int)
+    orf_keys = {}
     for outputbase in baseNames:
         DomainCountGene[outputbase] = array('B')
-        corebiosynthetic_position[outputbase] = array('B')
+        corebiosynthetic_position[outputbase] = array('H')
         BGCGeneOrientation[outputbase] = array('b')
         pfdFile = os.path.join(pfd_folder, outputbase + ".pfd")
-        filtered_matrix = [[part.strip() for part in line.split('\t')] for line in open(pfdFile)]
         
-        domain_counter = 0
-        gene_number = 0
-        gene_label = filtered_matrix[0][-1] # initialize with first label
-        has_corebio = False
-        for row in filtered_matrix:
-            if row[-1] != gene_label:
-                # we changed to a new gene. Check whether previous has a 
-                # core biosynthetic / anchor domain hit
-                if has_corebio:
-                    corebiosynthetic_position[outputbase].append(gene_number)
-                    has_corebio = False
-                
-                if gene_label[-1] == "+":
-                    BGCGeneOrientation[outputbase].append(1)
-                else:
-                    BGCGeneOrientation[outputbase].append(-1)
-                    
-                gene_label = row[-1] # update current label
-                gene_number += 1 # advance gene number
-                
-                # record number of domains in previous gene
-                DomainCountGene[outputbase].append(domain_counter)
-                domain_counter = 1 # reset domain counter
+        #pfd_dict_domains contains the number of domains annotated in the
+        # pfd file for each orf tag        
+        with open(pfdFile,"r") as pfdf:
+            for line in pfdf:
+                pfd_dict_domains[line.strip().split("\t")[-1]] += 1
+        
+        # extract the orf number from the tag and use it to traverse the BGC
+        for orf in pfd_dict_domains.keys():
+            orf_num = int(orf.split(":")[0].split("_ORF")[1])
+            orf_keys[orf_num] = orf
+        
+        orf_num = 0
+        for orf_key in sorted(orf_keys.keys()):
+            orf = orf_keys[orf_key]
+            if orf[-1] == "+":
+                BGCGeneOrientation[outputbase].append(1)
             else:
-                domain_counter += 1 # increase domain counter
+                BGCGeneOrientation[outputbase].append(-1)
                 
-            # TODO: if len(corebiosynthetic_position[outputbase]) == 0
-            # do something with the list of pfam ids. Specifically, mark
-            # (in this case TODO or always?) as biosynthetic genes, the ones that contain
-            # domains from a special list. This list of special domains
-            # comes from predicted domains within the CDSs marked as 'sec_met'
-            # by antismash
-            if row[-1] in bgc_info[outputbase].biosynthetic_genes:
-                has_corebio = True
+            DomainCountGene[outputbase].append(pfd_dict_domains[orf])
             
-        # There is no transition when we finish, so analyze last gene
-        if gene_label[-1] == "+":
-            BGCGeneOrientation[outputbase].append(1)
-        else:
-            BGCGeneOrientation[outputbase].append(-1)
-        DomainCountGene[outputbase].append(domain_counter)
-        if has_corebio:
-            corebiosynthetic_position[outputbase].append(gene_number)
+            if orf in bgc_info[outputbase].biosynthetic_genes:
+                corebiosynthetic_position[outputbase].append(orf_num)
+            orf_num += 1
+        
+        pfd_dict_domains.clear()
+        orf_keys.clear()
 
+        ## TODO: if len(corebiosynthetic_position[outputbase]) == 0
+        ## do something with the list of pfam ids. Specifically, mark
+        ## (in this case TODO or always?) as biosynthetic genes, the ones that contain
+        ## domains from a special list. This list of special domains
+        ## comes from predicted domains within the CDSs marked as 'sec_met'
+        ## by antismash
+            
+            
     # Get the ordered list of domains
     print(" Reading the ordered list of domains from the pfs files")
     for outputbase in baseNames:
@@ -2578,8 +2673,9 @@ if __name__=="__main__":
         # is not found, the text files with colors need to be updated
         print("  Reading BGC information and writing SVG")
         for bgc in working_set:
-            SVG(False, os.path.join(svg_folder,bgc+".svg"), genbankDict[bgc][0], os.path.join(pfd_folder,bgc+".pfd"), True, color_genes, color_domains, pfam_domain_categories, pfam_info, bgc_info[bgc].records, bgc_info[bgc].max_width)
-            
+            with open(genbankDict[bgc][0],"r") as handle:
+                SVG(False, os.path.join(svg_folder,bgc+".svg"), handle, bgc, os.path.join(pfd_folder,bgc+".pfd"), True, color_genes, color_domains, pfam_domain_categories, pfam_info, bgc_info[bgc].records, bgc_info[bgc].max_width)
+        
         color_genes.clear()
         color_domains.clear()
         pfam_domain_categories.clear()
@@ -2769,6 +2865,8 @@ if __name__=="__main__":
                 predicted_class = sort_bgc(product)
                 if predicted_class.lower() in valid_classes:
                     mix_set.append(clusterIdx)
+            
+            print("\n  {} ({} BGCs)".format("Mix", str(len(mix_set))))
             
             # create output directory   
             create_directory(os.path.join(network_files_folder, "mix"), "  Mix", False)
