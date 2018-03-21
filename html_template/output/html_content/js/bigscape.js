@@ -773,32 +773,15 @@ BigscapeFunc.openDetail = function(id, bs_svg, bs_data, bs_to_cl, bs_families, d
 BigscapeFunc.openCompDetail = function(ids, bs_svg, bs_data, bs_to_cl, bs_families, bs_alignment, det_ui) {
   det_ui.html("");
   var svgs = [];
-  var min_offset = 0;
-  var offsets = [];
-  var last_id = -1;
   for (var i in ids) {
     var id = ids[i];
     svgs.push(bs_svg[id].clone(true, true));
-    var offset = 0;
-    if (((offsets.length) > 0) && last_id >= 0) {
-      if (i > last_id) {
-        offset = offsets[offsets.length - 1] + parseInt(bs_alignment[i][last_id] / (1000 / bs_svg[id].attr("height")));
-      } else {
-        offset = offsets[offsets.length - 1] - parseInt(bs_alignment[last_id][i] / (1000 / bs_svg[id].attr("height")));
-      }
-    }
-    offsets.push(offset);
-    last_id = id;
-  }
-  for (var i in offsets) {
-    if (offsets[i] < min_offset) {
-      min_offset = offsets[i];
-    }
   }
   for (var i in svgs) {
-    svgs[i].css("padding-left", "" + (offsets[i] - min_offset) + "px");
+    svgs[i].find("g").attr('transform', 'scale(0.5)');
     det_ui.append(svgs[i]);
   }
+  det_ui.css("margin-top", "1em");
 }
 
 // ...
