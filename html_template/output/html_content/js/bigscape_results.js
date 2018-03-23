@@ -1,2 +1,0 @@
-var bigscape_results = [
-];
