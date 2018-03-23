@@ -9,6 +9,7 @@ PI: Marnix Medema               marnix.medema@wur.nl
 Main developers:
 Jorge Navarro                   j.navarro@westerdijkinstitute.nl
 Emmanuel (Emzo) de los Santos   E.De-Los-Santos@warwick.ac.uk
+Satria Kautsar                  satria.kautsar@wur.nl
 
 
 Usage:   Please see `python bigscape.py -h`
@@ -43,6 +44,7 @@ import sys
 import time
 from glob import glob
 from itertools import combinations
+from itertools import product as combinations_product
 from collections import defaultdict
 from multiprocessing import Pool, cpu_count
 from argparse import ArgumentParser
@@ -76,8 +78,8 @@ global mibig_set
 global genbankDict
 global valid_classes
 
-def process_gbk_files(gbk, clusterName, dirpath, current_dir, min_bgc_size, bgc_info, files_no_proteins, files_no_biosynthetic_genes):
-    """ Given a file handle of a GenBank file, reads information about the BGC"""
+def process_gbk_files(gbk, min_bgc_size, bgc_info, files_no_proteins, files_no_biosynthetic_genes):
+    """ Given a file path to a GenBank file, reads information about the BGC"""
 
     biosynthetic_genes = set()
     product_list_per_record = []
@@ -91,8 +93,9 @@ def process_gbk_files(gbk, clusterName, dirpath, current_dir, min_bgc_size, bgc_
     bgc_locus_tags = []
     locus_sequences = {}
     locus_coordinates = {}
-    outputfile = os.path.join(bgc_fasta_folder, clusterName + '.fasta')
-    fname = clusterName + ".gbk"
+    
+    file_folder, fname = os.path.split(gbk)
+    clusterName = fname[:-4]
 
     # See if we need to keep the sequence
     # (Currently) we have to open the file anyway to read all its 
@@ -109,7 +112,7 @@ def process_gbk_files(gbk, clusterName, dirpath, current_dir, min_bgc_size, bgc_
         # basic file verification. Substitutes check_data_integrity
         records = list(SeqIO.parse(gbk, "genbank"))
     except ValueError as e:
-        print("   Error with file {}: \n    '{}'".format(os.path.join(dirpath, fname), str(e)))
+        print("   Error with file {}: \n    '{}'".format(gbk, str(e)))
         print("    (This file will be excluded from the analysis)")
         return
     else:
@@ -303,16 +306,16 @@ def process_gbk_files(gbk, clusterName, dirpath, current_dir, min_bgc_size, bgc_
                 files_no_biosynthetic_genes.append(clusterName+".gbk")
 
             # TODO why re-process everything if it was already in the list?
-            # if name already in genbankDict.keys -> add current_dir
+            # if name already in genbankDict.keys -> add file_folder
             # else: extract all info
             if clusterName in genbankDict.keys():
-                # Name was already in use. Use current_dir as the new sample's name
-                genbankDict[clusterName][1].add(current_dir) 
+                # Name was already in use. Use file_folder as the new sample's name
+                genbankDict[clusterName][1].add(file_folder) 
             else:
                 # See if we need to write down the sequence
                 if total_seq_length > 0:
                     # location of first instance of the file is genbankDict[clustername][0]
-                    genbankDict.setdefault(clusterName, [os.path.join(dirpath, clusterName+".gbk"), set([current_dir])])
+                    genbankDict.setdefault(clusterName, [gbk, set([file_folder])])
 
                     if save_fasta:
                         # Find overlaps in CDS regions and delete the shortest ones.
@@ -374,12 +377,12 @@ def process_gbk_files(gbk, clusterName, dirpath, current_dir, min_bgc_size, bgc_
                 print("  Adding {} ({} bps)".format(fname, str(bgc_size)))
                                 
         else:
-            print(" Discarding {} (size less than {} bp, was {})".format(clusterName, str(min_bgc_size), str(bgc_size)))        
+            print(" Discarding {} (size less than {} bp, was {})".format(clusterName, str(min_bgc_size), str(bgc_size)))
     
     return adding_sequence
 
 
-def get_gbk_files(inputdir, outputdir, bgc_fasta_folder, min_bgc_size, exclude_gbk_str, bgc_info):
+def get_gbk_files(inputpath, outputdir, bgc_fasta_folder, min_bgc_size, exclude_gbk_str, bgc_info):
     """Searches given directory for genbank files recursively, will assume that
     the genbank files that have the same name are the same genbank file. 
     Returns a dictionary that contains the names of the clusters found as keys
@@ -393,50 +396,35 @@ def get_gbk_files(inputdir, outputdir, bgc_fasta_folder, min_bgc_size, exclude_g
     processed_sequences = 0
     files_no_proteins = []
     files_no_biosynthetic_genes = []
-    
-    print("\nImporting GenBank files")
-    
-    # Exclude single string
-    if type(exclude_gbk_str) == str and exclude_gbk_str != "":
-        print(" Skipping files with '{}' in their filename".format(exclude_gbk_str))
-    # Exclude from list of strings
-    elif type(exclude_gbk_str) == list and exclude_gbk_str != []:
-        print(" Skipping files with one or more of the following strings in \
-            their filename: {}".format(", ".join(exclude_gbk_str)))
 
-    current_dir = ""
-    for dirpath, dirnames, filenames in os.walk(inputdir):
-        head, tail = os.path.split(dirpath)
 
-        if current_dir != tail:
-            current_dir = tail
-
-        for fname in filenames:
-            if fname[-3:] != "gbk":
-                continue
-            
-            clusterName = fname[:-4]
-            
-            if type(exclude_gbk_str) == str and exclude_gbk_str != "" and \
-                                                exclude_gbk_str in fname:
-                if verbose:
-                    print(" Skipping file " + fname)
-                continue
-            elif type(exclude_gbk_str) == list and exclude_gbk_str != [] and \
-                            any([word in fname for word in exclude_gbk_str]):
+    if os.path.isfile(inputpath):
+        files = [inputpath]
+    else:
+        files = glob(os.path.join(inputpath,"**/*.gbk"), recursive=True)
+        
+    for filepath in files:
+        file_folder, fname = os.path.split(filepath)
+        
+        if type(exclude_gbk_str) == str and exclude_gbk_str != "" and \
+                                            exclude_gbk_str in fname:
+            if verbose:
                 print(" Skipping file " + fname)
-                continue
-            if "_ORF" in fname:
-                print(" Skipping file {} (string '_ORF' is used internally)".format(fname))
-                continue
-            
-            if " " in fname:
-                sys.exit("\nError: Input GenBank files should not have spaces in their filenames as HMMscan cannot process them properly ('too many arguments').")
-            
-            with open(os.path.join(dirpath,fname),"r") as gbk:
-                file_counter += 1
-                if process_gbk_files(gbk, clusterName, dirpath, current_dir, min_bgc_size, bgc_info, files_no_proteins, files_no_biosynthetic_genes):
-                    processed_sequences += 1
+            continue
+        elif type(exclude_gbk_str) == list and exclude_gbk_str != [] and \
+                        any([word in fname for word in exclude_gbk_str]):
+            print(" Skipping file " + fname)
+            continue
+        if "_ORF" in fname:
+            print(" Skipping file {} (string '_ORF' is used internally)".format(fname))
+            continue
+        
+        if " " in filepath:
+            sys.exit("\nError: Input GenBank files should not have spaces in their path as hmmscan cannot process them properly ('too many arguments').")
+        
+        file_counter += 1
+        if process_gbk_files(filepath, min_bgc_size, bgc_info, files_no_proteins, files_no_biosynthetic_genes):
+            processed_sequences += 1
     
     if len(files_no_proteins) > 0:
         print("  Warning: Input set has files without protein sequences. They will be discarded")
@@ -528,7 +516,7 @@ def generate_dist_matrix(parms):
         print("   Warning: Regarding distance between clusters {} and {}:".format(cluster1, cluster2))
         if len(domain_list_A) == 0 and len(domain_list_B) == 0:
             print("   None have identified domains. Distance cannot be calculated")
-        elif (domain_list_A) == 0:            
+        elif (domain_list_A) == 0:
             print("   Cluster {} has no identified domains. Distance set to 1".format(cluster1))
         else:
             print("   Cluster {} has no identified domains. Distance set to 1".format(cluster2))
@@ -855,7 +843,7 @@ def cluster_distance_lcs(A, B, A_domlist, B_domlist, dcg_A, dcg_b, core_pos_A, c
             
         # Expansion is relatively costly. We ask for a minimum of 3 genes
         # for the core overlap before proceeding with expansion.
-        biosynthetic_hit_A = False        
+        biosynthetic_hit_A = False
         for biosynthetic_position in core_pos_A:
             if biosynthetic_position >= sliceStartA and biosynthetic_position <= (sliceStartA+sliceLengthA):
                 biosynthetic_hit_A = True
@@ -923,7 +911,7 @@ def cluster_distance_lcs(A, B, A_domlist, B_domlist, dcg_A, dcg_b, core_pos_A, c
                     score_B, xb = score_expansion(B_string[sliceStartB+sliceLengthB:], A_string[sliceStartA+sliceLengthA:], True)
                     
                     sliceLengthA += len(A_string[sliceStartA+sliceLengthA:])
-                    sliceLengthB += xb              
+                    sliceLengthB += xb
                     
                 else:
                     score_A, xa = score_expansion(A_string[sliceStartA+sliceLengthA:], B_string[sliceStartB+sliceLengthB:], True)
@@ -1555,7 +1543,7 @@ def clusterJsonBatch(bgcs, pathBase, className, matrix, pos_alignments, cutoffs=
             # and 2) appear with the most frequency. Iterate over the different
             # frequencies (descending) until set is not empty
             tree_domains = set()
-            frequencies = sorted(set(frequency_table.values()), reverse=True)            
+            frequencies = sorted(set(frequency_table.values()), reverse=True)
             
             # first try with domain(s) with max frequency, even if it's just one
             f = 0 
@@ -1621,7 +1609,7 @@ def clusterJsonBatch(bgcs, pathBase, className, matrix, pos_alignments, cutoffs=
                                 
                                 matches = 0
                                 gaps = 0
-                                                                
+                                
                                 for position in range(seq_length):
                                     if aligned_seqA[position] == aligned_seqB[position]:
                                         if aligned_seqA[position] != "-":
@@ -1680,7 +1668,7 @@ def clusterJsonBatch(bgcs, pathBase, className, matrix, pos_alignments, cutoffs=
             if not os.path.isfile(newick_file_path) or os.path.getsize(newick_file_path) == 0:
                 print(newick_file_path)
                 sys.exit(" ERROR: newick file not created or empty (GCF_c{:4.2f}_{:05d})".format(cutoff,exemplar_idx))
-            else:   
+            else:
                 with open(newick_file_path,"r") as newick_file:
                     try:
                         tree = Phylo.read(newick_file, 'newick')
@@ -1760,7 +1748,7 @@ def clusterJsonBatch(bgcs, pathBase, className, matrix, pos_alignments, cutoffs=
                 clanLabels = []
             
         else:
-            clanLabels = []        
+            clanLabels = []
 
         if len(clanLabels) > 0:
             clansDict = defaultdict(list)
@@ -1972,19 +1960,6 @@ def CMD_parser():
                       help="Provide the minimum size of a BGC to be included in\
                       the analysis. Default is 0 base pairs")
     
-    parser.add_argument("-s", "--samples", dest="samples", action="store_true", 
-                        default=False, help="Separate the input files into \
-                        samples according to their containing folder within the \
-                        input folder. Toggle to activate")
-    
-    parser.add_argument("--no_all", dest="no_all", action="store_true", 
-                        default=False, help="By default, BiG-SCAPE uses a single\
-                        data set comprised of all input files available \
-                        recursively within the input folder. Toggle to \
-                        disactivate this behaviour (in that case, if the \
-                        --samples parameter is not activated, BiG-SCAPE will not\
-                        create any network file)")
-    
     parser.add_argument("--mix", dest="mix", action="store_true", default=False, 
                         help="By default, BiG-SCAPE separates the analysis \
                         according to the BGC product (PKS Type I, NRPS, RiPPs, etc.) \
@@ -2074,8 +2049,13 @@ def CMD_parser():
         #"store_true", default=False, help="Use included BGCs from MIBiG bundle\
          #(version 1.3). BGCs not connected with your data will be removed in the\
          #final network files")
+     
+    parser.add_argument("--query_bgc", help="Instead of making an all-VS-all \
+                    comparison of all the input BGCs, choose one BGC to \
+                    compare with the rest of the set (one-VS-all). The \
+                    query BGC does not have to be within inputdir")
 
-    parser.add_argument("--version", action="version", version="%(prog)s 201802")
+    parser.add_argument("--version", action="version", version="%(prog)s 201803")
 
     return parser.parse_args()
 
@@ -2147,9 +2127,6 @@ if __name__=="__main__":
     
     cores = int(options.cores)
     
-    options_all = not options.no_all
-    options_samples = options.samples
-    
     options_mix = options.mix
     options_classify = not options.no_classify
     
@@ -2162,9 +2139,10 @@ if __name__=="__main__":
         if c <= 0.0 or c > 1.0:
             print(" Removing invalid cutoff value {}".format(str(c)))
             cutoff_list.remove(c)
+    max_cutoff = max(cutoff_list)
             
-            
-    # if we want to classify by clans make sure that the clanCutoff is included in the cutoffs to do AP in
+    # if we want to classify by clans make sure that the clanCutoff is included
+    # in the cutoffs to do AP in clusterJsonBatch
     if options.clans:
         fc, cc = options.clan_cutoff
         if c not in cutoff_list:
@@ -2193,23 +2171,24 @@ if __name__=="__main__":
             print("Then use hmmpress on it, and use the --pfam_dir parameter to point to the location of the files")
         sys.exit()
 
-                    
+    has_query_bgc = False
+    if options.query_bgc:
+        has_query_bgc = True
+        if not os.path.isfile(options.query_bgc):
+            sys.exit("Error: Query BGC not found")
+            
     verbose = options.verbose
     
     run_mode_string = ""
     networks_folder_all = "networks_all"
-    networks_folder_samples = "networks_samples"    
     if options.hybrids:
         networks_folder_all += "_hybrids"
-        networks_folder_samples += "_hybrids"
         run_mode_string += "_hybrids"
     if mode == "auto":
         networks_folder_all += "_auto"
-        networks_folder_samples += "_auto"
         run_mode_string += "_auto"
     elif mode == "lcs":
         networks_folder_all += "_lcs"
-        networks_folder_samples += "_lcs"
         run_mode_string += "_glocal"
     else:
         run_mode_string += "_full"
@@ -2244,14 +2223,14 @@ if __name__=="__main__":
     # cached stuff
     cache_folder = os.path.join(output_folder, "cache")
     bgc_fasta_folder = os.path.join(cache_folder, "fasta")
-    domtable_folder = os.path.join(cache_folder, "domtable")    
+    domtable_folder = os.path.join(cache_folder, "domtable")
     pfs_folder = os.path.join(cache_folder, "pfs")
-    pfd_folder = os.path.join(cache_folder, "pfd")    
+    pfd_folder = os.path.join(cache_folder, "pfd")
     domains_folder = os.path.join(cache_folder, "domains")
     create_directory(cache_folder, "Cache", False)
     create_directory(bgc_fasta_folder, "BGC fastas", False)
     create_directory(domtable_folder, "Domtable", False)
-    create_directory(domains_folder, "Domains", False)    
+    create_directory(domains_folder, "Domains", False)
     create_directory(pfs_folder, "pfs", False)
     create_directory(pfd_folder, "pfd", False)
     
@@ -2288,6 +2267,14 @@ if __name__=="__main__":
     bgc_info = {} # Stores, per BGC: predicted type, gbk Description, number of records, width of longest record, GenBank's accession, Biosynthetic Genes' ids
     genbankDict = {}
     
+    # Exclude single string
+    exclude_gbk_str = options.exclude_gbk_str
+    if type(exclude_gbk_str) == str and exclude_gbk_str != "":
+        print(" Skipping files with '{}' in their filename".format(exclude_gbk_str))
+    # Exclude from list of strings
+    elif type(exclude_gbk_str) == list and exclude_gbk_str != []:
+        print(" Skipping files with one or more of the following strings in \
+            their filename: {}".format(", ".join(exclude_gbk_str)))
     
     # Read included MIBiG
     # Change this for every officially curated MIBiG bundle
@@ -2296,7 +2283,7 @@ if __name__=="__main__":
     use_relevant_mibig = options.use_relevant_mibig
     if use_relevant_mibig:
         print("\n Trying to read bundled MIBiG BGCs as reference")
-        mibig_path = os.path.join(os.path.dirname(os.path.realpath(__file__)),"Annotated MIBiG reference")
+        mibig_path = os.path.join(os.path.dirname(os.path.realpath(__file__)),"Annotated_MIBiG_reference")
         bgcs_path = os.path.join(mibig_path,mibig_zipfile_numbgcs[1])
         
         # try to see if the zip file has already been decompressed
@@ -2319,15 +2306,28 @@ if __name__=="__main__":
         else:
             sys.exit("Did not find the correct number of MIBiG BGCs ({}). Please clean the 'Annotated MIBiG reference' folder from any .gbk files first".format(mibig_zipfile_numbgcs[2]))
         
-        get_gbk_files(bgcs_path, output_folder, bgc_fasta_folder, int(options.min_bgc_size), options.exclude_gbk_str, bgc_info)
+        print("\nImporting MIBiG files")
+        get_gbk_files(bgcs_path, output_folder, bgc_fasta_folder, int(options.min_bgc_size), exclude_gbk_str, bgc_info)
         
         mibig_set = set()
         for i in genbankDict.keys():
             mibig_set.add(i)
             
     
-    get_gbk_files(options.inputdir, output_folder, bgc_fasta_folder, int(options.min_bgc_size), options.exclude_gbk_str, bgc_info)
+    print("\nImporting GenBank files")
+    get_gbk_files(options.inputdir, output_folder, bgc_fasta_folder, int(options.min_bgc_size), exclude_gbk_str, bgc_info)
     
+    if has_query_bgc:
+        query_bgc = ".".join(options.query_bgc.split(os.sep)[-1].split(".")[:-1])
+        if query_bgc in genbankDict:
+            print("\nQuery BGC already added")
+            pass
+        else:
+            print("\nImporting query BGC file")
+            get_gbk_files(options.query_bgc, output_folder, bgc_fasta_folder, int(options.min_bgc_size), exclude_gbk_str, bgc_info)
+            
+        if query_bgc not in genbankDict:
+            sys.exit("Error: not able to include Query BGC (check valid classes, BGC size, etc. Run again with --verbose)")
     # clusters and sampleDict contain the necessary structure for all-vs-all and sample analysis
     clusters = list(genbankDict.keys())
     
@@ -2341,7 +2341,7 @@ if __name__=="__main__":
             sampleDict[sample] = clustersInSample
     
     print("\nCreating output directories")
-    svg_folder = os.path.join(output_folder, "SVG")    
+    svg_folder = os.path.join(output_folder, "SVG")
     create_directory(svg_folder, "SVG", False)
     network_folder = os.path.join(output_folder, "network_files")
     create_directory(network_folder, "Networks", False)
@@ -2355,7 +2355,7 @@ if __name__=="__main__":
     - cluster_name_x: cluster name (can be anything)
     - general_domain_name_x: PFAM ID, for example 'PF00550'
     - specific_domain_name_x: ID of a specific domain that will allow to you to map it to names in DMS unequivocally
-     (for example, 'PF00550_start_end', where start and end are genomic positions)."""     
+     (for example, 'PF00550_start_end', where start and end are genomic positions)."""
     BGCs = {} #will contain the BGCs
 
     bgcClassName2idx = dict(zip(bgcClassNames,range(len(bgcClassNames))))
@@ -2529,7 +2529,7 @@ if __name__=="__main__":
     pfdBases = allPfdFiles.intersection(pfdFiles)
     
     # verify previous step. 
-    # All BGCs without predicted domains should no longer be in baseNames    
+    # All BGCs without predicted domains should no longer be in baseNames
     if len(pfdFiles - pfdBases) > 0:
         sys.exit("Error! The following files did NOT have their domtable files processed: " + ", ".join(pfdFiles - pfdBases))
 
@@ -2585,7 +2585,7 @@ if __name__=="__main__":
         pfdFile = os.path.join(pfd_folder, outputbase + ".pfd")
         
         #pfd_dict_domains contains the number of domains annotated in the
-        # pfd file for each orf tag        
+        # pfd file for each orf tag
         with open(pfdFile,"r") as pfdf:
             for line in pfdf:
                 pfd_dict_domains[line.strip().split("\t")[-1]] += 1
@@ -2755,18 +2755,31 @@ if __name__=="__main__":
     
     
     # If there's something to analyze, load the aligned sequences
-    if options_samples or options_all:
-        print(" Trying to read domain alignments (*.algn files)")
-        aligned_files_list = glob(os.path.join(domains_folder, "*.algn"))
-        if len(aligned_files_list) == 0:
-            sys.exit("No aligned sequences found in the domain folder (run without the --skip_ma parameter or point to the correct output folder)")
-        for aligned_file in aligned_files_list:
-            with open(aligned_file, "r") as aligned_file_handle:
-                fasta_dict = fasta_parser(aligned_file_handle)
-                for header in fasta_dict:
-                    AlignedDomainSequences[header] = fasta_dict[header]
+    print(" Trying to read domain alignments (*.algn files)")
+    aligned_files_list = glob(os.path.join(domains_folder, "*.algn"))
+    if len(aligned_files_list) == 0:
+        sys.exit("No aligned sequences found in the domain folder (run without the --skip_ma parameter or point to the correct output folder)")
+    for aligned_file in aligned_files_list:
+        with open(aligned_file, "r") as aligned_file_handle:
+            fasta_dict = fasta_parser(aligned_file_handle)
+            for header in fasta_dict:
+                AlignedDomainSequences[header] = fasta_dict[header]
 
     clusterNames = tuple(sorted(clusters))
+    
+    # we have to find the idx of query_bgc
+    if has_query_bgc:
+        # we have to find the idx of query_bgc
+        idx = 0
+        
+        for bgc in clusterNames:
+            if bgc == query_bgc:
+                query_bgc_idx = idx
+                break
+            idx += 1
+        # it _should_ have been found but let's make sure...
+        if clusterNames[idx] != query_bgc:
+            sys.exit("Error finding the index of Query BGC")
 
     # fetch genome list for overview.js
     genomes = []
@@ -2838,42 +2851,86 @@ if __name__=="__main__":
 
 
     # Try to make default analysis using all files found inside the input folder
-    if options_all:
-        print("\nGenerating distance network files with ALL available input files")
+    print("\nGenerating distance network files with ALL available input files")
+
+    # This version contains info on all bgcs with valid classes
+    print("   Writing the complete Annotations file for the complete set")
+    network_annotation_path = os.path.join(network_files_folder, "Network_Annotations_Full.tsv")
+    with open(network_annotation_path, "w") as network_annotation_file:
+        network_annotation_file.write("BGC\tAccesion ID\tDescription\tProduct Prediction\tBiG-SCAPE class\tOrganism\tTaxonomy\n")
+        for bgc in clusterNames:
+            product = bgc_info[bgc].product
+            network_annotation_file.write("\t".join([bgc, bgc_info[bgc].accession_id, bgc_info[bgc].description, product, sort_bgc(product), bgc_info[bgc].organism, bgc_info[bgc].taxonomy]) + "\n")
     
-        # This version contains *all* bgcs, including the ones from excluded classes
-        # TODO: BiG-SCAPE class should contain ALL possible classes the bgc might
-        # end up in
-        print("   Writing the complete Annotations file for the complete set")
-        network_annotation_path = os.path.join(network_files_folder, "Network_Annotations_Full.tsv")
-        with open(network_annotation_path, "w") as network_annotation_file:
-            network_annotation_file.write("BGC\tAccesion ID\tDescription\tProduct Prediction\tBiG-SCAPE class\tOrganism\tTaxonomy\n")
-            for bgc in clusterNames:
-                product = bgc_info[bgc].product
-                network_annotation_file.write("\t".join([bgc, bgc_info[bgc].accession_id, bgc_info[bgc].description, product, sort_bgc(product), bgc_info[bgc].organism, bgc_info[bgc].taxonomy]) + "\n")
+    # Making network files mixing all classes
+    if options_mix:
+        print("\n Mixing all BGC classes")
         
-        # Making network files mixing all classes
-        if options_mix:
-            print("\n Mixing all BGC classes")
+        # only choose from valid classes
+        mix_set = []
+        
+        # Indexes ALL cluster names in the working set
+        for clusterIdx,clusterName in enumerate(clusterNames):
+            product = bgc_info[clusterName].product
+            predicted_class = sort_bgc(product)
+            if predicted_class.lower() in valid_classes:
+                mix_set.append(clusterIdx)
+        
+        print("\n  {} ({} BGCs)".format("Mix", str(len(mix_set))))
+        
+        # create output directory
+        create_directory(os.path.join(network_files_folder, "mix"), "  Mix", False)
+        
+        print("  Calculating all pairwise distances")
+        if has_query_bgc:
+            pairs = set([tuple(sorted(combo)) for combo in combinations_product([query_bgc_idx], mix_set)])
+        else:
+            # convert into a set of ordered tuples
+            pairs = set([tuple(sorted(combo)) for combo in combinations(mix_set, 2)])
+        
+        cluster_pairs = [(x, y, -1) for (x, y) in pairs]
+        pairs.clear()
+        network_matrix_mix = generate_network(cluster_pairs, cores)
+        del cluster_pairs[:]
+        
+        # add the rest of the edges in the "Query network"
+        if has_query_bgc:
+            # TODO this would be a good time to remove every row in the 
+            # network matrix that is below max_cutoff
+            # It doesn't currently affect anything (other than wasting some RAM)
+            new_set = []
+            for row in network_matrix_mix:
+                a, b, distance = int(row[0]), int(row[1]), row[2]
+                
+                if a == b:
+                    continue
+                
+                if distance <= max_cutoff:
+                    if a == query_bgc_idx:
+                        new_set.append(b)
+                    else:
+                        new_set.append(a)
             
-            # only choose from valid classes
-            mix_set = []
+            pairs = set([tuple(sorted(combo)) for combo in combinations(new_set, 2)])
+            cluster_pairs = [(x, y, -1) for (x, y) in pairs]
+            pairs.clear()
+            network_matrix_new_set = generate_network(cluster_pairs, cores)
+            del cluster_pairs[:]
             
-            # Indexes ALL cluster names in the working set
-            for clusterIdx,clusterName in enumerate(clusterNames):
-                product = bgc_info[clusterName].product
-                predicted_class = sort_bgc(product)
-                if predicted_class.lower() in valid_classes:
-                    mix_set.append(clusterIdx)
             
-            print("\n  {} ({} BGCs)".format("Mix", str(len(mix_set))))
+            # Update the network matrix (QBGC-vs-all) with the distances of
+            # QBGC's GCF
+            network_matrix_mix.extend(network_matrix_new_set)
             
-            # create output directory   
-            create_directory(os.path.join(network_files_folder, "mix"), "  Mix", False)
-            
+            # Update actual list of BGCs that we'll use
+            mix_set = new_set
+            mix_set.extend([query_bgc_idx])
+            mix_set.sort() # clusterJsonBatch expects ordered indices
+        
             # Create an additional file with the list of all clusters in the class + other info
+            # This version of the file only has information on the BGCs connected to Query BGC
             print("   Writing annotation file")
-            network_annotation_path = os.path.join(network_files_folder, "mix", "Network_Annotations_mix.tsv")
+            network_annotation_path = os.path.join(network_files_folder, "mix", "Network_Annotations_mix_QueryBGC.tsv")
             with open(network_annotation_path, "w") as network_annotation_file:
                 network_annotation_file.write("BGC\tAccesion ID\tDescription\tProduct Prediction\tBiG-SCAPE class\tOrganism\tTaxonomy\n")
                 for idx in mix_set:
@@ -2883,101 +2940,158 @@ if __name__=="__main__":
                         bgc_info[bgc].accession_id, bgc_info[bgc].description, 
                         product, sort_bgc(product), bgc_info[bgc].organism, 
                         bgc_info[bgc].taxonomy]) + "\n")
-                           
-                
-            print("  Calculating all pairwise distances")
-            pairs = set([tuple(sorted(combo)) for combo in combinations(mix_set, 2)])
             
-            cluster_pairs = [(x, y, -1) for (x, y) in pairs]
-            pairs.clear()
-            network_matrix_mix = generate_network(cluster_pairs, cores)
-            del cluster_pairs[:]
-                
-            print("  Writing output files")
-            pathBase = os.path.join(network_files_folder, "mix")
-            filenames = []
-            for cutoff in cutoff_list:
-                filenames.append(os.path.join(pathBase, "mix_c{:.2f}.network".format(cutoff)))
-            cutoffs_and_filenames = list(zip(cutoff_list, filenames))
-            del filenames[:]
-            write_network_matrix(network_matrix_mix, cutoffs_and_filenames, include_singletons, clusterNames, bgc_info)
-               
-            print("  Calling Gene Cluster Families")
-            reduced_network = []
-            pos_alignments = {}
-            for row in network_matrix_mix:
-                reduced_network.append([int(row[0]), int(row[1]), row[2]])
-                reverse = False
-                if row[-1] == 1.0:
-                    reverse = True
-                pa = pos_alignments.setdefault(int(row[0]),{})
-                # lcsStartA, lcsStartB, seedLength, reverse={True,False}
-                pa[int(row[1])] = (int(row[-4]), int(row[-3]), int(row[-2]), reverse)
-            del network_matrix_mix[:]
-            html_subs.append({ "name" : "mix", "css" : "Others", "label" : "Mixed"})
-            family_data = clusterJsonBatch(mix_set, pathBase, "mix", reduced_network, pos_alignments,
-                             cutoffs=cutoff_list, clusterClans=options.clans,
-                             clanCutoff=options.clan_cutoff, htmlFolder=network_html_folder)
-            run_data["networks"].append(family_data)
-            del mix_set[:]
-            del reduced_network[:]
+        print("  Writing output files")
+        pathBase = os.path.join(network_files_folder, "mix")
+        filenames = []
+        for cutoff in cutoff_list:
+            filenames.append(os.path.join(pathBase, "mix_c{:.2f}.network".format(cutoff)))
+        cutoffs_and_filenames = list(zip(cutoff_list, filenames))
+        del filenames[:]
+        write_network_matrix(network_matrix_mix, cutoffs_and_filenames, include_singletons, clusterNames, bgc_info)
             
-            
-        # Making network files separating by BGC class
-        if options_classify:
-            print("\n Working for each BGC class")
-            
-            # reinitialize BGC_classes to make sure the bgc lists are empty
-            BGC_classes = defaultdict(list)
+        print("  Calling Gene Cluster Families")
+        reduced_network = []
+        pos_alignments = {}
+        for row in network_matrix_mix:
+            reduced_network.append([int(row[0]), int(row[1]), row[2]])
+            reverse = False
+            if row[-1] == 1.0:
+                reverse = True
+            pa = pos_alignments.setdefault(int(row[0]),{})
+            # lcsStartA, lcsStartB, seedLength, reverse={True,False}
+            pa[int(row[1])] = (int(row[-4]), int(row[-3]), int(row[-2]), reverse)
+        del network_matrix_mix[:]
+        html_subs.append({ "name" : "mix", "css" : "Others", "label" : "Mixed"})
+        family_data = clusterJsonBatch(mix_set, pathBase, "mix", reduced_network, pos_alignments,
+                            cutoffs=cutoff_list, clusterClans=options.clans,
+                            clanCutoff=options.clan_cutoff, htmlFolder=network_html_folder)
+        run_data["networks"].append(family_data)
+        del mix_set[:]
+        del reduced_network[:]
         
-            # Preparing gene cluster classes
-            print("  Sorting the input BGCs\n")
+        
+    # Making network files separating by BGC class
+    if options_classify:
+        print("\n Working for each BGC class")
+        
+        # reinitialize BGC_classes to make sure the bgc lists are empty
+        BGC_classes = defaultdict(list)
+    
+        # Preparing gene cluster classes
+        print("  Sorting the input BGCs\n")
+        
+        # Indexes ALL cluster names in the working set
+        for clusterIdx,clusterName in enumerate(clusterNames):
+            product = bgc_info[clusterName].product
+            predicted_class = sort_bgc(product)
+            if predicted_class.lower() in valid_classes:
+                BGC_classes[predicted_class].append(clusterIdx)
             
-            # Indexes ALL cluster names in the working set
-            for clusterIdx,clusterName in enumerate(clusterNames):
-                product = bgc_info[clusterName].product
-                predicted_class = sort_bgc(product)
-                if predicted_class.lower() in valid_classes:
-                    BGC_classes[predicted_class].append(clusterIdx)
+            # possibly add hybrids to 'pure' classes
+            if options.hybrids:
+                if predicted_class == "PKS-NRP_Hybrids":
+                    if "nrps" in valid_classes:
+                        BGC_classes["NRPS"].append(clusterIdx)
+                    if "t1pks" in product and "pksi" in valid_classes:
+                        BGC_classes["PKSI"].append(clusterIdx)
+                    if "t1pks" not in product and "pksother" in valid_classes:
+                        BGC_classes["PKSother"].append(clusterIdx)
                 
-                # possibly add hybrids to 'pure' classes
-                if options.hybrids:
-                    if predicted_class == "PKS-NRP_Hybrids":
-                        if "nrps" in valid_classes:
-                            BGC_classes["NRPS"].append(clusterIdx)
-                        if "t1pks" in product and "pksi" in valid_classes:
-                            BGC_classes["PKSI"].append(clusterIdx)
-                        if "t1pks" not in product and "pksother" in valid_classes:
-                            BGC_classes["PKSother"].append(clusterIdx)
-                    
-                    if predicted_class == "Others" and "-" in product:
-                        subclasses = set()
-                        for subproduct in product.split("-"):
-                            subclass = sort_bgc(subproduct)
-                            if subclass.lower() in valid_classes:
-                                subclasses.add(subclass)
-                                
-                        # Prevent mixed BGCs with sub-Others annotations to get
-                        # added twice (e.g. indole-cf_fatty_acid has already gone
-                        # to Others at this point)
-                        if "Others" in subclasses:
-                            subclasses.remove("Others")
+                if predicted_class == "Others" and "-" in product:
+                    subclasses = set()
+                    for subproduct in product.split("-"):
+                        subclass = sort_bgc(subproduct)
+                        if subclass.lower() in valid_classes:
+                            subclasses.add(subclass)
                             
-                            
-                        for subclass in subclasses:
-                            BGC_classes[subclass].append(clusterIdx)
-                        subclasses.clear()
+                    # Prevent mixed BGCs with sub-Others annotations to get
+                    # added twice (e.g. indole-cf_fatty_acid has already gone
+                    # to Others at this point)
+                    if "Others" in subclasses:
+                        subclasses.remove("Others")
+                        
+                        
+                    for subclass in subclasses:
+                        BGC_classes[subclass].append(clusterIdx)
+                    subclasses.clear()
 
-            # only make folders for the BGC_classes that are found
-            for bgc_class in BGC_classes:
-                print("\n  {} ({} BGCs)".format(bgc_class, str(len(BGC_classes[bgc_class]))))
+        # only make folders for the BGC_classes that are found
+        for bgc_class in BGC_classes:
+            if has_query_bgc:
+                # not interested in this class if our Query BGC is not here...
+                if query_bgc_idx not in BGC_classes[bgc_class]:
+                    continue
+            
+            print("\n  {} ({} BGCs)".format(bgc_class, str(len(BGC_classes[bgc_class]))))
+            
+            # create output directory
+            create_directory(os.path.join(network_files_folder, bgc_class), "  All - " + bgc_class, False)
+            
+            # Create an additional file with the final list of all clusters in the class
+            print("   Writing annotation files")
+            network_annotation_path = os.path.join(network_files_folder, bgc_class, "Network_Annotations_" + bgc_class + ".tsv")
+            with open(network_annotation_path, "w") as network_annotation_file:
+                network_annotation_file.write("BGC\tAccesion ID\tDescription\tProduct Prediction\tBiG-SCAPE class\tOrganism\tTaxonomy\n")
+                for idx in BGC_classes[bgc_class]:
+                    bgc = clusterNames[idx]
+                    product = bgc_info[bgc].product
+                    network_annotation_file.write("\t".join([bgc, bgc_info[bgc].accession_id, bgc_info[bgc].description, product, sort_bgc(product), bgc_info[bgc].organism, bgc_info[bgc].taxonomy]) + "\n")
                 
-                # create output directory   
-                create_directory(os.path.join(network_files_folder, bgc_class), "  All - " + bgc_class, False)
+            if len(BGC_classes[bgc_class]) < 2:
+                continue
+            
+            print("   Calculating all pairwise distances")
+            if has_query_bgc:
+                pairs = set([tuple(sorted(combo)) for combo in combinations_product([query_bgc_idx],BGC_classes[bgc_class])])
+            else:
+                pairs = set([tuple(sorted(combo)) for combo in combinations(BGC_classes[bgc_class], 2)])
                 
-                # Create an additional file with the final list of all clusters in the class
-                print("   Writing annotation files")
-                network_annotation_path = os.path.join(network_files_folder, bgc_class, "Network_Annotations_" + bgc_class + ".tsv")
+            cluster_pairs = [(x, y, bgcClassName2idx[bgc_class]) for (x, y) in pairs]
+            pairs.clear()
+            network_matrix = generate_network(cluster_pairs, cores)
+            #pickle.dump(network_matrix,open("others.ntwrk",'wb'))
+            del cluster_pairs[:]
+            #network_matrix = pickle.load(open("others.ntwrk", "rb"))
+                
+            # add the rest of the edges in the "Query network"
+            if has_query_bgc:
+                # TODO this would be a good time to remove every row in the 
+                # network matrix that is below max_cutoff
+                # It doesn't currently affect anything (other than wasting some RAM)
+                new_set = []
+                for row in network_matrix:
+                    a, b, distance = int(row[0]), int(row[1]), row[2]
+                    
+                    # avoid QBGC-QBGC
+                    if a == b:
+                        continue
+                    
+                    if distance <= max_cutoff:
+                        if a == query_bgc_idx:
+                            new_set.append(b)
+                        else:
+                            new_set.append(a)
+                
+                pairs = set([tuple(sorted(combo)) for combo in combinations(new_set, 2)])
+                cluster_pairs = [(x, y, -1) for (x, y) in pairs]
+                pairs.clear()
+                network_matrix_new_set = generate_network(cluster_pairs, cores)
+                del cluster_pairs[:]
+                                    
+                # Update the network matrix (QBGC-vs-all) with the distances of
+                # QBGC's GCF
+                network_matrix.extend(network_matrix_new_set)
+                
+                # Update actual list of BGCs that we'll use
+                BGC_classes[bgc_class] = new_set
+                BGC_classes[bgc_class].extend([query_bgc_idx])
+                BGC_classes[bgc_class].sort()
+                
+                # Create an additional file with the list of all clusters in the class + other info
+                # This version of the file only has information on the BGCs connected to Query BGC
+                print("   Writing annotation file (Query BGC)")
+                network_annotation_path = os.path.join(network_files_folder, bgc_class, "Network_Annotations_" + bgc_class + "_QueryBGC.tsv")
                 with open(network_annotation_path, "w") as network_annotation_file:
                     network_annotation_file.write("BGC\tAccesion ID\tDescription\tProduct Prediction\tBiG-SCAPE class\tOrganism\tTaxonomy\n")
                     for idx in BGC_classes[bgc_class]:
@@ -2985,201 +3099,38 @@ if __name__=="__main__":
                         product = bgc_info[bgc].product
                         network_annotation_file.write("\t".join([bgc, bgc_info[bgc].accession_id, bgc_info[bgc].description, product, sort_bgc(product), bgc_info[bgc].organism, bgc_info[bgc].taxonomy]) + "\n")
                     
-                if len(BGC_classes[bgc_class]) > 1:
-                    print("   Calculating all pairwise distances")
-                    pairs = set([tuple(sorted(combo)) for combo in combinations(BGC_classes[bgc_class], 2)])
-                    cluster_pairs = [(x, y, bgcClassName2idx[bgc_class]) for (x, y) in pairs]
-                    pairs.clear()
-                    network_matrix = generate_network(cluster_pairs, cores)
-                    #pickle.dump(network_matrix,open("others.ntwrk",'wb'))
-                    del cluster_pairs[:]
-                    #network_matrix = pickle.load(open("others.ntwrk", "rb"))
-                        
-                    print("   Writing output files")
-                    pathBase = os.path.join(network_files_folder, bgc_class)
-                    filenames = []
-                    for cutoff in cutoff_list:
-                        filenames.append(os.path.join(pathBase, "{}_c{:.2f}.network".format(bgc_class, cutoff)))
-                    cutoffs_and_filenames = list(zip(cutoff_list, filenames))
-                    del filenames[:]
-                    write_network_matrix(network_matrix, cutoffs_and_filenames, include_singletons, clusterNames, bgc_info)
+            print("   Writing output files")
+            pathBase = os.path.join(network_files_folder, bgc_class)
+            filenames = []
+            for cutoff in cutoff_list:
+                filenames.append(os.path.join(pathBase, "{}_c{:.2f}.network".format(bgc_class, cutoff)))
+            cutoffs_and_filenames = list(zip(cutoff_list, filenames))
+            del filenames[:]
+            write_network_matrix(network_matrix, cutoffs_and_filenames, include_singletons, clusterNames, bgc_info)
 
-                    print("  Calling Gene Cluster Families")
-                    reduced_network = []
-                    pos_alignments = {}
-                    for row in network_matrix:
-                        reduced_network.append([int(row[0]), int(row[1]), row[2]])
-                        reverse = False
-                        if row[-1] == 1.0:
-                            reverse = True
-                        pa = pos_alignments.setdefault(int(row[0]),{})
-                        # lcsStartA, lcsStartB, seedLength, reverse={True,False}
-                        pa[int(row[1])] = (int(row[-4]), int(row[-3]), int(row[-2]), reverse)
-                    del network_matrix[:]
+            print("  Calling Gene Cluster Families")
+            reduced_network = []
+            pos_alignments = {}
+            for row in network_matrix:
+                reduced_network.append([int(row[0]), int(row[1]), row[2]])
+                reverse = False
+                if row[-1] == 1.0:
+                    reverse = True
+                pa = pos_alignments.setdefault(int(row[0]),{})
+                # lcsStartA, lcsStartB, seedLength, reverse={True,False}
+                pa[int(row[1])] = (int(row[-4]), int(row[-3]), int(row[-2]), reverse)
+            del network_matrix[:]
 
-                    html_subs.append({ "name" : bgc_class, "css" : bgc_class, "label" : bgc_class})
-                    family_data = clusterJsonBatch(BGC_classes[bgc_class], pathBase, bgc_class,
-                                     reduced_network, pos_alignments, cutoffs=cutoff_list, 
-                                     clusterClans=options.clans, clanCutoff=options.clan_cutoff, 
-                                     htmlFolder=network_html_folder)
-                    run_data["networks"].append(family_data)
-                    del BGC_classes[bgc_class][:]
-                    del reduced_network[:]
+            html_subs.append({ "name" : bgc_class, "css" : bgc_class, "label" : bgc_class})
+            family_data = clusterJsonBatch(BGC_classes[bgc_class], pathBase, bgc_class,
+                                reduced_network, pos_alignments, cutoffs=cutoff_list, 
+                                clusterClans=options.clans, clanCutoff=options.clan_cutoff, 
+                                htmlFolder=network_html_folder)
+            run_data["networks"].append(family_data)
+            del BGC_classes[bgc_class][:]
+            del reduced_network[:]
 
-    ## Try to make analysis for each sample
-    if options_samples:
-        pass
-        #network_matrix_sample = []
-        #clusterNames2idx = dict(zip(clusterNames,range(len(clusterNames))))
-        
-        #if len(sampleDict) == 1 and options_all:
-            #print("\nNOT generating networks per sample (only one sample, covered in the all-vs-all case)")
-        #else:
-            #print("\nGenerating distance network files for each sample")
 
-            #for sample, sampleClusters in sampleDict.items():
-                #print("\n Sample: " + sample)
-                #if len(sampleClusters) == 1:
-                    #print(" Warning: Sample size = 1 detected. Not generating network for this sample ({})".format(sample))
-                #else:
-                    ## create output directory for this sample
-                    #create_directory(os.path.join(network_files_folder, sample), " Samples - " + sample, False)
-                        
-                    ## Making network files mixing all classes
-                    #if options_mix:
-                        #print("\n  Mixing all BGC classes")
-                        
-                        #mix_set = []
-                        #for clusterIdx, sampleCluster in enumerate(sampleClusters):
-                            #product = bgc_info[sampleCluster].product
-                            #predicted_class = sort_bgc(product)
-                            #if predicted_class.lower() in valid_classes:
-                                #mix_set.append(clusterIdx)
-                        
-                        ## Create an additional file with the list of all clusters in the class + other info
-                        #print("   Writing annotation files")
-                        #path_list = os.path.join(network_files_folder, sample, "Network_Annotations_Sample_" + sample + "_mix.tsv")
-                        #with open(path_list, "w") as list_file:
-                            #list_file.write("BGC\tAccesion ID\tDescription\tProduct Prediction\tBiG-SCAPE class\tOrganism\tTaxonomy\n")
-                            #for idx in mix_set:
-                                #bgc = clusterNames[idx]
-                                #product = bgc_info[bgc].product
-                                #list_file.write("\t".join([bgc, bgc_info[bgc].accession_id, bgc_info[bgc].description, product, sort_bgc(product), bgc_info[bgc].organism, bgc_info[bgc].taxonomy]) + "\n")
-            
-                        #pairs = set([tuple(sorted(combo)) for combo in combinations(mix_set, 2)])
-                        
-                        #cluster_pairs = [(x, y, -1) for (x, y) in pairs]
-                        #pairs.clear()
-                        #network_matrix_sample = generate_network(cluster_pairs, cores)
-                        #del cluster_pairs[:]
-
-                        #print("   Writing output files")
-                        #pathBase = os.path.join(network_files_folder, sample, "sample_" + sample + "_mix")
-                        #filenames = []
-                        #for cutoff in cutoff_list:
-                            #filenames.append("{}_c{:.2f}.network".format(pathBase, cutoff))
-                        #cutoffs_and_filenames = list(zip(cutoff_list, filenames))
-                        #write_network_matrix(network_matrix_sample, cutoffs_and_filenames, include_singletons, clusterNames, bgc_info)
-                        
-                        #print("  Calling Gene Cluster Families")
-                        #reduced_network = []
-                        #for row in network_matrix_sample:
-                            #reduced_network.append([int(row[0]), int(row[1]), row[2]])
-                        #del network_matrix_sample[:]
-
-                        #html_subs.append({ "name" : "sample_" + sample + "_mix", "css" : "Others", "label" : "S-" + sample + "-Mixed"})
-                        #clusterJsonBatch(mix_set, pathBase, reduced_network, subName="sample_" + sample + "_mix", cutoffs=cutoff_list,clusterClans=options.clans,clanCutoff=options.clan_cutoff,htmlFolder=network_html_folder)
-                        #del mix_set[:]
-                        #del reduced_network[:]
-                        
-                    ## Making network files separating by BGC class
-                    #if options_classify:
-                        #print("\n  Working for each BGC class")
-
-                        ## reinitialize BGC_classes to make sure the bgc lists are empty
-                        #BGC_classes = defaultdict(list)
-                    
-                        ## Preparing gene cluster classes
-                        #print("   Sorting the input BGCs\n")
-                        #for cluster in sampleClusters:
-                            #product = bgc_info[cluster].product
-                            #predicted_class = sort_bgc(product)
-                            #if predicted_class.lower() in valid_classes:
-                                #BGC_classes[predicted_class].append(clusterNames2idx[cluster])
-                            
-                            ## possibly add hybrids to 'pure' classes
-                            #if options.hybrids:
-                                #if predicted_class == "PKS-NRP_Hybrids":
-                                    #if "nrps" in valid_classes:
-                                        #BGC_classes["NRPS"].append(clusterNames2idx[cluster])
-                                    #if "t1pks" in product and "pksi" in valid_classes:
-                                        #BGC_classes["PKSI"].append(clusterNames2idx[cluster])
-                                    #if "t1pks" not in product and "pksother" in valid_classes:
-                                        #BGC_classes["PKSother"].append(clusterNames2idx[cluster])
-                                
-                                #if predicted_class == "Others" and "-" in product:
-                                    #subclasses = set()
-                                    #for subproduct in product.split("-"):
-                                        #subclass = sort_bgc(subproduct)
-                                        #if subclass.lower() in valid_classes:
-                                            #subclasses.add(subclass)
-                                        
-                                    ## Prevent mixed BGCs with sub-Others annotations to get
-                                    ## added twice (e.g. indole-cf_fatty_acid has already gone
-                                    ## to Others at this point)
-                                    #if "Others" in subclasses:
-                                        #subclasses.remove("Others")
-                                        
-                                    #for subclass in subclasses:
-                                        #BGC_classes[subclass].append(clusterNames2idx[cluster])
-                                    #subclasses.clear()
-
-                        #for bgc_class in BGC_classes:
-                            #folder_name = bgc_class
-                                
-                            #print("\n   " + folder_name + " (" + str(len(BGC_classes[bgc_class])) + " BGCs)")
-                            #network_matrix_sample = []
-                            
-                            ## create output directory
-                            #create_directory(os.path.join(network_files_folder, sample, folder_name), "   Sample " + sample + " - " + bgc_class, False)
-
-                            ## Create an additional file with the final list of all clusters in the class
-                            #print("   Writing annotation files")
-                            #path_list = os.path.join(network_files_folder, sample, folder_name, "Network_Annotations_Sample_" + sample + "_" + folder_name + ".tsv")
-                            #with open(path_list, "w") as list_file:
-                                #list_file.write("BGC\tAccesion ID\tDescription\tProduct Prediction\tBiG-SCAPE class\tOrganism\tTaxonomy\n")
-                                #for idx in BGC_classes[bgc_class]:
-                                    #bgc = clusterNames[idx]
-                                    #product = bgc_info[bgc].product
-                                    #list_file.write("\t".join([bgc, bgc_info[bgc].accession_id, bgc_info[bgc].description, product, sort_bgc(product), bgc_info[bgc].organism, bgc_info[bgc].taxonomy]) + "\n")
-
-                            #if len(BGC_classes[bgc_class]) > 1:
-                                #pairs = set([tuple(sorted(combo)) for combo in combinations(BGC_classes[bgc_class], 2)])
-                                
-                                #cluster_pairs = [(x, y, bgcClassName2idx[bgc_class]) for (x, y) in pairs]
-                                #pairs.clear()
-                                #network_matrix_sample = generate_network(cluster_pairs, cores)
-                                #del cluster_pairs[:]
-                                #print("    Writing output files")
-                                #pathBase = os.path.join(network_files_folder, sample, folder_name,
-                                                        #"sample_" + sample + "_" + folder_name)
-                                #filenames = []
-                                #for cutoff in cutoff_list:
-                                    #filenames.append("{}_c{:.2f}.network".format(pathBase, cutoff))
-                                #cutoffs_and_filenames = list(zip(cutoff_list, filenames))
-                                #write_network_matrix(network_matrix_sample, cutoffs_and_filenames, include_singletons, clusterNames,bgc_info)
-                                
-                                #print("  Calling Gene Cluster Families")
-                                #reduced_network = []
-                                #for row in network_matrix_sample:
-                                    #reduced_network.append([int(row[0]), int(row[1]), row[2]])
-                                #del network_matrix_sample[:]
-                                
-                                #html_subs.append({ "name" : "sample_" + sample + "_" + folder_name, "css" : folder_name, "label" : "S-" + sample + "-" + folder_name})
-                                #clusterJsonBatch(BGC_classes[bgc_class], pathBase, reduced_network, subName="sample_" + sample + "_" + folder_name, cutoffs=cutoff_list,clusterClans=options.clans,clanCutoff=options.clan_cutoff,htmlFolder=network_html_folder,className=bgc_class)
-                                
-                                #del BGC_classes[bgc_class][:]
-                                #del reduced_network[:]
 
     # generate overview data
     end_time = time.localtime()
