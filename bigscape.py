@@ -1928,6 +1928,12 @@ def CMD_parser():
                         help="Input directory of gbk files, if left empty, all \
                         gbk files in current and lower directories will be used.")
 
+    parser.add_argument("--exclude_gbk_str", dest="exclude_gbk_str", 
+                        default="final", nargs="+",
+                        help="If any string in this list occurs in the gbk \
+                        filename, this file will not be used for the analysis.\
+                        (default: final)")
+    
     parser.add_argument("-o", "--outputdir", dest="outputdir", default="", 
                         required=True, help="Output directory, this will contain \
                         all output data files.")
@@ -1980,7 +1986,13 @@ def CMD_parser():
                         help="Classes that should NOT be included in the \
                         classification. E.g. \"--banned_classes PKSI PKSOther\"")
 
-    
+    parser.add_argument("--cutoffs", dest="cutoffs", nargs="+", default=[0.10, 
+                    0.15, 0.20, 0.25, 0.30, 0.35, 0.40, 0.45, 0.50, 0.55, 0.60, 
+                    0.65, 0.70, 0.75, 0.80], type=float, choices=[FloatRange(0.0, 
+                    1.0)], help="Generate networks using multiple raw distance \
+                    cutoff values, example: --cutoffs 0.1, 0.25, 0.5, 1.0. Default: \
+                    all values from 0.10 to 0.80 with 0.05 intervals.")
+                    
     parser.add_argument("--clans", dest="clans",action="store_true", 
                         default=False, help="BiG-SCAPE will perform a second \
                         layer of clustering and attempt to group families \
@@ -2001,7 +2013,7 @@ def CMD_parser():
                         default=False, help="Toggle to also add BGCs with hybrid\
                         predicted products from the PKS/NRPS Hybrids and Others\
                         classes to each subclass (e.g. a 'terpene-nrps' BGC from\
-                        Others would be added to the Terpene and NRPS classes")
+                        Others would be added to the Terpene and NRPS classes)")
     
     parser.add_argument("--mode", dest="mode", default="global", choices=["global",
                             "lcs", "auto"], help="Alignment mode for each pair of\
@@ -2019,12 +2031,6 @@ def CMD_parser():
                         default=os.path.join(os.path.dirname(os.path.realpath(__file__)),"anchor_domains.txt"),
                         help="Provide a custom location for the anchor domains \
                         file, default is anchor_domains.txt.")
-    
-    parser.add_argument("--exclude_gbk_str", dest="exclude_gbk_str", 
-                        default="final", nargs="+",
-                        help="If any string in this list occurs in the gbk \
-                        filename, this file will not be used for the analysis.\
-                        (default: final)")
                     
     parser.add_argument("--force_hmmscan", dest="force_hmmscan", action="store_true", 
                         default=False, help="Force domain prediction using \
@@ -2034,14 +2040,7 @@ def CMD_parser():
                         default=False, help="Skip multiple alignment of domains'\
                         sequences. Use if alignments have been generated in a \
                         previous run.")
-    parser.add_argument("--skip_all", dest="skip_all", action="store_true",
-                      default = False, help ="Only generate new network files.")
-    parser.add_argument("--cutoffs", dest="cutoffs", nargs="+", default=[0.10, 
-                    0.15, 0.20, 0.25, 0.30, 0.35, 0.40, 0.45, 0.50, 0.55, 0.60, 
-                    0.65, 0.70, 0.75, 0.80], type=float, choices=[FloatRange(0.0, 
-                    1.0)], help="Generate networks using multiple raw distance \
-                    cutoff values, example: --cutoffs 0.1, 0.25, 0.5, 1.0. Default: \
-                    all values from 0.10 to 0.80 with 0.05 intervals.")
+    
     parser.add_argument("--mibig", dest="use_relevant_mibig", action=
         "store_true", default=False, help="Use included BGCs from MIBiG bundle\
          (version 1.3). See https://mibig.secondarymetabolites.org/")
@@ -2193,11 +2192,6 @@ if __name__=="__main__":
     else:
         run_mode_string += "_full"
     
-    if options.skip_all and options.skip_ma:
-        print("Overriding --skip_ma with --skip_all parameter")
-        options.skip_hmmscan = False
-        options.skip_ma = False
-
     time1 = time.time()
 
     start_time = time.localtime()
