@@ -102,9 +102,9 @@ def check_overlap(pfd_matrix, overlap_cutoff):
             if row1[-1] == row2[-1]:
                 #check if there is overlap between the domains
                 if no_overlap(int(row1[3]), int(row1[4]), int(row2[3]), int(row2[4])) == False:
-                    overlapping_nucleotides = overlap(int(row1[3]), int(row1[4]), int(row2[3]), int(row2[4]))
-                    overlap_perc_loc1 = overlap_perc(overlapping_nucleotides, int(row1[4])-int(row1[3]))
-                    overlap_perc_loc2 = overlap_perc(overlapping_nucleotides, int(row2[4])-int(row2[3]))
+                    overlapping_aminoacids = overlap(int(row1[3]), int(row1[4]), int(row2[3]), int(row2[4]))
+                    overlap_perc_loc1 = overlap_perc(overlapping_aminoacids, int(row1[4])-int(row1[3]))
+                    overlap_perc_loc2 = overlap_perc(overlapping_aminoacids, int(row2[4])-int(row2[3]))
                     #check if the amount of overlap is significant
                     if overlap_perc_loc1 > overlap_cutoff or overlap_perc_loc2 > overlap_cutoff:
                         if float(row1[1]) >= float(row2[1]): #see which has a better score
@@ -133,6 +133,8 @@ def check_overlap(pfd_matrix, overlap_cutoff):
         loci_end = int(row[8])
         domain_start = int(row[3])
         domain_end = int(row[4])
+        
+        # uses nucleotide coordinates for sorting
         width = 3*(domain_end - domain_start)
         strand = row[9].split(":")[-1]
         if strand == "+":
