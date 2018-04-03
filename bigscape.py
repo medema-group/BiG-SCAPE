@@ -2807,7 +2807,7 @@ if __name__=="__main__":
         else:
             clusterNamesToGenomes[bgc] = genomes.index(identifier)
     run_data["input"]["accession"] = [{ "id": "genome_{}".format(i), "label": acc } for i, acc in enumerate(genomes)]
-    run_data["input"]["accession_newick"] = "()" # todo ...
+    run_data["input"]["accession_newick"] = [] # todo ...
     run_data["input"]["classes"] = [{ "label": cl } for cl in classes ] # todo : colors
     run_data["input"]["bgc"] = [{ "id": bgc, "acc": clusterNamesToGenomes[bgc], "class": clusterNamesToClasses[bgc] } for bgc in clusterNames]
 

@@ -14,6 +14,7 @@
     <script src="../../js/kinetic-v5.1.0.min.js"></script>
     <script src="../../js/Chart.bundle.js"></script>
     <script src="../../js/biojs-io-newick.min.js"></script>
+    <script src="../../js/clusterfck-0.1-satria.js"></script>
     <script src="../../js/inchlib-1.2.0.1-satria.js"></script>
     <script src="./run_data.js"></script>
     <div class="overviewpage">
@@ -72,10 +73,41 @@
                   <span id="network_max_bgc_in_family" class="inforight"></span>          
                 </div>
                 <div class="infobar">
-                  <span class="infoleft">BGC Family x Genome Accession absence/presence:</span>
                 </div>
                 <div class="infobar">
-                  <div id="abpres_heatmap"></div>
+                    <span style="font-weight: bold;">GCF absence/presence heatmap</span>
+                </div>
+                <div class="infobar">
+                  <span class="infoleft" style="font-size: 12px;">
+                    Cluster GCF based on: <br />
+                    <select id="abpres_heatmap-col_clustering">                               
+                    </select>
+                  </span>
+                  <span class="inforight" style="font-size: 12px;">
+                    Show: <br />
+                    <select id="abpres_heatmap-col_showtop">
+                      <option value="all">All</option>
+                    </select>
+                    most prominent GCFs
+                  </span>
+                </div>
+                <div class="infobar">
+                  <span class="infoleft" style="font-size: 12px;">
+                    Cluster Genomes based on: <br />
+                    <select id="abpres_heatmap-row_clustering">                               
+                    </select>
+                  </span>
+                  <span class="inforight" style="font-size: 12px;">
+                    Show: <br />
+                    <select id="abpres_heatmap-row_showtop">
+                        <option value="all">All</option>
+                    </select>
+                    most prominent Accessions
+                  </span>
+                </div>
+                <div class="infobar">
+                  <div id="abpres_heatmap">
+                </div>
                 </div>
               </div>
             </div>
@@ -174,6 +206,7 @@
       }
       viewNetwork(0);
     });
+    
     function viewNetwork(idx) {
       $("#network_selection .tablink").removeClass("w3-border-red");
       $("#network_selection .tablink").eq(idx).addClass("w3-border-red");
@@ -190,15 +223,29 @@
       $("#network_total_families").html(totalFamily);
       $("#network_avg_bgc_in_family").html((sumBGC / totalFamily).toFixed(0));
       $("#network_max_bgc_in_family").html(maxBGC);
-      // build inchlib dataset
-      var inchlib_data = generateRealHeatmapData(run_data["input"], run_data["networks"][idx]);//generateHeatmapData(100);
       // absence/presence heatmap
+      $("#abpres_heatmap-row_clustering").change(function(handler){ renderHeatmap(idx); });
+      $("#abpres_heatmap-row_clustering").html("")
+        .append("<option value='abpres' selected>Family Absence/Presence</option>")
+        .append("<option value='name'>Accession Label</option>");
+      for (var i in run_data["input"]["accession_newick"]) {
+        $("#abpres_heatmap-row_clustering").append("<option value='newick_" + i + "'>" + run_data["input"]["accession_newick"][i]["label"] + "</option>");
+      }
+      $("#abpres_heatmap-col_clustering").change(function(handler){ renderHeatmap(idx); });
+      $("#abpres_heatmap-col_clustering").html("")
+        .append("<option value='gcf' selected>BGC Similarity Matrix</option>")
+        .append("<option value='abpres'>Genomes Absence/Presence</option>");
+      renderHeatmap(idx);
+    }
+    
+    function renderHeatmap(idx) {
+      var inchlib_data = generateRealHeatmapData(run_data["input"], run_data["networks"][idx]);
       var inchlib = new InCHlib({
           target: "abpres_heatmap",
           metadata: false,
           heatmap_colors: "OrRd",
           draw_row_ids: true,
-          dendrogram: false,
+          dendrogram: true,
           column_dendrogram: false,
           heatmap_part_width: 0.8,
           max_column_width: 17,
@@ -214,7 +261,6 @@
       for(i = 0; i < inchlib_data.data.feature_names.length; i++) {
         inchlib.settings.ranges.push([0,1,1]);
       }
-      console.log(inchlib_data);
       inchlib.read_data(inchlib_data);
       inchlib.draw();
     }
@@ -235,59 +281,120 @@
           "nodes": {}
         }
       }
-      // build row (accession) dendrogram
-      var acc_tree = parser.parse_newick(input_data["accession_newick"]);
+      // apply filtering
+      var included_accessions = [];
+      var included_gcfs = [];
+      for (var i = 0; i < run_data["input"]["accession"].length; i++) {
+        included_accessions.push(i);
+      }
+      for (var i = 0; i < family_data.length; i++) {
+        included_gcfs.push(i);
+      }
+      // calculate absence/presence
+      var acc_features = {};
       var acc_labels = {};
-      for (var i in run_data["input"]["accession"]) {
-        acc_labels[run_data["input"]["accession"][i]["id"]] = input_data["accession"][i]["label"];
-      }
-      var incorporated_accession = get_all_labels_in_tree(acc_tree);
-      if ((acc_tree["children"][0]["name"] === undefined) || (acc_tree["children"][0]["name"].length < 1)) { // hack-ish catch
-        acc_tree["children"].shift();
-      }
+      var feature_names = [];
       for (var i in run_data["input"]["accession"]) {
         var accId = run_data["input"]["accession"][i]["id"];
-        if (incorporated_accession.indexOf(accId) < 0) {
-          acc_tree["children"].push({ name: accId, branch_length: 0 });
+        acc_features[accId] = [];
+        for (var j = 0; j < included_gcfs.length; j++) {
+          acc_features[accId].push(0);
         }
       }
-      result["data"]["nodes"] = tree_to_nodes(acc_tree);
+      for (var i in included_gcfs) {
+        var fam_data = family_data[included_gcfs[i]];
+        feature_names.push(fam_data["label"]);
+        for (var j in fam_data["members"]) {
+          var bgcId = fam_data["members"][j];
+          var accId = run_data["input"]["accession"][run_data["input"]["bgc"][bgcId]["acc"]]["id"];
+          acc_features[accId][i] += 1;
+        }
+      }
+      // update feature array    
+      result["data"]["feature_names"] = feature_names;
+      // build row (accession) dendrogram
+      switch ($("#abpres_heatmap-row_clustering").val()) {
+        case "abpres":
+          $("#abpres_heatmap-row_showtop").val("all");
+          $("#abpres_heatmap-row_showtop").attr("disabled", false);
+          var cluster_items = [];
+          for (var i in run_data["input"]["accession"]) {
+            if (included_accessions.indexOf(parseInt(i)) > -1) {
+              var accId = run_data["input"]["accession"][i]["id"];
+              cluster_items.push({
+                "id": accId,
+                "features": acc_features[accId]
+              });
+              acc_labels[accId] = input_data["accession"][i]["label"];
+            }
+          }
+          var cluster_fck = clusterfck.hcluster(cluster_items, function(f1, f2){
+            var sumpower = 0.00;
+            for (var i in f1["features"]) {
+              sumpower += Math.pow(f1["features"][i] - f2["features"][i], 2);
+            }
+            return Math.sqrt(sumpower);
+          }, clusterfck.COMPLETE_LINKAGE);
+          result["data"]["nodes"] = clusterfck_tree_to_inchlib_nodes(cluster_fck[0]);
+          break;
+        case "name":
+          $("#abpres_heatmap-row_showtop").val("all");
+          $("#abpres_heatmap-row_showtop").attr("disabled", false);
+          var cluster_items = [];
+          for (var i in run_data["input"]["accession"]) {
+            if (included_accessions.indexOf(parseInt(i)) > -1) {
+              var accId = run_data["input"]["accession"][i]["id"];
+              cluster_items.push({
+                "id": accId,
+                "features": input_data["accession"][i]["label"]
+              });
+              acc_labels[accId] = input_data["accession"][i]["label"];
+            }
+          }
+          var cluster_fck = clusterfck.hcluster(cluster_items, function(f1, f2){
+            var label1 = f1["features"].toLowerCase();
+            var label2 = f2["features"].toLowerCase();
+            var word_length = Math.max(label1.length, label2.length);
+            var matches = 0;
+            for (var i=0; i < word_length; i++) {
+              if (label1[i] !== label2[i]) {
+                break;
+              }
+              matches++;
+            }
+            return (word_length - matches) / word_length;
+          }, clusterfck.COMPLETE_LINKAGE);
+          result["data"]["nodes"] = clusterfck_tree_to_inchlib_nodes(cluster_fck[0]);
+          break;
+        default:
+          $("#abpres_heatmap-row_showtop").val("all");
+          $("#abpres_heatmap-row_showtop").attr("disabled", true);
+          var newick_idx = parseInt($("#abpres_heatmap-row_clustering").val().split("newick_").pop());
+          var acc_tree = parser.parse_newick(input_data["accession_newick"][newick_idx]["newick"]);
+          for (var i in run_data["input"]["accession"]) {
+            acc_labels[run_data["input"]["accession"][i]["id"]] = input_data["accession"][i]["label"];
+          }
+          var incorporated_accession = get_all_labels_in_tree(acc_tree);
+          if ((acc_tree["children"][0]["name"] === undefined) || (acc_tree["children"][0]["name"].length < 1)) { // hack-ish catch
+            acc_tree["children"].shift();
+          }
+          result["data"]["nodes"] = biojs_newick_tree_to_inchlib_nodes(acc_tree);
+          break;
+      }
+      
       // build column (family) dendrogram
       var fam_tree = parser.parse_newick(network_data["families_newick"]);
       var incorporated_family = get_all_labels_in_tree(fam_tree);
       if ((fam_tree["children"][0]["name"] === undefined) || (fam_tree["children"][0]["name"].length < 1)) { // hack-ish catch
         fam_tree["children"].shift();
       }
-      for (var i in family_data) {
-        var famId = family_data[i]["label"];
-        if (incorporated_family.indexOf(famId) < 0) {
-          fam_tree["children"].push({ name: famId, branch_length: 0 });
-        }
-      }
-      console.log(fam_tree);
-      result["column_dendrogram"]["nodes"] = tree_to_nodes(fam_tree);
-      // fill features & update label
-      var acc_features = {};
-      for (var i in run_data["input"]["accession"]) {
-        var accId = run_data["input"]["accession"][i]["id"];
-        acc_features[accId] = [];
-        for (var j = 0; j < family_data.length; j++) {
-          acc_features[accId].push(0);
-        }
-      }
-      for (var i in family_data) {
-        result["data"]["feature_names"].push(family_data[i]["label"]);
-        for (var j in family_data[i]["members"]) {
-          var bgcId = family_data[i]["members"][j];
-          var accId = run_data["input"]["accession"][run_data["input"]["bgc"][bgcId]["acc"]]["id"];
-          acc_features[accId][i] += 1;
-        }
-      }
+      result["column_dendrogram"]["nodes"] = biojs_newick_tree_to_inchlib_nodes(fam_tree);
+      // update row labels
       for (var i in result["data"]["nodes"]) {
         var node = result["data"]["nodes"][i];
         if (node.hasOwnProperty("objects")) {
           var accId = node["objects"][0];
-          node["objects"][0] = acc_labels[accId];
+          node["objects"][0] = acc_labels[accId].substring(0, 30);
           node["features"] = acc_features[accId];
         }
       }
@@ -309,83 +416,164 @@
       return accession_list;
     }
 
-    function tree_to_nodes(node, parentNode = -1, nodes = {}, leaf_count = 0, node_count = 0, branch_parent_length = 0, branch_total_length = 0) {
-        if (node.hasOwnProperty("children")) { // is a node
-          node_count++;
-          var node_count_pre = node_count;
-          for (var i = 0; i < node["children"].length - 1; i++) {    
-            var nId = "node_" + (node_count + i);
-            var branchLength = branch_parent_length + (i==0?(node.hasOwnProperty("branch_length")?node["branch_length"]:0.00):0.00);
-            if (branchLength > branch_total_length) {
-              branch_total_length = branchLength;
-            }
-            nodes[nId] = {
-              "parent": (i==0?parentNode:("node_" + (node_count + i - 1))),
-              "distance": branchLength,
-              "count": 0,
-            };
-            if (nodes[nId]["parent"] === -1) {
-              delete nodes[nId]["parent"];
-            }
-            if (i < node["children"].length - 2) {
-              nodes[nId]["right_child"] = "node_" + (node_count + i + 1);
-            }
+    // convert clusterfck tree to inchlib nodes
+    function clusterfck_tree_to_inchlib_nodes(node, parentNode = -1, nodes = {}, leaf_count = 0, node_count = 0, branch_parent_length = 0, branch_total_length = 0, isLeftChild = true) {
+      if (node["size"] > 1) { // is a node
+        node_count++;
+        var nId = "node_" + node_count;
+        var branchLength = branch_parent_length;
+        if (node.hasOwnProperty("dist")) {
+          branchLength += node["dist"];
+        }
+        if (branchLength > branch_total_length) {
+          branch_total_length = branchLength;
+        }
+        nodes[nId] = {
+          "count": node["size"],
+          "distance": branchLength,
+        }
+        if (parentNode !== -1) {
+          nodes[nId]["parent"] = parentNode;
+        }
+        if (nodes.hasOwnProperty(parentNode)) {
+          if (isLeftChild) {
+            nodes[parentNode]["left_child"] = nId;
+          } else {
+            nodes[parentNode]["right_child"] = nId;
           }
-          node_count += Math.max(0, node["children"].length - 2);
-          for (var i = 0; i < node["children"].length; i++) {
-            var pId = (i < node["children"].length - 2?(node_count_pre + i):(node_count_pre + node["children"].length - 2));
-            var parentChild = "node_" + pId;
-            var branchLength = branch_parent_length + (node.hasOwnProperty("branch_length")?node["branch_length"]:0.00);
-            var recresult = tree_to_nodes(node["children"][i], parentChild, nodes, leaf_count, node_count, branchLength, 0);
-            nodes = recresult[0];
-            if (nodes[parentChild].hasOwnProperty("parent")) {
-              nodes[nodes[parentChild]["parent"]]["count"] += nodes[parentChild]["count"];
-            }
-            leaf_count = recresult[1];
-            node_count = recresult[2];
-            if (recresult[3] > branch_total_length) {
-              branch_total_length = recresult[3];
-            }
+        }
+        var recresult = clusterfck_tree_to_inchlib_nodes(node["left"], nId, nodes, leaf_count, node_count, branchLength, branch_total_length, true);
+        nodes = recresult[0];
+        leaf_count = recresult[1];
+        node_count = recresult[2];
+        if (recresult[3] > branch_total_length) {
+          branch_total_length = recresult[3];
+        }
+        recresult = clusterfck_tree_to_inchlib_nodes(node["right"], nId, nodes, leaf_count, node_count, branchLength, branch_total_length, false);
+        nodes = recresult[0];
+        leaf_count = recresult[1];
+        node_count = recresult[2];
+        if (recresult[3] > branch_total_length) {
+          branch_total_length = recresult[3];
+        }
+      } else { // is a leaf
+        leaf_count++;
+        var lId = "leaf_" + leaf_count;
+        var branchLength = branch_parent_length;
+        if (node.hasOwnProperty("dist")) {
+          branchLength += node["dist"];
+        }
+
+        if (branchLength > branch_total_length) {
+          branch_total_length = branchLength;
+        }
+        nodes[lId] = {
+          "count": 1,
+          "distance": branchLength,
+          "features": [],
+          "objects": [node["canonical"]["id"]],
+        };
+        if (nodes[lId]["parent"] !== -1) {
+          nodes[lId]["parent"] = parentNode;
+        }
+        if (nodes.hasOwnProperty(parentNode)) {
+          if (isLeftChild) {
+            nodes[parentNode]["left_child"] = lId;
+          } else {
+            nodes[parentNode]["right_child"] = lId;
           }
-          if (nodes.hasOwnProperty(parentNode)) {
-            nodes[parentNode]["left_child"] = "node_" + node_count_pre;
-          }
-        } else { // is a leaf
-          leaf_count++;
-          var lId = "leaf_" + leaf_count;
-          var branchLength = branch_parent_length + (node.hasOwnProperty("branch_length")?node["branch_length"]:0.00);
+        }
+      }
+      if (parentNode == -1) {
+        // the root tree, fill left_child & right_child and churn results
+        for (var nodeId in nodes) {
+          nodes[nodeId]["distance"] = branch_total_length - nodes[nodeId]["distance"];
+        }
+        return nodes;
+      } else {
+        // recursive return
+        return [nodes, leaf_count, node_count, branch_total_length];
+      }
+    }
+
+    // convert biojs-io-newick tree to inchlib nodes
+    function biojs_newick_tree_to_inchlib_nodes(node, parentNode = -1, nodes = {}, leaf_count = 0, node_count = 0, branch_parent_length = 0, branch_total_length = 0) {
+      if (node.hasOwnProperty("children")) { // is a node
+        node_count++;
+        var node_count_pre = node_count;
+        for (var i = 0; i < node["children"].length - 1; i++) {    
+          var nId = "node_" + (node_count + i);
+          var branchLength = branch_parent_length + (i==0?(node.hasOwnProperty("branch_length")?node["branch_length"]:0.00):0.00);
           if (branchLength > branch_total_length) {
             branch_total_length = branchLength;
           }
-          nodes[lId] = {
-            "count": 1,
+          nodes[nId] = {
+            "parent": (i==0?parentNode:("node_" + (node_count + i - 1))),
             "distance": branchLength,
-            "features": [],
-            "parent": parentNode, 
-            "objects": [node["name"]]
+            "count": 0,
           };
-          if (nodes[lId]["parent"] === -1) {
-            delete nodes[lId]["parent"];
+          if (nodes[nId]["parent"] === -1) {
+            delete nodes[nId]["parent"];
           }
-          if (nodes.hasOwnProperty(parentNode)) {
-            nodes[parentNode]["count"] += nodes[lId]["count"];
-            if (!nodes[parentNode].hasOwnProperty("right_child")) {
-              nodes[parentNode]["right_child"] = lId;
-            } else {
-              nodes[parentNode]["left_child"] = lId;
-            }
+          if (i < node["children"].length - 2) {
+            nodes[nId]["right_child"] = "node_" + (node_count + i + 1);
           }
         }
-        if (parentNode == -1) {
-          // the root tree, fill left_child & right_child and churn results
-          for (var nodeId in nodes) {
-            nodes[nodeId]["distance"] = branch_total_length - nodes[nodeId]["distance"];
+        node_count += Math.max(0, node["children"].length - 2);
+        for (var i = 0; i < node["children"].length; i++) {
+          var pId = (i < node["children"].length - 2?(node_count_pre + i):(node_count_pre + node["children"].length - 2));
+          var parentChild = "node_" + pId;
+          var branchLength = branch_parent_length + (node.hasOwnProperty("branch_length")?node["branch_length"]:0.00);
+          var recresult = biojs_newick_tree_to_inchlib_nodes(node["children"][i], parentChild, nodes, leaf_count, node_count, branchLength, 0);
+          nodes = recresult[0];
+          if (nodes[parentChild].hasOwnProperty("parent")) {
+            nodes[nodes[parentChild]["parent"]]["count"] += nodes[parentChild]["count"];
           }
-          return nodes;
-        } else {
-          // recursive return
-          return [nodes, leaf_count, node_count, branch_total_length];
-        }        
+          leaf_count = recresult[1];
+          node_count = recresult[2];
+          if (recresult[3] > branch_total_length) {
+            branch_total_length = recresult[3];
+          }
+        }
+        if (nodes.hasOwnProperty(parentNode)) {
+          nodes[parentNode]["left_child"] = "node_" + node_count_pre;
+        }
+      } else { // is a leaf
+        leaf_count++;
+        var lId = "leaf_" + leaf_count;
+        var branchLength = branch_parent_length + (node.hasOwnProperty("branch_length")?node["branch_length"]:0.00);
+        if (branchLength > branch_total_length) {
+          branch_total_length = branchLength;
+        }
+        nodes[lId] = {
+          "count": 1,
+          "distance": branchLength,
+          "features": [],
+          "parent": parentNode, 
+          "objects": [node["name"]]
+        };
+        if (nodes[lId]["parent"] === -1) {
+          delete nodes[lId]["parent"];
+        }
+        if (nodes.hasOwnProperty(parentNode)) {
+          nodes[parentNode]["count"] += nodes[lId]["count"];
+          if (!nodes[parentNode].hasOwnProperty("right_child")) {
+            nodes[parentNode]["right_child"] = lId;
+          } else {
+            nodes[parentNode]["left_child"] = lId;
+          }
+        }
       }
+      if (parentNode == -1) {
+        // the root tree, fill left_child & right_child and churn results
+        for (var nodeId in nodes) {
+          nodes[nodeId]["distance"] = branch_total_length - nodes[nodeId]["distance"];
+        }
+        return nodes;
+      } else {
+        // recursive return
+        return [nodes, leaf_count, node_count, branch_total_length];
+      }
+    }
   </script>
 </html>
