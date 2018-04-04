@@ -86,9 +86,12 @@
                   <span class="inforight" style="font-size: 12px;">
                     Show: <br />
                     <select id="abpres_heatmap-col_showtop">
+                      <option value="20">20</option>
+                      <option value="50">50</option>
+                      <option value="100">100</option>
                       <option value="all">All</option>
                     </select>
-                    most prominent GCFs
+                    largest GCFs
                   </span>
                 </div>
                 <div class="infobar">
@@ -97,13 +100,16 @@
                     <select id="abpres_heatmap-row_clustering">                               
                     </select>
                   </span>
-                  <span class="inforight" style="font-size: 12px;">
-                    Show: <br />
-                    <select id="abpres_heatmap-row_showtop">
-                        <option value="all">All</option>
-                    </select>
-                    most prominent Accessions
-                  </span>
+                </div>
+                <div class="infobar">
+                    <span class="inforight" style="font-size: 12px;">
+                      test
+                    </span>
+                    <span class="inforight" style="font-size: 12px;">
+                        test
+                      </span>
+                  </div>
+                <div class="infobar">
                 </div>
                 <div class="infobar">
                   <div id="abpres_heatmap">
@@ -233,8 +239,9 @@
       }
       $("#abpres_heatmap-col_clustering").change(function(handler){ renderHeatmap(idx); });
       $("#abpres_heatmap-col_clustering").html("")
-        .append("<option value='gcf' selected>BGC Similarity Matrix</option>")
-        .append("<option value='abpres'>Genomes Absence/Presence</option>");
+        .append("<option value='abpres' selected>Genomes Absence/Presence</option>")
+        .append("<option value='gcf'>BiG-SCAPE Distance Matrix</option>");
+      $("#abpres_heatmap-col_showtop").change(function(handler){ renderHeatmap(idx); });
       renderHeatmap(idx);
     }
     
@@ -246,9 +253,10 @@
           heatmap_colors: "OrRd",
           draw_row_ids: true,
           dendrogram: true,
-          column_dendrogram: false,
-          heatmap_part_width: 0.8,
-          max_column_width: 17,
+          column_dendrogram: true,
+          heatmap_part_width: 0.9,
+          max_column_width: 15,
+          fixed_row_id_size: 5,
           alternative_data: false,
           navigation_toggle: {
             color_scale: false,
@@ -265,9 +273,34 @@
       inchlib.draw();
     }
 
+    function calculateDistance(vector_1, vector_2, method) {
+      switch (method) {
+        case "eucledian":
+          var sumpower = 0.00;
+          for (var i in vector_1) {
+            sumpower += Math.pow(vector_1[i] - vector_2[i], 2);
+          }
+          return Math.sqrt(sumpower);
+      case "jaccard":
+          var union = 0.00;
+          var intersection = 0.00;
+          for (var i in vector_1) {
+            if ((vector_1[i] > 0) && (vector_2[i] > 0)) {
+              intersection += 1.00;
+              union += 1.00;
+            } else if ((vector_1[i] > 0) || (vector_2[i] > 0)) {
+              union += 1.00;
+            }
+          }
+          return (union > 0?(1.00 - (intersection / union)):1.00);
+        default:
+          return 0
+      }
+    }
+
     function generateRealHeatmapData(input_data, network_data) {
       var parser = require("biojs-io-newick");
-      var family_data = network_data["families"];
+      var family_data = network_data["families"].sort(function(a,b) { return b["members"].length - a["members"].length });
       var result = {
         "data": {
           "nodes": {},
@@ -281,14 +314,26 @@
           "nodes": {}
         }
       }
-      // apply filtering
-      var included_accessions = [];
+      // apply GCF filtering
       var included_gcfs = [];
-      for (var i = 0; i < run_data["input"]["accession"].length; i++) {
-        included_accessions.push(i);
+      var gcf_to_show = 1;
+      switch ($("#abpres_heatmap-col_showtop").val()) {
+        case "all":
+          if (confirm("This will includes all " + family_data.length + " GCFs. It may affect performance and/or the visibility of the heatmap. Continue?")) {
+            gcf_to_show = family_data.length;
+          } else {
+            $("#abpres_heatmap-col_showtop").val("20");
+            gcf_to_show = parseInt($("#abpres_heatmap-col_showtop").val());
+          }
+          break;
+        default:
+          gcf_to_show = parseInt($("#abpres_heatmap-col_showtop").val());
+          break;
       }
-      for (var i = 0; i < family_data.length; i++) {
-        included_gcfs.push(i);
+      for (var i = 0; i < gcf_to_show; i++) {
+        if (i < family_data.length) {
+          included_gcfs.push(i);
+        }
       }
       // calculate absence/presence
       var acc_features = {};
@@ -310,13 +355,22 @@
           acc_features[accId][i] += 1;
         }
       }
+      // apply Genomes filtering (only shows genomes with filtered GCFs, unless using custom newick)
+      var included_accessions = [];
+      for (var i = 0; i < run_data["input"]["accession"].length; i++) {
+        var accId = run_data["input"]["accession"][i]["id"];
+        for (var j in acc_features[accId]) {
+          if ((acc_features[accId][j] > 0) || (["abpres", "name"].indexOf($("#abpres_heatmap-row_clustering").val()) < 0)) {
+            included_accessions.push(i);
+            break;
+          }
+        }
+      }
       // update feature array    
       result["data"]["feature_names"] = feature_names;
       // build row (accession) dendrogram
       switch ($("#abpres_heatmap-row_clustering").val()) {
         case "abpres":
-          $("#abpres_heatmap-row_showtop").val("all");
-          $("#abpres_heatmap-row_showtop").attr("disabled", false);
           var cluster_items = [];
           for (var i in run_data["input"]["accession"]) {
             if (included_accessions.indexOf(parseInt(i)) > -1) {
@@ -329,17 +383,11 @@
             }
           }
           var cluster_fck = clusterfck.hcluster(cluster_items, function(f1, f2){
-            var sumpower = 0.00;
-            for (var i in f1["features"]) {
-              sumpower += Math.pow(f1["features"][i] - f2["features"][i], 2);
-            }
-            return Math.sqrt(sumpower);
+            return calculateDistance(f1["features"], f2["features"], "jaccard");
           }, clusterfck.COMPLETE_LINKAGE);
           result["data"]["nodes"] = clusterfck_tree_to_inchlib_nodes(cluster_fck[0]);
           break;
         case "name":
-          $("#abpres_heatmap-row_showtop").val("all");
-          $("#abpres_heatmap-row_showtop").attr("disabled", false);
           var cluster_items = [];
           for (var i in run_data["input"]["accession"]) {
             if (included_accessions.indexOf(parseInt(i)) > -1) {
@@ -367,8 +415,6 @@
           result["data"]["nodes"] = clusterfck_tree_to_inchlib_nodes(cluster_fck[0]);
           break;
         default:
-          $("#abpres_heatmap-row_showtop").val("all");
-          $("#abpres_heatmap-row_showtop").attr("disabled", true);
           var newick_idx = parseInt($("#abpres_heatmap-row_clustering").val().split("newick_").pop());
           var acc_tree = parser.parse_newick(input_data["accession_newick"][newick_idx]["newick"]);
           for (var i in run_data["input"]["accession"]) {
@@ -383,18 +429,46 @@
       }
       
       // build column (family) dendrogram
-      var fam_tree = parser.parse_newick(network_data["families_newick"]);
-      var incorporated_family = get_all_labels_in_tree(fam_tree);
-      if ((fam_tree["children"][0]["name"] === undefined) || (fam_tree["children"][0]["name"].length < 1)) { // hack-ish catch
-        fam_tree["children"].shift();
+      switch ($("#abpres_heatmap-col_clustering").val()) {
+        case "abpres":
+          var cluster_items = [];
+          for (var i in included_gcfs) {
+            var fam_features = [];
+            for (var j in included_accessions) {
+              var accId = run_data["input"]["accession"][included_accessions[j]]["id"];
+              fam_features.push(acc_features[accId][i]);
+            }
+            cluster_items.push({
+              "id": family_data[included_gcfs[i]]["label"],
+              "features": fam_features
+            });
+          }
+          var cluster_fck = clusterfck.hcluster(cluster_items, function(f1, f2){
+            return calculateDistance(f1["features"], f2["features"], "jaccard");
+          }, clusterfck.COMPLETE_LINKAGE);
+          result["column_dendrogram"]["nodes"] = clusterfck_tree_to_inchlib_nodes(cluster_fck[0]);
+          break;
+        case "gcf": // TODO!!
+          alert("This feature is currently unimplemented, results will be wrong.")
+          var cluster_items = [];
+          for (var i in included_gcfs) {
+            cluster_items.push({
+              "id": family_data[included_gcfs[i]]["label"],
+              "features": []
+            });
+          }
+          var cluster_fck = clusterfck.hcluster(cluster_items, function(f1, f2){
+            return 0; // TODO!!
+          }, clusterfck.COMPLETE_LINKAGE);
+          result["column_dendrogram"]["nodes"] = clusterfck_tree_to_inchlib_nodes(cluster_fck[0]);
+          break;
       }
-      result["column_dendrogram"]["nodes"] = biojs_newick_tree_to_inchlib_nodes(fam_tree);
       // update row labels
       for (var i in result["data"]["nodes"]) {
         var node = result["data"]["nodes"][i];
         if (node.hasOwnProperty("objects")) {
           var accId = node["objects"][0];
-          node["objects"][0] = acc_labels[accId].substring(0, 30);
+          node["objects"][0] = acc_labels[accId];
           node["features"] = acc_features[accId];
         }
       }
@@ -421,9 +495,9 @@
       if (node["size"] > 1) { // is a node
         node_count++;
         var nId = "node_" + node_count;
-        var branchLength = branch_parent_length;
+        var branchLength = branch_parent_length + 1;
         if (node.hasOwnProperty("dist")) {
-          branchLength += node["dist"];
+          //branchLength += node["dist"];
         }
         if (branchLength > branch_total_length) {
           branch_total_length = branchLength;
@@ -459,9 +533,9 @@
       } else { // is a leaf
         leaf_count++;
         var lId = "leaf_" + leaf_count;
-        var branchLength = branch_parent_length;
+        var branchLength = branch_parent_length + 1;
         if (node.hasOwnProperty("dist")) {
-          branchLength += node["dist"];
+          //branchLength += node["dist"];
         }
 
         if (branchLength > branch_total_length) {
@@ -487,7 +561,12 @@
       if (parentNode == -1) {
         // the root tree, fill left_child & right_child and churn results
         for (var nodeId in nodes) {
-          nodes[nodeId]["distance"] = branch_total_length - nodes[nodeId]["distance"];
+          // ignore branch length
+          if (nodeId.split("_")[0] == "node") {
+            nodes[nodeId]["distance"] = branch_total_length - nodes[nodeId]["distance"];
+          } else {
+            nodes[nodeId]["distance"] = 0;
+          }
         }
         return nodes;
       } else {
@@ -567,7 +646,7 @@
       if (parentNode == -1) {
         // the root tree, fill left_child & right_child and churn results
         for (var nodeId in nodes) {
-          nodes[nodeId]["distance"] = branch_total_length - nodes[nodeId]["distance"];
+            nodes[nodeId]["distance"] = branch_total_length - nodes[nodeId]["distance"];
         }
         return nodes;
       } else {
