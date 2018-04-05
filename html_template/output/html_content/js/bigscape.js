@@ -786,6 +786,7 @@ BigscapeFunc.openCompDetail = function(ids, bs_svg, bs_data, bs_to_cl, bs_famili
 
 // ...
 BigscapeFunc.openFamDetail = function(id_fam, ids_highlighted, bs_svg, bs_data, bs_to_cl, bs_families, bs_similarity, det_ui) {
+  id_fam = parseInt(id_fam);
   det_ui.html("");
   det_ui.append("<h2>" + bs_families[id_fam]["id"] + "<h2>");
   var treeContainer = $("<div><h3>Members</h3></div>").appendTo(det_ui);
@@ -809,7 +810,7 @@ BigscapeFunc.openFamDetail = function(id_fam, ids_highlighted, bs_svg, bs_data, 
         if (bs_families[i]["id"] !== bs_families[id_fam]["id"]) {
           if (true) {//(bs_families[i].hasOwnProperty("clan")) {
             if (true) {//(bs_families[i]["clan"] === bs_families[id_fam]["clan"]) {
-              var bs_sim = (i < id_fam)? bs_similarity_families[id_fam][i]:bs_similarity_families[i][id_fam];
+              var bs_sim = (i > id_fam)? bs_similarity_families[i][id_fam]:bs_similarity_families[id_fam][i];
               related_families.push({
                 "idx": i,
                 "id": bs_families[i]["id"],
