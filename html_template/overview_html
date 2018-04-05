@@ -101,14 +101,14 @@
                     </select>
                   </span>
                 </div>
-                <div class="infobar">
-                    <span class="inforight" style="font-size: 12px;">
+                <!--div class="infobar">
+                  <span class="inforight" style="font-size: 12px;">
+                    test
+                  </span>
+                  <span class="inforight" style="font-size: 12px;">
                       test
                     </span>
-                    <span class="inforight" style="font-size: 12px;">
-                        test
-                      </span>
-                  </div>
+                </div-->
                 <div class="infobar">
                 </div>
                 <div class="infobar">
@@ -300,7 +300,11 @@
 
     function generateRealHeatmapData(input_data, network_data) {
       var parser = require("biojs-io-newick");
-      var family_data = network_data["families"].sort(function(a,b) { return b["members"].length - a["members"].length });
+      var family_data = network_data["families"].slice(0).sort(function(a,b) { return b["members"].length - a["members"].length });
+      var get_fam_id = [];
+      for (var i in family_data) {
+        get_fam_id.push(network_data["families"].indexOf(family_data[i]));
+      }
       var result = {
         "data": {
           "nodes": {},
@@ -366,8 +370,6 @@
           }
         }
       }
-      // update feature array    
-      result["data"]["feature_names"] = feature_names;
       // build row (accession) dendrogram
       switch ($("#abpres_heatmap-row_clustering").val()) {
         case "abpres":
@@ -448,17 +450,18 @@
           }, clusterfck.COMPLETE_LINKAGE);
           result["column_dendrogram"]["nodes"] = clusterfck_tree_to_inchlib_nodes(cluster_fck[0]);
           break;
-        case "gcf": // TODO!!
-          alert("This feature is currently unimplemented, results will be wrong.")
+        case "gcf":
           var cluster_items = [];
           for (var i in included_gcfs) {
             cluster_items.push({
               "id": family_data[included_gcfs[i]]["label"],
-              "features": []
+              "features": [included_gcfs[i]]
             });
           }
           var cluster_fck = clusterfck.hcluster(cluster_items, function(f1, f2){
-            return 0; // TODO!!
+            var famId_1 = get_fam_id[f1["features"][0]];
+            var famId_2 = get_fam_id[f2["features"][0]];
+            return (famId_1 > famId_2?1.00-network_data["families_similarity"][famId_1][famId_2][0]:1.00-network_data["families_similarity"][famId_2][famId_1][0]);
           }, clusterfck.COMPLETE_LINKAGE);
           result["column_dendrogram"]["nodes"] = clusterfck_tree_to_inchlib_nodes(cluster_fck[0]);
           break;
@@ -470,6 +473,47 @@
           var accId = node["objects"][0];
           node["objects"][0] = acc_labels[accId];
           node["features"] = acc_features[accId];
+        }
+      }
+      // update columns based on column dendrogram
+      function fetchSortedTreeIdx(nodes, curNode = -1, sortedIdx = []) {
+        if (curNode === -1) { // look for the root node
+          for (var idx in nodes) {
+            if (!nodes[idx].hasOwnProperty("parent")) {
+              curNode = idx;
+              break;
+            }
+          }
+        }
+        var node = nodes[curNode];
+        if (node.hasOwnProperty("left_child")) {
+          sortedIdx = fetchSortedTreeIdx(nodes, node["right_child"], sortedIdx);
+          sortedIdx = fetchSortedTreeIdx(nodes, node["left_child"], sortedIdx);
+        } else {
+          sortedIdx.push(curNode);
+        }
+        return sortedIdx;
+      }
+      var col_dendrosorted = fetchSortedTreeIdx(result["column_dendrogram"]["nodes"]);
+      var colidx_dendrosorted = [];
+      for (var i in col_dendrosorted) {
+        var famId = result["column_dendrogram"]["nodes"][col_dendrosorted[i]]["objects"][0];
+        colidx_dendrosorted.push(feature_names.indexOf(famId));
+      }
+      var feature_names_dendrosorted = [];
+      for (i in colidx_dendrosorted) {
+        feature_names_dendrosorted.push(feature_names[colidx_dendrosorted[i]]);
+      }
+      feature_names = feature_names_dendrosorted;
+      result["data"]["feature_names"] = feature_names;
+      for (nodeId in result["data"]["nodes"]) {
+        var node = result["data"]["nodes"][nodeId];
+        if (node.hasOwnProperty("features")) {
+          var feature_dendrosorted = [];
+          for (i in colidx_dendrosorted) {
+            feature_dendrosorted.push(node["features"][colidx_dendrosorted[i]]);
+          }
+          node["features"] = feature_dendrosorted;
         }
       }
       return result;

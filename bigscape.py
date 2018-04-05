@@ -1338,8 +1338,8 @@ def clusterJsonBatch(bgcs, pathBase, className, matrix, pos_alignments, cutoffs=
 
     family_data = { # will be returned, for use in overview.js
         "label": className,
-        "families_newick": "()",
-        "families": []
+        "families": [],
+        "families_similarity": []
     }
     
     simDict = {} # dictionary of dictionaries
@@ -1769,7 +1769,6 @@ def clusterJsonBatch(bgcs, pathBase, className, matrix, pos_alignments, cutoffs=
                            for family, members in familiesDict.items()]
         
         family_data["families"] = []
-        family_data["families_newick"] = "()"
         for family, members in familiesDict.items():
             family_data["families"].append({
                 "label": "FAM_{:05d}".format(family),
@@ -1886,6 +1885,8 @@ def clusterJsonBatch(bgcs, pathBase, className, matrix, pos_alignments, cutoffs=
         # get family-family similarity matrix
         bs_similarity_families = [[get_composite_bgc_similarities([bgcs[bid] for bid in bs_families[row]["members"]], [bgcs[bid] for bid in bs_families[col]["members"]], simDict) if (row != col) else (1.00, (1.00, bgcs[bs_families[row]["members"][0]], bgcs[bs_families[row]["members"][0]]), (1.00, bgcs[bs_families[row]["members"][0]], bgcs[bs_families[row]["members"][0]])) for col in 
                          range(row+1)] for row in range(len(bs_families))]
+
+        family_data["families_similarity"] = bs_similarity_families;
 
         ## Write bgc_networks.js
         with open(os.path.join(module_html_path, "bs_networks.js"), "w") as bs_networks_js:
