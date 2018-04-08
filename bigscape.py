@@ -1473,7 +1473,7 @@ def clusterJsonBatch(bgcs, pathBase, className, matrix, pos_alignments, cutoffs=
                 # TODO go straight to familiesDict
                 for i in range(numBGCs_subgraph):
                     labels[bgcExt2Int[bgcSub2Ext_[i]]] = bgcExt2Int[bgcSub2Ext_[exemplarsSub[labelsSub[i]]]]
-         
+        
         # Recalculate distance matrix as we'll need it with clans
         #simMatrix = lil_matrix((numBGCs, numBGCs), dtype=np.float32)
         simMatrix = np.zeros((numBGCs, numBGCs), dtype=np.float32)
@@ -2043,12 +2043,9 @@ def CMD_parser():
                         previous run.")
     
     parser.add_argument("--mibig", dest="use_relevant_mibig", action=
-        "store_true", default=False, help="Use included BGCs from MIBiG bundle\
-         (version 1.3). See https://mibig.secondarymetabolites.org/")
-    #parser.add_argument("--mibig_relevant", dest="use_relevant_mibig", action=
-        #"store_true", default=False, help="Use included BGCs from MIBiG bundle\
-         #(version 1.3). BGCs not connected with your data will be removed in the\
-         #final network files")
+        "store_true", default=False, help="Use included BGCs from then MIBiG \
+        database. Only relevant (i.e. those with distance < max(cutoffs) against\
+        the input set) will be used. Using version (version 1.3). See https://mibig.secondarymetabolites.org/")
      
     parser.add_argument("--query_bgc", help="Instead of making an all-VS-all \
                     comparison of all the input BGCs, choose one BGC to \
@@ -2275,6 +2272,7 @@ if __name__=="__main__":
     # Change this for every officially curated MIBiG bundle
     # (file, final folder, number of bgcs)
     mibig_zipfile_numbgcs = ("MIBiG_1.3_gbks.zip", "1.3+_final_gbks", 1393)
+    mibig_zipfile_numbgcs = ("test_mibig.zip", "test_mibig", 9)
     use_relevant_mibig = options.use_relevant_mibig
     if use_relevant_mibig:
         print("\n Trying to read bundled MIBiG BGCs as reference")
@@ -2764,16 +2762,9 @@ if __name__=="__main__":
     
     # we have to find the idx of query_bgc
     if has_query_bgc:
-        # we have to find the idx of query_bgc
-        idx = 0
-        
-        for bgc in clusterNames:
-            if bgc == query_bgc:
-                query_bgc_idx = idx
-                break
-            idx += 1
-        # it _should_ have been found but let's make sure...
-        if clusterNames[idx] != query_bgc:
+        try:
+            query_bgc_idx = clusterNames.index(query_bgc)
+        except ValueError:
             sys.exit("Error finding the index of Query BGC")
 
     # fetch genome list for overview.js
@@ -2857,6 +2848,16 @@ if __name__=="__main__":
             product = bgc_info[bgc].product
             network_annotation_file.write("\t".join([bgc, bgc_info[bgc].accession_id, bgc_info[bgc].description, product, sort_bgc(product), bgc_info[bgc].organism, bgc_info[bgc].taxonomy]) + "\n")
     
+    # Find indice of all MIBiG BGCs if necessary
+    if use_relevant_mibig:
+        name_to_idx = {}
+        for clusterIdx,clusterName in enumerate(clusterNames):
+            name_to_idx[clusterName] = clusterIdx
+            
+        mibig_set_indices = set()
+        for bgc in mibig_set:
+            mibig_set_indices.add(name_to_idx[bgc])
+            
     # Making network files mixing all classes
     if options_mix:
         print("\n Mixing all BGC classes")
@@ -2864,7 +2865,7 @@ if __name__=="__main__":
         # only choose from valid classes
         mix_set = []
         
-        # Indexes ALL cluster names in the working set
+        # create working set with indices of valid clusters
         for clusterIdx,clusterName in enumerate(clusterNames):
             product = bgc_info[clusterName].product
             predicted_class = sort_bgc(product)
@@ -2890,11 +2891,12 @@ if __name__=="__main__":
         
         # add the rest of the edges in the "Query network"
         if has_query_bgc:
-            # TODO this would be a good time to remove every row in the 
-            # network matrix that is below max_cutoff
-            # It doesn't currently affect anything (other than wasting some RAM)
             new_set = []
-            for row in network_matrix_mix:
+            
+            # rows from the distance matrix that will be pruned 
+            del_list = [] 
+        
+            for idx, row in enumerate(network_matrix_mix):
                 a, b, distance = int(row[0]), int(row[1]), row[2]
                 
                 if a == b:
@@ -2905,13 +2907,18 @@ if __name__=="__main__":
                         new_set.append(b)
                     else:
                         new_set.append(a)
+                else:
+                    del_list.append(idx)
+            
+            for idx in sorted(del_list, reverse=True):
+                del network_matrix_mix[idx]
+            del del_list[:]
             
             pairs = set([tuple(sorted(combo)) for combo in combinations(new_set, 2)])
             cluster_pairs = [(x, y, -1) for (x, y) in pairs]
             pairs.clear()
             network_matrix_new_set = generate_network(cluster_pairs, cores)
             del cluster_pairs[:]
-            
             
             # Update the network matrix (QBGC-vs-all) with the distances of
             # QBGC's GCF
@@ -2935,7 +2942,36 @@ if __name__=="__main__":
                         bgc_info[bgc].accession_id, bgc_info[bgc].description, 
                         product, sort_bgc(product), bgc_info[bgc].organism, 
                         bgc_info[bgc].taxonomy]) + "\n")
+        elif use_relevant_mibig:
+            n = nx.Graph()
+            n.add_nodes_from(mix_set)
+            mibig_set_del = []
+            network_matrix_set_del = []
             
+            for idx, row in enumerate(network_matrix_mix):
+                a, b, distance = int(row[0]), int(row[1]), row[2]
+                if distance <= max_cutoff:
+                    n.add_edge(a, b, index=idx)
+                    
+            for component in nx.connected_components(n): # note: 'component' is a set
+                numBGCs_subgraph = len(component)
+                
+                # catch if the subnetwork is comprised only of MIBiG BGCs
+                if len(component & mibig_set_indices) == numBGCs_subgraph:
+                    for bgc in component:
+                        mibig_set_del.append(bgc)
+                    
+                    for (a, b, idx) in n.subgraph(component).edges.data('index'):
+                        network_matrix_set_del.append(idx)
+                        
+            for bgc_idx in sorted(mibig_set_del, reverse=True):
+                del mix_set[bgc_idx]
+            del mibig_set_del[:]
+                
+            for row_idx in sorted(network_matrix_set_del, reverse=True):
+                del network_matrix_mix[row_idx]
+            del network_matrix_set_del[:]
+                        
         print("  Writing output files")
         pathBase = os.path.join(network_files_folder, "mix")
         filenames = []
@@ -2976,7 +3012,7 @@ if __name__=="__main__":
         # Preparing gene cluster classes
         print("  Sorting the input BGCs\n")
         
-        # Indexes ALL cluster names in the working set
+        # create and sort working set for each class
         for clusterIdx,clusterName in enumerate(clusterNames):
             product = bgc_info[clusterName].product
             predicted_class = sort_bgc(product)
@@ -3051,11 +3087,12 @@ if __name__=="__main__":
                 
             # add the rest of the edges in the "Query network"
             if has_query_bgc:
-                # TODO this would be a good time to remove every row in the 
-                # network matrix that is below max_cutoff
-                # It doesn't currently affect anything (other than wasting some RAM)
                 new_set = []
-                for row in network_matrix:
+                
+                # rows from the distance matrix that will be pruned 
+                del_list = []
+                
+                for idx, row in enumerate(network_matrix):
                     a, b, distance = int(row[0]), int(row[1]), row[2]
                     
                     # avoid QBGC-QBGC
@@ -3067,9 +3104,15 @@ if __name__=="__main__":
                             new_set.append(b)
                         else:
                             new_set.append(a)
+                    else:
+                        del_list.append(idx)
+                
+                for idx in sorted(del_list, reverse=True):
+                    del network_matrix[idx]
+                del del_list[:]
                 
                 pairs = set([tuple(sorted(combo)) for combo in combinations(new_set, 2)])
-                cluster_pairs = [(x, y, -1) for (x, y) in pairs]
+                cluster_pairs = [(x, y, bgcClassName2idx[bgc_class]) for (x, y) in pairs]
                 pairs.clear()
                 network_matrix_new_set = generate_network(cluster_pairs, cores)
                 del cluster_pairs[:]
@@ -3093,7 +3136,37 @@ if __name__=="__main__":
                         bgc = clusterNames[idx]
                         product = bgc_info[bgc].product
                         network_annotation_file.write("\t".join([bgc, bgc_info[bgc].accession_id, bgc_info[bgc].description, product, sort_bgc(product), bgc_info[bgc].organism, bgc_info[bgc].taxonomy]) + "\n")
+            elif use_relevant_mibig:
+                n = nx.Graph()
+                n.add_nodes_from(BGC_classes[bgc_class])
+                mibig_set_del = []
+                network_matrix_set_del = []
+                
+                for idx, row in enumerate(network_matrix):
+                    a, b, distance = int(row[0]), int(row[1]), row[2]
+                    if distance <= max_cutoff:
+                        n.add_edge(a, b, index=idx)
+                        
+                for component in nx.connected_components(n): # note: 'component' is a set
+                    numBGCs_subgraph = len(component)
                     
+                    # catch if the subnetwork is comprised only of MIBiG BGCs
+                    if len(component & mibig_set_indices) == numBGCs_subgraph:
+                        for bgc in component:
+                            mibig_set_del.append(bgc)
+                        
+                        for (a, b, idx) in n.subgraph(component).edges.data('index'):
+                            network_matrix_set_del.append(idx)
+                            
+                for bgc_idx in sorted(mibig_set_del, reverse=True):
+                    del_idx = BGC_classes[bgc_class].index(bgc_idx)
+                    del BGC_classes[bgc_class][del_idx]
+                del mibig_set_del[:]
+                    
+                for row_idx in sorted(network_matrix_set_del, reverse=True):
+                    del network_matrix[row_idx]
+                del network_matrix_set_del[:]
+                
             print("   Writing output files")
             pathBase = os.path.join(network_files_folder, bgc_class)
             filenames = []
