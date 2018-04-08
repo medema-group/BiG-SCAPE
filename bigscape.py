@@ -2272,7 +2272,6 @@ if __name__=="__main__":
     # Change this for every officially curated MIBiG bundle
     # (file, final folder, number of bgcs)
     mibig_zipfile_numbgcs = ("MIBiG_1.3_gbks.zip", "1.3+_final_gbks", 1393)
-    mibig_zipfile_numbgcs = ("test_mibig.zip", "test_mibig", 9)
     use_relevant_mibig = options.use_relevant_mibig
     if use_relevant_mibig:
         print("\n Trying to read bundled MIBiG BGCs as reference")
