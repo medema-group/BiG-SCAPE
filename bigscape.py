@@ -1311,6 +1311,8 @@ def parseHmmScan(hmmscanResults, pfd_folder, pfs_folder, overlapCutoff):
             for sample in info[1]:
                 sampleDict[sample].remove(outputbase)
             del genbankDict[outputbase]
+            if outputbase in mibig_set:
+                mibig_set.remove(outputbase)
             
     else:
         sys.exit("Error: hmmscan file " + outputbase + " was not found! (parseHmmScan)")
@@ -2273,6 +2275,7 @@ if __name__=="__main__":
     # (file, final folder, number of bgcs)
     mibig_zipfile_numbgcs = ("MIBiG_1.3_gbks.zip", "1.3+_final_gbks", 1393)
     use_relevant_mibig = options.use_relevant_mibig
+    mibig_set = set()
     if use_relevant_mibig:
         print("\n Trying to read bundled MIBiG BGCs as reference")
         mibig_path = os.path.join(os.path.dirname(os.path.realpath(__file__)),"Annotated_MIBiG_reference")
@@ -2301,7 +2304,6 @@ if __name__=="__main__":
         print("\nImporting MIBiG files")
         get_gbk_files(bgcs_path, output_folder, bgc_fasta_folder, int(options.min_bgc_size), exclude_gbk_str, bgc_info)
         
-        mibig_set = set()
         for i in genbankDict.keys():
             mibig_set.add(i)
             
@@ -2847,6 +2849,7 @@ if __name__=="__main__":
             product = bgc_info[bgc].product
             network_annotation_file.write("\t".join([bgc, bgc_info[bgc].accession_id, bgc_info[bgc].description, product, sort_bgc(product), bgc_info[bgc].organism, bgc_info[bgc].taxonomy]) + "\n")
     
+    
     # Find indice of all MIBiG BGCs if necessary
     if use_relevant_mibig:
         name_to_idx = {}
@@ -2856,7 +2859,7 @@ if __name__=="__main__":
         mibig_set_indices = set()
         for bgc in mibig_set:
             mibig_set_indices.add(name_to_idx[bgc])
-            
+
     # Making network files mixing all classes
     if options_mix:
         print("\n Mixing all BGC classes")
@@ -2872,7 +2875,7 @@ if __name__=="__main__":
                 mix_set.append(clusterIdx)
         
         print("\n  {} ({} BGCs)".format("Mix", str(len(mix_set))))
-        
+
         # create output directory
         create_directory(os.path.join(network_files_folder, "mix"), "  Mix", False)
         
@@ -2962,7 +2965,8 @@ if __name__=="__main__":
                     
                     for (a, b, idx) in n.subgraph(component).edges.data('index'):
                         network_matrix_set_del.append(idx)
-                        
+            
+            print("   Removing {} non-relevant MIBiG BGCs".format(len(mibig_set_del)))
             for bgc_idx in sorted(mibig_set_del, reverse=True):
                 del mix_set[bgc_idx]
             del mibig_set_del[:]
@@ -3054,6 +3058,12 @@ if __name__=="__main__":
                     continue
             
             print("\n  {} ({} BGCs)".format(bgc_class, str(len(BGC_classes[bgc_class]))))
+            if use_relevant_mibig:
+                if len(set(BGC_classes[bgc_class]) & mibig_set_indices) == len(BGC_classes[bgc_class]):
+                    print(" - All clusters in this class are MIBiG clusters -")
+                    print("  If you'd like to analyze MIBiG clusters, turn off the --mibig option")
+                    print("  and point --inputdir to the Annotated_MIBiG_reference folder")
+                    continue
             
             # create output directory
             create_directory(os.path.join(network_files_folder, bgc_class), "  All - " + bgc_class, False)
@@ -3157,6 +3167,7 @@ if __name__=="__main__":
                         for (a, b, idx) in n.subgraph(component).edges.data('index'):
                             network_matrix_set_del.append(idx)
                             
+                print("   Removing {} non-relevant MIBiG BGCs".format(len(mibig_set_del)))
                 for bgc_idx in sorted(mibig_set_del, reverse=True):
                     del_idx = BGC_classes[bgc_class].index(bgc_idx)
                     del BGC_classes[bgc_class][del_idx]
