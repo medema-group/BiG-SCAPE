@@ -1989,19 +1989,18 @@ def CMD_parser():
                         help="Classes that should NOT be included in the \
                         classification. E.g. \"--banned_classes PKSI PKSOther\"")
 
-    parser.add_argument("--cutoffs", dest="cutoffs", nargs="+", default=[0.10, 
-                    0.15, 0.20, 0.25, 0.30, 0.35, 0.40, 0.45, 0.50, 0.55, 0.60, 
-                    0.65, 0.70, 0.75, 0.80], type=float, choices=[FloatRange(0.0, 
-                    1.0)], help="Generate networks using multiple raw distance \
+    parser.add_argument("--cutoffs", dest="cutoffs", nargs="+", default=[0.30], 
+                        type=float, choices=[FloatRange(0.0, 1.0)], 
+                        help="Generate networks using multiple raw distance \
                     cutoff values, example: --cutoffs 0.1, 0.25, 0.5, 1.0. Default: \
                     all values from 0.10 to 0.80 with 0.05 intervals.")
                     
-    parser.add_argument("--clans", dest="clans",action="store_true", 
-                        default=False, help="BiG-SCAPE will perform a second \
+    parser.add_argument("--clans-off", dest="clans",action="store_false", 
+                        default=True, help="BiG-SCAPE will perform a second \
                         layer of clustering and attempt to group families \
                         assigned from clustering with cutoff of 0.5 to clans")
 
-    parser.add_argument("--clan_cutoff",dest="clan_cutoff",default=[0.5,0.8], 
+    parser.add_argument("--clan_cutoff",dest="clan_cutoff",default=[0.3,0.7], 
                         type=float, choices=[FloatRange(0.0, 1.0)],nargs=2,
                         help="Cutoff Parameters for which clustering families \
                         into clans will be performed in raw distance. First \
@@ -2012,8 +2011,8 @@ def CMD_parser():
                         used for distances between families. Example: \
                         --clan_cutoff 0.5 0.8)")
 
-    parser.add_argument("--hybrids", dest="hybrids", action="store_true", 
-                        default=False, help="Toggle to also add BGCs with hybrid\
+    parser.add_argument("--hybrids-off", dest="hybrids", action="store_false", 
+                        default=True, help="Toggle to also add BGCs with hybrid\
                         predicted products from the PKS/NRPS Hybrids and Others\
                         classes to each subclass (e.g. a 'terpene-nrps' BGC from\
                         Others would be added to the Terpene and NRPS classes)")
