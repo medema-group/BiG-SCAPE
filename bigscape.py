@@ -3076,9 +3076,6 @@ if __name__=="__main__":
                     bgc = clusterNames[idx]
                     product = bgc_info[bgc].product
                     network_annotation_file.write("\t".join([bgc, bgc_info[bgc].accession_id, bgc_info[bgc].description, product, sort_bgc(product), bgc_info[bgc].organism, bgc_info[bgc].taxonomy]) + "\n")
-                
-            if len(BGC_classes[bgc_class]) < 2:
-                continue
             
             print("   Calculating all pairwise distances")
             if has_query_bgc:
@@ -3175,6 +3172,9 @@ if __name__=="__main__":
                 for row_idx in sorted(network_matrix_set_del, reverse=True):
                     del network_matrix[row_idx]
                 del network_matrix_set_del[:]
+                
+            if len(BGC_classes[bgc_class]) < 2:
+                continue
                 
             print("   Writing output files")
             pathBase = os.path.join(network_files_folder, bgc_class)
