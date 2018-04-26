@@ -1993,7 +1993,7 @@ def CMD_parser():
                         type=float, choices=[FloatRange(0.0, 1.0)], 
                         help="Generate networks using multiple raw distance \
                     cutoff values, example: --cutoffs 0.1, 0.25, 0.5, 1.0. Default: \
-                    all values from 0.10 to 0.80 with 0.05 intervals.")
+                    c=0.3.")
                     
     parser.add_argument("--clans-off", dest="clans",action="store_false", 
                         default=True, help="BiG-SCAPE will perform a second \
@@ -2005,11 +2005,11 @@ def CMD_parser():
                         help="Cutoff Parameters for which clustering families \
                         into clans will be performed in raw distance. First \
                         value is the cutoff value family assignments for BGCs \
-                        used in clan clustering (default: 0.5). Second value is \
+                        used in clan clustering (default: 0.3). Second value is \
                         the cutoff value for clustering families into clans \
-                        (default: 0.8). Average linkage for BGCs in a family is\
+                        (default: 0.7). Average linkage for BGCs in a family is\
                         used for distances between families. Example: \
-                        --clan_cutoff 0.5 0.8)")
+                        --clan_cutoff 0.3 0.7)")
 
     parser.add_argument("--hybrids-off", dest="hybrids", action="store_false", 
                         default=True, help="Toggle to also add BGCs with hybrid\
