@@ -1427,6 +1427,7 @@ def clusterJsonBatch(bgcs, pathBase, className, matrix, pos_alignments, cutoffs=
     create_directory(module_html_path, "Network HTML", False)
     with open(os.path.join(module_html_path, "bs_data.js"), "w") as bs_data_js:
         bs_data_js.write("var bs_data={};\n".format(json.dumps(bs_data, indent=4, separators=(',', ':'), sort_keys=True)))
+        bs_data_js.write("dataLoaded('bs_data');\n")
     shutil.copy(os.path.join(os.path.realpath(os.path.dirname(__file__)), "html_template", "index_html"), os.path.join(module_html_path, "index.html"))
     
     # Create network
@@ -1898,6 +1899,8 @@ def clusterJsonBatch(bgcs, pathBase, className, matrix, pos_alignments, cutoffs=
             bs_networks_js.write("var bs_similarity_families={};\n".format(json.dumps(bs_similarity_families, indent=4, separators=(',', ':'), sort_keys=True)))
             if len(clanLabels) > 0:
                 bs_networks_js.write("var bs_clans={};\n".format(json.dumps(bs_clans, indent=4, separators=(',', ':'), sort_keys=True)))
+            bs_networks_js.write("dataLoaded('bs_networks');\n")
+
         
         if len(clanLabels) > 0:
             if verbose:
@@ -3216,6 +3219,7 @@ if __name__=="__main__":
     run_data["duration"] = "{}h{}m{}s".format((duration // 3600), ((duration % 3600) // 60), ((duration % 3600) % 60))
     with open(os.path.join(network_html_folder, "run_data.js"), "w") as run_data_js:
         run_data_js.write("var run_data={};\n".format(json.dumps(run_data, indent=4, separators=(',', ':'), sort_keys=True)))
+        run_data_js.write("dataLoaded();\n");
 
     # update bgc_results.js
     add_to_bigscape_results_js(run_name, html_subs, os.path.join(output_folder, "html_content", "js", "bigscape_results.js"))
