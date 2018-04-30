@@ -401,7 +401,10 @@ def get_gbk_files(inputpath, outputdir, bgc_fasta_folder, min_bgc_size, exclude_
     if os.path.isfile(inputpath):
         files = [inputpath]
     else:
-        files = glob(os.path.join(inputpath,"**/*.gbk"), recursive=True)
+        # Unfortunately, this does not work in Python 2:
+        #files = glob(os.path.join(inputpath,"**/*.gbk"), recursive=True) 
+        files = [os.path.join(dirpath, f) for dirpath, dirnames, files in os.walk(inputpath)
+                 for f in files if f.endswith(".gbk")]
         
     for filepath in files:
         file_folder, fname = os.path.split(filepath)
@@ -1930,6 +1933,10 @@ class FloatRange(object):
 def CMD_parser():
     parser = ArgumentParser(prog="BiG-SCAPE")
     
+    parser.add_argument("-l", "--label", dest="label", help="An extra label for\
+                        this run (will be used as part of the folder name within\
+                        the network_files results)")
+    
     parser.add_argument("-i", "--inputdir", dest="inputdir", 
                         default=os.path.dirname(os.path.realpath(__file__)),
                         help="Input directory of gbk files, if left empty, all \
@@ -2057,7 +2064,7 @@ def CMD_parser():
                     compare with the rest of the set (one-VS-all). The \
                     query BGC does not have to be within inputdir")
 
-    parser.add_argument("--version", action="version", version="%(prog)s 201803")
+    parser.add_argument("--version", action="version", version="%(prog)s 201804")
 
     return parser.parse_args()
 
@@ -2199,6 +2206,8 @@ if __name__=="__main__":
 
     start_time = time.localtime()
     run_name = "{}{}".format(time.strftime("%Y-%m-%d_%H-%M-%S", start_time), run_mode_string)
+    if options.label:
+        run_name = run_name + "_" + options.label
     run_data["start_time"] = time.strftime("%d/%m/%Y %H:%M:%S", start_time)
     run_data["parameters"] = " ".join(sys.argv[1:])
     run_data["input"] = {}
@@ -2409,22 +2418,6 @@ if __name__=="__main__":
             outputfile = os.path.join(domtable_folder,outputbase + '.domtable')
             if os.path.isfile(outputfile) and os.path.getsize(outputfile) > 0:
                 alreadyDone.add(fasta)
-        
-        if len(alreadyDone) > 0 and not os.path.isfile(os.path.join(output_folder,"warning_2017-12-06.txt")):
-            warning_text = " - IMPORTANT NOTICE - \n\
-            BiG-SCAPE has detected that you are re-using data from a previous \n\
-            run. However, some sequence identifiers that are used internally \n\
-            have change to avoid conflicts when using multi-record files (such\n\
-            as some entries in MIBiG)\n\
-            If your results were produced after 2017-12-06, please re-run BiG-SCAPE\n\
-            as usual. If your results are older than this date, please use the \n\
-            --force_hmmscan parameter.\n\
-            We are sorry for the inconvenience.\n\
-            This warning will only appear once.\n"
-            print(warning_text)
-            with open(os.path.join(output_folder,"warning_2017-12-06.txt"), "w") as warning_file:
-                warning_file.write(warning_text)
-            sys.exit()
                 
         task_set = fastaFiles - alreadyDone
         if len(task_set) == 0:
