@@ -195,6 +195,9 @@ a:visited {
 .li-check.checked {
   background: rgba(0,0,0,0.5);
 }
+.li-opendetail.mibig {
+  background: rgba(131, 236, 240, 0.5);
+}
 #header {
   margin: 0px auto;
   display: block;

@@ -345,9 +345,9 @@ function Bigscape(bs_data, bs_families, bs_alignment, bs_similarity, network_con
    var ui = Viva.Graph.svg('circle')
          .attr('r', 10)
          .attr('fill', (fam_colors[bs_to_cl[node.id]]));
-   if (bs_data[node.id].is_reference) {
+   if (bs_data[node.id]["mibig"]) {
      ui.attr("stroke", "blue");
-     ui.attr("stroke-width", "3px");
+     ui.attr("stroke-width", "4px");
    }
    $(ui).hover(function() { // mouse over
     var temp_highlight = [];
@@ -599,7 +599,10 @@ BigscapeFunc.updateDescription = function(ids, bs_svg, bs_data, bs_to_cl, bs_fam
           var id = bs_families[i]["members"][j];
           var lii = $("<li id='bs-desc_ui-li_bs-" + id + "'>");
           lii.append("<a href='##' class='li-check'></a>");
-          lii.append("<a href='##' class='li-opendetail'>" + bs_data[id]["id"] + "</a>");
+          var linktext = $("<a href='##' class='li-opendetail'>" + bs_data[id]["id"] + "</a>").appendTo(lii);
+          if (bs_data[id]["mibig"]) {
+            linktext.addClass("mibig");
+          }
           lii.find("a.li-opendetail").click({id: id, bs_svg: bs_svg, bs_data: bs_data, bs_families: bs_families, bs_to_cl: bs_to_cl, det_ui: det_ui}, function(handler){
             BigscapeFunc.openDetail(handler.data.id, handler.data.bs_svg, handler.data.bs_data, handler.data.bs_to_cl, handler.data.bs_families, handler.data.det_ui);
             handler.data.det_ui.parent().removeClass("hidden");
@@ -917,6 +920,10 @@ BigscapeFunc.openFamDetail = function(id_fam, ids_highlighted, bs_svg, bs_data, 
         jqG.attr('transform', jqG.attr('transform') + ' scale(-1,1)' + ' translate(' + (-1 * bgcLength) + ',0)');
         jqG.find(".arrower-label").attr('transform', 'scale(-1,1)' + ' translate(' + (-2 * bgcLength) + ',0)')
             .attr("font-style", "italic");
+      }
+      if (bs_data[bgcId]["mibig"]) {
+        jqG.attr("font-weight", "bold")
+          .attr("fill", "blue");
       }
       jqG.attr('transform', jqG.attr('transform') + ' scale(0.5)');
       jqG.attr('idx', bgcId);

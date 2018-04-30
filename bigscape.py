@@ -1374,6 +1374,7 @@ def clusterJsonBatch(bgcs, pathBase, className, matrix, pos_alignments, cutoffs=
         bgcJsonDict[bgcName]["desc"] = bgc_info[bgcName].description
         bgcJsonDict[bgcName]["start"] = 1
         bgcJsonDict[bgcName]["end"] = bgc_info[bgcName].bgc_size
+        bgcJsonDict[bgcName]["mibig"] = bgcName in mibig_set
         
         pfdFile = os.path.join(pfd_folder, bgcName + ".pfd")
         fastaFile = os.path.join(bgc_fasta_folder, bgcName + ".fasta")
