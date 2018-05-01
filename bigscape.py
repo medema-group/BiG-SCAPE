@@ -2764,42 +2764,6 @@ if __name__=="__main__":
         except ValueError:
             sys.exit("Error finding the index of Query BGC")
 
-    # fetch genome list for overview.js
-    genomes = []
-    classes = []
-    clusterNamesToGenomes = {}
-    clusterNamesToClasses = {}
-    for bgc in clusterNames:
-        # get class info
-        product = bgc_info[bgc].product
-        predicted_class = sort_bgc(product)
-        if predicted_class not in classes:
-            clusterNamesToClasses[bgc] = len(classes)
-            classes.append(predicted_class)
-        else:
-            clusterNamesToClasses[bgc] = classes.index(predicted_class)
-        # get identifier info
-        identifier = ""
-        if len(bgc_info[bgc].organism) > 1:
-            identifier = bgc_info[bgc].organism
-        elif len(bgc_info[bgc].accession_id) > 1:
-            if (bgc_info[bgc].accession_id[2] == "_"): # is a refseq accession
-                identifier = bgc_info[bgc].accession_id[2].split(".")[0]
-            elif len(bgc_info[bgc].accession_id) > 6: # *assume* a genbank WGS accession
-                # todo: use more robust check / assumption e.g. other types of genbank data?
-                identifier = bgc_info[bgc].accession_id[0:6]
-        if len(identifier) < 1:
-            identifier = "Unknown Genome {}".format(len(genomes))
-        if identifier not in genomes:
-            clusterNamesToGenomes[bgc] = len(genomes)
-            genomes.append(identifier)
-        else:
-            clusterNamesToGenomes[bgc] = genomes.index(identifier)
-    run_data["input"]["accession"] = [{ "id": "genome_{}".format(i), "label": acc } for i, acc in enumerate(genomes)]
-    run_data["input"]["accession_newick"] = [] # todo ...
-    run_data["input"]["classes"] = [{ "label": cl } for cl in classes ] # todo : colors
-    run_data["input"]["bgc"] = [{ "id": bgc, "acc": clusterNamesToGenomes[bgc], "class": clusterNamesToClasses[bgc] } for bgc in clusterNames]
-
     # create output directory for network files
     network_files_folder = os.path.join(network_folder, run_name)
     create_directory(network_files_folder, "Network Files", False)
@@ -3204,7 +3168,60 @@ if __name__=="__main__":
             del BGC_classes[bgc_class][:]
             del reduced_network[:]
 
+    # fetch genome list for overview.js
+    genomes = []
+    classes = []
+    clusterNamesToGenomes = {}
+    clusterNamesToClasses = {}
+    inputClustersIdx = [] # contain only indexes (from clusterNames) of input BGCs (non-mibig)
+    for idx, bgc in enumerate(clusterNames):
+        if bgc in mibig_set:
+            continue
+        inputClustersIdx.append(idx)
+        # get class info
+        product = bgc_info[bgc].product
+        predicted_class = sort_bgc(product)
+        if predicted_class not in classes:
+            clusterNamesToClasses[bgc] = len(classes)
+            classes.append(predicted_class)
+        else:
+            clusterNamesToClasses[bgc] = classes.index(predicted_class)
+        # get identifier info
+        identifier = ""
+        if len(bgc_info[bgc].organism) > 1:
+            identifier = bgc_info[bgc].organism
+        elif len(bgc_info[bgc].accession_id) > 1:
+            if (bgc_info[bgc].accession_id[2] == "_"): # is a refseq accession
+                identifier = bgc_info[bgc].accession_id[2].split(".")[0]
+            elif len(bgc_info[bgc].accession_id) > 6: # *assume* a genbank WGS accession
+                # todo: use more robust check / assumption e.g. other types of genbank data?
+                identifier = bgc_info[bgc].accession_id[0:6]
+        if len(identifier) < 1:
+            identifier = "Unknown Genome {}".format(len(genomes))
+        if identifier not in genomes:
+            clusterNamesToGenomes[bgc] = len(genomes)
+            genomes.append(identifier)
+        else:
+            clusterNamesToGenomes[bgc] = genomes.index(identifier)
+    run_data["input"]["accession"] = [{ "id": "genome_{}".format(i), "label": acc } for i, acc in enumerate(genomes)]
+    run_data["input"]["accession_newick"] = [] # todo ...
+    run_data["input"]["classes"] = [{ "label": cl } for cl in classes ] # todo : colors
+    run_data["input"]["bgc"] = [{ "id": clusterNames[idx], "acc": clusterNamesToGenomes[clusterNames[idx]], "class": clusterNamesToClasses[clusterNames[idx]] } for idx in inputClustersIdx]
 
+    # update family data (convert global bgc indexes into input-only indexes)
+    for network in run_data["networks"]:
+        for family in network["families"]:
+            new_members = []
+            mibig = []
+            for bgcIdx in family["members"]:
+                if bgcIdx in inputClustersIdx:                    
+                    new_members.append(inputClustersIdx.index(bgcIdx))
+                else: # is a mibig bgc
+                    clusterName = clusterNames[idx]
+                    if clusterName in mibig_set:
+                        mibig.append(clusterName)
+            family["mibig"] = mibig
+            family["members"] = new_members
 
     # generate overview data
     end_time = time.localtime()
