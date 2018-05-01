@@ -72,6 +72,10 @@
                   <span id="network_max_bgc_in_family" class="inforight"></span>          
                 </div>
                 <div class="infobar">
+                  <span class="infoleft">Families with MIBiG Reference BGCs:</span>
+                  <span id="network_mibig_in_family" class="inforight"></span>          
+                </div>
+                <div class="infobar">
                 </div>
                 <div class="infobar">
                     <span style="font-weight: bold;">GCF absence/presence heatmap</span>
@@ -235,6 +239,7 @@
       $("#network_selection .tablink").eq(idx).addClass("w3-border-red");
       var maxBGC = 0;
       var sumBGC = 0;
+      var mibigFamily = 0;
       var totalFamily = run_data["networks"][idx]["families"].length;
       for (var i in run_data["networks"][idx]["families"]) {
         var members = run_data["networks"][idx]["families"][i]["members"];
@@ -242,10 +247,14 @@
           maxBGC = members.length;
         }
         sumBGC += members.length;
+        if (run_data["networks"][idx]["families"][i]["mibig"].length > 0) {
+          mibigFamily++;
+        }
       }
       $("#network_total_families").html(totalFamily);
       $("#network_avg_bgc_in_family").html((sumBGC / totalFamily).toFixed(0));
       $("#network_max_bgc_in_family").html(maxBGC);
+      $("#network_mibig_in_family").html(mibigFamily);
       // absence/presence heatmap
       $("#abpres_heatmap-row_clustering").change(function(handler){ renderHeatmap(idx); });
       $("#abpres_heatmap-row_clustering").html("")
