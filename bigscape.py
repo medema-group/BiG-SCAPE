@@ -1521,7 +1521,7 @@ def clusterJsonBatch(bgcs, pathBase, className, matrix, pos_alignments, cutoffs=
             exemplar = clusterNames[exemplar_idx]
             gcf = familiesDict[exemplar_idx][:]
             if len(gcf) < 3:
-                newick_trees[exemplar_idx] = "({});".format(",".join([str(bgcExt2Int[x])+":0.0" for x in gcf]))
+                newick_trees[exemplar_idx] = "({}):0.01;".format(",".join([str(bgcExt2Int[x])+":0.0" for x in gcf]))
                 
                 #print(newick_trees[exemplar_idx])
                 #TODO make some default alignment data to send to the json file
