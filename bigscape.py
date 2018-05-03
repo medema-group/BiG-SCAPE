@@ -2849,8 +2849,9 @@ if __name__=="__main__":
         cluster_pairs = [(x, y, -1) for (x, y) in pairs]
         pairs.clear()
         network_matrix_mix = generate_network(cluster_pairs, cores)
-        del cluster_pairs[:]
         
+        del cluster_pairs[:]
+
         # add the rest of the edges in the "Query network"
         if has_query_bgc:
             new_set = []
@@ -2923,18 +2924,26 @@ if __name__=="__main__":
                     for bgc in component:
                         mibig_set_del.append(bgc)
                     
-                    for (a, b, idx) in n.subgraph(component).edges.data('index'):
-                        network_matrix_set_del.append(idx)
-            
-            print("   Removing {} non-relevant MIBiG BGCs".format(len(mibig_set_del)))
-            for bgc_idx in sorted(mibig_set_del, reverse=True):
-                del mix_set[bgc_idx]
-            del mibig_set_del[:]
+            # Get all edges between bgcs marked for deletion
+            for (a, b, idx) in n.subgraph(mibig_set_del).edges.data('index'):
+                network_matrix_set_del.append(idx)
                 
+            # delete all edges between marked bgcs
             for row_idx in sorted(network_matrix_set_del, reverse=True):
                 del network_matrix_mix[row_idx]
             del network_matrix_set_del[:]
-                        
+            
+            print("   Removing {} non-relevant MIBiG BGCs".format(len(mibig_set_del)))
+            mix_set_idx = 0
+            bgc_to_mix_set_idx = {}
+            for idx, bgc in enumerate(mix_set):
+                bgc_to_mix_set_idx[bgc] = idx
+            
+            for bgc_idx in sorted(mibig_set_del, reverse=True):
+                del mix_set[bgc_to_mix_set_idx[bgc_idx]]
+            del mibig_set_del[:]
+            
+
         print("  Writing output files")
         pathBase = os.path.join(network_files_folder, "mix")
         filenames = []
@@ -3120,19 +3129,25 @@ if __name__=="__main__":
                     if len(component & mibig_set_indices) == numBGCs_subgraph:
                         for bgc in component:
                             mibig_set_del.append(bgc)
-                        
-                        for (a, b, idx) in n.subgraph(component).edges.data('index'):
-                            network_matrix_set_del.append(idx)
-                            
-                print("   Removing {} non-relevant MIBiG BGCs".format(len(mibig_set_del)))
-                for bgc_idx in sorted(mibig_set_del, reverse=True):
-                    del_idx = BGC_classes[bgc_class].index(bgc_idx)
-                    del BGC_classes[bgc_class][del_idx]
-                del mibig_set_del[:]
-                    
+                
+                # Get all edges between bgcs marked for deletion
+                for (a, b, idx) in n.subgraph(mibig_set_del).edges.data('index'):
+                    network_matrix_set_del.append(idx)
+                
+                # delete all edges between marked bgcs
                 for row_idx in sorted(network_matrix_set_del, reverse=True):
                     del network_matrix[row_idx]
                 del network_matrix_set_del[:]
+                            
+                print("   Removing {} non-relevant MIBiG BGCs".format(len(mibig_set_del)))
+                bgc_to_class_idx = {}
+                for idx, bgc in enumerate(BGC_classes[bgc_class]):
+                    bgc_to_class_idx[bgc] = idx
+                for bgc_idx in sorted(mibig_set_del, reverse=True):
+                    del BGC_classes[bgc_class][bgc_to_class_idx[bgc_idx]]
+                del mibig_set_del[:]
+                    
+                
                 
             if len(BGC_classes[bgc_class]) < 2:
                 continue
