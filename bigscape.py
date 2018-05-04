@@ -3223,6 +3223,7 @@ if __name__=="__main__":
     run_data["input"]["classes"] = [{ "label": cl } for cl in classes ] # todo : colors
     run_data["input"]["bgc"] = [{ "id": clusterNames[idx], "acc": clusterNamesToGenomes[clusterNames[idx]], "class": clusterNamesToClasses[clusterNames[idx]] } for idx in inputClustersIdx]
 
+
     # update family data (convert global bgc indexes into input-only indexes)
     for network in run_data["networks"]:
         for family in network["families"]:
@@ -3232,11 +3233,12 @@ if __name__=="__main__":
                 if bgcIdx in inputClustersIdx:                    
                     new_members.append(inputClustersIdx.index(bgcIdx))
                 else: # is a mibig bgc
-                    clusterName = clusterNames[idx]
+                    clusterName = clusterNames[bgcIdx]
                     if clusterName in mibig_set:
                         mibig.append(clusterName)
             family["mibig"] = mibig
             family["members"] = new_members
+
 
     # generate overview data
     end_time = time.localtime()

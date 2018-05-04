@@ -3619,7 +3619,6 @@ var InCHlib;
     var self = this;
       var i, line;
       var attrs = evt.target.attrs;
-      var row_label = self.data.nodes[evt.target.parent.attrs.id].objects[0];
       var points = attrs.points;
       var x = self._hack_round((points[0] + points[2])/2);
       var y = points[1]-0.5*self.pixels_for_leaf;
@@ -3647,8 +3646,11 @@ var InCHlib;
         self.heatmap_overlay.add(self.column_overlay);
       }
 
-      if(header !== undefined){
-          value = [row_label, header, value].join("\n");
+      if (header !== undefined){
+        value = header + "\n" + value;
+      }
+      if (self.data.nodes.hasOwnProperty(evt.target.parent.attrs.id)) {
+        value = self.data.nodes[evt.target.parent.attrs.id].objects[0] + "\n" + value;
       }
 
       var tooltip = self.objects_ref.tooltip_label.clone({x: x, y:y, id: "col_label",});
