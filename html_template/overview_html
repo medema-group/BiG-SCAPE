@@ -281,7 +281,26 @@
           dendrogram: true,
           column_dendrogram: true,
           column_metadata: true,
-          column_metadata_colors: "Greys",
+          column_metadata_colors: "YlGn",
+          column_metadata_function: function(features) {
+            var str2num = {};
+            str2num["0 hit"] = 0;
+            for (var i in features) {
+              for (var j in features[i]) {
+                if (!str2num.hasOwnProperty("" + features[i][j])) {
+                  str2num["" + features[i][j]] = 1;
+                }
+              }
+            }
+            return {
+              "0": {
+                "min": 0,
+                "max": 1,
+                "middle": 0.5,
+                "str2num": str2num
+              }
+            };
+          },
           heatmap_part_width: 0.9,
           max_column_width: 15,
           fixed_row_id_size: 5,

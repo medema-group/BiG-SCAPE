@@ -1613,7 +1613,11 @@ var InCHlib;
       }
 
       if(self.settings.column_metadata){
-          self.column_metadata_descs = self._get_data_min_max_middle(self.column_metadata.features, "row");
+          if (self.settings.hasOwnProperty("column_metadata_function")) {
+            self.column_metadata_descs = self.settings.column_metadata_function(self.column_metadata.features); // a hack
+          } else {
+            self.column_metadata_descs = self._get_data_min_max_middle(self.column_metadata.features, "row");
+          }
           y1 = self.header_height + 0.5*self.settings.column_metadata_row_height;
 
           for(var i = 0, len = self.column_metadata.features.length; i < len; i++){
