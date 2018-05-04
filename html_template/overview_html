@@ -280,10 +280,11 @@
           draw_row_ids: true,
           dendrogram: true,
           column_dendrogram: true,
+          column_metadata: true,
+          column_metadata_colors: "Greys",
           heatmap_part_width: 0.9,
           max_column_width: 15,
           fixed_row_id_size: 5,
-          alternative_data: false,
           navigation_toggle: {
             color_scale: false,
             export_button: true,
@@ -336,12 +337,12 @@
           "nodes": {},
           "feature_names": []
         },
-        "alternative_data": {
-          "feature_names": [],
-          "nodes": {}
-        },
         "column_dendrogram": {
           "nodes": {}
+        },
+        "column_metadata": {
+          "features": [[]],
+          "feature_names": ["MIBiG"]
         }
       }
       // apply GCF filtering
@@ -384,6 +385,7 @@
           var accId = run_data["input"]["accession"][run_data["input"]["bgc"][bgcId]["acc"]]["id"];
           acc_features[accId][i] += 1;
         }
+        result["column_metadata"]["features"][0].push(fam_data["mibig"].length + (fam_data["mibig"].length > 1? " hits":" hit"));
       }
       // apply Genomes filtering (only shows genomes with filtered GCFs, unless using custom newick)
       var included_accessions = [];
