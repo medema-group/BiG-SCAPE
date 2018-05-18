@@ -104,14 +104,15 @@
                     </select>
                   </span>
                 </div>
-                <!--div class="infobar">
-                  <span class="inforight" style="font-size: 12px;">
-                    test
+                <div class="infobar">
+                </div>
+                <div class="infobar">
+                  <span class="infoleft" style="font-size: 12px;">
+                    Download:
+                    <button onclick="javascript: downloadAbPresTsv();">Absence/Presence table (tsv)</button>
+                    <input type="hidden" id="abpres_tsv_text" value="" />
                   </span>
-                  <span class="inforight" style="font-size: 12px;">
-                      test
-                    </span>
-                </div-->
+                </div>
                 <div class="infobar">
                 </div>
                 <div class="infobar">
@@ -563,6 +564,26 @@
           node["features"] = feature_dendrosorted;
         }
       }
+
+      // update tsv text
+      tsv_text = "";
+      tsv_text += "ACC";
+      for (var i in result["data"]["feature_names"]) {
+        tsv_text += "\t" + result["data"]["feature_names"][i];
+      }
+      tsv_text += "\n";
+      for (var key in result["data"]["nodes"]) {
+        var node = result["data"]["nodes"][key];
+        if (node.hasOwnProperty("objects")) {
+          tsv_text += node["objects"][0];
+          for (var j in node["features"]) {
+            tsv_text += "\t" + node["features"][j];
+          }
+          tsv_text += "\n";
+        }
+      }
+      $("#abpres_tsv_text").val(tsv_text);
+
       return result;
     }
 
@@ -744,6 +765,17 @@
         // recursive return
         return [nodes, leaf_count, node_count, branch_total_length];
       }
+    }
+
+    function downloadAbPresTsv() {
+      // create download link and open it
+      var element = document.createElement('a');
+      element.setAttribute('href', 'data:text/plain;charset=utf-8,' + encodeURIComponent(document.getElementById("abpres_tsv_text").value));
+      element.setAttribute('download', "absence_presence.tsv");
+      element.style.display = 'none';
+      document.body.appendChild(element);
+      element.click();
+      document.body.removeChild(element);
     }
   </script>
   <script src="./run_data.js" defer></script>
