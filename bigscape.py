@@ -2063,6 +2063,11 @@ def CMD_parser():
                     comparison of all the input BGCs, choose one BGC to \
                     compare with the rest of the set (one-VS-all). The \
                     query BGC does not have to be within inputdir")
+    
+    parser.add_argument("--domain_whitelist", help="Only analyze include those\
+                        BGCs that include domains with the pfam accessions \
+                        found in the domain_whitelist.txt file", default=False,
+                        action="store_true")
 
     parser.add_argument("--version", action="version", version="%(prog)s 201804")
 
@@ -2214,6 +2219,24 @@ if __name__=="__main__":
 
     # Make the following available for possibly deleting entries within parseHmmScan
     global gbk_files, sampleDict, clusters, baseNames
+    
+    
+    # Get domain_whitelist
+    has_whitelist = False
+    if options.domain_whitelist:
+        bigscape_path = os.path.dirname(os.path.realpath(__file__))
+        if os.path.isfile(os.path.join(bigscape_path,"domain_whitelist.txt")):
+            domain_whitelist = set()
+            for line in open(os.path.join(bigscape_path,"domain_whitelist.txt"), "r"):
+                if line[0] == "#":
+                    continue
+                domain_whitelist.add(line.split("\t")[0])
+            if len(domain_whitelist) == 0:
+                print("Error: --domain_whitelist used, but no domains found in the file")
+            else:
+                has_whitelist = True
+        else:
+            sys.exit("Error: domain_whitelist.txt file not found")
     
     
     ### Step 1: Get all the input files. Write extract sequence and write fasta if necessary
@@ -2810,7 +2833,7 @@ if __name__=="__main__":
             network_annotation_file.write("\t".join([bgc, bgc_info[bgc].accession_id, bgc_info[bgc].description, product, sort_bgc(product), bgc_info[bgc].organism, bgc_info[bgc].taxonomy]) + "\n")
     
     
-    # Find indice of all MIBiG BGCs if necessary
+    # Find index of all MIBiG BGCs if necessary
     if use_relevant_mibig:
         name_to_idx = {}
         for clusterIdx,clusterName in enumerate(clusterNames):
@@ -2829,8 +2852,16 @@ if __name__=="__main__":
         
         # create working set with indices of valid clusters
         for clusterIdx,clusterName in enumerate(clusterNames):
+            if has_whitelist:
+                # extra processing because pfs info includes model version
+                bgc_domain_set = set({x.split(".")[0] for x in DomainList[clusterName]})
+                    
+                if len(domain_whitelist & bgc_domain_set) == 0:
+                    continue
+            
             product = bgc_info[clusterName].product
             predicted_class = sort_bgc(product)
+            
             if predicted_class.lower() in valid_classes:
                 mix_set.append(clusterIdx)
         
@@ -2986,8 +3017,16 @@ if __name__=="__main__":
         
         # create and sort working set for each class
         for clusterIdx,clusterName in enumerate(clusterNames):
+            if has_whitelist:
+                # extra processing because pfs info includes model version
+                bgc_domain_set = set({x.split(".")[0] for x in DomainList[clusterName]})
+                    
+                if len(domain_whitelist & bgc_domain_set) == 0:
+                    continue
+            
             product = bgc_info[clusterName].product
             predicted_class = sort_bgc(product)
+            
             if predicted_class.lower() in valid_classes:
                 BGC_classes[predicted_class].append(clusterIdx)
             

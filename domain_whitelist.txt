@@ -1,0 +1,3 @@
+# Enter a list of pfam domains to be used for filtering BGCs during analysis
+# One item per line (but comments are allowed after a tab). e.g.:
+PF00067	Cytochrome P450
