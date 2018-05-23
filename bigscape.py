@@ -3244,12 +3244,9 @@ if __name__=="__main__":
         identifier = ""
         if len(bgc_info[bgc].organism) > 1:
             identifier = bgc_info[bgc].organism
-        elif len(bgc_info[bgc].accession_id) > 1:
-            if (bgc_info[bgc].accession_id[2] == "_"): # is a refseq accession
-                identifier = bgc_info[bgc].accession_id[2].split(".")[0]
-            elif len(bgc_info[bgc].accession_id) > 6: # *assume* a genbank WGS accession
-                # todo: use more robust check / assumption e.g. other types of genbank data?
-                identifier = bgc_info[bgc].accession_id[0:6]
+        else : # use original genome file name (i.e. exclude "..clusterXXX from antiSMASH run")
+            file_name_base = os.path.splitext(os.path.basename(genbankDict[bgc][0]))[0]
+            identifier = file_name_base.rsplit(".cluster",1)[0]
         if len(identifier) < 1:
             identifier = "Unknown Genome {}".format(len(genomes))
         if identifier not in genomes:
