@@ -2230,7 +2230,7 @@ if __name__=="__main__":
             for line in open(os.path.join(bigscape_path,"domain_whitelist.txt"), "r"):
                 if line[0] == "#":
                     continue
-                domain_whitelist.add(line.split("\t")[0])
+                domain_whitelist.add(line.split("\t")[0].strip())
             if len(domain_whitelist) == 0:
                 print("Error: --domain_whitelist used, but no domains found in the file")
             else:
