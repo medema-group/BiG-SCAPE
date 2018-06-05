@@ -436,7 +436,7 @@ def get_gbk_files(inputpath, outputdir, bgc_fasta_folder, min_bgc_size, exclude_
             for f in sorted(files_no_proteins):
                 noseqs.write("{}\n".format(f))
         
-    if len(files_no_biosynthetic_genes) > 0 and (mode == "lcs" or mode == "local"):
+    if len(files_no_biosynthetic_genes) > 0 and (mode == "glocal" or mode == "auto"):
         print("  Warning: Input set has files with no Biosynthetic Genes (affects alignment mode)")
         print("   See no_biosynthetic_genes_list.txt")
         with open(os.path.join(outputdir, "logs", "no_biosynthetic_genes_list.txt"), "w") as nobiogenes:
@@ -837,7 +837,7 @@ def cluster_distance_lcs(A, B, A_domlist, B_domlist, dcg_A, dcg_b, core_pos_A, c
     ##print(sliceStartA, sliceStartB, sliceLengthA)
     #print("")
 
-    if mode=="lcs" or (mode=="auto" and (bgc_info[A].contig_edge or bgc_info[B].contig_edge)):
+    if mode=="glocal" or (mode=="auto" and (bgc_info[A].contig_edge or bgc_info[B].contig_edge)):
         #X: bgc that drive expansion
         #Y: the other bgc
         # forward: True if expansion is to the right
@@ -2028,17 +2028,17 @@ def CMD_parser():
                         classes to each subclass (e.g. a 'terpene-nrps' BGC from\
                         Others would be added to the Terpene and NRPS classes)")
     
-    parser.add_argument("--mode", dest="mode", default="global", choices=["global",
-                            "lcs", "auto"], help="Alignment mode for each pair of\
-                            gene clusters. 'global' (default) the whole list of\
-                            domains of each BGC are compared; 'lcs': Longest\
-                            Common Subcluster mode. Redefine the subset of the \
-                            domains used to calculate distance by trying to find\
-                            the longest slice of common domain content per gene\
-                            in both BGCs, then expand each slice.\
-                            'auto' use LCS when at least one of the BGCs in each\
-                            pair has the 'contig_edge' annotation from antiSMASH\
-                            v4+, otherwise use global mode on that pair")
+    parser.add_argument("--mode", dest="mode", default="glocal", choices=["global",
+                            "glocal", "auto"], help="Alignment mode for each pair of\
+                            gene clusters. 'global': the whole list of domains \
+                            of each BGC are compared; 'glocal': Longest Common \
+                            Subcluster mode. Redefine the subset of the domains \
+                            used to calculate distance by trying to find the \
+                            longest slice of common domain content per gene in \
+                            both BGCs, then expand each slice. 'auto': use glocal\
+                            when at least one of the BGCs in each pair has the \
+                            'contig_edge' annotation from antiSMASH v4+, \
+                            otherwise use global mode on that pair")
     
     parser.add_argument("--anchorfile", dest="anchorfile", 
                         default=os.path.join(os.path.dirname(os.path.realpath(__file__)),"anchor_domains.txt"),
@@ -2201,11 +2201,11 @@ if __name__=="__main__":
     if mode == "auto":
         networks_folder_all += "_auto"
         run_mode_string += "_auto"
-    elif mode == "lcs":
-        networks_folder_all += "_lcs"
+    elif mode == "glocal":
+        networks_folder_all += "_glocal"
         run_mode_string += "_glocal"
     else:
-        run_mode_string += "_full"
+        run_mode_string += "_global"
     
     time1 = time.time()
 
