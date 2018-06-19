@@ -1689,7 +1689,8 @@ def clusterJsonBatch(bgcs, pathBase, className, matrix, pos_alignments, cutoffs=
                         except UnboundLocalError:
                             # Noticed this could happen if the sequences are exactly
                             # the same and all distances == 0
-                            print(" Warning: Unable to root at midpoint file {}".format(newick_file_path))
+                            if verbose:
+                                print(" Warning: Unable to root at midpoint file {}".format(newick_file_path))
                             pass
                         newick = tree.format("newick")
                         
@@ -1699,7 +1700,7 @@ def clusterJsonBatch(bgcs, pathBase, className, matrix, pos_alignments, cutoffs=
 
                         newick_trees[exemplar_idx] = newick
        
-        ### Use the 0.5 distance cutoff to cluster clans by default
+        ### - - - GCC - - -
         bs_similarity_families = []
         if clusterClans and cutoff == clanClassificationCutoff:
             # Detect if there's only 1 GCF. It makes pySAPC crash
@@ -1750,7 +1751,8 @@ def clusterJsonBatch(bgcs, pathBase, className, matrix, pos_alignments, cutoffs=
             
             # affinity propagation can fail in some circumstances (e.g. only singletons)
             if exemplarsClans is not None:
-                clanLabels = [exemplarsClans[labelsClans[i]] for i in range(len(familyIdx))]
+                # translate and record GCF label instead of GCF number
+                clanLabels = [familyIdx[exemplarsClans[labelsClans[i]]] for i in range(len(familyIdx))]
             else:
                 clanLabels = []
             
