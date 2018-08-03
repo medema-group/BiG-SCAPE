@@ -1,39 +1,33 @@
-FROM ubuntu:14.04
+FROM conda/miniconda3
 
-MAINTAINER Jindrich Vimr <jvimr@softeu.com>
+RUN apt-get update && apt-get install -y git wget
 
-RUN echo "1.565.1" > .lts-version-number
+RUN conda create --name bigscape
+#RUN source activate bigscape
+RUN [ "/bin/bash", "-c","source activate bigscape"]
+RUN conda install -y \
+ 	numpy \  
+	scipy \ 
+	scikit-learn 
 
-RUN apt-get update && apt-get install -y wget curl git
-
-
-RUN curl -LO http://repo.continuum.io/miniconda/Miniconda-latest-Linux-x86_64.sh
-RUN bash Miniconda-latest-Linux-x86_64.sh -p /miniconda -b
-RUN rm Miniconda-latest-Linux-x86_64.sh
-ENV PATH=/miniconda/bin:${PATH}
-RUN conda update -y conda
-
-RUN conda install -y \ 
-	numpy  \
-	scipy \
-	cython  
-RUN conda install -c bioconda hmmer biopython 
-
-#RUN pip install pysapc
-RUN apt-get -y install build-essential \
-    && rm -rf /var/lib/apt/lists/* \
-    && pip install pysapc \
-    && apt-get purge -y --auto-remove build-essential
+RUN conda install -c bioconda hmmer biopython fasttree
+RUN conda install -c anaconda networkx
 
 WORKDIR /usr/src
-
+## Cloning BiG-SCAPE
 RUN git clone https://git.wur.nl/medema-group/BiG-SCAPE.git
 
-## geting pFAMi 
+## geting Pfam
 RUN wget ftp://ftp.ebi.ac.uk/pub/databases/Pfam/releases/Pfam31.0/Pfam-A.hmm.gz
 #ftp://ftp.ebi.ac.uk/pub/databases/Pfam/current_release/Pfam-A.hmm.gz.
 RUN gunzip Pfam-A.hmm.gz && hmmpress Pfam-A.hmm && mv Pfam-A.* /usr/src/BiG-SCAPE/.
-#RUN mv BiG-SCAPE /opt/BiG-SCAPE
 
-ENV PATH=/usr/src/BiG-SCAPE:${PATH}
+RUN chmod +x /usr/src/BiG-SCAPE/*py  
+RUN chmod 777 /home  
+ENV PATH /usr/src/BiG-SCAPE:$PATH
+USER 1000:1000
+RUN mkdir /home/input /home/output
 WORKDIR /home
+ENTRYPOINT ["bigscape.py"]
+CMD ["--help"]
+
