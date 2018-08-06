@@ -796,23 +796,24 @@ BigscapeFunc.openFamDetail = function(id_fam, ids_highlighted, bs_svg, bs_data, 
   treeContainer.css({
     "margin-left": 10
   });
-  var relatedFamily = $("<div><h3>Related Families</h3></div").appendTo(det_ui);
-  relatedFamily.css({
-    "margin-left": 10
-  });
   if ((id_fam > -1) && (id_fam < bs_families.length)) {
     // get clan info
-    var clanTab = $("<table><thead><tr><th>Family</th><th>Members</th><th>Closest distance</th><th>Furthest distance</th><th>Average distance</th></tr></thead><tbody></tbody></table>").appendTo(relatedFamily);
-    clanTab.css({
-      "border": "1px solid black",
-      "width": "100%"
-    });
-    if (true) {//(bs_families[id_fam].hasOwnProperty("clan")) {
+    if (bs_families[id_fam].hasOwnProperty("clan")) {
+      var relatedFamily = $("<div><h3>Clan Information</h3></div>").appendTo(det_ui);
+      relatedFamily.css({
+        "margin-left": 10
+      });
+      $("<div>This family is part of " + bs_families[id_fam]["clan"] + ", comprising the following families:</div>").appendTo(relatedFamily);
+      var clanTab = $("<table><thead><tr><th>Family</th><th>Members</th><th>Closest distance</th><th>Furthest distance</th><th>Average distance</th></tr></thead><tbody></tbody></table>").appendTo(relatedFamily);
+      clanTab.css({
+        "border": "1px solid black",
+        "width": "100%"
+      });
       var related_families = [];
       for (var i in bs_families) {
-        if (bs_families[i]["id"] !== bs_families[id_fam]["id"]) {
-          if (true) {//(bs_families[i].hasOwnProperty("clan")) {
-            if (true) {//(bs_families[i]["clan"] === bs_families[id_fam]["clan"]) {
+        if (true) {//(bs_families[i]["id"] !== bs_families[id_fam]["id"]) {
+          if (bs_families[i].hasOwnProperty("clan")) {
+            if (bs_families[i]["clan"] === bs_families[id_fam]["clan"]) {
               var bs_sim = (i > id_fam)? bs_similarity_families[i][id_fam]:bs_similarity_families[id_fam][i];
               related_families.push({
                 "idx": i,
