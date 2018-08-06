@@ -2442,7 +2442,14 @@ if __name__=="__main__":
             outputbase  = ".".join(fasta.split(os.sep)[-1].split(".")[:-1])
             outputfile = os.path.join(domtable_folder,outputbase + '.domtable')
             if os.path.isfile(outputfile) and os.path.getsize(outputfile) > 0:
-                alreadyDone.add(fasta)
+                # verify domtable content
+                with open(outputfile, "r") as domtablefile:
+                    for line in domtablefile.readlines():
+                        if line.startswith("# Option settings:"):
+                            linecols = line.split()
+                            if "hmmscan" in linecols and "--domtblout" in linecols:
+                                alreadyDone.add(fasta)
+                                break
                 
         task_set = fastaFiles - alreadyDone
         if len(task_set) == 0:
