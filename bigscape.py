@@ -2071,7 +2071,7 @@ def CMD_parser():
                         found in the domain_whitelist.txt file", default=False,
                         action="store_true")
 
-    parser.add_argument("--version", action="version", version="%(prog)s 201804")
+    parser.add_argument("--version", action="version", version="%(prog)s 201809")
 
     return parser.parse_args()
 
@@ -2161,13 +2161,13 @@ if __name__=="__main__":
     # in the cutoffs to do AP in clusterJsonBatch
     if options.clans:
         fc, cc = options.clan_cutoff
-        if c not in cutoff_list:
+        if fc not in cutoff_list:
             if fc <= 0.0 or fc > 1.0:
                 sys.exit("Error: invalid cutoff value for GCF calling")
             else:
                 cutoff_list = sorted(cutoff_list.append(fc))
             
-        if cc <= 0.0 or fc > 1.0:
+        if cc <= 0.0 or cc > 1.0:
             sys.exit("Error: invalid cutoff value for GCC calling")
         
     
