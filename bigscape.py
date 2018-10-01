@@ -175,7 +175,7 @@ def process_gbk_files(gbk, min_bgc_size, bgc_info, files_no_proteins, files_no_b
                     else:
                         strand = '-'
                         
-                    fasta_header = "{}_ORF{}:gid:{}:pid:{}:loc:{}:{}:strand:{}".format(clusterName, str(cds_ctr), str(gene_id), str(protein_id), str(gene_start), str(gene_end), strand)
+                    fasta_header = "{}_ORF{}:gid:{}:pid:{}:loc:{}:{}:strand:{}".format(clusterName, str(cds_ctr), str(gene_id).replace(":","_"), str(protein_id).replace(":","_"), str(gene_start), str(gene_end), strand)
                     fasta_header = fasta_header.replace(">","") #the coordinates might contain larger than signs, tools upstream don't like this
                     fasta_header = fasta_header.replace(" ", "") #the domtable output format (hmmscan) uses spaces as a delimiter, so these cannot be present in the fasta header
 
@@ -2056,11 +2056,15 @@ def CMD_parser():
                         sequences. Use if alignments have been generated in a \
                         previous run.")
     
-    parser.add_argument("--mibig", dest="use_relevant_mibig", action=
-        "store_true", default=False, help="Use included BGCs from then MIBiG \
-        database. Only relevant (i.e. those with distance < max(cutoffs) against\
-        the input set) will be used. Using version (version 1.3). See https://mibig.secondarymetabolites.org/")
-     
+    parser.add_argument("--mibig", dest="mibig14", default=False, action="store_true",
+                        help="Use included BGCs from then MIBiG database. Only \
+                        relevant (i.e. those with distance < max(cutoffs) against\
+                        the input set) will be used. Currently uses version 1.4 \
+                        of MIBiG. See https://mibig.secondarymetabolites.org/")
+    
+    parser.add_argument("--mibig13", dest="mibig13", default=False, action="store_true",
+                        help="Include BGCs from the previous version of MIBiG (1.3)")
+    
     parser.add_argument("--query_bgc", help="Instead of making an all-VS-all \
                     comparison of all the input BGCs, choose one BGC to \
                     compare with the rest of the set (one-VS-all). The \
@@ -2195,6 +2199,10 @@ if __name__=="__main__":
             
     verbose = options.verbose
     
+    if options.mibig14 and options.mibig13:
+        sys.exit("Error: choose only one MIBiG version")
+    use_relevant_mibig = options.mibig13 or options.mibig14
+    
     run_mode_string = ""
     networks_folder_all = "networks_all"
     if options.hybrids:
@@ -2310,10 +2318,13 @@ if __name__=="__main__":
     # Read included MIBiG
     # Change this for every officially curated MIBiG bundle
     # (file, final folder, number of bgcs)
-    mibig_zipfile_numbgcs = ("MIBiG_1.3_gbks.zip", "1.3+_final_gbks", 1393)
-    use_relevant_mibig = options.use_relevant_mibig
     mibig_set = set()
     if use_relevant_mibig:
+        if options.mibig13:
+            mibig_zipfile_numbgcs = ("MIBiG_1.3_final.zip", "MIBiG_1.3_final", 1393)
+        else:
+            mibig_zipfile_numbgcs = ("MIBiG_1.4_final.zip", "MIBiG_1.4_final", 1808)
+        
         print("\n Trying to read bundled MIBiG BGCs as reference")
         mibig_path = os.path.join(os.path.dirname(os.path.realpath(__file__)),"Annotated_MIBiG_reference")
         bgcs_path = os.path.join(mibig_path,mibig_zipfile_numbgcs[1])
