@@ -1922,16 +1922,6 @@ def clusterJsonBatch(bgcs, pathBase, className, matrix, pos_alignments, cutoffs=
     return family_data
 
 
-class FloatRange(object):
-    def __init__(self, start, end):
-        self.start = start
-        self.end = end
-    def __eq__(self, other):
-        return self.start <= other <= self.end
-    def __repr__(self):
-        return '{}-{}'.format(self.start, self.end)
-
-
 def CMD_parser():
     parser = ArgumentParser(prog="BiG-SCAPE")
     
@@ -2003,25 +1993,25 @@ def CMD_parser():
                         classification. E.g. \"--banned_classes PKSI PKSOther\"")
 
     parser.add_argument("--cutoffs", dest="cutoffs", nargs="+", default=[0.30], 
-                        type=float, choices=[FloatRange(0.0, 1.0)], 
-                        help="Generate networks using multiple raw distance \
-                    cutoff values, example: --cutoffs 0.1, 0.25, 0.5, 1.0. Default: \
-                    c=0.3.")
+                        type=float, help="Generate networks using multiple raw \
+                        distance cutoff values. Values should be in the range \
+                        [0.0, 1.0]. Example: --cutoffs 0.1 0.25 0.5 1.0. Default: \
+                        c=0.3.")
                     
-    parser.add_argument("--clans-off", dest="clans",action="store_false", 
+    parser.add_argument("--clans-off", dest="clans", action="store_false", 
                         default=True, help="BiG-SCAPE will perform a second \
                         layer of clustering and attempt to group families \
                         assigned from clustering with cutoff of 0.5 to clans")
 
     parser.add_argument("--clan_cutoff",dest="clan_cutoff",default=[0.3,0.7], 
-                        type=float, choices=[FloatRange(0.0, 1.0)],nargs=2,
-                        help="Cutoff Parameters for which clustering families \
-                        into clans will be performed in raw distance. First \
-                        value is the cutoff value family assignments for BGCs \
-                        used in clan clustering (default: 0.3). Second value is \
-                        the cutoff value for clustering families into clans \
-                        (default: 0.7). Average linkage for BGCs in a family is\
-                        used for distances between families. Example: \
+                        type=float, nargs=2, help="Cutoff Parameters for which \
+                        clustering families into clans will be performed in raw \
+                        distance. First value is the cutoff value family \
+                        assignments for BGCs used in clan clustering (default: \
+                        0.3). Second value is the cutoff value for clustering \
+                        families into clans (default: 0.7). Average linkage for \
+                        BGCs in a family is used for distances between families. \
+                        Valid values are in the range [0.0, 1.0]. Example: \
                         --clan_cutoff 0.3 0.7)")
 
     parser.add_argument("--hybrids-off", dest="hybrids", action="store_false", 
@@ -2075,7 +2065,7 @@ def CMD_parser():
                         found in the domain_whitelist.txt file", default=False,
                         action="store_true")
 
-    parser.add_argument("--version", action="version", version="%(prog)s 201809")
+    parser.add_argument("--version", action="version", version="%(prog)s 20181005")
 
     return parser.parse_args()
 
@@ -2157,24 +2147,25 @@ if __name__=="__main__":
     cutoff_list = options.cutoffs
     for c in cutoff_list:
         if c <= 0.0 or c > 1.0:
-            print(" Removing invalid cutoff value {}".format(str(c)))
-            cutoff_list.remove(c)
+            sys.exit(" Invalid cutoff value {}".format(str(c)))
     max_cutoff = max(cutoff_list)
             
     # if we want to classify by clans make sure that the clanCutoff is included
     # in the cutoffs to do AP in clusterJsonBatch
     if options.clans:
         fc, cc = options.clan_cutoff
+        if cc < fc:
+            sys.exit("Error: first value in the clan_cutoff parameter should be smaller than the second")
         if fc not in cutoff_list:
             if fc <= 0.0 or fc > 1.0:
                 sys.exit("Error: invalid cutoff value for GCF calling")
             else:
-                cutoff_list = sorted(cutoff_list.append(fc))
+                cutoff_list.append(fc)
+                cutoff_list.sort()
             
         if cc <= 0.0 or cc > 1.0:
             sys.exit("Error: invalid cutoff value for GCC calling")
         
-    
     output_folder = str(options.outputdir)
     
     pfam_dir = str(options.pfam_dir)
