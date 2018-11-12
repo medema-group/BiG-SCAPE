@@ -1425,14 +1425,6 @@ def clusterJsonBatch(bgcs, pathBase, className, matrix, pos_alignments, cutoffs=
         bgcJsonDict[bgcName]['orfs'] = sorted(orfDict.values(), key=itemgetter("start"))
     bs_data = [bgcJsonDict[clusterNames[bgc]] for bgc in bgcs]
     
-    ## Write html output folder structure (and update bigscape_results.js) for this module
-    assert os.path.isdir(htmlFolder)
-    module_html_path = os.path.join(htmlFolder, className)
-    create_directory(module_html_path, "Network HTML", False)
-    with open(os.path.join(module_html_path, "bs_data.js"), "w") as bs_data_js:
-        bs_data_js.write("var bs_data={};\n".format(json.dumps(bs_data, indent=4, separators=(',', ':'), sort_keys=True)))
-        bs_data_js.write("dataLoaded('bs_data');\n")
-    shutil.copy(os.path.join(os.path.realpath(os.path.dirname(__file__)), "html_template", "index_html"), os.path.join(module_html_path, "index.html"))
     
     # Create network
     g = nx.Graph()
@@ -1895,7 +1887,17 @@ def clusterJsonBatch(bgcs, pathBase, className, matrix, pos_alignments, cutoffs=
         bs_similarity_families = [[get_composite_bgc_similarities([bgcs[bid] for bid in bs_families[row]["members"]], [bgcs[bid] for bid in bs_families[col]["members"]], simDict) if (row != col) else (1.00, (1.00, bgcs[bs_families[row]["members"][0]], bgcs[bs_families[row]["members"][0]]), (1.00, bgcs[bs_families[row]["members"][0]], bgcs[bs_families[row]["members"][0]])) for col in 
                          range(row+1)] for row in range(len(bs_families))]
 
-        family_data["families_similarity"] = bs_similarity_families;
+        family_data["families_similarity"] = bs_similarity_families
+
+        ## Write html output folder structure (and update bigscape_results.js) for this module
+        htmlFolder_run = "{}_c{:.2f}".format(htmlFolder, cutoff)
+        assert os.path.isdir(htmlFolder_run)
+        module_html_path = os.path.join(htmlFolder_run, className)
+        create_directory(module_html_path, "Network HTML", False)
+        with open(os.path.join(module_html_path, "bs_data.js"), "w") as bs_data_js:
+            bs_data_js.write("var bs_data={};\n".format(json.dumps(bs_data, indent=4, separators=(',', ':'), sort_keys=True)))
+            bs_data_js.write("dataLoaded('bs_data');\n")
+        shutil.copy(os.path.join(os.path.realpath(os.path.dirname(__file__)), "html_template", "index_html"), os.path.join(module_html_path, "index.html"))
 
         ## Write bgc_networks.js
         with open(os.path.join(module_html_path, "bs_networks.js"), "w") as bs_networks_js:
@@ -2808,8 +2810,10 @@ if __name__=="__main__":
 
     # make a new run folder in the html output & copy the overview_html
     network_html_folder = os.path.join(output_folder, "html_content", "networks", run_name)
-    create_directory(network_html_folder, "Network HTML Files", False)
-    shutil.copy(os.path.join(os.path.realpath(os.path.dirname(__file__)), "html_template", "overview_html"), os.path.join(network_html_folder, "overview.html"))
+    for cutoff in cutoff_list:
+        network_html_folder_cutoff = "{}_c{:.2f}".format(network_html_folder, cutoff)
+        create_directory(network_html_folder_cutoff, "Network HTML Files", False)
+        shutil.copy(os.path.join(os.path.realpath(os.path.dirname(__file__)), "html_template", "overview_html"), os.path.join(network_html_folder_cutoff, "overview.html"))
 
     # create pfams.js
     pfams_js_file = os.path.join(output_folder, "html_content", "js", "pfams.js")
@@ -3292,12 +3296,14 @@ if __name__=="__main__":
     duration = int(time.mktime(end_time)) - int(time.mktime(start_time))
     run_data["end_time"] = time.strftime("%d/%m/%Y %H:%M:%S", end_time)
     run_data["duration"] = "{}h{}m{}s".format((duration // 3600), ((duration % 3600) // 60), ((duration % 3600) % 60))
-    with open(os.path.join(network_html_folder, "run_data.js"), "w") as run_data_js:
-        run_data_js.write("var run_data={};\n".format(json.dumps(run_data, indent=4, separators=(',', ':'), sort_keys=True)))
-        run_data_js.write("dataLoaded();\n");
 
-    # update bgc_results.js
-    add_to_bigscape_results_js(run_name, html_subs, os.path.join(output_folder, "html_content", "js", "bigscape_results.js"))
+    for cutoff in cutoff_list:
+        # update overview.html
+        with open(os.path.join("{}_c{:.2f}".format(network_html_folder, cutoff), "run_data.js"), "w") as run_data_js:
+            run_data_js.write("var run_data={};\n".format(json.dumps(run_data, indent=4, separators=(',', ':'), sort_keys=True)))
+            run_data_js.write("dataLoaded();\n");
+        # update bgc_results.js
+        add_to_bigscape_results_js("{}_c{:.2f}".format(run_name, cutoff), html_subs, os.path.join(output_folder, "html_content", "js", "bigscape_results.js"))
 
     pickle.dump(bgc_info,open(os.path.join(cache_folder,'bgc_info.dict'),'wb'))
     runtime = time.time()-time1
