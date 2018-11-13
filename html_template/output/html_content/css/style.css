@@ -976,6 +976,7 @@ table {
   height: 1.2em;
   clear: both;
   font-size: small;
+  word-break: break-all;
 }
 
 .infobar .infoleft {
@@ -993,7 +994,7 @@ table {
 }
 
 .network-overview .tablink {
-  width: 6.5em;
   float: left;
   font-size: smaller;
+  word-break: keep-all;
 }
