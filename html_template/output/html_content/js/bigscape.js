@@ -989,6 +989,57 @@ BigscapeFunc.openFamDetail = function(id_fam, ids_highlighted, bs_svg, bs_data, 
     treeSVG.html("");
     treeSVG.append($(tempG));
 
+	// add buttons to zoom in/out and pan tree svg
+	function zoomInOut(handler) {
+		var transformAttr = handler.data.tempG.getAttribute("transform");
+		var panLevelsHorizontal = parseInt(/translate\((-?\d+)\,\ ?(-?\d+)\)/gm.exec(transformAttr)[1]);
+		var panLevelsVertical = parseInt(/translate\((-?\d+)\,\ ?(-?\d+)\)/gm.exec(transformAttr)[2]);
+		var zoomLevel = parseFloat(/scale\((\d*\.?\d+)\)/gm.exec(transformAttr)[1]);
+		var svgWidth = handler.data.treeSVG.attr("width");
+		var svgHeight = handler.data.treeSVG.attr("height");
+		if (handler.data.isZoomIn) {			
+			zoomLevel = zoomLevel * 1.1;
+			svgWidth = svgWidth * 1.1;
+			svgHeight = svgHeight * 1.1;
+		} else {	
+			zoomLevel = zoomLevel / 1.1;
+			svgWidth = svgWidth / 1.1;
+			svgHeight = svgHeight / 1.1;
+		}
+		handler.data.tempG.setAttribute('transform', 'translate(' + panLevelsHorizontal + ',' + panLevelsVertical + ') scale(' + zoomLevel.toFixed(2) + ')');
+		handler.data.treeSVG.attr("width", svgWidth);
+		handler.data.treeSVG.attr("height", svgHeight);
+	}
+	function panDirection(handler) {
+		var transformAttr = handler.data.tempG.getAttribute("transform");
+		var panLevelsHorizontal = parseInt(/translate\((-?\d+)\,\ ?(-?\d+)\)/gm.exec(transformAttr)[1]);
+		var panLevelsVertical = parseInt(/translate\((-?\d+)\,\ ?(-?\d+)\)/gm.exec(transformAttr)[2]);
+		var zoomLevel = parseFloat(/scale\((\d*\.?\d+)\)/gm.exec(transformAttr)[1]);
+		switch(handler.data.direction) {
+			case "up":
+				panLevelsVertical = panLevelsVertical - 5;
+				break;
+			case "down":
+				panLevelsVertical = panLevelsVertical + 5;
+				break;
+			case "left":
+				panLevelsHorizontal = panLevelsHorizontal - 5;
+				break;
+			case "right":
+				panLevelsHorizontal = panLevelsHorizontal + 5;
+				break;
+		}
+		handler.data.tempG.setAttribute('transform', 'translate(' + panLevelsHorizontal + ',' + panLevelsVertical + ') scale(' + zoomLevel.toFixed(2) + ')');
+	}
+	var panZoomTree = $("<div></div>").appendTo(treeContainer);
+	var btnZoomIn = $("<button>+</button>").click({treeSVG: treeSVG, tempG: tempG, isZoomIn: true}, zoomInOut).appendTo(panZoomTree);
+	var btnZoomOut = $("<button>-</button>").click({treeSVG: treeSVG, tempG: tempG, isZoomIn: false}, zoomInOut).appendTo(panZoomTree);
+	var btnPanUp = $("<button>up</button>").click({treeSVG: treeSVG, tempG: tempG, direction: "up"}, panDirection).appendTo(panZoomTree);
+	var btnPanDown = $("<button>down</button>").click({treeSVG: treeSVG, tempG: tempG, direction: "down"}, panDirection).appendTo(panZoomTree);
+	var btnPanUp = $("<button>left</button>").click({treeSVG: treeSVG, tempG: tempG, direction: "left"}, panDirection).appendTo(panZoomTree);
+	var btnPanDown = $("<button>right</button>").click({treeSVG: treeSVG, tempG: tempG, direction: "right"}, panDirection).appendTo(panZoomTree);
+	
+
     // hide domains....*temp*
     //treeSVG.find("polygon.arrower-domain").css("display", "none");
       
