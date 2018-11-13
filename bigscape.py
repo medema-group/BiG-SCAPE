@@ -1340,12 +1340,6 @@ def clusterJsonBatch(bgcs, pathBase, className, matrix, pos_alignments, cutoffs=
     pathBase: folder where GCF files will be deposited
     """
     numBGCs = len(bgcs)
-
-    family_data = { # will be returned, for use in overview.js
-        "label": className,
-        "families": [],
-        "families_similarity": []
-    }
     
     simDict = {} # dictionary of dictionaries
     # Doing this so it only has to go through the matrix once
@@ -1429,7 +1423,14 @@ def clusterJsonBatch(bgcs, pathBase, className, matrix, pos_alignments, cutoffs=
     # Create network
     g = nx.Graph()
     
-    for cutoff in cutoffs:
+    results = {}
+    for cutoff in cutoffs:    
+        family_data = { # will be returned, for use in overview.js
+            "label": className,
+            "families": [],
+            "families_similarity": []
+        }
+        
         print("  Cutoff: {}".format(cutoff))
         # first task is to find labels (exemplars) for each node.
         # Assign disconnected (singleton) BGCs to themselves
@@ -1921,7 +1922,9 @@ def clusterJsonBatch(bgcs, pathBase, className, matrix, pos_alignments, cutoffs=
                         for bgc in familiesDict[family]:
                             clansFile.write("{}\t{}\t{}\n".format(clusterNames[bgc], clan, family))
                     
-    return family_data
+        results[htmlFolder_run] = family_data
+
+    return results
 
 
 def CMD_parser():
@@ -2803,18 +2806,22 @@ if __name__=="__main__":
     # create output directory for network files
     network_files_folder = os.path.join(network_folder, run_name)
     create_directory(network_files_folder, "Network Files", False)
-    run_data["networks"] = []
 
     # copy html templates
     dir_util.copy_tree(os.path.join(os.path.realpath(os.path.dirname(__file__)), "html_template", "output"), output_folder)
 
     # make a new run folder in the html output & copy the overview_html
     network_html_folder = os.path.join(output_folder, "html_content", "networks", run_name)
+    rundata_networks_per_run = {}
+    html_subs_per_run = {}
     for cutoff in cutoff_list:
         network_html_folder_cutoff = "{}_c{:.2f}".format(network_html_folder, cutoff)
         create_directory(network_html_folder_cutoff, "Network HTML Files", False)
         shutil.copy(os.path.join(os.path.realpath(os.path.dirname(__file__)), "html_template", "overview_html"), os.path.join(network_html_folder_cutoff, "overview.html"))
-
+        rundata_networks_per_run[network_html_folder_cutoff] = []
+        html_subs_per_run[network_html_folder_cutoff] = []
+    print(rundata_networks_per_run)
+        
     # create pfams.js
     pfams_js_file = os.path.join(output_folder, "html_content", "js", "pfams.js")
     if not os.path.isfile(pfams_js_file):
@@ -2830,10 +2837,6 @@ if __name__=="__main__":
                 pfam_obj["desc"] = pfam_info[pfam_code][1]
                 pfam_json[pfam_code] = pfam_obj
             pfams_js.write("var pfams={};\n".format(json.dumps(pfam_json, indent=4, separators=(',', ':'), sort_keys=True)))
-
-    # track the sub modules (i.e. allOthers, allNRPS, ...)
-    html_subs = []
-
 
     # Try to make default analysis using all files found inside the input folder
     print("\nGenerating distance network files with ALL available input files")
@@ -3011,11 +3014,12 @@ if __name__=="__main__":
             # lcsStartA, lcsStartB, seedLength, reverse={True,False}
             pa[int(row[1])] = (int(row[-4]), int(row[-3]), int(row[-2]), reverse)
         del network_matrix_mix[:]
-        html_subs.append({ "name" : "mix", "css" : "Others", "label" : "Mixed"})
         family_data = clusterJsonBatch(mix_set, pathBase, "mix", reduced_network, pos_alignments,
                             cutoffs=cutoff_list, clusterClans=options.clans,
                             clanCutoff=options.clan_cutoff, htmlFolder=network_html_folder)
-        run_data["networks"].append(family_data)
+        for network_html_folder_cutoff in family_data:
+            rundata_networks_per_run[network_html_folder_cutoff].append(family_data[network_html_folder_cutoff])
+            html_subs_per_run[network_html_folder_cutoff].append({ "name" : "mix", "css" : "Others", "label" : "Mixed"})
         del mix_set[:]
         del reduced_network[:]
         
@@ -3228,12 +3232,14 @@ if __name__=="__main__":
                 pa[int(row[1])] = (int(row[-4]), int(row[-3]), int(row[-2]), reverse)
             del network_matrix[:]
 
-            html_subs.append({ "name" : bgc_class, "css" : bgc_class, "label" : bgc_class})
             family_data = clusterJsonBatch(BGC_classes[bgc_class], pathBase, bgc_class,
                                 reduced_network, pos_alignments, cutoffs=cutoff_list, 
                                 clusterClans=options.clans, clanCutoff=options.clan_cutoff, 
                                 htmlFolder=network_html_folder)
-            run_data["networks"].append(family_data)
+            for network_html_folder_cutoff in family_data:
+                rundata_networks_per_run[network_html_folder_cutoff].append(family_data[network_html_folder_cutoff])
+                if (len(family_data[network_html_folder_cutoff]["families"]) > 0):
+                    html_subs_per_run[network_html_folder_cutoff].append({ "name" : bgc_class, "css" : bgc_class, "label" : bgc_class})
             del BGC_classes[bgc_class][:]
             del reduced_network[:]
 
@@ -3276,19 +3282,20 @@ if __name__=="__main__":
 
 
     # update family data (convert global bgc indexes into input-only indexes)
-    for network in run_data["networks"]:
-        for family in network["families"]:
-            new_members = []
-            mibig = []
-            for bgcIdx in family["members"]:
-                if bgcIdx in inputClustersIdx:                    
-                    new_members.append(inputClustersIdx.index(bgcIdx))
-                else: # is a mibig bgc
-                    clusterName = clusterNames[bgcIdx]
-                    if clusterName in mibig_set:
-                        mibig.append(clusterName)
-            family["mibig"] = mibig
-            family["members"] = new_members
+    for network_key in rundata_networks_per_run:
+        for network in rundata_networks_per_run[network_key]:
+            for family in network["families"]:
+                new_members = []
+                mibig = []
+                for bgcIdx in family["members"]:
+                    if bgcIdx in inputClustersIdx:                    
+                        new_members.append(inputClustersIdx.index(bgcIdx))
+                    else: # is a mibig bgc
+                        clusterName = clusterNames[bgcIdx]
+                        if clusterName in mibig_set:
+                            mibig.append(clusterName)
+                family["mibig"] = mibig
+                family["members"] = new_members
 
 
     # generate overview data
@@ -3299,11 +3306,14 @@ if __name__=="__main__":
 
     for cutoff in cutoff_list:
         # update overview.html
-        with open(os.path.join("{}_c{:.2f}".format(network_html_folder, cutoff), "run_data.js"), "w") as run_data_js:
-            run_data_js.write("var run_data={};\n".format(json.dumps(run_data, indent=4, separators=(',', ':'), sort_keys=True)))
+        html_folder_for_this_cutoff = "{}_c{:.2f}".format(network_html_folder, cutoff)
+        run_data_for_this_cutoff = run_data.copy()
+        run_data_for_this_cutoff["networks"] = rundata_networks_per_run[html_folder_for_this_cutoff]
+        with open(os.path.join(html_folder_for_this_cutoff, "run_data.js"), "w") as run_data_js:
+            run_data_js.write("var run_data={};\n".format(json.dumps(run_data_for_this_cutoff, indent=4, separators=(',', ':'), sort_keys=True)))
             run_data_js.write("dataLoaded();\n");
         # update bgc_results.js
-        add_to_bigscape_results_js("{}_c{:.2f}".format(run_name, cutoff), html_subs, os.path.join(output_folder, "html_content", "js", "bigscape_results.js"))
+        add_to_bigscape_results_js("{}_c{:.2f}".format(run_name, cutoff), html_subs_per_run[html_folder_for_this_cutoff], os.path.join(output_folder, "html_content", "js", "bigscape_results.js"))
 
     pickle.dump(bgc_info,open(os.path.join(cache_folder,'bgc_info.dict'),'wb'))
     runtime = time.time()-time1
