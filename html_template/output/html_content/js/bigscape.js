@@ -1038,7 +1038,31 @@ BigscapeFunc.openFamDetail = function(id_fam, ids_highlighted, bs_svg, bs_data, 
 	var btnPanDown = $("<button>down</button>").click({treeSVG: treeSVG, tempG: tempG, direction: "down"}, panDirection).appendTo(panZoomTree);
 	var btnPanUp = $("<button>left</button>").click({treeSVG: treeSVG, tempG: tempG, direction: "left"}, panDirection).appendTo(panZoomTree);
 	var btnPanDown = $("<button>right</button>").click({treeSVG: treeSVG, tempG: tempG, direction: "right"}, panDirection).appendTo(panZoomTree);
-	
+  
+  // button to save .svg
+  function exportSVG(handler) {
+    var toBeExported = handler.data.treeSVG.clone(false, false);
+    toBeExported.find("*").removeAttr("svgjs:data");
+    toBeExported.attr({
+      "version": "1.1",
+      "baseprofile": "full",
+      "xmlns": "http://www.w3.org/2000/svg",
+      "xmlns:xlink": "http://www.w3.org/1999/xlink",
+      "xmlns:ev": "http://www.w3.org/2001/xml-events"
+    });
+    var svg_text = toBeExported[0].outerHTML;
+    downloadLink = $("<a>download</a>");
+    downloadLink.attr({
+      "href": 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(svg_text),
+      "download": handler.data.gcf_id + ".svg",
+      "display": "none"
+    });
+    downloadLink.appendTo($("body"));
+    downloadLink[0].click();
+    downloadLink.remove();
+  }
+  var exportTree = $("<div></div>").appendTo(treeContainer);
+  var btnExport = $("<button>Download SVG</button>").click({treeSVG: treeSVG, gcf_id: bs_families[id_fam]["id"]}, exportSVG).appendTo(exportTree);
 
     // hide domains....*temp*
     //treeSVG.find("polygon.arrower-domain").css("display", "none");
