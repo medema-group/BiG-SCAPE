@@ -398,6 +398,11 @@ function Bigscape(bs_data, bs_families, bs_alignment, bs_similarity, network_con
           $(this).attr("width", $(this).find("g")[0].getBoundingClientRect().width);
           $(this).attr("height", $(this).find("g")[0].getBoundingClientRect().height);
         });
+        var bbox_svg = handler.data.det_ui.find("svg#det_fam_tree")[0].getBBox();
+        handler.data.det_ui.find("svg#det_fam_tree").attr({
+          "height": bbox_svg.height + 50,
+          "width": bbox_svg.width + 250
+        });
         handler.stopPropagation();
       });
       ($("<li>").appendTo(ul)).append(aShowFamDetail);
@@ -533,6 +538,11 @@ BigscapeFunc.updateDescription = function(ids, bs_svg, bs_data, bs_to_cl, bs_fam
         handler.data.det_ui.find("svg.arrower-svg").each(function(){
           $(this).attr("width", $(this).find("g")[0].getBoundingClientRect().width);
           $(this).attr("height", $(this).find("g")[0].getBoundingClientRect().height);
+        });
+        var bbox_svg = handler.data.det_ui.find("svg#det_fam_tree")[0].getBBox();
+        handler.data.det_ui.find("svg#det_fam_tree").attr({
+          "height": bbox_svg.height + 50,
+          "width": bbox_svg.width + 250
         });
         handler.stopPropagation();
       });
@@ -838,6 +848,11 @@ BigscapeFunc.openFamDetail = function(id_fam, ids_highlighted, bs_svg, bs_data, 
               $(this).attr("width", $(this).find("g")[0].getBoundingClientRect().width);
               $(this).attr("height", $(this).find("g")[0].getBoundingClientRect().height);
             });
+            var bbox_svg = handler.data.det_ui.find("svg#det_fam_tree")[0].getBBox();
+            handler.data.det_ui.find("svg#det_fam_tree").attr({
+              "height": bbox_svg.height + 50,
+              "width": bbox_svg.width + 250
+            });    
             handler.stopPropagation();
           });
           $("<tr>").appendTo(clanTab.find("tbody"))
@@ -1031,7 +1046,7 @@ BigscapeFunc.openFamDetail = function(id_fam, ids_highlighted, bs_svg, bs_data, 
 		}
 		handler.data.tempG.setAttribute('transform', 'translate(' + panLevelsHorizontal + ',' + panLevelsVertical + ') scale(' + zoomLevel.toFixed(2) + ')');
 	}
-	var panZoomTree = $("<div></div>").appendTo(treeContainer);
+	var panZoomTree = $("<div></div>").insertBefore(treeSVG);
 	var btnZoomIn = $("<button>+</button>").click({treeSVG: treeSVG, tempG: tempG, isZoomIn: true}, zoomInOut).appendTo(panZoomTree);
 	var btnZoomOut = $("<button>-</button>").click({treeSVG: treeSVG, tempG: tempG, isZoomIn: false}, zoomInOut).appendTo(panZoomTree);
 	var btnPanUp = $("<button>up</button>").click({treeSVG: treeSVG, tempG: tempG, direction: "up"}, panDirection).appendTo(panZoomTree);
@@ -1061,9 +1076,7 @@ BigscapeFunc.openFamDetail = function(id_fam, ids_highlighted, bs_svg, bs_data, 
     downloadLink[0].click();
     downloadLink.remove();
   }
-  var exportTree = $("<div></div>").appendTo(treeContainer);
-  var btnExport = $("<button>Download SVG</button>").click({treeSVG: treeSVG, gcf_id: bs_families[id_fam]["id"]}, exportSVG).appendTo(exportTree);
-
+  var btnExport = $("<button>Download SVG</button>").click({treeSVG: treeSVG, gcf_id: bs_families[id_fam]["id"]}, exportSVG).appendTo(panZoomTree);
     // hide domains....*temp*
     //treeSVG.find("polygon.arrower-domain").css("display", "none");
       
