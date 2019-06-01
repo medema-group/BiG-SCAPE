@@ -6,6 +6,6 @@ As input, BiG-SCAPE takes GenBank files from the output of [antiSMASH](https://a
 
 In principle, BiG-SCAPE can also be used on any other gene clusters, such as pathogenicity islands, secretion system-encoding gene clusters, or even whole viral genomes.
 
-Learn more about BiG-SCAPE in the [wiki](https://git.wageningenur.nl/medema-group/BiG-SCAPE/wikis/home).
+Learn more about BiG-SCAPE in the [wiki](https://git.wageningenur.nl/medema-group/BiG-SCAPE/wikis/home) and in the combined [BiG-SCAPE/CORASON website](https://bigscape-corason.secondarymetabolites.org/index.html).
 
 ![BiG-SCAPE/CORASON workflow](BiG-SCAPE CORASON Workflow.png)
