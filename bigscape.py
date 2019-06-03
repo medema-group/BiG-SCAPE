@@ -6,10 +6,12 @@ BiG-SCAPE
 
 PI: Marnix Medema               marnix.medema@wur.nl
 
-Main developers:
+Maintainers/developers:
 Jorge Navarro                   j.navarro@westerdijkinstitute.nl
-Emmanuel (Emzo) de los Santos   E.De-Los-Santos@warwick.ac.uk
 Satria Kautsar                  satria.kautsar@wur.nl
+
+Developer:
+Emmanuel (Emzo) de los Santos   E.De-Los-Santos@warwick.ac.uk
 
 
 Usage:   Please see `python bigscape.py -h`
@@ -78,6 +80,7 @@ global mibig_set
 global genbankDict
 global valid_classes
 
+
 def process_gbk_files(gbk, min_bgc_size, bgc_info, files_no_proteins, files_no_biosynthetic_genes):
     """ Given a file path to a GenBank file, reads information about the BGC"""
 
@@ -120,7 +123,6 @@ def process_gbk_files(gbk, min_bgc_size, bgc_info, files_no_proteins, files_no_b
         bgc_size = 0
         cds_ctr = 0
         product = "no type"
-        del product_list_per_record[:]
         offset_record_position = 0
         
         max_width = 0 # This will be used for the SVG figure
@@ -133,13 +135,14 @@ def process_gbk_files(gbk, min_bgc_size, bgc_info, files_no_proteins, files_no_b
                 max_width = len(record.seq)
             
             for feature in record.features:
-                if "cluster" in feature.type:
+                # antiSMASH <= 4
+                if feature.type == "cluster":
                     if "product" in feature.qualifiers:
-                        if len(feature.qualifiers["product"]) > 1:
-                            print("  WARNING: more than product annotated in record " + str(record_count) + ", " + fname)
-                            break
-                        else:
-                            product_list_per_record.append(feature.qualifiers["product"][0].replace(" ",""))
+                        # in antiSMASH 4 there should only be 1 product qualifiers
+                        for product in feature.qualifiers["product"]:
+                            for p in product.replace(" ","").split("-"):
+                                product_list_per_record.append(p)
+                                
                     if "contig_edge" in feature.qualifiers:
                         # there might be mixed contig_edge annotations
                         # in multi-record files. Turn on contig_edge when
@@ -148,6 +151,22 @@ def process_gbk_files(gbk, min_bgc_size, bgc_info, files_no_proteins, files_no_b
                             if verbose:
                                 print(" Contig edge detected in {}".format(fname))
                             contig_edge = True
+                        
+                # antiSMASH = 5
+                if "region" in feature.type:
+                    if "product" in feature.qualifiers:
+                        for product in feature.qualifiers["product"]:
+                            product_list_per_record.append(product)
+                            
+                    if "contig_edge" in feature.qualifiers:
+                        # there might be mixed contig_edge annotations
+                        # in multi-record files. Turn on contig_edge when
+                        # there's at least one annotation
+                        if feature.qualifiers["contig_edge"][0] == "True":
+                            if verbose:
+                                print(" Contig edge detected in {}".format(fname))
+                            contig_edge = True
+                            
                         
                 # Get biosynthetic genes + sequences
                 if feature.type == "CDS":
@@ -179,10 +198,16 @@ def process_gbk_files(gbk, min_bgc_size, bgc_info, files_no_proteins, files_no_b
                     fasta_header = fasta_header.replace(">","") #the coordinates might contain larger than signs, tools upstream don't like this
                     fasta_header = fasta_header.replace(" ", "") #the domtable output format (hmmscan) uses spaces as a delimiter, so these cannot be present in the fasta header
 
+                    # antiSMASH <=4
                     if "sec_met" in feature.qualifiers:
                         if "Kind: biosynthetic" in feature.qualifiers["sec_met"]:
                             biosynthetic_genes.add(fasta_header)
 
+                    # antiSMASH == 5
+                    if "gene_kind" in feature.qualifiers:
+                        if "biosynthetic" in feature.qualifiers["gene_kind"]:
+                            biosynthetic_genes.add(fasta_header)
+                    
                     fasta_header = ">"+fasta_header
                     
 
@@ -270,16 +295,16 @@ def process_gbk_files(gbk, min_bgc_size, bgc_info, files_no_proteins, files_no_b
                 product = product_list_per_record[0]
             elif "other" in product_set: # more than one, and it contains "other"
                 if len(product_set) == 2:
-                    product = list(product_set - set(['other']))[0] # product = not "other"
+                    product = list(product_set - {'other'})[0] # product = not "other"
                 else:
-                    product = "-".join(product_set - set(['other'])) # likely a hybrid
+                    product = ".".join(product_set - {'other'}) # likely a hybrid
             else:
-                product = "-".join(product_set) # likely a hybrid
+                product = ".".join(product_set) # likely a hybrid
                 
             # Don't keep this bgc if its type not in valid classes specified by user
             # This will avoid redundant tasks like domain detection
             subproduct = set()
-            for p in product.split("-"):
+            for p in product.split("."):
                 subproduct.add(sort_bgc(p).lower())
             if "nrps" in subproduct and ("pksi" in subproduct or "pksother" in subproduct):
                 subproduct.add("pks-nrp_hybrids")
@@ -382,7 +407,7 @@ def process_gbk_files(gbk, min_bgc_size, bgc_info, files_no_proteins, files_no_b
     return adding_sequence
 
 
-def get_gbk_files(inputpath, outputdir, bgc_fasta_folder, min_bgc_size, exclude_gbk_str, bgc_info):
+def get_gbk_files(inputpath, outputdir, bgc_fasta_folder, min_bgc_size, include_gbk_str, exclude_gbk_str, bgc_info):
     """Searches given directory for genbank files recursively, will assume that
     the genbank files that have the same name are the same genbank file. 
     Returns a dictionary that contains the names of the clusters found as keys
@@ -409,15 +434,16 @@ def get_gbk_files(inputpath, outputdir, bgc_fasta_folder, min_bgc_size, exclude_
     for filepath in files:
         file_folder, fname = os.path.split(filepath)
         
-        if type(exclude_gbk_str) == str and exclude_gbk_str != "" and \
-                                            exclude_gbk_str in fname:
-            if verbose:
+        if len(include_gbk_str) == 1 and include_gbk_str[0] == "*":
+            pass
+        else:
+            if not any([word in fname for word in include_gbk_str]):
+                continue
+            
+            if exclude_gbk_str != [] and any([word in fname for word in exclude_gbk_str]):
                 print(" Skipping file " + fname)
-            continue
-        elif type(exclude_gbk_str) == list and exclude_gbk_str != [] and \
-                        any([word in fname for word in exclude_gbk_str]):
-            print(" Skipping file " + fname)
-            continue
+                continue
+        
         if "_ORF" in fname:
             print(" Skipping file {} (string '_ORF' is used internally)".format(fname))
             continue
@@ -463,11 +489,9 @@ def timeit(funct):
         ret = funct(*args)
         runtime = time.time()-start_time
         runtime_string = '{} took {:.3f} seconds'.format(funct.__name__, runtime)
-        # To prevent insignificant runtimes from ending up in the file.
-        if runtime > 1:
-            with open(os.path.join(log_folder, "runtimes.txt"), 'a') as timings_file:
-                timings_file.write(runtime_string + "\n")
-            print(runtime_string)
+        with open(os.path.join(log_folder, "runtimes.txt"), 'a') as timings_file:
+            timings_file.write(runtime_string + "\n")
+        print(runtime_string)
         return ret
     
     return _wrap
@@ -1181,7 +1205,7 @@ def cluster_distance_lcs(A, B, A_domlist, B_domlist, dcg_A, dcg_b, core_pos_A, c
         
     return Distance, Jaccard, DSS, AI, DSS_non_anchor, DSS_anchor, S, S_anchor, lcsStartA, lcsStartB, seedLength, rev
 
-
+@timeit
 def launch_hmmalign(cores, domain_sequence_list):
     """
     Launches instances of hmmalign with multiprocessing.
@@ -1939,12 +1963,6 @@ def CMD_parser():
                         help="Input directory of gbk files, if left empty, all \
                         gbk files in current and lower directories will be used.")
 
-    parser.add_argument("--exclude_gbk_str", dest="exclude_gbk_str", 
-                        default="final", nargs="+",
-                        help="If any string in this list occurs in the gbk \
-                        filename, this file will not be used for the analysis.\
-                        (default: final)")
-    
     parser.add_argument("-o", "--outputdir", dest="outputdir", default="", 
                         required=True, help="Output directory, this will contain \
                         all output data files.")
@@ -1957,7 +1975,20 @@ def CMD_parser():
     parser.add_argument("-c", "--cores", dest="cores", default=cpu_count(),
                       help="Set the number of cores the script may use (default:\
                       use all available cores)")
-    
+
+    parser.add_argument("--include_gbk_str", dest="include_gbk_str",
+                        default=['cluster', 'region'], nargs="+",
+                        help="Only gbk files with this string(s) will be used \
+                        for the analysis (default: 'cluster', 'region'). Use an \
+                        asterisk to accept every file (overrides \
+                        '--exclude_gbk_str')")
+
+    parser.add_argument("--exclude_gbk_str", dest="exclude_gbk_str", 
+                        default=['final'], nargs="+",
+                        help="If any string in this list occurs in the gbk \
+                        filename, this file will not be used for the analysis\
+                         (default: final).")
+        
     parser.add_argument("-v", "--verbose", dest="verbose", action="store_true", 
                         default=False, help="Prints more detailed information. \
                         Toggle to activate.")
@@ -2061,16 +2092,16 @@ def CMD_parser():
                         help="Include BGCs from the previous version of MIBiG (1.3)")
     
     parser.add_argument("--query_bgc", help="Instead of making an all-VS-all \
-                    comparison of all the input BGCs, choose one BGC to \
-                    compare with the rest of the set (one-VS-all). The \
-                    query BGC does not have to be within inputdir")
+                        comparison of all the input BGCs, choose one BGC to \
+                        compare with the rest of the set (one-VS-all). The \
+                        query BGC does not have to be within inputdir")
     
-    parser.add_argument("--domain_whitelist", help="Only analyze include those\
-                        BGCs that include domains with the pfam accessions \
-                        found in the domain_whitelist.txt file", default=False,
+    parser.add_argument("--domain_whitelist", help="Only analyze BGCs that \
+                        include domains with the pfam accessions found in the \
+                        domain_whitelist.txt file", default=False,
                         action="store_true")
 
-    parser.add_argument("--version", action="version", version="%(prog)s 20181005")
+    parser.add_argument("--version", action="version", version="%(prog)s 20190603")
 
     return parser.parse_args()
 
@@ -2238,7 +2269,7 @@ if __name__=="__main__":
                     continue
                 domain_whitelist.add(line.split("\t")[0].strip())
             if len(domain_whitelist) == 0:
-                print("Error: --domain_whitelist used, but no domains found in the file")
+                print("Warning: --domain_whitelist used, but no domains found in the file")
             else:
                 has_whitelist = True
         else:
@@ -2303,13 +2334,17 @@ if __name__=="__main__":
     genbankDict = {}
     
     # Exclude single string
+    include_gbk_str = options.include_gbk_str
+    if len(include_gbk_str) == 1 and include_gbk_str[0] == "*":
+        print(" Including all files")
+    elif len(include_gbk_str) == 1 and include_gbk_str[0] == "":
+        sys.exit(" Stop: no strings specified for '--include_gbk_str'")
+    else:
+        print(" Including files with one or more of the following strings in their filename: '{}'".format("', '".join(include_gbk_str)))
+    
     exclude_gbk_str = options.exclude_gbk_str
-    if type(exclude_gbk_str) == str and exclude_gbk_str != "":
-        print(" Skipping files with '{}' in their filename".format(exclude_gbk_str))
-    # Exclude from list of strings
-    elif type(exclude_gbk_str) == list and exclude_gbk_str != []:
-        print(" Skipping files with one or more of the following strings in \
-            their filename: {}".format(", ".join(exclude_gbk_str)))
+    if exclude_gbk_str != []:
+        print(" Skipping files with one or more of the following strings in their filename: '{}'".format("', '".join(exclude_gbk_str)))
     
     # Read included MIBiG
     # Change this for every officially curated MIBiG bundle
@@ -2346,14 +2381,16 @@ if __name__=="__main__":
             sys.exit("Did not find the correct number of MIBiG BGCs ({}). Please clean the 'Annotated MIBiG reference' folder from any .gbk files first".format(mibig_zipfile_numbgcs[2]))
         
         print("\nImporting MIBiG files")
-        get_gbk_files(bgcs_path, output_folder, bgc_fasta_folder, int(options.min_bgc_size), exclude_gbk_str, bgc_info)
+        get_gbk_files(bgcs_path, output_folder, bgc_fasta_folder, int(options.min_bgc_size),
+                      include_gbk_str, exclude_gbk_str, bgc_info)
         
         for i in genbankDict.keys():
             mibig_set.add(i)
             
     
     print("\nImporting GenBank files")
-    get_gbk_files(options.inputdir, output_folder, bgc_fasta_folder, int(options.min_bgc_size), exclude_gbk_str, bgc_info)
+    get_gbk_files(options.inputdir, output_folder, bgc_fasta_folder, int(options.min_bgc_size),
+                  include_gbk_str, exclude_gbk_str, bgc_info)
     
     if has_query_bgc:
         query_bgc = ".".join(options.query_bgc.split(os.sep)[-1].split(".")[:-1])
@@ -2362,7 +2399,9 @@ if __name__=="__main__":
             pass
         else:
             print("\nImporting query BGC file")
-            get_gbk_files(options.query_bgc, output_folder, bgc_fasta_folder, int(options.min_bgc_size), exclude_gbk_str, bgc_info)
+            get_gbk_files(options.query_bgc, output_folder, bgc_fasta_folder, 
+                          int(options.min_bgc_size), include_gbk_str, 
+                          exclude_gbk_str, bgc_info)
             
         if query_bgc not in genbankDict:
             sys.exit("Error: not able to include Query BGC (check valid classes, BGC size, etc. Run again with --verbose)")
@@ -2820,7 +2859,6 @@ if __name__=="__main__":
         shutil.copy(os.path.join(os.path.realpath(os.path.dirname(__file__)), "html_template", "overview_html"), os.path.join(network_html_folder_cutoff, "overview.html"))
         rundata_networks_per_run[network_html_folder_cutoff] = []
         html_subs_per_run[network_html_folder_cutoff] = []
-    print(rundata_networks_per_run)
         
     # create pfams.js
     pfams_js_file = os.path.join(output_folder, "html_content", "js", "pfams.js")
@@ -3059,9 +3097,9 @@ if __name__=="__main__":
                     if "t1pks" not in product and "pksother" in valid_classes:
                         BGC_classes["PKSother"].append(clusterIdx)
                 
-                if predicted_class == "Others" and "-" in product:
+                if predicted_class == "Others" and "." in product:
                     subclasses = set()
-                    for subproduct in product.split("-"):
+                    for subproduct in product.split("."):
                         subclass = sort_bgc(subproduct)
                         if subclass.lower() in valid_classes:
                             subclasses.add(subclass)

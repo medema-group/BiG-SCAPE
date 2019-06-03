@@ -3,12 +3,14 @@
 """
 BiG-SCAPE
 
-PI: Marnix Medema
+PI: Marnix Medema               marnix.medema@wur.nl
 
-Developers:
-Jorge Navarro                   jorge.navarromunoz@wur.nl
+Maintainers/developers:
+Jorge Navarro                   j.navarro@westerdijkinstitute.nl
+Satria Kautsar                  satria.kautsar@wur.nl
+
+Developer:
 Emmanuel (Emzo) de los Santos   E.De-Los-Santos@warwick.ac.uk
-Marley Yeong                    marleyyeong@live.nl
 
 Functions used by bigscape.py
 
@@ -16,6 +18,7 @@ Functions used by bigscape.py
 # License: GNU Affero General Public License v3 or later
 # A copy of GNU AGPL v3 should have been included in this software package in LICENSE.txt.
 """
+
 # Makes sure the script can be used with Python 2 as well as Python 3.
 from __future__ import print_function
 from sys import version_info
@@ -166,7 +169,6 @@ def write_pfd(pfd_handle, matrix):
         
     pfd_handle.close() 
     
-
 
 def no_overlap(locA1, locA2, locB1, locB2):
     """Return True if there is no overlap between two regions"""
@@ -465,46 +467,69 @@ def domtable_parser(gbk, dom_file):
 def sort_bgc(product):
     """Sort BGC by its type. Uses AntiSMASH annotations
     (see https://docs.antismash.secondarymetabolites.org/glossary/#cluster-types)"""
+    
+    pks1_products = {'t1pks', 'T1PKS'}
+    pksother_products = {'transatpks', 't2pks', 't3pks', 'otherks', 'hglks', 
+                     'transAT-PKS', 'T2PKS', 'T3PKS', 'PKS-like', 'hglE-KS'}
+    nrps_products = {'nrps', 'NRPS', 'NRPS-like', 'thioamide-NRP'}
+    ripps_products = {'lantipeptide', 'thiopeptide', 'bacteriocin', 'linaridin', 
+                     'cyanobactin', 'glycocin', 'LAP', 'lassopeptide', 
+                     'sactipeptide', 'bottromycin', 'head_to_tail', 'microcin', 
+                     'microviridin', 'proteusin', 'lanthipeptide', 'lipolanthine', 
+                     'RaS-RiPP', 'fungal-RiPP'}
+    saccharide_products = {'amglyccycl', 'oligosaccharide', 'cf_saccharide', 
+                     'saccharide'}
+    others_products = {'acyl_amino_acids', 'arylpolyene', 'aminocoumarin', 
+                       'ectoine', 'butyrolactone', 'nucleoside', 'melanin', 
+                       'phosphoglycolipid', 'phenazine', 'phosphonate', 'other', 
+                       'cf_putative', 'resorcinol', 'indole', 'ladderane', 
+                       'PUFA', 'furan', 'hserlactone', 'fused', 'cf_fatty_acid', 
+                       'siderophore', 'blactam', 'fatty_acid', 'PpyS-KS', 'CDPS', 
+                       'betalactone', 'PBDE', 'tropodithietic-acid', 'NAGGN', 
+                       'halogenated'}
+    
     # PKS_Type I
-    if product == 't1pks':
+    if product in pks1_products:
         return("PKSI")
     # PKS Other Types
-    elif product in set(['transatpks', 't2pks', 't3pks', 'otherks', 'hglks']):
+    elif product in pksother_products:
         return("PKSother")
     # NRPs
-    elif product == 'nrps':
+    elif product in nrps_products:
         return("NRPS")
     # RiPPs
-    elif product in set(['lantipeptide', 'thiopeptide', 'bacteriocin', 'linaridin', 'cyanobactin', 'glycocin', 'LAP', 'lassopeptide', 'sactipeptide', 'bottromycin', 'head_to_tail', 'microcin', 'microviridin', 'proteusin']):
+    elif product in ripps_products:
         return("RiPPs")
     # Saccharides
-    elif product in set(['amglyccycl', 'oligosaccharide', 'cf_saccharide']):
+    elif product in saccharide_products:
         return("Saccharides")
     # Terpenes
     elif product == 'terpene':
         return("Terpene")
     # PKS/NRP hybrids
-    elif len(product.split("-")) > 1:
+    elif len(product.split(".")) > 1:
         #print("  Possible hybrid: (" + cluster + "): " + product)
         # cf_fatty_acid category contains a trailing empty space
-        subtypes = set(s.strip() for s in product.split("-"))
-        if len(subtypes - set(['t1pks', 'transatpks', 't2pks', 't3pks', 'otherks', 'hglks', 'nrps'])) == 0:
-            if 'nrps' in subtypes:
-                return("PKS-NRP_Hybrids")
-            else:
+        subtypes = set(s.strip() for s in product.split("."))
+        if len(subtypes - (pks1_products | pksother_products | nrps_products)) == 0:
+            if len(subtypes - nrps_products) == 0:
+                return("NRPS")
+            elif len(subtypes - (pks1_products | pksother_products)) == 0:
                 return("PKSother") # pks hybrids
-        elif len(subtypes - set(['lantipeptide', 'thiopeptide', 'bacteriocin', 'linaridin', 'cyanobactin', 'glycocin', 'LAP', 'lassopeptide', 'sactipeptide', 'bottromycin', 'head_to_tail', 'microcin', 'microviridin', 'proteusin'])) == 0:
+            else:
+                return("PKS-NRP_Hybrids")
+        elif len(subtypes - ripps_products) == 0:
             return("RiPPs")
-        elif len(subtypes - set(['amglyccycl', 'oligosaccharide', 'cf_saccharide'])) == 0:
+        elif len(subtypes - saccharide_products) == 0:
             return("Saccharide")
         else:
             return("Others") # other hybrid
     # Others
-    elif product in set(['acyl_amino_acids', 'arylpolyene', 'aminocoumarin', 'ectoine', 'butyrolactone', 'nucleoside', 'melanin', 'phosphoglycolipid', 'phenazine', 'phosphonate', 'other', 'cf_putative', 'resorcinol', 'indole', 'ladderane', 'PUFA', 'furan', 'hserlactone', 'fused', 'cf_fatty_acid', 'siderophore', 'blactam']):
+    elif product in others_products:
         return("Others")
     # ??
     elif product == "":
-        #print("  Warning: empty product annotation")
+        # No product annotation. Perhaps not analyzed by antiSMASH
         return("Others")
     else:
         print("  Warning: unknown product '{}'".format(product))
