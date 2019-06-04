@@ -2101,7 +2101,7 @@ def CMD_parser():
                         domain_whitelist.txt file", default=False,
                         action="store_true")
 
-    parser.add_argument("--version", action="version", version="%(prog)s 20190603")
+    parser.add_argument("--version", action="version", version="%(prog)s 20190604")
 
     return parser.parse_args()
 
@@ -2382,7 +2382,7 @@ if __name__=="__main__":
         
         print("\nImporting MIBiG files")
         get_gbk_files(bgcs_path, output_folder, bgc_fasta_folder, int(options.min_bgc_size),
-                      include_gbk_str, exclude_gbk_str, bgc_info)
+                      ['*'], exclude_gbk_str, bgc_info)
         
         for i in genbankDict.keys():
             mibig_set.add(i)
@@ -2400,8 +2400,7 @@ if __name__=="__main__":
         else:
             print("\nImporting query BGC file")
             get_gbk_files(options.query_bgc, output_folder, bgc_fasta_folder, 
-                          int(options.min_bgc_size), include_gbk_str, 
-                          exclude_gbk_str, bgc_info)
+                          int(options.min_bgc_size), ['*'], exclude_gbk_str, bgc_info)
             
         if query_bgc not in genbankDict:
             sys.exit("Error: not able to include Query BGC (check valid classes, BGC size, etc. Run again with --verbose)")
