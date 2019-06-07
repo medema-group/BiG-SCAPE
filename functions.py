@@ -470,7 +470,8 @@ def sort_bgc(product):
     
     pks1_products = {'t1pks', 'T1PKS'}
     pksother_products = {'transatpks', 't2pks', 't3pks', 'otherks', 'hglks', 
-                     'transAT-PKS', 'T2PKS', 'T3PKS', 'PKS-like', 'hglE-KS'}
+                     'transAT-PKS', 'transAT-PKS-like', 'T2PKS', 'T3PKS', 
+                     'PKS-like', 'hglE-KS'}
     nrps_products = {'nrps', 'NRPS', 'NRPS-like', 'thioamide-NRP'}
     ripps_products = {'lantipeptide', 'thiopeptide', 'bacteriocin', 'linaridin', 
                      'cyanobactin', 'glycocin', 'LAP', 'lassopeptide', 
