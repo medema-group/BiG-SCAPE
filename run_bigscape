@@ -5,8 +5,8 @@ if [[ $# -eq 0 ||  $1 == "-h" ||  $1 == "--help" ]]; then
 	--detach=false \
 	--rm \
 	--user=$(id -u):$(id -g) \
-	docker-registry.wur.nl/medema-group/big-scape \
-    	$@
+	docker-registry.wur.nl/medema-group/big-scape:20191010 \
+	$@
 else
 	set -o errexit
 	set -o nounset
@@ -44,14 +44,14 @@ else
 
 	#if [ ${INPUT_FILE} ${OUTPUT_FILE} ]; then
 	if [ ! -z ${INPUT_FILE} ] && [ ! -z ${OUTPUT_FILE} ]; then
-		echo bigscape is running now
+		echo Running BiG-SCAPE
 		docker run \
 	    	--volume ${INPUT_DIR}:${CONTAINER_SRC_DIR}:ro \
 	    	--volume ${OUTPUT_DIR}:${CONTAINER_DST_DIR}:rw \
 	    	--detach=false \
 	    	--rm \
 	    	--user=$(id -u):$(id -g) \
-	    	docker-registry.wur.nl/medema-group/big-scape\
+	    	docker-registry.wur.nl/medema-group/big-scape:20191010 \
 	    	-i ${CONTAINER_SRC_DIR}/${INPUT_FILE} \
 	    	-o ${CONTAINER_DST_DIR}/${OUTPUT_FILE}\
     		$@

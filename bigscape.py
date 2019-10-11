@@ -1922,7 +1922,7 @@ def clusterJsonBatch(bgcs, pathBase, className, matrix, pos_alignments, cutoffs=
         with open(os.path.join(module_html_path, "bs_data.js"), "w") as bs_data_js:
             bs_data_js.write("var bs_data={};\n".format(json.dumps(bs_data, indent=4, separators=(',', ':'), sort_keys=True)))
             bs_data_js.write("dataLoaded('bs_data');\n")
-        shutil.copy(os.path.join(os.path.realpath(os.path.dirname(__file__)), "html_template", "index_html"), os.path.join(module_html_path, "index.html"))
+        shutil.copy(os.path.join(os.path.dirname(os.path.realpath(__file__)), "html_template", "index_html"), os.path.join(module_html_path, "index.html"))
 
         ## Write bgc_networks.js
         with open(os.path.join(module_html_path, "bs_networks.js"), "w") as bs_networks_js:
@@ -2101,7 +2101,7 @@ def CMD_parser():
                         domain_whitelist.txt file", default=False,
                         action="store_true")
 
-    parser.add_argument("--version", action="version", version="%(prog)s 20190604")
+    parser.add_argument("--version", action="version", version="%(prog)s 20191011")
 
     return parser.parse_args()
 
@@ -2846,7 +2846,7 @@ if __name__=="__main__":
     create_directory(network_files_folder, "Network Files", False)
 
     # copy html templates
-    dir_util.copy_tree(os.path.join(os.path.realpath(os.path.dirname(__file__)), "html_template", "output"), output_folder)
+    dir_util.copy_tree(os.path.join(os.path.dirname(os.path.realpath(__file__)), "html_template", "output"), output_folder)
 
     # make a new run folder in the html output & copy the overview_html
     network_html_folder = os.path.join(output_folder, "html_content", "networks", run_name)
@@ -2855,7 +2855,7 @@ if __name__=="__main__":
     for cutoff in cutoff_list:
         network_html_folder_cutoff = "{}_c{:.2f}".format(network_html_folder, cutoff)
         create_directory(network_html_folder_cutoff, "Network HTML Files", False)
-        shutil.copy(os.path.join(os.path.realpath(os.path.dirname(__file__)), "html_template", "overview_html"), os.path.join(network_html_folder_cutoff, "overview.html"))
+        shutil.copy(os.path.join(os.path.dirname(os.path.realpath(__file__)), "html_template", "overview_html"), os.path.join(network_html_folder_cutoff, "overview.html"))
         rundata_networks_per_run[network_html_folder_cutoff] = []
         html_subs_per_run[network_html_folder_cutoff] = []
         

@@ -2,32 +2,31 @@ FROM conda/miniconda3
 
 RUN apt-get update && apt-get install -y git wget
 
-RUN conda create --name bigscape
-#RUN source activate bigscape
-RUN [ "/bin/bash", "-c","source activate bigscape"]
-RUN conda install -y \
- 	numpy \  
-	scipy \ 
-	scikit-learn 
-
-RUN conda install -c bioconda hmmer biopython fasttree
-RUN conda install -c anaconda networkx
-
+SHELL ["/bin/bash", "-c"]
 WORKDIR /usr/src
-## Cloning BiG-SCAPE
+
+# Cloning BiG-SCAPE
 RUN git clone https://git.wur.nl/medema-group/BiG-SCAPE.git
 
-## geting Pfam
-RUN wget ftp://ftp.ebi.ac.uk/pub/databases/Pfam/releases/Pfam31.0/Pfam-A.hmm.gz
-#ftp://ftp.ebi.ac.uk/pub/databases/Pfam/current_release/Pfam-A.hmm.gz.
-RUN gunzip Pfam-A.hmm.gz && hmmpress Pfam-A.hmm && mv Pfam-A.* /usr/src/BiG-SCAPE/.
-
-RUN chmod +x /usr/src/BiG-SCAPE/*py  
-RUN chmod 777 /home  
+# Create conda environment
+RUN conda env create -f /usr/src/BiG-SCAPE/environment.yml
+RUN echo "source activate bigscape" > ~/.bashrc
+ENV PATH /usr/local/envs/bigscape/bin:$PATH
 ENV PATH /usr/src/BiG-SCAPE:$PATH
+
+RUN cd BiG-SCAPE \
+ && wget ftp://ftp.ebi.ac.uk/pub/databases/Pfam/releases/Pfam32.0/Pfam-A.hmm.gz \
+ && gunzip Pfam-A.hmm.gz \
+ && source activate bigscape \
+ && hmmpress Pfam-A.hmm \
+ && chmod +x /usr/src/BiG-SCAPE/*py \
+ && chmod a+w /usr/src/BiG-SCAPE/domains_color_file.tsv \
+ && chmod 777 /home
+
 USER 1000:1000
 RUN mkdir /home/input /home/output
 WORKDIR /home
+ENV LANG C.UTF-8
+ENV LC_ALL C.UTF-8
 ENTRYPOINT ["bigscape.py"]
 CMD ["--help"]
-
