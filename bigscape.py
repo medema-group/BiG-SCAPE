@@ -1525,7 +1525,7 @@ def clusterJsonBatch(bgcs, pathBase, className, matrix, pos_alignments, cutoffs=
             familiesDict[bgcs[labels[i]]].append(bgcs[i])
         familyIdx = sorted(familiesDict.keys()) # identifiers for each family
         
-
+        
         ##
         ## Get conserved domain core information to build phylogenetic tree
         ## 
@@ -1716,66 +1716,65 @@ def clusterJsonBatch(bgcs, pathBase, className, matrix, pos_alignments, cutoffs=
                             newick = newick.replace(name, str(bgcExt2Int[bgc_name_to_idx[name]]))
 
                         newick_trees[exemplar_idx] = newick
-       
+        
         ### - - - GCC - - -
         bs_similarity_families = []
         if clusterClans and cutoff == clanClassificationCutoff:
             # Detect if there's only 1 GCF. It makes pySAPC crash
             if len(familyIdx) == 1:
                 clanLabels = [1]
-                continue
-            
-            #famSimMatrix = lil_matrix((len(familyIdx), len(familyIdx)), dtype=np.float32)
-            famSimMatrix = np.zeros((len(familyIdx), len(familyIdx)), dtype=np.float32)
-            familiesExt2Int = {gcfExtIdx:gcfIntIdx for gcfIntIdx,gcfExtIdx in enumerate(familyIdx)}
-            
-            for familyI, familyJ in [tuple(sorted(combo)) for combo in combinations(familyIdx, 2)]:
-                famSimilarities = []
-                # currently uses the average distance of all average distances
-                # between bgc from gcf I to all bgcs from gcf J
-                for bgcI in familiesDict[familyI]:
-                    similarities = [simMatrix[bgcExt2Int[bgcI], bgcExt2Int[bgcJ]] for bgcJ in familiesDict[familyJ]]
-                    famSimilarities.append(sum(similarities, 0.0) / len(similarities))
-                
-                try:
-                    familySimilarityIJ = sum(famSimilarities, 0.0)/len(famSimilarities)
-                except ZeroDivisionError:
-                    familySimilarityIJ = 0.0
-                
-                if familySimilarityIJ > 1 - clanDistanceCutoff:
-                    # Ensure symmetry
-                    famSimMatrix[familiesExt2Int[familyI], familiesExt2Int[familyJ]] = familySimilarityIJ
-                    famSimMatrix[familiesExt2Int[familyJ], familiesExt2Int[familyI]] = familySimilarityIJ
-                    
-            # if we have the identity matrix here, it means all GCFs are separate
-            # (nothing to cluster). Note: still can crash if values are 
-            # sufficiently low. Catch this error later
-            #if np.count_nonzero(simMatrix) == 0:
-                #clanLabels = []
-                #continue
-            
-            # add main diagonal
-            for family in range(len(familyIdx)):
-                famSimMatrix[family,family] = 1.0
-                
-            bs_similarity_families = famSimMatrix.tolist()
-            
-            #clanLabels = pysapc.SAP(damping=damping, max_iter=500,
-                                #preference='min').fit_predict(famSimMatrix)
-            af = AffinityPropagation(damping=damping, max_iter=1000, convergence_iter=200, affinity="precomputed").fit(famSimMatrix)
-            labelsClans = af.labels_
-            exemplarsClans = af.cluster_centers_indices_
-            
-            # affinity propagation can fail in some circumstances (e.g. only singletons)
-            if exemplarsClans is not None:
-                # translate and record GCF label instead of GCF number
-                clanLabels = [familyIdx[exemplarsClans[labelsClans[i]]] for i in range(len(familyIdx))]
             else:
-                clanLabels = []
+                #famSimMatrix = lil_matrix((len(familyIdx), len(familyIdx)), dtype=np.float32)
+                famSimMatrix = np.zeros((len(familyIdx), len(familyIdx)), dtype=np.float32)
+                familiesExt2Int = {gcfExtIdx:gcfIntIdx for gcfIntIdx,gcfExtIdx in enumerate(familyIdx)}
+                
+                for familyI, familyJ in [tuple(sorted(combo)) for combo in combinations(familyIdx, 2)]:
+                    famSimilarities = []
+                    # currently uses the average distance of all average distances
+                    # between bgc from gcf I to all bgcs from gcf J
+                    for bgcI in familiesDict[familyI]:
+                        similarities = [simMatrix[bgcExt2Int[bgcI], bgcExt2Int[bgcJ]] for bgcJ in familiesDict[familyJ]]
+                        famSimilarities.append(sum(similarities, 0.0) / len(similarities))
+                    
+                    try:
+                        familySimilarityIJ = sum(famSimilarities, 0.0)/len(famSimilarities)
+                    except ZeroDivisionError:
+                        familySimilarityIJ = 0.0
+                    
+                    if familySimilarityIJ > 1 - clanDistanceCutoff:
+                        # Ensure symmetry
+                        famSimMatrix[familiesExt2Int[familyI], familiesExt2Int[familyJ]] = familySimilarityIJ
+                        famSimMatrix[familiesExt2Int[familyJ], familiesExt2Int[familyI]] = familySimilarityIJ
+                        
+                # if we have the identity matrix here, it means all GCFs are separate
+                # (nothing to cluster). Note: still can crash if values are 
+                # sufficiently low. Catch this error later
+                #if np.count_nonzero(simMatrix) == 0:
+                    #clanLabels = []
+                    #continue
+                
+                # add main diagonal
+                for family in range(len(familyIdx)):
+                    famSimMatrix[family,family] = 1.0
+                    
+                bs_similarity_families = famSimMatrix.tolist()
+                
+                #clanLabels = pysapc.SAP(damping=damping, max_iter=500,
+                                    #preference='min').fit_predict(famSimMatrix)
+                af = AffinityPropagation(damping=damping, max_iter=1000, convergence_iter=200, affinity="precomputed").fit(famSimMatrix)
+                labelsClans = af.labels_
+                exemplarsClans = af.cluster_centers_indices_
+                
+                # affinity propagation can fail in some circumstances (e.g. only singletons)
+                if exemplarsClans is not None:
+                    # translate and record GCF label instead of GCF number
+                    clanLabels = [familyIdx[exemplarsClans[labelsClans[i]]] for i in range(len(familyIdx))]
+                else:
+                    clanLabels = []
             
         else:
             clanLabels = []
-
+        
         if len(clanLabels) > 0:
             clansDict = defaultdict(list)
             for i in range(len(familyIdx)):
