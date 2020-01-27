@@ -477,7 +477,7 @@ def sort_bgc(product):
                      'cyanobactin', 'glycocin', 'LAP', 'lassopeptide', 
                      'sactipeptide', 'bottromycin', 'head_to_tail', 'microcin', 
                      'microviridin', 'proteusin', 'lanthipeptide', 'lipolanthine', 
-                     'RaS-RiPP', 'fungal-RiPP'}
+                     'RaS-RiPP', 'fungal-RiPP', 'TfuA-related'}
     saccharide_products = {'amglyccycl', 'oligosaccharide', 'cf_saccharide', 
                      'saccharide'}
     others_products = {'acyl_amino_acids', 'arylpolyene', 'aminocoumarin', 
