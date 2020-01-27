@@ -2100,7 +2100,7 @@ def CMD_parser():
                         domain_whitelist.txt file", default=False,
                         action="store_true")
 
-    parser.add_argument("--version", action="version", version="%(prog)s 20191011")
+    parser.add_argument("--version", action="version", version="%(prog)s 1.0 (2020-01-27)")
 
     return parser.parse_args()
 
@@ -3303,7 +3303,7 @@ if __name__=="__main__":
             identifier = bgc_info[bgc].organism
         else : # use original genome file name (i.e. exclude "..clusterXXX from antiSMASH run")
             file_name_base = os.path.splitext(os.path.basename(genbankDict[bgc][0]))[0]
-            identifier = file_name_base.rsplit(".cluster",1)[0]
+            identifier = file_name_base.rsplit(".cluster",1)[0].rsplit(".region", 1)[0]
         if len(identifier) < 1:
             identifier = "Unknown Genome {}".format(len(genomes))
         if identifier not in genomes:
