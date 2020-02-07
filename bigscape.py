@@ -2034,9 +2034,9 @@ def CMD_parser():
                         c=0.3.")
                     
     parser.add_argument("--clans-off", dest="clans", action="store_false", 
-                        default=True, help="BiG-SCAPE will perform a second \
-                        layer of clustering and attempt to group families \
-                        assigned from clustering with cutoff of 0.5 to clans")
+                        default=True, help="Toggle to deactivate a second \
+                        layer of clustering to attempt to group families \
+                        into clans")
 
     parser.add_argument("--clan_cutoff",dest="clan_cutoff",default=[0.3,0.7], 
                         type=float, nargs=2, help="Cutoff Parameters for which \
@@ -2076,6 +2076,7 @@ def CMD_parser():
                         default=False, help="Force domain prediction using \
                         hmmscan even if BiG-SCAPE finds processed domtable files\
                         (e.g. to use a new version of PFAM).")
+    
     parser.add_argument("--skip_ma", dest="skip_ma", action="store_true", 
                         default=False, help="Skip multiple alignment of domains'\
                         sequences. Use if alignments have been generated in a \
@@ -2100,7 +2101,7 @@ def CMD_parser():
                         domain_whitelist.txt file", default=False,
                         action="store_true")
 
-    parser.add_argument("--version", action="version", version="%(prog)s 1.0 (2020-01-27)")
+    parser.add_argument("--version", action="version", version="%(prog)s 1.0.1 (2020-01-27)")
 
     return parser.parse_args()
 
