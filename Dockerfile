@@ -21,6 +21,7 @@ RUN cd BiG-SCAPE \
  && hmmpress Pfam-A.hmm \
  && chmod +x /usr/src/BiG-SCAPE/*py \
  && chmod a+w /usr/src/BiG-SCAPE/domains_color_file.tsv \
+ && chmod a+w /usr/src/BiG-SCAPE/Annotated_MIBiG_reference/ \
  && chmod 777 /home
 
 USER 1000:1000
