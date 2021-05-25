@@ -2082,26 +2082,29 @@ def CMD_parser():
                         sequences. Use if alignments have been generated in a \
                         previous run.")
     
-    parser.add_argument("--mibig", dest="mibig14", default=False, action="store_true",
+    parser.add_argument("--mibig", dest="mibig21", default=False, action="store_true",
                         help="Use included BGCs from then MIBiG database. Only \
                         relevant (i.e. those with distance < max(cutoffs) against\
-                        the input set) will be used. Currently uses version 1.4 \
+                        the input set) will be used. Currently uses version 2.1\
                         of MIBiG. See https://mibig.secondarymetabolites.org/")
     
+    parser.add_argument("--mibig14", dest="mibig14", default=False, action="store_true",
+                        help="Include BGCs from version 1.4 of MIBiG")
+    
     parser.add_argument("--mibig13", dest="mibig13", default=False, action="store_true",
-                        help="Include BGCs from the previous version of MIBiG (1.3)")
+                        help="Include BGCs from version 1.3 of MIBiG")
     
     parser.add_argument("--query_bgc", help="Instead of making an all-VS-all \
                         comparison of all the input BGCs, choose one BGC to \
                         compare with the rest of the set (one-VS-all). The \
                         query BGC does not have to be within inputdir")
     
-    parser.add_argument("--domain_whitelist", help="Only analyze BGCs that \
+    parser.add_argument("--domain_includelist", help="Only analyze BGCs that \
                         include domains with the pfam accessions found in the \
-                        domain_whitelist.txt file", default=False,
+                        domain_includelist.txt file", default=False,
                         action="store_true")
 
-    parser.add_argument("--version", action="version", version="%(prog)s 1.0.1 (2020-01-27)")
+    parser.add_argument("--version", action="version", version="%(prog)s 1.1 (2021-05-25)")
 
     return parser.parse_args()
 
@@ -2154,7 +2157,7 @@ if __name__=="__main__":
     global verbose
     global BGCs
     
-    # contains the type of the final product of the BGC (as predicted by AntiSMASH), 
+    # contains the type of the final product of the BGC (as predicted by antiSMASH), 
     # as well as the definition line from the BGC file. Used in the final network files.
     global output_folder
 
@@ -2226,9 +2229,14 @@ if __name__=="__main__":
             
     verbose = options.verbose
     
-    if options.mibig14 and options.mibig13:
+    selected_mibig = 0
+    if options.mibig21: selected_mibig += 1
+    if options.mibig14: selected_mibig += 1
+    if options.mibig13: selected_mibig += 1
+    if selected_mibig > 1:
         sys.exit("Error: choose only one MIBiG version")
-    use_relevant_mibig = options.mibig13 or options.mibig14
+    if selected_mibig == 1:
+        use_relevant_mibig = True
     
     run_mode_string = ""
     networks_folder_all = "networks_all"
@@ -2258,22 +2266,22 @@ if __name__=="__main__":
     global gbk_files, sampleDict, clusters, baseNames
     
     
-    # Get domain_whitelist
-    has_whitelist = False
-    if options.domain_whitelist:
+    # Get domain_includelist
+    has_includelist = False
+    if options.domain_includelist:
         bigscape_path = os.path.dirname(os.path.realpath(__file__))
-        if os.path.isfile(os.path.join(bigscape_path,"domain_whitelist.txt")):
-            domain_whitelist = set()
-            for line in open(os.path.join(bigscape_path,"domain_whitelist.txt"), "r"):
+        if os.path.isfile(os.path.join(bigscape_path,"domain_includelist.txt")):
+            domain_includelist = set()
+            for line in open(os.path.join(bigscape_path,"domain_includelist.txt"), "r"):
                 if line[0] == "#":
                     continue
-                domain_whitelist.add(line.split("\t")[0].strip())
-            if len(domain_whitelist) == 0:
-                print("Warning: --domain_whitelist used, but no domains found in the file")
+                domain_includelist.add(line.split("\t")[0].strip())
+            if len(domain_includelist) == 0:
+                print("Warning: --domain_includelist used, but no domains found in the file")
             else:
-                has_whitelist = True
+                has_includelist = True
         else:
-            sys.exit("Error: domain_whitelist.txt file not found")
+            sys.exit("Error: domain_includelist.txt file not found")
     
     
     ### Step 1: Get all the input files. Write extract sequence and write fasta if necessary
@@ -2351,10 +2359,12 @@ if __name__=="__main__":
     # (file, final folder, number of bgcs)
     mibig_set = set()
     if use_relevant_mibig:
-        if options.mibig13:
-            mibig_zipfile_numbgcs = ("MIBiG_1.3_final.zip", "MIBiG_1.3_final", 1393)
-        else:
+        if options.mibig21:
+            mibig_zipfile_numbgcs = ("MIBiG_2.1_final.zip", "MIBiG_2.1_final", 1923)
+        elif options.mibig14:
             mibig_zipfile_numbgcs = ("MIBiG_1.4_final.zip", "MIBiG_1.4_final", 1808)
+        else:
+            mibig_zipfile_numbgcs = ("MIBiG_1.3_final.zip", "MIBiG_1.3_final", 1393)
         
         print("\n Trying to read bundled MIBiG BGCs as reference")
         mibig_path = os.path.join(os.path.dirname(os.path.realpath(__file__)),"Annotated_MIBiG_reference")
@@ -2907,11 +2917,11 @@ if __name__=="__main__":
         
         # create working set with indices of valid clusters
         for clusterIdx,clusterName in enumerate(clusterNames):
-            if has_whitelist:
+            if has_includelist:
                 # extra processing because pfs info includes model version
                 bgc_domain_set = set({x.split(".")[0] for x in DomainList[clusterName]})
                     
-                if len(domain_whitelist & bgc_domain_set) == 0:
+                if len(domain_includelist & bgc_domain_set) == 0:
                     continue
             
             product = bgc_info[clusterName].product
@@ -3073,11 +3083,11 @@ if __name__=="__main__":
         
         # create and sort working set for each class
         for clusterIdx,clusterName in enumerate(clusterNames):
-            if has_whitelist:
+            if has_includelist:
                 # extra processing because pfs info includes model version
                 bgc_domain_set = set({x.split(".")[0] for x in DomainList[clusterName]})
                     
-                if len(domain_whitelist & bgc_domain_set) == 0:
+                if len(domain_includelist & bgc_domain_set) == 0:
                     continue
             
             product = bgc_info[clusterName].product

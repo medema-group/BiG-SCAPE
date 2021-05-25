@@ -468,16 +468,24 @@ def sort_bgc(product):
     """Sort BGC by its type. Uses AntiSMASH annotations
     (see https://docs.antismash.secondarymetabolites.org/glossary/#cluster-types)"""
     
+    # TODO: according with current (2021-05) antiSMASH rules:
+    # prodigiosin and PpyS-KS -> PKS
+    # CDPS -> NRPS
     pks1_products = {'t1pks', 'T1PKS'}
     pksother_products = {'transatpks', 't2pks', 't3pks', 'otherks', 'hglks', 
                      'transAT-PKS', 'transAT-PKS-like', 'T2PKS', 'T3PKS', 
                      'PKS-like', 'hglE-KS'}
-    nrps_products = {'nrps', 'NRPS', 'NRPS-like', 'thioamide-NRP'}
+    nrps_products = {'nrps', 'NRPS', 'NRPS-like', 'thioamide-NRP', 'NAPAA'}
     ripps_products = {'lantipeptide', 'thiopeptide', 'bacteriocin', 'linaridin', 
                      'cyanobactin', 'glycocin', 'LAP', 'lassopeptide', 
                      'sactipeptide', 'bottromycin', 'head_to_tail', 'microcin', 
                      'microviridin', 'proteusin', 'lanthipeptide', 'lipolanthine', 
-                     'RaS-RiPP', 'fungal-RiPP', 'TfuA-related'}
+                     'RaS-RiPP', 'fungal-RiPP', 'TfuA-related', 'guanidinotides', 
+                     'lanthipeptide-class-i', 'lanthipeptide-class-ii', 
+                     'lanthipeptide-class-iii', 'lanthipeptide-class-iv',
+                     'lanthipeptide-class-v', 'ranthipeptide', 'redox-cofactor'
+                     'thioamitides' 'epipeptide', 'cyclic-lactone-autoinducer',
+                     'spliceotide', 'RRE-containing'}
     saccharide_products = {'amglyccycl', 'oligosaccharide', 'cf_saccharide', 
                      'saccharide'}
     others_products = {'acyl_amino_acids', 'arylpolyene', 'aminocoumarin', 
@@ -487,7 +495,7 @@ def sort_bgc(product):
                        'PUFA', 'furan', 'hserlactone', 'fused', 'cf_fatty_acid', 
                        'siderophore', 'blactam', 'fatty_acid', 'PpyS-KS', 'CDPS', 
                        'betalactone', 'PBDE', 'tropodithietic-acid', 'NAGGN', 
-                       'halogenated'}
+                       'halogenated', 'pyrrolidine'}
     
     # PKS_Type I
     if product in pks1_products:
