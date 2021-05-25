@@ -2892,7 +2892,7 @@ if __name__=="__main__":
     print("   Writing the complete Annotations file for the complete set")
     network_annotation_path = os.path.join(network_files_folder, "Network_Annotations_Full.tsv")
     with open(network_annotation_path, "w") as network_annotation_file:
-        network_annotation_file.write("BGC\tAccesion ID\tDescription\tProduct Prediction\tBiG-SCAPE class\tOrganism\tTaxonomy\n")
+        network_annotation_file.write("BGC\tAccession ID\tDescription\tProduct Prediction\tBiG-SCAPE class\tOrganism\tTaxonomy\n")
         for bgc in clusterNames:
             product = bgc_info[bgc].product
             network_annotation_file.write("\t".join([bgc, bgc_info[bgc].accession_id, bgc_info[bgc].description, product, sort_bgc(product), bgc_info[bgc].organism, bgc_info[bgc].taxonomy]) + "\n")
@@ -2993,7 +2993,7 @@ if __name__=="__main__":
             print("   Writing annotation file")
             network_annotation_path = os.path.join(network_files_folder, "mix", "Network_Annotations_mix_QueryBGC.tsv")
             with open(network_annotation_path, "w") as network_annotation_file:
-                network_annotation_file.write("BGC\tAccesion ID\tDescription\tProduct Prediction\tBiG-SCAPE class\tOrganism\tTaxonomy\n")
+                network_annotation_file.write("BGC\tAccession ID\tDescription\tProduct Prediction\tBiG-SCAPE class\tOrganism\tTaxonomy\n")
                 for idx in mix_set:
                     bgc = clusterNames[idx]
                     product = bgc_info[bgc].product
@@ -3146,7 +3146,7 @@ if __name__=="__main__":
             print("   Writing annotation files")
             network_annotation_path = os.path.join(network_files_folder, bgc_class, "Network_Annotations_" + bgc_class + ".tsv")
             with open(network_annotation_path, "w") as network_annotation_file:
-                network_annotation_file.write("BGC\tAccesion ID\tDescription\tProduct Prediction\tBiG-SCAPE class\tOrganism\tTaxonomy\n")
+                network_annotation_file.write("BGC\tAccession ID\tDescription\tProduct Prediction\tBiG-SCAPE class\tOrganism\tTaxonomy\n")
                 for idx in BGC_classes[bgc_class]:
                     bgc = clusterNames[idx]
                     product = bgc_info[bgc].product
@@ -3211,7 +3211,7 @@ if __name__=="__main__":
                 print("   Writing annotation file (Query BGC)")
                 network_annotation_path = os.path.join(network_files_folder, bgc_class, "Network_Annotations_" + bgc_class + "_QueryBGC.tsv")
                 with open(network_annotation_path, "w") as network_annotation_file:
-                    network_annotation_file.write("BGC\tAccesion ID\tDescription\tProduct Prediction\tBiG-SCAPE class\tOrganism\tTaxonomy\n")
+                    network_annotation_file.write("BGC\tAccession ID\tDescription\tProduct Prediction\tBiG-SCAPE class\tOrganism\tTaxonomy\n")
                     for idx in BGC_classes[bgc_class]:
                         bgc = clusterNames[idx]
                         product = bgc_info[bgc].product
