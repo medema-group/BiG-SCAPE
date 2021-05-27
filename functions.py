@@ -481,7 +481,7 @@ def sort_bgc(product):
                      'sactipeptide', 'bottromycin', 'head_to_tail', 'microcin', 
                      'microviridin', 'proteusin', 'lanthipeptide', 'lipolanthine', 
                      'RaS-RiPP', 'fungal-RiPP', 'TfuA-related', 'guanidinotides', 
-                     'lanthipeptide-class-i', 'lanthipeptide-class-ii', 
+                     'RiPP-like', 'lanthipeptide-class-i', 'lanthipeptide-class-ii', 
                      'lanthipeptide-class-iii', 'lanthipeptide-class-iv',
                      'lanthipeptide-class-v', 'ranthipeptide', 'redox-cofactor'
                      'thioamitides' 'epipeptide', 'cyclic-lactone-autoinducer',

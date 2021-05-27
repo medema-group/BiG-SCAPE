@@ -2235,6 +2235,7 @@ if __name__=="__main__":
     if options.mibig13: selected_mibig += 1
     if selected_mibig > 1:
         sys.exit("Error: choose only one MIBiG version")
+    use_relevant_mibig = False
     if selected_mibig == 1:
         use_relevant_mibig = True
     
