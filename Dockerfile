@@ -15,7 +15,7 @@ ENV PATH /usr/local/envs/bigscape/bin:$PATH
 ENV PATH /usr/src/BiG-SCAPE:$PATH
 
 RUN cd BiG-SCAPE \
- && wget ftp://ftp.ebi.ac.uk/pub/databases/Pfam/releases/Pfam32.0/Pfam-A.hmm.gz \
+ && wget ftp://ftp.ebi.ac.uk/pub/databases/Pfam/releases/Pfam34.0/Pfam-A.hmm.gz \
  && gunzip Pfam-A.hmm.gz \
  && source activate bigscape \
  && hmmpress Pfam-A.hmm \

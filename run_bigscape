@@ -5,7 +5,7 @@ if [[ $# -eq 0 || $1 == "-h" || $1 == "--help" || $1 == "--version" ]]; then
 	--detach=false \
 	--rm \
 	--user=$(id -u):$(id -g) \
-	docker-registry.wur.nl/medema-group/big-scape:v1.0.1 \
+	docker-registry.wur.nl/medema-group/big-scape:v1.1.2 \
 	$@
 else
 	set -o errexit

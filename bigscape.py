@@ -2104,7 +2104,7 @@ def CMD_parser():
                         domain_includelist.txt file", default=False,
                         action="store_true")
 
-    parser.add_argument("--version", action="version", version="%(prog)s 1.1 (2021-05-25)")
+    parser.add_argument("--version", action="version", version="%(prog)s 1.1.2 (2021-06-03)")
 
     return parser.parse_args()
 
