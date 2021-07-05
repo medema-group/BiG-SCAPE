@@ -1,10 +1,11 @@
 name: bigscape
 channels:
+  - conda-forge
   - bioconda
 dependencies:
   - python=3.6
   - hmmer
-  - biopython
+  - biopython=1.70
   - fasttree
   - numpy
   - scipy
