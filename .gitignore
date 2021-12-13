@@ -1,0 +1,8 @@
+Annotated_MIBiG_reference/MIBiG_1.3_final
+Annotated_MIBiG_reference/MIBiG_1.4_final
+Annotated_MIBiG_reference/MIBiG_2.1_final
+
+Pfam*
+
+**/*.pyc
+.vscode/**/*
