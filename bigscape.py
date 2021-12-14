@@ -75,10 +75,6 @@ from sklearn.cluster import AffinityPropagation
 import networkx as nx
 
 
-global use_relevant_mibig
-global mibig_set
-global genbankDict
-global valid_classes
 
 # refactored imports
 from src.fileprocessing.gbk import process_gbk_files, get_gbk_files
@@ -1750,36 +1746,12 @@ if __name__=="__main__":
         print("please provide a name for an output folder using parameter -o or --outputdir")
         sys.exit(0)
     
-    global anchor_domains
     if os.path.isfile(options.anchorfile):
         anchor_domains = get_anchor_domains(options.anchorfile)
     else:
         print("File with list of anchor domains not found")
         anchor_domains = set()
     
-    global force_hmmscan
-    global bgc_class_weight
-    global AlignedDomainSequences
-    global DomainList
-    global DomainCountGene
-    global corebiosynthetic_position
-    global verbose
-    global BGCs
-    
-    # contains the type of the final product of the BGC (as predicted by antiSMASH), 
-    # as well as the definition line from the BGC file. Used in the final network files.
-    global output_folder
-
-    global pfam_dir
-    global timings_file
-    global cores
-    global mode
-    
-    global run_name
-    global run_data
-    run_data = {}
-
-    global clusterNames, bgcClassNames
     
     include_singletons = options.include_singletons
     
@@ -1868,12 +1840,10 @@ if __name__=="__main__":
     run_name = "{}{}".format(time.strftime("%Y-%m-%d_%H-%M-%S", start_time), run_mode_string)
     if options.label:
         run_name = run_name + "_" + options.label
+    run_data = {}
     run_data["start_time"] = time.strftime("%d/%m/%Y %H:%M:%S", start_time)
     run_data["parameters"] = " ".join(sys.argv[1:])
     run_data["input"] = {}
-
-    # Make the following available for possibly deleting entries within parseHmmScan
-    global gbk_files, sampleDict, clusters, baseNames
     
     
     # Get domain_includelist
