@@ -1,8 +1,13 @@
+# mibig, to be automatically downloded when needed
 Annotated_MIBiG_reference/MIBiG_1.3_final
 Annotated_MIBiG_reference/MIBiG_1.4_final
 Annotated_MIBiG_reference/MIBiG_2.1_final
 
-Pfam*
+# pfam hmm files
+Pfam_*
 
+# generated files
 **/*.pyc
+
+# vscode files
 .vscode/**/*
