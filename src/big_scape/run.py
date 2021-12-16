@@ -109,7 +109,7 @@ class Run:
 
     def set_mibig(self, options):
         """Checks if the Mibig options that were passed are valid, and if so,
-        returns if mibig is to be used
+        sets the use mibig flag if it is to be used
 
         Inputs:
         - options: options object from CMD_parser"""
@@ -150,7 +150,10 @@ class Run:
 
 
     def start(self, options):
-        """Start the run: set a run name and record the start time"""
+        """Start the run: set a run name and record the start time
+
+        Inputs:
+        - options: options object from CMD_parser"""
         # start time
         self.start_time = time.time()
 
