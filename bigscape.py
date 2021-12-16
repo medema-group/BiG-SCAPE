@@ -108,20 +108,6 @@ if __name__=="__main__":
     log_folder = os.path.join(run.directories.output, "logs")
     utility.create_directory(log_folder, "Logs", False)
     utility.write_parameters(log_folder, sys.argv)
-
-    # cached stuff
-    cache_folder = os.path.join(run.directories.output, "cache")
-    bgc_fasta_folder = os.path.join(cache_folder, "fasta")
-    domtable_folder = os.path.join(cache_folder, "domtable")
-    pfs_folder = os.path.join(cache_folder, "pfs")
-    pfd_folder = os.path.join(cache_folder, "pfd")
-    domains_folder = os.path.join(cache_folder, "domains")
-    utility.create_directory(cache_folder, "Cache", False)
-    utility.create_directory(bgc_fasta_folder, "BGC fastas", False)
-    utility.create_directory(domtable_folder, "Domtable", False)
-    utility.create_directory(domains_folder, "Domains", False)
-    utility.create_directory(pfs_folder, "pfs", False)
-    utility.create_directory(pfd_folder, "pfd", False)
     
     
     # Weights in the format J, DSS, AI, anchorboost
@@ -206,7 +192,7 @@ if __name__=="__main__":
             sys.exit("Did not find the correct number of MIBiG BGCs ({}). Please clean the 'Annotated MIBiG reference' folder from any .gbk files first".format(mibig_zipfile_numbgcs[2]))
         
         print("\nImporting MIBiG files")
-        fileprocessing.get_gbk_files(bgcs_path, run.directories.output, bgc_fasta_folder, int(options.min_bgc_size),
+        fileprocessing.get_gbk_files(bgcs_path, run.directories.output, run.directories.bgc_fasta, int(options.min_bgc_size),
                       ['*'], exclude_gbk_str, bgc_info, options.mode, options.verbose, options.force_hmmscan, valid_classes, bgctools.bgc_data, genbankDict)
         
         for i in genbankDict.keys():
@@ -214,7 +200,7 @@ if __name__=="__main__":
             
     
     print("\nImporting GenBank files")
-    fileprocessing.get_gbk_files(options.inputdir, run.directories.output, bgc_fasta_folder, int(options.min_bgc_size),
+    fileprocessing.get_gbk_files(options.inputdir, run.directories.output, run.directories.bgc_fasta, int(options.min_bgc_size),
                   include_gbk_str, exclude_gbk_str, bgc_info, options.mode, options.verbose, options.force_hmmscan, valid_classes, bgctools.bgc_data, genbankDict)
     
     if run.has_query_bgc:
@@ -224,7 +210,7 @@ if __name__=="__main__":
             pass
         else:
             print("\nImporting query BGC file")
-            fileprocessing.get_gbk_files(options.query_bgc, run.directories.output, bgc_fasta_folder, 
+            fileprocessing.get_gbk_files(options.query_bgc, run.directories.output, run.directories.bgc_fasta, 
                           int(options.min_bgc_size), ['*'], exclude_gbk_str, bgc_info)
             
         if query_bgc not in genbankDict:
@@ -284,13 +270,13 @@ if __name__=="__main__":
     baseNames = set(clusters)
     
     # All available fasta files (could be more than it should if reusing output folder)
-    allFastaFiles = set(glob(os.path.join(bgc_fasta_folder,"*.fasta")))
+    allFastaFiles = set(glob(os.path.join(run.directories.bgc_fasta,"*.fasta")))
     
     # fastaFiles: all the fasta files that should be there 
     # (i.e. correspond to the input files)
     fastaFiles = set()
     for name in baseNames:
-        fastaFiles.add(os.path.join(bgc_fasta_folder, name+".fasta"))
+        fastaFiles.add(os.path.join(run.directories.bgc_fasta, name+".fasta"))
 
     # fastaBases: the actual fasta files we have that correspond to the input
     fastaBases = allFastaFiles.intersection(fastaFiles)
@@ -310,7 +296,7 @@ if __name__=="__main__":
         alreadyDone = set()
         for fasta in fastaFiles:
             outputbase  = ".".join(fasta.split(os.sep)[-1].split(".")[:-1])
-            outputfile = os.path.join(domtable_folder,outputbase + '.domtable')
+            outputfile = os.path.join(run.directories.domtable,outputbase + '.domtable')
             if os.path.isfile(outputfile) and os.path.getsize(outputfile) > 0:
                 # verify domtable content
                 with open(outputfile, "r") as domtablefile:
@@ -334,7 +320,7 @@ if __name__=="__main__":
         
     pool = Pool(options.cores,maxtasksperchild=1)
     for fastaFile in task_set:
-        pool.apply_async(hmm.runHmmScan,args=(fastaFile, run.pfam_dir, domtable_folder, options.verbose))
+        pool.apply_async(hmm.runHmmScan,args=(fastaFile, run.directories.pfam, run.directories.domtable, options.verbose))
     pool.close()
     pool.join()
     print(" Finished generating domtable files.")
@@ -343,12 +329,12 @@ if __name__=="__main__":
     print("\nParsing hmmscan domtable files")
     
     # All available domtable files
-    allDomtableFiles = set(glob(os.path.join(domtable_folder,"*.domtable")))
+    allDomtableFiles = set(glob(os.path.join(run.directories.domtable,"*.domtable")))
     
     # domtableFiles: all domtable files corresponding to the input files
     domtableFiles = set()
     for name in baseNames:
-        domtableFiles.add(os.path.join(domtable_folder, name+".domtable"))
+        domtableFiles.add(os.path.join(run.directories.domtable, name+".domtable"))
     
     # domtableBases: the actual set of input files with coresponding domtable files
     domtableBases = allDomtableFiles.intersection(domtableFiles)
@@ -362,7 +348,7 @@ if __name__=="__main__":
     if not options.force_hmmscan:
         for domtable in domtableFiles:
             outputbase = ".".join(domtable.split(os.sep)[-1].split(".")[:-1])
-            outputfile = os.path.join(pfd_folder, outputbase + '.pfd')
+            outputfile = os.path.join(run.directories.pfd, outputbase + '.pfd')
             if os.path.isfile(outputfile) and os.path.getsize(outputfile) > 0:
                 alreadyDone.add(domtable)
     domtableFilesUnprocessed = domtableFiles - alreadyDone
@@ -382,7 +368,7 @@ if __name__=="__main__":
     # Using serialized version for now. Probably doesn't have too bad an impact
     #pool = Pool(cores,maxtasksperchild=32)
     for domtableFile in domtableFiles - alreadyDone:
-        hmm.parseHmmScan(domtableFile, pfd_folder, pfs_folder, options.domain_overlap_cutoff, options.verbose, genbankDict, clusters, baseNames, gbk_files, sampleDict, mibig_set)
+        hmm.parseHmmScan(domtableFile, run.directories.pfd, run.directories.pfs, options.domain_overlap_cutoff, options.verbose, genbankDict, clusters, baseNames, gbk_files, sampleDict, mibig_set)
         #pool.apply_async(parseHmmScan, args=(domtableFile,output_folder,options.domain_overlap_cutoff))
     #pool.close()
     #pool.join()
@@ -399,8 +385,8 @@ if __name__=="__main__":
         #  either by expanding previous alignment files or at the very least, 
         #  re-aligning only the domain files of the newly added BGCs
         print(" New domain sequences to be added; cleaning domains folder")
-        for thing in os.listdir(domains_folder):
-            os.remove(os.path.join(domains_folder,thing))
+        for thing in os.listdir(run.directories.domains):
+            os.remove(os.path.join(run.directories.domains,thing))
 
     print(" Finished generating pfs and pfd files.")
     
@@ -409,13 +395,13 @@ if __name__=="__main__":
     print("\nProcessing domains sequence files")
     
     # All available pfd files
-    allPfdFiles = set(glob(os.path.join(pfd_folder,"*.pfd")))
+    allPfdFiles = set(glob(os.path.join(run.directories.pfd,"*.pfd")))
     
     # pfdFiles: all pfd files corresponding to the input files
     # (some input files could've been removed due to not having predicted domains)
     pfdFiles = set()
     for name in baseNames:
-        pfdFiles.add(os.path.join(pfd_folder, name+".pfd"))
+        pfdFiles.add(os.path.join(run.directories.pfd, name+".pfd"))
     
     # pfdBases: the actual set of input files that have pfd files
     pfdBases = allPfdFiles.intersection(pfdFiles)
@@ -429,7 +415,7 @@ if __name__=="__main__":
     if options.skip_ma:
         print(" Running with skip_ma parameter: Assuming that the domains folder has all the fasta files")
         try:
-            with open(os.path.join(cache_folder, "BGCs.dict"), "r") as BGC_file:
+            with open(os.path.join(run.directories.cache, "BGCs.dict"), "r") as BGC_file:
                 BGCs = pickle.load(BGC_file)
                 BGC_file.close()
         except IOError:
@@ -441,11 +427,11 @@ if __name__=="__main__":
             if options.verbose:
                 print("   Processing: " + outputbase)
 
-            pfdFile = os.path.join(pfd_folder, outputbase + ".pfd")
+            pfdFile = os.path.join(run.directories.pfd, outputbase + ".pfd")
             filtered_matrix = [[part.strip() for part in line.split('\t')] for line in open(pfdFile)]
 
             # save each domain sequence from a single BGC in its corresponding file
-            fasta_file = os.path.join(bgc_fasta_folder, outputbase + ".fasta")
+            fasta_file = os.path.join(run.directories.bgc_fasta, outputbase + ".fasta")
 
             # only create domain fasta if the pfd content is different from original and 
             #  domains folder has been emptied. Else, if trying to resume alignment phase,
@@ -453,14 +439,14 @@ if __name__=="__main__":
             if not try_MA_resume:
                 with open(fasta_file, "r") as fasta_file_handle:
                     fasta_dict = utility.fasta_parser(fasta_file_handle) # all fasta info from a BGC
-                utility.save_domain_seqs(filtered_matrix, fasta_dict, domains_folder, outputbase)
+                utility.save_domain_seqs(filtered_matrix, fasta_dict, run.directories.domains, outputbase)
 
             BGCs[outputbase] = bgctools.BGC_dic_gen(filtered_matrix)
             
             del filtered_matrix[:]
             
         # store processed BGCs dictionary for future re-runs
-        with open(os.path.join(cache_folder, "BGCs.dict"), "wb") as BGC_file:
+        with open(os.path.join(run.directories.cache, "BGCs.dict"), "wb") as BGC_file:
             pickle.dump(BGCs, BGC_file)
             BGC_file.close()
             
@@ -474,7 +460,7 @@ if __name__=="__main__":
         DomainCountGene[outputbase] = array('B')
         corebiosynthetic_position[outputbase] = array('H')
         BGCGeneOrientation[outputbase] = array('b')
-        pfdFile = os.path.join(pfd_folder, outputbase + ".pfd")
+        pfdFile = os.path.join(run.directories.pfd, outputbase + ".pfd")
         
         #pfd_dict_domains contains the number of domains annotated in the
         # pfd file for each orf tag
@@ -515,7 +501,7 @@ if __name__=="__main__":
     # Get the ordered list of domains
     print(" Reading the ordered list of domains from the pfs files")
     for outputbase in baseNames:
-        pfsfile = os.path.join(pfs_folder, outputbase + ".pfs")
+        pfsfile = os.path.join(run.directories.pfs, outputbase + ".pfs")
         if os.path.isfile(pfsfile):
             DomainList[outputbase] = pfam.get_domain_list(pfsfile)
         else:
@@ -566,7 +552,7 @@ if __name__=="__main__":
         print("  Reading BGC information and writing SVG")
         for bgc in working_set:
             with open(genbankDict[bgc][0],"r") as handle:
-                SVG(False, os.path.join(svg_folder,bgc+".svg"), handle, bgc, os.path.join(pfd_folder,bgc+".pfd"), True, color_genes, color_domains, pfam_domain_categories, pfam_info, bgc_info[bgc].records, bgc_info[bgc].max_width)
+                SVG(False, os.path.join(svg_folder,bgc+".svg"), handle, bgc, os.path.join(run.directories.pfd,bgc+".pfd"), True, color_genes, color_domains, pfam_domain_categories, pfam_info, bgc_info[bgc].records, bgc_info[bgc].max_width)
         
         color_genes.clear()
         color_domains.clear()
@@ -585,12 +571,12 @@ if __name__=="__main__":
         print("Performing multiple alignment of domain sequences")
         
         # obtain all fasta files with domain sequences
-        domain_sequence_list = set(glob(os.path.join(domains_folder,"*.fasta")))
+        domain_sequence_list = set(glob(os.path.join(run.directories.domains,"*.fasta")))
         
         # compare with .algn set of files. Maybe resuming is possible if
         # no new sequences were added
         if try_MA_resume:
-            temp_aligned = set(glob(os.path.join(domains_folder, "*.algn")))
+            temp_aligned = set(glob(os.path.join(run.directories.domains, "*.algn")))
             
             if len(temp_aligned) > 0:
                 print(" Found domain fasta files without corresponding alignments")
@@ -632,7 +618,7 @@ if __name__=="__main__":
         stop_flag = False
         if len(domain_sequence_list) > 0:
             print("\n Using hmmalign")
-            hmm.launch_hmmalign(options.cores, domain_sequence_list, run.pfam_dir, options.verbose)
+            hmm.launch_hmmalign(options.cores, domain_sequence_list, run.directories.pfam, options.verbose)
                 
             # verify all tasks were completed by checking existance of alignment files
             for domain_file in domain_sequence_list:
@@ -648,7 +634,7 @@ if __name__=="__main__":
     
     # If there's something to analyze, load the aligned sequences
     print(" Trying to read domain alignments (*.algn files)")
-    aligned_files_list = glob(os.path.join(domains_folder, "*.algn"))
+    aligned_files_list = glob(os.path.join(run.directories.domains, "*.algn"))
     if len(aligned_files_list) == 0:
         sys.exit("No aligned sequences found in the domain folder (run without the --skip_ma parameter or point to the correct output folder)")
     for aligned_file in aligned_files_list:
@@ -761,7 +747,7 @@ if __name__=="__main__":
         pairs.clear()
         network_matrix_mix = big_scape.generate_network(cluster_pairs, options.cores, clusterNames, bgcClassNames, DomainList, run.directories.output, DomainCountGene, 
         corebiosynthetic_position, BGCGeneOrientation, bgc_class_weight, run.network.anchor_domains, BGCs, options.mode, bgc_info,
-        AlignedDomainSequences, options.verbose, domains_folder)
+        AlignedDomainSequences, options.verbose, run.directories.domains)
         
         del cluster_pairs[:]
 
@@ -795,7 +781,7 @@ if __name__=="__main__":
             pairs.clear()
             network_matrix_new_set = big_scape.generate_network(cluster_pairs, options.cores, clusterNames, bgcClassNames, DomainList, run.directories.output, DomainCountGene,
             corebiosynthetic_position, BGCGeneOrientation, bgc_class_weight, run.network.anchor_domains, BGCs, options.mode, bgc_info,
-            AlignedDomainSequences, options.verbose, domains_folder)
+            AlignedDomainSequences, options.verbose, run.directories.domains)
             del cluster_pairs[:]
             
             # Update the network matrix (QBGC-vs-all) with the distances of
@@ -881,7 +867,7 @@ if __name__=="__main__":
             pa[int(row[1])] = (int(row[-4]), int(row[-3]), int(row[-2]), reverse)
         del network_matrix_mix[:]
         family_data = big_scape.clusterJsonBatch(mix_set, pathBase, "mix", reduced_network, pos_alignments,
-            clusterNames, bgc_info, mibig_set, pfd_folder, bgc_fasta_folder,
+            clusterNames, bgc_info, mibig_set, run.directories.pfd, run.directories.bgc_fasta,
             DomainList, BGCs, AlignedDomainSequences, DomainCountGene, BGCGeneOrientation,
             cutoffs=run.cluster.cutoff_list, clusterClans=options.clans,
             clanCutoff=options.clan_cutoff, htmlFolder=network_html_folder)
@@ -983,7 +969,7 @@ if __name__=="__main__":
             pairs.clear()
             network_matrix = big_scape.generate_network(cluster_pairs, options.cores, clusterNames, bgcClassNames, DomainList, run.directories.output, DomainCountGene,
             corebiosynthetic_position, BGCGeneOrientation, bgc_class_weight, run.network.anchor_domains, BGCs, options.mode, bgc_info,
-            AlignedDomainSequences, options.verbose, domains_folder)
+            AlignedDomainSequences, options.verbose, run.directories.domains)
             #pickle.dump(network_matrix,open("others.ntwrk",'wb'))
             del cluster_pairs[:]
             #network_matrix = pickle.load(open("others.ntwrk", "rb"))
@@ -1019,7 +1005,7 @@ if __name__=="__main__":
                 pairs.clear()
                 network_matrix_new_set = big_scape.generate_network(cluster_pairs, options.cores, clusterNames, bgcClassNames, DomainList, run.directories.output, DomainCountGene,
                 corebiosynthetic_position, BGCGeneOrientation, bgc_class_weight, run.network.anchor_domains, BGCs, options.mode, bgc_info,
-                AlignedDomainSequences, options.verbose, domains_folder)
+                AlignedDomainSequences, options.verbose, run.directories.domains)
                 del cluster_pairs[:]
                                     
                 # Update the network matrix (QBGC-vs-all) with the distances of
@@ -1106,7 +1092,7 @@ if __name__=="__main__":
 
             family_data = big_scape.clusterJsonBatch(BGC_classes[bgc_class], pathBase, bgc_class,
                 reduced_network, pos_alignments, clusterNames, bgc_info, 
-                mibig_set, pfd_folder, bgc_fasta_folder, DomainList, 
+                mibig_set, run.directories.pfd, run.directories.bgc_fasta, DomainList, 
                 BGCs, AlignedDomainSequences, DomainCountGene, BGCGeneOrientation,
                 cutoffs=run.cluster.cutoff_list, clusterClans=options.clans, clanCutoff=options.clan_cutoff, 
                 htmlFolder=network_html_folder)
@@ -1189,7 +1175,7 @@ if __name__=="__main__":
         # update bgc_results.js
         js.add_to_bigscape_results_js("{}_c{:.2f}".format(run.run_name, cutoff), html_subs_per_run[html_folder_for_this_cutoff], os.path.join(run.directories.output, "html_content", "js", "bigscape_results.js"))
 
-    pickle.dump(bgc_info,open(os.path.join(cache_folder,'bgc_info.dict'),'wb'))
+    pickle.dump(bgc_info,open(os.path.join(run.directories.cache,'bgc_info.dict'),'wb'))
     runtime = time.time()-run.start_time
     runtime_string = "\n\n\tMain function took {:.3f} s".format(runtime)
     with open(os.path.join(log_folder, "runtimes.txt"), 'a') as timings_file:

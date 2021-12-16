@@ -6,12 +6,20 @@ Author: Arjan Draisma
 import sys
 import os
 
+import src.utility as utility
+
 class DirParam():
     input: str
     output: str
-    cache: str
     pfam: str
     mibig: str
+
+    cache: str
+    bgc_fasta: str
+    domtable: str
+    pfs: str
+    pfd: str
+    domains: str
 
     def __init__(self, options):
         # input dir
@@ -22,6 +30,9 @@ class DirParam():
 
         # pfam dir
         self.set_pfam_dir(options)
+
+        # cache dirs
+        self.set_cache_folder(options)
 
         return
 
@@ -75,4 +86,16 @@ class DirParam():
         
         Inputs:
         - options: options object from CMD_parser"""
-        self.cache = self.output + "/cache"
+        self.cache = os.path.join(self.output, "cache")
+        self.bgc_fasta = os.path.join(self.cache, "fasta")
+        self.domtable = os.path.join(self.cache, "domtable")
+        self.pfs = os.path.join(self.cache, "pfs")
+        self.pfd = os.path.join(self.cache, "pfd")
+        self.domains = os.path.join(self.cache, "domains")
+        
+        utility.create_directory(self.cache, "Cache", False)
+        utility.create_directory(self.bgc_fasta, "BGC fastas", False)
+        utility.create_directory(self.domtable, "Domtable", False)
+        utility.create_directory(self.domains, "Domains", False)
+        utility.create_directory(self.pfs, "pfs", False)
+        utility.create_directory(self.pfd, "pfd", False)
