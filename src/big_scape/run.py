@@ -7,7 +7,6 @@ import os
 from time import struct_time
 import time
 
-from src.utility.cmd_parser import CMD_parser
 from src.utility.misc import get_anchor_domains
 
 class Run:
@@ -158,7 +157,7 @@ class Run:
         localtime = time.localtime(self.start_time)
         # generate run name
         self.run_name = "{}{}".format(time.strftime("%Y-%m-%d_%H-%M-%S", localtime), self.run_mode)
-                                      
+
         if options.label:
             self.run_name = self.run_name + "_" + options.label
 
