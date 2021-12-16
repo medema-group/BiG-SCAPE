@@ -75,39 +75,10 @@ import js
 if __name__=="__main__":
     options = utility.CMD_parser()
     
-    current_run = big_scape.Run(options)
-
-    # TODO: move
-    cutoff_list = options.cutoffs
-    for c in cutoff_list:
-        if c <= 0.0 or c > 1.0:
-            sys.exit(" Invalid cutoff value {}".format(str(c)))
-    max_cutoff = max(cutoff_list)
-            
-    # if we want to classify by clans make sure that the clanCutoff is included
-    # in the cutoffs to do AP in clusterJsonBatch
-    if options.clans:
-        fc, cc = options.clan_cutoff
-        if cc < fc:
-            sys.exit("Error: first value in the clan_cutoff parameter should be smaller than the second")
-        if fc not in cutoff_list:
-            if fc <= 0.0 or fc > 1.0:
-                sys.exit("Error: invalid cutoff value for GCF calling")
-            else:
-                cutoff_list.append(fc)
-                cutoff_list.sort()
-            
-        if cc <= 0.0 or cc > 1.0:
-            sys.exit("Error: invalid cutoff value for GCC calling")
-
-    has_query_bgc = False
-    if options.query_bgc:
-        has_query_bgc = True
-        if not os.path.isfile(options.query_bgc):
-            sys.exit("Error: Query BGC not found")
+    run = big_scape.Run(options)
 
 
-    current_run.start(options)
+    run.start(options)
     
     
     # Get domain_includelist
@@ -131,15 +102,15 @@ if __name__=="__main__":
     ### Step 1: Get all the input files. Write extract sequence and write fasta if necessary
     print("\n\n   - - Processing input files - -")
     
-    utility.create_directory(current_run.output_dir, "Output", False)
+    utility.create_directory(run.directories.output, "Output", False)
 
     # logs
-    log_folder = os.path.join(current_run.output_dir, "logs")
+    log_folder = os.path.join(run.directories.output, "logs")
     utility.create_directory(log_folder, "Logs", False)
     utility.write_parameters(log_folder, sys.argv)
 
     # cached stuff
-    cache_folder = os.path.join(current_run.output_dir, "cache")
+    cache_folder = os.path.join(run.directories.output, "cache")
     bgc_fasta_folder = os.path.join(cache_folder, "fasta")
     domtable_folder = os.path.join(cache_folder, "domtable")
     pfs_folder = os.path.join(cache_folder, "pfs")
@@ -202,7 +173,7 @@ if __name__=="__main__":
     # Change this for every officially curated MIBiG bundle
     # (file, final folder, number of bgcs)
     mibig_set = set()
-    if current_run.use_mibig:
+    if run.mibig.use_mibig:
         if options.mibig21:
             mibig_zipfile_numbgcs = ("MIBiG_2.1_final.zip", "MIBiG_2.1_final", 1923)
         elif options.mibig14:
@@ -235,7 +206,7 @@ if __name__=="__main__":
             sys.exit("Did not find the correct number of MIBiG BGCs ({}). Please clean the 'Annotated MIBiG reference' folder from any .gbk files first".format(mibig_zipfile_numbgcs[2]))
         
         print("\nImporting MIBiG files")
-        fileprocessing.get_gbk_files(bgcs_path, current_run.output_dir, bgc_fasta_folder, int(options.min_bgc_size),
+        fileprocessing.get_gbk_files(bgcs_path, run.directories.output, bgc_fasta_folder, int(options.min_bgc_size),
                       ['*'], exclude_gbk_str, bgc_info, options.mode, options.verbose, options.force_hmmscan, valid_classes, bgctools.bgc_data, genbankDict)
         
         for i in genbankDict.keys():
@@ -243,17 +214,17 @@ if __name__=="__main__":
             
     
     print("\nImporting GenBank files")
-    fileprocessing.get_gbk_files(options.inputdir, current_run.output_dir, bgc_fasta_folder, int(options.min_bgc_size),
+    fileprocessing.get_gbk_files(options.inputdir, run.directories.output, bgc_fasta_folder, int(options.min_bgc_size),
                   include_gbk_str, exclude_gbk_str, bgc_info, options.mode, options.verbose, options.force_hmmscan, valid_classes, bgctools.bgc_data, genbankDict)
     
-    if has_query_bgc:
+    if run.has_query_bgc:
         query_bgc = ".".join(options.query_bgc.split(os.sep)[-1].split(".")[:-1])
         if query_bgc in genbankDict:
             print("\nQuery BGC already added")
             pass
         else:
             print("\nImporting query BGC file")
-            fileprocessing.get_gbk_files(options.query_bgc, current_run.output_dir, bgc_fasta_folder, 
+            fileprocessing.get_gbk_files(options.query_bgc, run.directories.output, bgc_fasta_folder, 
                           int(options.min_bgc_size), ['*'], exclude_gbk_str, bgc_info)
             
         if query_bgc not in genbankDict:
@@ -271,9 +242,9 @@ if __name__=="__main__":
             sampleDict[sample] = clustersInSample
     
     print("\nCreating output directories")
-    svg_folder = os.path.join(current_run.output_dir, "SVG")
+    svg_folder = os.path.join(run.directories.output, "SVG")
     utility.create_directory(svg_folder, "SVG", False)
-    network_folder = os.path.join(current_run.output_dir, "network_files")
+    network_folder = os.path.join(run.directories.output, "network_files")
     utility.create_directory(network_folder, "Networks", False)
 
     print("\nTrying threading on {} cores".format(str(options.cores)))
@@ -363,7 +334,7 @@ if __name__=="__main__":
         
     pool = Pool(options.cores,maxtasksperchild=1)
     for fastaFile in task_set:
-        pool.apply_async(hmm.runHmmScan,args=(fastaFile, current_run.pfam_dir, domtable_folder, options.verbose))
+        pool.apply_async(hmm.runHmmScan,args=(fastaFile, run.pfam_dir, domtable_folder, options.verbose))
     pool.close()
     pool.join()
     print(" Finished generating domtable files.")
@@ -557,7 +528,7 @@ if __name__=="__main__":
     # read hmm file. We'll need that info anyway for final visualization
     print("  Parsing hmm file for domain information")
     pfam_info = {}
-    with open(os.path.join(current_run.pfam_dir, "Pfam-A.hmm"), "r") as pfam:
+    with open(os.path.join(run.directories.pfam, "Pfam-A.hmm"), "r") as pfam:
         putindict = False
         # assuming that the order of the information never changes
         for line in pfam:
@@ -661,7 +632,7 @@ if __name__=="__main__":
         stop_flag = False
         if len(domain_sequence_list) > 0:
             print("\n Using hmmalign")
-            hmm.launch_hmmalign(options.cores, domain_sequence_list, current_run.pfam_dir, options.verbose)
+            hmm.launch_hmmalign(options.cores, domain_sequence_list, run.pfam_dir, options.verbose)
                 
             # verify all tasks were completed by checking existance of alignment files
             for domain_file in domain_sequence_list:
@@ -689,24 +660,24 @@ if __name__=="__main__":
     clusterNames = tuple(sorted(clusters))
     
     # we have to find the idx of query_bgc
-    if has_query_bgc:
+    if run.has_query_bgc:
         try:
             query_bgc_idx = clusterNames.index(query_bgc)
         except ValueError:
             sys.exit("Error finding the index of Query BGC")
 
     # create output directory for network files
-    network_files_folder = os.path.join(network_folder, current_run.run_name)
+    network_files_folder = os.path.join(network_folder, run.run_name)
     utility.create_directory(network_files_folder, "Network Files", False)
 
     # copy html templates
-    dir_util.copy_tree(os.path.join(os.path.dirname(os.path.realpath(__file__)), "html_template", "output"), current_run.output_dir)
+    dir_util.copy_tree(os.path.join(os.path.dirname(os.path.realpath(__file__)), "html_template", "output"), run.directories.output)
 
     # make a new run folder in the html output & copy the overview_html
-    network_html_folder = os.path.join(current_run.output_dir, "html_content", "networks", current_run.run_name)
+    network_html_folder = os.path.join(run.directories.output, "html_content", "networks", run.run_name)
     rundata_networks_per_run = {}
     html_subs_per_run = {}
-    for cutoff in cutoff_list:
+    for cutoff in run.cluster.cutoff_list:
         network_html_folder_cutoff = "{}_c{:.2f}".format(network_html_folder, cutoff)
         utility.create_directory(network_html_folder_cutoff, "Network HTML Files", False)
         shutil.copy(os.path.join(os.path.dirname(os.path.realpath(__file__)), "html_template", "overview_html"), os.path.join(network_html_folder_cutoff, "overview.html"))
@@ -714,7 +685,7 @@ if __name__=="__main__":
         html_subs_per_run[network_html_folder_cutoff] = []
         
     # create pfams.js
-    pfams_js_file = os.path.join(current_run.output_dir, "html_content", "js", "pfams.js")
+    pfams_js_file = os.path.join(run.directories.output, "html_content", "js", "pfams.js")
     if not os.path.isfile(pfams_js_file):
         with open(pfams_js_file, "w") as pfams_js:
             pfam_json = {}
@@ -743,7 +714,7 @@ if __name__=="__main__":
     
     
     # Find index of all MIBiG BGCs if necessary
-    if current_run.use_mibig:
+    if run.mibig.use_mibig:
         name_to_idx = {}
         for clusterIdx,clusterName in enumerate(clusterNames):
             name_to_idx[clusterName] = clusterIdx
@@ -780,7 +751,7 @@ if __name__=="__main__":
         utility.create_directory(os.path.join(network_files_folder, "mix"), "  Mix", False)
         
         print("  Calculating all pairwise distances")
-        if has_query_bgc:
+        if run.has_query_bgc:
             pairs = set([tuple(sorted(combo)) for combo in combinations_product([query_bgc_idx], mix_set)])
         else:
             # convert into a set of ordered tuples
@@ -788,14 +759,14 @@ if __name__=="__main__":
         
         cluster_pairs = [(x, y, -1) for (x, y) in pairs]
         pairs.clear()
-        network_matrix_mix = big_scape.generate_network(cluster_pairs, options.cores, clusterNames, bgcClassNames, DomainList, current_run.output_dir, DomainCountGene, 
-        corebiosynthetic_position, BGCGeneOrientation, bgc_class_weight, current_run.anchor_domains, BGCs, options.mode, bgc_info,
+        network_matrix_mix = big_scape.generate_network(cluster_pairs, options.cores, clusterNames, bgcClassNames, DomainList, run.directories.output, DomainCountGene, 
+        corebiosynthetic_position, BGCGeneOrientation, bgc_class_weight, run.network.anchor_domains, BGCs, options.mode, bgc_info,
         AlignedDomainSequences, options.verbose, domains_folder)
         
         del cluster_pairs[:]
 
         # add the rest of the edges in the "Query network"
-        if has_query_bgc:
+        if run.has_query_bgc:
             new_set = []
             
             # rows from the distance matrix that will be pruned 
@@ -807,7 +778,7 @@ if __name__=="__main__":
                 if a == b:
                     continue
                 
-                if distance <= max_cutoff:
+                if distance <= run.cluster.max_cutoff:
                     if a == query_bgc_idx:
                         new_set.append(b)
                     else:
@@ -822,8 +793,8 @@ if __name__=="__main__":
             pairs = set([tuple(sorted(combo)) for combo in combinations(new_set, 2)])
             cluster_pairs = [(x, y, -1) for (x, y) in pairs]
             pairs.clear()
-            network_matrix_new_set = big_scape.generate_network(cluster_pairs, options.cores, clusterNames, bgcClassNames, DomainList, current_run.output_dir, DomainCountGene,
-            corebiosynthetic_position, BGCGeneOrientation, bgc_class_weight, current_run.anchor_domains, BGCs, options.mode, bgc_info,
+            network_matrix_new_set = big_scape.generate_network(cluster_pairs, options.cores, clusterNames, bgcClassNames, DomainList, run.directories.output, DomainCountGene,
+            corebiosynthetic_position, BGCGeneOrientation, bgc_class_weight, run.network.anchor_domains, BGCs, options.mode, bgc_info,
             AlignedDomainSequences, options.verbose, domains_folder)
             del cluster_pairs[:]
             
@@ -849,7 +820,7 @@ if __name__=="__main__":
                         bgc_info[bgc].accession_id, bgc_info[bgc].description, 
                         product, bgctools.sort_bgc(product), bgc_info[bgc].organism, 
                         bgc_info[bgc].taxonomy]) + "\n")
-        elif current_run.use_mibig:
+        elif run.mibig.use_mibig:
             n = nx.Graph()
             n.add_nodes_from(mix_set)
             mibig_set_del = []
@@ -857,7 +828,7 @@ if __name__=="__main__":
             
             for idx, row in enumerate(network_matrix_mix):
                 a, b, distance = int(row[0]), int(row[1]), row[2]
-                if distance <= max_cutoff:
+                if distance <= run.cluster.max_cutoff:
                     n.add_edge(a, b, index=idx)
                     
             for component in nx.connected_components(n): # note: 'component' is a set
@@ -891,9 +862,9 @@ if __name__=="__main__":
         print("  Writing output files")
         pathBase = os.path.join(network_files_folder, "mix")
         filenames = []
-        for cutoff in cutoff_list:
+        for cutoff in run.cluster.cutoff_list:
             filenames.append(os.path.join(pathBase, "mix_c{:.2f}.network".format(cutoff)))
-        cutoffs_and_filenames = list(zip(cutoff_list, filenames))
+        cutoffs_and_filenames = list(zip(run.cluster.cutoff_list, filenames))
         del filenames[:]
         big_scape.write_network_matrix(network_matrix_mix, cutoffs_and_filenames, options.include_singletons, clusterNames, bgc_info)
             
@@ -912,7 +883,7 @@ if __name__=="__main__":
         family_data = big_scape.clusterJsonBatch(mix_set, pathBase, "mix", reduced_network, pos_alignments,
             clusterNames, bgc_info, mibig_set, pfd_folder, bgc_fasta_folder,
             DomainList, BGCs, AlignedDomainSequences, DomainCountGene, BGCGeneOrientation,
-            cutoffs=cutoff_list, clusterClans=options.clans,
+            cutoffs=run.cluster.cutoff_list, clusterClans=options.clans,
             clanCutoff=options.clan_cutoff, htmlFolder=network_html_folder)
         for network_html_folder_cutoff in family_data:
             rundata_networks_per_run[network_html_folder_cutoff].append(family_data[network_html_folder_cutoff])
@@ -976,13 +947,13 @@ if __name__=="__main__":
 
         # only make folders for the BGC_classes that are found
         for bgc_class in BGC_classes:
-            if has_query_bgc:
+            if run.has_query_bgc:
                 # not interested in this class if our Query BGC is not here...
                 if query_bgc_idx not in BGC_classes[bgc_class]:
                     continue
             
             print("\n  {} ({} BGCs)".format(bgc_class, str(len(BGC_classes[bgc_class]))))
-            if current_run.use_mibig:
+            if run.mibig.use_mibig:
                 if len(set(BGC_classes[bgc_class]) & mibig_set_indices) == len(BGC_classes[bgc_class]):
                     print(" - All clusters in this class are MIBiG clusters -")
                     print("  If you'd like to analyze MIBiG clusters, turn off the --mibig option")
@@ -1003,22 +974,22 @@ if __name__=="__main__":
                     network_annotation_file.write("\t".join([bgc, bgc_info[bgc].accession_id, bgc_info[bgc].description, product, bgctools.sort_bgc(product), bgc_info[bgc].organism, bgc_info[bgc].taxonomy]) + "\n")
             
             print("   Calculating all pairwise distances")
-            if has_query_bgc:
+            if run.has_query_bgc:
                 pairs = set([tuple(sorted(combo)) for combo in combinations_product([query_bgc_idx],BGC_classes[bgc_class])])
             else:
                 pairs = set([tuple(sorted(combo)) for combo in combinations(BGC_classes[bgc_class], 2)])
                 
             cluster_pairs = [(x, y, bgcClassName2idx[bgc_class]) for (x, y) in pairs]
             pairs.clear()
-            network_matrix = big_scape.generate_network(cluster_pairs, options.cores, clusterNames, bgcClassNames, DomainList, current_run.output_dir, DomainCountGene,
-            corebiosynthetic_position, BGCGeneOrientation, bgc_class_weight, current_run.anchor_domains, BGCs, options.mode, bgc_info,
+            network_matrix = big_scape.generate_network(cluster_pairs, options.cores, clusterNames, bgcClassNames, DomainList, run.directories.output, DomainCountGene,
+            corebiosynthetic_position, BGCGeneOrientation, bgc_class_weight, run.network.anchor_domains, BGCs, options.mode, bgc_info,
             AlignedDomainSequences, options.verbose, domains_folder)
             #pickle.dump(network_matrix,open("others.ntwrk",'wb'))
             del cluster_pairs[:]
             #network_matrix = pickle.load(open("others.ntwrk", "rb"))
                 
             # add the rest of the edges in the "Query network"
-            if has_query_bgc:
+            if run.has_query_bgc:
                 new_set = []
                 
                 # rows from the distance matrix that will be pruned 
@@ -1031,7 +1002,7 @@ if __name__=="__main__":
                     if a == b:
                         continue
                     
-                    if distance <= max_cutoff:
+                    if distance <= run.cluster.max_cutoff:
                         if a == query_bgc_idx:
                             new_set.append(b)
                         else:
@@ -1046,8 +1017,8 @@ if __name__=="__main__":
                 pairs = set([tuple(sorted(combo)) for combo in combinations(new_set, 2)])
                 cluster_pairs = [(x, y, bgcClassName2idx[bgc_class]) for (x, y) in pairs]
                 pairs.clear()
-                network_matrix_new_set = big_scape.generate_network(cluster_pairs, options.cores, clusterNames, bgcClassNames, DomainList, current_run.output_dir, DomainCountGene,
-                corebiosynthetic_position, BGCGeneOrientation, bgc_class_weight, current_run.anchor_domains, BGCs, options.mode, bgc_info,
+                network_matrix_new_set = big_scape.generate_network(cluster_pairs, options.cores, clusterNames, bgcClassNames, DomainList, run.directories.output, DomainCountGene,
+                corebiosynthetic_position, BGCGeneOrientation, bgc_class_weight, run.network.anchor_domains, BGCs, options.mode, bgc_info,
                 AlignedDomainSequences, options.verbose, domains_folder)
                 del cluster_pairs[:]
                                     
@@ -1070,7 +1041,7 @@ if __name__=="__main__":
                         bgc = clusterNames[idx]
                         product = bgc_info[bgc].product
                         network_annotation_file.write("\t".join([bgc, bgc_info[bgc].accession_id, bgc_info[bgc].description, product, bgctools.sort_bgc(product), bgc_info[bgc].organism, bgc_info[bgc].taxonomy]) + "\n")
-            elif current_run.use_mibig:
+            elif run.mibig.use_mibig:
                 n = nx.Graph()
                 n.add_nodes_from(BGC_classes[bgc_class])
                 mibig_set_del = []
@@ -1078,7 +1049,7 @@ if __name__=="__main__":
                 
                 for idx, row in enumerate(network_matrix):
                     a, b, distance = int(row[0]), int(row[1]), row[2]
-                    if distance <= max_cutoff:
+                    if distance <= run.cluster.max_cutoff:
                         n.add_edge(a, b, index=idx)
                         
                 for component in nx.connected_components(n): # note: 'component' is a set
@@ -1114,9 +1085,9 @@ if __name__=="__main__":
             print("   Writing output files")
             pathBase = os.path.join(network_files_folder, bgc_class)
             filenames = []
-            for cutoff in cutoff_list:
+            for cutoff in run.cluster.cutoff_list:
                 filenames.append(os.path.join(pathBase, "{}_c{:.2f}.network".format(bgc_class, cutoff)))
-            cutoffs_and_filenames = list(zip(cutoff_list, filenames))
+            cutoffs_and_filenames = list(zip(run.cluster.cutoff_list, filenames))
             del filenames[:]
             big_scape.write_network_matrix(network_matrix, cutoffs_and_filenames, options.include_singletons, clusterNames, bgc_info)
 
@@ -1137,7 +1108,7 @@ if __name__=="__main__":
                 reduced_network, pos_alignments, clusterNames, bgc_info, 
                 mibig_set, pfd_folder, bgc_fasta_folder, DomainList, 
                 BGCs, AlignedDomainSequences, DomainCountGene, BGCGeneOrientation,
-                cutoffs=cutoff_list, clusterClans=options.clans, clanCutoff=options.clan_cutoff, 
+                cutoffs=run.cluster.cutoff_list, clusterClans=options.clans, clanCutoff=options.clan_cutoff, 
                 htmlFolder=network_html_folder)
             for network_html_folder_cutoff in family_data:
                 rundata_networks_per_run[network_html_folder_cutoff].append(family_data[network_html_folder_cutoff])
@@ -1178,10 +1149,10 @@ if __name__=="__main__":
             genomes.append(identifier)
         else:
             clusterNamesToGenomes[bgc] = genomes.index(identifier)
-    current_run.run_data["input"]["accession"] = [{ "id": "genome_{}".format(i), "label": acc } for i, acc in enumerate(genomes)]
-    current_run.run_data["input"]["accession_newick"] = [] # todo ...
-    current_run.run_data["input"]["classes"] = [{ "label": cl } for cl in classes ] # todo : colors
-    current_run.run_data["input"]["bgc"] = [{ "id": clusterNames[idx], "acc": clusterNamesToGenomes[clusterNames[idx]], "class": clusterNamesToClasses[clusterNames[idx]] } for idx in inputClustersIdx]
+    run.run_data["input"]["accession"] = [{ "id": "genome_{}".format(i), "label": acc } for i, acc in enumerate(genomes)]
+    run.run_data["input"]["accession_newick"] = [] # todo ...
+    run.run_data["input"]["classes"] = [{ "label": cl } for cl in classes ] # todo : colors
+    run.run_data["input"]["bgc"] = [{ "id": clusterNames[idx], "acc": clusterNamesToGenomes[clusterNames[idx]], "class": clusterNamesToClasses[clusterNames[idx]] } for idx in inputClustersIdx]
 
 
     # update family data (convert global bgc indexes into input-only indexes)
@@ -1203,23 +1174,23 @@ if __name__=="__main__":
 
     # generate overview data
     end_time = time.time()
-    duration = end_time - current_run.start_time
-    current_run.run_data["end_time"] = time.strftime("%d/%m/%Y %H:%M:%S", time.localtime(end_time))
-    current_run.run_data["duration"] = "{}h{}m{}s".format((duration // 3600), ((duration % 3600) // 60), ((duration % 3600) % 60))
+    duration = end_time - run.start_time
+    run.run_data["end_time"] = time.strftime("%d/%m/%Y %H:%M:%S", time.localtime(end_time))
+    run.run_data["duration"] = "{}h{}m{}s".format((duration // 3600), ((duration % 3600) // 60), ((duration % 3600) % 60))
 
-    for cutoff in cutoff_list:
+    for cutoff in run.cluster.cutoff_list:
         # update overview.html
         html_folder_for_this_cutoff = "{}_c{:.2f}".format(network_html_folder, cutoff)
-        run_data_for_this_cutoff = current_run.run_data.copy()
+        run_data_for_this_cutoff = run.run_data.copy()
         run_data_for_this_cutoff["networks"] = rundata_networks_per_run[html_folder_for_this_cutoff]
         with open(os.path.join(html_folder_for_this_cutoff, "run_data.js"), "w") as run_data_js:
             run_data_js.write("var run_data={};\n".format(json.dumps(run_data_for_this_cutoff, indent=4, separators=(',', ':'), sort_keys=True)))
             run_data_js.write("dataLoaded();\n");
         # update bgc_results.js
-        js.add_to_bigscape_results_js("{}_c{:.2f}".format(current_run.run_name, cutoff), html_subs_per_run[html_folder_for_this_cutoff], os.path.join(current_run.output_dir, "html_content", "js", "bigscape_results.js"))
+        js.add_to_bigscape_results_js("{}_c{:.2f}".format(run.run_name, cutoff), html_subs_per_run[html_folder_for_this_cutoff], os.path.join(run.directories.output, "html_content", "js", "bigscape_results.js"))
 
     pickle.dump(bgc_info,open(os.path.join(cache_folder,'bgc_info.dict'),'wb'))
-    runtime = time.time()-current_run.start_time
+    runtime = time.time()-run.start_time
     runtime_string = "\n\n\tMain function took {:.3f} s".format(runtime)
     with open(os.path.join(log_folder, "runtimes.txt"), 'a') as timings_file:
         timings_file.write(runtime_string + "\n")

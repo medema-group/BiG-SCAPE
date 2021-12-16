@@ -140,4 +140,3 @@ def generatePfamColorsMatrix(pfam_domain_colors):
         print("  File pfam_domain_colors was NOT found")
 
     return pfam_colors
-
