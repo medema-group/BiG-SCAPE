@@ -4,7 +4,7 @@ import sys
 from Bio import SeqIO
 from itertools import combinations
 
-from src.bgc.misc import sort_bgc
+from bgctools.bgctools import sort_bgc
 
 def process_gbk_files(
         gbk,

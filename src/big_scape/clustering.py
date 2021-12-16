@@ -17,7 +17,7 @@ from Bio import Phylo
 
 from src.pfam.misc import get_domain_list
 from src.big_scape.scores import cluster_distance_lcs
-from src.bgc.misc import get_composite_bgc_similarities
+from bgctools.bgctools import get_composite_bgc_similarities
 from src.utility.io import create_directory
 
 
