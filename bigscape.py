@@ -76,37 +76,17 @@ from src.pfam.misc import get_domain_list, generatePfamColorsMatrix
 
 from src.big_scape.network import generate_network, write_network_matrix
 from src.big_scape.clustering import clusterJsonBatch
+from src.big_scape.run import Run
 
 from src.js.misc import add_to_bigscape_results_js
-
-
 
 
 if __name__=="__main__":
     options = CMD_parser()
     
-    if options.outputdir == "":
-        print("please provide a name for an output folder using parameter -o or --outputdir")
-        sys.exit(0)
-    
-    if os.path.isfile(options.anchorfile):
-        anchor_domains = get_anchor_domains(options.anchorfile)
-    else:
-        print("File with list of anchor domains not found")
-        anchor_domains = set()
-    
-    
-    include_singletons = options.include_singletons
-    
-    cores = int(options.cores)
-    
-    options_mix = options.mix
-    options_classify = not options.no_classify
-    
-    force_hmmscan = options.force_hmmscan
-    
-    mode = options.mode
-    
+    current_run = Run(options)
+
+    # TODO: move
     cutoff_list = options.cutoffs
     for c in cutoff_list:
         if c <= 0.0 or c > 1.0:
@@ -128,65 +108,15 @@ if __name__=="__main__":
             
         if cc <= 0.0 or cc > 1.0:
             sys.exit("Error: invalid cutoff value for GCC calling")
-        
-    output_folder = str(options.outputdir)
-    
-    pfam_dir = str(options.pfam_dir)
-    h3f = os.path.join(pfam_dir, "Pfam-A.hmm.h3f")
-    h3i = os.path.join(pfam_dir, "Pfam-A.hmm.h3i")
-    h3m = os.path.join(pfam_dir, "Pfam-A.hmm.h3m")
-    h3p = os.path.join(pfam_dir, "Pfam-A.hmm.h3p")
-    if not (os.path.isfile(h3f) and os.path.isfile(h3i) and os.path.isfile(h3m) and os.path.isfile(h3p)):
-        print("One or more of the necessary Pfam files (.h3f, .h3i, .h3m, .h3p) were not found")
-        if os.path.isfile(os.path.join(pfam_dir, "Pfam-A.hmm")):
-            print("Please use hmmpress with Pfam-A.hmm")
-        else:
-            print("Please download the latest Pfam-A.hmm file from http://pfam.xfam.org/")
-            print("Then use hmmpress on it, and use the --pfam_dir parameter to point to the location of the files")
-        sys.exit()
 
     has_query_bgc = False
     if options.query_bgc:
         has_query_bgc = True
         if not os.path.isfile(options.query_bgc):
             sys.exit("Error: Query BGC not found")
-            
-    verbose = options.verbose
-    
-    selected_mibig = 0
-    if options.mibig21: selected_mibig += 1
-    if options.mibig14: selected_mibig += 1
-    if options.mibig13: selected_mibig += 1
-    if selected_mibig > 1:
-        sys.exit("Error: choose only one MIBiG version")
-    use_relevant_mibig = False
-    if selected_mibig == 1:
-        use_relevant_mibig = True
-    
-    run_mode_string = ""
-    networks_folder_all = "networks_all"
-    if options.hybrids:
-        networks_folder_all += "_hybrids"
-        run_mode_string += "_hybrids"
-    if mode == "auto":
-        networks_folder_all += "_auto"
-        run_mode_string += "_auto"
-    elif mode == "glocal":
-        networks_folder_all += "_glocal"
-        run_mode_string += "_glocal"
-    else:
-        run_mode_string += "_global"
-    
-    time1 = time.time()
 
-    start_time = time.localtime()
-    run_name = "{}{}".format(time.strftime("%Y-%m-%d_%H-%M-%S", start_time), run_mode_string)
-    if options.label:
-        run_name = run_name + "_" + options.label
-    run_data = {}
-    run_data["start_time"] = time.strftime("%d/%m/%Y %H:%M:%S", start_time)
-    run_data["parameters"] = " ".join(sys.argv[1:])
-    run_data["input"] = {}
+
+    current_run.start(options)
     
     
     # Get domain_includelist
@@ -210,15 +140,15 @@ if __name__=="__main__":
     ### Step 1: Get all the input files. Write extract sequence and write fasta if necessary
     print("\n\n   - - Processing input files - -")
     
-    create_directory(output_folder, "Output", False)
+    create_directory(current_run.output_dir, "Output", False)
 
     # logs
-    log_folder = os.path.join(output_folder, "logs")
+    log_folder = os.path.join(current_run.output_dir, "logs")
     create_directory(log_folder, "Logs", False)
     write_parameters(log_folder, sys.argv)
 
     # cached stuff
-    cache_folder = os.path.join(output_folder, "cache")
+    cache_folder = os.path.join(current_run.output_dir, "cache")
     bgc_fasta_folder = os.path.join(cache_folder, "fasta")
     domtable_folder = os.path.join(cache_folder, "domtable")
     pfs_folder = os.path.join(cache_folder, "pfs")
@@ -281,7 +211,7 @@ if __name__=="__main__":
     # Change this for every officially curated MIBiG bundle
     # (file, final folder, number of bgcs)
     mibig_set = set()
-    if use_relevant_mibig:
+    if current_run.use_mibig:
         if options.mibig21:
             mibig_zipfile_numbgcs = ("MIBiG_2.1_final.zip", "MIBiG_2.1_final", 1923)
         elif options.mibig14:
@@ -305,7 +235,7 @@ if __name__=="__main__":
                         continue
                 
                     extractedbgc = mibig_zip.extract(fname,path=mibig_path)
-                    if verbose:
+                    if options.verbose:
                         print("  Extracted {}".format(extractedbgc))
         
         elif mibig_zipfile_numbgcs[2] == numbgcs:
@@ -314,16 +244,16 @@ if __name__=="__main__":
             sys.exit("Did not find the correct number of MIBiG BGCs ({}). Please clean the 'Annotated MIBiG reference' folder from any .gbk files first".format(mibig_zipfile_numbgcs[2]))
         
         print("\nImporting MIBiG files")
-        get_gbk_files(bgcs_path, output_folder, bgc_fasta_folder, int(options.min_bgc_size),
-                      ['*'], exclude_gbk_str, bgc_info, mode, verbose, force_hmmscan, valid_classes, bgc_data, genbankDict)
+        get_gbk_files(bgcs_path, current_run.output_dir, bgc_fasta_folder, int(options.min_bgc_size),
+                      ['*'], exclude_gbk_str, bgc_info, options.mode, options.verbose, options.force_hmmscan, valid_classes, bgc_data, genbankDict)
         
         for i in genbankDict.keys():
             mibig_set.add(i)
             
     
     print("\nImporting GenBank files")
-    get_gbk_files(options.inputdir, output_folder, bgc_fasta_folder, int(options.min_bgc_size),
-                  include_gbk_str, exclude_gbk_str, bgc_info, mode, verbose, force_hmmscan, valid_classes, bgc_data, genbankDict)
+    get_gbk_files(options.inputdir, current_run.output_dir, bgc_fasta_folder, int(options.min_bgc_size),
+                  include_gbk_str, exclude_gbk_str, bgc_info, options.mode, options.verbose, options.force_hmmscan, valid_classes, bgc_data, genbankDict)
     
     if has_query_bgc:
         query_bgc = ".".join(options.query_bgc.split(os.sep)[-1].split(".")[:-1])
@@ -332,7 +262,7 @@ if __name__=="__main__":
             pass
         else:
             print("\nImporting query BGC file")
-            get_gbk_files(options.query_bgc, output_folder, bgc_fasta_folder, 
+            get_gbk_files(options.query_bgc, current_run.output_dir, bgc_fasta_folder, 
                           int(options.min_bgc_size), ['*'], exclude_gbk_str, bgc_info)
             
         if query_bgc not in genbankDict:
@@ -350,12 +280,12 @@ if __name__=="__main__":
             sampleDict[sample] = clustersInSample
     
     print("\nCreating output directories")
-    svg_folder = os.path.join(output_folder, "SVG")
+    svg_folder = os.path.join(current_run.output_dir, "SVG")
     create_directory(svg_folder, "SVG", False)
-    network_folder = os.path.join(output_folder, "network_files")
+    network_folder = os.path.join(current_run.output_dir, "network_files")
     create_directory(network_folder, "Networks", False)
 
-    print("\nTrying threading on {} cores".format(str(cores)))
+    print("\nTrying threading on {} cores".format(str(options.cores)))
     
     """BGCs -- 
     dictionary of this structure:
@@ -409,7 +339,7 @@ if __name__=="__main__":
     
     # Make a list of all fasta files that need to be processed
     # (i.e., they don't yet have a corresponding .domtable)
-    if force_hmmscan:
+    if options.force_hmmscan:
         # process all files, regardless of whether they already existed
         task_set = fastaFiles
         print(" Forcing domain prediction on ALL fasta files (--force_hmmscan)")
@@ -440,9 +370,9 @@ if __name__=="__main__":
         else:
             print(" Predicting domains for {} fasta files".format(str(len(fastaFiles))))
         
-    pool = Pool(cores,maxtasksperchild=1)
+    pool = Pool(options.cores,maxtasksperchild=1)
     for fastaFile in task_set:
-        pool.apply_async(runHmmScan,args=(fastaFile, pfam_dir, domtable_folder, verbose))
+        pool.apply_async(runHmmScan,args=(fastaFile, current_run.pfam_dir, domtable_folder, options.verbose))
     pool.close()
     pool.join()
     print(" Finished generating domtable files.")
@@ -467,7 +397,7 @@ if __name__=="__main__":
     
     # find already processed files (assuming that if the pfd file exists, the pfs should too)
     alreadyDone = set()
-    if not force_hmmscan:
+    if not options.force_hmmscan:
         for domtable in domtableFiles:
             outputbase = ".".join(domtable.split(os.sep)[-1].split(".")[:-1])
             outputfile = os.path.join(pfd_folder, outputbase + '.pfd')
@@ -490,7 +420,7 @@ if __name__=="__main__":
     # Using serialized version for now. Probably doesn't have too bad an impact
     #pool = Pool(cores,maxtasksperchild=32)
     for domtableFile in domtableFiles - alreadyDone:
-        parseHmmScan(domtableFile, pfd_folder, pfs_folder, options.domain_overlap_cutoff, verbose, genbankDict, clusters, baseNames, gbk_files, sampleDict, mibig_set)
+        parseHmmScan(domtableFile, pfd_folder, pfs_folder, options.domain_overlap_cutoff, options.verbose, genbankDict, clusters, baseNames, gbk_files, sampleDict, mibig_set)
         #pool.apply_async(parseHmmScan, args=(domtableFile,output_folder,options.domain_overlap_cutoff))
     #pool.close()
     #pool.join()
@@ -546,7 +476,7 @@ if __name__=="__main__":
         print(" Adding sequences to corresponding domains file")
             
         for outputbase in baseNames:
-            if verbose:
+            if options.verbose:
                 print("   Processing: " + outputbase)
 
             pfdFile = os.path.join(pfd_folder, outputbase + ".pfd")
@@ -636,7 +566,7 @@ if __name__=="__main__":
     # read hmm file. We'll need that info anyway for final visualization
     print("  Parsing hmm file for domain information")
     pfam_info = {}
-    with open(os.path.join(pfam_dir, "Pfam-A.hmm"), "r") as pfam:
+    with open(os.path.join(current_run.pfam_dir, "Pfam-A.hmm"), "r") as pfam:
         putindict = False
         # assuming that the order of the information never changes
         for line in pfam:
@@ -728,7 +658,7 @@ if __name__=="__main__":
             if len(sequence_tag_list) == 1:
                 # avoid multiple alignment if the domains all belong to the same BGC
                 domain_sequence_list.remove(domain_file)
-                if verbose:
+                if options.verbose:
                     print(" Skipping Multiple Alignment for {} (appears only in one BGC)".format(domain_name))
         
         sequence_tag_list.clear()
@@ -740,7 +670,7 @@ if __name__=="__main__":
         stop_flag = False
         if len(domain_sequence_list) > 0:
             print("\n Using hmmalign")
-            launch_hmmalign(cores, domain_sequence_list, pfam_dir, verbose)
+            launch_hmmalign(options.cores, domain_sequence_list, current_run.pfam_dir, options.verbose)
                 
             # verify all tasks were completed by checking existance of alignment files
             for domain_file in domain_sequence_list:
@@ -775,14 +705,14 @@ if __name__=="__main__":
             sys.exit("Error finding the index of Query BGC")
 
     # create output directory for network files
-    network_files_folder = os.path.join(network_folder, run_name)
+    network_files_folder = os.path.join(network_folder, current_run.run_name)
     create_directory(network_files_folder, "Network Files", False)
 
     # copy html templates
-    dir_util.copy_tree(os.path.join(os.path.dirname(os.path.realpath(__file__)), "html_template", "output"), output_folder)
+    dir_util.copy_tree(os.path.join(os.path.dirname(os.path.realpath(__file__)), "html_template", "output"), current_run.output_dir)
 
     # make a new run folder in the html output & copy the overview_html
-    network_html_folder = os.path.join(output_folder, "html_content", "networks", run_name)
+    network_html_folder = os.path.join(current_run.output_dir, "html_content", "networks", current_run.run_name)
     rundata_networks_per_run = {}
     html_subs_per_run = {}
     for cutoff in cutoff_list:
@@ -793,7 +723,7 @@ if __name__=="__main__":
         html_subs_per_run[network_html_folder_cutoff] = []
         
     # create pfams.js
-    pfams_js_file = os.path.join(output_folder, "html_content", "js", "pfams.js")
+    pfams_js_file = os.path.join(current_run.output_dir, "html_content", "js", "pfams.js")
     if not os.path.isfile(pfams_js_file):
         with open(pfams_js_file, "w") as pfams_js:
             pfam_json = {}
@@ -822,7 +752,7 @@ if __name__=="__main__":
     
     
     # Find index of all MIBiG BGCs if necessary
-    if use_relevant_mibig:
+    if current_run.use_mibig:
         name_to_idx = {}
         for clusterIdx,clusterName in enumerate(clusterNames):
             name_to_idx[clusterName] = clusterIdx
@@ -832,7 +762,7 @@ if __name__=="__main__":
             mibig_set_indices.add(name_to_idx[bgc])
 
     # Making network files mixing all classes
-    if options_mix:
+    if options.mix:
         print("\n Mixing all BGC classes")
         
         # only choose from valid classes
@@ -867,9 +797,9 @@ if __name__=="__main__":
         
         cluster_pairs = [(x, y, -1) for (x, y) in pairs]
         pairs.clear()
-        network_matrix_mix = generate_network(cluster_pairs, cores, clusterNames, bgcClassNames, DomainList, output_folder, DomainCountGene, 
-        corebiosynthetic_position, BGCGeneOrientation, bgc_class_weight, anchor_domains, BGCs, mode, bgc_info,
-        AlignedDomainSequences, verbose, domains_folder)
+        network_matrix_mix = generate_network(cluster_pairs, options.cores, clusterNames, bgcClassNames, DomainList, current_run.output_dir, DomainCountGene, 
+        corebiosynthetic_position, BGCGeneOrientation, bgc_class_weight, current_run.anchor_domains, BGCs, options.mode, bgc_info,
+        AlignedDomainSequences, options.verbose, domains_folder)
         
         del cluster_pairs[:]
 
@@ -901,9 +831,9 @@ if __name__=="__main__":
             pairs = set([tuple(sorted(combo)) for combo in combinations(new_set, 2)])
             cluster_pairs = [(x, y, -1) for (x, y) in pairs]
             pairs.clear()
-            network_matrix_new_set = generate_network(cluster_pairs, cores, clusterNames, bgcClassNames, DomainList, output_folder, DomainCountGene,
-            corebiosynthetic_position, BGCGeneOrientation, bgc_class_weight, anchor_domains, BGCs, mode, bgc_info,
-            AlignedDomainSequences, verbose, domains_folder)
+            network_matrix_new_set = generate_network(cluster_pairs, options.cores, clusterNames, bgcClassNames, DomainList, current_run.output_dir, DomainCountGene,
+            corebiosynthetic_position, BGCGeneOrientation, bgc_class_weight, current_run.anchor_domains, BGCs, options.mode, bgc_info,
+            AlignedDomainSequences, options.verbose, domains_folder)
             del cluster_pairs[:]
             
             # Update the network matrix (QBGC-vs-all) with the distances of
@@ -928,7 +858,7 @@ if __name__=="__main__":
                         bgc_info[bgc].accession_id, bgc_info[bgc].description, 
                         product, sort_bgc(product), bgc_info[bgc].organism, 
                         bgc_info[bgc].taxonomy]) + "\n")
-        elif use_relevant_mibig:
+        elif current_run.use_mibig:
             n = nx.Graph()
             n.add_nodes_from(mix_set)
             mibig_set_del = []
@@ -974,7 +904,7 @@ if __name__=="__main__":
             filenames.append(os.path.join(pathBase, "mix_c{:.2f}.network".format(cutoff)))
         cutoffs_and_filenames = list(zip(cutoff_list, filenames))
         del filenames[:]
-        write_network_matrix(network_matrix_mix, cutoffs_and_filenames, include_singletons, clusterNames, bgc_info)
+        write_network_matrix(network_matrix_mix, cutoffs_and_filenames, options.include_singletons, clusterNames, bgc_info)
             
         print("  Calling Gene Cluster Families")
         reduced_network = []
@@ -1001,7 +931,7 @@ if __name__=="__main__":
         
         
     # Making network files separating by BGC class
-    if options_classify:
+    if not options.no_classify:
         print("\n Working for each BGC class")
         
         # reinitialize BGC_classes to make sure the bgc lists are empty
@@ -1061,7 +991,7 @@ if __name__=="__main__":
                     continue
             
             print("\n  {} ({} BGCs)".format(bgc_class, str(len(BGC_classes[bgc_class]))))
-            if use_relevant_mibig:
+            if current_run.use_mibig:
                 if len(set(BGC_classes[bgc_class]) & mibig_set_indices) == len(BGC_classes[bgc_class]):
                     print(" - All clusters in this class are MIBiG clusters -")
                     print("  If you'd like to analyze MIBiG clusters, turn off the --mibig option")
@@ -1089,9 +1019,9 @@ if __name__=="__main__":
                 
             cluster_pairs = [(x, y, bgcClassName2idx[bgc_class]) for (x, y) in pairs]
             pairs.clear()
-            network_matrix = generate_network(cluster_pairs, cores, clusterNames, bgcClassNames, DomainList, output_folder, DomainCountGene,
-            corebiosynthetic_position, BGCGeneOrientation, bgc_class_weight, anchor_domains, BGCs, mode, bgc_info,
-            AlignedDomainSequences, verbose, domains_folder)
+            network_matrix = generate_network(cluster_pairs, options.cores, clusterNames, bgcClassNames, DomainList, current_run.output_dir, DomainCountGene,
+            corebiosynthetic_position, BGCGeneOrientation, bgc_class_weight, current_run.anchor_domains, BGCs, options.mode, bgc_info,
+            AlignedDomainSequences, options.verbose, domains_folder)
             #pickle.dump(network_matrix,open("others.ntwrk",'wb'))
             del cluster_pairs[:]
             #network_matrix = pickle.load(open("others.ntwrk", "rb"))
@@ -1125,9 +1055,9 @@ if __name__=="__main__":
                 pairs = set([tuple(sorted(combo)) for combo in combinations(new_set, 2)])
                 cluster_pairs = [(x, y, bgcClassName2idx[bgc_class]) for (x, y) in pairs]
                 pairs.clear()
-                network_matrix_new_set = generate_network(cluster_pairs, cores, clusterNames, bgcClassNames, DomainList, output_folder, DomainCountGene,
-                corebiosynthetic_position, BGCGeneOrientation, bgc_class_weight, anchor_domains, BGCs, mode, bgc_info,
-                AlignedDomainSequences, verbose, domains_folder)
+                network_matrix_new_set = generate_network(cluster_pairs, options.cores, clusterNames, bgcClassNames, DomainList, current_run.output_dir, DomainCountGene,
+                corebiosynthetic_position, BGCGeneOrientation, bgc_class_weight, current_run.anchor_domains, BGCs, options.mode, bgc_info,
+                AlignedDomainSequences, options.verbose, domains_folder)
                 del cluster_pairs[:]
                                     
                 # Update the network matrix (QBGC-vs-all) with the distances of
@@ -1149,7 +1079,7 @@ if __name__=="__main__":
                         bgc = clusterNames[idx]
                         product = bgc_info[bgc].product
                         network_annotation_file.write("\t".join([bgc, bgc_info[bgc].accession_id, bgc_info[bgc].description, product, sort_bgc(product), bgc_info[bgc].organism, bgc_info[bgc].taxonomy]) + "\n")
-            elif use_relevant_mibig:
+            elif current_run.use_mibig:
                 n = nx.Graph()
                 n.add_nodes_from(BGC_classes[bgc_class])
                 mibig_set_del = []
@@ -1197,7 +1127,7 @@ if __name__=="__main__":
                 filenames.append(os.path.join(pathBase, "{}_c{:.2f}.network".format(bgc_class, cutoff)))
             cutoffs_and_filenames = list(zip(cutoff_list, filenames))
             del filenames[:]
-            write_network_matrix(network_matrix, cutoffs_and_filenames, include_singletons, clusterNames, bgc_info)
+            write_network_matrix(network_matrix, cutoffs_and_filenames, options.include_singletons, clusterNames, bgc_info)
 
             print("  Calling Gene Cluster Families")
             reduced_network = []
@@ -1257,10 +1187,10 @@ if __name__=="__main__":
             genomes.append(identifier)
         else:
             clusterNamesToGenomes[bgc] = genomes.index(identifier)
-    run_data["input"]["accession"] = [{ "id": "genome_{}".format(i), "label": acc } for i, acc in enumerate(genomes)]
-    run_data["input"]["accession_newick"] = [] # todo ...
-    run_data["input"]["classes"] = [{ "label": cl } for cl in classes ] # todo : colors
-    run_data["input"]["bgc"] = [{ "id": clusterNames[idx], "acc": clusterNamesToGenomes[clusterNames[idx]], "class": clusterNamesToClasses[clusterNames[idx]] } for idx in inputClustersIdx]
+    current_run.run_data["input"]["accession"] = [{ "id": "genome_{}".format(i), "label": acc } for i, acc in enumerate(genomes)]
+    current_run.run_data["input"]["accession_newick"] = [] # todo ...
+    current_run.run_data["input"]["classes"] = [{ "label": cl } for cl in classes ] # todo : colors
+    current_run.run_data["input"]["bgc"] = [{ "id": clusterNames[idx], "acc": clusterNamesToGenomes[clusterNames[idx]], "class": clusterNamesToClasses[clusterNames[idx]] } for idx in inputClustersIdx]
 
 
     # update family data (convert global bgc indexes into input-only indexes)
@@ -1281,24 +1211,24 @@ if __name__=="__main__":
 
 
     # generate overview data
-    end_time = time.localtime()
-    duration = int(time.mktime(end_time)) - int(time.mktime(start_time))
-    run_data["end_time"] = time.strftime("%d/%m/%Y %H:%M:%S", end_time)
-    run_data["duration"] = "{}h{}m{}s".format((duration // 3600), ((duration % 3600) // 60), ((duration % 3600) % 60))
+    end_time = time.time()
+    duration = end_time - current_run.start_time
+    current_run.run_data["end_time"] = time.strftime("%d/%m/%Y %H:%M:%S", time.localtime(end_time))
+    current_run.run_data["duration"] = "{}h{}m{}s".format((duration // 3600), ((duration % 3600) // 60), ((duration % 3600) % 60))
 
     for cutoff in cutoff_list:
         # update overview.html
         html_folder_for_this_cutoff = "{}_c{:.2f}".format(network_html_folder, cutoff)
-        run_data_for_this_cutoff = run_data.copy()
+        run_data_for_this_cutoff = current_run.run_data.copy()
         run_data_for_this_cutoff["networks"] = rundata_networks_per_run[html_folder_for_this_cutoff]
         with open(os.path.join(html_folder_for_this_cutoff, "run_data.js"), "w") as run_data_js:
             run_data_js.write("var run_data={};\n".format(json.dumps(run_data_for_this_cutoff, indent=4, separators=(',', ':'), sort_keys=True)))
             run_data_js.write("dataLoaded();\n");
         # update bgc_results.js
-        add_to_bigscape_results_js("{}_c{:.2f}".format(run_name, cutoff), html_subs_per_run[html_folder_for_this_cutoff], os.path.join(output_folder, "html_content", "js", "bigscape_results.js"))
+        add_to_bigscape_results_js("{}_c{:.2f}".format(current_run.run_name, cutoff), html_subs_per_run[html_folder_for_this_cutoff], os.path.join(current_run.output_dir, "html_content", "js", "bigscape_results.js"))
 
     pickle.dump(bgc_info,open(os.path.join(cache_folder,'bgc_info.dict'),'wb'))
-    runtime = time.time()-time1
+    runtime = time.time()-current_run.start_time
     runtime_string = "\n\n\tMain function took {:.3f} s".format(runtime)
     with open(os.path.join(log_folder, "runtimes.txt"), 'a') as timings_file:
         timings_file.write(runtime_string + "\n")
