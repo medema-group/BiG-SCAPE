@@ -9,6 +9,7 @@ import os
 import src.utility as utility
 
 class DirParam():
+    """Class which keeps track of run options relating to directories and cache locations"""
     input: str
     output: str
     pfam: str
@@ -41,6 +42,7 @@ class DirParam():
 
         Inputs:
         - options: options object from CMD_parser"""
+
         # TODO: check if data exists
         self.input = options.inputdir
 
@@ -83,16 +85,17 @@ class DirParam():
     def set_cache_folder(self, options):
         """Sets cache folder associated with this run
         Creates a new folder if necessary
-        
+
         Inputs:
         - options: options object from CMD_parser"""
+
         self.cache = os.path.join(self.output, "cache")
         self.bgc_fasta = os.path.join(self.cache, "fasta")
         self.domtable = os.path.join(self.cache, "domtable")
         self.pfs = os.path.join(self.cache, "pfs")
         self.pfd = os.path.join(self.cache, "pfd")
         self.domains = os.path.join(self.cache, "domains")
-        
+
         utility.create_directory(self.cache, "Cache", False)
         utility.create_directory(self.bgc_fasta, "BGC fastas", False)
         utility.create_directory(self.domtable, "Domtable", False)

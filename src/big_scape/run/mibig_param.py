@@ -6,8 +6,9 @@ Author: Arjan Draisma
 import sys
 
 class MibigParam():
+    """Class which keeps track of run options relating to mibig usage"""
     # whether to use mibig in a run
-    use_mibig = False    
+    use_mibig = False
 
     def __init__(self, options):
         self.set_mibig(options)
