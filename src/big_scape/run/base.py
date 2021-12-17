@@ -9,6 +9,7 @@ import time
 from src.big_scape.run.dir_param import DirParam
 from src.big_scape.run.mibig_param import MibigParam
 from src.big_scape.run.pfam_param import PfamParam
+from src.big_scape.run.distance_param import DistParam
 from src.big_scape.run.cluster_param import ClusterParam
 from src.big_scape.run.network_param import NetworkParam
 
@@ -25,6 +26,9 @@ class Run:
     # pfam
     pfam: PfamParam
 
+    # distance calculation
+    distance: DistParam
+
     # clustering
     cluster: ClusterParam
 
@@ -35,6 +39,10 @@ class Run:
     # run mode
     run_mode: str
     has_query_bgc: bool
+
+    # domain include list
+    has_includelist: bool
+    domain_includelist: set
 
     # for logging
     start_time: time.struct_time
@@ -47,6 +55,7 @@ class Run:
 
         self.mibig = MibigParam(options)
         self.pfam = PfamParam(options)
+        self.distance = DistParam(options)
         self.cluster = ClusterParam(options)
         self.network = NetworkParam(options)
 
@@ -76,12 +85,37 @@ class Run:
 
         self.run_mode = run_mode_string
 
-    def set_has_query_bgc(self, options):    
+    def set_has_query_bgc(self, options):
+        """Set flag for query biosynthetic gene clusters
+
+        Inputs:
+        - options: options object from CMD_parser"""
         self.has_query_bgc = False
         if options.query_bgc:
             self.has_query_bgc = True
             if not os.path.isfile(options.query_bgc):
                 sys.exit("Error: Query BGC not found")
+
+    def set_domain_includelist(self, options):
+        """Sets flag to use includelist to true if it is present in options
+
+        Inputs:
+        - options: options object from CMD_parser"""
+        self.has_includelist = False
+        if options.domain_includelist:
+            bigscape_path = os.path.dirname(os.path.realpath(__file__))
+            if os.path.isfile(os.path.join(bigscape_path, "domain_includelist.txt")):
+                self.domain_includelist = set()
+                for line in open(os.path.join(bigscape_path, "domain_includelist.txt"), "r"):
+                    if line[0] == "#":
+                        continue
+                    self.domain_includelist.add(line.split("\t")[0].strip())
+                if len(self.domain_includelist) == 0:
+                    print("Warning: --domain_includelist used, but no domains found in the file")
+                else:
+                    self.has_includelist = True
+            else:
+                sys.exit("Error: domain_includelist.txt file not found")
 
 
     def start(self, options):
@@ -105,4 +139,3 @@ class Run:
         self.run_data["start_time"] = time.strftime("%d/%m/%Y %H:%M:%S", localtime)
         self.run_data["parameters"] = " ".join(sys.argv[1:])
         self.run_data["input"] = {}
-
