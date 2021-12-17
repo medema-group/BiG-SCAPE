@@ -127,7 +127,7 @@ class DirParam():
         utility.create_directory(self.domains, "Domains", False)
         utility.create_directory(self.pfs, "pfs", False)
         utility.create_directory(self.pfd, "pfd", False)
-    
+
     def prepare_log_dir(self):
         """Prepares the output directory by creating new folders"""
         # TODO: remove?
