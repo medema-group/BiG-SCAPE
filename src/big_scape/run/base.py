@@ -63,6 +63,8 @@ class Run:
 
         self.set_has_query_bgc(options)
 
+        self.set_domain_includelist(options)
+
 
     def set_run_mode(self, options):
         """Parses and sets the run mode of this run from options
