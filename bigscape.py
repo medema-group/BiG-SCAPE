@@ -84,23 +84,12 @@ if __name__=="__main__":
     ### Step 1: Get all the input files. Write extract sequence and write fasta if necessary
     print("\n\n   - - Processing input files - -")
 
+    # Stores, per BGC: predicted type, gbk Description, number of records, width of longest record,
+    # GenBank's accession, Biosynthetic Genes' ids
+    bgc_info = {}
     # genbankDict: {cluster_name:[genbank_path_to_1st_instance,[sample_1,sample_2,...]]}
-    bgc_info = {} # Stores, per BGC: predicted type, gbk Description, number of records, width of longest record, GenBank's accession, Biosynthetic Genes' ids
     genbankDict = {}
-    
-    # Exclude single string
-    include_gbk_str = options.include_gbk_str
-    if len(include_gbk_str) == 1 and include_gbk_str[0] == "*":
-        print(" Including all files")
-    elif len(include_gbk_str) == 1 and include_gbk_str[0] == "":
-        sys.exit(" Stop: no strings specified for '--include_gbk_str'")
-    else:
-        print(" Including files with one or more of the following strings in their filename: '{}'".format("', '".join(include_gbk_str)))
-    
-    exclude_gbk_str = options.exclude_gbk_str
-    if exclude_gbk_str != []:
-        print(" Skipping files with one or more of the following strings in their filename: '{}'".format("', '".join(exclude_gbk_str)))
-    
+
     # Read included MIBiG
     # Change this for every officially curated MIBiG bundle
     # (file, final folder, number of bgcs)
@@ -139,7 +128,7 @@ if __name__=="__main__":
         
         print("\nImporting MIBiG files")
         fileprocessing.get_gbk_files(bgcs_path, run.directories.output, run.directories.bgc_fasta, int(options.min_bgc_size),
-                      ['*'], exclude_gbk_str, bgc_info, options.mode, options.verbose, options.force_hmmscan, run.valid_classes, bgctools.bgc_data, genbankDict)
+                      ['*'], run.gbk.exclude, bgc_info, options.mode, options.verbose, options.force_hmmscan, run.valid_classes, bgctools.bgc_data, genbankDict)
         
         for i in genbankDict.keys():
             mibig_set.add(i)
@@ -147,7 +136,7 @@ if __name__=="__main__":
     
     print("\nImporting GenBank files")
     fileprocessing.get_gbk_files(options.inputdir, run.directories.output, run.directories.bgc_fasta, int(options.min_bgc_size),
-                  include_gbk_str, exclude_gbk_str, bgc_info, options.mode, options.verbose, options.force_hmmscan, run.valid_classes, bgctools.bgc_data, genbankDict)
+                  run.gbk.include, run.gbk.exclude, bgc_info, options.mode, options.verbose, options.force_hmmscan, run.valid_classes, bgctools.bgc_data, genbankDict)
     
     if run.has_query_bgc:
         query_bgc = ".".join(options.query_bgc.split(os.sep)[-1].split(".")[:-1])
@@ -157,7 +146,7 @@ if __name__=="__main__":
         else:
             print("\nImporting query BGC file")
             fileprocessing.get_gbk_files(options.query_bgc, run.directories.output, run.directories.bgc_fasta, 
-                          int(options.min_bgc_size), ['*'], exclude_gbk_str, bgc_info)
+                          int(options.min_bgc_size), ['*'], run.gbk.exclude, bgc_info)
             
         if query_bgc not in genbankDict:
             sys.exit("Error: not able to include Query BGC (check valid classes, BGC size, etc. Run again with --verbose)")
