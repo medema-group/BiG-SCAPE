@@ -90,15 +90,6 @@ if __name__=="__main__":
     log_folder = os.path.join(run.directories.output, "logs")
     utility.create_directory(log_folder, "Logs", False)
     utility.write_parameters(log_folder, sys.argv)
-    
-    
-    
-    #define which classes will be analyzed (if in the options_classify mode)
-    valid_classes = set()
-    for key in run.distance.bgc_class_weight:
-        valid_classes.add(key.lower())
-    user_banned_classes = set([a.strip().lower() for a in options.banned_classes])
-    valid_classes = valid_classes - user_banned_classes
 
 
     # genbankDict: {cluster_name:[genbank_path_to_1st_instance,[sample_1,sample_2,...]]}
@@ -156,7 +147,7 @@ if __name__=="__main__":
         
         print("\nImporting MIBiG files")
         fileprocessing.get_gbk_files(bgcs_path, run.directories.output, run.directories.bgc_fasta, int(options.min_bgc_size),
-                      ['*'], exclude_gbk_str, bgc_info, options.mode, options.verbose, options.force_hmmscan, valid_classes, bgctools.bgc_data, genbankDict)
+                      ['*'], exclude_gbk_str, bgc_info, options.mode, options.verbose, options.force_hmmscan, run.valid_classes, bgctools.bgc_data, genbankDict)
         
         for i in genbankDict.keys():
             mibig_set.add(i)
@@ -164,7 +155,7 @@ if __name__=="__main__":
     
     print("\nImporting GenBank files")
     fileprocessing.get_gbk_files(options.inputdir, run.directories.output, run.directories.bgc_fasta, int(options.min_bgc_size),
-                  include_gbk_str, exclude_gbk_str, bgc_info, options.mode, options.verbose, options.force_hmmscan, valid_classes, bgctools.bgc_data, genbankDict)
+                  include_gbk_str, exclude_gbk_str, bgc_info, options.mode, options.verbose, options.force_hmmscan, run.valid_classes, bgctools.bgc_data, genbankDict)
     
     if run.has_query_bgc:
         query_bgc = ".".join(options.query_bgc.split(os.sep)[-1].split(".")[:-1])
@@ -691,7 +682,7 @@ if __name__=="__main__":
             product = bgc_info[clusterName].product
             predicted_class = bgctools.sort_bgc(product)
             
-            if predicted_class.lower() in valid_classes:
+            if predicted_class.lower() in run.valid_classes:
                 mix_set.append(clusterIdx)
         
         print("\n  {} ({} BGCs)".format("Mix", str(len(mix_set))))
@@ -864,24 +855,24 @@ if __name__=="__main__":
             product = bgc_info[clusterName].product
             predicted_class = bgctools.sort_bgc(product)
             
-            if predicted_class.lower() in valid_classes:
+            if predicted_class.lower() in run.valid_classes:
                 run.distance.bgc_classes[predicted_class].append(clusterIdx)
             
             # possibly add hybrids to 'pure' classes
             if options.hybrids:
                 if predicted_class == "PKS-NRP_Hybrids":
-                    if "nrps" in valid_classes:
+                    if "nrps" in run.valid_classes:
                         run.distance.bgc_classes["NRPS"].append(clusterIdx)
-                    if "t1pks" in product and "pksi" in valid_classes:
+                    if "t1pks" in product and "pksi" in run.valid_classes:
                         run.distance.bgc_classes["PKSI"].append(clusterIdx)
-                    if "t1pks" not in product and "pksother" in valid_classes:
+                    if "t1pks" not in product and "pksother" in run.valid_classes:
                         run.distance.bgc_classes["PKSother"].append(clusterIdx)
                 
                 if predicted_class == "Others" and "." in product:
                     subclasses = set()
                     for subproduct in product.split("."):
                         subclass = bgctools.sort_bgc(subproduct)
-                        if subclass.lower() in valid_classes:
+                        if subclass.lower() in run.valid_classes:
                             subclasses.add(subclass)
                             
                     # Prevent mixed BGCs with sub-Others annotations to get

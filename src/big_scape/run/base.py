@@ -16,6 +16,7 @@ from src.big_scape.run.network_param import NetworkParam
 class Run:
     """Class to keep track of important run-specific details, based on given options
     """
+    # TODO: reduce instance attributes to <8
     ## subsections
     # io
     directories: DirParam
@@ -44,6 +45,10 @@ class Run:
     has_includelist: bool
     domain_includelist: set
 
+    # valid/banned classes
+    valid_classes: set
+    user_banned_classes: set
+
     # for logging
     start_time: time.struct_time
     run_name: str
@@ -64,6 +69,8 @@ class Run:
         self.set_has_query_bgc(options)
 
         self.set_domain_includelist(options)
+
+        self.set_valid_classes(options)
 
 
     def set_run_mode(self, options):
@@ -118,6 +125,14 @@ class Run:
                     self.has_includelist = True
             else:
                 sys.exit("Error: domain_includelist.txt file not found")
+    
+    def set_valid_classes(self, options):
+        #define which classes will be analyzed (if in the options_classify mode)
+        self.valid_classes = set()
+        for key in self.distance.bgc_class_weight:
+            self.valid_classes.add(key.lower())
+        self.user_banned_classes = set([a.strip().lower() for a in options.banned_classes])
+        self.valid_classes = self.valid_classes - self.user_banned_classes
 
 
     def start(self, options):
