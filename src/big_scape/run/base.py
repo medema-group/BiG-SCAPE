@@ -7,6 +7,7 @@ import os
 import time
 
 from src.big_scape.run.dir_param import DirParam
+from src.big_scape.run.gbk_param import GbkParam
 from src.big_scape.run.mibig_param import MibigParam
 from src.big_scape.run.pfam_param import PfamParam
 from src.big_scape.run.distance_param import DistParam
@@ -18,8 +19,10 @@ class Run:
     """
     # TODO: reduce instance attributes to <8
     ## subsections
-    # io
+
+    # files
     directories: DirParam
+    gbk: GbkParam
 
     # mibig
     mibig: MibigParam
@@ -57,6 +60,7 @@ class Run:
 
     def __init__(self, options):
         self.directories = DirParam(options)
+        self.gbk = GbkParam(options)
 
         self.mibig = MibigParam(options)
         self.pfam = PfamParam(options)
@@ -125,7 +129,7 @@ class Run:
                     self.has_includelist = True
             else:
                 sys.exit("Error: domain_includelist.txt file not found")
-    
+
     def set_valid_classes(self, options):
         #define which classes will be analyzed (if in the options_classify mode)
         self.valid_classes = set()
