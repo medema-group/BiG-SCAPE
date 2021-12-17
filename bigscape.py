@@ -75,22 +75,14 @@ import js
 if __name__=="__main__":
     options = utility.CMD_parser()
     
+    # create new run details
     run = big_scape.Run(options)
 
-
+    # run timing starts here
     run.start(options)
-
 
     ### Step 1: Get all the input files. Write extract sequence and write fasta if necessary
     print("\n\n   - - Processing input files - -")
-    
-    utility.create_directory(run.directories.output, "Output", False)
-
-    # logs
-    log_folder = os.path.join(run.directories.output, "logs")
-    utility.create_directory(log_folder, "Logs", False)
-    utility.write_parameters(log_folder, sys.argv)
-
 
     # genbankDict: {cluster_name:[genbank_path_to_1st_instance,[sample_1,sample_2,...]]}
     bgc_info = {} # Stores, per BGC: predicted type, gbk Description, number of records, width of longest record, GenBank's accession, Biosynthetic Genes' ids
@@ -1133,7 +1125,7 @@ if __name__=="__main__":
     pickle.dump(bgc_info,open(os.path.join(run.directories.cache,'bgc_info.dict'),'wb'))
     runtime = time.time()-run.start_time
     runtime_string = "\n\n\tMain function took {:.3f} s".format(runtime)
-    with open(os.path.join(log_folder, "runtimes.txt"), 'a') as timings_file:
+    with open(os.path.join(run.directories.log, "runtimes.txt"), 'a') as timings_file:
         timings_file.write(runtime_string + "\n")
     print(runtime_string)
     

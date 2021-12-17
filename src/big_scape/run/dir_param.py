@@ -28,12 +28,18 @@ class DirParam():
 
         # output dir
         self.set_output_dir(options)
+        self.prepare_output_dir()
+
+        # cache dir
+        self.set_cache_dir(options)
+        self.prepare_cache_dir()
+
+        # log dir
+        self.set_log_dir(options)
+        self.prepare_log_dir()
 
         # pfam dir
         self.set_pfam_dir(options)
-
-        # cache dirs
-        self.set_cache_folder(options)
 
         return
 
@@ -82,9 +88,9 @@ class DirParam():
         else:
             self.pfam = options.pfam_dir
 
-    def set_cache_folder(self, options):
+    def set_cache_dir(self, options):
         """Sets cache folder associated with this run
-        Creates a new folder if necessary
+        Creates new folders if necessary
 
         Inputs:
         - options: options object from CMD_parser"""
@@ -96,9 +102,36 @@ class DirParam():
         self.pfd = os.path.join(self.cache, "pfd")
         self.domains = os.path.join(self.cache, "domains")
 
+
+    def set_log_dir(self, options):
+        """Sets log directory associated with this run
+        Creates a new directory if necessary
+
+        Inputs:
+        - options: options object from CMD_parser"""
+        self.log = os.path.join(self.output, "logs")
+
+    def prepare_output_dir(self):
+        """Prepares the output directory by creating new folders"""
+        # create output directory within output directory
+        # TODO: simplify
+        utility.create_directory(self.output, "Output", False)
+
+    def prepare_cache_dir(self):
+        """Prepares the output directory by creating new folders"""
+        # create output directory within output directory
+        # TODO: simplify
         utility.create_directory(self.cache, "Cache", False)
         utility.create_directory(self.bgc_fasta, "BGC fastas", False)
         utility.create_directory(self.domtable, "Domtable", False)
         utility.create_directory(self.domains, "Domains", False)
         utility.create_directory(self.pfs, "pfs", False)
         utility.create_directory(self.pfd, "pfd", False)
+    
+    def prepare_log_dir(self):
+        """Prepares the output directory by creating new folders"""
+        # TODO: remove?
+        utility.create_directory(self.log, "Logs", False)
+        # TODO: move elsewhere
+        utility.write_parameters(self.log, sys.argv)
+
