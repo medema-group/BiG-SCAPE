@@ -4,7 +4,7 @@ Annotated_MIBiG_reference/MIBiG_1.4_final
 Annotated_MIBiG_reference/MIBiG_2.1_final
 
 # pfam hmm files
-Pfam_*
+Pfam-A*
 
 # generated files
 **/*.pyc
