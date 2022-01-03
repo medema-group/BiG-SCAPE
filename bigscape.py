@@ -88,9 +88,10 @@ if __name__=="__main__":
 
     ### Step 1: Get all the input files. Write extract sequence and write fasta if necessary
     print("\n\n   - - Processing input files - -")
-
-
-    mibig_set, bgc_info, genbankDict = mibig.read_mibig(run, options)
+    
+    mibig.extract_mibig(run, options)
+    
+    mibig_set, bgc_info, genbankDict = mibig.import_mibig(run, options)
     
             
     

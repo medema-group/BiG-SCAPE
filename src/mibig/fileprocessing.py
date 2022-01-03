@@ -10,48 +10,31 @@ from glob import glob
 
 import src.gbk as gbk
 import src.bgctools as bgctools
-
-from src.big_scape.run.base import Run
-
+import src.big_scape as big_scape
 
 
-def read_mibig(run: Run, options):
-    """Reads MiBIG files and generates a set of BGCs
 
+def extract_mibig(run: big_scape.Run, options):
+    """Extracts MIBiG zips
 
     Inputs:
-    - mibig_param: parameters relevant to mibig functionality of this run
+    - run: parameters relevant to the current run
     - verbose: whether to report code execution verbosely
     """
     # Read included MIBiG
-    # Change this for every officially curated MIBiG bundle
-    # (file, final folder, number of bgcs)
-
-    
-    # Stores, per BGC: predicted type, gbk Description, number of records, width of longest record,
-    # GenBank's accession, Biosynthetic Genes' ids
-    bgc_info = {}
-    # genbankDict: {cluster_name:[genbank_path_to_1st_instance,[sample_1,sample_2,...]]}
-    genbankDict = {}
-    # set of mibig bgcs
-    mibig_set = set()
-
+    # TODO: automatically download new versions
 
     print("\n Trying to read bundled MIBiG BGCs as reference")
-    #TODO: __file__ usage, simplify?
-    
-    mibig_zip_file = run.mibig.mibig_file + ".zip"
     print("Assuming mibig path: {}".format(options.mibig_path))
-    bgcs_path = os.path.join(options.mibig_path, run.mibig.mibig_file)
 
     # try to see if the zip file has already been decompressed
-    numbgcs = len(glob(os.path.join(bgcs_path, "*.gbk")))
+    numbgcs = len(glob(os.path.join(run.mibig_param.gbk_path, "*.gbk")))
     if numbgcs == 0:
-        if not zipfile.is_zipfile(os.path.join(options.mibig_path, mibig_zip_file)):
+        if not zipfile.is_zipfile(run.mibig_param.zip_path):
             sys.exit("Did not find file {}. \
-                Please re-download it from the official repository".format(mibig_zip_file))
+                Please re-download it from the official repository".format(run.mibig_param.zip_path))
 
-        with zipfile.ZipFile(os.path.join(options.mibig_path, mibig_zip_file), 'r') as mibig_zip:
+        with zipfile.ZipFile(run.mibig_param.zip_path, 'r') as mibig_zip:
             for fname in mibig_zip.namelist():
                 if fname[-3:] != "gbk":
                     continue
@@ -60,20 +43,37 @@ def read_mibig(run: Run, options):
                 if options.verbose:
                     print("  Extracted {}".format(extractedbgc))
 
-    elif run.mibig.expected_num_bgc == numbgcs:
+    elif run.mibig_param.expected_num_bgc == numbgcs:
         print("  MIBiG BGCs seem to have been extracted already")
     else:
         sys.exit("Did not find the correct number of MIBiG BGCs ({}). \
             Please clean the 'Annotated MIBiG reference' folder from any \
-            .gbk files first".format(run.mibig.expected_num_bgc))
+            .gbk files first".format(run.mibig_param.expected_num_bgc))
+
+
+def import_mibig(run: big_scape.Run, options):
+    """Imports MIBiG GBK files and stores information into dedicated objects
+
+    Inputs:
+    - run: parameters relevant to the current run
+    - verbose: whether to report code execution verbosely
+    """
+
+    # Stores, per BGC: predicted type, gbk Description, number of records, width of longest record,
+    # GenBank's accession, Biosynthetic Genes' ids
+    bgc_info = {}
+    # genbankDict: {cluster_name:[genbank_path_to_1st_instance,[sample_1,sample_2,...]]}
+    genbank_dict = {}
+    # set of mibig bgcs
+    mibig_set = set()
 
     print("\nImporting MIBiG files")
-    gbk.get_gbk_files(bgcs_path, run.directories.output, run.directories.bgc_fasta,
+    gbk.get_gbk_files(run.mibig.gbk_path, run.directories.output, run.directories.bgc_fasta,
                       int(options.min_bgc_size), ['*'], run.gbk.exclude, bgc_info, options.mode,
                       options.verbose, options.force_hmmscan, run.valid_classes,
-                      bgctools.bgc_data, genbankDict)
+                      bgctools.bgc_data, genbank_dict)
 
-    for i in genbankDict.keys():
-        mibig_set.add(i)
+    for key in genbank_dict:
+        mibig_set.add(key)
 
-    return mibig_set, bgc_info, genbankDict
+    return mibig_set, bgc_info, genbank_dict

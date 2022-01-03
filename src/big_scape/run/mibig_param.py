@@ -4,17 +4,22 @@ Author: Arjan Draisma
 """
 
 import sys
+import os
 
 class MibigParam():
     """Class which keeps track of run options relating to mibig usage"""
     # whether to use mibig in a run
     use_mibig = False
-    mibig_file: str
+
+    file_name: str
     expected_num_bgc: int
+
+    zip_path: str
+    gbk_path: str
 
     def __init__(self, options):
         self.set_mibig(options)
-        self.set_mibig_file(options)
+        self.set_mibig_file_path(options)
 
     def set_mibig(self, options):
         """Checks if the Mibig options that were passed are valid, and if so,
@@ -37,7 +42,7 @@ class MibigParam():
         self.use_mibig = selected_mibig == 1
 
 
-    def set_mibig_file(self, options):
+    def set_mibig_file_path(self, options):
         """Sets the file name base and expected MiBIG BGC count if MiBIG is
         used
 
@@ -46,11 +51,14 @@ class MibigParam():
 
         if self.use_mibig:
             if options.mibig21:
-                self.mibig_file = "MIBiG_2.1_final"
+                self.file_name = "MIBiG_2.1_final"
                 self.expected_num_bgc = 1923
             elif options.mibig14:
-                self.mibig_file = "MIBiG_1.4_final"
+                self.file_name = "MIBiG_1.4_final"
                 self.expected_num_bgc = 1808
             else:
-                self.mibig_file = "MIBiG_1.3_final"
+                self.file_name = "MIBiG_1.3_final"
                 self.expected_num_bgc = 1393
+
+            self.zip_path = self.file_name + ".zip"
+            self.gbk_path = os.path.join(options.mibig_path, self.file_name)
