@@ -63,7 +63,7 @@ import networkx as nx
 # make sure python sees the source folder
 sys.path.append(os.path.join(os.path.dirname(__file__), "src"))
 
-import fileprocessing
+import gbk
 import utility
 import bgctools
 import hmm
@@ -127,7 +127,7 @@ if __name__=="__main__":
             sys.exit("Did not find the correct number of MIBiG BGCs ({}). Please clean the 'Annotated MIBiG reference' folder from any .gbk files first".format(mibig_zipfile_numbgcs[2]))
         
         print("\nImporting MIBiG files")
-        fileprocessing.get_gbk_files(bgcs_path, run.directories.output, run.directories.bgc_fasta, int(options.min_bgc_size),
+        gbk.get_gbk_files(bgcs_path, run.directories.output, run.directories.bgc_fasta, int(options.min_bgc_size),
                       ['*'], run.gbk.exclude, bgc_info, options.mode, options.verbose, options.force_hmmscan, run.valid_classes, bgctools.bgc_data, genbankDict)
         
         for i in genbankDict.keys():
@@ -135,7 +135,7 @@ if __name__=="__main__":
             
     
     print("\nImporting GenBank files")
-    fileprocessing.get_gbk_files(options.inputdir, run.directories.output, run.directories.bgc_fasta, int(options.min_bgc_size),
+    gbk.get_gbk_files(options.inputdir, run.directories.output, run.directories.bgc_fasta, int(options.min_bgc_size),
                   run.gbk.include, run.gbk.exclude, bgc_info, options.mode, options.verbose, options.force_hmmscan, run.valid_classes, bgctools.bgc_data, genbankDict)
     
     if run.has_query_bgc:
@@ -145,7 +145,7 @@ if __name__=="__main__":
             pass
         else:
             print("\nImporting query BGC file")
-            fileprocessing.get_gbk_files(options.query_bgc, run.directories.output, run.directories.bgc_fasta, 
+            gbk.get_gbk_files(options.query_bgc, run.directories.output, run.directories.bgc_fasta, 
                           int(options.min_bgc_size), ['*'], run.gbk.exclude, bgc_info)
             
         if query_bgc not in genbankDict:
