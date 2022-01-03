@@ -4,7 +4,7 @@ from argparse import ArgumentParser
 from multiprocessing import cpu_count
 
 
-def CMD_parser():
+def CMD_parser(root_path):
     parser = ArgumentParser(prog="BiG-SCAPE")
     
     parser.add_argument("-l", "--label", dest="label", help="An extra label for\
@@ -12,7 +12,7 @@ def CMD_parser():
                         the network_files results)")
     
     parser.add_argument("-i", "--inputdir", dest="inputdir", 
-                        default=os.path.dirname(os.path.realpath(__file__)),
+                        default=os.path.dirname(root_path),
                         help="Input directory of gbk files, if left empty, all \
                         gbk files in current and lower directories will be used.")
 
@@ -21,7 +21,7 @@ def CMD_parser():
                         all output data files.")
     
     parser.add_argument("--pfam_dir", dest="pfam_dir",
-                      default=os.path.dirname(os.path.realpath(__file__)), 
+                      default=os.path.dirname(root_path), 
                       help="Location of hmmpress-processed Pfam files. Default \
                       is same location of BiG-SCAPE")
     
@@ -122,7 +122,7 @@ def CMD_parser():
                             otherwise use global mode on that pair")
     
     parser.add_argument("--anchorfile", dest="anchorfile", 
-                        default=os.path.join(os.path.dirname(os.path.realpath(__file__)),"anchor_domains.txt"),
+                        default=os.path.join(os.path.dirname(root_path),"anchor_domains.txt"),
                         help="Provide a custom location for the anchor domains \
                         file, default is anchor_domains.txt.")
                     
@@ -147,6 +147,10 @@ def CMD_parser():
     
     parser.add_argument("--mibig13", dest="mibig13", default=False, action="store_true",
                         help="Include BGCs from version 1.3 of MIBiG")
+    
+    parser.add_argument("--mibig_path", dest="mibig_path",
+                        default=os.path.join(os.path.dirname(root_path), "Annotated_MIBiG_reference"),
+                        help="Location of MIBiG zip files (e.g. MIBiG_2.1_final.zip)")
     
     parser.add_argument("--query_bgc", help="Instead of making an all-VS-all \
                         comparison of all the input BGCs, choose one BGC to \

@@ -64,6 +64,7 @@ import networkx as nx
 sys.path.append(os.path.join(os.path.dirname(__file__), "src"))
 
 import gbk
+import mibig
 import utility
 import bgctools
 import hmm
@@ -73,7 +74,11 @@ import js
 
 
 if __name__=="__main__":
-    options = utility.CMD_parser()
+    # get root path of this project
+    root_path = os.path.basename(__file__)
+
+    # get run options
+    options = utility.CMD_parser(root_path)
     
     # create new run details
     run = big_scape.Run(options)
@@ -84,54 +89,9 @@ if __name__=="__main__":
     ### Step 1: Get all the input files. Write extract sequence and write fasta if necessary
     print("\n\n   - - Processing input files - -")
 
-    # Stores, per BGC: predicted type, gbk Description, number of records, width of longest record,
-    # GenBank's accession, Biosynthetic Genes' ids
-    bgc_info = {}
-    # genbankDict: {cluster_name:[genbank_path_to_1st_instance,[sample_1,sample_2,...]]}
-    genbankDict = {}
 
-    # Read included MIBiG
-    # Change this for every officially curated MIBiG bundle
-    # (file, final folder, number of bgcs)
-    mibig_set = set()
-    if run.mibig.use_mibig:
-        if options.mibig21:
-            mibig_zipfile_numbgcs = ("MIBiG_2.1_final.zip", "MIBiG_2.1_final", 1923)
-        elif options.mibig14:
-            mibig_zipfile_numbgcs = ("MIBiG_1.4_final.zip", "MIBiG_1.4_final", 1808)
-        else:
-            mibig_zipfile_numbgcs = ("MIBiG_1.3_final.zip", "MIBiG_1.3_final", 1393)
-        
-        print("\n Trying to read bundled MIBiG BGCs as reference")
-        mibig_path = os.path.join(os.path.dirname(os.path.realpath(__file__)),"Annotated_MIBiG_reference")
-        bgcs_path = os.path.join(mibig_path,mibig_zipfile_numbgcs[1])
-        
-        # try to see if the zip file has already been decompressed
-        numbgcs = len(glob(os.path.join(bgcs_path,"*.gbk")))
-        if numbgcs == 0:
-            if not zipfile.is_zipfile(os.path.join(mibig_path,mibig_zipfile_numbgcs[0])):
-                sys.exit("Did not find file {}. Please re-download it from the official repository".format(mibig_zipfile_numbgcs[0]))
-                
-            with zipfile.ZipFile(os.path.join(mibig_path,mibig_zipfile_numbgcs[0]), 'r') as mibig_zip:
-                for fname in mibig_zip.namelist():
-                    if fname[-3:] != "gbk":
-                        continue
-                
-                    extractedbgc = mibig_zip.extract(fname,path=mibig_path)
-                    if options.verbose:
-                        print("  Extracted {}".format(extractedbgc))
-        
-        elif mibig_zipfile_numbgcs[2] == numbgcs:
-            print("  MIBiG BGCs seem to have been extracted already")
-        else:
-            sys.exit("Did not find the correct number of MIBiG BGCs ({}). Please clean the 'Annotated MIBiG reference' folder from any .gbk files first".format(mibig_zipfile_numbgcs[2]))
-        
-        print("\nImporting MIBiG files")
-        gbk.get_gbk_files(bgcs_path, run.directories.output, run.directories.bgc_fasta, int(options.min_bgc_size),
-                      ['*'], run.gbk.exclude, bgc_info, options.mode, options.verbose, options.force_hmmscan, run.valid_classes, bgctools.bgc_data, genbankDict)
-        
-        for i in genbankDict.keys():
-            mibig_set.add(i)
+    mibig_set, bgc_info, genbankDict = mibig.read_mibig(run, options)
+    
             
     
     print("\nImporting GenBank files")
