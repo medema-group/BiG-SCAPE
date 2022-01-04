@@ -14,6 +14,8 @@ class DirParam():
     output: str
     pfam: str
     mibig: str
+    has_query_bgc: bool
+    query_bgc: str
 
     cache: str
     bgc_fasta: str
@@ -25,6 +27,9 @@ class DirParam():
     def __init__(self, options):
         # input dir
         self.set_input_dir(options)
+
+        # bgc query folder
+        self.set_has_query_bgc(options)
 
         # output dir
         self.set_output_dir(options)
@@ -41,8 +46,6 @@ class DirParam():
         # pfam dir
         self.set_pfam_dir(options)
 
-        return
-
     def set_input_dir(self, options):
         """Checks the structure of input folder, and checks if valid data exists
 
@@ -51,6 +54,19 @@ class DirParam():
 
         # TODO: check if data exists
         self.input = options.inputdir
+
+    def set_has_query_bgc(self, options):
+        """Set flag for query biosynthetic gene clusters & set query bgc folder
+
+        Inputs:
+        - options: options object from CMD_parser"""
+        if options.query_bgc:
+            self.has_query_bgc = True
+            if not os.path.isfile(options.query_bgc):
+                sys.exit("Error: Query BGC not found")
+            self.query_bgc = options.query_bgc
+        else:
+            self.has_query_bgc = False
 
     def set_output_dir(self, options):
         """Checks if an output folder was given, and checks if it is writeable

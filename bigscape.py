@@ -92,18 +92,8 @@ if __name__ == "__main__":
     print("\nImporting GenBank files")
     gbk.get_gbk_files(RUN.directories.input, RUN, OPTIONS, BGC_INFO, GEN_BANK_DICT, bgctools.BgcData)
 
-    if RUN.has_query_bgc:
-        QUERY_BGC = ".".join(OPTIONS.query_bgc.split(os.sep)[-1].split(".")[:-1])
-        if QUERY_BGC in GEN_BANK_DICT:
-            print("\nQuery BGC already added")
-            pass
-        else:
-            print("\nImporting query BGC file")
-            gbk.get_gbk_files(OPTIONS.query_bgc, RUN, OPTIONS, BGC_INFO, GEN_BANK_DICT, bgctools.BgcData, True)
-
-        if QUERY_BGC not in GEN_BANK_DICT:
-            sys.exit("Error: not able to include Query BGC (check valid classes, BGC size, etc. \
-                      Run again with --verbose)")
+    if RUN.directories.has_query_bgc:
+        QUERY_BGC = gbk.fileprocessing.import_query_gbk(RUN, OPTIONS, BGC_INFO, GEN_BANK_DICT)
     # clusters and sampleDict contain the necessary structure for all-vs-all and sample analysis
     CLUSTERS = list(GEN_BANK_DICT.keys())
 
@@ -564,7 +554,7 @@ if __name__ == "__main__":
     CLUSTER_NAMES = tuple(sorted(CLUSTERS))
 
     # we have to find the idx of query_bgc
-    if RUN.has_query_bgc:
+    if RUN.directories.has_query_bgc:
         try:
             QUERY_BGC_IDX = CLUSTER_NAMES.index(QUERY_BGC)
         except ValueError:
@@ -655,7 +645,7 @@ if __name__ == "__main__":
         utility.create_directory(os.path.join(NETWORK_FILES_FOLDER, "mix"), "  Mix", False)
 
         print("  Calculating all pairwise distances")
-        if RUN.has_query_bgc:
+        if RUN.directories.has_query_bgc:
             PAIRS = set([tuple(sorted(combo)) for combo in combinations_product([QUERY_BGC_IDX], MIX_SET)])
         else:
             # convert into a set of ordered tuples
@@ -678,7 +668,7 @@ if __name__ == "__main__":
         del CLUSTER_PAIRS[:]
 
         # add the rest of the edges in the "Query network"
-        if RUN.has_query_bgc:
+        if RUN.directories.has_query_bgc:
             NEW_SET = []
 
             # rows from the distance matrix that will be pruned
@@ -860,7 +850,7 @@ if __name__ == "__main__":
 
         # only make folders for the run.distance.bgc_classes that are found
         for bgc_class in RUN.distance.bgc_classes:
-            if RUN.has_query_bgc:
+            if RUN.directories.has_query_bgc:
                 # not interested in this class if our Query BGC is not here...
                 if QUERY_BGC_IDX not in RUN.distance.bgc_classes[bgc_class]:
                     continue
@@ -887,7 +877,7 @@ if __name__ == "__main__":
                     network_annotation_file.write("\t".join([bgc, BGC_INFO[bgc].accession_id, BGC_INFO[bgc].description, product, bgctools.sort_bgc(product), BGC_INFO[bgc].organism, BGC_INFO[bgc].taxonomy]) + "\n")
 
             print("   Calculating all pairwise distances")
-            if RUN.has_query_bgc:
+            if RUN.directories.has_query_bgc:
                 PAIRS = set([tuple(sorted(combo)) for combo in combinations_product([QUERY_BGC_IDX], RUN.distance.bgc_classes[bgc_class])])
             else:
                 PAIRS = set([tuple(sorted(combo)) for combo in combinations(RUN.distance.bgc_classes[bgc_class], 2)])
@@ -902,7 +892,7 @@ if __name__ == "__main__":
             #network_matrix = pickle.load(open("others.ntwrk", "rb"))
 
             # add the rest of the edges in the "Query network"
-            if RUN.has_query_bgc:
+            if RUN.directories.has_query_bgc:
                 NEW_SET = []
 
                 # rows from the distance matrix that will be pruned

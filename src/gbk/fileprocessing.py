@@ -5,7 +5,20 @@ from Bio import SeqIO
 from itertools import combinations
 from src.big_scape.run.base import Run
 
-from src.bgctools import sort_bgc
+from src.bgctools import sort_bgc, BgcData
+
+def import_query_gbk(run, options, bgc_info, gen_bank_dict):
+    query_bgc = ".".join(options.query_bgc.split(os.sep)[-1].split(".")[:-1])
+    if query_bgc in gen_bank_dict:
+        print("\nQuery BGC already added")
+    else:
+        print("\nImporting query BGC file")
+        get_gbk_files(options.query_bgc, run, options, bgc_info, gen_bank_dict, BgcData, True)
+
+    if query_bgc not in gen_bank_dict:
+        sys.exit("Error: not able to include Query BGC (check valid classes, BGC size, etc. \
+                    Run again with --verbose)")
+    return query_bgc
 
 def process_gbk_files(
         gbk,

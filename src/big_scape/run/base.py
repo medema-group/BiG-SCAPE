@@ -42,7 +42,6 @@ class Run:
     ## other run parameters
     # run mode
     run_mode: str
-    has_query_bgc: bool
 
     # domain include list
     has_includelist: bool
@@ -70,8 +69,6 @@ class Run:
 
         self.set_run_mode(options)
 
-        self.set_has_query_bgc(options)
-
         self.set_domain_includelist(options)
 
         self.set_valid_classes(options)
@@ -97,17 +94,6 @@ class Run:
             run_mode_string += "_global"
 
         self.run_mode = run_mode_string
-
-    def set_has_query_bgc(self, options):
-        """Set flag for query biosynthetic gene clusters
-
-        Inputs:
-        - options: options object from CMD_parser"""
-        self.has_query_bgc = False
-        if options.query_bgc:
-            self.has_query_bgc = True
-            if not os.path.isfile(options.query_bgc):
-                sys.exit("Error: Query BGC not found")
 
     def set_domain_includelist(self, options):
         """Sets flag to use includelist to true if it is present in options

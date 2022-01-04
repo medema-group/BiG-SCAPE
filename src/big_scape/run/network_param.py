@@ -14,7 +14,6 @@ class NetworkParam():
 
     def __init__(self, options):
         self.set_anchor_domains(options.anchorfile)
-        return
 
     def set_anchor_domains(self, anchorfile: str):
         """Set anchor domain data from file"""
