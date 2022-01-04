@@ -7,16 +7,16 @@ from src.big_scape.run.base import Run
 
 from src.bgctools import sort_bgc, BgcData
 
-def import_genbank_files(run, options, bgc_info, gen_bank_dict):
-    get_gbk_files(run.directories.input, run, options, bgc_info, gen_bank_dict, BgcData)
+def import_genbank_files(run, bgc_info, gen_bank_dict):
+    get_gbk_files(run.directories.input, run, bgc_info, gen_bank_dict, BgcData)
 
-def import_query_gbk(run, options, bgc_info, gen_bank_dict):
-    query_bgc = ".".join(options.query_bgc.split(os.sep)[-1].split(".")[:-1])
+def import_query_gbk(run, bgc_info, gen_bank_dict):
+    query_bgc = ".".join(run.options.query_bgc.split(os.sep)[-1].split(".")[:-1])
     if query_bgc in gen_bank_dict:
         print("\nQuery BGC already added")
     else:
         print("\nImporting query BGC file")
-        get_gbk_files(options.query_bgc, run, options, bgc_info, gen_bank_dict, BgcData, True)
+        get_gbk_files(run.options.query_bgc, run, bgc_info, gen_bank_dict, BgcData, True)
 
     if query_bgc not in gen_bank_dict:
         sys.exit("Error: not able to include Query BGC (check valid classes, BGC size, etc. \
@@ -362,7 +362,7 @@ def process_gbk_files(
     return adding_sequence
 
 
-def get_gbk_files(gbk_path, run: Run, options, bgc_info, gen_bank_dict, bgc_data, include_all=False):
+def get_gbk_files(gbk_path, run: Run, bgc_info, gen_bank_dict, bgc_data, include_all=False):
     """Searches given directory for genbank files recursively, will assume that
     the genbank files that have the same name are the same genbank file.
     Returns a dictionary that contains the names of the clusters found as keys
@@ -414,7 +414,7 @@ def get_gbk_files(gbk_path, run: Run, options, bgc_info, gen_bank_dict, bgc_data
             sys.exit("\nError: Input GenBank files should not have spaces in their path as hmmscan cannot process them properly ('too many arguments').")
 
         file_counter += 1
-        if process_gbk_files(filepath, options.min_bgc_size, bgc_info, files_no_proteins, files_no_biosynthetic_genes, options.verbose, run.directories.bgc_fasta, options.force_hmmscan, run.valid_classes, bgc_data, gen_bank_dict):
+        if process_gbk_files(filepath, run.options.min_bgc_size, bgc_info, files_no_proteins, files_no_biosynthetic_genes, run.options.verbose, run.directories.bgc_fasta, run.options.force_hmmscan, run.valid_classes, bgc_data, gen_bank_dict):
             processed_sequences += 1
 
     if len(files_no_proteins) > 0:

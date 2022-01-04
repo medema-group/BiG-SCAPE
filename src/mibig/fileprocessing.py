@@ -14,7 +14,7 @@ import src.big_scape as big_scape
 
 
 
-def extract_mibig(run: big_scape.Run, options):
+def extract_mibig(run: big_scape.Run):
     """Extracts MIBiG zips
 
     Inputs:
@@ -25,7 +25,7 @@ def extract_mibig(run: big_scape.Run, options):
     # TODO: automatically download new versions
 
     print("\n Trying to read bundled MIBiG BGCs as reference")
-    print("Assuming mibig path: {}".format(options.mibig_path))
+    print("Assuming mibig path: {}".format(run.options.mibig_path))
 
     # try to see if the zip file has already been decompressed
     numbgcs = len(glob(os.path.join(run.mibig.gbk_path, "*.gbk")))
@@ -39,8 +39,8 @@ def extract_mibig(run: big_scape.Run, options):
                 if fname[-3:] != "gbk":
                     continue
 
-                extractedbgc = mibig_zip.extract(fname, path=options.mibig_path)
-                if options.verbose:
+                extractedbgc = mibig_zip.extract(fname, path=run.options.mibig_path)
+                if run.options.verbose:
                     print("  Extracted {}".format(extractedbgc))
 
     elif run.mibig.expected_num_bgc == numbgcs:
@@ -51,7 +51,7 @@ def extract_mibig(run: big_scape.Run, options):
             .gbk files first".format(run.mibig.expected_num_bgc))
 
 
-def import_mibig(run: big_scape.Run, options):
+def import_mibig(run: big_scape.Run):
     """Imports MIBiG GBK files and stores information into dedicated objects
 
     Inputs:
@@ -68,7 +68,7 @@ def import_mibig(run: big_scape.Run, options):
     mibig_set = set()
 
     print("\nImporting MIBiG files")
-    gbk.get_gbk_files(run.mibig.gbk_path, run, options, bgc_info, genbank_dict, bgctools.BgcData, True)
+    gbk.get_gbk_files(run.mibig.gbk_path, run, bgc_info, genbank_dict, bgctools.BgcData, True)
     # gbk.get_gbk_files(run.mibig.gbk_path, run.directories.output, run.directories.bgc_fasta,
     #                   int(options.min_bgc_size), ['*'], run.gbk.exclude, bgc_info, options.mode,
     #                   options.verbose, options.force_hmmscan, run.valid_classes,

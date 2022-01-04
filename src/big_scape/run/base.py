@@ -20,6 +20,9 @@ class Run:
     # TODO: reduce instance attributes to <8
     ## subsections
 
+    # options used to generate this run
+    options: object
+
     # files
     directories: DirParam
     gbk: GbkParam
@@ -56,23 +59,6 @@ class Run:
     run_name: str
     run_label: str
     run_data: dict
-
-    def __init__(self, options):
-        self.directories = DirParam(options)
-        self.gbk = GbkParam(options)
-
-        self.mibig = MibigParam(options)
-        self.pfam = PfamParam(options)
-        self.distance = DistParam(options)
-        self.cluster = ClusterParam(options)
-        self.network = NetworkParam(options)
-
-        self.set_run_mode(options)
-
-        self.set_domain_includelist(options)
-
-        self.set_valid_classes(options)
-
 
     def set_run_mode(self, options):
         """Parses and sets the run mode of this run from options
@@ -125,7 +111,25 @@ class Run:
         self.valid_classes = self.valid_classes - self.user_banned_classes
 
 
-    def start(self, options):
+    def init(self, options):
+        self.options = options
+
+        self.directories = DirParam(options)
+        self.gbk = GbkParam(options)
+
+        self.mibig = MibigParam(options)
+        self.pfam = PfamParam(options)
+        self.distance = DistParam(options)
+        self.cluster = ClusterParam(options)
+        self.network = NetworkParam(options)
+
+        self.set_run_mode(options)
+
+        self.set_domain_includelist(options)
+
+        self.set_valid_classes(options)
+
+    def start(self):
         """Start the run: set a run name and record the start time
 
         Inputs:
@@ -137,8 +141,8 @@ class Run:
         # generate run name
         self.run_name = "{}{}".format(time.strftime("%Y-%m-%d_%H-%M-%S", localtime), self.run_mode)
 
-        if options.label:
-            self.run_name = self.run_name + "_" + options.label
+        if self.options.label:
+            self.run_name = self.run_name + "_" + self.options.label
 
         # record run data
         # TODO: find out whether this is needed in this way
