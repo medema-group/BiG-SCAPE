@@ -41,14 +41,12 @@ from itertools import combinations
 from itertools import product as combinations_product
 from collections import defaultdict
 from multiprocessing import Pool
-import zipfile
 
 from array import array
 import json
 import shutil
 from distutils import dir_util
 import networkx as nx
-from scipy.optimize.zeros import results_c
 
 # refactored imports
 from src import bgctools
@@ -97,9 +95,8 @@ if __name__ == "__main__":
         QUERY_BGC = gbk.fileprocessing.import_query_gbk(RUN, OPTIONS, BGC_INFO, GEN_BANK_DICT)
 
 
-    # clusters and sampleDict contain the necessary structure for all-vs-all and sample analysis
-    CLUSTERS = list(GEN_BANK_DICT.keys())
 
+    # CLUSTERS and SAMPLE_DICT contain the necessary structure for all-vs-all and sample analysis
     SAMPLE_DICT = {} # {sampleName:set(bgc1,bgc2,...)}
     GBK_FILES = [] # raw list of gbk file locations
     for (cluster, (path, clusterSample)) in GEN_BANK_DICT.items():
@@ -150,6 +147,8 @@ if __name__ == "__main__":
     ### Step 2: Run hmmscan
     print("\nPredicting domains using hmmscan")
 
+    # CLUSTERS and SAMPLE_DICT contain the necessary structure for all-vs-all and sample analysis
+    CLUSTERS = list(GEN_BANK_DICT.keys())
     BASE_NAMES = set(CLUSTERS)
 
     # All available fasta files (could be more than it should if reusing output folder)
