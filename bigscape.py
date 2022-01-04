@@ -90,10 +90,13 @@ if __name__ == "__main__":
     MIBIG_SET, BGC_INFO, GEN_BANK_DICT = mibig.import_mibig(RUN, OPTIONS)
 
     print("\nImporting GenBank files")
-    gbk.get_gbk_files(RUN.directories.input, RUN, OPTIONS, BGC_INFO, GEN_BANK_DICT, bgctools.BgcData)
+    gbk.fileprocessing.import_genbank_files(RUN, OPTIONS, BGC_INFO, GEN_BANK_DICT)
 
     if RUN.directories.has_query_bgc:
+        print("\nImporting query BGC files")
         QUERY_BGC = gbk.fileprocessing.import_query_gbk(RUN, OPTIONS, BGC_INFO, GEN_BANK_DICT)
+
+
     # clusters and sampleDict contain the necessary structure for all-vs-all and sample analysis
     CLUSTERS = list(GEN_BANK_DICT.keys())
 

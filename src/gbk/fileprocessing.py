@@ -7,6 +7,9 @@ from src.big_scape.run.base import Run
 
 from src.bgctools import sort_bgc, BgcData
 
+def import_genbank_files(run, options, bgc_info, gen_bank_dict):
+    get_gbk_files(run.directories.input, run, options, bgc_info, gen_bank_dict, BgcData)
+
 def import_query_gbk(run, options, bgc_info, gen_bank_dict):
     query_bgc = ".".join(options.query_bgc.split(os.sep)[-1].split(".")[:-1])
     if query_bgc in gen_bank_dict:
