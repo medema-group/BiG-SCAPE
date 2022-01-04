@@ -251,7 +251,7 @@ if __name__ == "__main__":
             for unprocessed_domtable_file in DOMTABLE_FILES_UNPROCESSED:
                 print(unprocessed_domtable_file.split(os.sep)[-1].split('.')[:-1])
         else:
-            print(" Warning: {} domtable files will be processed").format(str(len(DOMTABLE_FILES_UNPROCESSED)))
+            print(" Warning: {} domtable files will be processed".format(str(len(DOMTABLE_FILES_UNPROCESSED))))
     else: # First run
         print(" Processing {} domtable files".format(str(len(DOMTABLE_FILES))))
 
