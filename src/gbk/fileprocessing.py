@@ -4,7 +4,7 @@ import sys
 from Bio import SeqIO
 from itertools import combinations
 
-from bgctools.bgctools import sort_bgc
+from src.bgctools import sort_bgc
 
 def process_gbk_files(
         gbk,
@@ -17,7 +17,7 @@ def process_gbk_files(
         force_hmmscan,
         valid_classes,
         bgc_data,
-        genbankDict,
+        gen_bank_dict,
 
 ):
     """ Given a file path to a GenBank file, reads information about the BGC"""
@@ -36,12 +36,12 @@ def process_gbk_files(
     locus_coordinates = {}
 
     file_folder, fname = os.path.split(gbk)
-    clusterName = fname[:-4]
+    cluster_name = fname[:-4]
 
     # See if we need to keep the sequence
     # (Currently) we have to open the file anyway to read all its 
     # properties for bgc_info anyway...
-    outputfile = os.path.join(bgc_fasta_folder, clusterName + '.fasta')
+    outputfile = os.path.join(bgc_fasta_folder, cluster_name + '.fasta')
     if os.path.isfile(outputfile) and os.path.getsize(outputfile) > 0 and not force_hmmscan:
         if verbose:
             print(" File {} already processed".format(outputfile))
@@ -132,7 +132,7 @@ def process_gbk_files(
                     else:
                         strand = '-'
                         
-                    fasta_header = "{}_ORF{}:gid:{}:pid:{}:loc:{}:{}:strand:{}".format(clusterName, str(cds_ctr), str(gene_id).replace(":","_"), str(protein_id).replace(":","_"), str(gene_start), str(gene_end), strand)
+                    fasta_header = "{}_ORF{}:gid:{}:pid:{}:loc:{}:{}:strand:{}".format(cluster_name, str(cds_ctr), str(gene_id).replace(":","_"), str(protein_id).replace(":","_"), str(gene_start), str(gene_end), strand)
                     fasta_header = fasta_header.replace(">","") #the coordinates might contain larger than signs, tools upstream don't like this
                     fasta_header = fasta_header.replace(" ", "") #the domtable output format (hmmscan) uses spaces as a delimiter, so these cannot be present in the fasta header
 
@@ -185,7 +185,7 @@ def process_gbk_files(
                                 print("Warning, CDS ({}, {}) has fuzzy\
                                     start and end positions, and a \
                                     sequence length not multiple of \
-                                    three. Skipping".format(clusterName, 
+                                    three. Skipping".format(cluster_name, 
                                     CDS.qualifiers.get('locus_tag',"")[0]))
                                 break
                             
@@ -249,7 +249,7 @@ def process_gbk_files(
                 
             if len(valid_classes & subproduct) == 0:
                 if verbose:
-                    print(" Skipping {} (type: {})".format(clusterName, product))
+                    print(" Skipping {} (type: {})".format(cluster_name, product))
                 return False
             
             # assuming that the definition field is the same in all records
@@ -263,22 +263,22 @@ def process_gbk_files(
             # Perhaps we can try to infer if it's in a contig edge: if
             # - first biosynthetic gene start < 10kb or
             # - max_width - last biosynthetic gene end < 10kb (but this will work only for the largest record)
-            bgc_info[clusterName] = bgc_data(records[0].id, records[0].description, product, len(records), max_width, bgc_size + (record_count-1)*1000, records[0].annotations["organism"], ",".join(records[0].annotations["taxonomy"]), biosynthetic_genes.copy(), contig_edge)
+            bgc_info[cluster_name] = bgc_data(records[0].id, records[0].description, product, len(records), max_width, bgc_size + (record_count-1)*1000, records[0].annotations["organism"], ",".join(records[0].annotations["taxonomy"]), biosynthetic_genes.copy(), contig_edge)
 
-            if len(bgc_info[clusterName].biosynthetic_genes) == 0:
-                files_no_biosynthetic_genes.append(clusterName+".gbk")
+            if len(bgc_info[cluster_name].biosynthetic_genes) == 0:
+                files_no_biosynthetic_genes.append(cluster_name+".gbk")
 
             # TODO why re-process everything if it was already in the list?
             # if name already in genbankDict.keys -> add file_folder
             # else: extract all info
-            if clusterName in genbankDict.keys():
+            if cluster_name in gen_bank_dict.keys():
                 # Name was already in use. Use file_folder as the new sample's name
-                genbankDict[clusterName][1].add(file_folder) 
+                gen_bank_dict[cluster_name][1].add(file_folder) 
             else:
                 # See if we need to write down the sequence
                 if total_seq_length > 0:
                     # location of first instance of the file is genbankDict[clustername][0]
-                    genbankDict.setdefault(clusterName, [gbk, set([file_folder])])
+                    gen_bank_dict.setdefault(cluster_name, [gbk, set([file_folder])])
 
                     if save_fasta:
                         # Find overlaps in CDS regions and delete the shortest ones.
@@ -340,7 +340,7 @@ def process_gbk_files(
                 print("  Adding {} ({} bps)".format(fname, str(bgc_size)))
                                 
         else:
-            print(" Discarding {} (size less than {} bp, was {})".format(clusterName, str(min_bgc_size), str(bgc_size)))
+            print(" Discarding {} (size less than {} bp, was {})".format(cluster_name, str(min_bgc_size), str(bgc_size)))
     
     return adding_sequence
 

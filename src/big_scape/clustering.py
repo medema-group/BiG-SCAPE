@@ -17,22 +17,24 @@ from Bio import Phylo
 
 from src.pfam.misc import get_domain_list
 from src.big_scape.scores import cluster_distance_lcs
-from bgctools.bgctools import get_composite_bgc_similarities
+from src.bgctools import get_composite_bgc_similarities
 from src.utility.io import create_directory
 
 
-def generate_dist_matrix(parms, clusterNames, bgcClassNames, DomainList, output_folder, DomainCountGene, corebiosynthetic_position, BGCGeneOrientation,
-bgc_class_weight, anchor_domains, BGCs, mode, bgc_info, AlignedDomainSequences, verbose, domains_folder):
+def generate_dist_matrix(parms, cluster_names, bgc_class_names, domain_list, output_folder,
+                         gene_domain_count, corebiosynthetic_position, bgc_gene_orientation,
+                         bgc_class_weight, anchor_domains, bgcs, mode, bgc_info,
+                         aligned_domain_sequences, verbose, domains_folder):
     """Unpack data to actually launch cluster_distance for one pair of BGCs"""
-    
-    cluster1Idx,cluster2Idx,bgcClassIdx = [int(parm) for parm in parms]
-    cluster1 = clusterNames[cluster1Idx]
-    cluster2 = clusterNames[cluster2Idx]
-    bgc_class = bgcClassNames[bgcClassIdx]
+
+    cluster_1_idx, cluster_2_idx, bgc_class_idx = [int(parm) for parm in parms]
+    cluster1 = cluster_names[cluster_1_idx]
+    cluster2 = cluster_names[cluster_2_idx]
+    bgc_class = bgc_class_names[bgc_class_idx]
 
     try:
-        domain_list_A = DomainList[cluster1]
-        domain_list_B = DomainList[cluster2]
+        domain_list_A = domain_list[cluster1]
+        domain_list_B = domain_list[cluster2]
     except KeyError:
         print(" Warning: domain list for {} or {} was not found. Extracting from pfs files".format(cluster1, cluster2))
         
@@ -57,12 +59,12 @@ bgc_class_weight, anchor_domains, BGCs, mode, bgc_info, AlignedDomainSequences, 
 
         # cluster1Idx, cluster2Idx, distance, jaccard, DSS, AI, rDSSNa, rDSSa, 
         #   S, Sa, lcsStartA, lcsStartB
-        return array('f',[cluster1Idx,cluster2Idx,1,0,0,0,0,0,1,1,0,0])
+        return array('f',[cluster_1_idx,cluster_2_idx,1,0,0,0,0,0,1,1,0,0])
     
     # "Domain Count per Gene". List of simple labels (integers) indicating number
     # of domains belonging to each gene
-    dcg_a = DomainCountGene[cluster1]
-    dcg_b = DomainCountGene[cluster2]
+    dcg_a = gene_domain_count[cluster1]
+    dcg_b = gene_domain_count[cluster2]
     
     # Position of the anchor genes (i.e. genes with domains in the anchor
     # domain list). Should probably be the Core Biosynthetic genes marked by
@@ -71,15 +73,17 @@ bgc_class_weight, anchor_domains, BGCs, mode, bgc_info, AlignedDomainSequences, 
     core_pos_b = corebiosynthetic_position[cluster2]
     
     # go = "gene orientation"
-    go_a = BGCGeneOrientation[cluster1]
-    go_b = BGCGeneOrientation[cluster2]
+    go_a = bgc_gene_orientation[cluster1]
+    go_b = bgc_gene_orientation[cluster2]
     
-    dist, jaccard, dss, ai, rDSSna, rDSS, S, Sa, lcsStartA, lcsStartB, seedLength, reverse = cluster_distance_lcs(cluster1, cluster2, domain_list_A,
-        domain_list_B, dcg_a, dcg_b, core_pos_a, core_pos_b, go_a, go_b, bgc_class, bgc_class_weight, anchor_domains, BGCs, DomainCountGene,
-        BGCGeneOrientation, mode, bgc_info, AlignedDomainSequences, verbose, domains_folder)
+    dist, jaccard, dss, ai, rDSSna, rDSS, S, Sa, lcsStartA, lcsStartB, seedLength, reverse = cluster_distance_lcs(
+                cluster1, cluster2, domain_list_A, domain_list_B, dcg_a, dcg_b, core_pos_a, core_pos_b, go_a, go_b,
+                bgc_class, bgc_class_weight, anchor_domains, bgcs, gene_domain_count, bgc_gene_orientation, mode,
+                bgc_info, aligned_domain_sequences, verbose, domains_folder)
         
-    network_row = array('f',[cluster1Idx, cluster2Idx, dist, (1-dist)**2, jaccard, 
-                             dss, ai, rDSSna, rDSS, S, Sa, lcsStartA, lcsStartB, seedLength, reverse])
+    network_row = array('f', [cluster_1_idx, cluster_2_idx, dist, (1-dist)**2, jaccard,
+                              dss, ai, rDSSna, rDSS, S, Sa, lcsStartA, lcsStartB,
+                              seedLength, reverse])
     return network_row
 
 

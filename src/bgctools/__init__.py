@@ -1,1 +1,1 @@
-from .bgctools import BGC_dic_gen, get_composite_bgc_similarities, sort_bgc, bgc_data
+from .bgctools import bgc_dict_gen, get_composite_bgc_similarities, sort_bgc, BgcData

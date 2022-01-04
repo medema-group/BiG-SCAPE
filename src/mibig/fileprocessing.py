@@ -28,13 +28,13 @@ def extract_mibig(run: big_scape.Run, options):
     print("Assuming mibig path: {}".format(options.mibig_path))
 
     # try to see if the zip file has already been decompressed
-    numbgcs = len(glob(os.path.join(run.mibig_param.gbk_path, "*.gbk")))
+    numbgcs = len(glob(os.path.join(run.mibig.gbk_path, "*.gbk")))
     if numbgcs == 0:
-        if not zipfile.is_zipfile(run.mibig_param.zip_path):
+        if not zipfile.is_zipfile(run.mibig.zip_path):
             sys.exit("Did not find file {}. \
-                Please re-download it from the official repository".format(run.mibig_param.zip_path))
+                Please re-download it from the official repository".format(run.mibig.zip_path))
 
-        with zipfile.ZipFile(run.mibig_param.zip_path, 'r') as mibig_zip:
+        with zipfile.ZipFile(run.mibig.zip_path, 'r') as mibig_zip:
             for fname in mibig_zip.namelist():
                 if fname[-3:] != "gbk":
                     continue
@@ -43,12 +43,12 @@ def extract_mibig(run: big_scape.Run, options):
                 if options.verbose:
                     print("  Extracted {}".format(extractedbgc))
 
-    elif run.mibig_param.expected_num_bgc == numbgcs:
+    elif run.mibig.expected_num_bgc == numbgcs:
         print("  MIBiG BGCs seem to have been extracted already")
     else:
         sys.exit("Did not find the correct number of MIBiG BGCs ({}). \
             Please clean the 'Annotated MIBiG reference' folder from any \
-            .gbk files first".format(run.mibig_param.expected_num_bgc))
+            .gbk files first".format(run.mibig.expected_num_bgc))
 
 
 def import_mibig(run: big_scape.Run, options):
@@ -71,7 +71,7 @@ def import_mibig(run: big_scape.Run, options):
     gbk.get_gbk_files(run.mibig.gbk_path, run.directories.output, run.directories.bgc_fasta,
                       int(options.min_bgc_size), ['*'], run.gbk.exclude, bgc_info, options.mode,
                       options.verbose, options.force_hmmscan, run.valid_classes,
-                      bgctools.bgc_data, genbank_dict)
+                      bgctools.BgcData, genbank_dict)
 
     for key in genbank_dict:
         mibig_set.add(key)
