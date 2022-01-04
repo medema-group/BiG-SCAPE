@@ -1,2 +1,2 @@
 from .hmmalign import launch_hmmalign, run_hmmalign, stockholm_parser
-from .hmmscan import parseHmmScan, check_overlap, runHmmScan, domtable_parser, write_pfd
+from .hmmscan import find_unprocessed_files, run_hmmscan_multi_threaded, parseHmmScan, check_overlap, runHmmScan, domtable_parser, write_pfd

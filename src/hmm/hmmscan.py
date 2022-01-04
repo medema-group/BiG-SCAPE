@@ -1,11 +1,48 @@
 import os
 import sys
 import subprocess
-
+import multiprocessing
 
 from src.hmm.io import domtable_parser
 from src.pfam.io import write_pfd
 from src.pfam.misc import check_overlap
+
+def find_unprocessed_files(run, fasta_files):
+    ALREADY_DONE = set()
+    for fasta in fasta_files:
+        outputbase = ".".join(fasta.split(os.sep)[-1].split(".")[:-1])
+        outputfile = os.path.join(run.directories.domtable, outputbase + '.domtable')
+        if os.path.isfile(outputfile) and os.path.getsize(outputfile) > 0:
+            # verify domtable content
+            with open(outputfile, "r") as domtablefile:
+                for line in domtablefile.readlines():
+                    if line.startswith("# Option settings:"):
+                        linecols = line.split()
+                        if "hmmscan" in linecols and "--domtblout" in linecols:
+                            ALREADY_DONE.add(fasta)
+                            break
+
+    TASK_SET = fasta_files - ALREADY_DONE
+    if len(TASK_SET) == 0:
+        print(" All fasta files had already been processed")
+    elif len(ALREADY_DONE) > 0:
+        if len(TASK_SET) < 20:
+            TASKS = [x.split(os.sep)[-1].split(".")[:-1] for x in TASK_SET]
+            print(" Warning! The following NEW fasta file(s) will be processed: {}".format(", ".join(".".join(x.split(os.sep)[-1].split(".")[:-1]) for x in TASK_SET)))
+        else:
+            print(" Warning: {} NEW fasta files will be processed".format(len(TASK_SET)))
+    else:
+        print(" Predicting domains for {} fasta files".format(str(len(fasta_files))))
+    
+    return TASK_SET
+
+def run_hmmscan_multi_threaded(RUN, TASK_SET):
+    POOL = multiprocessing.Pool(RUN.options.cores, maxtasksperchild=1)
+    for fastaFile in TASK_SET:
+        task_args = (fastaFile, RUN.directories.pfam, RUN.directories.domtable, RUN.options.verbose)
+        POOL.apply_async(runHmmScan, args=task_args)
+    POOL.close()
+    POOL.join()
 
 def runHmmScan(fastaPath, hmmPath, outputdir, verbose):
     """ Runs hmmscan command on a fasta file with a single core to generate a

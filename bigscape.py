@@ -173,40 +173,14 @@ if __name__ == "__main__":
         TASK_SET = FASTA_FILES
         print(" Forcing domain prediction on ALL fasta files (--force_hmmscan)")
     else:
-        # find already processed files
-        ALREADY_DONE = set()
-        for fasta in FASTA_FILES:
-            outputbase = ".".join(fasta.split(os.sep)[-1].split(".")[:-1])
-            outputfile = os.path.join(RUN.directories.domtable, outputbase + '.domtable')
-            if os.path.isfile(outputfile) and os.path.getsize(outputfile) > 0:
-                # verify domtable content
-                with open(outputfile, "r") as domtablefile:
-                    for line in domtablefile.readlines():
-                        if line.startswith("# Option settings:"):
-                            linecols = line.split()
-                            if "hmmscan" in linecols and "--domtblout" in linecols:
-                                ALREADY_DONE.add(fasta)
-                                break
+        # find unprocessed files
+        TASK_SET = hmm.find_unprocessed_files(RUN, FASTA_FILES)
 
-        TASK_SET = FASTA_FILES - ALREADY_DONE
-        if len(TASK_SET) == 0:
-            print(" All fasta files had already been processed")
-        elif len(ALREADY_DONE) > 0:
-            if len(TASK_SET) < 20:
-                TASKS = [x.split(os.sep)[-1].split(".")[:-1] for x in TASK_SET]
-                print(" Warning! The following NEW fasta file(s) will be processed: {}".format(", ".join(".".join(x.split(os.sep)[-1].split(".")[:-1]) for x in TASK_SET)))
-            else:
-                print(" Warning: {} NEW fasta files will be processed".format(len(TASK_SET)))
-        else:
-            print(" Predicting domains for {} fasta files".format(str(len(FASTA_FILES))))
-
-    POOL = Pool(RUN.options.cores, maxtasksperchild=1)
-    for fastaFile in TASK_SET:
-        task_args = (fastaFile, RUN.directories.pfam, RUN.directories.domtable, RUN.options.verbose)
-        POOL.apply_async(hmm.runHmmScan, args=task_args)
-    POOL.close()
-    POOL.join()
-    print(" Finished generating domtable files.")
+    if len(TASK_SET) > 0:
+        hmm.run_hmmscan_multi_threaded(RUN, TASK_SET)
+        print(" Finished generating domtable files.")
+    else:
+        print(" All files were processed by hmmscan. Skipping step...")
 
     ### Step 3: Parse hmmscan domtable results and generate pfs and pfd files
     print("\nParsing hmmscan domtable files")
@@ -245,7 +219,7 @@ if __name__ == "__main__":
         if len(DOMTABLE_FILES_UNPROCESSED) < 20:
             print(" Warning! The following domtable files had not been processed:")
             for unprocessed_domtable_file in DOMTABLE_FILES_UNPROCESSED:
-                print(unprocessed_domtable_file.split(os.sep)[-1].split('.')[:-1])
+                print(unprocessed_domtable_file.split(os.sep)[-1].split('.')[:-1][0])
         else:
             print(" Warning: {} domtable files will be processed".format(str(len(DOMTABLE_FILES_UNPROCESSED))))
     else: # First run
