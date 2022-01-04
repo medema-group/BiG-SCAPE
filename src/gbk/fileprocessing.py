@@ -346,7 +346,7 @@ def process_gbk_files(
     return adding_sequence
 
 
-def get_gbk_files(run: Run, options, bgc_info, gen_bank_dict, bgc_data, include_all=False):
+def get_gbk_files(gbk_path, run: Run, options, bgc_info, gen_bank_dict, bgc_data, include_all=False):
     """Searches given directory for genbank files recursively, will assume that
     the genbank files that have the same name are the same genbank file.
     Returns a dictionary that contains the names of the clusters found as keys
@@ -368,13 +368,14 @@ def get_gbk_files(run: Run, options, bgc_info, gen_bank_dict, bgc_data, include_
     else:
         include_gbk = run.gbk.include
 
-    if os.path.isfile(run.directories.input):
-        files = [run.directories.input]
+    if os.path.isfile(gbk_path):
+        files = [gbk_path]
     else:
         # Unfortunately, this does not work in Python 2:
         #files = glob(os.path.join(inputpath,"**/*.gbk"), recursive=True)
-        files = [os.path.join(dirpath, f) for dirpath, dirnames, files in os.walk(run.directories.input)
+        files = [os.path.join(dirpath, f) for dirpath, dirnames, files in os.walk(gbk_path)
                  for f in files if f.endswith(".gbk")]
+
 
     for filepath in files:
         file_folder, fname = os.path.split(filepath)

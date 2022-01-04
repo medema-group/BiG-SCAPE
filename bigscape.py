@@ -89,10 +89,8 @@ if __name__ == "__main__":
 
     MIBIG_SET, BGC_INFO, GEN_BANK_DICT = mibig.import_mibig(RUN, OPTIONS)
 
-
-
     print("\nImporting GenBank files")
-    gbk.get_gbk_files(RUN, OPTIONS, BGC_INFO, GEN_BANK_DICT, bgctools.BgcData)
+    gbk.get_gbk_files(RUN.directories.input, RUN, OPTIONS, BGC_INFO, GEN_BANK_DICT, bgctools.BgcData)
 
     if RUN.has_query_bgc:
         QUERY_BGC = ".".join(OPTIONS.query_bgc.split(os.sep)[-1].split(".")[:-1])
@@ -101,7 +99,7 @@ if __name__ == "__main__":
             pass
         else:
             print("\nImporting query BGC file")
-            gbk.get_gbk_files(RUN, OPTIONS, BGC_INFO, GEN_BANK_DICT, bgctools.BgcData, True)
+            gbk.get_gbk_files(OPTIONS.query_bgc, RUN, OPTIONS, BGC_INFO, GEN_BANK_DICT, bgctools.BgcData, True)
             # gbk.get_gbk_files(OPTIONS.query_bgc, RUN.directories.output, RUN.directories.bgc_fasta,
             #                   int(OPTIONS.min_bgc_size), ['*'], RUN.gbk.exclude, BGC_INFO,
             #                   OPTIONS.mode, OPTIONS.verbose, OPTIONS.force_hmmscan,
