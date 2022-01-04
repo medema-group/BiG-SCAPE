@@ -72,9 +72,14 @@ if __name__ == "__main__":
     ROOT_PATH = os.path.basename(__file__)
 
     # get run options
+    # ROOT_PATH is passed here because the imports no longer allow us to use __file__
     OPTIONS = utility.CMD_parser(ROOT_PATH)
 
     # create new run details
+    # ideally we parse all the options and remember them in this object
+    # we will later use options to describe what parameters were used, and
+    # use the run object to describe what effect that had, e.g. which files
+    # were used
     RUN = big_scape.Run(OPTIONS)
 
     # run timing starts here
@@ -85,6 +90,8 @@ if __name__ == "__main__":
 
     mibig.extract_mibig(RUN, OPTIONS)
 
+    # TODO: GEN_BANK_DICT is passed into functions to be added to.
+    # this is very opaque. change into object to be added to
     MIBIG_SET, BGC_INFO, GEN_BANK_DICT = mibig.import_mibig(RUN, OPTIONS)
 
     print("\nImporting GenBank files")
@@ -107,15 +114,6 @@ if __name__ == "__main__":
 
     print("\nTrying threading on {} cores".format(str(OPTIONS.cores)))
 
-    # BGCs --
-    # dictionary of this structure:
-    # BGCs = {'cluster_name_x': { 'general_domain_name_x' : ['specific_domain_name_1',
-    #  'specific_domain_name_2'] } }
-    # - cluster_name_x: cluster name (can be anything)
-    # - general_domain_name_x: PFAM ID, for example 'PF00550'
-    # - specific_domain_name_x: ID of a specific domain that will allow to you to map it to names in
-    # DMS unequivocally. e.g. 'PF00550_start_end', where start and end are genomic positions
-    BGCS = {} #will contain the BGCs
 
     CLASS_NAMES_LEN = len(RUN.distance.bgc_class_names)
     BGC_CLASS_NAME_2_INDEX = dict(zip(RUN.distance.bgc_class_names, range(CLASS_NAMES_LEN)))
@@ -306,6 +304,17 @@ if __name__ == "__main__":
         for unprocessed_domtable_file in UNPROCESSED_DOMTABLE_FILES:
             print(unprocessed_domtable_file)
         sys.exit()
+
+    
+    # BGCs --
+    # dictionary of this structure:
+    # BGCs = {'cluster_name_x': { 'general_domain_name_x' : ['specific_domain_name_1',
+    #  'specific_domain_name_2'] } }
+    # - cluster_name_x: cluster name (can be anything)
+    # - general_domain_name_x: PFAM ID, for example 'PF00550'
+    # - specific_domain_name_x: ID of a specific domain that will allow to you to map it to names in
+    # DMS unequivocally. e.g. 'PF00550_start_end', where start and end are genomic positions
+    BGCS = {} #will contain the BGCs
 
     FILTERED_MATRIX = []
     if OPTIONS.skip_ma:
