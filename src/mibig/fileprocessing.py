@@ -68,10 +68,11 @@ def import_mibig(run: big_scape.Run, options):
     mibig_set = set()
 
     print("\nImporting MIBiG files")
-    gbk.get_gbk_files(run.mibig.gbk_path, run.directories.output, run.directories.bgc_fasta,
-                      int(options.min_bgc_size), ['*'], run.gbk.exclude, bgc_info, options.mode,
-                      options.verbose, options.force_hmmscan, run.valid_classes,
-                      bgctools.BgcData, genbank_dict)
+    gbk.get_gbk_files(run, options, bgc_info, genbank_dict, bgctools.BgcData, True)
+    # gbk.get_gbk_files(run.mibig.gbk_path, run.directories.output, run.directories.bgc_fasta,
+    #                   int(options.min_bgc_size), ['*'], run.gbk.exclude, bgc_info, options.mode,
+    #                   options.verbose, options.force_hmmscan, run.valid_classes,
+    #                   bgctools.BgcData, genbank_dict)
 
     for key in genbank_dict:
         mibig_set.add(key)

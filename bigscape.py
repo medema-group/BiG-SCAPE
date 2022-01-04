@@ -92,10 +92,7 @@ if __name__ == "__main__":
 
 
     print("\nImporting GenBank files")
-    gbk.get_gbk_files(OPTIONS.inputdir, RUN.directories.output, RUN.directories.bgc_fasta,
-                      int(OPTIONS.min_bgc_size), RUN.gbk.include, RUN.gbk.exclude, BGC_INFO,
-                      OPTIONS.mode, OPTIONS.verbose, OPTIONS.force_hmmscan, RUN.valid_classes,
-                      bgctools.BgcData, GEN_BANK_DICT)
+    gbk.get_gbk_files(RUN, OPTIONS, BGC_INFO, GEN_BANK_DICT, bgctools.BgcData)
 
     if RUN.has_query_bgc:
         QUERY_BGC = ".".join(OPTIONS.query_bgc.split(os.sep)[-1].split(".")[:-1])
@@ -104,10 +101,11 @@ if __name__ == "__main__":
             pass
         else:
             print("\nImporting query BGC file")
-            gbk.get_gbk_files(OPTIONS.query_bgc, RUN.directories.output, RUN.directories.bgc_fasta,
-                              int(OPTIONS.min_bgc_size), ['*'], RUN.gbk.exclude, BGC_INFO,
-                              OPTIONS.mode, OPTIONS.verbose, OPTIONS.force_hmmscan,
-                              RUN.valid_classes, bgctools.BgcData, GEN_BANK_DICT)
+            gbk.get_gbk_files(RUN, OPTIONS, BGC_INFO, GEN_BANK_DICT, bgctools.BgcData, True)
+            # gbk.get_gbk_files(OPTIONS.query_bgc, RUN.directories.output, RUN.directories.bgc_fasta,
+            #                   int(OPTIONS.min_bgc_size), ['*'], RUN.gbk.exclude, BGC_INFO,
+            #                   OPTIONS.mode, OPTIONS.verbose, OPTIONS.force_hmmscan,
+            #                   RUN.valid_classes, bgctools.BgcData, GEN_BANK_DICT)
 
         if QUERY_BGC not in GEN_BANK_DICT:
             sys.exit("Error: not able to include Query BGC (check valid classes, BGC size, etc. \
@@ -216,9 +214,7 @@ if __name__ == "__main__":
         elif len(ALREADY_DONE) > 0:
             if len(TASK_SET) < 20:
                 TASKS = [x.split(os.sep)[-1].split(".")[:-1] for x in TASK_SET]
-                NEW_FASTAS = ", ".join(".".join(TASKS))
-                print(" Warning! The following NEW fasta file(s) will be processed: \
-                      {}".format(NEW_FASTAS))
+                print(" Warning! The following NEW fasta file(s) will be processed: {}".format(", ".join(".".join(x.split(os.sep)[-1].split(".")[:-1]) for x in TASK_SET)))
             else:
                 print(" Warning: {} NEW fasta files will be processed".format(len(TASK_SET)))
         else:
