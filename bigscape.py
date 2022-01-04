@@ -100,10 +100,6 @@ if __name__ == "__main__":
         else:
             print("\nImporting query BGC file")
             gbk.get_gbk_files(OPTIONS.query_bgc, RUN, OPTIONS, BGC_INFO, GEN_BANK_DICT, bgctools.BgcData, True)
-            # gbk.get_gbk_files(OPTIONS.query_bgc, RUN.directories.output, RUN.directories.bgc_fasta,
-            #                   int(OPTIONS.min_bgc_size), ['*'], RUN.gbk.exclude, BGC_INFO,
-            #                   OPTIONS.mode, OPTIONS.verbose, OPTIONS.force_hmmscan,
-            #                   RUN.valid_classes, bgctools.BgcData, GEN_BANK_DICT)
 
         if QUERY_BGC not in GEN_BANK_DICT:
             sys.exit("Error: not able to include Query BGC (check valid classes, BGC size, etc. \
@@ -265,7 +261,7 @@ if __name__ == "__main__":
             for unprocessed_domtable_file in DOMTABLE_FILES_UNPROCESSED:
                 print(unprocessed_domtable_file.split(os.sep)[-1].split('.')[:-1])
         else:
-            print(" Warning: {} domtable files will be processed").format(len(DOMTABLE_FILES_UNPROCESSED))
+            print(" Warning: {} domtable files will be processed").format(str(len(DOMTABLE_FILES_UNPROCESSED)))
     else: # First run
         print(" Processing {} domtable files".format(str(len(DOMTABLE_FILES))))
 
