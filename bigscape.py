@@ -95,7 +95,6 @@ if __name__ == "__main__":
         QUERY_BGC = gbk.fileprocessing.import_query_gbk(RUN, OPTIONS, BGC_INFO, GEN_BANK_DICT)
 
 
-
     # CLUSTERS and SAMPLE_DICT contain the necessary structure for all-vs-all and sample analysis
     SAMPLE_DICT = {} # {sampleName:set(bgc1,bgc2,...)}
     GBK_FILES = [] # raw list of gbk file locations
@@ -105,12 +104,6 @@ if __name__ == "__main__":
             clustersInSample = SAMPLE_DICT.get(sample, set())
             clustersInSample.add(cluster)
             SAMPLE_DICT[sample] = clustersInSample
-
-    print("\nCreating output directories")
-    SVG_FOLDER = os.path.join(RUN.directories.output, "SVG")
-    utility.create_directory(SVG_FOLDER, "SVG", False)
-    NETWORK_FOLDER = os.path.join(RUN.directories.output, "network_files")
-    utility.create_directory(NETWORK_FOLDER, "Networks", False)
 
     print("\nTrying threading on {} cores".format(str(OPTIONS.cores)))
 
@@ -440,7 +433,7 @@ if __name__ == "__main__":
 
     # All available SVG files
     AVAILABLE_SVG = set()
-    for svg in glob(os.path.join(SVG_FOLDER, "*.svg")):
+    for svg in glob(os.path.join(RUN.directories.svg, "*.svg")):
         (root, ext) = os.path.splitext(svg)
         AVAILABLE_SVG.add(root.split(os.sep)[-1])
 
@@ -457,7 +450,7 @@ if __name__ == "__main__":
         print("  Reading BGC information and writing SVG")
         for bgc in WORKING_SET:
             with open(GEN_BANK_DICT[bgc][0], "r") as handle:
-                utility.SVG(False, os.path.join(SVG_FOLDER, bgc+".svg"), handle, bgc,
+                utility.SVG(False, os.path.join(RUN.directories.svg, bgc+".svg"), handle, bgc,
                             os.path.join(RUN.directories.pfd, bgc+".pfd"), True, COLOR_GENES,
                             COLOR_DOMAINS, PFAM_DOMAIN_CATEGORIES, PFAM_INFO,
                             BGC_INFO[bgc].records, BGC_INFO[bgc].max_width)
@@ -562,8 +555,8 @@ if __name__ == "__main__":
         except ValueError:
             sys.exit("Error finding the index of Query BGC")
 
-    # create output directory for network files
-    NETWORK_FILES_FOLDER = os.path.join(NETWORK_FOLDER, RUN.run_name)
+    # create output directory for network files *for this run*
+    NETWORK_FILES_FOLDER = os.path.join(RUN.directories.network, RUN.run_name)
     utility.create_directory(NETWORK_FILES_FOLDER, "Network Files", False)
 
     # copy html templates

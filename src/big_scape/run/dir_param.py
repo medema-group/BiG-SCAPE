@@ -10,13 +10,17 @@ import src.utility as utility
 
 class DirParam():
     """Class which keeps track of run options relating to directories and cache locations"""
+    # folders
     input: str
     output: str
     pfam: str
     mibig: str
+    
+    # query bgc
     has_query_bgc: bool
     query_bgc: str
 
+    # cache
     cache: str
     bgc_fasta: str
     domtable: str
@@ -34,6 +38,14 @@ class DirParam():
         # output dir
         self.set_output_dir(options)
         self.prepare_output_dir()
+
+        # svg dir
+        self.set_svg_dir()
+        self.prepare_svg_dir()
+
+        # network_dir
+        self.set_network_dir()
+        self.prepare_network_dir()
 
         # cache dir
         self.set_cache_dir(options)
@@ -70,6 +82,7 @@ class DirParam():
 
     def set_output_dir(self, options):
         """Checks if an output folder was given, and checks if it is writeable
+        Then sets output directory information on this class
 
         Inputs:
         - options: options object from CMD_parser"""
@@ -80,6 +93,24 @@ class DirParam():
             sys.exit(0)
         # TODO: check if writable
         self.output = options.outputdir
+
+    def set_svg_dir(self):
+        """Sets SVG output directory information on this class
+
+        Inputs:
+        - options: options object from CMD_parser"""
+
+        # TODO: check if writable
+        self.svg = os.path.join(self.output, "SVG")
+
+    def set_network_dir(self):
+        """Sets network output directory information on this class
+
+        Inputs:
+        - options: options object from CMD_parser"""
+
+        # TODO: check if writable
+        self.network = os.path.join(self.output, "network_files")
 
     def set_pfam_dir(self, options):
         """Checks if all necessary Pfam files exist in Pfam folder
@@ -128,13 +159,20 @@ class DirParam():
         self.log = os.path.join(self.output, "logs")
 
     def prepare_output_dir(self):
-        """Prepares the output directory by creating new folders"""
-        # create output directory within output directory
+        """Prepares the output directory by creating new folder"""
         # TODO: simplify
         utility.create_directory(self.output, "Output", False)
+    
+    def prepare_svg_dir(self):
+        """Prepares the svg directory by creating new folder"""
+        utility.create_directory(self.svg, "SVG", False)
+    
+    def prepare_network_dir(self):
+        """Prepares the network directory by creating new folder"""
+        utility.create_directory(self.network, "Networks", False)
 
     def prepare_cache_dir(self):
-        """Prepares the output directory by creating new folders"""
+        """Prepares the cache directory by creating new folders"""
         # create output directory within output directory
         # TODO: simplify
         utility.create_directory(self.cache, "Cache", False)
