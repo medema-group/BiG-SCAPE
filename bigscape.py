@@ -180,8 +180,8 @@ if __name__ == "__main__":
 
     for domtableFile in DOMTABLE_FILES_TO_PROCESS:
         hmm.parse_hmmscan(domtableFile, RUN.directories.pfd, RUN.directories.pfs,
-                         RUN.options.domain_overlap_cutoff, RUN.options.verbose, GEN_BANK_DICT,
-                         CLUSTERS, CLUSTER_BASE_NAMES, MIBIG_SET)
+                          RUN.options.domain_overlap_cutoff, RUN.options.verbose, GEN_BANK_DICT,
+                          CLUSTERS, CLUSTER_BASE_NAMES, MIBIG_SET)
 
     # If number of pfd files did not change, no new sequences were added to the
     #  domain fastas and we could try to resume the multiple alignment phase
