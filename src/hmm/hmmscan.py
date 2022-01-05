@@ -3,7 +3,6 @@ import sys
 import subprocess
 import multiprocessing
 
-from src.pfam.io import write_pfd
 from src.pfam.misc import check_overlap
 
 def parse_domtable(gbk, dom_file):
@@ -54,6 +53,13 @@ def parse_domtable(gbk, dom_file):
                 pfd_matrix.append(pfd_row)
 
     return pfd_matrix
+
+def write_pfd(pfd_handle, matrix):
+    for row in matrix:
+        row = "\t".join(row)
+        pfd_handle.write(row+"\n")
+
+    pfd_handle.close()
 
 
 def run_hmmscan_async(RUN, TASK_SET):
