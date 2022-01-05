@@ -3,7 +3,7 @@ import sys
 from glob import glob
 
 def find_unprocessed_files(run, fasta_files):
-    ALREADY_DONE = set()
+    already_done = set()
     for fasta in fasta_files:
         outputbase = ".".join(fasta.split(os.sep)[-1].split(".")[:-1])
         outputfile = os.path.join(run.directories.domtable, outputbase + '.domtable')
@@ -14,22 +14,22 @@ def find_unprocessed_files(run, fasta_files):
                     if line.startswith("# Option settings:"):
                         linecols = line.split()
                         if "hmmscan" in linecols and "--domtblout" in linecols:
-                            ALREADY_DONE.add(fasta)
+                            already_done.add(fasta)
                             break
 
-    TASK_SET = fasta_files - ALREADY_DONE
-    if len(TASK_SET) == 0:
+    task_set = fasta_files - already_done
+    if len(task_set) == 0:
         print(" All fasta files had already been processed")
-    elif len(ALREADY_DONE) > 0:
-        if len(TASK_SET) < 20:
-            TASKS = [x.split(os.sep)[-1].split(".")[:-1] for x in TASK_SET]
-            print(" Warning! The following NEW fasta file(s) will be processed: {}".format(", ".join(".".join(x.split(os.sep)[-1].split(".")[:-1]) for x in TASK_SET)))
+    elif len(already_done) > 0:
+        if len(task_set) < 20:
+            tasks = ", ".join(".".join(x.split(os.sep)[-1].split(".")[:-1]) for x in task_set)
+            print(" Warning! The following NEW fasta file(s) will be processed: {}".format(tasks))
         else:
-            print(" Warning: {} NEW fasta files will be processed".format(len(TASK_SET)))
+            print(" Warning: {} NEW fasta files will be processed".format(len(task_set)))
     else:
         print(" Predicting domains for {} fasta files".format(str(len(fasta_files))))
-    
-    return TASK_SET
+    sys.exit()
+    return task_set
 
 
 def verify_hmm_fasta(run, base_names):
@@ -52,5 +52,5 @@ def verify_hmm_fasta(run, base_names):
         for unextracted_file in unextracted_files:
             print(unextracted_file)
         sys.exit()
-    
+
     return all_fasta_files
