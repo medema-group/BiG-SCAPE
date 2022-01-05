@@ -114,14 +114,7 @@ if __name__ == "__main__":
 
 
     # CLUSTERS and SAMPLE_DICT contain the necessary structure for all-vs-all and sample analysis
-    SAMPLE_DICT = {} # {sampleName:set(bgc1,bgc2,...)}
-    GBK_FILES = [] # raw list of gbk file locations
-    for (cluster, (path, clusterSample)) in GEN_BANK_DICT.items():
-        GBK_FILES.append(path)
-        for sample in clusterSample:
-            clustersInSample = SAMPLE_DICT.get(sample, set())
-            clustersInSample.add(cluster)
-            SAMPLE_DICT[sample] = clustersInSample
+    CLUSTERS = list(GEN_BANK_DICT.keys())
 
     print("\nTrying threading on {} cores".format(str(RUN.options.cores)))
 
@@ -149,43 +142,24 @@ if __name__ == "__main__":
     ### Step 2: Run hmmscan
     print("\nPredicting domains using hmmscan")
 
-    # CLUSTERS and SAMPLE_DICT contain the necessary structure for all-vs-all and sample analysis
-    CLUSTERS = list(GEN_BANK_DICT.keys())
     BASE_NAMES = set(CLUSTERS)
 
-    # All available fasta files (could be more than it should if reusing output folder)
-    ALL_FASTA_FILES = set(glob(os.path.join(RUN.directories.bgc_fasta, "*.fasta")))
-
-    # fastaFiles: all the fasta files that should be there
-    # (i.e. correspond to the input files)
-    FASTA_FILES = set()
-    for name in BASE_NAMES:
-        FASTA_FILES.add(os.path.join(RUN.directories.bgc_fasta, name+".fasta"))
-
-    # fastaBases: the actual fasta files we have that correspond to the input
-    FASTA_BASES = ALL_FASTA_FILES.intersection(FASTA_FILES)
-
-    # Verify that all input files had their fasta sequences extracted
-    if len(FASTA_FILES - FASTA_BASES) > 0:
-        print("Error! The following files did NOT have their fasta sequences extracted: ")
-        UNEXTRACTED_FILES = FASTA_FILES - FASTA_BASES
-        for unextracted_file in UNEXTRACTED_FILES:
-            print(unextracted_file)
-        sys.exit()
-
+    FASTA_FILES = hmm.verify_hmm_fasta(RUN, BASE_NAMES)
 
     # Make a list of all fasta files that need to be processed
     # (i.e., they don't yet have a corresponding .domtable)
     if RUN.options.force_hmmscan:
         # process all files, regardless of whether they already existed
-        TASK_SET = FASTA_FILES
+        UNPROCESSED_FASTA_FILES = FASTA_FILES
         print(" Forcing domain prediction on ALL fasta files (--force_hmmscan)")
     else:
         # find unprocessed files
-        TASK_SET = hmm.find_unprocessed_files(RUN, FASTA_FILES)
+        UNPROCESSED_FASTA_FILES = hmm.find_unprocessed_files(RUN, FASTA_FILES)
 
-    if len(TASK_SET) > 0:
-        hmm.run_hmmscan_multi_threaded(RUN, TASK_SET)
+    print(len(UNPROCESSED_FASTA_FILES))
+
+    if len(UNPROCESSED_FASTA_FILES) > 0:
+        hmm.run_hmmscan_multi_threaded(RUN, UNPROCESSED_FASTA_FILES)
         print(" Finished generating domtable files.")
     else:
         print(" All files were processed by hmmscan. Skipping step...")
@@ -241,7 +215,7 @@ if __name__ == "__main__":
     for domtableFile in DOMTABLE_FILES - ALREADY_DONE:
         hmm.parseHmmScan(domtableFile, RUN.directories.pfd, RUN.directories.pfs,
                          RUN.options.domain_overlap_cutoff, RUN.options.verbose, GEN_BANK_DICT,
-                         CLUSTERS, BASE_NAMES, GBK_FILES, SAMPLE_DICT, MIBIG_SET)
+                         CLUSTERS, BASE_NAMES, MIBIG_SET)
         #task_args = (domtableFile,output_folder,options.domain_overlap_cutoff)
         #pool.apply_async(parseHmmScan, args = task_args)
     #pool.close()

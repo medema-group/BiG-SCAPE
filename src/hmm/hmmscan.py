@@ -7,6 +7,8 @@ from src.hmm.io import domtable_parser
 from src.pfam.io import write_pfd
 from src.pfam.misc import check_overlap
 
+from glob import glob
+
 def find_unprocessed_files(run, fasta_files):
     ALREADY_DONE = set()
     for fasta in fasta_files:
@@ -61,7 +63,40 @@ def runHmmScan(fastaPath, hmmPath, outputdir, verbose):
         sys.exit("Error running hmmscan: Fasta file " + fastaPath + " doesn't exist")
 
 
-def parseHmmScan(hmmscanResults, pfd_folder, pfs_folder, overlapCutoff, verbose, genbankDict, clusters, baseNames, gbk_files, sampleDict, mibig_set):
+def verify_hmm_fasta(run, base_names):
+    # All available fasta files (could be more than it should if reusing output folder)
+    all_fasta_files = set(glob(os.path.join(run.directories.bgc_fasta, "*.fasta")))
+
+    # fastaFiles: all the fasta files that should be there
+    # (i.e. correspond to the input files)
+    fasta_files = set()
+    for name in base_names:
+        fasta_files.add(os.path.join(run.directories.bgc_fasta, name+".fasta"))
+
+    # fastaBases: the actual fasta files we have that correspond to the input
+    fasta_bases = all_fasta_files.intersection(fasta_files)
+
+    # Verify that all input files had their fasta sequences extracted
+    if len(fasta_files - fasta_bases) > 0:
+        print("Error! The following files did NOT have their fasta sequences extracted: ")
+        unextracted_files = fasta_files - fasta_bases
+        for unextracted_file in unextracted_files:
+            print(unextracted_file)
+        sys.exit()
+    
+    return all_fasta_files
+
+
+def parseHmmScan(hmmscanResults, pfd_folder, pfs_folder, overlapCutoff, verbose, genbankDict, clusters, baseNames, mibig_set):
+    sampleDict = {} # {sampleName:set(bgc1,bgc2,...)}
+    gbk_files = [] # raw list of gbk file locations
+    for (cluster, (path, clusterSample)) in genbankDict.items():
+        gbk_files.append(path)
+        for sample in clusterSample:
+            clustersInSample = sampleDict.get(sample, set())
+            clustersInSample.add(cluster)
+            sampleDict[sample] = clustersInSample
+
     outputbase = ".".join(hmmscanResults.split(os.sep)[-1].split(".")[:-1])
     # try to read the domtable file to find out if this gbk has domains. Domains
     # need to be parsed into fastas anyway.
