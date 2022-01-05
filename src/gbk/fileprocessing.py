@@ -7,8 +7,8 @@ from src.big_scape.run.base import Run
 
 from src.bgctools import sort_bgc, BgcData
 
-def import_genbank_files(run, bgc_info, gen_bank_dict):
-    get_gbk_files(run.directories.input, run, bgc_info, gen_bank_dict, BgcData)
+def import_genbank_gbk(run, bgc_info, gen_bank_dict):
+    get_gbk_files(run.directories.input, run, bgc_info, gen_bank_dict)
 
 def import_query_gbk(run, bgc_info, gen_bank_dict):
     query_bgc = ".".join(run.options.query_bgc.split(os.sep)[-1].split(".")[:-1])
@@ -16,7 +16,7 @@ def import_query_gbk(run, bgc_info, gen_bank_dict):
         print("\nQuery BGC already added")
     else:
         print("\nImporting query BGC file")
-        get_gbk_files(run.options.query_bgc, run, bgc_info, gen_bank_dict, BgcData, True)
+        get_gbk_files(run.options.query_bgc, run, bgc_info, gen_bank_dict, True)
 
     if query_bgc not in gen_bank_dict:
         sys.exit("Error: not able to include Query BGC (check valid classes, BGC size, etc. \
@@ -24,17 +24,12 @@ def import_query_gbk(run, bgc_info, gen_bank_dict):
     return query_bgc
 
 def process_gbk_files(
-        gbk,
-        min_bgc_size,
-        bgc_info,
-        files_no_proteins,
-        files_no_biosynthetic_genes,
-        verbose,
-        bgc_fasta_folder,
-        force_hmmscan,
-        valid_classes,
-        bgc_data,
-        gen_bank_dict,
+        gbk_file_path: str,
+        run: Run,
+        bgc_info: dict,
+        files_no_proteins: list,
+        files_no_biosynthetic_genes: list,
+        gen_bank_dict: dict,
 
 ):
     """ Given a file path to a GenBank file, reads information about the BGC"""
@@ -52,15 +47,15 @@ def process_gbk_files(
     locus_sequences = {}
     locus_coordinates = {}
 
-    file_folder, fname = os.path.split(gbk)
+    file_folder, fname = os.path.split(gbk_file_path)
     cluster_name = fname[:-4]
 
     # See if we need to keep the sequence
     # (Currently) we have to open the file anyway to read all its
     # properties for bgc_info anyway...
-    outputfile = os.path.join(bgc_fasta_folder, cluster_name + '.fasta')
-    if os.path.isfile(outputfile) and os.path.getsize(outputfile) > 0 and not force_hmmscan:
-        if verbose:
+    outputfile = os.path.join(run.directories.bgc_fasta, cluster_name + '.fasta')
+    if os.path.isfile(outputfile) and os.path.getsize(outputfile) > 0 and not run.options.force_hmmscan:
+        if run.options.verbose:
             print(" File {} already processed".format(outputfile))
         save_fasta = False
     else:
@@ -68,9 +63,9 @@ def process_gbk_files(
 
     try:
         # basic file verification. Substitutes check_data_integrity
-        records = list(SeqIO.parse(gbk, "genbank"))
+        records = list(SeqIO.parse(gbk_file_path, "genbank"))
     except ValueError as e:
-        print("   Error with file {}: \n    '{}'".format(gbk, str(e)))
+        print("   Error with file {}: \n    '{}'".format(gbk_file_path, str(e)))
         print("    (This file will be excluded from the analysis)")
         return
     else:
@@ -95,7 +90,7 @@ def process_gbk_files(
                     if "product" in feature.qualifiers:
                         # in antiSMASH 4 there should only be 1 product qualifiers
                         for product in feature.qualifiers["product"]:
-                            for p in product.replace(" ","").split("-"):
+                            for p in product.replace(" ", "").split("-"):
                                 product_list_per_record.append(p)
 
                     if "contig_edge" in feature.qualifiers:
@@ -103,7 +98,7 @@ def process_gbk_files(
                         # in multi-record files. Turn on contig_edge when
                         # there's at least one annotation
                         if feature.qualifiers["contig_edge"][0] == "True":
-                            if verbose:
+                            if run.options.verbose:
                                 print(" Contig edge detected in {}".format(fname))
                             contig_edge = True
 
@@ -118,7 +113,7 @@ def process_gbk_files(
                         # in multi-record files. Turn on contig_edge when
                         # there's at least one annotation
                         if feature.qualifiers["contig_edge"][0] == "True":
-                            if verbose:
+                            if run.options.verbose:
                                 print(" Contig edge detected in {}".format(fname))
                             contig_edge = True
 
@@ -242,7 +237,7 @@ def process_gbk_files(
             # make absolute positions for ORFs in next records
             offset_record_position += record_end + 100
 
-        if bgc_size > min_bgc_size:  # exclude the bgc if it's too small
+        if bgc_size > run.options.min_bgc_size:  # exclude the bgc if it's too small
             # check what we have product-wise
             # In particular, handle different products for multi-record files
             product_set = set(product_list_per_record)
@@ -264,8 +259,8 @@ def process_gbk_files(
             if "nrps" in subproduct and ("pksi" in subproduct or "pksother" in subproduct):
                 subproduct.add("pks-nrp_hybrids")
 
-            if len(valid_classes & subproduct) == 0:
-                if verbose:
+            if len(run.valid_classes & subproduct) == 0:
+                if run.options.verbose:
                     print(" Skipping {} (type: {})".format(cluster_name, product))
                 return False
 
@@ -280,7 +275,7 @@ def process_gbk_files(
             # Perhaps we can try to infer if it's in a contig edge: if
             # - first biosynthetic gene start < 10kb or
             # - max_width - last biosynthetic gene end < 10kb (but this will work only for the largest record)
-            bgc_info[cluster_name] = bgc_data(records[0].id, records[0].description, product, len(records), max_width, bgc_size + (record_count-1)*1000, records[0].annotations["organism"], ",".join(records[0].annotations["taxonomy"]), biosynthetic_genes.copy(), contig_edge)
+            bgc_info[cluster_name] = BgcData(records[0].id, records[0].description, product, len(records), max_width, bgc_size + (record_count-1)*1000, records[0].annotations["organism"], ",".join(records[0].annotations["taxonomy"]), biosynthetic_genes.copy(), contig_edge)
 
             if len(bgc_info[cluster_name].biosynthetic_genes) == 0:
                 files_no_biosynthetic_genes.append(cluster_name+".gbk")
@@ -295,7 +290,7 @@ def process_gbk_files(
                 # See if we need to write down the sequence
                 if total_seq_length > 0:
                     # location of first instance of the file is genbankDict[clustername][0]
-                    gen_bank_dict.setdefault(cluster_name, [gbk, set([file_folder])])
+                    gen_bank_dict.setdefault(cluster_name, [gbk_file_path, set([file_folder])])
 
                     if save_fasta:
                         # Find overlaps in CDS regions and delete the shortest ones.
@@ -341,7 +336,7 @@ def process_gbk_files(
                                         del_list.add(a)
 
                         for locus in del_list:
-                            if verbose:
+                            if run.options.verbose:
                                 print("   Removing {} because it overlaps with other ORF".format(locus))
                             bgc_locus_tags.remove(locus)
 
@@ -353,16 +348,16 @@ def process_gbk_files(
                 else:
                     files_no_proteins.append(fname)
 
-            if verbose:
+            if run.options.verbose:
                 print("  Adding {} ({} bps)".format(fname, str(bgc_size)))
 
         else:
-            print(" Discarding {} (size less than {} bp, was {})".format(cluster_name, str(min_bgc_size), str(bgc_size)))
+            print(" Discarding {} (size less than {} bp, was {})".format(cluster_name, str(run.min_bgc_size), str(bgc_size)))
 
     return adding_sequence
 
 
-def get_gbk_files(gbk_path, run: Run, bgc_info, gen_bank_dict, bgc_data, include_all=False):
+def get_gbk_files(gbk_path: str, run: Run, bgc_info, gen_bank_dict, include_all=False):
     """Searches given directory for genbank files recursively, will assume that
     the genbank files that have the same name are the same genbank file.
     Returns a dictionary that contains the names of the clusters found as keys
@@ -414,7 +409,7 @@ def get_gbk_files(gbk_path, run: Run, bgc_info, gen_bank_dict, bgc_data, include
             sys.exit("\nError: Input GenBank files should not have spaces in their path as hmmscan cannot process them properly ('too many arguments').")
 
         file_counter += 1
-        if process_gbk_files(filepath, run.options.min_bgc_size, bgc_info, files_no_proteins, files_no_biosynthetic_genes, run.options.verbose, run.directories.bgc_fasta, run.options.force_hmmscan, run.valid_classes, bgc_data, gen_bank_dict):
+        if process_gbk_files(filepath, run, bgc_info, files_no_proteins, files_no_biosynthetic_genes, gen_bank_dict):
             processed_sequences += 1
 
     if len(files_no_proteins) > 0:

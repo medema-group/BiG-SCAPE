@@ -93,12 +93,20 @@ if __name__ == "__main__":
 
     mibig.extract_mibig(RUN)
 
-    # TODO: GEN_BANK_DICT is passed into functions to be added to.
-    # this is very opaque. change into object to be added to
-    MIBIG_SET, BGC_INFO, GEN_BANK_DICT = mibig.import_mibig(RUN)
+    # there are three steps where BiG-SCAPE will import GBK files:
+    # 1. mibig
+    # 2. genbank
+    # 3. query BGC
+    # but all of them end up calling get_gbk_files, which add onto two dicts:
+    # BGC_INFO and GEN_BANK_DICT
+    # TODO: generalize into object
+    BGC_INFO = {}
+    GEN_BANK_DICT = {}
+
+    MIBIG_SET = mibig.import_mibig_gbk(RUN, BGC_INFO, GEN_BANK_DICT)
 
     print("\nImporting GenBank files")
-    gbk.fileprocessing.import_genbank_files(RUN, BGC_INFO, GEN_BANK_DICT)
+    gbk.fileprocessing.import_genbank_gbk(RUN, BGC_INFO, GEN_BANK_DICT)
 
     if RUN.directories.has_query_bgc:
         print("\nImporting query BGC files")
