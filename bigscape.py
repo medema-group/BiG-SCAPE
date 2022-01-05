@@ -210,56 +210,19 @@ if __name__ == "__main__":
     hmm.check_pfd_files(RUN, CLUSTER_BASE_NAMES)
 
     # BGCs --
-    # dictionary of this structure:
-    # BGCs = {'cluster_name_x': { 'general_domain_name_x' : ['specific_domain_name_1',
-    #  'specific_domain_name_2'] } }
-    # - cluster_name_x: cluster name (can be anything)
-    # - general_domain_name_x: PFAM ID, for example 'PF00550'
-    # - specific_domain_name_x: ID of a specific domain that will allow to you to map it to names
-    # in DMS unequivocally. e.g. 'PF00550_start_end', where start and end are genomic positions
-    BGCS = {} #will contain the BGCs
+    BGCS = big_scape.BGCS() #will contain the BGCs
 
-    FILTERED_MATRIX = []
     if RUN.options.skip_ma:
         print(" Running with skip_ma parameter: Assuming that the domains folder has all the \
             fasta files")
-        try:
-            with open(os.path.join(RUN.directories.cache, "BGCs.dict"), "r") as BGC_file:
-                BGCS = pickle.load(BGC_file)
-                BGC_file.close()
-        except IOError:
-            sys.exit("BGCs file not found...")
+        BGCS.load_from_file(RUN)
     else:
         print(" Adding sequences to corresponding domains file")
+        BGCS.load_pfds(RUN, CLUSTER_BASE_NAMES, TRY_RESUME_MULTIPLE_ALIGNMENT)
 
-        for outputbase in CLUSTER_BASE_NAMES:
-            if RUN.options.verbose:
-                print("   Processing: " + outputbase)
+        BGCS.save_to_file(RUN)
 
-            pfdFile = os.path.join(RUN.directories.pfd, outputbase + ".pfd")
-            FILTERED_MATRIX = [[part.strip() for part in l.split('\t')] for l in open(pfdFile)]
-
-            # save each domain sequence from a single BGC in its corresponding file
-            fasta_file = os.path.join(RUN.directories.bgc_fasta, outputbase + ".fasta")
-
-            # only create domain fasta if the pfd content is different from original and
-            #  domains folder has been emptied. Else, if trying to resume alignment phase,
-            #  domain fasta files will contain duplicate sequence labels
-            if not TRY_RESUME_MULTIPLE_ALIGNMENT:
-                with open(fasta_file, "r") as fasta_file_handle:
-                    # all fasta info from a BGC
-                    fasta_dict = utility.fasta_parser(fasta_file_handle)
-                utility.save_domain_seqs(FILTERED_MATRIX, fasta_dict,
-                                         RUN.directories.domains, outputbase)
-
-            BGCS[outputbase] = bgctools.bgc_dict_gen(FILTERED_MATRIX)
-
-            del FILTERED_MATRIX[:]
-
-        # store processed BGCs dictionary for future re-runs
-        with open(os.path.join(RUN.directories.cache, "BGCs.dict"), "wb") as BGC_file:
-            pickle.dump(BGCS, BGC_file)
-            BGC_file.close()
+        
 
     # if it's a re-run, the pfd/pfs files were not changed, so the skip_ma flag
     # is activated. We have to open the pfd files to get the gene labels for
@@ -568,7 +531,7 @@ if __name__ == "__main__":
                                                         GENE_DOMAIN_COUNT,
                                                         COREBIOSYNTHETIC_POS, BGC_GENE_ORIENTATION,
                                                         RUN.distance.bgc_class_weight,
-                                                        RUN.network.anchor_domains, BGCS,
+                                                        RUN.network.anchor_domains, BGCS.bgc_dict,
                                                         RUN.options.mode, BGC_INFO,
                                                         ALIGNED_DOMAIN_SEQS, RUN.options.verbose,
                                                         RUN.directories.domains)
@@ -604,7 +567,7 @@ if __name__ == "__main__":
             CLUSTER_PAIRS = [(x, y, -1) for (x, y) in PAIRS]
             PAIRS.clear()
             NETWORK_MATRIX_NEW_SET = big_scape.generate_network(CLUSTER_PAIRS, RUN.options.cores, CLUSTER_NAMES, RUN.distance.bgc_class_names, DOMAIN_LIST, RUN.directories.output, GENE_DOMAIN_COUNT,
-            COREBIOSYNTHETIC_POS, BGC_GENE_ORIENTATION, RUN.distance.bgc_class_weight, RUN.network.anchor_domains, BGCS, RUN.options.mode, BGC_INFO,
+            COREBIOSYNTHETIC_POS, BGC_GENE_ORIENTATION, RUN.distance.bgc_class_weight, RUN.network.anchor_domains, BGCS.bgc_dict, RUN.options.mode, BGC_INFO,
             ALIGNED_DOMAIN_SEQS, RUN.options.verbose, RUN.directories.domains)
             del CLUSTER_PAIRS[:]
 
@@ -692,7 +655,7 @@ if __name__ == "__main__":
         del NETWORK_MATRIX_MIX[:]
         FAMILY_DATA = big_scape.clusterJsonBatch(MIX_SET, PATH_BASE, "mix", REDUCED_NETWORK, POS_ALIGNMENTS,
             CLUSTER_NAMES, BGC_INFO, MIBIG_SET, RUN.directories.pfd, RUN.directories.bgc_fasta,
-            DOMAIN_LIST, BGCS, ALIGNED_DOMAIN_SEQS, GENE_DOMAIN_COUNT, BGC_GENE_ORIENTATION,
+            DOMAIN_LIST, BGCS.bgc_dict, ALIGNED_DOMAIN_SEQS, GENE_DOMAIN_COUNT, BGC_GENE_ORIENTATION,
             cutoffs=RUN.cluster.cutoff_list, clusterClans=RUN.options.clans,
             clanCutoff=RUN.options.clan_cutoff, htmlFolder=NETWORK_HTML_FOLDER)
         for network_html_folder_cutoff in FAMILY_DATA:
@@ -793,7 +756,7 @@ if __name__ == "__main__":
             CLUSTER_PAIRS = [(x, y, BGC_CLASS_NAME_2_INDEX[bgc_class]) for (x, y) in PAIRS]
             PAIRS.clear()
             network_matrix = big_scape.generate_network(CLUSTER_PAIRS, RUN.options.cores, CLUSTER_NAMES, RUN.distance.bgc_class_names, DOMAIN_LIST, RUN.directories.output, GENE_DOMAIN_COUNT,
-            COREBIOSYNTHETIC_POS, BGC_GENE_ORIENTATION, RUN.distance.bgc_class_weight, RUN.network.anchor_domains, BGCS, RUN.options.mode, BGC_INFO,
+            COREBIOSYNTHETIC_POS, BGC_GENE_ORIENTATION, RUN.distance.bgc_class_weight, RUN.network.anchor_domains, BGCS.bgc_dict, RUN.options.mode, BGC_INFO,
             ALIGNED_DOMAIN_SEQS, RUN.options.verbose, RUN.directories.domains)
             #pickle.dump(network_matrix,open("others.ntwrk",'wb'))
             del CLUSTER_PAIRS[:]
@@ -829,7 +792,7 @@ if __name__ == "__main__":
                 CLUSTER_PAIRS = [(x, y, BGC_CLASS_NAME_2_INDEX[bgc_class]) for (x, y) in PAIRS]
                 PAIRS.clear()
                 NETWORK_MATRIX_NEW_SET = big_scape.generate_network(CLUSTER_PAIRS, RUN.options.cores, CLUSTER_NAMES, RUN.distance.bgc_class_names, DOMAIN_LIST, RUN.directories.output, GENE_DOMAIN_COUNT,
-                COREBIOSYNTHETIC_POS, BGC_GENE_ORIENTATION, RUN.distance.bgc_class_weight, RUN.network.anchor_domains, BGCS, RUN.options.mode, BGC_INFO,
+                COREBIOSYNTHETIC_POS, BGC_GENE_ORIENTATION, RUN.distance.bgc_class_weight, RUN.network.anchor_domains, BGCS.bgc_dict, RUN.options.mode, BGC_INFO,
                 ALIGNED_DOMAIN_SEQS, RUN.options.verbose, RUN.directories.domains)
                 del CLUSTER_PAIRS[:]
 
@@ -918,7 +881,7 @@ if __name__ == "__main__":
             FAMILY_DATA = big_scape.clusterJsonBatch(RUN.distance.bgc_classes[bgc_class], PATH_BASE, bgc_class,
                 REDUCED_NETWORK, POS_ALIGNMENTS, CLUSTER_NAMES, BGC_INFO,
                 MIBIG_SET, RUN.directories.pfd, RUN.directories.bgc_fasta, DOMAIN_LIST,
-                BGCS, ALIGNED_DOMAIN_SEQS, GENE_DOMAIN_COUNT, BGC_GENE_ORIENTATION,
+                BGCS.bgc_dict, ALIGNED_DOMAIN_SEQS, GENE_DOMAIN_COUNT, BGC_GENE_ORIENTATION,
                 cutoffs=RUN.cluster.cutoff_list, clusterClans=RUN.options.clans, clanCutoff=RUN.options.clan_cutoff,
                 htmlFolder=NETWORK_HTML_FOLDER)
             for network_html_folder_cutoff in FAMILY_DATA:
