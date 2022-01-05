@@ -156,8 +156,6 @@ if __name__ == "__main__":
         # find unprocessed files
         UNPROCESSED_FASTA_FILES = hmm.find_unprocessed_files(RUN, FASTA_FILES)
 
-    print(len(UNPROCESSED_FASTA_FILES))
-
     if len(UNPROCESSED_FASTA_FILES) > 0:
         hmm.run_hmmscan_multi_threaded(RUN, UNPROCESSED_FASTA_FILES)
         print(" Finished generating domtable files.")
