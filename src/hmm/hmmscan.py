@@ -7,15 +7,15 @@ from src.hmm.io import domtable_parser
 from src.pfam.io import write_pfd
 from src.pfam.misc import check_overlap
 
-def run_hmmscan_multi_threaded(RUN, TASK_SET):
+def run_hmmscan_async(RUN, TASK_SET):
     POOL = multiprocessing.Pool(RUN.options.cores, maxtasksperchild=1)
     for fastaFile in TASK_SET:
         task_args = (fastaFile, RUN.directories.pfam, RUN.directories.domtable, RUN.options.verbose)
-        POOL.apply_async(runHmmScan, args=task_args)
+        POOL.apply_async(run_hmmscan, args=task_args)
     POOL.close()
     POOL.join()
 
-def runHmmScan(fastaPath, hmmPath, outputdir, verbose):
+def run_hmmscan(fastaPath, hmmPath, outputdir, verbose):
     """ Runs hmmscan command on a fasta file with a single core to generate a
     domtable file"""
     hmmFile = os.path.join(hmmPath,"Pfam-A.hmm")
@@ -31,8 +31,21 @@ def runHmmScan(fastaPath, hmmPath, outputdir, verbose):
     else:
         sys.exit("Error running hmmscan: Fasta file " + fastaPath + " doesn't exist")
 
+def parse_hmmscan_async():
+    # copied from bigscape.py, unused
+    # TODO: evaluate if still needed, reimplement?
+    # If using the multiprocessing version and outputbase doesn't have any
+    #  predicted domains, it's not as easy to remove if from the analysis
+    #  (probably because parseHmmScan only has a copy of clusters et al?)
+    # Using serialized version for now. Probably doesn't have too bad an impact
+    #pool = Pool(cores,maxtasksperchild=32)
+        #task_args = (domtableFile,output_folder,options.domain_overlap_cutoff)
+        #pool.apply_async(parseHmmScan, args = task_args)
+    #pool.close()
+    #pool.join()
+    return
 
-def parseHmmScan(hmmscanResults, pfd_folder, pfs_folder, overlapCutoff, verbose, genbankDict, clusters, baseNames, mibig_set):
+def parse_hmmscan(hmmscanResults, pfd_folder, pfs_folder, overlapCutoff, verbose, genbankDict, clusters, baseNames, mibig_set):
     sampleDict = {} # {sampleName:set(bgc1,bgc2,...)}
     gbk_files = [] # raw list of gbk file locations
     for (cluster, (path, clusterSample)) in genbankDict.items():

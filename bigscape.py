@@ -158,7 +158,7 @@ if __name__ == "__main__":
     # if any are there, run hmmscan
     if len(FASTA_FILES_TO_PROCESS) > 0:
         # this function blocks the main thread until finished
-        hmm.run_hmmscan_multi_threaded(RUN, FASTA_FILES_TO_PROCESS)
+        hmm.run_hmmscan_async(RUN, FASTA_FILES_TO_PROCESS)
         print(" Finished generating domtable files.")
     else:
         print(" All files were processed by hmmscan. Skipping step...")
@@ -169,7 +169,7 @@ if __name__ == "__main__":
     # All available domtable files
     CACHED_DOMTABLE_FILES = hmm.get_cached_domtable_files(RUN)
 
-    
+
     # verify that domtable files were generated successfully. each cluster should have a domtable
     # file.
     hmm.check_domtable_files(RUN, CLUSTER_BASE_NAMES, CACHED_DOMTABLE_FILES)
@@ -178,19 +178,10 @@ if __name__ == "__main__":
     # this will just return all domtable files if force_hmmscan is set
     DOMTABLE_FILES_TO_PROCESS = hmm.get_domtable_files_to_process(RUN, CACHED_DOMTABLE_FILES)
 
-    # If using the multiprocessing version and outputbase doesn't have any
-    #  predicted domains, it's not as easy to remove if from the analysis
-    #  (probably because parseHmmScan only has a copy of clusters et al?)
-    # Using serialized version for now. Probably doesn't have too bad an impact
-    #pool = Pool(cores,maxtasksperchild=32)
     for domtableFile in DOMTABLE_FILES_TO_PROCESS:
-        hmm.parseHmmScan(domtableFile, RUN.directories.pfd, RUN.directories.pfs,
+        hmm.parse_hmmscan(domtableFile, RUN.directories.pfd, RUN.directories.pfs,
                          RUN.options.domain_overlap_cutoff, RUN.options.verbose, GEN_BANK_DICT,
                          CLUSTERS, CLUSTER_BASE_NAMES, MIBIG_SET)
-        #task_args = (domtableFile,output_folder,options.domain_overlap_cutoff)
-        #pool.apply_async(parseHmmScan, args = task_args)
-    #pool.close()
-    #pool.join()
 
     # If number of pfd files did not change, no new sequences were added to the
     #  domain fastas and we could try to resume the multiple alignment phase
@@ -236,7 +227,7 @@ if __name__ == "__main__":
             print(unprocessed_domtable_file)
         sys.exit()
 
-    
+
     # BGCs --
     # dictionary of this structure:
     # BGCs = {'cluster_name_x': { 'general_domain_name_x' : ['specific_domain_name_1',
