@@ -42,7 +42,6 @@ from itertools import product as combinations_product
 from collections import defaultdict
 from multiprocessing import Pool
 
-from array import array
 import json
 import shutil
 from distutils import dir_util
@@ -124,19 +123,6 @@ if __name__ == "__main__":
 
     ALIGNED_DOMAIN_SEQS = {} # Key: specific domain sequence label. Item: aligned sequence
     DOMAIN_LIST = {} # Key: BGC. Item: ordered list of domains
-
-    # Key: BGC. Item: ordered list of simple integers with the number of domains
-    # in each gene
-    # Instead of `DomainCountGene = defaultdict(list)`, let's try arrays of
-    # unsigned ints
-    GENE_DOMAIN_COUNT = {}
-    # list of gene-numbers that have a hit in the anchor domain list. Zero based
-    COREBIOSYNTHETIC_POS = {}
-    # list of +/- orientation
-    BGC_GENE_ORIENTATION = {}
-
-    # to avoid multiple alignment if there's only 1 seq. representing a particular domain
-    SEQS_PER_DOMAIN = {}
 
 
     ### Step 2: Run hmmscan
@@ -222,54 +208,24 @@ if __name__ == "__main__":
 
         BGCS.save_to_file(RUN)
 
-        
 
+    # Key: BGC. Item: ordered list of simple integers with the number of domains
+    # in each gene
+    # Instead of `DomainCountGene = defaultdict(list)`, let's try arrays of
+    # unsigned ints
+    GENE_DOMAIN_COUNT = {}
+    # list of gene-numbers that have a hit in the anchor domain list. Zero based
+    COREBIOSYNTHETIC_POS = {}
+    # list of +/- orientation
+    BGC_GENE_ORIENTATION = {}
+
+
+    # TODO: remove this comment? not sure what it relates to
     # if it's a re-run, the pfd/pfs files were not changed, so the skip_ma flag
     # is activated. We have to open the pfd files to get the gene labels for
     # each domain
     # We now always have to have this data so the alignments are produced
-    PFD_DICT_DOMAINS = defaultdict(int)
-    ORF_KEYS = {}
-    for outputbase in CLUSTER_BASE_NAMES:
-        GENE_DOMAIN_COUNT[outputbase] = array('B')
-        COREBIOSYNTHETIC_POS[outputbase] = array('H')
-        BGC_GENE_ORIENTATION[outputbase] = array('b')
-        pfdFile = os.path.join(RUN.directories.pfd, outputbase + ".pfd")
-
-        #pfd_dict_domains contains the number of domains annotated in the
-        # pfd file for each orf tag
-        with open(pfdFile, "r") as pfdf:
-            for line in pfdf:
-                PFD_DICT_DOMAINS[line.strip().split("\t")[-1]] += 1
-
-        # extract the orf number from the tag and use it to traverse the BGC
-        for orf in PFD_DICT_DOMAINS.keys():
-            orf_num = int(orf.split(":")[0].split("_ORF")[1])
-            ORF_KEYS[orf_num] = orf
-
-        orf_num = 0
-        for orf_key in sorted(ORF_KEYS.keys()):
-            orf = ORF_KEYS[orf_key]
-            if orf[-1] == "+":
-                BGC_GENE_ORIENTATION[outputbase].append(1)
-            else:
-                BGC_GENE_ORIENTATION[outputbase].append(-1)
-
-            GENE_DOMAIN_COUNT[outputbase].append(PFD_DICT_DOMAINS[orf])
-
-            if orf in BGC_INFO[outputbase].biosynthetic_genes:
-                COREBIOSYNTHETIC_POS[outputbase].append(orf_num)
-            orf_num += 1
-
-        PFD_DICT_DOMAINS.clear()
-        ORF_KEYS.clear()
-
-        ## TODO: if len(corebiosynthetic_position[outputbase]) == 0
-        ## do something with the list of pfam ids. Specifically, mark
-        ## (in this case TODO or always?) as biosynthetic genes, the ones that contain
-        ## domains from a special list. This list of special domains
-        ## comes from predicted domains within the CDSs marked as 'sec_met'
-        ## by antismash
+    big_scape.parse_pfd(RUN, CLUSTER_BASE_NAMES, GENE_DOMAIN_COUNT, COREBIOSYNTHETIC_POS, BGC_GENE_ORIENTATION, BGC_INFO)
 
 
     # Get the ordered list of domains
