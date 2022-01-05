@@ -244,42 +244,11 @@ if __name__ == "__main__":
     # read hmm file. We'll need that info anyway for final visualization
     print("  Parsing hmm file for domain information")
     PFAM_INFO = pfam.parse_pfam_a(RUN)
-
     print("    Done")
 
     # verify if there are figures already generated
 
-    # All available SVG files
-    AVAILABLE_SVG = set()
-    for svg in glob(os.path.join(RUN.directories.svg, "*.svg")):
-        (root, ext) = os.path.splitext(svg)
-        AVAILABLE_SVG.add(root.split(os.sep)[-1])
-
-    # Which files actually need to be generated
-    WORKING_SET = CLUSTER_BASE_NAMES - AVAILABLE_SVG
-
-    if len(WORKING_SET) > 0:
-        COLOR_GENES = {}
-        COLOR_DOMAINS = utility.read_color_domains_file()
-        PFAM_DOMAIN_CATEGORIES = {}
-
-        #This must be done serially, because if a color for a gene/domain
-        # is not found, the text files with colors need to be updated
-        print("  Reading BGC information and writing SVG")
-        for bgc in WORKING_SET:
-            with open(GEN_BANK_DICT[bgc][0], "r") as handle:
-                utility.SVG(False, os.path.join(RUN.directories.svg, bgc+".svg"), handle, bgc,
-                            os.path.join(RUN.directories.pfd, bgc+".pfd"), True, COLOR_GENES,
-                            COLOR_DOMAINS, PFAM_DOMAIN_CATEGORIES, PFAM_INFO,
-                            BGC_INFO[bgc].records, BGC_INFO[bgc].max_width)
-
-        COLOR_GENES.clear()
-        COLOR_DOMAINS.clear()
-        PFAM_DOMAIN_CATEGORIES.clear()
-    elif len(WORKING_SET) == 0:
-        print("  All SVG from the input files seem to be in the SVG folder")
-
-    AVAILABLE_SVG.clear()
+    big_scape.generate_images(RUN, CLUSTER_BASE_NAMES, GEN_BANK_DICT, PFAM_INFO, BGC_INFO)
     print(" Finished creating figures")
 
 
