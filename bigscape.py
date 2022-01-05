@@ -186,10 +186,10 @@ if __name__ == "__main__":
     # If number of pfd files did not change, no new sequences were added to the
     #  domain fastas and we could try to resume the multiple alignment phase
     # baseNames have been pruned of BGCs with no domains that might've been added temporarily
-    TRY_MA_RESUME = False
+    TRY_RESUME_MULTIPLE_ALIGNMENT = False
     ALREADY_DONE = hmm.get_processed_domtable_files(RUN, CACHED_DOMTABLE_FILES)
     if len(CLUSTER_BASE_NAMES - set(pfd.split(os.sep)[-1][:-9] for pfd in ALREADY_DONE)) == 0:
-        TRY_MA_RESUME = True
+        TRY_RESUME_MULTIPLE_ALIGNMENT = True
     else:
         # new sequences will be added to the domain fasta files. Clean domains folder
         # We could try to make it so it's not necessary to re-calculate every alignment,
@@ -206,27 +206,8 @@ if __name__ == "__main__":
     ### sample objects
     print("\nProcessing domains sequence files")
 
-    # All available pfd files
-    ALL_PFD_FILES = set(glob(os.path.join(RUN.directories.pfd, "*.pfd")))
-
-    # pfdFiles: all pfd files corresponding to the input files
-    # (some input files could've been removed due to not having predicted domains)
-    PFD_FILES = set()
-    for name in CLUSTER_BASE_NAMES:
-        PFD_FILES.add(os.path.join(RUN.directories.pfd, name+".pfd"))
-
-    # pfdBases: the actual set of input files that have pfd files
-    PFD_BASES = ALL_PFD_FILES.intersection(PFD_FILES)
-
-    # verify previous step.
-    # All BGCs without predicted domains should no longer be in baseNames
-    if len(PFD_FILES - PFD_BASES) > 0:
-        print("Error! The following files did NOT have their domtable files processed:")
-        UNPROCESSED_DOMTABLE_FILES = PFD_FILES - PFD_BASES
-        for unprocessed_domtable_file in UNPROCESSED_DOMTABLE_FILES:
-            print(unprocessed_domtable_file)
-        sys.exit()
-
+    # do one more check of pfd files to see if they are all there
+    hmm.check_pfd_files(RUN, CLUSTER_BASE_NAMES)
 
     # BGCs --
     # dictionary of this structure:
@@ -264,7 +245,7 @@ if __name__ == "__main__":
             # only create domain fasta if the pfd content is different from original and
             #  domains folder has been emptied. Else, if trying to resume alignment phase,
             #  domain fasta files will contain duplicate sequence labels
-            if not TRY_MA_RESUME:
+            if not TRY_RESUME_MULTIPLE_ALIGNMENT:
                 with open(fasta_file, "r") as fasta_file_handle:
                     # all fasta info from a BGC
                     fasta_dict = utility.fasta_parser(fasta_file_handle)
@@ -408,7 +389,7 @@ if __name__ == "__main__":
 
         # compare with .algn set of files. Maybe resuming is possible if
         # no new sequences were added
-        if TRY_MA_RESUME:
+        if TRY_RESUME_MULTIPLE_ALIGNMENT:
             TEMP_ALIGNED = set(glob(os.path.join(RUN.directories.domains, "*.algn")))
 
             if len(TEMP_ALIGNED) > 0:

@@ -128,4 +128,30 @@ def log_unprocessed_domtable_files(files_to_process, first_run):
                 print(unprocessed_domtable_file.split(os.sep)[-1].split('.')[:-1][0])
         else:
             print(" Warning: {} domtable files will be processed".format(str(len(files_to_process))))
-    
+
+def get_cached_pfd_files(run):
+    file_path = os.path.join(run.directories.pfd, "*.pfd")
+    pfd_files = glob(file_path)
+    return set(pfd_files)
+
+
+def check_pfd_files(run, cluster_base_names):
+    all_pfd_files = get_cached_pfd_files(run)
+
+    # pfdFiles: all pfd files corresponding to the input files
+    # (some input files could've been removed due to not having predicted domains)
+    pfd_files = set()
+    for name in cluster_base_names:
+        pfd_files.add(os.path.join(run.directories.pfd, name+".pfd"))
+
+    # pfdBases: the actual set of input files that have pfd files
+    pfd_bases = all_pfd_files.intersection(pfd_files)
+
+    # verify previous step.
+    # All BGCs without predicted domains should no longer be in baseNames
+    if len(pfd_files - pfd_bases) > 0:
+        print("Error! The following files did NOT have their domtable files processed:")
+        unprocessed_domtable_files = pfd_files - pfd_bases
+        for unprocessed_domtable_file in unprocessed_domtable_files:
+            print(unprocessed_domtable_file)
+        sys.exit()
