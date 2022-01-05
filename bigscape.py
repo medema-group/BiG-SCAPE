@@ -142,22 +142,23 @@ if __name__ == "__main__":
     ### Step 2: Run hmmscan
     print("\nPredicting domains using hmmscan")
 
-    BASE_NAMES = set(CLUSTERS)
+    CLUSTER_BASE_NAMES = set(CLUSTERS)
 
-    FASTA_FILES = hmm.verify_hmm_fasta(RUN, BASE_NAMES)
+    # get all fasta files in cache directory
+    CACHED_FASTA_FILES = hmm.get_cached_fasta_files(RUN)
 
-    # Make a list of all fasta files that need to be processed
+    # verify that all clusters have a corresponding fasta file in cache
+    hmm.check_fasta_files(RUN, CLUSTER_BASE_NAMES, CACHED_FASTA_FILES)
+
+    # Make a list of all fasta files that need to be processed by hmmscan & BiG-SCAPE
     # (i.e., they don't yet have a corresponding .domtable)
-    if RUN.options.force_hmmscan:
-        # process all files, regardless of whether they already existed
-        UNPROCESSED_FASTA_FILES = FASTA_FILES
-        print(" Forcing domain prediction on ALL fasta files (--force_hmmscan)")
-    else:
-        # find unprocessed files
-        UNPROCESSED_FASTA_FILES = hmm.find_unprocessed_files(RUN, FASTA_FILES)
+    # includes all fasta files if force_hmmscan is set
+    FASTA_FILES_TO_PROCESS = hmm.get_fasta_files_to_process(RUN, CACHED_FASTA_FILES)
 
-    if len(UNPROCESSED_FASTA_FILES) > 0:
-        hmm.run_hmmscan_multi_threaded(RUN, UNPROCESSED_FASTA_FILES)
+    # if any are there, run hmmscan
+    if len(FASTA_FILES_TO_PROCESS) > 0:
+        # this function blocks the main thread until finished
+        hmm.run_hmmscan_multi_threaded(RUN, FASTA_FILES_TO_PROCESS)
         print(" Finished generating domtable files.")
     else:
         print(" All files were processed by hmmscan. Skipping step...")
@@ -166,54 +167,26 @@ if __name__ == "__main__":
     print("\nParsing hmmscan domtable files")
 
     # All available domtable files
-    ALL_DOMTABLE_FILES = set(glob(os.path.join(RUN.directories.domtable, "*.domtable")))
+    CACHED_DOMTABLE_FILES = hmm.get_domtable_files(RUN)
 
-    # domtableFiles: all domtable files corresponding to the input files
-    DOMTABLE_FILES = set()
-    for name in BASE_NAMES:
-        DOMTABLE_FILES.add(os.path.join(RUN.directories.domtable, name+".domtable"))
+    
+    # verify that domtable files were generated successfully. each cluster should have a domtable
+    # file.
 
-    # domtableBases: the actual set of input files with coresponding domtable files
-    DOMTABLE_BASES = ALL_DOMTABLE_FILES.intersection(DOMTABLE_FILES)
 
-    # Verify that all input files have a corresponding domtable file
-    if len(DOMTABLE_FILES - DOMTABLE_BASES) > 0:
-        SKIPPED_FILES = DOMTABLE_FILES - DOMTABLE_BASES
-        print("Error! The following files did NOT have their domains predicted: ")
-        for skipped_file in SKIPPED_FILES:
-            print(skipped_file)
-        sys.exit()
-
-    # find already processed files (assuming that if the pfd file exists, the pfs should too)
-    ALREADY_DONE = set()
-    if not RUN.options.force_hmmscan:
-        for domtable in DOMTABLE_FILES:
-            outputbase = ".".join(domtable.split(os.sep)[-1].split(".")[:-1])
-            outputfile = os.path.join(RUN.directories.pfd, outputbase + '.pfd')
-            if os.path.isfile(outputfile) and os.path.getsize(outputfile) > 0:
-                ALREADY_DONE.add(domtable)
-    DOMTABLE_FILES_UNPROCESSED = DOMTABLE_FILES - ALREADY_DONE
-    if len(DOMTABLE_FILES_UNPROCESSED) == 0: # Re-run
-        print(" All domtable files had already been processed")
-    elif len(ALREADY_DONE) > 0: # Incomplete run
-        if len(DOMTABLE_FILES_UNPROCESSED) < 20:
-            print(" Warning! The following domtable files had not been processed:")
-            for unprocessed_domtable_file in DOMTABLE_FILES_UNPROCESSED:
-                print(unprocessed_domtable_file.split(os.sep)[-1].split('.')[:-1][0])
-        else:
-            print(" Warning: {} domtable files will be processed".format(str(len(DOMTABLE_FILES_UNPROCESSED))))
-    else: # First run
-        print(" Processing {} domtable files".format(str(len(DOMTABLE_FILES))))
+    # find unprocessed files (assuming that if the pfd file exists, the pfs should too)
+    # this will just return all domtable files if force_hmmscan is set
+    DOMTABLE_FILES_TO_PROCESS = hmm.get_domtable_files_to_process(RUN, CACHED_DOMTABLE_FILES)
 
     # If using the multiprocessing version and outputbase doesn't have any
     #  predicted domains, it's not as easy to remove if from the analysis
     #  (probably because parseHmmScan only has a copy of clusters et al?)
     # Using serialized version for now. Probably doesn't have too bad an impact
     #pool = Pool(cores,maxtasksperchild=32)
-    for domtableFile in DOMTABLE_FILES - ALREADY_DONE:
+    for domtableFile in DOMTABLE_FILES_TO_PROCESS:
         hmm.parseHmmScan(domtableFile, RUN.directories.pfd, RUN.directories.pfs,
                          RUN.options.domain_overlap_cutoff, RUN.options.verbose, GEN_BANK_DICT,
-                         CLUSTERS, BASE_NAMES, MIBIG_SET)
+                         CLUSTERS, CLUSTER_BASE_NAMES, MIBIG_SET)
         #task_args = (domtableFile,output_folder,options.domain_overlap_cutoff)
         #pool.apply_async(parseHmmScan, args = task_args)
     #pool.close()
@@ -223,7 +196,8 @@ if __name__ == "__main__":
     #  domain fastas and we could try to resume the multiple alignment phase
     # baseNames have been pruned of BGCs with no domains that might've been added temporarily
     TRY_MA_RESUME = False
-    if len(BASE_NAMES - set(pfd.split(os.sep)[-1][:-9] for pfd in ALREADY_DONE)) == 0:
+    ALREADY_DONE = hmm.get_processed_domtable_files(RUN, CACHED_DOMTABLE_FILES)
+    if len(CLUSTER_BASE_NAMES - set(pfd.split(os.sep)[-1][:-9] for pfd in ALREADY_DONE)) == 0:
         TRY_MA_RESUME = True
     else:
         # new sequences will be added to the domain fasta files. Clean domains folder
@@ -247,7 +221,7 @@ if __name__ == "__main__":
     # pfdFiles: all pfd files corresponding to the input files
     # (some input files could've been removed due to not having predicted domains)
     PFD_FILES = set()
-    for name in BASE_NAMES:
+    for name in CLUSTER_BASE_NAMES:
         PFD_FILES.add(os.path.join(RUN.directories.pfd, name+".pfd"))
 
     # pfdBases: the actual set of input files that have pfd files
@@ -269,14 +243,14 @@ if __name__ == "__main__":
     #  'specific_domain_name_2'] } }
     # - cluster_name_x: cluster name (can be anything)
     # - general_domain_name_x: PFAM ID, for example 'PF00550'
-    # - specific_domain_name_x: ID of a specific domain that will allow to you to map it to names in
-    # DMS unequivocally. e.g. 'PF00550_start_end', where start and end are genomic positions
+    # - specific_domain_name_x: ID of a specific domain that will allow to you to map it to names
+    # in DMS unequivocally. e.g. 'PF00550_start_end', where start and end are genomic positions
     BGCS = {} #will contain the BGCs
 
     FILTERED_MATRIX = []
     if RUN.options.skip_ma:
-        print(" Running with skip_ma parameter: Assuming that the domains folder has all the fasta \
-              files")
+        print(" Running with skip_ma parameter: Assuming that the domains folder has all the \
+            fasta files")
         try:
             with open(os.path.join(RUN.directories.cache, "BGCs.dict"), "r") as BGC_file:
                 BGCS = pickle.load(BGC_file)
@@ -286,7 +260,7 @@ if __name__ == "__main__":
     else:
         print(" Adding sequences to corresponding domains file")
 
-        for outputbase in BASE_NAMES:
+        for outputbase in CLUSTER_BASE_NAMES:
             if RUN.options.verbose:
                 print("   Processing: " + outputbase)
 
@@ -301,7 +275,8 @@ if __name__ == "__main__":
             #  domain fasta files will contain duplicate sequence labels
             if not TRY_MA_RESUME:
                 with open(fasta_file, "r") as fasta_file_handle:
-                    fasta_dict = utility.fasta_parser(fasta_file_handle) # all fasta info from a BGC
+                    # all fasta info from a BGC
+                    fasta_dict = utility.fasta_parser(fasta_file_handle)
                 utility.save_domain_seqs(FILTERED_MATRIX, fasta_dict,
                                          RUN.directories.domains, outputbase)
 
@@ -320,7 +295,7 @@ if __name__ == "__main__":
     # We now always have to have this data so the alignments are produced
     PFD_DICT_DOMAINS = defaultdict(int)
     ORF_KEYS = {}
-    for outputbase in BASE_NAMES:
+    for outputbase in CLUSTER_BASE_NAMES:
         GENE_DOMAIN_COUNT[outputbase] = array('B')
         COREBIOSYNTHETIC_POS[outputbase] = array('H')
         BGC_GENE_ORIENTATION[outputbase] = array('b')
@@ -364,7 +339,7 @@ if __name__ == "__main__":
 
     # Get the ordered list of domains
     print(" Reading the ordered list of domains from the pfs files")
-    for outputbase in BASE_NAMES:
+    for outputbase in CLUSTER_BASE_NAMES:
         pfsfile = os.path.join(RUN.directories.pfs, outputbase + ".pfs")
         if os.path.isfile(pfsfile):
             DOMAIN_LIST[outputbase] = pfam.get_domain_list(pfsfile)
@@ -404,7 +379,7 @@ if __name__ == "__main__":
         AVAILABLE_SVG.add(root.split(os.sep)[-1])
 
     # Which files actually need to be generated
-    WORKING_SET = BASE_NAMES - AVAILABLE_SVG
+    WORKING_SET = CLUSTER_BASE_NAMES - AVAILABLE_SVG
 
     if len(WORKING_SET) > 0:
         COLOR_GENES = {}
