@@ -243,22 +243,8 @@ if __name__ == "__main__":
 
     # read hmm file. We'll need that info anyway for final visualization
     print("  Parsing hmm file for domain information")
-    PFAM_INFO = {}
-    with open(os.path.join(RUN.directories.pfam, "Pfam-A.hmm"), "r") as pfam:
-        PUT_IN_DICT = False
-        # assuming that the order of the information never changes
-        for line in pfam:
-            if line[:4] == "NAME":
-                name = line.strip()[6:]
-            if line[:3] == "ACC":
-                acc = line.strip()[6:].split(".")[0]
-            if line[:4] == "DESC":
-                desc = line.strip()[6:]
-                PUT_IN_DICT = True
+    PFAM_INFO = pfam.parse_pfam_a(RUN)
 
-            if PUT_IN_DICT:
-                PUT_IN_DICT = False
-                PFAM_INFO[acc] = (name, desc)
     print("    Done")
 
     # verify if there are figures already generated
