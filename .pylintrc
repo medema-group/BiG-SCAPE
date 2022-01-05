@@ -1,0 +1,5 @@
+[MASTER]
+missing-member-hint=yes
+# 80 lines is so 4:3 monitor ratio
+max-line-length=100
+max-module-lines=300
