@@ -150,3 +150,6 @@ class Run:
         self.run_data["start_time"] = time.strftime("%d/%m/%Y %H:%M:%S", localtime)
         self.run_data["parameters"] = " ".join(sys.argv[1:])
         self.run_data["input"] = {}
+    
+        self.directories.set_run_dependent_dir(self.run_name)
+        self.directories.prepare_run_dependent_dir()

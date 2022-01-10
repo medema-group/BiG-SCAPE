@@ -272,19 +272,16 @@ if __name__ == "__main__":
         except ValueError:
             sys.exit("Error finding the index of Query BGC")
 
-    # create output directory for network files *for this run*
-    NETWORK_FILES_FOLDER = os.path.join(RUN.directories.network, RUN.run_name)
-    utility.create_directory(NETWORK_FILES_FOLDER, "Network Files", False)
 
     # copy html templates
     dir_util.copy_tree(os.path.join(os.path.dirname(os.path.realpath(__file__)), "html_template", "output"), RUN.directories.output)
 
     # make a new run folder in the html output & copy the overview_html
-    NETWORK_HTML_FOLDER = os.path.join(RUN.directories.output, "html_content", "networks", RUN.run_name)
+    
     RUNDATA_NETWORKS_PER_RUN = {}
     HTML_SUBS_PER_RUN = {}
     for cutoff in RUN.cluster.cutoff_list:
-        network_html_folder_cutoff = "{}_c{:.2f}".format(NETWORK_HTML_FOLDER, cutoff)
+        network_html_folder_cutoff = "{}_c{:.2f}".format(RUN.directories.network_html, cutoff)
         utility.create_directory(network_html_folder_cutoff, "Network HTML Files", False)
         shutil.copy(os.path.join(os.path.dirname(os.path.realpath(__file__)), "html_template", "overview_html"), os.path.join(network_html_folder_cutoff, "overview.html"))
         RUNDATA_NETWORKS_PER_RUN[network_html_folder_cutoff] = []
@@ -311,7 +308,7 @@ if __name__ == "__main__":
 
     # This version contains info on all bgcs with valid classes
     print("   Writing the complete Annotations file for the complete set")
-    NETWORK_ANNOTATION_PATH = os.path.join(NETWORK_FILES_FOLDER, "Network_Annotations_Full.tsv")
+    NETWORK_ANNOTATION_PATH = os.path.join(RUN.directories.network, "Network_Annotations_Full.tsv")
     with open(NETWORK_ANNOTATION_PATH, "w") as network_annotation_file:
         network_annotation_file.write("BGC\tAccession ID\tDescription\tProduct Prediction\tBiG-SCAPE class\tOrganism\tTaxonomy\n")
         for bgc in CLUSTER_NAMES:
@@ -354,7 +351,7 @@ if __name__ == "__main__":
         print("\n  {} ({} BGCs)".format("Mix", str(len(MIX_SET))))
 
         # create output directory
-        utility.create_directory(os.path.join(NETWORK_FILES_FOLDER, "mix"), "  Mix", False)
+        utility.create_directory(os.path.join(RUN.directories.network, "mix"), "  Mix", False)
 
         print("  Calculating all pairwise distances")
         if RUN.directories.has_query_bgc:
@@ -424,7 +421,7 @@ if __name__ == "__main__":
             # Create an additional file with the list of all clusters in the class + other info
             # This version of the file only has information on the BGCs connected to Query BGC
             print("   Writing annotation file")
-            NETWORK_ANNOTATION_PATH = os.path.join(NETWORK_FILES_FOLDER, "mix", "Network_Annotations_mix_QueryBGC.tsv")
+            NETWORK_ANNOTATION_PATH = os.path.join(RUN.directories.network, "mix", "Network_Annotations_mix_QueryBGC.tsv")
             with open(NETWORK_ANNOTATION_PATH, "w") as network_annotation_file:
                 network_annotation_file.write("BGC\tAccession ID\tDescription\tProduct Prediction\tBiG-SCAPE class\tOrganism\tTaxonomy\n")
                 for idx in MIX_SET:
@@ -474,7 +471,7 @@ if __name__ == "__main__":
 
 
         print("  Writing output files")
-        PATH_BASE = os.path.join(NETWORK_FILES_FOLDER, "mix")
+        PATH_BASE = os.path.join(RUN.directories.network, "mix")
         FILE_NAMES = []
         for cutoff in RUN.cluster.cutoff_list:
             FILE_NAMES.append(os.path.join(PATH_BASE, "mix_c{:.2f}.network".format(cutoff)))
@@ -498,7 +495,7 @@ if __name__ == "__main__":
             CLUSTER_NAMES, BGC_INFO, MIBIG_SET, RUN.directories.pfd, RUN.directories.bgc_fasta,
             DOMAIN_LIST, BGCS.bgc_dict, ALIGNED_DOMAIN_SEQS, GENE_DOMAIN_COUNT, BGC_GENE_ORIENTATION,
             cutoffs=RUN.cluster.cutoff_list, clusterClans=RUN.options.clans,
-            clanCutoff=RUN.options.clan_cutoff, htmlFolder=NETWORK_HTML_FOLDER)
+            clanCutoff=RUN.options.clan_cutoff, htmlFolder=RUN.directories.network_html)
         for network_html_folder_cutoff in FAMILY_DATA:
             RUNDATA_NETWORKS_PER_RUN[network_html_folder_cutoff].append(FAMILY_DATA[network_html_folder_cutoff])
             HTML_SUBS_PER_RUN[network_html_folder_cutoff].append({"name" : "mix", "css" : "Others", "label" : "Mixed"})
@@ -576,11 +573,11 @@ if __name__ == "__main__":
                     continue
 
             # create output directory
-            utility.create_directory(os.path.join(NETWORK_FILES_FOLDER, bgc_class), "  All - " + bgc_class, False)
+            utility.create_directory(os.path.join(RUN.directories.network, bgc_class), "  All - " + bgc_class, False)
 
             # Create an additional file with the final list of all clusters in the class
             print("   Writing annotation files")
-            NETWORK_ANNOTATION_PATH = os.path.join(NETWORK_FILES_FOLDER, bgc_class, "Network_Annotations_" + bgc_class + ".tsv")
+            NETWORK_ANNOTATION_PATH = os.path.join(RUN.directories.network, bgc_class, "Network_Annotations_" + bgc_class + ".tsv")
             with open(NETWORK_ANNOTATION_PATH, "w") as network_annotation_file:
                 network_annotation_file.write("BGC\tAccession ID\tDescription\tProduct Prediction\tBiG-SCAPE class\tOrganism\tTaxonomy\n")
                 for idx in RUN.distance.bgc_classes[bgc_class]:
@@ -649,7 +646,7 @@ if __name__ == "__main__":
                 # Create an additional file with the list of all clusters in the class + other info
                 # This version of the file only has information on the BGCs connected to Query BGC
                 print("   Writing annotation file (Query BGC)")
-                NETWORK_ANNOTATION_PATH = os.path.join(NETWORK_FILES_FOLDER, bgc_class, "Network_Annotations_" + bgc_class + "_QueryBGC.tsv")
+                NETWORK_ANNOTATION_PATH = os.path.join(RUN.directories.network, bgc_class, "Network_Annotations_" + bgc_class + "_QueryBGC.tsv")
                 with open(NETWORK_ANNOTATION_PATH, "w") as network_annotation_file:
                     network_annotation_file.write("BGC\tAccession ID\tDescription\tProduct Prediction\tBiG-SCAPE class\tOrganism\tTaxonomy\n")
                     for idx in RUN.distance.bgc_classes[bgc_class]:
@@ -698,7 +695,7 @@ if __name__ == "__main__":
                 continue
 
             print("   Writing output files")
-            PATH_BASE = os.path.join(NETWORK_FILES_FOLDER, bgc_class)
+            PATH_BASE = os.path.join(RUN.directories.network, bgc_class)
             FILE_NAMES = []
             for cutoff in RUN.cluster.cutoff_list:
                 FILE_NAMES.append(os.path.join(PATH_BASE, "{}_c{:.2f}.network".format(bgc_class, cutoff)))
@@ -724,7 +721,7 @@ if __name__ == "__main__":
                 MIBIG_SET, RUN.directories.pfd, RUN.directories.bgc_fasta, DOMAIN_LIST,
                 BGCS.bgc_dict, ALIGNED_DOMAIN_SEQS, GENE_DOMAIN_COUNT, BGC_GENE_ORIENTATION,
                 cutoffs=RUN.cluster.cutoff_list, clusterClans=RUN.options.clans, clanCutoff=RUN.options.clan_cutoff,
-                htmlFolder=NETWORK_HTML_FOLDER)
+                htmlFolder=RUN.directories.network_html)
             for network_html_folder_cutoff in FAMILY_DATA:
                 RUNDATA_NETWORKS_PER_RUN[network_html_folder_cutoff].append(FAMILY_DATA[network_html_folder_cutoff])
                 if len(FAMILY_DATA[network_html_folder_cutoff]["families"]) > 0:
@@ -795,7 +792,7 @@ if __name__ == "__main__":
 
     for cutoff in RUN.cluster.cutoff_list:
         # update overview.html
-        html_folder_for_this_cutoff = "{}_c{:.2f}".format(NETWORK_HTML_FOLDER, cutoff)
+        html_folder_for_this_cutoff = "{}_c{:.2f}".format(RUN.directories.network_html, cutoff)
         run_data_for_this_cutoff = RUN.run_data.copy()
         run_data_for_this_cutoff["networks"] = RUNDATA_NETWORKS_PER_RUN[html_folder_for_this_cutoff]
         with open(os.path.join(html_folder_for_this_cutoff, "run_data.js"), "w") as run_data_js:

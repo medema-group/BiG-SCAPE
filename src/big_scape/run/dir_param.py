@@ -28,6 +28,12 @@ class DirParam():
     pfd: str
     domains: str
 
+    # files and directories created per run
+    # for network files
+    network: str
+    # network html
+    network_html: str
+
     def __init__(self, options):
         # input dir
         self.set_input_dir(options)
@@ -42,10 +48,6 @@ class DirParam():
         # svg dir
         self.set_svg_dir()
         self.prepare_svg_dir()
-
-        # network_dir
-        self.set_network_dir()
-        self.prepare_network_dir()
 
         # cache dir
         self.set_cache_dir(options)
@@ -103,14 +105,19 @@ class DirParam():
         # TODO: check if writable
         self.svg = os.path.join(self.output, "SVG")
 
-    def set_network_dir(self):
+    def set_run_dependent_dir(self, run_name):
         """Sets network output directory information on this class
+
+        This is executed after Run.start()
 
         Inputs:
         - options: options object from CMD_parser"""
 
         # TODO: check if writable
-        self.network = os.path.join(self.output, "network_files")
+        network = os.path.join(self.output, "network_files")
+        # create output directory for network files *for this run*
+        self.network = os.path.join(network, run_name)
+        self.network_html = os.path.join(self.output, "html_content", "networks", run_name)
 
     def set_pfam_dir(self, options):
         """Checks if all necessary Pfam files exist in Pfam folder
@@ -167,9 +174,10 @@ class DirParam():
         """Prepares the svg directory by creating new folder"""
         utility.create_directory(self.svg, "SVG", False)
     
-    def prepare_network_dir(self):
+    def prepare_run_dependent_dir(self):
         """Prepares the network directory by creating new folder"""
-        utility.create_directory(self.network, "Networks", False)
+        utility.create_directory(os.path.join(self.output, "network_files"), "Networks", False)
+        utility.create_directory(self.network, "Network Files", False)
 
     def prepare_cache_dir(self):
         """Prepares the cache directory by creating new folders"""
