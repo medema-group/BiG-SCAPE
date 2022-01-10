@@ -86,3 +86,11 @@ def generate_results_per_cutoff_value(run, rundata_networks_per_run, html_subs_p
                                     "bigscape_results.js")
         add_to_bigscape_results_js(RUN_STRING, html_subs_per_run[html_folder_for_this_cutoff],
                                       RESULTS_PATH)
+
+def write_network_annotation_file(run, cluster_names, bgc_info):
+    network_annotation_path = os.path.join(run.directories.network, "Network_Annotations_Full.tsv")
+    with open(network_annotation_path, "w") as network_annotation_file:
+        network_annotation_file.write("BGC\tAccession ID\tDescription\tProduct Prediction\tBiG-SCAPE class\tOrganism\tTaxonomy\n")
+        for bgc in cluster_names:
+            product = bgc_info[bgc].product
+            network_annotation_file.write("\t".join([bgc, bgc_info[bgc].accession_id, bgc_info[bgc].description, product, sort_bgc(product), bgc_info[bgc].organism, bgc_info[bgc].taxonomy]) + "\n")

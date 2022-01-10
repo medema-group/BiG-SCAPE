@@ -34,24 +34,16 @@ from __future__ import division
 
 
 import os
-import sys
 import time
-from glob import glob
-from itertools import combinations
-from itertools import product as combinations_product
-from multiprocessing import Pool
 
-import json
 import shutil
 from distutils import dir_util
-import networkx as nx
 
 # refactored imports
 from src import bgctools
 from src import big_scape
 from src import gbk
 from src import hmm
-from src import js
 from src import mibig
 from src import pfam
 from src import utility
@@ -86,6 +78,7 @@ if __name__ == "__main__":
     # preparation is done. run timing formally starts here
     RUN.start()
 
+
     ### Step 1: Get all the input files. Write extract sequence and write fasta if necessary
     print("\n\n   - - Processing input files - -")
 
@@ -110,7 +103,6 @@ if __name__ == "__main__":
     if RUN.directories.has_query_bgc:
         print("\nImporting query BGC files")
         QUERY_BGC = gbk.fileprocessing.import_query_gbk(RUN, BGC_INFO, GEN_BANK_DICT)
-
 
     # CLUSTERS and SAMPLE_DICT contain the necessary structure for all-vs-all and sample analysis
     CLUSTERS = list(GEN_BANK_DICT.keys())
@@ -142,12 +134,12 @@ if __name__ == "__main__":
     else:
         print(" All files were processed by hmmscan. Skipping step...")
 
+
     ### Step 3: Parse hmmscan domtable results and generate pfs and pfd files
     print("\nParsing hmmscan domtable files")
 
     # All available domtable files
     CACHED_DOMTABLE_FILES = hmm.get_cached_domtable_files(RUN)
-
 
     # verify that domtable files were generated successfully. each cluster should have a domtable
     # file.
@@ -201,7 +193,6 @@ if __name__ == "__main__":
 
         BGCS.save_to_file(RUN)
 
-
     # Key: BGC. Item: ordered list of simple integers with the number of domains
     # in each gene
     # Instead of `DomainCountGene = defaultdict(list)`, let's try arrays of
@@ -211,7 +202,6 @@ if __name__ == "__main__":
     COREBIOSYNTHETIC_POS = {}
     # list of +/- orientation
     BGC_GENE_ORIENTATION = {}
-
 
     # TODO: remove this comment? not sure what it relates to
     # if it's a re-run, the pfd/pfs files were not changed, so the skip_ma flag
@@ -234,22 +224,17 @@ if __name__ == "__main__":
     big_scape.generate_images(RUN, CLUSTER_BASE_NAMES, GEN_BANK_DICT, PFAM_INFO, BGC_INFO)
     print(" Finished creating figures")
 
-
     print("\n\n   - - Calculating distance matrix - -")
 
     # Do multiple alignments if needed
     if not RUN.options.skip_ma:
         hmm.do_multiple_align(RUN, TRY_RESUME_MULTIPLE_ALIGNMENT)
 
-
     # If there's something to analyze, load the aligned sequences
     print(" Trying to read domain alignments (*.algn files)")
     ALIGNED_DOMAIN_SEQS = hmm.read_aligned_files(RUN)
 
-
     CLUSTER_NAMES = tuple(sorted(CLUSTERS))
-
-
     # copy html templates
     dir_util.copy_tree(os.path.join(os.path.dirname(os.path.realpath(__file__)), "html_template", "output"), RUN.directories.output)
 
@@ -272,12 +257,7 @@ if __name__ == "__main__":
 
     # This version contains info on all bgcs with valid classes
     print("   Writing the complete Annotations file for the complete set")
-    NETWORK_ANNOTATION_PATH = os.path.join(RUN.directories.network, "Network_Annotations_Full.tsv")
-    with open(NETWORK_ANNOTATION_PATH, "w") as network_annotation_file:
-        network_annotation_file.write("BGC\tAccession ID\tDescription\tProduct Prediction\tBiG-SCAPE class\tOrganism\tTaxonomy\n")
-        for bgc in CLUSTER_NAMES:
-            product = BGC_INFO[bgc].product
-            network_annotation_file.write("\t".join([bgc, BGC_INFO[bgc].accession_id, BGC_INFO[bgc].description, product, bgctools.sort_bgc(product), BGC_INFO[bgc].organism, BGC_INFO[bgc].taxonomy]) + "\n")
+    big_scape.write_network_annotation_file(RUN, CLUSTER_NAMES, BGC_INFO)
 
 
     # Find index of all MIBiG BGCs if necessary
@@ -310,14 +290,12 @@ if __name__ == "__main__":
                                         MIBIG_SET_INDICES, MIBIG_SET, RUNDATA_NETWORKS_PER_RUN,
                                         HTML_SUBS_PER_RUN)
 
-
     # fetch genome list for overview.js
     INPUT_CLUSTERS_IDX = []
     big_scape.fetch_genome_list(RUN, INPUT_CLUSTERS_IDX, CLUSTER_NAMES, MIBIG_SET, BGC_INFO, GEN_BANK_DICT)
 
     # update family data (convert global bgc indexes into input-only indexes)
     big_scape.update_family_data(RUNDATA_NETWORKS_PER_RUN, INPUT_CLUSTERS_IDX, CLUSTER_NAMES, MIBIG_SET)
-
 
     # generate overview data
     RUN.end()
