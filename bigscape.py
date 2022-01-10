@@ -328,10 +328,7 @@ if __name__ == "__main__":
 
 
     # generate overview data
-    END_TIME = time.time()
-    DURATION = END_TIME - RUN.start_time
-    RUN.run_data["end_time"] = time.strftime("%d/%m/%Y %H:%M:%S", time.localtime(END_TIME))
-    RUN.run_data["duration"] = "{}h{}m{}s".format((DURATION // 3600), ((DURATION % 3600) // 60), ((DURATION % 3600) % 60))
+    RUN.end()
 
     # generate results per cutoff value
     for cutoff in RUN.cluster.cutoff_list:

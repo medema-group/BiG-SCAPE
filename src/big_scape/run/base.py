@@ -153,3 +153,9 @@ class Run:
     
         self.directories.set_run_dependent_dir(self.run_name)
         self.directories.prepare_run_dependent_dir()
+    
+    def end(self):
+        end_time = time.time()
+        duration = end_time - self.start_time
+        self.run_data["end_time"] = time.strftime("%d/%m/%Y %H:%M:%S", time.localtime(end_time))
+        self.run_data["duration"] = "{}h{}m{}s".format((duration // 3600), ((duration % 3600) // 60), ((duration % 3600) % 60))
