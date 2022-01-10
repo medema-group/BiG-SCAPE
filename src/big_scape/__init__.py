@@ -4,4 +4,4 @@ from .run.base import Run, ClusterParam, DirParam, DistParam, GbkParam, MibigPar
 from .bgcs import BGCS
 from .pfd import parse_pfd
 from .svg import generate_images
-from .util import fetch_genome_list, update_family_data, generate_results_per_cutoff_value
+from .util import get_ordered_domain_list, fetch_genome_list, update_family_data, generate_results_per_cutoff_value

@@ -117,8 +117,6 @@ if __name__ == "__main__":
 
     print("\nTrying threading on {} cores".format(str(RUN.options.cores)))
 
-    DOMAIN_LIST = {} # Key: BGC. Item: ordered list of domains
-
 
     ### Step 2: Run hmmscan
     print("\nPredicting domains using hmmscan")
@@ -223,16 +221,6 @@ if __name__ == "__main__":
     big_scape.parse_pfd(RUN, CLUSTER_BASE_NAMES, GENE_DOMAIN_COUNT, COREBIOSYNTHETIC_POS, BGC_GENE_ORIENTATION, BGC_INFO)
 
 
-    # Get the ordered list of domains
-    print(" Reading the ordered list of domains from the pfs files")
-    for outputbase in CLUSTER_BASE_NAMES:
-        pfsfile = os.path.join(RUN.directories.pfs, outputbase + ".pfs")
-        if os.path.isfile(pfsfile):
-            DOMAIN_LIST[outputbase] = pfam.get_domain_list(pfsfile)
-        else:
-            sys.exit(" Error: could not open " + outputbase + ".pfs")
-
-
     ### Step 5: Create SVG figures
     print(" Creating arrower-like figures for each BGC")
 
@@ -301,6 +289,10 @@ if __name__ == "__main__":
         MIBIG_SET_INDICES = set()
         for bgc in MIBIG_SET:
             MIBIG_SET_INDICES.add(NAME_TO_IDX[bgc])
+
+
+    # Get the ordered list of domains
+    DOMAIN_LIST = big_scape.get_ordered_domain_list(RUN, CLUSTER_BASE_NAMES)
 
     # Making network files mixing all classes
     if RUN.options.mix:
