@@ -39,7 +39,6 @@ import time
 from glob import glob
 from itertools import combinations
 from itertools import product as combinations_product
-from collections import defaultdict
 from multiprocessing import Pool
 
 import json
@@ -107,6 +106,7 @@ if __name__ == "__main__":
     print("\nImporting GenBank files")
     gbk.fileprocessing.import_genbank_gbk(RUN, BGC_INFO, GEN_BANK_DICT)
 
+    QUERY_BGC = ""
     if RUN.directories.has_query_bgc:
         print("\nImporting query BGC files")
         QUERY_BGC = gbk.fileprocessing.import_query_gbk(RUN, BGC_INFO, GEN_BANK_DICT)
@@ -116,10 +116,6 @@ if __name__ == "__main__":
     CLUSTERS = list(GEN_BANK_DICT.keys())
 
     print("\nTrying threading on {} cores".format(str(RUN.options.cores)))
-
-
-    CLASS_NAMES_LEN = len(RUN.distance.bgc_class_names)
-    BGC_CLASS_NAME_2_INDEX = dict(zip(RUN.distance.bgc_class_names, range(CLASS_NAMES_LEN)))
 
     DOMAIN_LIST = {} # Key: BGC. Item: ordered list of domains
 
@@ -265,19 +261,12 @@ if __name__ == "__main__":
 
     CLUSTER_NAMES = tuple(sorted(CLUSTERS))
 
-    # we have to find the idx of query_bgc
-    if RUN.directories.has_query_bgc:
-        try:
-            QUERY_BGC_IDX = CLUSTER_NAMES.index(QUERY_BGC)
-        except ValueError:
-            sys.exit("Error finding the index of Query BGC")
-
 
     # copy html templates
     dir_util.copy_tree(os.path.join(os.path.dirname(os.path.realpath(__file__)), "html_template", "output"), RUN.directories.output)
 
     # make a new run folder in the html output & copy the overview_html
-    
+
     RUNDATA_NETWORKS_PER_RUN = {}
     HTML_SUBS_PER_RUN = {}
     for cutoff in RUN.cluster.cutoff_list:
@@ -315,406 +304,19 @@ if __name__ == "__main__":
 
     # Making network files mixing all classes
     if RUN.options.mix:
-        print("\n Mixing all BGC classes")
-
-        # only choose from valid classes
-        MIX_SET = []
-
-        # create working set with indices of valid clusters
-        for clusterIdx, clusterName in enumerate(CLUSTER_NAMES):
-            if RUN.has_includelist:
-                # extra processing because pfs info includes model version
-                bgc_domain_set = set({x.split(".")[0] for x in DOMAIN_LIST[clusterName]})
-
-                if len(RUN.domain_includelist & bgc_domain_set) == 0:
-                    continue
-
-            product = BGC_INFO[clusterName].product
-            predicted_class = bgctools.sort_bgc(product)
-
-            if predicted_class.lower() in RUN.valid_classes:
-                MIX_SET.append(clusterIdx)
-
-        print("\n  {} ({} BGCs)".format("Mix", str(len(MIX_SET))))
-
-        # create output directory
-        utility.create_directory(os.path.join(RUN.directories.network, "mix"), "  Mix", False)
-
-        print("  Calculating all pairwise distances")
-        if RUN.directories.has_query_bgc:
-            PAIRS = set([tuple(sorted(combo)) for combo in combinations_product([QUERY_BGC_IDX], MIX_SET)])
-        else:
-            # convert into a set of ordered tuples
-            PAIRS = set([tuple(sorted(combo)) for combo in combinations(MIX_SET, 2)])
-
-        CLUSTER_PAIRS = [(x, y, -1) for (x, y) in PAIRS]
-        PAIRS.clear()
-        NETWORK_MATRIX_MIX = big_scape.generate_network(CLUSTER_PAIRS, RUN.options.cores,
-                                                        CLUSTER_NAMES,
-                                                        RUN.distance.bgc_class_names,
-                                                        DOMAIN_LIST, RUN.directories.output,
-                                                        GENE_DOMAIN_COUNT,
-                                                        COREBIOSYNTHETIC_POS, BGC_GENE_ORIENTATION,
-                                                        RUN.distance.bgc_class_weight,
-                                                        RUN.network.anchor_domains, BGCS.bgc_dict,
-                                                        RUN.options.mode, BGC_INFO,
-                                                        ALIGNED_DOMAIN_SEQS, RUN.options.verbose,
-                                                        RUN.directories.domains)
-
-        del CLUSTER_PAIRS[:]
-
-        # add the rest of the edges in the "Query network"
-        if RUN.directories.has_query_bgc:
-            NEW_SET = []
-
-            # rows from the distance matrix that will be pruned
-            DEL_LIST = []
-
-            for idx, row in enumerate(NETWORK_MATRIX_MIX):
-                a, b, distance = int(row[0]), int(row[1]), row[2]
-
-                if a == b:
-                    continue
-
-                if distance <= RUN.cluster.max_cutoff:
-                    if a == QUERY_BGC_IDX:
-                        NEW_SET.append(b)
-                    else:
-                        NEW_SET.append(a)
-                else:
-                    DEL_LIST.append(idx)
-
-            for idx in sorted(DEL_LIST, reverse=True):
-                del NETWORK_MATRIX_MIX[idx]
-            del DEL_LIST[:]
-
-            PAIRS = set([tuple(sorted(combo)) for combo in combinations(NEW_SET, 2)])
-            CLUSTER_PAIRS = [(x, y, -1) for (x, y) in PAIRS]
-            PAIRS.clear()
-            NETWORK_MATRIX_NEW_SET = big_scape.generate_network(CLUSTER_PAIRS, RUN.options.cores, CLUSTER_NAMES, RUN.distance.bgc_class_names, DOMAIN_LIST, RUN.directories.output, GENE_DOMAIN_COUNT,
-            COREBIOSYNTHETIC_POS, BGC_GENE_ORIENTATION, RUN.distance.bgc_class_weight, RUN.network.anchor_domains, BGCS.bgc_dict, RUN.options.mode, BGC_INFO,
-            ALIGNED_DOMAIN_SEQS, RUN.options.verbose, RUN.directories.domains)
-            del CLUSTER_PAIRS[:]
-
-            # Update the network matrix (QBGC-vs-all) with the distances of
-            # QBGC's GCF
-            NETWORK_MATRIX_MIX.extend(NETWORK_MATRIX_NEW_SET)
-
-            # Update actual list of BGCs that we'll use
-            MIX_SET = NEW_SET
-            MIX_SET.extend([QUERY_BGC_IDX])
-            MIX_SET.sort() # clusterJsonBatch expects ordered indices
-
-            # Create an additional file with the list of all clusters in the class + other info
-            # This version of the file only has information on the BGCs connected to Query BGC
-            print("   Writing annotation file")
-            NETWORK_ANNOTATION_PATH = os.path.join(RUN.directories.network, "mix", "Network_Annotations_mix_QueryBGC.tsv")
-            with open(NETWORK_ANNOTATION_PATH, "w") as network_annotation_file:
-                network_annotation_file.write("BGC\tAccession ID\tDescription\tProduct Prediction\tBiG-SCAPE class\tOrganism\tTaxonomy\n")
-                for idx in MIX_SET:
-                    bgc = CLUSTER_NAMES[idx]
-                    product = BGC_INFO[bgc].product
-                    network_annotation_file.write("\t".join([bgc,
-                        BGC_INFO[bgc].accession_id, BGC_INFO[bgc].description,
-                        product, bgctools.sort_bgc(product), BGC_INFO[bgc].organism,
-                        BGC_INFO[bgc].taxonomy]) + "\n")
-        elif RUN.mibig.use_mibig:
-            N = nx.Graph()
-            N.add_nodes_from(MIX_SET)
-            MIBIG_SET_DEL = []
-            NETWORK_MATRIX_SET_DEL = []
-
-            for idx, row in enumerate(NETWORK_MATRIX_MIX):
-                a, b, distance = int(row[0]), int(row[1]), row[2]
-                if distance <= RUN.cluster.max_cutoff:
-                    N.add_edge(a, b, index=idx)
-
-            for component in nx.connected_components(N): # note: 'component' is a set
-                numBGCs_subgraph = len(component)
-
-                # catch if the subnetwork is comprised only of MIBiG BGCs
-                if len(component & MIBIG_SET_INDICES) == numBGCs_subgraph:
-                    for bgc in component:
-                        MIBIG_SET_DEL.append(bgc)
-
-            # Get all edges between bgcs marked for deletion
-            for (a, b, idx) in N.subgraph(MIBIG_SET_DEL).edges.data('index'):
-                NETWORK_MATRIX_SET_DEL.append(idx)
-
-            # delete all edges between marked bgcs
-            for row_idx in sorted(NETWORK_MATRIX_SET_DEL, reverse=True):
-                del NETWORK_MATRIX_MIX[row_idx]
-            del NETWORK_MATRIX_SET_DEL[:]
-
-            print("   Removing {} non-relevant MIBiG BGCs".format(len(MIBIG_SET_DEL)))
-            MIX_SET_IDX = 0
-            BGC_TO_MIX_SET_IDX = {}
-            for idx, bgc in enumerate(MIX_SET):
-                BGC_TO_MIX_SET_IDX[bgc] = idx
-
-            for bgc_idx in sorted(MIBIG_SET_DEL, reverse=True):
-                del MIX_SET[BGC_TO_MIX_SET_IDX[bgc_idx]]
-            del MIBIG_SET_DEL[:]
-
-
-        print("  Writing output files")
-        PATH_BASE = os.path.join(RUN.directories.network, "mix")
-        FILE_NAMES = []
-        for cutoff in RUN.cluster.cutoff_list:
-            FILE_NAMES.append(os.path.join(PATH_BASE, "mix_c{:.2f}.network".format(cutoff)))
-        CUTOFFS_FILENAMES = list(zip(RUN.cluster.cutoff_list, FILE_NAMES))
-        del FILE_NAMES[:]
-        big_scape.write_network_matrix(NETWORK_MATRIX_MIX, CUTOFFS_FILENAMES, RUN.options.include_singletons, CLUSTER_NAMES, BGC_INFO)
-
-        print("  Calling Gene Cluster Families")
-        REDUCED_NETWORK = []
-        POS_ALIGNMENTS = {}
-        for row in NETWORK_MATRIX_MIX:
-            REDUCED_NETWORK.append([int(row[0]), int(row[1]), row[2]])
-            reverse = False
-            if row[-1] == 1.0:
-                reverse = True
-            pa = POS_ALIGNMENTS.setdefault(int(row[0]), {})
-            # lcsStartA, lcsStartB, seedLength, reverse={True,False}
-            pa[int(row[1])] = (int(row[-4]), int(row[-3]), int(row[-2]), reverse)
-        del NETWORK_MATRIX_MIX[:]
-        FAMILY_DATA = big_scape.clusterJsonBatch(MIX_SET, PATH_BASE, "mix", REDUCED_NETWORK, POS_ALIGNMENTS,
-            CLUSTER_NAMES, BGC_INFO, MIBIG_SET, RUN.directories.pfd, RUN.directories.bgc_fasta,
-            DOMAIN_LIST, BGCS.bgc_dict, ALIGNED_DOMAIN_SEQS, GENE_DOMAIN_COUNT, BGC_GENE_ORIENTATION,
-            cutoffs=RUN.cluster.cutoff_list, clusterClans=RUN.options.clans,
-            clanCutoff=RUN.options.clan_cutoff, htmlFolder=RUN.directories.network_html)
-        for network_html_folder_cutoff in FAMILY_DATA:
-            RUNDATA_NETWORKS_PER_RUN[network_html_folder_cutoff].append(FAMILY_DATA[network_html_folder_cutoff])
-            HTML_SUBS_PER_RUN[network_html_folder_cutoff].append({"name" : "mix", "css" : "Others", "label" : "Mixed"})
-        del MIX_SET[:]
-        del REDUCED_NETWORK[:]
-
+        big_scape.gen_network_mix_all(RUN, CLUSTER_NAMES, DOMAIN_LIST, BGC_INFO, QUERY_BGC,
+                                      GENE_DOMAIN_COUNT, COREBIOSYNTHETIC_POS,
+                                      BGC_GENE_ORIENTATION, BGCS, ALIGNED_DOMAIN_SEQS,
+                                      MIBIG_SET_INDICES, MIBIG_SET, RUNDATA_NETWORKS_PER_RUN,
+                                      HTML_SUBS_PER_RUN)
 
     # Making network files separating by BGC class
     if not RUN.options.no_classify:
-        print("\n Working for each BGC class")
-
-        # TODO: remove?
-        # reinitialize run.distance.bgc_classes to make sure the bgc lists are empty
-        RUN.distance.bgc_classes = defaultdict(list)
-
-        # Preparing gene cluster classes
-        print("  Sorting the input BGCs\n")
-
-        # create and sort working set for each class
-        for clusterIdx, clusterName in enumerate(CLUSTER_NAMES):
-            if RUN.has_includelist:
-                # extra processing because pfs info includes model version
-                bgc_domain_set = set({x.split(".")[0] for x in DOMAIN_LIST[clusterName]})
-
-                if len(RUN.domain_includelist & bgc_domain_set) == 0:
-                    continue
-
-            product = BGC_INFO[clusterName].product
-            predicted_class = bgctools.sort_bgc(product)
-
-            if predicted_class.lower() in RUN.valid_classes:
-                RUN.distance.bgc_classes[predicted_class].append(clusterIdx)
-
-            # possibly add hybrids to 'pure' classes
-            if RUN.options.hybrids:
-                if predicted_class == "PKS-NRP_Hybrids":
-                    if "nrps" in RUN.valid_classes:
-                        RUN.distance.bgc_classes["NRPS"].append(clusterIdx)
-                    if "t1pks" in product and "pksi" in RUN.valid_classes:
-                        RUN.distance.bgc_classes["PKSI"].append(clusterIdx)
-                    if "t1pks" not in product and "pksother" in RUN.valid_classes:
-                        RUN.distance.bgc_classes["PKSother"].append(clusterIdx)
-
-                if predicted_class == "Others" and "." in product:
-                    subclasses = set()
-                    for subproduct in product.split("."):
-                        subclass = bgctools.sort_bgc(subproduct)
-                        if subclass.lower() in RUN.valid_classes:
-                            subclasses.add(subclass)
-
-                    # Prevent mixed BGCs with sub-Others annotations to get
-                    # added twice (e.g. indole-cf_fatty_acid has already gone
-                    # to Others at this point)
-                    if "Others" in subclasses:
-                        subclasses.remove("Others")
-
-
-                    for subclass in subclasses:
-                        RUN.distance.bgc_classes[subclass].append(clusterIdx)
-                    subclasses.clear()
-
-        # only make folders for the run.distance.bgc_classes that are found
-        for bgc_class in RUN.distance.bgc_classes:
-            if RUN.directories.has_query_bgc:
-                # not interested in this class if our Query BGC is not here...
-                if QUERY_BGC_IDX not in RUN.distance.bgc_classes[bgc_class]:
-                    continue
-
-            print("\n  {} ({} BGCs)".format(bgc_class, str(len(RUN.distance.bgc_classes[bgc_class]))))
-            if RUN.mibig.use_mibig:
-                if len(set(RUN.distance.bgc_classes[bgc_class]) & MIBIG_SET_INDICES) == len(RUN.distance.bgc_classes[bgc_class]):
-                    print(" - All clusters in this class are MIBiG clusters -")
-                    print("  If you'd like to analyze MIBiG clusters, turn off the --mibig option")
-                    print("  and point --inputdir to the Annotated_MIBiG_reference folder")
-                    continue
-
-            # create output directory
-            utility.create_directory(os.path.join(RUN.directories.network, bgc_class), "  All - " + bgc_class, False)
-
-            # Create an additional file with the final list of all clusters in the class
-            print("   Writing annotation files")
-            NETWORK_ANNOTATION_PATH = os.path.join(RUN.directories.network, bgc_class, "Network_Annotations_" + bgc_class + ".tsv")
-            with open(NETWORK_ANNOTATION_PATH, "w") as network_annotation_file:
-                network_annotation_file.write("BGC\tAccession ID\tDescription\tProduct Prediction\tBiG-SCAPE class\tOrganism\tTaxonomy\n")
-                for idx in RUN.distance.bgc_classes[bgc_class]:
-                    bgc = CLUSTER_NAMES[idx]
-                    product = BGC_INFO[bgc].product
-                    network_annotation_file.write("\t".join([bgc, BGC_INFO[bgc].accession_id, BGC_INFO[bgc].description, product, bgctools.sort_bgc(product), BGC_INFO[bgc].organism, BGC_INFO[bgc].taxonomy]) + "\n")
-
-            print("   Calculating all pairwise distances")
-            if RUN.directories.has_query_bgc:
-                PAIRS = set([tuple(sorted(combo)) for combo in combinations_product([QUERY_BGC_IDX], RUN.distance.bgc_classes[bgc_class])])
-            else:
-                PAIRS = set([tuple(sorted(combo)) for combo in combinations(RUN.distance.bgc_classes[bgc_class], 2)])
-
-            CLUSTER_PAIRS = [(x, y, BGC_CLASS_NAME_2_INDEX[bgc_class]) for (x, y) in PAIRS]
-            PAIRS.clear()
-            network_matrix = big_scape.generate_network(CLUSTER_PAIRS, RUN.options.cores, CLUSTER_NAMES, RUN.distance.bgc_class_names, DOMAIN_LIST, RUN.directories.output, GENE_DOMAIN_COUNT,
-            COREBIOSYNTHETIC_POS, BGC_GENE_ORIENTATION, RUN.distance.bgc_class_weight, RUN.network.anchor_domains, BGCS.bgc_dict, RUN.options.mode, BGC_INFO,
-            ALIGNED_DOMAIN_SEQS, RUN.options.verbose, RUN.directories.domains)
-            #pickle.dump(network_matrix,open("others.ntwrk",'wb'))
-            del CLUSTER_PAIRS[:]
-            #network_matrix = pickle.load(open("others.ntwrk", "rb"))
-
-            # add the rest of the edges in the "Query network"
-            if RUN.directories.has_query_bgc:
-                NEW_SET = []
-
-                # rows from the distance matrix that will be pruned
-                DEL_LIST = []
-
-                for idx, row in enumerate(network_matrix):
-                    a, b, distance = int(row[0]), int(row[1]), row[2]
-
-                    # avoid QBGC-QBGC
-                    if a == b:
-                        continue
-
-                    if distance <= RUN.cluster.max_cutoff:
-                        if a == QUERY_BGC_IDX:
-                            NEW_SET.append(b)
-                        else:
-                            NEW_SET.append(a)
-                    else:
-                        DEL_LIST.append(idx)
-
-                for idx in sorted(DEL_LIST, reverse=True):
-                    del network_matrix[idx]
-                del DEL_LIST[:]
-
-                PAIRS = set([tuple(sorted(combo)) for combo in combinations(NEW_SET, 2)])
-                CLUSTER_PAIRS = [(x, y, BGC_CLASS_NAME_2_INDEX[bgc_class]) for (x, y) in PAIRS]
-                PAIRS.clear()
-                NETWORK_MATRIX_NEW_SET = big_scape.generate_network(CLUSTER_PAIRS, RUN.options.cores, CLUSTER_NAMES, RUN.distance.bgc_class_names, DOMAIN_LIST, RUN.directories.output, GENE_DOMAIN_COUNT,
-                COREBIOSYNTHETIC_POS, BGC_GENE_ORIENTATION, RUN.distance.bgc_class_weight, RUN.network.anchor_domains, BGCS.bgc_dict, RUN.options.mode, BGC_INFO,
-                ALIGNED_DOMAIN_SEQS, RUN.options.verbose, RUN.directories.domains)
-                del CLUSTER_PAIRS[:]
-
-                # Update the network matrix (QBGC-vs-all) with the distances of
-                # QBGC's GCF
-                network_matrix.extend(NETWORK_MATRIX_NEW_SET)
-
-                # Update actual list of BGCs that we'll use
-                RUN.distance.bgc_classes[bgc_class] = NEW_SET
-                RUN.distance.bgc_classes[bgc_class].extend([QUERY_BGC_IDX])
-                RUN.distance.bgc_classes[bgc_class].sort()
-
-                # Create an additional file with the list of all clusters in the class + other info
-                # This version of the file only has information on the BGCs connected to Query BGC
-                print("   Writing annotation file (Query BGC)")
-                NETWORK_ANNOTATION_PATH = os.path.join(RUN.directories.network, bgc_class, "Network_Annotations_" + bgc_class + "_QueryBGC.tsv")
-                with open(NETWORK_ANNOTATION_PATH, "w") as network_annotation_file:
-                    network_annotation_file.write("BGC\tAccession ID\tDescription\tProduct Prediction\tBiG-SCAPE class\tOrganism\tTaxonomy\n")
-                    for idx in RUN.distance.bgc_classes[bgc_class]:
-                        bgc = CLUSTER_NAMES[idx]
-                        product = BGC_INFO[bgc].product
-                        network_annotation_file.write("\t".join([bgc, BGC_INFO[bgc].accession_id, BGC_INFO[bgc].description, product, bgctools.sort_bgc(product), BGC_INFO[bgc].organism, BGC_INFO[bgc].taxonomy]) + "\n")
-            elif RUN.mibig.use_mibig:
-                N = nx.Graph()
-                N.add_nodes_from(RUN.distance.bgc_classes[bgc_class])
-                MIBIG_SET_DEL = []
-                NETWORK_MATRIX_SET_DEL = []
-
-                for idx, row in enumerate(network_matrix):
-                    a, b, distance = int(row[0]), int(row[1]), row[2]
-                    if distance <= RUN.cluster.max_cutoff:
-                        N.add_edge(a, b, index=idx)
-
-                for component in nx.connected_components(N): # note: 'component' is a set
-                    numBGCs_subgraph = len(component)
-
-                    # catch if the subnetwork is comprised only of MIBiG BGCs
-                    if len(component & MIBIG_SET_INDICES) == numBGCs_subgraph:
-                        for bgc in component:
-                            MIBIG_SET_DEL.append(bgc)
-
-                # Get all edges between bgcs marked for deletion
-                for (a, b, idx) in N.subgraph(MIBIG_SET_DEL).edges.data('index'):
-                    NETWORK_MATRIX_SET_DEL.append(idx)
-
-                # delete all edges between marked bgcs
-                for row_idx in sorted(NETWORK_MATRIX_SET_DEL, reverse=True):
-                    del network_matrix[row_idx]
-                del NETWORK_MATRIX_SET_DEL[:]
-
-                print("   Removing {} non-relevant MIBiG BGCs".format(len(MIBIG_SET_DEL)))
-                bgc_to_class_idx = {}
-                for idx, bgc in enumerate(RUN.distance.bgc_classes[bgc_class]):
-                    bgc_to_class_idx[bgc] = idx
-                for bgc_idx in sorted(MIBIG_SET_DEL, reverse=True):
-                    del RUN.distance.bgc_classes[bgc_class][bgc_to_class_idx[bgc_idx]]
-                del MIBIG_SET_DEL[:]
-
-
-
-            if len(RUN.distance.bgc_classes[bgc_class]) < 2:
-                continue
-
-            print("   Writing output files")
-            PATH_BASE = os.path.join(RUN.directories.network, bgc_class)
-            FILE_NAMES = []
-            for cutoff in RUN.cluster.cutoff_list:
-                FILE_NAMES.append(os.path.join(PATH_BASE, "{}_c{:.2f}.network".format(bgc_class, cutoff)))
-            CUTOFFS_FILENAMES = list(zip(RUN.cluster.cutoff_list, FILE_NAMES))
-            del FILE_NAMES[:]
-            big_scape.write_network_matrix(network_matrix, CUTOFFS_FILENAMES, RUN.options.include_singletons, CLUSTER_NAMES, BGC_INFO)
-
-            print("  Calling Gene Cluster Families")
-            REDUCED_NETWORK = []
-            POS_ALIGNMENTS = {}
-            for row in network_matrix:
-                REDUCED_NETWORK.append([int(row[0]), int(row[1]), row[2]])
-                reverse = False
-                if row[-1] == 1.0:
-                    reverse = True
-                pa = POS_ALIGNMENTS.setdefault(int(row[0]), {})
-                # lcsStartA, lcsStartB, seedLength, reverse={True,False}
-                pa[int(row[1])] = (int(row[-4]), int(row[-3]), int(row[-2]), reverse)
-            del network_matrix[:]
-
-            FAMILY_DATA = big_scape.clusterJsonBatch(RUN.distance.bgc_classes[bgc_class], PATH_BASE, bgc_class,
-                REDUCED_NETWORK, POS_ALIGNMENTS, CLUSTER_NAMES, BGC_INFO,
-                MIBIG_SET, RUN.directories.pfd, RUN.directories.bgc_fasta, DOMAIN_LIST,
-                BGCS.bgc_dict, ALIGNED_DOMAIN_SEQS, GENE_DOMAIN_COUNT, BGC_GENE_ORIENTATION,
-                cutoffs=RUN.cluster.cutoff_list, clusterClans=RUN.options.clans, clanCutoff=RUN.options.clan_cutoff,
-                htmlFolder=RUN.directories.network_html)
-            for network_html_folder_cutoff in FAMILY_DATA:
-                RUNDATA_NETWORKS_PER_RUN[network_html_folder_cutoff].append(FAMILY_DATA[network_html_folder_cutoff])
-                if len(FAMILY_DATA[network_html_folder_cutoff]["families"]) > 0:
-                    HTML_SUBS_PER_RUN[network_html_folder_cutoff].append({"name" : bgc_class, "css" : bgc_class, "label" : bgc_class})
-            del RUN.distance.bgc_classes[bgc_class][:]
-            del REDUCED_NETWORK[:]
+        big_scape.gen_network_per_class(RUN, CLUSTER_NAMES, DOMAIN_LIST, BGC_INFO, QUERY_BGC,
+                                        GENE_DOMAIN_COUNT, COREBIOSYNTHETIC_POS,
+                                        BGC_GENE_ORIENTATION, BGCS, ALIGNED_DOMAIN_SEQS,
+                                        MIBIG_SET_INDICES, MIBIG_SET, RUNDATA_NETWORKS_PER_RUN,
+                                        HTML_SUBS_PER_RUN)
 
     # fetch genome list for overview.js
     GENOMES = []
