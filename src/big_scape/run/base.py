@@ -159,3 +159,12 @@ class Run:
         duration = end_time - self.start_time
         self.run_data["end_time"] = time.strftime("%d/%m/%Y %H:%M:%S", time.localtime(end_time))
         self.run_data["duration"] = "{}h{}m{}s".format((duration // 3600), ((duration % 3600) // 60), ((duration % 3600) % 60))
+    
+    def report_runtime(self):
+        runtime = time.time()-self.start_time
+        runtime_string = "\n\n\tMain function took {:.3f} s".format(runtime)
+        with open(os.path.join(self.directories.log, "runtimes.txt"), 'a') as timings_file:
+            timings_file.write(runtime_string + "\n")
+
+        # print runtime
+        print(runtime_string)

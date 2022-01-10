@@ -289,18 +289,9 @@ if __name__ == "__main__":
 
     # generate overview data
     RUN.end()
-
-    # generate results per cutoff value
     big_scape.generate_results_per_cutoff_value(RUN, RUNDATA_NETWORKS_PER_RUN, HTML_SUBS_PER_RUN)
-
     # dump bgc info
     pickle.dump(BGC_INFO, open(os.path.join(RUN.directories.cache, 'bgc_info.dict'), 'wb'))
 
-    # write runtime
-    RUNTIME = time.time()-RUN.start_time
-    RUNTIME_STRING = "\n\n\tMain function took {:.3f} s".format(RUNTIME)
-    with open(os.path.join(RUN.directories.log, "runtimes.txt"), 'a') as timings_file:
-        timings_file.write(RUNTIME_STRING + "\n")
-
-    # print runtime
-    print(RUNTIME_STRING)
+    # done
+    RUN.report_runtime()
