@@ -1,6 +1,8 @@
 import os
+import json
 
 from src.bgctools import sort_bgc
+from src.js import add_to_bigscape_results_js
 
 def fetch_genome_list(run, input_clusters_idx, cluster_names, mibig_set, bgc_info, gen_bank_dict):
     genomes = []
@@ -53,3 +55,20 @@ def update_family_data(RUNDATA_NETWORKS_PER_RUN, INPUT_CLUSTERS_IDX, CLUSTER_NAM
                             mibig.append(clusterName)
                 family["mibig"] = mibig
                 family["members"] = new_members
+
+
+def generate_results_per_cutoff_value(run, rundata_networks_per_run, html_subs_per_run):
+    for cutoff in run.cluster.cutoff_list:
+        # update overview.html
+        html_folder_for_this_cutoff = "{}_c{:.2f}".format(run.directories.network_html, cutoff)
+        run_data_for_this_cutoff = run.run_data.copy()
+        run_data_for_this_cutoff["networks"] = rundata_networks_per_run[html_folder_for_this_cutoff]
+        with open(os.path.join(html_folder_for_this_cutoff, "run_data.js"), "w") as run_data_js:
+            run_data_js.write("var run_data={};\n".format(json.dumps(run_data_for_this_cutoff, indent=4, separators=(',', ':'), sort_keys=True)))
+            run_data_js.write("dataLoaded();\n")
+        # update bgc_results.js
+        RUN_STRING = "{}_c{:.2f}".format(run.run_name, cutoff)
+        RESULTS_PATH = os.path.join(run.directories.output, "html_content", "js",
+                                    "bigscape_results.js")
+        add_to_bigscape_results_js(RUN_STRING, html_subs_per_run[html_folder_for_this_cutoff],
+                                      RESULTS_PATH)

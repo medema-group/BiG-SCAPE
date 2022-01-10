@@ -331,20 +331,7 @@ if __name__ == "__main__":
     RUN.end()
 
     # generate results per cutoff value
-    for cutoff in RUN.cluster.cutoff_list:
-        # update overview.html
-        html_folder_for_this_cutoff = "{}_c{:.2f}".format(RUN.directories.network_html, cutoff)
-        run_data_for_this_cutoff = RUN.run_data.copy()
-        run_data_for_this_cutoff["networks"] = RUNDATA_NETWORKS_PER_RUN[html_folder_for_this_cutoff]
-        with open(os.path.join(html_folder_for_this_cutoff, "run_data.js"), "w") as run_data_js:
-            run_data_js.write("var run_data={};\n".format(json.dumps(run_data_for_this_cutoff, indent=4, separators=(',', ':'), sort_keys=True)))
-            run_data_js.write("dataLoaded();\n")
-        # update bgc_results.js
-        RUN_STRING = "{}_c{:.2f}".format(RUN.run_name, cutoff)
-        RESULTS_PATH = os.path.join(RUN.directories.output, "html_content", "js",
-                                    "bigscape_results.js")
-        js.add_to_bigscape_results_js(RUN_STRING, HTML_SUBS_PER_RUN[html_folder_for_this_cutoff],
-                                      RESULTS_PATH)
+    big_scape.generate_results_per_cutoff_value(RUN, RUNDATA_NETWORKS_PER_RUN, HTML_SUBS_PER_RUN)
 
     # dump bgc info
     pickle.dump(BGC_INFO, open(os.path.join(RUN.directories.cache, 'bgc_info.dict'), 'wb'))
