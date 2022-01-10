@@ -1,10 +1,12 @@
 import os
 import json
 import sys
+import shutil
 
 from src.bgctools import sort_bgc
 from src.js import add_to_bigscape_results_js
 from src.pfam import get_domain_list
+from src.utility import create_directory
 
 def get_ordered_domain_list(RUN, CLUSTER_BASE_NAMES):
     print(" Reading the ordered list of domains from the pfs files")
@@ -86,6 +88,18 @@ def generate_results_per_cutoff_value(run, rundata_networks_per_run, html_subs_p
                                     "bigscape_results.js")
         add_to_bigscape_results_js(RUN_STRING, html_subs_per_run[html_folder_for_this_cutoff],
                                       RESULTS_PATH)
+
+def copy_template_per_cutoff(run, template_path):
+    rundata_networks_per_run = {}
+    html_subs_per_run = {}
+    for cutoff in run.cluster.cutoff_list:
+        network_html_folder_cutoff = "{}_c{:.2f}".format(run.directories.network_html, cutoff)
+        create_directory(network_html_folder_cutoff, "Network HTML Files", False)
+        shutil.copy(template_path, os.path.join(network_html_folder_cutoff, "overview.html"))
+        rundata_networks_per_run[network_html_folder_cutoff] = []
+        html_subs_per_run[network_html_folder_cutoff] = []
+    
+    return rundata_networks_per_run, html_subs_per_run
 
 def write_network_annotation_file(run, cluster_names, bgc_info):
     network_annotation_path = os.path.join(run.directories.network, "Network_Annotations_Full.tsv")

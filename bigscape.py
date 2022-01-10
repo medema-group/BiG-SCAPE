@@ -36,11 +36,9 @@ from __future__ import division
 import os
 import time
 
-import shutil
 from distutils import dir_util
 
 # refactored imports
-from src import bgctools
 from src import big_scape
 from src import gbk
 from src import hmm
@@ -54,8 +52,6 @@ if version_info[0] == 2:
     import cPickle as pickle # for storing and retrieving dictionaries
 elif version_info[0] == 3:
     import pickle # for storing and retrieving dictionaries
-
-
 
 if __name__ == "__main__":
     # get root path of this project
@@ -240,14 +236,8 @@ if __name__ == "__main__":
 
     # make a new run folder in the html output & copy the overview_html
 
-    RUNDATA_NETWORKS_PER_RUN = {}
-    HTML_SUBS_PER_RUN = {}
-    for cutoff in RUN.cluster.cutoff_list:
-        network_html_folder_cutoff = "{}_c{:.2f}".format(RUN.directories.network_html, cutoff)
-        utility.create_directory(network_html_folder_cutoff, "Network HTML Files", False)
-        shutil.copy(os.path.join(os.path.dirname(os.path.realpath(__file__)), "html_template", "overview_html"), os.path.join(network_html_folder_cutoff, "overview.html"))
-        RUNDATA_NETWORKS_PER_RUN[network_html_folder_cutoff] = []
-        HTML_SUBS_PER_RUN[network_html_folder_cutoff] = []
+    TEMPLATE_PATH = os.path.join(os.path.dirname(os.path.realpath(__file__)), "html_template", "overview_html")
+    RUNDATA_NETWORKS_PER_RUN, HTML_SUBS_PER_RUN = big_scape.copy_template_per_cutoff(RUN, TEMPLATE_PATH)
 
     # create pfams.js
     pfam.create_pfam_js(RUN, PFAM_INFO)
