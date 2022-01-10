@@ -288,20 +288,7 @@ if __name__ == "__main__":
         HTML_SUBS_PER_RUN[network_html_folder_cutoff] = []
 
     # create pfams.js
-    PFAMS_JS_FILE = os.path.join(RUN.directories.output, "html_content", "js", "pfams.js")
-    if not os.path.isfile(PFAMS_JS_FILE):
-        with open(PFAMS_JS_FILE, "w") as pfams_js:
-            PFAM_JSON = {}
-            PFAM_COLORS = pfam.generatePfamColorsMatrix(os.path.join(os.path.dirname(os.path.realpath(__file__)), "domains_color_file.tsv"))
-            for pfam_code in PFAM_INFO:
-                pfam_obj = {}
-                if pfam_code in PFAM_COLORS:
-                    pfam_obj["col"] = PFAM_COLORS[pfam_code]
-                else:
-                    pfam_obj["col"] = "255,255,255"
-                pfam_obj["desc"] = PFAM_INFO[pfam_code][1]
-                PFAM_JSON[pfam_code] = pfam_obj
-            pfams_js.write("var pfams={};\n".format(json.dumps(PFAM_JSON, indent=4, separators=(',', ':'), sort_keys=True)))
+    pfam.create_pfam_js(RUN, PFAM_INFO)
 
     # Try to make default analysis using all files found inside the input folder
     print("\nGenerating distance network files with ALL available input files")
