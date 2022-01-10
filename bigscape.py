@@ -121,7 +121,6 @@ if __name__ == "__main__":
     CLASS_NAMES_LEN = len(RUN.distance.bgc_class_names)
     BGC_CLASS_NAME_2_INDEX = dict(zip(RUN.distance.bgc_class_names, range(CLASS_NAMES_LEN)))
 
-    ALIGNED_DOMAIN_SEQS = {} # Key: specific domain sequence label. Item: aligned sequence
     DOMAIN_LIST = {} # Key: BGC. Item: ordered list of domains
 
 
@@ -256,82 +255,13 @@ if __name__ == "__main__":
 
     # Do multiple alignments if needed
     if not RUN.options.skip_ma:
-        print("Performing multiple alignment of domain sequences")
-
-        # obtain all fasta files with domain sequences
-        DOMAIN_SEQUENCE_LIST = set(glob(os.path.join(RUN.directories.domains, "*.fasta")))
-
-        # compare with .algn set of files. Maybe resuming is possible if
-        # no new sequences were added
-        if TRY_RESUME_MULTIPLE_ALIGNMENT:
-            TEMP_ALIGNED = set(glob(os.path.join(RUN.directories.domains, "*.algn")))
-
-            if len(TEMP_ALIGNED) > 0:
-                print(" Found domain fasta files without corresponding alignments")
-
-                for a in TEMP_ALIGNED:
-                    if os.path.getsize(a) > 0:
-                        DOMAIN_SEQUENCE_LIST.remove(a[:-5]+".fasta")
-
-            TEMP_ALIGNED.clear()
-
-        # Try to further reduce the set of domain fastas that need alignment
-        SEQUENCE_TAG_LIST = set()
-        HEADER_LIST = []
-        DOMAIN_SEQUENCE_LIST_TEMP = DOMAIN_SEQUENCE_LIST.copy()
-        for domain_file in DOMAIN_SEQUENCE_LIST_TEMP:
-            domain_name = ".".join(domain_file.split(os.sep)[-1].split(".")[:-1])
-
-            # fill fasta_dict...
-            with open(domain_file, "r") as fasta_handle:
-                HEADER_LIST = utility.get_fasta_keys(fasta_handle)
-
-            # Get the BGC name from the sequence tag. The form of the tag is:
-            # >BGCXXXXXXX_BGCXXXXXXX_ORF25:gid...
-            SEQUENCE_TAG_LIST = set(s.split("_ORF")[0] for s in HEADER_LIST)
-
-            # ...to find out how many sequences do we actually have
-            if len(SEQUENCE_TAG_LIST) == 1:
-                # avoid multiple alignment if the domains all belong to the same BGC
-                DOMAIN_SEQUENCE_LIST.remove(domain_file)
-                if RUN.options.verbose:
-                    print(" Skipping Multiple Alignment for {} \
-                        (appears only in one BGC)".format(domain_name))
-
-        SEQUENCE_TAG_LIST.clear()
-        del HEADER_LIST[:]
-
-        DOMAIN_SEQUENCE_LIST_TEMP.clear()
-
-        # Do the multiple alignment
-        STOP_FLAG = False
-        if len(DOMAIN_SEQUENCE_LIST) > 0:
-            print("\n Using hmmalign")
-            hmm.launch_hmmalign(RUN.options.cores, DOMAIN_SEQUENCE_LIST, RUN.directories.pfam,
-                                RUN.options.verbose)
-
-            # verify all tasks were completed by checking existance of alignment files
-            for domain_file in DOMAIN_SEQUENCE_LIST:
-                if not os.path.isfile(domain_file[:-6]+".algn"):
-                    print("   ERROR, {}.algn could not be found \
-                        (possible issue with aligner).".format(domain_file[:-6]))
-                    STOP_FLAG = True
-            if STOP_FLAG:
-                sys.exit()
-        else:
-            print(" No domain fasta files found to align")
+        hmm.do_multiple_align(RUN, TRY_RESUME_MULTIPLE_ALIGNMENT)
 
 
     # If there's something to analyze, load the aligned sequences
     print(" Trying to read domain alignments (*.algn files)")
-    ALIGNED_FILES_LIST = glob(os.path.join(RUN.directories.domains, "*.algn"))
-    if len(ALIGNED_FILES_LIST) == 0:
-        sys.exit("No aligned sequences found in the domain folder (run without the --skip_ma parameter or point to the correct output folder)")
-    for aligned_file in ALIGNED_FILES_LIST:
-        with open(aligned_file, "r") as aligned_file_handle:
-            fasta_dict = utility.fasta_parser(aligned_file_handle)
-            for header in fasta_dict:
-                ALIGNED_DOMAIN_SEQS[header] = fasta_dict[header]
+    ALIGNED_DOMAIN_SEQS = hmm.read_aligned_files(RUN)
+
 
     CLUSTER_NAMES = tuple(sorted(CLUSTERS))
 
