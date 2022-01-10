@@ -318,59 +318,13 @@ if __name__ == "__main__":
                                         MIBIG_SET_INDICES, MIBIG_SET, RUNDATA_NETWORKS_PER_RUN,
                                         HTML_SUBS_PER_RUN)
 
-    # fetch genome list for overview.js
-    GENOMES = []
-    CLASSES = []
-    CLUSTER_NAMES_TO_GENOMES = {}
-    CLUSTER_NAMES_TO_CLASSES = {}
-    INPUT_CLUSTERS_IDX = [] # contain only indexes (from clusterNames) of input BGCs (non-mibig)
-    for idx, bgc in enumerate(CLUSTER_NAMES):
-        if bgc in MIBIG_SET:
-            continue
-        INPUT_CLUSTERS_IDX.append(idx)
-        # get class info
-        product = BGC_INFO[bgc].product
-        predicted_class = bgctools.sort_bgc(product)
-        if predicted_class not in CLASSES:
-            CLUSTER_NAMES_TO_CLASSES[bgc] = len(CLASSES)
-            CLASSES.append(predicted_class)
-        else:
-            CLUSTER_NAMES_TO_CLASSES[bgc] = CLASSES.index(predicted_class)
-        # get identifier info
-        identifier = ""
-        if len(BGC_INFO[bgc].organism) > 1:
-            identifier = BGC_INFO[bgc].organism
-        else: # use original genome file name (i.e. exclude "..clusterXXX from antiSMASH run")
-            file_name_base = os.path.splitext(os.path.basename(GEN_BANK_DICT[bgc][0]))[0]
-            identifier = file_name_base.rsplit(".cluster", 1)[0].rsplit(".region", 1)[0]
-        if len(identifier) < 1:
-            identifier = "Unknown Genome {}".format(len(GENOMES))
-        if identifier not in GENOMES:
-            CLUSTER_NAMES_TO_GENOMES[bgc] = len(GENOMES)
-            GENOMES.append(identifier)
-        else:
-            CLUSTER_NAMES_TO_GENOMES[bgc] = GENOMES.index(identifier)
-    RUN.run_data["input"]["accession"] = [{"id": "genome_{}".format(i), "label": acc} for i, acc in enumerate(GENOMES)]
-    RUN.run_data["input"]["accession_newick"] = [] # todo ...
-    RUN.run_data["input"]["classes"] = [{"label": cl} for cl in CLASSES] # todo : colors
-    RUN.run_data["input"]["bgc"] = [{"id": CLUSTER_NAMES[idx], "acc": CLUSTER_NAMES_TO_GENOMES[CLUSTER_NAMES[idx]], "class": CLUSTER_NAMES_TO_CLASSES[CLUSTER_NAMES[idx]]} for idx in INPUT_CLUSTERS_IDX]
 
+    # fetch genome list for overview.js
+    INPUT_CLUSTERS_IDX = []
+    big_scape.fetch_genome_list(RUN, INPUT_CLUSTERS_IDX, CLUSTER_NAMES, MIBIG_SET, BGC_INFO, GEN_BANK_DICT)
 
     # update family data (convert global bgc indexes into input-only indexes)
-    for network_key in RUNDATA_NETWORKS_PER_RUN:
-        for network in RUNDATA_NETWORKS_PER_RUN[network_key]:
-            for family in network["families"]:
-                new_members = []
-                mibig = []
-                for bgcIdx in family["members"]:
-                    if bgcIdx in INPUT_CLUSTERS_IDX:
-                        new_members.append(INPUT_CLUSTERS_IDX.index(bgcIdx))
-                    else: # is a mibig bgc
-                        clusterName = CLUSTER_NAMES[bgcIdx]
-                        if clusterName in MIBIG_SET:
-                            mibig.append(clusterName)
-                family["mibig"] = mibig
-                family["members"] = new_members
+    big_scape.update_family_data(RUNDATA_NETWORKS_PER_RUN, INPUT_CLUSTERS_IDX, CLUSTER_NAMES, MIBIG_SET)
 
 
     # generate overview data
@@ -379,6 +333,7 @@ if __name__ == "__main__":
     RUN.run_data["end_time"] = time.strftime("%d/%m/%Y %H:%M:%S", time.localtime(END_TIME))
     RUN.run_data["duration"] = "{}h{}m{}s".format((DURATION // 3600), ((DURATION % 3600) // 60), ((DURATION % 3600) % 60))
 
+    # generate results per cutoff value
     for cutoff in RUN.cluster.cutoff_list:
         # update overview.html
         html_folder_for_this_cutoff = "{}_c{:.2f}".format(RUN.directories.network_html, cutoff)
@@ -394,9 +349,14 @@ if __name__ == "__main__":
         js.add_to_bigscape_results_js(RUN_STRING, HTML_SUBS_PER_RUN[html_folder_for_this_cutoff],
                                       RESULTS_PATH)
 
+    # dump bgc info
     pickle.dump(BGC_INFO, open(os.path.join(RUN.directories.cache, 'bgc_info.dict'), 'wb'))
+
+    # write runtime
     RUNTIME = time.time()-RUN.start_time
     RUNTIME_STRING = "\n\n\tMain function took {:.3f} s".format(RUNTIME)
     with open(os.path.join(RUN.directories.log, "runtimes.txt"), 'a') as timings_file:
         timings_file.write(RUNTIME_STRING + "\n")
+
+    # print runtime
     print(RUNTIME_STRING)
