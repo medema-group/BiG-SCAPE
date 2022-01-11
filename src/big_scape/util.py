@@ -89,17 +89,26 @@ def generate_results_per_cutoff_value(run, rundata_networks_per_run, html_subs_p
         add_to_bigscape_results_js(RUN_STRING, html_subs_per_run[html_folder_for_this_cutoff],
                                       RESULTS_PATH)
 
-def copy_template_per_cutoff(run, template_path):
-    rundata_networks_per_run = {}
-    html_subs_per_run = {}
+def copy_template_per_cutoff(run, root_path):
+    template_path = os.path.join(root_path, "html_template", "overview_html")
     for cutoff in run.cluster.cutoff_list:
         network_html_folder_cutoff = "{}_c{:.2f}".format(run.directories.network_html, cutoff)
         create_directory(network_html_folder_cutoff, "Network HTML Files", False)
         shutil.copy(template_path, os.path.join(network_html_folder_cutoff, "overview.html"))
+
+def prepare_cutoff_rundata_networks(run):
+    rundata_networks_per_run = {}
+    for cutoff in run.cluster.cutoff_list:
+        network_html_folder_cutoff = "{}_c{:.2f}".format(run.directories.network_html, cutoff)
         rundata_networks_per_run[network_html_folder_cutoff] = []
+    return rundata_networks_per_run
+
+def prepare_html_subs_per_run(run):
+    html_subs_per_run = {}
+    for cutoff in run.cluster.cutoff_list:
+        network_html_folder_cutoff = "{}_c{:.2f}".format(run.directories.network_html, cutoff)
         html_subs_per_run[network_html_folder_cutoff] = []
-    
-    return rundata_networks_per_run, html_subs_per_run
+    return html_subs_per_run
 
 def write_network_annotation_file(run, cluster_names, bgc_info):
     network_annotation_path = os.path.join(run.directories.network, "Network_Annotations_Full.tsv")

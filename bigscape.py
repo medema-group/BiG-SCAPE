@@ -34,9 +34,10 @@ from __future__ import division
 
 
 import os
-import time
 
 from distutils import dir_util
+
+from sys import version_info
 
 # refactored imports
 from src import big_scape
@@ -46,7 +47,6 @@ from src import mibig
 from src import pfam
 from src import utility
 
-from sys import version_info
 if version_info[0] == 2:
     range = xrange
     import cPickle as pickle # for storing and retrieving dictionaries
@@ -55,7 +55,7 @@ elif version_info[0] == 3:
 
 if __name__ == "__main__":
     # get root path of this project
-    ROOT_PATH = os.path.basename(__file__)
+    ROOT_PATH = os.path.dirname(__file__)
 
     # get run options
     # ROOT_PATH is passed here because the imports no longer allow us to use __file__
@@ -204,7 +204,8 @@ if __name__ == "__main__":
     # is activated. We have to open the pfd files to get the gene labels for
     # each domain
     # We now always have to have this data so the alignments are produced
-    big_scape.parse_pfd(RUN, CLUSTER_BASE_NAMES, GENE_DOMAIN_COUNT, COREBIOSYNTHETIC_POS, BGC_GENE_ORIENTATION, BGC_INFO)
+    big_scape.parse_pfd(RUN, CLUSTER_BASE_NAMES, GENE_DOMAIN_COUNT, COREBIOSYNTHETIC_POS,
+                        BGC_GENE_ORIENTATION, BGC_INFO)
 
 
     ### Step 5: Create SVG figures
@@ -219,7 +220,6 @@ if __name__ == "__main__":
 
     big_scape.generate_images(RUN, CLUSTER_BASE_NAMES, GEN_BANK_DICT, PFAM_INFO, BGC_INFO)
     print(" Finished creating figures")
-
     print("\n\n   - - Calculating distance matrix - -")
 
     # Do multiple alignments if needed
@@ -232,12 +232,13 @@ if __name__ == "__main__":
 
     CLUSTER_NAMES = tuple(sorted(CLUSTERS))
     # copy html templates
-    dir_util.copy_tree(os.path.join(os.path.dirname(os.path.realpath(__file__)), "html_template", "output"), RUN.directories.output)
+    HTML_TEMPLATE_PATH = os.path.join(ROOT_PATH, "html_template", "output")
+    dir_util.copy_tree(HTML_TEMPLATE_PATH, RUN.directories.output)
 
     # make a new run folder in the html output & copy the overview_html
-
-    TEMPLATE_PATH = os.path.join(os.path.dirname(os.path.realpath(__file__)), "html_template", "overview_html")
-    RUNDATA_NETWORKS_PER_RUN, HTML_SUBS_PER_RUN = big_scape.copy_template_per_cutoff(RUN, TEMPLATE_PATH)
+    big_scape.copy_template_per_cutoff(RUN, ROOT_PATH)
+    RUNDATA_NETWORKS_PER_RUN = big_scape.prepare_cutoff_rundata_networks(RUN)
+    HTML_SUBS_PER_RUN = big_scape.prepare_html_subs_per_run(RUN)
 
     # create pfams.js
     pfam.create_pfam_js(RUN, PFAM_INFO)
@@ -248,7 +249,6 @@ if __name__ == "__main__":
     # This version contains info on all bgcs with valid classes
     print("   Writing the complete Annotations file for the complete set")
     big_scape.write_network_annotation_file(RUN, CLUSTER_NAMES, BGC_INFO)
-
 
     # Find index of all MIBiG BGCs if necessary
     if RUN.mibig.use_mibig:
@@ -267,10 +267,10 @@ if __name__ == "__main__":
     # Making network files mixing all classes
     if RUN.options.mix:
         big_scape.gen_network_per_class(RUN, CLUSTER_NAMES, DOMAIN_LIST, BGC_INFO, QUERY_BGC,
-                                      GENE_DOMAIN_COUNT, COREBIOSYNTHETIC_POS,
-                                      BGC_GENE_ORIENTATION, BGCS, ALIGNED_DOMAIN_SEQS,
-                                      MIBIG_SET_INDICES, MIBIG_SET, RUNDATA_NETWORKS_PER_RUN,
-                                      HTML_SUBS_PER_RUN, True)
+                                        GENE_DOMAIN_COUNT, COREBIOSYNTHETIC_POS,
+                                        BGC_GENE_ORIENTATION, BGCS, ALIGNED_DOMAIN_SEQS,
+                                        MIBIG_SET_INDICES, MIBIG_SET, RUNDATA_NETWORKS_PER_RUN,
+                                        HTML_SUBS_PER_RUN, True)
 
     # Making network files separating by BGC class
     if not RUN.options.no_classify:
@@ -282,10 +282,12 @@ if __name__ == "__main__":
 
     # fetch genome list for overview.js
     INPUT_CLUSTERS_IDX = []
-    big_scape.fetch_genome_list(RUN, INPUT_CLUSTERS_IDX, CLUSTER_NAMES, MIBIG_SET, BGC_INFO, GEN_BANK_DICT)
+    big_scape.fetch_genome_list(RUN, INPUT_CLUSTERS_IDX, CLUSTER_NAMES, MIBIG_SET, BGC_INFO,
+                                GEN_BANK_DICT)
 
     # update family data (convert global bgc indexes into input-only indexes)
-    big_scape.update_family_data(RUNDATA_NETWORKS_PER_RUN, INPUT_CLUSTERS_IDX, CLUSTER_NAMES, MIBIG_SET)
+    big_scape.update_family_data(RUNDATA_NETWORKS_PER_RUN, INPUT_CLUSTERS_IDX, CLUSTER_NAMES,
+                                 MIBIG_SET)
 
     # generate overview data
     RUN.end()
