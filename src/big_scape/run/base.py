@@ -150,16 +150,19 @@ class Run:
         self.run_data["start_time"] = time.strftime("%d/%m/%Y %H:%M:%S", localtime)
         self.run_data["parameters"] = " ".join(sys.argv[1:])
         self.run_data["input"] = {}
-    
+
         self.directories.set_run_dependent_dir(self.run_name)
         self.directories.prepare_run_dependent_dir()
-    
+
     def end(self):
         end_time = time.time()
         duration = end_time - self.start_time
         self.run_data["end_time"] = time.strftime("%d/%m/%Y %H:%M:%S", time.localtime(end_time))
-        self.run_data["duration"] = "{}h{}m{}s".format((duration // 3600), ((duration % 3600) // 60), ((duration % 3600) % 60))
-    
+        hours = (duration // 3600)
+        minutes = ((duration % 3600) // 60)
+        seconds = ((duration % 3600) % 60)
+        self.run_data["duration"] = "{}h{}m{}s".format(hours, minutes, seconds)
+
     def report_runtime(self):
         runtime = time.time()-self.start_time
         runtime_string = "\n\n\tMain function took {:.3f} s".format(runtime)

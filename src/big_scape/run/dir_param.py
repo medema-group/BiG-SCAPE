@@ -15,7 +15,7 @@ class DirParam():
     output: str
     pfam: str
     mibig: str
-    
+
     # query bgc
     has_query_bgc: bool
     query_bgc: str
@@ -169,11 +169,11 @@ class DirParam():
         """Prepares the output directory by creating new folder"""
         # TODO: simplify
         utility.create_directory(self.output, "Output", False)
-    
+
     def prepare_svg_dir(self):
         """Prepares the svg directory by creating new folder"""
         utility.create_directory(self.svg, "SVG", False)
-    
+
     def prepare_run_dependent_dir(self):
         """Prepares the network directory by creating new folder"""
         utility.create_directory(os.path.join(self.output, "network_files"), "Networks", False)
@@ -196,4 +196,3 @@ class DirParam():
         utility.create_directory(self.log, "Logs", False)
         # TODO: move elsewhere
         utility.write_parameters(self.log, sys.argv)
-

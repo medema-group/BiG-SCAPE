@@ -329,7 +329,7 @@ def process_gbk_files(
                                 # shortest CDS. Overlap length is in nucleotides
                                 # here, whereas a_len, b_len are protein
                                 # sequence lengths
-                                if overlap_length/3 > 0.1*min(a_len,b_len):
+                                if overlap_length/3 > 0.1*min(a_len, b_len):
                                     if a_len > b_len:
                                         del_list.add(b)
                                     else:
@@ -340,10 +340,10 @@ def process_gbk_files(
                                 print("   Removing {} because it overlaps with other ORF".format(locus))
                             bgc_locus_tags.remove(locus)
 
-                        with open(outputfile,'w') as fastaHandle:
+                        with open(outputfile, 'w') as fasta_handle:
                             for locus in bgc_locus_tags:
-                                fastaHandle.write("{}\n".format(locus))
-                                fastaHandle.write("{}\n".format(locus_sequences[locus]))
+                                fasta_handle.write("{}\n".format(locus))
+                                fasta_handle.write("{}\n".format(locus_sequences[locus]))
                             adding_sequence = True
                 else:
                     files_no_proteins.append(fname)
@@ -416,15 +416,15 @@ def get_gbk_files(gbk_path: str, run: Run, bgc_info, gen_bank_dict, include_all=
         print("  Warning: Input set has files without protein sequences. They will be discarded")
         print("   (See no_sequences_list.txt)")
         with open(os.path.join(run.directories.output, "no_sequences_list.txt"), "w") as noseqs:
-            for f in sorted(files_no_proteins):
-                noseqs.write("{}\n".format(f))
+            for file in sorted(files_no_proteins):
+                noseqs.write("{}\n".format(file))
 
     if len(files_no_biosynthetic_genes) > 0 and (run.run_mode == "glocal" or run.run_mode == "auto"):
         print("  Warning: Input set has files with no Biosynthetic Genes (affects alignment mode)")
         print("   See no_biosynthetic_genes_list.txt")
         with open(os.path.join(run.directories.output, "logs", "no_biosynthetic_genes_list.txt"), "w") as nobiogenes:
-            for f in sorted(files_no_biosynthetic_genes):
-                nobiogenes.write("{}\n".format(f))
+            for file in sorted(files_no_biosynthetic_genes):
+                nobiogenes.write("{}\n".format(file))
 
     print("\n Starting with {:d} files".format(file_counter))
     print(" Files that had its sequence extracted: {:d}".format(processed_sequences))

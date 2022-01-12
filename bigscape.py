@@ -47,11 +47,14 @@ from src import mibig
 from src import pfam
 from src import utility
 
+# disable pyling complaining about backwards compatibility measures
+#pylint: disable=wrong-import-order,redefined-builtin,invalid-name,undefined-variable,import-error
 if version_info[0] == 2:
     range = xrange
     import cPickle as pickle # for storing and retrieving dictionaries
 elif version_info[0] == 3:
     import pickle # for storing and retrieving dictionaries
+#pylint: enable=wrong-import-order,redefined-builtin,invalid-name,undefined-variable,import-error
 
 if __name__ == "__main__":
     # get root path of this project
@@ -59,7 +62,7 @@ if __name__ == "__main__":
 
     # get run options
     # ROOT_PATH is passed here because the imports no longer allow us to use __file__
-    OPTIONS = utility.CMD_parser(ROOT_PATH)
+    OPTIONS = utility.cmd_parser(ROOT_PATH)
 
     # create new run details
     # ideally we parse all the options and remember them in this object

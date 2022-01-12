@@ -89,8 +89,9 @@ def create_working_set(run, cluster_names, domain_list, bgc_info, mix) -> dict:
 
 
 def gen_network_per_class(run, cluster_names, domain_list, bgc_info, query_bgc, gene_domain_count,
-                        corebiosynthetic_pos, bgc_gene_orientation, bgcs, aligned_domain_seqs,
-                        mibig_set_indices, mibig_set, rundata_networks_per_run, html_subs_per_run, mix=False):
+                          corebiosynthetic_pos, bgc_gene_orientation, bgcs, aligned_domain_seqs,
+                          mibig_set_indices, mibig_set, rundata_networks_per_run,
+                          html_subs_per_run, mix=False):
 # SIMILAR START
     print("\n Working for each BGC class")
 
@@ -292,7 +293,8 @@ def gen_network_per_class(run, cluster_names, domain_list, bgc_info, query_bgc, 
                 pass
             else:
                 if len(family_data[network_html_folder_cutoff]["families"]) > 0:
-                    html_subs_per_run[network_html_folder_cutoff].append({"name" : bgc_class, "css" : bgc_class, "label" : bgc_class})
+                    class_info = {"name" : bgc_class, "css" : bgc_class, "label" : bgc_class}
+                    html_subs_per_run[network_html_folder_cutoff].append(class_info)
         del bgc_classes[bgc_class][:]
         del reduced_network[:]
 

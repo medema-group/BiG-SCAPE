@@ -9,7 +9,6 @@ import zipfile
 from glob import glob
 
 import src.gbk as gbk
-import src.bgctools as bgctools
 import src.big_scape as big_scape
 
 
@@ -56,7 +55,7 @@ def import_mibig_gbk(run: big_scape.Run, bgc_info, genbank_dict):
 
     Inputs:
     - run: parameters relevant to the current run
-    - bgc_info: Stores, per BGC: predicted type, gbk Description, number of records, width of 
+    - bgc_info: Stores, per BGC: predicted type, gbk Description, number of records, width of
       longest record, GenBank's accession, Biosynthetic Genes' ids
     - genbankDict: {cluster_name:[genbank_path_to_1st_instance,[sample_1,sample_2,...]]}
     """

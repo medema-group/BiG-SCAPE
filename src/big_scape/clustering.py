@@ -37,13 +37,13 @@ def generate_dist_matrix(parms, cluster_names, bgc_class_names, domain_list, out
         domain_list_B = domain_list[cluster2]
     except KeyError:
         print(" Warning: domain list for {} or {} was not found. Extracting from pfs files".format(cluster1, cluster2))
-        
+
         cluster_file1 = os.path.join(output_folder, cluster1 + ".pfs")
         cluster_file2 = os.path.join(output_folder, cluster2 + ".pfs")
-        
+
         domain_list_A = get_domain_list(cluster_file1)
         domain_list_B = get_domain_list(cluster_file2)
-    
+
     # this really shouldn't happen if we've filtered domain-less gene clusters already
     if len(domain_list_A) == 0 or len(domain_list_B) == 0:
         print("   Warning: Regarding distance between clusters {} and {}:".format(cluster1, cluster2))
@@ -53,51 +53,54 @@ def generate_dist_matrix(parms, cluster_names, bgc_class_names, domain_list, out
             print("   Cluster {} has no identified domains. Distance set to 1".format(cluster1))
         else:
             print("   Cluster {} has no identified domains. Distance set to 1".format(cluster2))
-            
-        # last two values (S, Sa) should really be zero but this could give rise to errors when parsing 
+
+        # last two values (S, Sa) should really be zero but this could give rise to errors when parsing
         # the network file (unless we catched the case S = Sa = 0
 
-        # cluster1Idx, cluster2Idx, distance, jaccard, DSS, AI, rDSSNa, rDSSa, 
+        # cluster1Idx, cluster2Idx, distance, jaccard, DSS, AI, rDSSNa, rDSSa,
         #   S, Sa, lcsStartA, lcsStartB
         return array('f',[cluster_1_idx,cluster_2_idx,1,0,0,0,0,0,1,1,0,0])
-    
+
     # "Domain Count per Gene". List of simple labels (integers) indicating number
     # of domains belonging to each gene
     dcg_a = gene_domain_count[cluster1]
     dcg_b = gene_domain_count[cluster2]
-    
+
     # Position of the anchor genes (i.e. genes with domains in the anchor
     # domain list). Should probably be the Core Biosynthetic genes marked by
     # antiSMASH
     core_pos_a = corebiosynthetic_position[cluster1]
     core_pos_b = corebiosynthetic_position[cluster2]
-    
+
     # go = "gene orientation"
     go_a = bgc_gene_orientation[cluster1]
     go_b = bgc_gene_orientation[cluster2]
-    
+
     dist, jaccard, dss, ai, rDSSna, rDSS, S, Sa, lcsStartA, lcsStartB, seedLength, reverse = cluster_distance_lcs(
                 cluster1, cluster2, domain_list_A, domain_list_B, dcg_a, dcg_b, core_pos_a, core_pos_b, go_a, go_b,
                 bgc_class, bgc_class_weight, anchor_domains, bgcs, gene_domain_count, bgc_gene_orientation, mode,
                 bgc_info, aligned_domain_sequences, verbose, domains_folder)
-        
+
     network_row = array('f', [cluster_1_idx, cluster_2_idx, dist, (1-dist)**2, jaccard,
                               dss, ai, rDSSna, rDSS, S, Sa, lcsStartA, lcsStartB,
                               seedLength, reverse])
     return network_row
 
 
-def clusterJsonBatch(bgcs, pathBase, className, matrix, pos_alignments, clusterNames, bgc_info, mibig_set, pfd_folder, bgc_fasta_folder,
-DomainList, BGCs, AlignedDomainSequences, DomainCountGene, BGCGeneOrientation, cutoffs=[1.0], damping=0.9, clusterClans=False, clanCutoff=(0.5,0.8), htmlFolder=None, verbose=False):
+def clusterJsonBatch(bgcs, pathBase, className, matrix, pos_alignments, clusterNames, bgc_info,
+                     mibig_set, pfd_folder, bgc_fasta_folder, DomainList, BGCs,
+                     AlignedDomainSequences, DomainCountGene, BGCGeneOrientation, cutoffs=[1.0],
+                     damping=0.9, clusterClans=False, clanCutoff=(0.5, 0.8), htmlFolder=None,
+                     verbose=False):
     """BGC Family calling
     Uses csr sparse matrices to call Gene Cluster Families (GCFs) using Affinity
     Propagation.
-    
-    Cutoff values are in distance (i.e. if two clusters are further than cutoff 
+
+    Cutoff values are in distance (i.e. if two clusters are further than cutoff
     value, similarity is 0)
     Larger cutoff values are more permissive
-    
-    bgcs: ordered list of integers (ascending, unique, but not necessarily 
+
+    bgcs: ordered list of integers (ascending, unique, but not necessarily
         consecutive) representing the index in the main clusterNames list. Every
         number here is an "external" index
     matrix: list of lists of idx0, idx1, d where the first two elements correspond
@@ -105,12 +108,12 @@ DomainList, BGCs, AlignedDomainSequences, DomainCountGene, BGCGeneOrientation, c
     pathBase: folder where GCF files will be deposited
     """
     numBGCs = len(bgcs)
-    
+
     simDict = {} # dictionary of dictionaries
     # Doing this so it only has to go through the matrix once
     for row in matrix:
         gc1, gc2, distance = row
-        
+
         if distance < 1.0:
             similarity = 1 - distance
         else:
@@ -121,11 +124,11 @@ DomainList, BGCs, AlignedDomainSequences, DomainCountGene, BGCGeneOrientation, c
     clanClassificationCutoff, clanDistanceCutoff = clanCutoff
     if clusterClans and verbose:
         print('Clustering Clans Enabled with parameters clanClassificationCutoff: {}, clanDistanceCutoff: {}'.format(clanClassificationCutoff,clanDistanceCutoff))
-    
+
     # External index number to Internal, consecutive, index
     # If needed, bgcInt2Ext[i] would simply be bgcs[i]
     bgcExt2Int = dict(zip(bgcs, range(numBGCs)))
-    
+
     # Get info on all BGCs to export to .js for visualization
     bs_data = []
     bgcJsonDict = {}
@@ -137,12 +140,12 @@ DomainList, BGCs, AlignedDomainSequences, DomainCountGene, BGCGeneOrientation, c
         bgcJsonDict[bgcName]["start"] = 1
         bgcJsonDict[bgcName]["end"] = bgc_info[bgcName].bgc_size
         bgcJsonDict[bgcName]["mibig"] = bgcName in mibig_set
-        
+
         pfdFile = os.path.join(pfd_folder, bgcName + ".pfd")
         fastaFile = os.path.join(bgc_fasta_folder, bgcName + ".fasta")
-        
+
         orfDict = defaultdict(dict)
-        
+
         ## read fasta file first to get orfs
         # We cannot get all the info exclusively from the pfd because that only
         # contains ORFs with predicted domains (and we need to draw empty genes
@@ -157,22 +160,22 @@ DomainList, BGCs, AlignedDomainSequences, DomainCountGene, BGCGeneOrientation, c
                     orfDict[orf]["id"] = header[4]
                 else:
                     orfDict[orf]["id"] = orf
-                    
+
                 ## broken gene goes into cluster, need this so js doesn't throw an error
                 if int(header[6]) <= 1:
                     orfDict[orf]["start"] = 1
                 else:
                     orfDict[orf]["start"] = int(header[6])
-                    
+
                 orfDict[orf]["end"] = int(header[7])
-                
+
                 if header[-1] == '+':
                     orfDict[orf]["strand"] = 1
                 else:
                     orfDict[orf]["strand"] = -1
-                    
+
                 orfDict[orf]["domains"] = []
-    
+
         ## now read pfd file to add the domains to each of the orfs
         for line in open(pfdFile):
             entry = line.split('\t')
@@ -183,36 +186,36 @@ DomainList, BGCs, AlignedDomainSequences, DomainCountGene, BGCGeneOrientation, c
         # between the "list of ORFs with domains" to "list of all ORFs" later on
         bgcJsonDict[bgcName]['orfs'] = sorted(orfDict.values(), key=itemgetter("start"))
     bs_data = [bgcJsonDict[clusterNames[bgc]] for bgc in bgcs]
-    
-    
+
+
     # Create network
     g = nx.Graph()
-    
+
     results = {}
-    for cutoff in cutoffs:    
+    for cutoff in cutoffs:
         family_data = { # will be returned, for use in overview.js
             "label": className,
             "families": [],
             "families_similarity": []
         }
-        
+
         print("  Cutoff: {}".format(cutoff))
         # first task is to find labels (exemplars) for each node.
         # Assign disconnected (singleton) BGCs to themselves
         labels = [0 for i in range(numBGCs)]
-        
+
         # clear all edges from network
         g.clear()
-        
+
         # add all nodes
         g.add_nodes_from(bgcs)
-        
+
         # add all (allowed) edges
         for bgc1 in bgcs:
             for bgc2 in simDict.get(bgc1,{}).keys():
                 if simDict[bgc1][bgc2] > 1 - cutoff:
                     g.add_edge(bgc1, bgc2)
-                    
+
         for subgraph in nx.connected_components(g):
             numBGCs_subgraph = len(subgraph)
             # smaller subgraphs don't need to be clustered
@@ -223,22 +226,22 @@ DomainList, BGCs, AlignedDomainSequences, DomainCountGene, BGCGeneOrientation, c
             else:
                 bgcExt2Sub_ = dict(zip([c for c in subgraph], range(numBGCs_subgraph)))
                 bgcSub2Ext_ = dict(zip(range(numBGCs_subgraph), [c for c in subgraph]))
-                                   
+
                 simMatrix = np.zeros((numBGCs_subgraph, numBGCs_subgraph), dtype=np.float32)
                 for bgc1, bgc2 in combinations(subgraph,2):
                     try:
                         simMatrix[bgcExt2Sub_[bgc1], bgcExt2Sub_[bgc2]] = simDict[bgc1][bgc2]
                     except KeyError:
                         simMatrix[bgcExt2Sub_[bgc1], bgcExt2Sub_[bgc2]] = simDict[bgc2][bgc1]
-                        
+
                 af = AffinityPropagation(damping=damping, max_iter=1000, convergence_iter=200, affinity="precomputed").fit(simMatrix)
                 labelsSub = af.labels_
                 exemplarsSub = af.cluster_centers_indices_
-                
+
                 # TODO go straight to familiesDict
                 for i in range(numBGCs_subgraph):
                     labels[bgcExt2Int[bgcSub2Ext_[i]]] = bgcExt2Int[bgcSub2Ext_[exemplarsSub[labelsSub[i]]]]
-        
+
         # Recalculate distance matrix as we'll need it with clans
         #simMatrix = lil_matrix((numBGCs, numBGCs), dtype=np.float32)
         simMatrix = np.zeros((numBGCs, numBGCs), dtype=np.float32)
@@ -248,52 +251,52 @@ DomainList, BGCs, AlignedDomainSequences, DomainCountGene, BGCGeneOrientation, c
             for bgc2 in simDict.get(bgc1,{}).keys():
                 # you might get 0 values if there were matrix entries under the
                 # cutoff. No need to input these in the sparse matrix
-                
+
                 if simDict[bgc1][bgc2] > 1-cutoff:
                     # Ensure symmetry
                     simMatrix[bgcExt2Int[bgc1], bgcExt2Int[bgc2]] = simDict[bgc1][bgc2]
                     simMatrix[bgcExt2Int[bgc2], bgcExt2Int[bgc1]] = simDict[bgc1][bgc2]
-        
+
         if verbose:
             print("   ...done")
 
-        bs_distances = [[float("{:.3f}".format(simMatrix[row, col])) for col in 
+        bs_distances = [[float("{:.3f}".format(simMatrix[row, col])) for col in
                          range(row+1)] for row in range(numBGCs)]
-        
-        
+
+
         familiesDict = defaultdict(list)
         for i in range(numBGCs):
             familiesDict[bgcs[labels[i]]].append(bgcs[i])
         familyIdx = sorted(familiesDict.keys()) # identifiers for each family
-        
-        
+
+
         ##
         ## Get conserved domain core information to build phylogenetic tree
-        ## 
+        ##
         gcf_trees_path = os.path.join(pathBase, "GCF_trees")
         if not os.path.exists(gcf_trees_path):
             os.makedirs(gcf_trees_path)
-            
+
         newick_trees = {} # key:original bgc index
         for exemplar_idx in familiesDict:
             exemplar = clusterNames[exemplar_idx]
             gcf = familiesDict[exemplar_idx][:]
             if len(gcf) < 3:
                 newick_trees[exemplar_idx] = "({}):0.01;".format(",".join([str(bgcExt2Int[x])+":0.0" for x in gcf]))
-                
+
                 #print(newick_trees[exemplar_idx])
                 #TODO make some default alignment data to send to the json file
                 continue
-            
+
             domain_sets = {}
-            
+
             # make a frequency table (not counting copies):
             frequency_table = defaultdict(int)
             for bgc in gcf:
                 domain_sets[bgc] = set(DomainList[clusterNames[bgc]])
                 for domain in domain_sets[bgc]:
                     frequency_table[domain] += 1
-            
+
             # Remove all PKS/NRPS domains
             # TODO but this was intended to be done when we were considering
             # directly using Corason. Should these domains still be removed?
@@ -303,32 +306,32 @@ DomainList, BGCs, AlignedDomainSequences, DomainCountGene, BGCGeneOrientation, c
             #domains_in_gcf = set(frequency_table.keys())
             #for erase_domain in (nrps_pks_domains & domains_in_gcf):
                 #del frequency_table[erase_domain]
-                
+
             # Find the set of [(tree domains)]. They should 1) be in the exemplar
             # and 2) appear with the most frequency. Iterate over the different
             # frequencies (descending) until set is not empty
             tree_domains = set()
             frequencies = sorted(set(frequency_table.values()), reverse=True)
-            
+
             # first try with domain(s) with max frequency, even if it's just one
-            f = 0 
+            f = 0
             while len(tree_domains) == 0 and f < len(frequencies):
                 for domain in frequency_table:
                     if frequency_table[domain] == frequencies[f] and domain in domain_sets[exemplar_idx]:
                         tree_domains.add(domain)
-                    
+
                 f += 1
-            
-            
+
+
             if len(tree_domains) == 1:
                 if verbose:
                     print("  Warning: core shared domains for GCF {} consists of a single domain ({})".format(exemplar_idx, [x for x in tree_domains][0]))
-            
+
             # Get the alignments of the core domains
             alignments = {}
             # initialize every sequence alignment entry. Don't do defaultdict!
             alignments[exemplar_idx] = ""
-            
+
             out_of_tree_bgcs = [] # bgcs that don't share a common domain core
             delete_list = set() # remove this bgcs from alignment
             gcf.remove(exemplar_idx) # separate exemplar from the rest of the bgcs
@@ -341,9 +344,9 @@ DomainList, BGCs, AlignedDomainSequences, DomainCountGene, BGCGeneOrientation, c
                 num_copies_a = len(specific_domain_list_A)
                 for exemplar_domain_copy in specific_domain_list_A:
                     alignments[exemplar_idx] += AlignedDomainSequences[exemplar_domain_copy]
-                
+
                 seq_length = len(AlignedDomainSequences[specific_domain_list_A[0]])
-                
+
                 for bgc in alignments:
                     match_dict.clear()
                     if bgc == exemplar_idx:
@@ -357,31 +360,31 @@ DomainList, BGCs, AlignedDomainSequences, DomainCountGene, BGCGeneOrientation, c
                         pass
                     else:
                         specific_domain_list_B = BGCs[clusterNames[bgc]][domain]
-                        
+
                         num_copies_b = len(specific_domain_list_B)
-                        
+
                         DistanceMatrix = np.ndarray((num_copies_a,num_copies_b))
-                        
+
                         for domsa in range(num_copies_a):
                             for domsb in range(num_copies_b):
                                 # TODO NOT taking into consideration any LCS slicing
                                 # i.e. we're comparing ALL copies of this domain
                                 sequence_tag_a = specific_domain_list_A[domsa]
                                 sequence_tag_b = specific_domain_list_B[domsb]
-                                
+
                                 aligned_seqA = AlignedDomainSequences[sequence_tag_a]
                                 aligned_seqB = AlignedDomainSequences[sequence_tag_b]
-                                
+
                                 matches = 0
                                 gaps = 0
-                                
+
                                 for position in range(seq_length):
                                     if aligned_seqA[position] == aligned_seqB[position]:
                                         if aligned_seqA[position] != "-":
                                             matches += 1
                                         else:
                                             gaps += 1
-                                            
+
                                 DistanceMatrix[domsa][domsb] = 1 - ( matches/(seq_length-gaps) )
 
                         BestIndexes = linear_sum_assignment(DistanceMatrix)
@@ -390,7 +393,7 @@ DomainList, BGCs, AlignedDomainSequences, DomainCountGene, BGCGeneOrientation, c
                         # ideally they should go from 0-numcopies. Better make sure
                         for x in range(len(BestIndexes[0])):
                             match_dict[BestIndexes[0][x]] = BestIndexes[1][x]
-                            
+
                         for copy in range(num_copies_a):
                             try:
                                 alignments[bgc] += AlignedDomainSequences[specific_domain_list_B[match_dict[copy]]]
@@ -399,29 +402,29 @@ DomainList, BGCs, AlignedDomainSequences, DomainCountGene, BGCGeneOrientation, c
                                 # have a match in bgc (i.e. bgc has less copies
                                 # of this domain than exemplar)
                                 alignments[bgc] += "-"*seq_length
-                    
+
                 for bgc in list(delete_list):
                     del alignments[bgc]
                 delete_list.clear()
-                
+
             # need this to change the labels in the trees that are read from files
             bgc_name_to_idx = {}
-            
+
             # save compiled alignments of the GCF domain core as fastas
             alignment_file_path = os.path.join(gcf_trees_path,"GCF_c{:4.2f}_{:05d}_alignment.fasta".format(cutoff,exemplar_idx))
             with open(alignment_file_path, "w") as gcf_alignment_file:
                 gcf_alignment_file.write(">{}\n{}\n".format(exemplar, alignments[exemplar_idx]))
                 bgc_name_to_idx[exemplar] = exemplar_idx
-                
+
                 for bgc in alignments:
                     if bgc != exemplar_idx:
                         gcf_alignment_file.write(">{}\n{}\n".format(clusterNames[bgc], alignments[bgc]))
                         bgc_name_to_idx[clusterNames[bgc]] = bgc
-            
+
             # launch fasttree to make tree
             if verbose:
                 print("  Working GCF {}, cutoff {}".format(exemplar_idx, cutoff))
-                
+
             # make tree
             newick_file_path = os.path.join(gcf_trees_path, "GCF_c{:4.2f}_{:05d}.newick".format(cutoff,exemplar_idx))
             with open(newick_file_path, "w") as newick_file:
@@ -451,13 +454,13 @@ DomainList, BGCs, AlignedDomainSequences, DomainCountGene, BGCGeneOrientation, c
                                 print(" Warning: Unable to root at midpoint file {}".format(newick_file_path))
                             pass
                         newick = tree.format("newick")
-                        
+
                         # convert branches' names to indices for visualization
                         for name in bgc_name_to_idx:
                             newick = newick.replace(name, str(bgcExt2Int[bgc_name_to_idx[name]]))
 
                         newick_trees[exemplar_idx] = newick
-        
+
         ### - - - GCC - - -
         bs_similarity_families = []
         if clusterClans and cutoff == clanClassificationCutoff:
@@ -468,7 +471,7 @@ DomainList, BGCs, AlignedDomainSequences, DomainCountGene, BGCGeneOrientation, c
                 #famSimMatrix = lil_matrix((len(familyIdx), len(familyIdx)), dtype=np.float32)
                 famSimMatrix = np.zeros((len(familyIdx), len(familyIdx)), dtype=np.float32)
                 familiesExt2Int = {gcfExtIdx:gcfIntIdx for gcfIntIdx,gcfExtIdx in enumerate(familyIdx)}
-                
+
                 for familyI, familyJ in [tuple(sorted(combo)) for combo in combinations(familyIdx, 2)]:
                     famSimilarities = []
                     # currently uses the average distance of all average distances
@@ -476,64 +479,64 @@ DomainList, BGCs, AlignedDomainSequences, DomainCountGene, BGCGeneOrientation, c
                     for bgcI in familiesDict[familyI]:
                         similarities = [simMatrix[bgcExt2Int[bgcI], bgcExt2Int[bgcJ]] for bgcJ in familiesDict[familyJ]]
                         famSimilarities.append(sum(similarities, 0.0) / len(similarities))
-                    
+
                     try:
                         familySimilarityIJ = sum(famSimilarities, 0.0)/len(famSimilarities)
                     except ZeroDivisionError:
                         familySimilarityIJ = 0.0
-                    
+
                     if familySimilarityIJ > 1 - clanDistanceCutoff:
                         # Ensure symmetry
                         famSimMatrix[familiesExt2Int[familyI], familiesExt2Int[familyJ]] = familySimilarityIJ
                         famSimMatrix[familiesExt2Int[familyJ], familiesExt2Int[familyI]] = familySimilarityIJ
-                        
+
                 # if we have the identity matrix here, it means all GCFs are separate
-                # (nothing to cluster). Note: still can crash if values are 
+                # (nothing to cluster). Note: still can crash if values are
                 # sufficiently low. Catch this error later
                 #if np.count_nonzero(simMatrix) == 0:
                     #clanLabels = []
                     #continue
-                
+
                 # add main diagonal
                 for family in range(len(familyIdx)):
                     famSimMatrix[family,family] = 1.0
-                    
+
                 bs_similarity_families = famSimMatrix.tolist()
-                
+
                 #clanLabels = pysapc.SAP(damping=damping, max_iter=500,
                                     #preference='min').fit_predict(famSimMatrix)
                 af = AffinityPropagation(damping=damping, max_iter=1000, convergence_iter=200, affinity="precomputed").fit(famSimMatrix)
                 labelsClans = af.labels_
                 exemplarsClans = af.cluster_centers_indices_
-                
+
                 # affinity propagation can fail in some circumstances (e.g. only singletons)
                 if exemplarsClans is not None:
                     # translate and record GCF label instead of GCF number
                     clanLabels = [familyIdx[exemplarsClans[labelsClans[i]]] for i in range(len(familyIdx))]
                 else:
                     clanLabels = []
-            
+
         else:
             clanLabels = []
-        
+
         if len(clanLabels) > 0:
             clansDict = defaultdict(list)
             for i in range(len(familyIdx)):
                 clansDict[clanLabels[i]].append(familyIdx[i])
 
             fam2clan = dict(zip(familyIdx,clanLabels))
-        
-            bs_families = [{"id": "FAM_{:05d}".format(family), 
-                            'members': [bgcExt2Int[member] for member in members], 
+
+            bs_families = [{"id": "FAM_{:05d}".format(family),
+                            'members': [bgcExt2Int[member] for member in members],
                             "clan": "CLAN_{:03d}".format(fam2clan[family])}
                            for family, members in familiesDict.items()]
             bs_clans = [{"id": "CLAN_{:03d}".format(clan), 'members': members}
                            for clan, members in clansDict.items()]
         else:
-            bs_families = [{"id": "FAM_{:05d}".format(family), 
+            bs_families = [{"id": "FAM_{:05d}".format(family),
                             'members': [bgcExt2Int[member] for member in members], }
                            for family, members in familiesDict.items()]
-        
+
         family_data["families"] = []
         for family, members in familiesDict.items():
             family_data["families"].append({
@@ -542,9 +545,9 @@ DomainList, BGCs, AlignedDomainSequences, DomainCountGene, BGCGeneOrientation, c
             })
 
         # Positional alignment information is based on DomainCountGene, which
-        # does not contain empty genes (i.e. with no domains). 
+        # does not contain empty genes (i.e. with no domains).
         domainGenes2allGenes = {}
-        
+
         ## BGC Family alignment information
         bs_families_alignment = []
         for family, members in familiesDict.items():
@@ -555,13 +558,13 @@ DomainList, BGCs, AlignedDomainSequences, DomainCountGene, BGCGeneOrientation, c
                     if len(bs_data[bgcExt2Int[bgc]]["orfs"][orf]["domains"]) > 0:
                         domainGenes2allGenes[bgc][has_domains] = orf
                         has_domains += 1
-                        
-            assert (len(members) > 0), "Error: bs_families[{}] have no members, something went wrong?".format(fam_idx)
-            
+
+            assert (len(members) > 0), "Error: bs_families[{}] have no members, something went wrong?".format(family)
+
             ref_genes_ = set()
             aln = []
-            
-            
+
+
             for bgc in members:
                 if bgc == family:
                     aln.append([ [gene_num, 0] for gene_num in range(len(bs_data[bgcExt2Int[family]]["orfs"]))])
@@ -570,7 +573,7 @@ DomainList, BGCs, AlignedDomainSequences, DomainCountGene, BGCGeneOrientation, c
                         a, b, length, reverse = pos_alignments[family][bgc]
                     except:
                         b, a, length, reverse = pos_alignments[bgc][family]
-                        
+
                         if length == 0:
                             pass
                         elif reverse:
@@ -584,14 +587,14 @@ DomainList, BGCs, AlignedDomainSequences, DomainCountGene, BGCGeneOrientation, c
                         a = domainGenes2allGenes[family][a]
                         if length == 0:
                             pass
-                        
+
                         elif reverse:
-                            
+
                             b = domainGenes2allGenes[bgc][len(DomainCountGene[clusterNames[bgc]])-b-1]
                         else:
                             b = domainGenes2allGenes[bgc][b]
-                    
-                    
+
+
                     if length == 0:
                         length = 1
                         # let's try aligning using the genes with most domains
@@ -600,10 +603,10 @@ DomainList, BGCs, AlignedDomainSequences, DomainCountGene, BGCGeneOrientation, c
                         x = max(DomainCountGene[clusterNames[family]])
                         x = DomainCountGene[clusterNames[family]].index(x)
                         a = domainGenes2allGenes[family][x]
-                        
+
                         y = max(list(DomainCountGene[clusterNames[bgc]]))
                         y = DomainCountGene[clusterNames[bgc]].index(y)
-                        
+
                         #check orientation
                         if BGCGeneOrientation[clusterNames[family]][x] == BGCGeneOrientation[clusterNames[bgc]][y]:
                             b = domainGenes2allGenes[bgc][y]
@@ -611,10 +614,10 @@ DomainList, BGCs, AlignedDomainSequences, DomainCountGene, BGCGeneOrientation, c
                         else:
                             b = domainGenes2allGenes[bgc][len(DomainCountGene[clusterNames[bgc]])-y-1]
                             reverse = True
-                            
+
                     ref_genes_.add(a)
                     bgc_algn = []
-                    
+
                     for gene_num in range(len(bs_data[bgcExt2Int[bgc]]["orfs"])):
                         if gene_num == b: # this is the reference gene for this bgc
                             if reverse:
@@ -623,11 +626,11 @@ DomainList, BGCs, AlignedDomainSequences, DomainCountGene, BGCGeneOrientation, c
                                 bgc_algn.append([a, 100])
                         else:
                             bgc_algn.append([-1, 100])
-                    
+
                     aln.append(bgc_algn)
-                        
+
             ref_genes = list(ref_genes_)
-            
+
             fam_alignment = {
                 "id" : "FAM_{:05d}".format(family),
                 "ref" : bgcExt2Int[family],
@@ -649,7 +652,7 @@ DomainList, BGCs, AlignedDomainSequences, DomainCountGene, BGCGeneOrientation, c
                     clustering_file.write("{}\t{}\n".format(clusterNames[bgc], family))
 
         # get family-family similarity matrix
-        bs_similarity_families = [[get_composite_bgc_similarities([bgcs[bid] for bid in bs_families[row]["members"]], [bgcs[bid] for bid in bs_families[col]["members"]], simDict) if (row != col) else (1.00, (1.00, bgcs[bs_families[row]["members"][0]], bgcs[bs_families[row]["members"][0]]), (1.00, bgcs[bs_families[row]["members"][0]], bgcs[bs_families[row]["members"][0]])) for col in 
+        bs_similarity_families = [[get_composite_bgc_similarities([bgcs[bid] for bid in bs_families[row]["members"]], [bgcs[bid] for bid in bs_families[col]["members"]], simDict) if (row != col) else (1.00, (1.00, bgcs[bs_families[row]["members"][0]], bgcs[bs_families[row]["members"][0]]), (1.00, bgcs[bs_families[row]["members"][0]], bgcs[bs_families[row]["members"][0]])) for col in
                          range(row+1)] for row in range(len(bs_families))]
 
         family_data["families_similarity"] = bs_similarity_families
@@ -675,7 +678,7 @@ DomainList, BGCs, AlignedDomainSequences, DomainCountGene, BGCGeneOrientation, c
                 bs_networks_js.write("var bs_clans={};\n".format(json.dumps(bs_clans, indent=4, separators=(',', ':'), sort_keys=True)))
             bs_networks_js.write("dataLoaded('bs_networks');\n")
 
-        
+
         if len(clanLabels) > 0:
             if verbose:
                 print("   Writing Clans file")
@@ -686,7 +689,7 @@ DomainList, BGCs, AlignedDomainSequences, DomainCountGene, BGCGeneOrientation, c
                     for family in clansDict[clan]:
                         for bgc in familiesDict[family]:
                             clansFile.write("{}\t{}\t{}\n".format(clusterNames[bgc], clan, family))
-                    
+
         results[htmlFolder_run] = family_data
 
     return results

@@ -6,7 +6,7 @@ from .ArrowerSVG import draw_line
 from .ArrowerSVG import new_color
 from .ArrowerSVG import SVG
 
-from .cmd_parser import CMD_parser, cpu_count
+from .cmd_parser import cmd_parser, cpu_count
 from .fasta import fasta_parser, get_fasta_keys, save_domain_seqs
 from .io import create_directory, write_parameters
 from .legacy import log, network_parser

@@ -1,11 +1,10 @@
-
 def get_anchor_domains(filename):
     """Get the anchor/marker domains from a txt file.
     This text file should contain one Pfam id per line.
     A second column (separated by a tab) with more comments is allowed"""
 
     domains = set()
-    
+
     try:
         with open(filename, "r") as handle:
             for line in handle:
@@ -19,4 +18,3 @@ def get_anchor_domains(filename):
         print("if you want to make use of the anchor domains in the DSS distance\
             metric, make a file that contains a Pfam domain on each line.")
         return set()
-        

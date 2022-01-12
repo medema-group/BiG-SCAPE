@@ -4,12 +4,15 @@ import sys
 import src.bgctools as bgctools
 import src.utility as utility
 
+# disable pyling complaining about backwards compatibility measures
+#pylint: disable=wrong-import-order,redefined-builtin,invalid-name,undefined-variable,import-error
 from sys import version_info
 if version_info[0] == 2:
     range = xrange
     import cPickle as pickle # for storing and retrieving dictionaries
 elif version_info[0] == 3:
     import pickle # for storing and retrieving dictionaries
+#pylint: enable=wrong-import-order,redefined-builtin,invalid-name,undefined-variable,import-error
 
 class BGCS:
     # dictionary of this structure:
@@ -21,24 +24,24 @@ class BGCS:
     # in DMS unequivocally. e.g. 'PF00550_start_end', where start and end are genomic positions
     bgc_dict = {}
 
-    def load_from_file(self, RUN):
+    def load_from_file(self, run):
         try:
-            with open(os.path.join(RUN.directories.cache, "BGCs.dict"), "r") as BGC_file:
-                self.bgc_dict = pickle.load(BGC_file)
-                BGC_file.close()
+            with open(os.path.join(run.directories.cache, "BGCs.dict"), "r") as bgc_file:
+                self.bgc_dict = pickle.load(bgc_file)
+                bgc_file.close()
         except IOError:
             sys.exit("BGCs file not found...")
-        
-    def load_pfds(self, RUN, CLUSTER_BASE_NAMES, try_resume_multiple_alignment):
-        for outputbase in CLUSTER_BASE_NAMES:
-            if RUN.options.verbose:
+
+    def load_pfds(self, run, cluster_base_names, try_resume_multiple_alignment):
+        for outputbase in cluster_base_names:
+            if run.options.verbose:
                 print("   Processing: " + outputbase)
 
-            pfdFile = os.path.join(RUN.directories.pfd, outputbase + ".pfd")
-            FILTERED_MATRIX = [[part.strip() for part in l.split('\t')] for l in open(pfdFile)]
+            pfd_file = os.path.join(run.directories.pfd, outputbase + ".pfd")
+            filtered_matrix = [[part.strip() for part in l.split('\t')] for l in open(pfd_file)]
 
             # save each domain sequence from a single BGC in its corresponding file
-            fasta_file = os.path.join(RUN.directories.bgc_fasta, outputbase + ".fasta")
+            fasta_file = os.path.join(run.directories.bgc_fasta, outputbase + ".fasta")
 
             # only create domain fasta if the pfd content is different from original and
             #  domains folder has been emptied. Else, if trying to resume alignment phase,
@@ -47,15 +50,15 @@ class BGCS:
                 with open(fasta_file, "r") as fasta_file_handle:
                     # all fasta info from a BGC
                     fasta_dict = utility.fasta_parser(fasta_file_handle)
-                utility.save_domain_seqs(FILTERED_MATRIX, fasta_dict,
-                                         RUN.directories.domains, outputbase)
+                utility.save_domain_seqs(filtered_matrix, fasta_dict,
+                                         run.directories.domains, outputbase)
 
-            self.bgc_dict[outputbase] = bgctools.bgc_dict_gen(FILTERED_MATRIX)
+            self.bgc_dict[outputbase] = bgctools.bgc_dict_gen(filtered_matrix)
 
-            del FILTERED_MATRIX[:]
+            del filtered_matrix[:]
 
-    def save_to_file(self, RUN):
+    def save_to_file(self, run):
         # store processed BGCs dictionary for future re-runs
-        with open(os.path.join(RUN.directories.cache, "BGCs.dict"), "wb") as BGC_file:
-            pickle.dump(self.bgc_dict, BGC_file)
-            BGC_file.close()
+        with open(os.path.join(run.directories.cache, "BGCs.dict"), "wb") as bgc_file:
+            pickle.dump(self.bgc_dict, bgc_file)
+            bgc_file.close()

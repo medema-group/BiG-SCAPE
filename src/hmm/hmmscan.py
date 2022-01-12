@@ -62,29 +62,29 @@ def write_pfd(pfd_handle, matrix):
     pfd_handle.close()
 
 
-def run_hmmscan_async(RUN, TASK_SET):
-    POOL = multiprocessing.Pool(RUN.options.cores, maxtasksperchild=1)
-    for fastaFile in TASK_SET:
-        task_args = (fastaFile, RUN.directories.pfam, RUN.directories.domtable, RUN.options.verbose)
-        POOL.apply_async(run_hmmscan, args=task_args)
-    POOL.close()
-    POOL.join()
+def run_hmmscan_async(run, task_set):
+    pool = multiprocessing.Pool(run.options.cores, maxtasksperchild=1)
+    for fasta_file in task_set:
+        task_args = (fasta_file, run.directories.pfam, run.directories.domtable, run.options.verbose)
+        pool.apply_async(run_hmmscan, args=task_args)
+    pool.close()
+    pool.join()
 
-def run_hmmscan(fastaPath, hmmPath, outputdir, verbose):
+def run_hmmscan(fasta_path, hmm_path, outputdir, verbose):
     """ Runs hmmscan command on a fasta file with a single core to generate a
     domtable file"""
-    hmmFile = os.path.join(hmmPath,"Pfam-A.hmm")
-    if os.path.isfile(fastaPath):
-        name = ".".join(fastaPath.split(os.sep)[-1].split(".")[:-1])
-        outputName = os.path.join(outputdir, name+".domtable")
+    hmm_file = os.path.join(hmm_path, "Pfam-A.hmm")
+    if os.path.isfile(fasta_path):
+        name = ".".join(fasta_path.split(os.sep)[-1].split(".")[:-1])
+        output_name = os.path.join(outputdir, name+".domtable")
 
-        hmmscan_cmd = "hmmscan --cpu 0 --domtblout {} --cut_tc {} {}".format(outputName, hmmFile, fastaPath)
-        if verbose == True:
+        hmmscan_cmd = "hmmscan --cpu 0 --domtblout {} --cut_tc {} {}".format(output_name, hmm_file, fasta_path)
+        if verbose:
             print("   " + hmmscan_cmd)
         subprocess.check_output(hmmscan_cmd, shell=True)
 
     else:
-        sys.exit("Error running hmmscan: Fasta file " + fastaPath + " doesn't exist")
+        sys.exit("Error running hmmscan: Fasta file " + fasta_path + " doesn't exist")
 
 def parse_hmmscan_async():
     # copied from bigscape.py, unused
@@ -100,21 +100,21 @@ def parse_hmmscan_async():
     #pool.join()
     return
 
-def parse_hmmscan(hmmscanResults, pfd_folder, pfs_folder, overlapCutoff, verbose, genbankDict, clusters, baseNames, mibig_set):
-    sampleDict = {} # {sampleName:set(bgc1,bgc2,...)}
+def parse_hmmscan(hmm_scan_results, pfd_folder, pfs_folder, overlap_cutoff, verbose, genbank_dict, clusters, base_names, mibig_set):
+    sample_dict = {} # {sampleName:set(bgc1,bgc2,...)}
     gbk_files = [] # raw list of gbk file locations
-    for (cluster, (path, clusterSample)) in genbankDict.items():
+    for (cluster, (path, cluster_sample)) in genbank_dict.items():
         gbk_files.append(path)
-        for sample in clusterSample:
-            clustersInSample = sampleDict.get(sample, set())
-            clustersInSample.add(cluster)
-            sampleDict[sample] = clustersInSample
+        for sample in cluster_sample:
+            clusters_in_sample = sample_dict.get(sample, set())
+            clusters_in_sample.add(cluster)
+            sample_dict[sample] = clusters_in_sample
 
-    outputbase = ".".join(hmmscanResults.split(os.sep)[-1].split(".")[:-1])
+    outputbase = ".".join(hmm_scan_results.split(os.sep)[-1].split(".")[:-1])
     # try to read the domtable file to find out if this gbk has domains. Domains
     # need to be parsed into fastas anyway.
-    if os.path.isfile(hmmscanResults):
-        pfd_matrix = parse_domtable(outputbase, hmmscanResults)
+    if os.path.isfile(hmm_scan_results):
+        pfd_matrix = parse_domtable(outputbase, hmm_scan_results)
 
         # get number of domains to decide if this BGC should be removed
         num_domains = len(pfd_matrix)
@@ -125,7 +125,7 @@ def parse_hmmscan(hmmscanResults, pfd_folder, pfs_folder, overlapCutoff, verbose
 
             # check_overlap also sorts the filtered_matrix results and removes
             # overlapping domains, keeping the highest scoring one
-            filtered_matrix, domains = check_overlap(pfd_matrix,overlapCutoff)
+            filtered_matrix, domains = check_overlap(pfd_matrix, overlap_cutoff)
 
             # Save list of domains per BGC
             pfsoutput = os.path.join(pfs_folder, outputbase + ".pfs")
@@ -134,23 +134,21 @@ def parse_hmmscan(hmmscanResults, pfd_folder, pfs_folder, overlapCutoff, verbose
 
             # Save more complete information of each domain per BGC
             pfdoutput = os.path.join(pfd_folder, outputbase + ".pfd")
-            with open(pfdoutput,'w') as pfd_handle:
+            with open(pfdoutput, 'w') as pfd_handle:
                 write_pfd(pfd_handle, filtered_matrix)
         else:
             # there aren't any domains in this BGC
             # delete from all data structures
             print("  No domains where found in {}.domtable. Removing it from further analysis".format(outputbase))
-            info = genbankDict.get(outputbase)
+            info = genbank_dict.get(outputbase)
             clusters.remove(outputbase)
-            baseNames.remove(outputbase)
+            base_names.remove(outputbase)
             gbk_files.remove(info[0])
             for sample in info[1]:
-                sampleDict[sample].remove(outputbase)
-            del genbankDict[outputbase]
+                sample_dict[sample].remove(outputbase)
+            del genbank_dict[outputbase]
             if outputbase in mibig_set:
                 mibig_set.remove(outputbase)
 
     else:
         sys.exit("Error: hmmscan file " + outputbase + " was not found! (parseHmmScan)")
-
-    return("")

@@ -77,7 +77,7 @@ def get_domtable_files_to_process(run, domtable_files):
 
     already_done = get_processed_domtable_files(run, domtable_files)
 
-    # the domtable files to be processed is the difference between all, and those which were 
+    # the domtable files to be processed is the difference between all, and those which were
     # already done
     unprocessed_domtable_files = domtable_files - already_done
     first_run = len(domtable_files) == 0
