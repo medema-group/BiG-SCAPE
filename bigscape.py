@@ -269,19 +269,19 @@ if __name__ == "__main__":
 
     # Making network files mixing all classes
     if RUN.options.mix:
-        big_scape.gen_network_per_class(RUN, CLUSTER_NAMES, DOMAIN_LIST, BGC_INFO, QUERY_BGC,
-                                        GENE_DOMAIN_COUNT, COREBIOSYNTHETIC_POS,
-                                        BGC_GENE_ORIENTATION, BGCS, ALIGNED_DOMAIN_SEQS,
-                                        MIBIG_SET_INDICES, MIBIG_SET, RUNDATA_NETWORKS_PER_RUN,
-                                        HTML_SUBS_PER_RUN, True)
+        big_scape.generate_network(RUN, CLUSTER_NAMES, DOMAIN_LIST, BGC_INFO, QUERY_BGC,
+                                   GENE_DOMAIN_COUNT, COREBIOSYNTHETIC_POS,
+                                   BGC_GENE_ORIENTATION, BGCS, ALIGNED_DOMAIN_SEQS,
+                                   MIBIG_SET_INDICES, MIBIG_SET, RUNDATA_NETWORKS_PER_RUN,
+                                   HTML_SUBS_PER_RUN, True)
 
     # Making network files separating by BGC class
     if not RUN.options.no_classify:
-        big_scape.gen_network_per_class(RUN, CLUSTER_NAMES, DOMAIN_LIST, BGC_INFO, QUERY_BGC,
-                                        GENE_DOMAIN_COUNT, COREBIOSYNTHETIC_POS,
-                                        BGC_GENE_ORIENTATION, BGCS, ALIGNED_DOMAIN_SEQS,
-                                        MIBIG_SET_INDICES, MIBIG_SET, RUNDATA_NETWORKS_PER_RUN,
-                                        HTML_SUBS_PER_RUN, False)
+        big_scape.generate_network(RUN, CLUSTER_NAMES, DOMAIN_LIST, BGC_INFO, QUERY_BGC,
+                                   GENE_DOMAIN_COUNT, COREBIOSYNTHETIC_POS,
+                                   BGC_GENE_ORIENTATION, BGCS, ALIGNED_DOMAIN_SEQS,
+                                   MIBIG_SET_INDICES, MIBIG_SET, RUNDATA_NETWORKS_PER_RUN,
+                                   HTML_SUBS_PER_RUN, False)
 
     # fetch genome list for overview.js
     INPUT_CLUSTERS_IDX = []

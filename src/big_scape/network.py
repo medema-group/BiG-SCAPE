@@ -88,10 +88,10 @@ def create_working_set(run, cluster_names, domain_list, bgc_info, mix) -> dict:
     return bgc_classes
 
 
-def gen_network_per_class(run, cluster_names, domain_list, bgc_info, query_bgc, gene_domain_count,
-                          corebiosynthetic_pos, bgc_gene_orientation, bgcs, aligned_domain_seqs,
-                          mibig_set_indices, mibig_set, rundata_networks_per_run,
-                          html_subs_per_run, mix=False):
+def generate_network(run, cluster_names, domain_list, bgc_info, query_bgc, gene_domain_count,
+                     corebiosynthetic_pos, bgc_gene_orientation, bgcs, aligned_domain_seqs,
+                     mibig_set_indices, mibig_set, rundata_networks_per_run,
+                     html_subs_per_run, mix=False):
 # SIMILAR START
     print("\n Working for each BGC class")
 
@@ -158,17 +158,17 @@ def gen_network_per_class(run, cluster_names, domain_list, bgc_info, query_bgc, 
             cluster_pairs = [(x, y, bgc_class_name_2_index[bgc_class]) for (x, y) in pairs]
 
         pairs.clear()
-        network_matrix = generate_network(cluster_pairs, run.options.cores,
-                                          cluster_names,
-                                          run.distance.bgc_class_names,
-                                          domain_list, run.directories.output,
-                                          gene_domain_count,
-                                          corebiosynthetic_pos, bgc_gene_orientation,
-                                          run.distance.bgc_class_weight,
-                                          run.network.anchor_domains, bgcs.bgc_dict,
-                                          run.options.mode, bgc_info,
-                                          aligned_domain_seqs, run.options.verbose,
-                                          run.directories.domains)
+        network_matrix = gen_dist_matrix_async(cluster_pairs, run.options.cores,
+                                               cluster_names,
+                                               run.distance.bgc_class_names,
+                                               domain_list, run.directories.output,
+                                               gene_domain_count,
+                                               corebiosynthetic_pos, bgc_gene_orientation,
+                                               run.distance.bgc_class_weight,
+                                               run.network.anchor_domains, bgcs.bgc_dict,
+                                               run.options.mode, bgc_info,
+                                               aligned_domain_seqs, run.options.verbose,
+                                               run.directories.domains)
         #pickle.dump(network_matrix,open("others.ntwrk",'wb'))
         del cluster_pairs[:]
         #network_matrix = pickle.load(open("others.ntwrk", "rb"))
@@ -207,7 +207,7 @@ def gen_network_per_class(run, cluster_names, domain_list, bgc_info, query_bgc, 
                 cluster_pairs = [(x, y, bgc_class_name_2_index[bgc_class]) for (x, y) in pairs]
 
             pairs.clear()
-            network_matrix_new_set = generate_network(cluster_pairs, run.options.cores, cluster_names, run.distance.bgc_class_names, domain_list, run.directories.output, gene_domain_count,
+            network_matrix_new_set = gen_dist_matrix_async(cluster_pairs, run.options.cores, cluster_names, run.distance.bgc_class_names, domain_list, run.directories.output, gene_domain_count,
             corebiosynthetic_pos, bgc_gene_orientation, run.distance.bgc_class_weight, run.network.anchor_domains, bgcs.bgc_dict, run.options.mode, bgc_info,
             aligned_domain_seqs, run.options.verbose, run.directories.domains)
             del cluster_pairs[:]
@@ -299,7 +299,7 @@ def gen_network_per_class(run, cluster_names, domain_list, bgc_info, query_bgc, 
         del reduced_network[:]
 
 # @timeit
-def generate_network(cluster_pairs, cores, cluster_names, bgc_class_names, domain_list,
+def gen_dist_matrix_async(cluster_pairs, cores, cluster_names, bgc_class_names, domain_list,
                      output_folder, gene_domain_count, corebiosynthetic_position,
                      bgc_gene_orientation, bgc_class_weight, anchor_domains, bgcs, mode, bgc_info,
                      aligned_domain_sequences, verbose, domains_folder):
