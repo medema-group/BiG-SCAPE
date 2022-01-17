@@ -312,22 +312,7 @@ def gen_dist_matrix_async(cluster_pairs, cores, cluster_names, bgc_class_names, 
     #Assigns the data to the different workers and pools the results back into
     # the network_matrix variable
     # TODO: reduce argument count
-    # partial_func = partial(generate_dist_matrix, cluster_names=cluster_names,
-    #                        bgc_class_names=bgc_class_names, domain_list=domain_list,
-    #                        output_folder=output_folder, gene_domain_count=gene_domain_count,
-    #                        corebiosynthetic_position=corebiosynthetic_position,
-    #                        bgc_gene_orientation=bgc_gene_orientation,
-    #                        bgc_class_weight=bgc_class_weight,
-    #                        anchor_domains=anchor_domains, bgcs=bgcs, mode=mode, bgc_info=bgc_info,
-    #                        aligned_domain_sequences=aligned_domain_sequences, verbose=verbose,
-    #                        domains_folder=domains_folder)
-    # network_matrix = pool.map(partial_func, cluster_pairs)
-
-    # --- Serialized version of distance calculation ---
-    # For the time being, use this if you have memory issues
-    network_matrix = []
-    for pair in cluster_pairs:
-        network_matrix.append(generate_dist_matrix(pair, cluster_names=cluster_names,
+    partial_func = partial(generate_dist_matrix, cluster_names=cluster_names,
                            bgc_class_names=bgc_class_names, domain_list=domain_list,
                            output_folder=output_folder, gene_domain_count=gene_domain_count,
                            corebiosynthetic_position=corebiosynthetic_position,
@@ -335,7 +320,22 @@ def gen_dist_matrix_async(cluster_pairs, cores, cluster_names, bgc_class_names, 
                            bgc_class_weight=bgc_class_weight,
                            anchor_domains=anchor_domains, bgcs=bgcs, mode=mode, bgc_info=bgc_info,
                            aligned_domain_sequences=aligned_domain_sequences, verbose=verbose,
-                           domains_folder=domains_folder))
+                           domains_folder=domains_folder)
+    network_matrix = pool.map(partial_func, cluster_pairs)
+
+    # --- Serialized version of distance calculation ---
+    # For the time being, use this if you have memory issues
+    # network_matrix = []
+    # for pair in cluster_pairs:
+    #     network_matrix.append(generate_dist_matrix(pair, cluster_names=cluster_names,
+    #                        bgc_class_names=bgc_class_names, domain_list=domain_list,
+    #                        output_folder=output_folder, gene_domain_count=gene_domain_count,
+    #                        corebiosynthetic_position=corebiosynthetic_position,
+    #                        bgc_gene_orientation=bgc_gene_orientation,
+    #                        bgc_class_weight=bgc_class_weight,
+    #                        anchor_domains=anchor_domains, bgcs=bgcs, mode=mode, bgc_info=bgc_info,
+    #                        aligned_domain_sequences=aligned_domain_sequences, verbose=verbose,
+    #                        domains_folder=domains_folder))
 
     return network_matrix
 

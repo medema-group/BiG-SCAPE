@@ -24,6 +24,11 @@ class cluster_info:
     num_anchor_domains: int
     num_non_anchor_domains: int
 
+    dom_start: int
+    dom_end: int
+
+    gene_string: str
+
     def __init__(self, cluster_name, domlist, dcg, core_pos, go):
         self.cluster_name = cluster_name
         self.domlist = domlist
@@ -45,4 +50,27 @@ class cluster_info:
         for domain in self.domlist_set:
             self.domain_seq_slice_bottom[domain] = 0
             self.domain_seq_slice_top[domain] = len(bgcs[self.cluster_name][domain])
+    
+    def init_dom_borders(self):
+        self.dom_start = 0
+        self.dom_end = len(self.domlist)
+    
+    def init_gene_string(self):
+        # Compress the list of domains according to gene information. For example:
+        # A_domlist = a b c d e f g
+        # cluster_info_a.dcg =   1  3  1  2 Number of domains per each gene in the BGC
+        # cluster_info_a.go =    1 -1 -1  1 Orientation of each gene
+        # A_string = a dcb e fg List of concatenated domains
+        # Takes into account gene orientation. This works effectively as putting all
+        # genes in the same direction in order to be able to compare their domain content
+        start = 0
+        for num_gene in range(self.num_genes):
+            domain_count = self.dcg[num_gene]
+            if self.go[num_gene] == 1:
+                # x[2:] <- small optimization, drop the "PF" from the pfam ids
+                self.gene_string.append("".join(x[2:] for x in self.domlist[start:start+domain_count]))
+            else:
+                a_string_doms = [self.domlist[x][2:] for x in range(start+domain_count-1, start-1, -1)]
+                self.gene_string.append("".join(a_string_doms))
+            start += domain_count
 

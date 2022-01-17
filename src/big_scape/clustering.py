@@ -83,6 +83,10 @@ def generate_dist_matrix(parms, cluster_names, bgc_class_names, domain_list, out
     cluster_info_a.init_dom_seq_slices(bgcs)
     cluster_info_b.init_dom_seq_slices(bgcs)
 
+    #initialize domlist borders for AI
+    cluster_info_a.init_dom_borders()
+    cluster_info_b.init_dom_borders()
+
     dist, jaccard, dss, ai, rDSSna, rDSS, S, Sa, lcsStartA, lcsStartB, seedLength, reverse = cluster_distance_lcs(
                 cluster_info_a, cluster_info_b,
                 bgc_class, bgc_class_weight, anchor_domains, bgcs, gene_domain_count, bgc_gene_orientation, mode,
