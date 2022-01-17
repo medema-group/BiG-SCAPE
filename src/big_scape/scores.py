@@ -69,6 +69,32 @@ def score_expansion(x_string_, y_string_, downstream):
 
     return max_score, expand_len
 
+def calc_jaccard(intersect, overlap):
+    return len(intersect) / len(overlap)
+
+
+def gen_unrelated_pair_distance(run, cluster_info_a, cluster_info_b, bgcs):
+
+    num_non_anchor_domains = 0
+    num_anchor_domains = 0
+    # Count total number of anchor and non-anchor domain to report in the
+    # network file. Apart from that, these BGCs are totally unrelated.
+    for domain in cluster_info_a.domlist_set:
+        # This is a bit of a hack. If pfam domain ids ever change in size
+        # we'd be in trouble. The previous approach was to .split(".")[0]
+        # but it's more costly
+        if domain[:7] in run.network.anchor_domains:
+            num_anchor_domains += len(bgcs[cluster_info_a.cluster_name][domain])
+        else:
+            num_non_anchor_domains += len(bgcs[cluster_info_a.cluster_name][domain])
+
+    for domain in cluster_info_b.domlist_set:
+        if domain[:7] in run.network.anchor_domains:
+            num_anchor_domains += len(bgcs[cluster_info_b.cluster_name][domain])
+        else:
+            num_non_anchor_domains += len(bgcs[cluster_info_b.cluster_name][domain])
+
+    return 1.0, 0.0, 0.0, 0.0, 1.0, 1.0, num_non_anchor_domains, num_anchor_domains, 0, 0, 0, 0
 
 def calc_distance_lcs(run, cluster_info_a: ClusterInfo, cluster_info_b: ClusterInfo, weights,
                          bgcs, domain_count_gene, bgc_gene_orientation, bgc_info,
@@ -92,50 +118,36 @@ def calc_distance_lcs(run, cluster_info_a: ClusterInfo, cluster_info_b: ClusterI
 
     """
 
+    # common variables
+    # unpack weights
     jaccard_weight, dss_weight, ai_weight, anchor_boost = weights
 
     temp_domain_fastas = {}
 
     intersect = cluster_info_a.domlist_set & cluster_info_b.domlist_set
 
-    num_non_anchor_domains = 0
-    num_anchor_domains = 0
 
-    # TODO: refactor
     # Detect totally unrelated pairs from the beginning
+    # this returns early if there are unrelated pairs
     if len(intersect) == 0:
-        # Count total number of anchor and non-anchor domain to report in the
-        # network file. Apart from that, these BGCs are totally unrelated.
-        for domain in cluster_info_a.domlist_set:
-            # This is a bit of a hack. If pfam domain ids ever change in size
-            # we'd be in trouble. The previous approach was to .split(".")[0]
-            # but it's more costly
-            if domain[:7] in run.network.anchor_domains:
-                num_anchor_domains += len(bgcs[cluster_info_a.cluster_name][domain])
-            else:
-                num_non_anchor_domains += len(bgcs[cluster_info_a.cluster_name][domain])
+        return gen_unrelated_pair_distance(run, cluster_info_a, cluster_info_b, bgcs)
 
-        for domain in cluster_info_b.domlist_set:
-            if domain[:7] in run.network.anchor_domains:
-                num_anchor_domains += len(bgcs[cluster_info_b.cluster_name][domain])
-            else:
-                num_non_anchor_domains += len(bgcs[cluster_info_b.cluster_name][domain])
-
-        return 1.0, 0.0, 0.0, 0.0, 1.0, 1.0, num_non_anchor_domains, num_anchor_domains, 0, 0, 0, 0
-
-    # always find lcs seed to use for offset alignment in visualization
+    
+    # JACCARD INDEX
+    overlap = cluster_info_a.domlist_set | cluster_info_b.domlist_set
+    jaccard_index = calc_jaccard(intersect, overlap)
 
 
+    # Longest Common Substring (LCS)
+    # get reverse string for other cluster
     b_string_reverse = list(reversed(cluster_info_b.gene_string))
 
+    # construct object for finding LCS
     seqmatch = SequenceMatcher(None, cluster_info_a.gene_string, cluster_info_b.gene_string)
-    # a: start position in A
-    # b: start position in B
-    # s: length of the match
+    # find the LCS
     a_start, b_start, match_length = seqmatch.find_longest_match(0, cluster_info_a.num_genes, 0, cluster_info_b.num_genes)
-    #print(A, B)
-    #print(a, b, s)
-
+    
+    # do the same for the reverse
     seqmatch = SequenceMatcher(None, cluster_info_a.gene_string, b_string_reverse)
     ar, br, sr = seqmatch.find_longest_match(0, cluster_info_a.num_genes, 0, cluster_info_b.num_genes)
     #print(ar, br, sr)
@@ -390,8 +402,6 @@ def calc_distance_lcs(run, cluster_info_a: ClusterInfo, cluster_info_b: ClusterI
         #else:
                 #print(" - - Not a valid overlap found - - (shortest slice not large enough)\n")
 
-    # JACCARD INDEX
-    Jaccard = len(intersect) / len(cluster_info_a.domlist_set | cluster_info_b.domlist_set)
 
 
     # DSS INDEX
@@ -564,7 +574,7 @@ def calc_distance_lcs(run, cluster_info_a: ClusterInfo, cluster_info_b: ClusterI
         # same treatment as in Jaccard
         AI = len(setA_pairs & setB_pairs) / len(setA_pairs | setB_pairs)
 
-    Distance = 1 - (jaccard_weight * Jaccard) - (dss_weight * DSS) - (ai_weight * AI)
+    Distance = 1 - (jaccard_weight * jaccard_index) - (dss_weight * DSS) - (ai_weight * AI)
 
     # This could happen due to numerical innacuracies
     if Distance < 0.0:
@@ -572,7 +582,7 @@ def calc_distance_lcs(run, cluster_info_a: ClusterInfo, cluster_info_b: ClusterI
             print("Negative distance detected!")
             print(Distance)
             print("{} - {}".format(cluster_info_a.cluster_name, cluster_info_b.cluster_name))
-            print("J: {}\tDSS: {}\tAI: {}".format(str(Jaccard), str(DSS), str(AI)))
+            print("J: {}\tDSS: {}\tAI: {}".format(str(jaccard_index), str(DSS), str(AI)))
             print("Jw: {}\tDSSw: {}\tAIw: {}".format(str(jaccard_weight), str(dss_weight), str(ai_weight)))
         Distance = 0.0
 
@@ -580,4 +590,4 @@ def calc_distance_lcs(run, cluster_info_a: ClusterInfo, cluster_info_b: ClusterI
     if reverse:
         rev = 1.0
 
-    return Distance, Jaccard, DSS, AI, DSS_non_anchor, DSS_anchor, num_non_anchor_domains, num_anchor_domains, lcsStartA, lcsStartB, seedLength, rev
+    return Distance, jaccard_index, DSS, AI, DSS_non_anchor, DSS_anchor, num_non_anchor_domains, num_anchor_domains, lcsStartA, lcsStartB, seedLength, rev

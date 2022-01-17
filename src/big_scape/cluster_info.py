@@ -58,6 +58,7 @@ class ClusterInfo:
         self.dom_end = len(self.domlist)
     
     def init_gene_string(self):
+    # always find lcs seed to use for offset alignment in visualization
         # Compress the list of domains according to gene information. For example:
         # A_domlist = a b c d e f g
         # cluster_info_a.dcg =   1  3  1  2 Number of domains per each gene in the BGC
