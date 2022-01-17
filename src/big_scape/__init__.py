@@ -1,4 +1,5 @@
-from .network import generate_network, write_network_matrix
+from .network import generate_network
+from .distance import write_distance_matrix
 from .clustering import clusterJsonBatch
 from .run.base import Run, ClusterParam, DirParam, DistParam, GbkParam, MibigParam, NetworkParam, PfamParam
 from .bgcs import BGCS

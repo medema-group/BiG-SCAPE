@@ -2,15 +2,13 @@ import os
 import sys
 
 from collections import defaultdict
-from functools import partial
 from itertools import combinations
 from itertools import product as combinations_product
-from multiprocessing import Pool
 
 import networkx as nx
 
-from src.big_scape.cluster_info import ClusterInfo
-from src.big_scape.clustering import generate_dist_matrix, clusterJsonBatch, preprocess_cluster_info
+from src.big_scape.clustering import clusterJsonBatch
+from src.big_scape.distance import write_distance_matrix, get_cluster_cache_async, gen_dist_matrix_async
 from src.bgctools import sort_bgc
 from src.utility import create_directory
 
@@ -93,10 +91,7 @@ def generate_network(run, cluster_names, domain_list, bgc_info, query_bgc, gene_
                      corebiosynthetic_pos, bgc_gene_orientation, bgcs, aligned_domain_seqs,
                      mibig_set_indices, mibig_set, rundata_networks_per_run,
                      html_subs_per_run, mix=False):
-# SIMILAR START
     print("\n Working for each BGC class")
-
-    cluster_cache = get_cluster_cache_async(run, cluster_names, domain_list, gene_domain_count, corebiosynthetic_pos, bgc_gene_orientation, bgcs.bgc_dict)
 
     # we have to find the idx of query_bgc
     if run.directories.has_query_bgc:
@@ -104,6 +99,10 @@ def generate_network(run, cluster_names, domain_list, bgc_info, query_bgc, gene_
             query_bgc_idx = cluster_names.index(query_bgc)
         else:
             sys.exit("Error finding the index of Query BGC")
+
+    # we will need this for the two distance matrix generation calls
+
+    cluster_cache = get_cluster_cache_async(run, cluster_names, domain_list, gene_domain_count, corebiosynthetic_pos, bgc_gene_orientation, bgcs.bgc_dict)
 
     # create working set with indices of valid clusters
     bgc_classes = create_working_set(run, cluster_names, domain_list, bgc_info, mix)
@@ -161,6 +160,7 @@ def generate_network(run, cluster_names, domain_list, bgc_info, query_bgc, gene_
             cluster_pairs = [(x, y, bgc_class_name_2_index[bgc_class]) for (x, y) in pairs]
 
         pairs.clear()
+
         network_matrix = gen_dist_matrix_async(run, cluster_pairs,
                                                cluster_names,
                                                cluster_cache,
@@ -279,7 +279,7 @@ def generate_network(run, cluster_names, domain_list, bgc_info, query_bgc, gene_
         print("   Writing output files")
         path_base = os.path.join(run.directories.network, bgc_class)
         cutoffs_filenames = get_output_cutoffs_filenames(run, path_base, bgc_class)
-        write_network_matrix(network_matrix, cutoffs_filenames, run.options.include_singletons, cluster_names, bgc_info)
+        write_distance_matrix(network_matrix, cutoffs_filenames, run.options.include_singletons, cluster_names, bgc_info)
 
         print("  Calling Gene Cluster Families")
         reduced_network, pos_alignments = reduce_network(network_matrix)
@@ -300,152 +300,3 @@ def generate_network(run, cluster_names, domain_list, bgc_info, query_bgc, gene_
                     html_subs_per_run[network_html_folder_cutoff].append(class_info)
         del bgc_classes[bgc_class][:]
         del reduced_network[:]
-
-def get_cluster_cache_async(run, cluster_names, domain_list, gene_domain_count,
-corebiosynthetic_positions, bgc_gene_orientation, bgcs):
-    pool = Pool(run.options.cores, maxtasksperchild=100)
-
-    # there are a couple of things we can calculate in advance and just once
-    # these will be contained in these cluster_info classes
-    func_preprocess = partial(preprocess_cluster_info, run=run, domain_list=domain_list, gene_domain_count=gene_domain_count,
-    corebiosynthetic_positions=corebiosynthetic_positions, bgc_gene_orientation=bgc_gene_orientation,
-    bgcs=bgcs)
-    cluster_cache_list: list(ClusterInfo) = pool.map(func_preprocess, cluster_names)
-    cluster_cache = dict()
-    for cluster_info in cluster_cache_list:
-        cluster_cache[cluster_info.cluster_name] = cluster_info
-    
-    return cluster_cache
-
-# @timeit
-def gen_dist_matrix_async(run, cluster_pairs, cluster_names,
-                          cluster_info_cache, gene_domain_count,
-                          bgc_gene_orientation, bgcs, bgc_info,
-                          aligned_domain_sequences):
-    """Distributes the distance calculation part
-    cluster_pairs is a list of triads (cluster1_index, cluster2_index, BGC class)
-    """
-
-    pool = Pool(run.options.cores, maxtasksperchild=100)
-
-    #Assigns the data to the different workers and pools the results back into
-    # the network_matrix variable
-    # TODO: reduce argument count
-    func_dist_matrix = partial(generate_dist_matrix, run=run, cluster_names=cluster_names,
-                               cluster_info_cache=cluster_info_cache,
-                               gene_domain_count=gene_domain_count,
-                               bgc_gene_orientation=bgc_gene_orientation,
-                               bgcs=bgcs, bgc_info=bgc_info,
-                               aligned_domain_sequences=aligned_domain_sequences)
-    network_matrix = pool.map(func_dist_matrix, cluster_pairs)
-
-    # --- Serialized version of distance calculation ---
-    # For the time being, use this if you have memory issues
-    # network_matrix = []
-    # for pair in cluster_pairs:
-    #     network_matrix.append(generate_dist_matrix(pair, run, cluster_names=cluster_names,
-    #                        domain_list=domain_list,
-    #                        gene_domain_count=gene_domain_count,
-    #                        corebiosynthetic_position=corebiosynthetic_position,
-    #                        bgc_gene_orientation=bgc_gene_orientation,
-    #                        bgcs=bgcs, bgc_info=bgc_info,
-    #                        aligned_domain_sequences=aligned_domain_sequences))
-
-    return network_matrix
-
-def write_network_matrix(matrix, cutoffs_filenames, include_singletons, cluster_names, bgc_info):
-    """
-    An entry in the distance matrix is currently (all floats):
-      0         1       2      3      4    5    6    7    8        9    10    11        12
-    clus1Idx clus2Idx  rawD  sqrtSim  Jac  DSS  AI rDSSna  rDSSa   S    Sa lcsStartA lcsStartB
-        13        14
-    seedLength reverse
-
-    The final row in the network file is currently:
-      0      1      2     3      4   5   6     7       8    9   10    11       12
-    clus1  clus2  rawD  sqrtSim  J  DSS  AI  rDSSna  rDSSa  S   Sa  combGrp  ShrdGrp
-    """
-
-    #Open file handles for each cutoff
-    networkfiles = {}
-    cutoffs, filenames = zip(*cutoffs_filenames)
-    headers = ["Clustername 1",
-               "Clustername 2",
-               "Raw distance",
-               "Squared similarity",
-               "Jaccard index",
-               "DSS index",
-               "Adjacency index",
-               "raw DSS non-anchor",
-               "raw DSS anchor",
-               "Non-anchor domains",
-               "Anchor domains",
-               "Combined group",
-               "Shared group"]
-    for cutoff, filename in cutoffs_filenames:
-        networkfiles[cutoff] = open(filename, "w")
-        networkfiles[cutoff].write("\t".join(headers))
-        networkfiles[cutoff].write("\n")
-
-    #Dictionaries to keep track of connected nodes, to know which are singletons
-    cluster_set_all = {}
-    cluster_set_connected = {}
-    for cutoff in cutoffs:
-        cluster_set_all[cutoff] = set()
-        cluster_set_connected[cutoff] = set()
-
-    for matrix_entry in matrix:
-        gc1 = cluster_names[int(matrix_entry[0])]
-        gc2 = cluster_names[int(matrix_entry[1])]
-        row = [gc1, gc2]
-
-        # get AntiSMASH annotations
-        clus1group = bgc_info[gc1].product
-        clus2group = bgc_info[gc2].product
-
-        # add all the other floats
-        row.extend(matrix_entry[2:-6])
-
-        # add number of anchor/non-anchor domains as integers
-        row.append(int(matrix_entry[-6]))
-        row.append(int(matrix_entry[-5]))
-
-        # prepare combined group
-        if clus1group != "" and clus2group != "": #group1, group2
-            row.append(" - ".join(sorted([clus1group, clus2group])))
-        elif clus2group != "":
-            row.append(clus2group)
-        elif clus1group != "":
-            row.append(clus1group)
-        else:
-            row.append("NA")
-
-        # prepare share group (if they indeed share it)
-        if clus1group == clus2group:
-            row.append(clus1group)
-        else:
-            row.append("")
-
-        for cutoff in cutoffs:
-            cluster_set_all[cutoff].add(gc1)
-            cluster_set_all[cutoff].add(gc2)
-
-            if row[2] < cutoff:
-                cluster_set_connected[cutoff].add(gc1)
-                cluster_set_connected[cutoff].add(gc2)
-
-                networkfiles[cutoff].write("\t".join(map(str, row)) + "\n")
-
-
-    #Add the nodes without any edges, give them an edge to themselves with a distance of 0
-    if include_singletons:
-        for cutoff in cutoffs:
-            for gcs in cluster_set_all[cutoff] - cluster_set_connected[cutoff]:
-                #Arbitrary numbers for S and Sa domains: 1 of each (logical would be 0,0 but
-                # that could mess re-analysis with divisions-by-zero;
-                numbers = [gcs, gcs, "0", "1", "1", "1", "1", "0", "0", "1", "1", "", ""]
-                networkfiles[cutoff].write("\t".join(numbers) + "\n")
-
-    #Close all files
-    for networkfile in networkfiles.values():
-        networkfile.close()
