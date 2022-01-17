@@ -44,6 +44,8 @@ class cluster_info:
         self.domain_seq_slice_bottom = defaultdict(int)
         self.domain_seq_slice_top = defaultdict(int)
 
+        self.gene_string = []
+
     def init_dom_seq_slices(self, bgcs):
         # initialize domain sequence slices
         # They might change if we manage to find a valid overlap

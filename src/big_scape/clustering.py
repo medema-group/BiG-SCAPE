@@ -22,16 +22,15 @@ from src.bgctools import get_composite_bgc_similarities
 from src.utility.io import create_directory
 
 
-def generate_dist_matrix(parms, cluster_names, bgc_class_names, domain_list, output_folder,
+def generate_dist_matrix(parms, run, cluster_names, domain_list,
                          gene_domain_count, corebiosynthetic_position, bgc_gene_orientation,
-                         bgc_class_weight, anchor_domains, bgcs, mode, bgc_info,
-                         aligned_domain_sequences, verbose, domains_folder):
+                         bgcs, bgc_info, aligned_domain_sequences):
     """Unpack data to actually launch cluster_distance for one pair of BGCs"""
 
     cluster_1_idx, cluster_2_idx, bgc_class_idx = [int(parm) for parm in parms]
     cluster_name_a = cluster_names[cluster_1_idx]
     cluster_name_b = cluster_names[cluster_2_idx]
-    bgc_class = bgc_class_names[bgc_class_idx]
+    bgc_class = run.distance.bgc_class_names[bgc_class_idx]
 
     try:
         domain_list_A = domain_list[cluster_name_a]
@@ -39,8 +38,8 @@ def generate_dist_matrix(parms, cluster_names, bgc_class_names, domain_list, out
     except KeyError:
         print(" Warning: domain list for {} or {} was not found. Extracting from pfs files".format(cluster_name_a, cluster_name_b))
 
-        cluster_file1 = os.path.join(output_folder, cluster_name_a + ".pfs")
-        cluster_file2 = os.path.join(output_folder, cluster_name_b + ".pfs")
+        cluster_file1 = os.path.join(run.directories.output, cluster_name_a + ".pfs")
+        cluster_file2 = os.path.join(run.directories.output, cluster_name_b + ".pfs")
 
         domain_list_A = get_domain_list(cluster_file1)
         domain_list_B = get_domain_list(cluster_file2)
@@ -87,10 +86,12 @@ def generate_dist_matrix(parms, cluster_names, bgc_class_names, domain_list, out
     cluster_info_a.init_dom_borders()
     cluster_info_b.init_dom_borders()
 
-    dist, jaccard, dss, ai, rDSSna, rDSS, S, Sa, lcsStartA, lcsStartB, seedLength, reverse = cluster_distance_lcs(
-                cluster_info_a, cluster_info_b,
-                bgc_class, bgc_class_weight, anchor_domains, bgcs, gene_domain_count, bgc_gene_orientation, mode,
-                bgc_info, aligned_domain_sequences, verbose, domains_folder)
+    cluster_info_a.init_gene_string()
+    cluster_info_b.init_gene_string()
+
+    dist, jaccard, dss, ai, rDSSna, rDSS, S, Sa, lcsStartA, lcsStartB, seedLength, reverse = cluster_distance_lcs(run,
+                cluster_info_a, cluster_info_b, bgc_class, bgcs, gene_domain_count, bgc_gene_orientation,
+                bgc_info, aligned_domain_sequences)
 
     network_row = array('f', [cluster_1_idx, cluster_2_idx, dist, (1-dist)**2, jaccard,
                               dss, ai, rDSSna, rDSS, S, Sa, lcsStartA, lcsStartB,

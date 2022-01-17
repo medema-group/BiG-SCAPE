@@ -70,9 +70,9 @@ def score_expansion(x_string_, y_string_, downstream):
     return max_score, expand_len
 
 
-def cluster_distance_lcs(cluster_info_a: cluster_info, cluster_info_b: cluster_info, bgc_class, bgc_class_weight, anchor_domains,
-                         bgcs, domain_count_gene, bgc_gene_orientation, mode, bgc_info,
-                         aligned_domain_sequences, verbose, domains_folder):
+def cluster_distance_lcs(run, cluster_info_a: cluster_info, cluster_info_b: cluster_info, bgc_class,
+                         bgcs, domain_count_gene, bgc_gene_orientation, bgc_info,
+                         aligned_domain_sequences):
     """Compare two clusters using information on their domains, and the
     sequences of the domains.
     This version first tries to search for the largest common slices of both BGCs by
@@ -92,7 +92,7 @@ def cluster_distance_lcs(cluster_info_a: cluster_info, cluster_info_b: cluster_i
 
     """
 
-    jaccard_weight, dss_weight, ai_weight, anchor_boost = bgc_class_weight[bgc_class]
+    jaccard_weight, dss_weight, ai_weight, anchor_boost = run.distance.bgc_class_weight[bgc_class]
 
     temp_domain_fastas = {}
 
@@ -110,13 +110,13 @@ def cluster_distance_lcs(cluster_info_a: cluster_info, cluster_info_b: cluster_i
             # This is a bit of a hack. If pfam domain ids ever change in size
             # we'd be in trouble. The previous approach was to .split(".")[0]
             # but it's more costly
-            if domain[:7] in anchor_domains:
+            if domain[:7] in run.network.anchor_domains:
                 num_anchor_domains += len(bgcs[cluster_info_a.cluster_name][domain])
             else:
                 num_non_anchor_domains += len(bgcs[cluster_info_a.cluster_name][domain])
 
         for domain in cluster_info_b.domlist_set:
-            if domain[:7] in anchor_domains:
+            if domain[:7] in run.network.anchor_domains:
                 num_anchor_domains += len(bgcs[cluster_info_b.cluster_name][domain])
             else:
                 num_non_anchor_domains += len(bgcs[cluster_info_b.cluster_name][domain])
@@ -238,7 +238,7 @@ def cluster_distance_lcs(cluster_info_a: cluster_info, cluster_info_b: cluster_i
     ##print(sliceStartA, sliceStartB, sliceLengthA)
     #print("")
 
-    if mode=="glocal" or (mode=="auto" and (bgc_info[cluster_info_a.cluster_name].contig_edge or bgc_info[cluster_info_b.cluster_name].contig_edge)):
+    if run.options.mode=="glocal" or (run.options.mode=="auto" and (bgc_info[cluster_info_a.cluster_name].contig_edge or bgc_info[cluster_info_b.cluster_name].contig_edge)):
         #X: bgc that drive expansion
         #Y: the other bgc
         # forward: True if expansion is to the right
@@ -353,22 +353,22 @@ def cluster_distance_lcs(cluster_info_a: cluster_info, cluster_info_b: cluster_i
 
             # finally...
             if biosynthetic_hit_A and biosynthetic_hit_B:
-                dom_a_start = sum(cluster_info_a.dcg[:sliceStartA])
-                dom_a_end = dom_a_start + sum(cluster_info_a.dcg[sliceStartA:sliceStartA+sliceLengthA])
-                cluster_info_a.domlist_set = set(cluster_info_a.domlist[dom_a_start:dom_a_end])
+                cluster_info_a.dom_start = sum(cluster_info_a.dcg[:sliceStartA])
+                cluster_info_a.dom_end = cluster_info_a.dom_start + sum(cluster_info_a.dcg[sliceStartA:sliceStartA+sliceLengthA])
+                cluster_info_a.domlist_set = set(cluster_info_a.domlist[cluster_info_a.dom_start:cluster_info_a.dom_end])
 
-                dom_b_start = sum(cluster_info_b.dcg[:sliceStartB])
-                dom_b_end = dom_b_start + sum(cluster_info_b.dcg[sliceStartB:sliceStartB+sliceLengthB])
-                cluster_info_b.domlist_set = set(cluster_info_b.domlist[dom_b_start:dom_b_end])
+                cluster_info_b.dom_start = sum(cluster_info_b.dcg[:sliceStartB])
+                cluster_info_b.dom_end = cluster_info_b.dom_start + sum(cluster_info_b.dcg[sliceStartB:sliceStartB+sliceLengthB])
+                cluster_info_b.domlist_set = set(cluster_info_b.domlist[cluster_info_b.dom_start:cluster_info_b.dom_end])
 
                 intersect = cluster_info_a.domlist_set & cluster_info_b.domlist_set
 
                 # re-adjust the indices for each domain so we get only the sequence
                 # tags in the selected slice. First step: find out which is the
                 # first copy of each domain we're using
-                for domain in cluster_info_a.domlist[:dom_a_start]:
+                for domain in cluster_info_a.domlist[:cluster_info_a.dom_start]:
                     cluster_info_a.domain_seq_slice_bottom[domain] += 1
-                for domain in cluster_info_b.domlist[:dom_b_start]:
+                for domain in cluster_info_b.domlist[:cluster_info_b.dom_start]:
                     cluster_info_b.domain_seq_slice_bottom[domain] += 1
 
                 # Step 2: work with the last copy of each domain.
@@ -379,9 +379,9 @@ def cluster_distance_lcs(cluster_info_a: cluster_info, cluster_info_b: cluster_i
                     cluster_info_b.domain_seq_slice_top[domain] = cluster_info_b.domain_seq_slice_bottom[domain]
 
                 # Step 2b: increase top with the domains in the slice
-                for domain in cluster_info_a.domlist[dom_a_start:dom_a_end]:
+                for domain in cluster_info_a.domlist[cluster_info_a.dom_start:cluster_info_a.dom_end]:
                     cluster_info_a.domain_seq_slice_top[domain] += 1
-                for domain in cluster_info_b.domlist[dom_b_start:dom_b_end]:
+                for domain in cluster_info_b.domlist[cluster_info_b.dom_start:cluster_info_b.dom_end]:
                     cluster_info_b.domain_seq_slice_top[domain] += 1
 
             #else:
@@ -418,7 +418,7 @@ def cluster_distance_lcs(cluster_info_a: cluster_info, cluster_info_b: cluster_i
             num_unshared = cluster_info_b.domain_seq_slice_top[unshared_domain] - cluster_info_b.domain_seq_slice_bottom[unshared_domain]
 
         # don't look at domain version, hence the split
-        if unshared_domain[:7] in anchor_domains:
+        if unshared_domain[:7] in run.network.anchor_domains:
             domain_difference_anchor += num_unshared
         else:
             domain_difference += num_unshared
@@ -457,7 +457,7 @@ def cluster_distance_lcs(cluster_info_a: cluster_info, cluster_info_b: cluster_i
                 except KeyError:
                     # For some reason we don't have the multiple alignment files.
                     # Try manual alignment
-                    if shared_domain not in missing_aligned_domain_files and verbose:
+                    if shared_domain not in missing_aligned_domain_files and run.options.verbose:
                         # this will print everytime an unfound <domain>.algn is not found for every
                         # distance calculation (but at least, not for every domain pair!)
                         print("  Warning: {}.algn not found. Trying pairwise alignment...".format(shared_domain))
@@ -468,7 +468,7 @@ def cluster_distance_lcs(cluster_info_a: cluster_info, cluster_info_b: cluster_i
                         unaligned_seqB = temp_domain_fastas[sequence_tag_b]
                     except KeyError:
                         # parse the file for the first time and load all the sequences
-                        with open(os.path.join(domains_folder, shared_domain + ".fasta"),"r") as domain_fasta_handle:
+                        with open(os.path.join(run.directories.domains, shared_domain + ".fasta"),"r") as domain_fasta_handle:
                             temp_domain_fastas = fasta_parser(domain_fasta_handle)
 
                         unaligned_seqA = temp_domain_fastas[sequence_tag_a]
@@ -510,7 +510,7 @@ def cluster_distance_lcs(cluster_info_a: cluster_info, cluster_info_b: cluster_i
         sum_seq_dist = (abs(num_copies_a-num_copies_b) + accumulated_distance)  #essentially 1-sim
         normalization_element = max(num_copies_a, num_copies_b)
 
-        if shared_domain[:7] in anchor_domains:
+        if shared_domain[:7] in run.network.anchor_domains:
             num_anchor_domains += normalization_element
             domain_difference_anchor += sum_seq_dist
         else:
@@ -550,15 +550,15 @@ def cluster_distance_lcs(cluster_info_a: cluster_info, cluster_info_b: cluster_i
     # ADJACENCY INDEX
     # calculates the Tanimoto similarity of pairs of adjacent domains
 
-    if len(cluster_info_a.domlist[dom_a_start:dom_a_end]) < 2 or len(cluster_info_b.domlist[dom_b_start:dom_b_end]) < 2:
+    if len(cluster_info_a.domlist[cluster_info_a.dom_start:cluster_info_a.dom_end]) < 2 or len(cluster_info_b.domlist[cluster_info_b.dom_start:cluster_info_b.dom_end]) < 2:
         AI = 0.0
     else:
         setA_pairs = set()
-        for l in range(dom_a_start, dom_a_end-1):
+        for l in range(cluster_info_a.dom_start, cluster_info_a.dom_end-1):
             setA_pairs.add(tuple(sorted([cluster_info_a.domlist[l],cluster_info_a.domlist[l+1]])))
 
         setB_pairs = set()
-        for l in range(dom_b_start, dom_b_end-1):
+        for l in range(cluster_info_b.dom_start, cluster_info_b.dom_end-1):
             setB_pairs.add(tuple(sorted([cluster_info_b.domlist[l],cluster_info_b.domlist[l+1]])))
 
         # same treatment as in Jaccard

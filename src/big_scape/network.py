@@ -158,17 +158,14 @@ def generate_network(run, cluster_names, domain_list, bgc_info, query_bgc, gene_
             cluster_pairs = [(x, y, bgc_class_name_2_index[bgc_class]) for (x, y) in pairs]
 
         pairs.clear()
-        network_matrix = gen_dist_matrix_async(cluster_pairs, run.options.cores,
+        network_matrix = gen_dist_matrix_async(run, cluster_pairs,
                                                cluster_names,
-                                               run.distance.bgc_class_names,
-                                               domain_list, run.directories.output,
+                                               domain_list,
                                                gene_domain_count,
                                                corebiosynthetic_pos, bgc_gene_orientation,
-                                               run.distance.bgc_class_weight,
-                                               run.network.anchor_domains, bgcs.bgc_dict,
-                                               run.options.mode, bgc_info,
-                                               aligned_domain_seqs, run.options.verbose,
-                                               run.directories.domains)
+                                               bgcs.bgc_dict,
+                                               bgc_info,
+                                               aligned_domain_seqs)
         #pickle.dump(network_matrix,open("others.ntwrk",'wb'))
         del cluster_pairs[:]
         #network_matrix = pickle.load(open("others.ntwrk", "rb"))
@@ -207,9 +204,10 @@ def generate_network(run, cluster_names, domain_list, bgc_info, query_bgc, gene_
                 cluster_pairs = [(x, y, bgc_class_name_2_index[bgc_class]) for (x, y) in pairs]
 
             pairs.clear()
-            network_matrix_new_set = gen_dist_matrix_async(cluster_pairs, run.options.cores, cluster_names, run.distance.bgc_class_names, domain_list, run.directories.output, gene_domain_count,
-            corebiosynthetic_pos, bgc_gene_orientation, run.distance.bgc_class_weight, run.network.anchor_domains, bgcs.bgc_dict, run.options.mode, bgc_info,
-            aligned_domain_seqs, run.options.verbose, run.directories.domains)
+            network_matrix_new_set = gen_dist_matrix_async(run, cluster_pairs, cluster_names,
+                                                           domain_list, gene_domain_count,
+                                                           corebiosynthetic_pos, bgc_gene_orientation,
+                                                           bgcs.bgc_dict, bgc_info, aligned_domain_seqs)
             del cluster_pairs[:]
 
             # Update the network matrix (QBGC-vs-all) with the distances of
@@ -299,43 +297,39 @@ def generate_network(run, cluster_names, domain_list, bgc_info, query_bgc, gene_
         del reduced_network[:]
 
 # @timeit
-def gen_dist_matrix_async(cluster_pairs, cores, cluster_names, bgc_class_names, domain_list,
-                     output_folder, gene_domain_count, corebiosynthetic_position,
-                     bgc_gene_orientation, bgc_class_weight, anchor_domains, bgcs, mode, bgc_info,
-                     aligned_domain_sequences, verbose, domains_folder):
+def gen_dist_matrix_async(run, cluster_pairs, cluster_names, domain_list,
+                     gene_domain_count, corebiosynthetic_position,
+                     bgc_gene_orientation, bgcs, bgc_info,
+                     aligned_domain_sequences):
     """Distributes the distance calculation part
     cluster_pairs is a list of triads (cluster1_index, cluster2_index, BGC class)
     """
 
-    pool = Pool(cores, maxtasksperchild=100)
+    pool = Pool(run.options.cores, maxtasksperchild=100)
 
     #Assigns the data to the different workers and pools the results back into
     # the network_matrix variable
     # TODO: reduce argument count
-    partial_func = partial(generate_dist_matrix, cluster_names=cluster_names,
-                           bgc_class_names=bgc_class_names, domain_list=domain_list,
-                           output_folder=output_folder, gene_domain_count=gene_domain_count,
+    partial_func = partial(generate_dist_matrix, run=run, cluster_names=cluster_names,
+                           domain_list=domain_list,
+                           gene_domain_count=gene_domain_count,
                            corebiosynthetic_position=corebiosynthetic_position,
                            bgc_gene_orientation=bgc_gene_orientation,
-                           bgc_class_weight=bgc_class_weight,
-                           anchor_domains=anchor_domains, bgcs=bgcs, mode=mode, bgc_info=bgc_info,
-                           aligned_domain_sequences=aligned_domain_sequences, verbose=verbose,
-                           domains_folder=domains_folder)
+                           bgcs=bgcs, bgc_info=bgc_info,
+                           aligned_domain_sequences=aligned_domain_sequences)
     network_matrix = pool.map(partial_func, cluster_pairs)
 
     # --- Serialized version of distance calculation ---
     # For the time being, use this if you have memory issues
     # network_matrix = []
     # for pair in cluster_pairs:
-    #     network_matrix.append(generate_dist_matrix(pair, cluster_names=cluster_names,
-    #                        bgc_class_names=bgc_class_names, domain_list=domain_list,
-    #                        output_folder=output_folder, gene_domain_count=gene_domain_count,
+    #     network_matrix.append(generate_dist_matrix(pair, run, cluster_names=cluster_names,
+    #                        domain_list=domain_list,
+    #                        gene_domain_count=gene_domain_count,
     #                        corebiosynthetic_position=corebiosynthetic_position,
     #                        bgc_gene_orientation=bgc_gene_orientation,
-    #                        bgc_class_weight=bgc_class_weight,
-    #                        anchor_domains=anchor_domains, bgcs=bgcs, mode=mode, bgc_info=bgc_info,
-    #                        aligned_domain_sequences=aligned_domain_sequences, verbose=verbose,
-    #                        domains_folder=domains_folder))
+    #                        bgcs=bgcs, bgc_info=bgc_info,
+    #                        aligned_domain_sequences=aligned_domain_sequences))
 
     return network_matrix
 
