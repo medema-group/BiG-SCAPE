@@ -70,7 +70,7 @@ def score_expansion(x_string_, y_string_, downstream):
     return max_score, expand_len
 
 
-def cluster_distance_lcs(run, cluster_info_a: ClusterInfo, cluster_info_b: ClusterInfo, weights,
+def calc_distance_lcs(run, cluster_info_a: ClusterInfo, cluster_info_b: ClusterInfo, weights,
                          bgcs, domain_count_gene, bgc_gene_orientation, bgc_info,
                          aligned_domain_sequences):
     """Compare two clusters using information on their domains, and the

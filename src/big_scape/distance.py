@@ -6,7 +6,7 @@ from functools import partial
 
 from src.big_scape.cluster_info import ClusterInfo
 from src.pfam.misc import get_domain_list
-from src.big_scape.clustering import cluster_distance_lcs
+from src.big_scape.clustering import calc_distance_lcs
 
 
 def get_cluster_cache_async(run, cluster_names, domain_list, gene_domain_count,
@@ -129,7 +129,7 @@ def generate_dist_matrix(parms, run, cluster_names, cluster_info_cache,
 
     weights = run.distance.bgc_class_weight[bgc_class]
 
-    dist, jaccard, dss, ai, rDSSna, rDSS, S, Sa, lcsStartA, lcsStartB, seedLength, reverse = cluster_distance_lcs(run,
+    dist, jaccard, dss, ai, rDSSna, rDSS, S, Sa, lcsStartA, lcsStartB, seedLength, reverse = calc_distance_lcs(run,
                 cluster_info_a, cluster_info_b, weights, bgcs, gene_domain_count, bgc_gene_orientation,
                 bgc_info, aligned_domain_sequences)
 
