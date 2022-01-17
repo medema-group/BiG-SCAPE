@@ -8,6 +8,7 @@ from Bio.SubsMat.MatrixInfo import pam250 as scoring_matrix
 from scipy.optimize import linear_sum_assignment
 
 
+from src.big_scape.cluster_info import cluster_info
 from src.utility.fasta import fasta_parser
 
 def score_expansion(x_string_, y_string_, downstream):
@@ -69,8 +70,7 @@ def score_expansion(x_string_, y_string_, downstream):
     return max_score, expand_len
 
 
-def cluster_distance_lcs(cluster_a, cluster_b, domlist_a, domlist_b, dcg_a, dcg_b, core_pos_a,
-                         core_pos_b, go_a, go_b, bgc_class, bgc_class_weight, anchor_domains,
+def cluster_distance_lcs(cluster_info_a: cluster_info, cluster_info_b: cluster_info, bgc_class, bgc_class_weight, anchor_domains,
                          bgcs, domain_count_gene, bgc_gene_orientation, mode, bgc_info,
                          aligned_domain_sequences, verbose, domains_folder):
     """Compare two clusters using information on their domains, and the
@@ -96,91 +96,68 @@ def cluster_distance_lcs(cluster_a, cluster_b, domlist_a, domlist_b, dcg_a, dcg_
 
     temp_domain_fastas = {}
 
-    # Number of genes in each BGC
-    num_genes_a = len(dcg_a)
-    num_genes_b = len(dcg_b)
-
-    set_a = set(domlist_a)
-    set_b = set(domlist_b)
-    intersect = set_a & set_b
+    intersect = cluster_info_a.domlist_set & cluster_info_b.domlist_set
 
     num_non_anchor_domains = 0
     num_anchor_domains = 0
 
-    # define the subset of domain sequence tags to include in
-    # the DSS calculation. This is done for every domain.
-    a_domain_sequence_slice_bottom = defaultdict(int)
-    a_domain_sequence_slice_top = defaultdict(int)
-    b_domain_sequence_slice_bottom = defaultdict(int)
-    b_domain_sequence_slice_top = defaultdict(int)
-
+    # TODO: refactor
     # Detect totally unrelated pairs from the beginning
     if len(intersect) == 0:
         # Count total number of anchor and non-anchor domain to report in the
         # network file. Apart from that, these BGCs are totally unrelated.
-        for domain in set_a:
+        for domain in cluster_info_a.domlist_set:
             # This is a bit of a hack. If pfam domain ids ever change in size
             # we'd be in trouble. The previous approach was to .split(".")[0]
             # but it's more costly
             if domain[:7] in anchor_domains:
-                num_anchor_domains += len(bgcs[cluster_a][domain])
+                num_anchor_domains += len(bgcs[cluster_info_a.cluster_name][domain])
             else:
-                num_non_anchor_domains += len(bgcs[cluster_a][domain])
+                num_non_anchor_domains += len(bgcs[cluster_info_a.cluster_name][domain])
 
-        for domain in set_b:
+        for domain in cluster_info_b.domlist_set:
             if domain[:7] in anchor_domains:
-                num_anchor_domains += len(bgcs[cluster_b][domain])
+                num_anchor_domains += len(bgcs[cluster_info_b.cluster_name][domain])
             else:
-                num_non_anchor_domains += len(bgcs[cluster_b][domain])
+                num_non_anchor_domains += len(bgcs[cluster_info_b.cluster_name][domain])
 
         return 1.0, 0.0, 0.0, 0.0, 1.0, 1.0, num_non_anchor_domains, num_anchor_domains, 0, 0, 0, 0
 
-
-    # initialize domain sequence slices
-    # They might change if we manage to find a valid overlap
-    for domain in set_a:
-        a_domain_sequence_slice_bottom[domain] = 0
-        a_domain_sequence_slice_top[domain] = len(bgcs[cluster_a][domain])
-
-    for domain in set_b:
-        b_domain_sequence_slice_bottom[domain] = 0
-        b_domain_sequence_slice_top[domain] = len(bgcs[cluster_b][domain])
-
     #initialize domlist borders for AI
     dom_a_start = 0
-    dom_a_end = len(domlist_a)
+    dom_a_end = len(cluster_info_a.domlist)
     dom_b_start = 0
-    dom_b_end = len(domlist_b)
+    dom_b_end = len(cluster_info_b.domlist)
 
     # always find lcs seed to use for offset alignment in visualization
 
     # Compress the list of domains according to gene information. For example:
     # A_domlist = a b c d e f g
-    # dcg_a =   1  3  1  2 Number of domains per each gene in the BGC
-    # go_a =    1 -1 -1  1 Orientation of each gene
+    # cluster_info_a.dcg =   1  3  1  2 Number of domains per each gene in the BGC
+    # cluster_info_a.go =    1 -1 -1  1 Orientation of each gene
     # A_string = a dcb e fg List of concatenated domains
     # Takes into account gene orientation. This works effectively as putting all
     # genes in the same direction in order to be able to compare their domain content
     a_string = []
     start = 0
-    for num_gene in range(num_genes_a):
-        domain_count = dcg_a[num_gene]
-        if go_a[num_gene] == 1:
+    for num_gene in range(cluster_info_a.num_genes):
+        domain_count = cluster_info_a.dcg[num_gene]
+        if cluster_info_a.go[num_gene] == 1:
             # x[2:] <- small optimization, drop the "PF" from the pfam ids
-            a_string.append("".join(x[2:] for x in domlist_a[start:start+domain_count]))
+            a_string.append("".join(x[2:] for x in cluster_info_a.domlist[start:start+domain_count]))
         else:
-            a_string_doms = [domlist_a[x][2:] for x in range(start+domain_count-1, start-1, -1)]
+            a_string_doms = [cluster_info_a.domlist[x][2:] for x in range(start+domain_count-1, start-1, -1)]
             a_string.append("".join(a_string_doms))
         start += domain_count
 
     b_string = []
     start = 0
-    for num_gene in range(num_genes_b):
-        domain_count = dcg_b[num_gene]
-        if go_b[num_gene] == 1:
-            b_string.append("".join(x[2:] for x in domlist_b[start:start+domain_count]))
+    for num_gene in range(cluster_info_b.num_genes):
+        domain_count = cluster_info_b.dcg[num_gene]
+        if cluster_info_b.go[num_gene] == 1:
+            b_string.append("".join(x[2:] for x in cluster_info_b.domlist[start:start+domain_count]))
         else:
-            b_string_doms = [domlist_b[x][2:] for x in range(start+domain_count-1, start-1, -1)]
+            b_string_doms = [cluster_info_b.domlist[x][2:] for x in range(start+domain_count-1, start-1, -1)]
             b_string.append("".join(b_string_doms))
         start += domain_count
 
@@ -190,17 +167,17 @@ def cluster_distance_lcs(cluster_a, cluster_b, domlist_a, domlist_b, dcg_a, dcg_
     # a: start position in A
     # b: start position in B
     # s: length of the match
-    a_start, b_start, match_length = seqmatch.find_longest_match(0, num_genes_a, 0, num_genes_b)
+    a_start, b_start, match_length = seqmatch.find_longest_match(0, cluster_info_a.num_genes, 0, cluster_info_b.num_genes)
     #print(A, B)
     #print(a, b, s)
 
     seqmatch = SequenceMatcher(None, a_string, b_string_reverse)
-    ar, br, sr = seqmatch.find_longest_match(0, num_genes_a, 0, num_genes_b)
+    ar, br, sr = seqmatch.find_longest_match(0, cluster_info_a.num_genes, 0, cluster_info_b.num_genes)
     #print(ar, br, sr)
 
     # We need to keep working with the correct orientation
-    if match_length > sr or (match_length == sr and go_a[a_start] == go_b[b_start]):
-        dcg_B = dcg_b
+    if match_length > sr or (match_length == sr and cluster_info_a.go[a_start] == cluster_info_b.go[b_start]):
+        cluster_info_b.dcg = cluster_info_b.dcg
         B_string = b_string
         # note: these slices are in terms of genes, not domains (which are
         # ultimately what is used for distance)
@@ -211,10 +188,10 @@ def cluster_distance_lcs(cluster_a, cluster_b, domlist_a, domlist_b, dcg_a, dcg_
         sliceLengthB = match_length
 
         reverse = False
-        b_name = cluster_b
+        b_name = cluster_info_b.cluster_name
 
     elif match_length < sr:
-        dcg_B = list(reversed(dcg_b))
+        cluster_info_b.dcg = list(reversed(cluster_info_b.dcg))
         B_string = b_string_reverse
 
         sliceStartA = ar
@@ -225,7 +202,7 @@ def cluster_distance_lcs(cluster_a, cluster_b, domlist_a, domlist_b, dcg_a, dcg_
         # We'll need to know if we're working in reverse so that the start
         # postion of the final slice can be transformed to the original orientation
         reverse = True
-        b_name = cluster_b + "*"
+        b_name = cluster_info_b.cluster_name + "*"
 
     # special cases: s == sr
 
@@ -237,10 +214,10 @@ def cluster_distance_lcs(cluster_a, cluster_b, domlist_a, domlist_b, dcg_a, dcg_
         y = 0   # index in B with the gene with most domains
         for a_start, b_start, z in seqmatch.get_matching_blocks():
             if z != 0:
-                if domain_count_gene[cluster_a][a_start] > max_domains:
+                if domain_count_gene[cluster_info_a.cluster_name][a_start] > max_domains:
                     x = a_start
                     y = b_start
-                    max_domains = domain_count_gene[cluster_a][a_start]
+                    max_domains = domain_count_gene[cluster_info_a.cluster_name][a_start]
 
         # note: these slices are in terms of genes, not domains (which are
         # ultimately what is used for distance)
@@ -249,22 +226,22 @@ def cluster_distance_lcs(cluster_a, cluster_b, domlist_a, domlist_b, dcg_a, dcg_
         sliceLengthA = 1
         sliceLengthB = 1
 
-        if bgc_gene_orientation[cluster_a][x] == bgc_gene_orientation[cluster_b][y]:
+        if bgc_gene_orientation[cluster_info_a.cluster_name][x] == bgc_gene_orientation[cluster_info_b.cluster_name][y]:
             sliceStartB = y
-            dcg_B = dcg_b
+            cluster_info_b.dcg = cluster_info_b.dcg
             B_string = b_string
             reverse = False
-            b_name = cluster_b
+            b_name = cluster_info_b.cluster_name
         else:
-            sliceStartB = len(bgc_gene_orientation[cluster_b]) - y - 1
-            dcg_B = list(reversed(dcg_b))
+            sliceStartB = len(bgc_gene_orientation[cluster_info_b.cluster_name]) - y - 1
+            cluster_info_b.dcg = list(reversed(cluster_info_b.dcg))
             B_string = b_string_reverse
             reverse = True
-            b_name = cluster_b + "*"
+            b_name = cluster_info_b.cluster_name + "*"
 
     # s == sr and (s == 0 or s > 1)
     else:
-        dcg_B = dcg_b
+        cluster_info_b.dcg = cluster_info_b.dcg
         B_string = b_string
         # note: these slices are in terms of genes, not domains (which are
         # ultimately what is used for distance)
@@ -275,7 +252,7 @@ def cluster_distance_lcs(cluster_a, cluster_b, domlist_a, domlist_b, dcg_a, dcg_
         sliceLengthB = match_length
 
         reverse = False
-        b_name = cluster_b
+        b_name = cluster_info_b.cluster_name
 
 
     lcsStartA = sliceStartA
@@ -291,12 +268,12 @@ def cluster_distance_lcs(cluster_a, cluster_b, domlist_a, domlist_b, dcg_a, dcg_
         #offset_A = 0
         #offset_B = sliceStartA - sliceStartB
     #print(A, B)
-    #print("  "*offset_A + " ".join(map(str,dcg_A[:sliceStartA])) + "[" + " ".join(map(str,dcg_A[sliceStartA:sliceStartA+sliceLengthA])) + "]" + " ".join(map(str,dcg_A[sliceStartA+sliceLengthA:])) + "\t" + A )
-    #print("  "*offset_B + " ".join(map(str,dcg_B[:sliceStartB])) + "[" + " ".join(map(str,dcg_B[sliceStartB:sliceStartB+sliceLengthB])) + "]" + " ".join(map(str,dcg_B[sliceStartB+sliceLengthB:])) + "\t" + b_name)
+    #print("  "*offset_A + " ".join(map(str,cluster_info_a.dcg[:sliceStartA])) + "[" + " ".join(map(str,cluster_info_a.dcg[sliceStartA:sliceStartA+sliceLengthA])) + "]" + " ".join(map(str,cluster_info_a.dcg[sliceStartA+sliceLengthA:])) + "\t" + A )
+    #print("  "*offset_B + " ".join(map(str,cluster_info_b.dcg[:sliceStartB])) + "[" + " ".join(map(str,cluster_info_b.dcg[sliceStartB:sliceStartB+sliceLengthB])) + "]" + " ".join(map(str,cluster_info_b.dcg[sliceStartB+sliceLengthB:])) + "\t" + b_name)
     ##print(sliceStartA, sliceStartB, sliceLengthA)
     #print("")
 
-    if mode=="glocal" or (mode=="auto" and (bgc_info[cluster_a].contig_edge or bgc_info[cluster_b].contig_edge)):
+    if mode=="glocal" or (mode=="auto" and (bgc_info[cluster_info_a.cluster_name].contig_edge or bgc_info[cluster_info_b.cluster_name].contig_edge)):
         #X: bgc that drive expansion
         #Y: the other bgc
         # forward: True if expansion is to the right
@@ -306,7 +283,7 @@ def cluster_distance_lcs(cluster_a, cluster_b, domlist_a, domlist_b, dcg_a, dcg_
         # Expansion is relatively costly. We ask for a minimum of 3 genes
         # for the core overlap before proceeding with expansion.
         biosynthetic_hit_A = False
-        for biosynthetic_position in core_pos_a:
+        for biosynthetic_position in cluster_info_a.core_pos:
             if biosynthetic_position >= sliceStartA and biosynthetic_position <= (sliceStartA+sliceLengthA):
                 biosynthetic_hit_A = True
                 break
@@ -351,8 +328,8 @@ def cluster_distance_lcs(cluster_a, cluster_b, domlist_a, domlist_b, dcg_a, dcg_
             # RIGHT SIDE
             # check which side is the shortest downstream. If both BGCs have the same
             # length left, choose the one with the best expansion
-            downstream_A = num_genes_a - sliceStartA - sliceLengthA
-            downstream_B = num_genes_b - sliceStartB - sliceLengthB
+            downstream_A = cluster_info_a.num_genes - sliceStartA - sliceLengthA
+            downstream_B = cluster_info_b.num_genes - sliceStartB - sliceLengthB
             if downstream_A == downstream_B:
                 # assume complete extension of A, try to expand B
                 score_B, xb = score_expansion(B_string[sliceStartB+sliceLengthB:], a_string[sliceStartA+sliceLengthA:], True)
@@ -380,8 +357,8 @@ def cluster_distance_lcs(cluster_a, cluster_b, domlist_a, domlist_b, dcg_a, dcg_
                     sliceLengthA += xa
                     sliceLengthB += len(B_string[sliceStartB+sliceLengthB:])
 
-        #print("  "*offset_A + " ".join(map(str,dcg_A[:sliceStartA])) + "[" + " ".join(map(str,dcg_A[sliceStartA:sliceStartA+sliceLengthA])) + "]" + " ".join(map(str,dcg_A[sliceStartA+sliceLengthA:])) + "\t" + A )
-        #print("  "*offset_B + " ".join(map(str,dcg_B[:sliceStartB])) + "[" + " ".join(map(str,dcg_B[sliceStartB:sliceStartB+sliceLengthB])) + "]" + " ".join(map(str,dcg_B[sliceStartB+sliceLengthB:])) + "\t" + b_name)
+        #print("  "*offset_A + " ".join(map(str,cluster_info_a.dcg[:sliceStartA])) + "[" + " ".join(map(str,cluster_info_a.dcg[sliceStartA:sliceStartA+sliceLengthA])) + "]" + " ".join(map(str,cluster_info_a.dcg[sliceStartA+sliceLengthA:])) + "\t" + A )
+        #print("  "*offset_B + " ".join(map(str,cluster_info_b.dcg[:sliceStartB])) + "[" + " ".join(map(str,cluster_info_b.dcg[sliceStartB:sliceStartB+sliceLengthB])) + "]" + " ".join(map(str,cluster_info_b.dcg[sliceStartB+sliceLengthB:])) + "\t" + b_name)
 
         #print()
         #print(A_string)
@@ -394,53 +371,53 @@ def cluster_distance_lcs(cluster_a, cluster_b, domlist_a, domlist_b, dcg_a, dcg_
             biosynthetic_hit_A = False
             biosynthetic_hit_B = False
 
-            for biosynthetic_position in core_pos_a:
+            for biosynthetic_position in cluster_info_a.core_pos:
                 if biosynthetic_position >= sliceStartA and biosynthetic_position <= (sliceStartA+sliceLengthA):
                     biosynthetic_hit_A = True
                     break
 
             # return to original orientation if needed
             if reverse:
-                sliceStartB = num_genes_b - sliceStartB - sliceLengthB
+                sliceStartB = cluster_info_b.num_genes - sliceStartB - sliceLengthB
 
-            # using original core_pos_b
-            for biosynthetic_position in core_pos_b:
+            # using original cluster_info_b.core_pos
+            for biosynthetic_position in cluster_info_b.core_pos:
                 if biosynthetic_position >= sliceStartB and biosynthetic_position <= (sliceStartB + sliceLengthB):
                     biosynthetic_hit_B = True
                     break
 
             # finally...
             if biosynthetic_hit_A and biosynthetic_hit_B:
-                dom_a_start = sum(dcg_a[:sliceStartA])
-                dom_a_end = dom_a_start + sum(dcg_a[sliceStartA:sliceStartA+sliceLengthA])
-                set_a = set(domlist_a[dom_a_start:dom_a_end])
+                dom_a_start = sum(cluster_info_a.dcg[:sliceStartA])
+                dom_a_end = dom_a_start + sum(cluster_info_a.dcg[sliceStartA:sliceStartA+sliceLengthA])
+                cluster_info_a.domlist_set = set(cluster_info_a.domlist[dom_a_start:dom_a_end])
 
-                dom_b_start = sum(dcg_b[:sliceStartB])
-                dom_b_end = dom_b_start + sum(dcg_b[sliceStartB:sliceStartB+sliceLengthB])
-                set_b = set(domlist_b[dom_b_start:dom_b_end])
+                dom_b_start = sum(cluster_info_b.dcg[:sliceStartB])
+                dom_b_end = dom_b_start + sum(cluster_info_b.dcg[sliceStartB:sliceStartB+sliceLengthB])
+                cluster_info_b.domlist_set = set(cluster_info_b.domlist[dom_b_start:dom_b_end])
 
-                intersect = set_a & set_b
+                intersect = cluster_info_a.domlist_set & cluster_info_b.domlist_set
 
                 # re-adjust the indices for each domain so we get only the sequence
                 # tags in the selected slice. First step: find out which is the
                 # first copy of each domain we're using
-                for domain in domlist_a[:dom_a_start]:
-                    a_domain_sequence_slice_bottom[domain] += 1
-                for domain in domlist_b[:dom_b_start]:
-                    b_domain_sequence_slice_bottom[domain] += 1
+                for domain in cluster_info_a.domlist[:dom_a_start]:
+                    cluster_info_a.domain_seq_slice_bottom[domain] += 1
+                for domain in cluster_info_b.domlist[:dom_b_start]:
+                    cluster_info_b.domain_seq_slice_bottom[domain] += 1
 
                 # Step 2: work with the last copy of each domain.
                 # Step 2a: make top = bottom
-                for domain in set_a:
-                    a_domain_sequence_slice_top[domain] = a_domain_sequence_slice_bottom[domain]
-                for domain in set_b:
-                    b_domain_sequence_slice_top[domain] = b_domain_sequence_slice_bottom[domain]
+                for domain in cluster_info_a.domlist_set:
+                    cluster_info_a.domain_seq_slice_top[domain] = cluster_info_a.domain_seq_slice_bottom[domain]
+                for domain in cluster_info_b.domlist_set:
+                    cluster_info_b.domain_seq_slice_top[domain] = cluster_info_b.domain_seq_slice_bottom[domain]
 
                 # Step 2b: increase top with the domains in the slice
-                for domain in domlist_a[dom_a_start:dom_a_end]:
-                    a_domain_sequence_slice_top[domain] += 1
-                for domain in domlist_b[dom_b_start:dom_b_end]:
-                    b_domain_sequence_slice_top[domain] += 1
+                for domain in cluster_info_a.domlist[dom_a_start:dom_a_end]:
+                    cluster_info_a.domain_seq_slice_top[domain] += 1
+                for domain in cluster_info_b.domlist[dom_b_start:dom_b_end]:
+                    cluster_info_b.domain_seq_slice_top[domain] += 1
 
             #else:
                 #print(" - - Not a valid overlap found - - (no biosynthetic genes)\n")
@@ -449,7 +426,7 @@ def cluster_distance_lcs(cluster_a, cluster_b, domlist_a, domlist_b, dcg_a, dcg_
                 #print(" - - Not a valid overlap found - - (shortest slice not large enough)\n")
 
     # JACCARD INDEX
-    Jaccard = len(intersect) / len(set_a | set_b)
+    Jaccard = len(intersect) / len(cluster_info_a.domlist_set | cluster_info_b.domlist_set)
 
 
     # DSS INDEX
@@ -461,7 +438,7 @@ def cluster_distance_lcs(cluster_a, cluster_b, domlist_a, domlist_b, dcg_a, dcg_
     domain_difference_anchor, num_anchor_domains = 0,0
     domain_difference, num_non_anchor_domains = 0,0
 
-    not_intersect = set_a.symmetric_difference(set_b)
+    not_intersect = cluster_info_a.domlist_set.symmetric_difference(cluster_info_b.domlist_set)
 
     # Case 1
     #no need to look at seq identity, since these domains are unshared
@@ -471,9 +448,9 @@ def cluster_distance_lcs(cluster_a, cluster_b, domlist_a, domlist_b, dcg_a, dcg_
         unshared_occurrences = []
 
         try:
-            num_unshared = a_domain_sequence_slice_top[unshared_domain] - a_domain_sequence_slice_bottom[unshared_domain]
+            num_unshared = cluster_info_a.domain_seq_slice_top[unshared_domain] - cluster_info_a.domain_seq_slice_bottom[unshared_domain]
         except KeyError:
-            num_unshared = b_domain_sequence_slice_top[unshared_domain] - b_domain_sequence_slice_bottom[unshared_domain]
+            num_unshared = cluster_info_b.domain_seq_slice_top[unshared_domain] - cluster_info_b.domain_seq_slice_bottom[unshared_domain]
 
         # don't look at domain version, hence the split
         if unshared_domain[:7] in anchor_domains:
@@ -487,11 +464,11 @@ def cluster_distance_lcs(cluster_a, cluster_b, domlist_a, domlist_b, dcg_a, dcg_
     # Cases 2 and 3 (now merged)
     missing_aligned_domain_files = []
     for shared_domain in intersect:
-        specific_domain_list_A = bgcs[cluster_a][shared_domain]
-        specific_domain_list_B = bgcs[cluster_b][shared_domain]
+        specific_domain_list_A = bgcs[cluster_info_a.cluster_name][shared_domain]
+        specific_domain_list_B = bgcs[cluster_info_b.cluster_name][shared_domain]
 
-        num_copies_a = a_domain_sequence_slice_top[shared_domain] - a_domain_sequence_slice_bottom[shared_domain]
-        num_copies_b = b_domain_sequence_slice_top[shared_domain] - b_domain_sequence_slice_bottom[shared_domain]
+        num_copies_a = cluster_info_a.domain_seq_slice_top[shared_domain] - cluster_info_a.domain_seq_slice_bottom[shared_domain]
+        num_copies_b = cluster_info_b.domain_seq_slice_top[shared_domain] - cluster_info_b.domain_seq_slice_bottom[shared_domain]
 
         temp_domain_fastas.clear()
 
@@ -501,8 +478,8 @@ def cluster_distance_lcs(cluster_a, cluster_b, domlist_a, domlist_b, dcg_a, dcg_
         DistanceMatrix = np.ndarray((num_copies_a,num_copies_b))
         for domsa in range(num_copies_a):
             for domsb in range(num_copies_b):
-                sequence_tag_a = specific_domain_list_A[domsa + a_domain_sequence_slice_bottom[shared_domain]]
-                sequence_tag_b = specific_domain_list_B[domsb + b_domain_sequence_slice_bottom[shared_domain]]
+                sequence_tag_a = specific_domain_list_A[domsa + cluster_info_a.domain_seq_slice_bottom[shared_domain]]
+                sequence_tag_b = specific_domain_list_B[domsb + cluster_info_b.domain_seq_slice_bottom[shared_domain]]
 
                 seq_length = 0
                 matches = 0
@@ -608,16 +585,16 @@ def cluster_distance_lcs(cluster_a, cluster_b, domlist_a, domlist_b, dcg_a, dcg_
     # ADJACENCY INDEX
     # calculates the Tanimoto similarity of pairs of adjacent domains
 
-    if len(domlist_a[dom_a_start:dom_a_end]) < 2 or len(domlist_b[dom_b_start:dom_b_end]) < 2:
+    if len(cluster_info_a.domlist[dom_a_start:dom_a_end]) < 2 or len(cluster_info_b.domlist[dom_b_start:dom_b_end]) < 2:
         AI = 0.0
     else:
         setA_pairs = set()
         for l in range(dom_a_start, dom_a_end-1):
-            setA_pairs.add(tuple(sorted([domlist_a[l],domlist_a[l+1]])))
+            setA_pairs.add(tuple(sorted([cluster_info_a.domlist[l],cluster_info_a.domlist[l+1]])))
 
         setB_pairs = set()
         for l in range(dom_b_start, dom_b_end-1):
-            setB_pairs.add(tuple(sorted([domlist_b[l],domlist_b[l+1]])))
+            setB_pairs.add(tuple(sorted([cluster_info_b.domlist[l],cluster_info_b.domlist[l+1]])))
 
         # same treatment as in Jaccard
         AI = len(setA_pairs & setB_pairs) / len(setA_pairs | setB_pairs)
@@ -629,7 +606,7 @@ def cluster_distance_lcs(cluster_a, cluster_b, domlist_a, domlist_b, dcg_a, dcg_
         if Distance < -0.000001: # this definitely is something else...
             print("Negative distance detected!")
             print(Distance)
-            print("{} - {}".format(cluster_a, cluster_b))
+            print("{} - {}".format(cluster_info_a.cluster_name, cluster_info_b.cluster_name))
             print("J: {}\tDSS: {}\tAI: {}".format(str(Jaccard), str(DSS), str(AI)))
             print("Jw: {}\tDSSw: {}\tAIw: {}".format(str(jaccard_weight), str(dss_weight), str(ai_weight)))
         Distance = 0.0
