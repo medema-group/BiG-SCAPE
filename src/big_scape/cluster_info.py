@@ -2,7 +2,7 @@ from collections import defaultdict
 from xml import dom
 
 
-class cluster_info:
+class ClusterInfo:
     # base info
     cluster_name: str
     domlist: list

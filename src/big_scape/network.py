@@ -9,7 +9,8 @@ from multiprocessing import Pool
 
 import networkx as nx
 
-from src.big_scape.clustering import generate_dist_matrix, clusterJsonBatch
+from src.big_scape.cluster_info import ClusterInfo
+from src.big_scape.clustering import generate_dist_matrix, clusterJsonBatch, preprocess_cluster_info
 from src.bgctools import sort_bgc
 from src.utility import create_directory
 
@@ -95,6 +96,8 @@ def generate_network(run, cluster_names, domain_list, bgc_info, query_bgc, gene_
 # SIMILAR START
     print("\n Working for each BGC class")
 
+    cluster_cache = get_cluster_cache_async(run, cluster_names, domain_list, gene_domain_count, corebiosynthetic_pos, bgc_gene_orientation, bgcs.bgc_dict)
+
     # we have to find the idx of query_bgc
     if run.directories.has_query_bgc:
         if query_bgc in cluster_names:
@@ -160,9 +163,9 @@ def generate_network(run, cluster_names, domain_list, bgc_info, query_bgc, gene_
         pairs.clear()
         network_matrix = gen_dist_matrix_async(run, cluster_pairs,
                                                cluster_names,
-                                               domain_list,
+                                               cluster_cache,
                                                gene_domain_count,
-                                               corebiosynthetic_pos, bgc_gene_orientation,
+                                               bgc_gene_orientation,
                                                bgcs.bgc_dict,
                                                bgc_info,
                                                aligned_domain_seqs)
@@ -204,9 +207,11 @@ def generate_network(run, cluster_names, domain_list, bgc_info, query_bgc, gene_
                 cluster_pairs = [(x, y, bgc_class_name_2_index[bgc_class]) for (x, y) in pairs]
 
             pairs.clear()
-            network_matrix_new_set = gen_dist_matrix_async(run, cluster_pairs, cluster_names,
-                                                           domain_list, gene_domain_count,
-                                                           corebiosynthetic_pos, bgc_gene_orientation,
+            network_matrix_new_set = gen_dist_matrix_async(run, cluster_pairs,
+                                                           cluster_names,
+                                                           cluster_cache,
+                                                           gene_domain_count,
+                                                           bgc_gene_orientation,
                                                            bgcs.bgc_dict, bgc_info, aligned_domain_seqs)
             del cluster_pairs[:]
 
@@ -296,28 +301,43 @@ def generate_network(run, cluster_names, domain_list, bgc_info, query_bgc, gene_
         del bgc_classes[bgc_class][:]
         del reduced_network[:]
 
+def get_cluster_cache_async(run, cluster_names, domain_list, gene_domain_count,
+corebiosynthetic_positions, bgc_gene_orientation, bgcs):
+    pool = Pool(run.options.cores, maxtasksperchild=100)
+
+    # there are a couple of things we can calculate in advance and just once
+    # these will be contained in these cluster_info classes
+    func_preprocess = partial(preprocess_cluster_info, run=run, domain_list=domain_list, gene_domain_count=gene_domain_count,
+    corebiosynthetic_positions=corebiosynthetic_positions, bgc_gene_orientation=bgc_gene_orientation,
+    bgcs=bgcs)
+    cluster_cache_list: list(ClusterInfo) = pool.map(func_preprocess, cluster_names)
+    cluster_cache = dict()
+    for cluster_info in cluster_cache_list:
+        cluster_cache[cluster_info.cluster_name] = cluster_info
+    
+    return cluster_cache
+
 # @timeit
-def gen_dist_matrix_async(run, cluster_pairs, cluster_names, domain_list,
-                     gene_domain_count, corebiosynthetic_position,
-                     bgc_gene_orientation, bgcs, bgc_info,
-                     aligned_domain_sequences):
+def gen_dist_matrix_async(run, cluster_pairs, cluster_names,
+                          cluster_info_cache, gene_domain_count,
+                          bgc_gene_orientation, bgcs, bgc_info,
+                          aligned_domain_sequences):
     """Distributes the distance calculation part
     cluster_pairs is a list of triads (cluster1_index, cluster2_index, BGC class)
     """
 
     pool = Pool(run.options.cores, maxtasksperchild=100)
-    
+
     #Assigns the data to the different workers and pools the results back into
     # the network_matrix variable
     # TODO: reduce argument count
-    partial_func = partial(generate_dist_matrix, run=run, cluster_names=cluster_names,
-                           domain_list=domain_list,
-                           gene_domain_count=gene_domain_count,
-                           corebiosynthetic_position=corebiosynthetic_position,
-                           bgc_gene_orientation=bgc_gene_orientation,
-                           bgcs=bgcs, bgc_info=bgc_info,
-                           aligned_domain_sequences=aligned_domain_sequences)
-    network_matrix = pool.map(partial_func, cluster_pairs)
+    func_dist_matrix = partial(generate_dist_matrix, run=run, cluster_names=cluster_names,
+                               cluster_info_cache=cluster_info_cache,
+                               gene_domain_count=gene_domain_count,
+                               bgc_gene_orientation=bgc_gene_orientation,
+                               bgcs=bgcs, bgc_info=bgc_info,
+                               aligned_domain_sequences=aligned_domain_sequences)
+    network_matrix = pool.map(func_dist_matrix, cluster_pairs)
 
     # --- Serialized version of distance calculation ---
     # For the time being, use this if you have memory issues

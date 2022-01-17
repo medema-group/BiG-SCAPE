@@ -17,39 +17,66 @@ from Bio import Phylo
 
 from src.pfam.misc import get_domain_list
 from src.big_scape.scores import cluster_distance_lcs
-from src.big_scape.cluster_info import cluster_info
+from src.big_scape.cluster_info import ClusterInfo
 from src.bgctools import get_composite_bgc_similarities
 from src.utility.io import create_directory
 
+def preprocess_cluster_info(cluster_name, run, domain_list, gene_domain_count,
+corebiosynthetic_positions, bgc_gene_orientation, bgcs):
+    try:
+        domlist = domain_list[cluster_name]
+    except KeyError:
+        print(" Warning: domain list for {} was not found. Extracting from pfs files".format(cluster_name))
 
-def generate_dist_matrix(parms, run, cluster_names, domain_list,
-                         gene_domain_count, corebiosynthetic_position, bgc_gene_orientation,
+        cluster_file1 = os.path.join(run.directories.output, cluster_name + ".pfs")
+
+        domlist = get_domain_list(cluster_file1)
+
+    # "Domain Count per Gene". List of simple labels (integers) indicating number
+    # of domains belonging to each gene
+    dcg = gene_domain_count[cluster_name]
+
+    # Position of the anchor genes (i.e. genes with domains in the anchor
+    # domain list). Should probably be the Core Biosynthetic genes marked by
+    # antiSMASH
+    core_pos = corebiosynthetic_positions[cluster_name]
+
+    # go = "gene orientation"
+    go = bgc_gene_orientation[cluster_name]
+
+    cluster_info = ClusterInfo(cluster_name, domlist, dcg, core_pos, go)
+    
+    cluster_info.init_dom_seq_slices(bgcs)
+
+    #initialize domlist borders for AI
+    cluster_info.init_dom_borders()
+
+    cluster_info.init_gene_string()
+
+    return cluster_info
+
+
+def generate_dist_matrix(parms, run, cluster_names, cluster_info_cache,
+                         gene_domain_count, bgc_gene_orientation,
                          bgcs, bgc_info, aligned_domain_sequences):
     """Unpack data to actually launch cluster_distance for one pair of BGCs"""
 
     cluster_1_idx, cluster_2_idx, bgc_class_idx = [int(parm) for parm in parms]
-    cluster_name_a = cluster_names[cluster_1_idx]
-    cluster_name_b = cluster_names[cluster_2_idx]
+
     bgc_class = run.distance.bgc_class_names[bgc_class_idx]
 
-    try:
-        domain_list_A = domain_list[cluster_name_a]
-        domain_list_B = domain_list[cluster_name_b]
-    except KeyError:
-        print(" Warning: domain list for {} or {} was not found. Extracting from pfs files".format(cluster_name_a, cluster_name_b))
+    cluster_name_a = cluster_names[cluster_1_idx]
+    cluster_name_b = cluster_names[cluster_2_idx]
 
-        cluster_file1 = os.path.join(run.directories.output, cluster_name_a + ".pfs")
-        cluster_file2 = os.path.join(run.directories.output, cluster_name_b + ".pfs")
-
-        domain_list_A = get_domain_list(cluster_file1)
-        domain_list_B = get_domain_list(cluster_file2)
+    cluster_info_a: ClusterInfo = cluster_info_cache[cluster_name_a]
+    cluster_info_b: ClusterInfo = cluster_info_cache[cluster_name_b]
 
     # this really shouldn't happen if we've filtered domain-less gene clusters already
-    if len(domain_list_A) == 0 or len(domain_list_B) == 0:
+    if len(cluster_info_a.domlist) == 0 or len(cluster_info_b.domlist) == 0:
         print("   Warning: Regarding distance between clusters {} and {}:".format(cluster_name_a, cluster_name_b))
-        if len(domain_list_A) == 0 and len(domain_list_B) == 0:
+        if len(cluster_info_a.domlist) == 0 and len(cluster_info_b.domlist) == 0:
             print("   None have identified domains. Distance cannot be calculated")
-        elif (domain_list_A) == 0:
+        elif (cluster_info_a.domlist) == 0:
             print("   Cluster {} has no identified domains. Distance set to 1".format(cluster_name_a))
         else:
             print("   Cluster {} has no identified domains. Distance set to 1".format(cluster_name_b))
@@ -59,35 +86,7 @@ def generate_dist_matrix(parms, run, cluster_names, domain_list,
 
         # cluster1Idx, cluster2Idx, distance, jaccard, DSS, AI, rDSSNa, rDSSa,
         #   S, Sa, lcsStartA, lcsStartB
-        return array('f',[cluster_1_idx,cluster_2_idx,1,0,0,0,0,0,1,1,0,0])
-
-    # "Domain Count per Gene". List of simple labels (integers) indicating number
-    # of domains belonging to each gene
-    dcg_a = gene_domain_count[cluster_name_a]
-    dcg_b = gene_domain_count[cluster_name_b]
-
-    # Position of the anchor genes (i.e. genes with domains in the anchor
-    # domain list). Should probably be the Core Biosynthetic genes marked by
-    # antiSMASH
-    core_pos_a = corebiosynthetic_position[cluster_name_a]
-    core_pos_b = corebiosynthetic_position[cluster_name_b]
-
-    # go = "gene orientation"
-    go_a = bgc_gene_orientation[cluster_name_a]
-    go_b = bgc_gene_orientation[cluster_name_b]
-
-    cluster_info_a = cluster_info(cluster_name_a, domain_list_A, dcg_a, core_pos_a, go_a)
-    cluster_info_b = cluster_info(cluster_name_b, domain_list_B, dcg_b, core_pos_b, go_b)
-    
-    cluster_info_a.init_dom_seq_slices(bgcs)
-    cluster_info_b.init_dom_seq_slices(bgcs)
-
-    #initialize domlist borders for AI
-    cluster_info_a.init_dom_borders()
-    cluster_info_b.init_dom_borders()
-
-    cluster_info_a.init_gene_string()
-    cluster_info_b.init_gene_string()
+        return array('f', [cluster_1_idx, cluster_2_idx, 1, 0, 0, 0, 0, 0, 1, 1, 0, 0])
 
     weights = run.distance.bgc_class_weight[bgc_class]
 

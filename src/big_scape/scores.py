@@ -8,7 +8,7 @@ from Bio.SubsMat.MatrixInfo import pam250 as scoring_matrix
 from scipy.optimize import linear_sum_assignment
 
 
-from src.big_scape.cluster_info import cluster_info
+from src.big_scape.cluster_info import ClusterInfo
 from src.utility.fasta import fasta_parser
 
 def score_expansion(x_string_, y_string_, downstream):
@@ -70,7 +70,7 @@ def score_expansion(x_string_, y_string_, downstream):
     return max_score, expand_len
 
 
-def cluster_distance_lcs(run, cluster_info_a: cluster_info, cluster_info_b: cluster_info, weights,
+def cluster_distance_lcs(run, cluster_info_a: ClusterInfo, cluster_info_b: ClusterInfo, weights,
                          bgcs, domain_count_gene, bgc_gene_orientation, bgc_info,
                          aligned_domain_sequences):
     """Compare two clusters using information on their domains, and the
