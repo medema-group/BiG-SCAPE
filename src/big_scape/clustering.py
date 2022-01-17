@@ -89,8 +89,10 @@ def generate_dist_matrix(parms, run, cluster_names, domain_list,
     cluster_info_a.init_gene_string()
     cluster_info_b.init_gene_string()
 
+    weights = run.distance.bgc_class_weight[bgc_class]
+
     dist, jaccard, dss, ai, rDSSna, rDSS, S, Sa, lcsStartA, lcsStartB, seedLength, reverse = cluster_distance_lcs(run,
-                cluster_info_a, cluster_info_b, bgc_class, bgcs, gene_domain_count, bgc_gene_orientation,
+                cluster_info_a, cluster_info_b, weights, bgcs, gene_domain_count, bgc_gene_orientation,
                 bgc_info, aligned_domain_sequences)
 
     network_row = array('f', [cluster_1_idx, cluster_2_idx, dist, (1-dist)**2, jaccard,

@@ -70,7 +70,7 @@ def score_expansion(x_string_, y_string_, downstream):
     return max_score, expand_len
 
 
-def cluster_distance_lcs(run, cluster_info_a: cluster_info, cluster_info_b: cluster_info, bgc_class,
+def cluster_distance_lcs(run, cluster_info_a: cluster_info, cluster_info_b: cluster_info, weights,
                          bgcs, domain_count_gene, bgc_gene_orientation, bgc_info,
                          aligned_domain_sequences):
     """Compare two clusters using information on their domains, and the
@@ -92,7 +92,7 @@ def cluster_distance_lcs(run, cluster_info_a: cluster_info, cluster_info_b: clus
 
     """
 
-    jaccard_weight, dss_weight, ai_weight, anchor_boost = run.distance.bgc_class_weight[bgc_class]
+    jaccard_weight, dss_weight, ai_weight, anchor_boost = weights
 
     temp_domain_fastas = {}
 

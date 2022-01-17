@@ -306,7 +306,7 @@ def gen_dist_matrix_async(run, cluster_pairs, cluster_names, domain_list,
     """
 
     pool = Pool(run.options.cores, maxtasksperchild=100)
-
+    
     #Assigns the data to the different workers and pools the results back into
     # the network_matrix variable
     # TODO: reduce argument count
