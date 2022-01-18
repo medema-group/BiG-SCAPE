@@ -134,8 +134,8 @@ def calc_distance_lcs(run, cluster_info_a: ClusterInfo, cluster_info_b: ClusterI
 
 
     # JACCARD INDEX
-    overlap = cluster_info_a.domlist_set | cluster_info_b.domlist_set
-    jaccard_index = calc_jaccard(intersect, overlap)
+    union = cluster_info_a.domlist_set | cluster_info_b.domlist_set
+    jaccard_index = calc_jaccard(intersect, union)
 
 
     # Longest Common Substring (LCS)
