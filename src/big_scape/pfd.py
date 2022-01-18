@@ -7,8 +7,11 @@ def parse_pfd(run, cluster_base_names, gene_domain_count, corebiosynthetic_pos,
     pfd_dict_domains = defaultdict(int)
     orf_keys = {}
     for outputbase in cluster_base_names:
+        # init as unsigned char integer array
         gene_domain_count[outputbase] = array('B')
+        # init as unsigend short integer array
         corebiosynthetic_pos[outputbase] = array('H')
+        # init as signed char integer array
         bgc_gene_orientation[outputbase] = array('b')
         pfd_file = os.path.join(run.directories.pfd, outputbase + ".pfd")
 
