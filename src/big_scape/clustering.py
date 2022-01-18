@@ -16,7 +16,6 @@ from scipy.optimize import linear_sum_assignment
 from Bio import Phylo
 
 from src.pfam.misc import get_domain_list
-from src.big_scape.scores import calc_distance_lcs
 from src.big_scape.cluster_info import ClusterInfo
 from src.bgctools import get_composite_bgc_similarities
 from src.utility.io import create_directory

@@ -6,7 +6,7 @@ from functools import partial
 
 from src.big_scape.cluster_info import ClusterInfo
 from src.pfam.misc import get_domain_list
-from src.big_scape.clustering import calc_distance_lcs
+from src.big_scape.scores import calc_distance_lcs
 
 
 def get_cluster_cache_async(run, cluster_names, domain_list, gene_domain_count,

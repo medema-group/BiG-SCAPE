@@ -1,6 +1,7 @@
 from .network import generate_network
 from .distance import write_distance_matrix
 from .clustering import clusterJsonBatch
+from .scores import calc_jaccard, calc_distance_lcs
 from .run.base import Run, ClusterParam, DirParam, DistParam, GbkParam, MibigParam, NetworkParam, PfamParam
 from .bgcs import BGCS
 from .pfd import parse_pfd
