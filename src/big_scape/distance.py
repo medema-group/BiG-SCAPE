@@ -9,13 +9,13 @@ from src.pfam.misc import get_domain_list
 from src.big_scape.scores import calc_distance_lcs
 
 
-def get_cluster_cache_async(run, cluster_names, domain_list, gene_domain_count,
+def get_cluster_cache_async(run, cluster_names, domain_list, domain_count_per_gene,
     corebiosynthetic_positions, bgc_gene_orientation, bgcs, bgc_info):
     pool = Pool(run.options.cores, maxtasksperchild=100)
 
     # there are a couple of things we can calculate in advance and just once
     # these will be contained in these cluster_info classes
-    func_preprocess = partial(preprocess_cluster_info, run=run, domain_list=domain_list, gene_domain_count=gene_domain_count,
+    func_preprocess = partial(generate_cluster_info, run=run, domain_list=domain_list, domain_count_per_gene=domain_count_per_gene,
     corebiosynthetic_positions=corebiosynthetic_positions, bgc_gene_orientation=bgc_gene_orientation,
     bgcs=bgcs, bgc_info=bgc_info)
     cluster_cache_list: list(ClusterInfo) = pool.map(func_preprocess, cluster_names)
@@ -25,36 +25,36 @@ def get_cluster_cache_async(run, cluster_names, domain_list, gene_domain_count,
     
     return cluster_cache
 
-def get_cluster_cache(run, cluster_names, domain_list, gene_domain_count,
+def get_cluster_cache(run, cluster_names, domain_list, domain_count_per_gene,
     corebiosynthetic_positions, bgc_gene_orientation, bgcs, bgc_info):
     cluster_cache = {}
     for cluster_name in cluster_names:
-        cluster_info = preprocess_cluster_info(cluster_name, run, domain_list, gene_domain_count, corebiosynthetic_positions, bgc_gene_orientation, bgcs, bgc_info)
+        cluster_info = generate_cluster_info(cluster_name, run, domain_list, domain_count_per_gene, corebiosynthetic_positions, bgc_gene_orientation, bgcs, bgc_info)
         cluster_cache[cluster_name] = cluster_info
     return cluster_cache
 
-def preprocess_cluster_info(cluster_name, run, domain_list, gene_domain_count,
+def generate_cluster_info(cluster_name, run, domain_list, domain_count_per_gene,
 corebiosynthetic_positions, bgc_gene_orientation, bgcs, bgc_info):
     try:
-        domlist = domain_list[cluster_name]
+        cluster_domain_list = domain_list[cluster_name]
     except KeyError:
         print(" Warning: domain list for {} was not found. Extracting from pfs files".format(cluster_name))
 
-        cluster_file1 = os.path.join(run.directories.output, cluster_name + ".pfs")
+        cluster_pfs_file = os.path.join(run.directories.output, cluster_name + ".pfs")
 
-        domlist = get_domain_list(cluster_file1)
+        cluster_domain_list = get_domain_list(cluster_pfs_file)
 
     # "Domain Count per Gene". List of simple labels (integers) indicating number
     # of domains belonging to each gene
-    dcg = gene_domain_count[cluster_name]
+    cluster_domain_count_per_gene = domain_count_per_gene[cluster_name]
 
     cluster_info = ClusterInfo(cluster_name)
     
     # add a bunch of info
     bgcs = bgcs[cluster_name]
-    cluster_info.add_bgc_domain_info(bgcs, domlist, dcg)
+    cluster_info.add_bgc_domain_info(bgcs, cluster_domain_list, cluster_domain_count_per_gene)
 
-    domain_count = gene_domain_count[cluster_name]
+    domain_count = domain_count_per_gene[cluster_name]
     gene_orientations = bgc_gene_orientation[cluster_name]
     core_pos = corebiosynthetic_positions[cluster_name]
     cluster_info.add_bgc_domain_gene_info(domain_count, gene_orientations, core_pos)
