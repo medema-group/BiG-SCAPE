@@ -10,14 +10,14 @@ from src.big_scape.scores import calc_distance_lcs
 
 
 def get_cluster_cache_async(run, cluster_names, domain_list, gene_domain_count,
-corebiosynthetic_positions, bgc_gene_orientation, bgcs):
+    corebiosynthetic_positions, bgc_gene_orientation, bgcs, bgc_info):
     pool = Pool(run.options.cores, maxtasksperchild=100)
 
     # there are a couple of things we can calculate in advance and just once
     # these will be contained in these cluster_info classes
     func_preprocess = partial(preprocess_cluster_info, run=run, domain_list=domain_list, gene_domain_count=gene_domain_count,
     corebiosynthetic_positions=corebiosynthetic_positions, bgc_gene_orientation=bgc_gene_orientation,
-    bgcs=bgcs)
+    bgcs=bgcs, bgc_info=bgc_info)
     cluster_cache_list: list(ClusterInfo) = pool.map(func_preprocess, cluster_names)
     cluster_cache = dict()
     for cluster_info in cluster_cache_list:
@@ -25,8 +25,16 @@ corebiosynthetic_positions, bgc_gene_orientation, bgcs):
     
     return cluster_cache
 
+def get_cluster_cache(run, cluster_names, domain_list, gene_domain_count,
+    corebiosynthetic_positions, bgc_gene_orientation, bgcs, bgc_info):
+    cluster_cache = {}
+    for cluster_name in cluster_names:
+        cluster_info = preprocess_cluster_info(cluster_name, run, domain_list, gene_domain_count, corebiosynthetic_positions, bgc_gene_orientation, bgcs, bgc_info)
+        cluster_cache[cluster_name] = cluster_info
+    return cluster_cache
+
 def preprocess_cluster_info(cluster_name, run, domain_list, gene_domain_count,
-corebiosynthetic_positions, bgc_gene_orientation, bgcs):
+corebiosynthetic_positions, bgc_gene_orientation, bgcs, bgc_info):
     try:
         domlist = domain_list[cluster_name]
     except KeyError:
@@ -40,29 +48,28 @@ corebiosynthetic_positions, bgc_gene_orientation, bgcs):
     # of domains belonging to each gene
     dcg = gene_domain_count[cluster_name]
 
-    # Position of the anchor genes (i.e. genes with domains in the anchor
-    # domain list). Should probably be the Core Biosynthetic genes marked by
-    # antiSMASH
-    core_pos = corebiosynthetic_positions[cluster_name]
-
-    # go = "gene orientation"
-    go = bgc_gene_orientation[cluster_name]
-
-    cluster_info = ClusterInfo(cluster_name, domlist, dcg, core_pos, go)
+    cluster_info = ClusterInfo(cluster_name)
     
-    cluster_info.init_dom_seq_slices(bgcs)
+    # add a bunch of info
+    bgcs = bgcs[cluster_name]
+    cluster_info.add_bgc_domain_info(bgcs, domlist, dcg)
 
-    #initialize domlist borders for AI
-    cluster_info.init_dom_borders()
+    domain_count = gene_domain_count[cluster_name]
+    gene_orientations = bgc_gene_orientation[cluster_name]
+    core_pos = corebiosynthetic_positions[cluster_name]
+    cluster_info.add_bgc_domain_gene_info(domain_count, gene_orientations, core_pos)
 
+    # add this bgc object
+    cluster_info.add_bgc_info_obj(bgc_info)
+
+    # add gene string
     cluster_info.init_gene_string()
 
     return cluster_info
 
 # @timeit
 def gen_dist_matrix_async(run, cluster_pairs, cluster_names,
-                          cluster_info_cache, gene_domain_count,
-                          bgc_gene_orientation, bgcs, bgc_info,
+                          cluster_info_cache,
                           aligned_domain_sequences):
     """Distributes the distance calculation part
     cluster_pairs is a list of triads (cluster1_index, cluster2_index, BGC class)
@@ -75,29 +82,25 @@ def gen_dist_matrix_async(run, cluster_pairs, cluster_names,
     # TODO: reduce argument count
     func_dist_matrix = partial(generate_dist_matrix, run=run, cluster_names=cluster_names,
                                cluster_info_cache=cluster_info_cache,
-                               gene_domain_count=gene_domain_count,
-                               bgc_gene_orientation=bgc_gene_orientation,
-                               bgcs=bgcs, bgc_info=bgc_info,
                                aligned_domain_sequences=aligned_domain_sequences)
     network_matrix = pool.map(func_dist_matrix, cluster_pairs)
 
+    return network_matrix
+
+def gen_dist_matrix(run, cluster_pairs, cluster_names,
+                          cluster_info_cache,
+                          aligned_domain_sequences):
     # --- Serialized version of distance calculation ---
     # For the time being, use this if you have memory issues
-    # network_matrix = []
-    # for pair in cluster_pairs:
-    #     network_matrix.append(generate_dist_matrix(pair, run, cluster_names=cluster_names,
-    #                        domain_list=domain_list,
-    #                        gene_domain_count=gene_domain_count,
-    #                        corebiosynthetic_position=corebiosynthetic_position,
-    #                        bgc_gene_orientation=bgc_gene_orientation,
-    #                        bgcs=bgcs, bgc_info=bgc_info,
-    #                        aligned_domain_sequences=aligned_domain_sequences))
+    network_matrix = []
+    for pair in cluster_pairs:
+        network_matrix.append(generate_dist_matrix(pair, run, cluster_names, cluster_info_cache,
+                           aligned_domain_sequences))
 
     return network_matrix
 
 def generate_dist_matrix(parms, run, cluster_names, cluster_info_cache,
-                         gene_domain_count, bgc_gene_orientation,
-                         bgcs, bgc_info, aligned_domain_sequences):
+                         aligned_domain_sequences):
     """Unpack data to actually launch cluster_distance for one pair of BGCs"""
 
     cluster_1_idx, cluster_2_idx, bgc_class_idx = [int(parm) for parm in parms]
@@ -130,8 +133,7 @@ def generate_dist_matrix(parms, run, cluster_names, cluster_info_cache,
     weights = run.distance.bgc_class_weight[bgc_class]
 
     dist, jaccard, dss, ai, rDSSna, rDSS, S, Sa, lcsStartA, lcsStartB, seedLength, reverse = calc_distance_lcs(run,
-                cluster_info_a, cluster_info_b, weights, bgcs, gene_domain_count, bgc_gene_orientation,
-                bgc_info, aligned_domain_sequences)
+                cluster_info_a, cluster_info_b, weights, aligned_domain_sequences)
 
     network_row = array('f', [cluster_1_idx, cluster_2_idx, dist, (1-dist)**2, jaccard,
                               dss, ai, rDSSna, rDSS, S, Sa, lcsStartA, lcsStartB,

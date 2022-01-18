@@ -8,8 +8,6 @@ class TestRunBase(TestCase):
     test_run: big_scape.Run
 
     def setUp(self):
-        # test run object for various parameters
-        self.test_run = big_scape.Run()
     
     def test_jaccard_index(self):
         """Tests the jaccard index caluculation """
@@ -30,4 +28,22 @@ class TestRunBase(TestCase):
 
         jaccard_index = big_scape.scores.calc_jaccard(intersect, union)
 
+        # results in float, so asset almost equal
         self.assertAlmostEqual(jaccard_index, test_jaccard_index)
+
+    def test_get_distance_default(self):
+        """Tests the distance metrics returned by calc_distance_lcs on a pair of mock clusters
+        
+        This is the default version of this test, and is equivalent to a run of BiG-SCAPE with
+        no extra command line arguments that have an effect in calc_distance_lcs
+        """
+        # test run details
+        # we have to fill this in ourselves until there is a proper mocking mechanic in place for
+        # this object
+        test_run = big_scape.Run()
+
+
+        distance = big_scape.scores.calc_distance_lcs(run, cluster_info_a, cluster_info_b,
+                                                      weights, bgcs, domain_count_gene
+                                                      bgc_gene_orientation, bgc_info,
+                                                      aligned_domain_sequences)

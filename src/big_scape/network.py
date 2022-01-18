@@ -8,7 +8,7 @@ from itertools import product as combinations_product
 import networkx as nx
 
 from src.big_scape.clustering import clusterJsonBatch
-from src.big_scape.distance import write_distance_matrix, get_cluster_cache_async, gen_dist_matrix_async
+from src.big_scape.distance import write_distance_matrix, get_cluster_cache_async, get_cluster_cache, gen_dist_matrix_async, gen_dist_matrix
 from src.bgctools import sort_bgc
 from src.utility import create_directory
 
@@ -102,7 +102,7 @@ def generate_network(run, cluster_names, domain_list, bgc_info, query_bgc, gene_
 
     # we will need this for the two distance matrix generation calls
 
-    cluster_cache = get_cluster_cache_async(run, cluster_names, domain_list, gene_domain_count, corebiosynthetic_pos, bgc_gene_orientation, bgcs.bgc_dict)
+    cluster_cache = get_cluster_cache_async(run, cluster_names, domain_list, gene_domain_count, corebiosynthetic_pos, bgc_gene_orientation, bgcs.bgc_dict, bgc_info)
 
     # create working set with indices of valid clusters
     bgc_classes = create_working_set(run, cluster_names, domain_list, bgc_info, mix)
@@ -164,10 +164,6 @@ def generate_network(run, cluster_names, domain_list, bgc_info, query_bgc, gene_
         network_matrix = gen_dist_matrix_async(run, cluster_pairs,
                                                cluster_names,
                                                cluster_cache,
-                                               gene_domain_count,
-                                               bgc_gene_orientation,
-                                               bgcs.bgc_dict,
-                                               bgc_info,
                                                aligned_domain_seqs)
         #pickle.dump(network_matrix,open("others.ntwrk",'wb'))
         del cluster_pairs[:]
@@ -207,12 +203,8 @@ def generate_network(run, cluster_names, domain_list, bgc_info, query_bgc, gene_
                 cluster_pairs = [(x, y, bgc_class_name_2_index[bgc_class]) for (x, y) in pairs]
 
             pairs.clear()
-            network_matrix_new_set = gen_dist_matrix_async(run, cluster_pairs,
-                                                           cluster_names,
-                                                           cluster_cache,
-                                                           gene_domain_count,
-                                                           bgc_gene_orientation,
-                                                           bgcs.bgc_dict, bgc_info, aligned_domain_seqs)
+            network_matrix_new_set = gen_dist_matrix_async(run, cluster_pairs, cluster_names,
+                                                           cluster_cache, aligned_domain_seqs)
             del cluster_pairs[:]
 
             # Update the network matrix (QBGC-vs-all) with the distances of
