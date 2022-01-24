@@ -1,3 +1,4 @@
+from multiprocessing.dummy import Array
 import os
 import sys
 
@@ -14,7 +15,8 @@ elif version_info[0] == 3:
     import pickle # for storing and retrieving dictionaries
 #pylint: enable=wrong-import-order,redefined-builtin,invalid-name,undefined-variable,import-error
 
-class BGCS:
+
+class BgcInfo:
     # dictionary of this structure:
     # BGCs = {'cluster_name_x': { 'general_domain_name_x' : ['specific_domain_name_1',
     #  'specific_domain_name_2'] } }

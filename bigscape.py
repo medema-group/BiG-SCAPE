@@ -180,7 +180,7 @@ if __name__ == "__main__":
     hmm.check_pfd_files(RUN, CLUSTER_BASE_NAMES)
 
     # BGCs --
-    BGCS = big_scape.BGCS() #will contain the BGCs
+    BGCS = big_scape.BgcInfo() #will contain the BGCs
 
     if RUN.options.skip_ma:
         print(" Running with skip_ma parameter: Assuming that the domains folder has all the \
