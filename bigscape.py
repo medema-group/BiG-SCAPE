@@ -93,7 +93,7 @@ if __name__ == "__main__":
     BGC_INFO = {}
     GEN_BANK_DICT = {}
 
-    MIBIG_SET = mibig.import_mibig_gbk(RUN, BGC_INFO, GEN_BANK_DICT)
+    MIBIG_SET = gbk.fileprocessing.import_mibig_gbk(RUN, BGC_INFO, GEN_BANK_DICT)
 
     print("\nImporting GenBank files")
     gbk.fileprocessing.import_genbank_gbk(RUN, BGC_INFO, GEN_BANK_DICT)

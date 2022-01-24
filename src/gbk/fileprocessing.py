@@ -23,6 +23,32 @@ def import_query_gbk(run, bgc_info, gen_bank_dict):
                     Run again with --verbose)")
     return query_bgc
 
+
+def import_mibig_gbk(run: Run, bgc_info, genbank_dict):
+    """Imports MIBiG GBK files and stores information into dedicated objects
+
+    Inputs:
+    - run: parameters relevant to the current run
+    - bgc_info: Stores, per BGC: predicted type, gbk Description, number of records, width of
+      longest record, GenBank's accession, Biosynthetic Genes' ids
+    - genbankDict: {cluster_name:[genbank_path_to_1st_instance,[sample_1,sample_2,...]]}
+    """
+    # set of mibig bgcs
+    mibig_set = set()
+
+    print("\nImporting MIBiG files")
+    mibig_gbk_path = run.mibig.gbk_path
+    get_gbk_files(mibig_gbk_path, run, bgc_info, genbank_dict, True)
+    # gbk.get_gbk_files(run.mibig.gbk_path, run.directories.output, run.directories.bgc_fasta,
+    #                   int(options.min_bgc_size), ['*'], run.gbk.exclude, bgc_info, options.mode,
+    #                   options.verbose, options.force_hmmscan, run.valid_classes,
+    #                   bgctools.BgcData, genbank_dict)
+
+    for key in genbank_dict:
+        mibig_set.add(key)
+
+    return mibig_set
+
 def process_gbk_files(
         gbk_file_path: str,
         run: Run,
