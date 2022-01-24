@@ -1,1 +1,1 @@
-from .fileprocessing import sort_bgc, get_gbk_files, import_query_gbk, import_genbank_gbk, import_mibig_gbk
+from .fileprocessing import sort_bgc, import_gbks

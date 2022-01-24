@@ -19,6 +19,7 @@ class DirParam():
     # query bgc
     has_query_bgc: bool
     query_bgc: str
+    query_bgc_name: str
 
     # cache
     cache: str
@@ -76,6 +77,7 @@ class DirParam():
         - options: options object from CMD_parser"""
         if options.query_bgc:
             self.has_query_bgc = True
+            self.query_bgc_name = ".".join(options.query_bgc.split(os.sep)[-1].split(".")[:-1])
             if not os.path.isfile(options.query_bgc):
                 sys.exit("Error: Query BGC not found")
             self.query_bgc = options.query_bgc

@@ -88,7 +88,7 @@ def create_working_set(run, cluster_names, domain_list, bgc_info: BgcInfo, mix) 
     return bgc_classes
 
 
-def generate_network(run, cluster_names, domain_list, bgc_info: BgcInfo, query_bgc, domain_count_per_gene,
+def generate_network(run, cluster_names, domain_list, bgc_info: BgcInfo, domain_count_per_gene,
                      corebiosynthetic_pos, bgc_gene_orientation, bgcs, aligned_domain_seqs,
                      mibig_set_indices, mibig_set, rundata_networks_per_run,
                      html_subs_per_run, mix=False):
@@ -96,14 +96,14 @@ def generate_network(run, cluster_names, domain_list, bgc_info: BgcInfo, query_b
 
     # we have to find the idx of query_bgc
     if run.directories.has_query_bgc:
-        if query_bgc in cluster_names:
-            query_bgc_idx = cluster_names.index(query_bgc)
+        if run.directories.query_bgc_name in cluster_names:
+            query_bgc_idx = cluster_names.index(run.directories.query_bgc_name)
         else:
             sys.exit("Error finding the index of Query BGC")
 
     # we will need this for the two distance matrix generation calls
 
-    cluster_cache = get_cluster_cache_async(run, cluster_names, domain_list, domain_count_per_gene, corebiosynthetic_pos, bgc_gene_orientation, bgcs.bgc_dict, bgc_info)
+    cluster_cache = get_cluster_cache_async(run, cluster_names, domain_list, domain_count_per_gene, corebiosynthetic_pos, bgc_gene_orientation, bgcs.domain_name_info, bgc_info)
 
     # create working set with indices of valid clusters
     bgc_classes = create_working_set(run, cluster_names, domain_list, bgc_info, mix)
@@ -280,7 +280,7 @@ def generate_network(run, cluster_names, domain_list, bgc_info: BgcInfo, query_b
         family_data = clusterJsonBatch(bgc_classes[bgc_class], path_base, bgc_class,
             reduced_network, pos_alignments, cluster_names, bgc_info,
             mibig_set, run.directories.pfd, run.directories.bgc_fasta, domain_list,
-            bgcs.bgc_dict, aligned_domain_seqs, domain_count_per_gene, bgc_gene_orientation,
+            bgcs.domain_name_info, aligned_domain_seqs, domain_count_per_gene, bgc_gene_orientation,
             cutoffs=run.cluster.cutoff_list, clusterClans=run.options.clans, clanCutoff=run.options.clan_cutoff,
             htmlFolder=run.directories.network_html)
         for network_html_folder_cutoff in family_data:

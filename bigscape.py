@@ -87,21 +87,9 @@ if __name__ == "__main__":
     # 1. mibig
     # 2. genbank
     # 3. query BGC
-    # but all of them end up calling get_gbk_files, which add onto two dicts:
-    # BGC_INFO and GEN_BANK_DICT
+    # all of these are generalized into this method, which returns the bgc info and gen bank info
     # TODO: generalize into object
-    BGC_INFO = {}
-    GEN_BANK_DICT = {}
-
-    MIBIG_SET = gbk.fileprocessing.import_mibig_gbk(RUN, BGC_INFO, GEN_BANK_DICT)
-
-    print("\nImporting GenBank files")
-    gbk.fileprocessing.import_genbank_gbk(RUN, BGC_INFO, GEN_BANK_DICT)
-
-    QUERY_BGC = ""
-    if RUN.directories.has_query_bgc:
-        print("\nImporting query BGC files")
-        QUERY_BGC = gbk.fileprocessing.import_query_gbk(RUN, BGC_INFO, GEN_BANK_DICT)
+    BGC_INFO, GEN_BANK_DICT, MIBIG_SET = gbk.import_gbks(RUN)
 
     # CLUSTERS and SAMPLE_DICT contain the necessary structure for all-vs-all and sample analysis
     CLUSTERS = list(GEN_BANK_DICT.keys())
@@ -269,7 +257,7 @@ if __name__ == "__main__":
 
     # Making network files mixing all classes
     if RUN.options.mix:
-        big_scape.generate_network(RUN, CLUSTER_NAMES, DOMAIN_LIST, BGC_INFO, QUERY_BGC,
+        big_scape.generate_network(RUN, CLUSTER_NAMES, DOMAIN_LIST, BGC_INFO,
                                    GENE_DOMAIN_COUNT, COREBIOSYNTHETIC_POS,
                                    BGC_GENE_ORIENTATION, BGCS, ALIGNED_DOMAIN_SEQS,
                                    MIBIG_SET_INDICES, MIBIG_SET, RUNDATA_NETWORKS_PER_RUN,
@@ -277,7 +265,7 @@ if __name__ == "__main__":
 
     # Making network files separating by BGC class
     if not RUN.options.no_classify:
-        big_scape.generate_network(RUN, CLUSTER_NAMES, DOMAIN_LIST, BGC_INFO, QUERY_BGC,
+        big_scape.generate_network(RUN, CLUSTER_NAMES, DOMAIN_LIST, BGC_INFO,
                                    GENE_DOMAIN_COUNT, COREBIOSYNTHETIC_POS,
                                    BGC_GENE_ORIENTATION, BGCS, ALIGNED_DOMAIN_SEQS,
                                    MIBIG_SET_INDICES, MIBIG_SET, RUNDATA_NETWORKS_PER_RUN,

@@ -7,24 +7,48 @@ from src.big_scape.run.base import Run
 
 from src.bgctools import sort_bgc, BgcData
 
-def import_genbank_gbk(run, bgc_info, gen_bank_dict):
-    get_gbk_files(run.directories.input, run, bgc_info, gen_bank_dict)
+def import_gbks(run):
+    bgc_info = {}
+    gen_bank_dict = {}
 
-def import_query_gbk(run, bgc_info, gen_bank_dict):
-    query_bgc = ".".join(run.options.query_bgc.split(os.sep)[-1].split(".")[:-1])
-    if query_bgc in gen_bank_dict:
-        print("\nQuery BGC already added")
-    else:
-        print("\nImporting query BGC file")
-        get_gbk_files(run.options.query_bgc, run, bgc_info, gen_bank_dict, True)
+    mibig_bgc_info, mibig_gen_bank_dict = import_mibig_gbk(run)
+    bgc_info.update(mibig_bgc_info)
+    gen_bank_dict.update(mibig_gen_bank_dict)
 
-    if query_bgc not in gen_bank_dict:
+    mibig_set = set()
+    for key in mibig_gen_bank_dict:
+        mibig_set.add(key)
+
+    print("\nImporting GenBank files")
+    gbk_bgc_info, gbk_gen_bank_dict = import_genbank_gbk(run)
+    bgc_info.update(gbk_bgc_info)
+    gen_bank_dict.update(gbk_gen_bank_dict)
+    
+    if run.directories.has_query_bgc:
+        if run.directories.query_bgc_name in gen_bank_dict:
+            print("\nQuery BGC already added")
+        else:
+            print("\nImporting query BGC file")
+            query_bgc_info, query_gen_bank_dict = import_query_gbk(run)
+            bgc_info.update(query_bgc_info)
+            gen_bank_dict.update(query_gen_bank_dict)
+    return bgc_info, gen_bank_dict, mibig_set
+
+
+def import_genbank_gbk(run):
+    return get_gbk_files(run.directories.input, run)
+
+
+def import_query_gbk(run):
+    bgc_info, gen_bank_dict = get_gbk_files(run.options.query_bgc, run, True)
+
+    if run.directories.query_bgc_name not in gen_bank_dict:
         sys.exit("Error: not able to include Query BGC (check valid classes, BGC size, etc. \
                     Run again with --verbose)")
-    return query_bgc
+    return bgc_info, gen_bank_dict
 
 
-def import_mibig_gbk(run: Run, bgc_info, genbank_dict):
+def import_mibig_gbk(run: Run):
     """Imports MIBiG GBK files and stores information into dedicated objects
 
     Inputs:
@@ -38,24 +62,19 @@ def import_mibig_gbk(run: Run, bgc_info, genbank_dict):
 
     print("\nImporting MIBiG files")
     mibig_gbk_path = run.mibig.gbk_path
-    get_gbk_files(mibig_gbk_path, run, bgc_info, genbank_dict, True)
+    return get_gbk_files(mibig_gbk_path, run, True)
     # gbk.get_gbk_files(run.mibig.gbk_path, run.directories.output, run.directories.bgc_fasta,
     #                   int(options.min_bgc_size), ['*'], run.gbk.exclude, bgc_info, options.mode,
     #                   options.verbose, options.force_hmmscan, run.valid_classes,
     #                   bgctools.BgcData, genbank_dict)
 
-    for key in genbank_dict:
-        mibig_set.add(key)
 
-    return mibig_set
 
 def process_gbk_file(
         gbk_file_path: str,
         run: Run,
-        bgc_info: dict,
         files_no_proteins: list,
         files_no_biosynthetic_genes: list,
-        gen_bank_dict: dict,
 
 ):
     """ Given a file path to a GenBank file, reads information about the BGC"""
@@ -72,6 +91,9 @@ def process_gbk_file(
     bgc_locus_tags = []
     locus_sequences = {}
     locus_coordinates = {}
+    
+    bgc_info = {}
+    gen_bank_dict = {}
 
     file_folder, fname = os.path.split(gbk_file_path)
     cluster_name = fname[:-4]
@@ -380,10 +402,10 @@ def process_gbk_file(
         else:
             print(" Discarding {} (size less than {} bp, was {})".format(cluster_name, str(run.min_bgc_size), str(bgc_size)))
 
-    return adding_sequence
+    return adding_sequence, bgc_info, gen_bank_dict
 
 
-def get_gbk_files(gbk_path: str, run: Run, bgc_info, gen_bank_dict, include_all=False):
+def get_gbk_files(gbk_path: str, run: Run, include_all=False):
     """Searches given directory for genbank files recursively, will assume that
     the genbank files that have the same name are the same genbank file.
     Returns a dictionary that contains the names of the clusters found as keys
@@ -397,6 +419,9 @@ def get_gbk_files(gbk_path: str, run: Run, bgc_info, gen_bank_dict, include_all=
     processed_sequences = 0
     files_no_proteins = []
     files_no_biosynthetic_genes = []
+
+    bgc_info = {}
+    gen_bank_dict = {}
 
     include_gbk = []
     # bypass include all if set
@@ -435,7 +460,13 @@ def get_gbk_files(gbk_path: str, run: Run, bgc_info, gen_bank_dict, include_all=
             sys.exit("\nError: Input GenBank files should not have spaces in their path as hmmscan cannot process them properly ('too many arguments').")
 
         file_counter += 1
-        if process_gbk_file(file_path, run, bgc_info, files_no_proteins, files_no_biosynthetic_genes, gen_bank_dict):
+        gbk_file_process_results = process_gbk_file(file_path, run, files_no_proteins, files_no_biosynthetic_genes)
+        adding_sequence, file_bgc_info, file_gen_bank_dict = gbk_file_process_results
+
+        bgc_info.update(file_bgc_info)
+        gen_bank_dict.update(file_gen_bank_dict)
+
+        if adding_sequence:
             processed_sequences += 1
 
     if len(files_no_proteins) > 0:
@@ -455,4 +486,4 @@ def get_gbk_files(gbk_path: str, run: Run, bgc_info, gen_bank_dict, include_all=
     print("\n Starting with {:d} files".format(file_counter))
     print(" Files that had its sequence extracted: {:d}".format(processed_sequences))
 
-    return
+    return bgc_info, gen_bank_dict
