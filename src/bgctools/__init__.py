@@ -1,1 +1,1 @@
-from .bgctools import bgc_dict_gen, get_composite_bgc_similarities, sort_bgc, BgcData
+from .bgctools import generate_domain_name_info_dict, get_composite_bgc_similarities, sort_bgc, BgcData

@@ -1,6 +1,8 @@
 from collections import defaultdict
 from xml import dom
 
+from src.big_scape.bgc_info import BgcInfo
+
 
 class ClusterInfo:
     # base info
@@ -33,7 +35,7 @@ class ClusterInfo:
     bgcs: dict
     domain_count_gene: int
     bgc_gene_orientation: list
-    bgc_info: dict
+    bgc_info: BgcInfo
 
     def __init__(self, cluster_name):
         self.cluster_name = cluster_name
@@ -65,7 +67,7 @@ class ClusterInfo:
         self.bgc_gene_orientation = gene_orientations
         self.core_pos = core_pos
 
-    def add_bgc_info_obj(self, bgc_info):
+    def add_bgc_info_obj(self, bgc_info: BgcInfo):
         self.bgc_info = bgc_info[self.cluster_name]
 
     def init_gene_string(self):

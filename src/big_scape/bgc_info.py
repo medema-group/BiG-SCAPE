@@ -24,12 +24,12 @@ class BgcInfo:
     # - general_domain_name_x: PFAM ID, for example 'PF00550'
     # - specific_domain_name_x: ID of a specific domain that will allow to you to map it to names
     # in DMS unequivocally. e.g. 'PF00550_start_end', where start and end are genomic positions
-    bgc_dict = {}
+    domain_name_info = {}
 
     def load_from_file(self, run):
         try:
             with open(os.path.join(run.directories.cache, "BGCs.dict"), "r") as bgc_file:
-                self.bgc_dict = pickle.load(bgc_file)
+                self.domain_name_info = pickle.load(bgc_file)
                 bgc_file.close()
         except IOError:
             sys.exit("BGCs file not found...")
@@ -55,12 +55,12 @@ class BgcInfo:
                 utility.save_domain_seqs(filtered_matrix, fasta_dict,
                                          run.directories.domains, outputbase)
 
-            self.bgc_dict[outputbase] = bgctools.bgc_dict_gen(filtered_matrix)
+            self.domain_name_info[outputbase] = bgctools.generate_domain_name_info_dict(filtered_matrix)
 
             del filtered_matrix[:]
 
     def save_to_file(self, run):
         # store processed BGCs dictionary for future re-runs
         with open(os.path.join(run.directories.cache, "BGCs.dict"), "wb") as bgc_file:
-            pickle.dump(self.bgc_dict, bgc_file)
+            pickle.dump(self.domain_name_info, bgc_file)
             bgc_file.close()

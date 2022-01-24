@@ -3,6 +3,7 @@ from array import array
 
 from multiprocessing import Pool
 from functools import partial
+from src.big_scape.bgc_info import BgcInfo
 
 from src.big_scape.cluster_info import ClusterInfo
 from src.pfam.misc import get_domain_list
@@ -34,7 +35,7 @@ def get_cluster_cache(run, cluster_names, domain_list, domain_count_per_gene,
     return cluster_cache
 
 def generate_cluster_info(cluster_name, run, domain_list, domain_count_per_gene,
-corebiosynthetic_positions, bgc_gene_orientation, bgcs, bgc_info):
+corebiosynthetic_positions, bgc_gene_orientation, bgcs, bgc_info: BgcInfo):
     try:
         cluster_domain_list = domain_list[cluster_name]
     except KeyError:

@@ -9,6 +9,7 @@ import networkx as nx
 
 from src.big_scape.clustering import clusterJsonBatch
 from src.big_scape.distance import write_distance_matrix, get_cluster_cache_async, get_cluster_cache, gen_dist_matrix_async, gen_dist_matrix
+from src.big_scape.bgc_info import BgcInfo
 from src.bgctools import sort_bgc
 from src.utility import create_directory
 
@@ -34,7 +35,7 @@ def reduce_network(network_matrix):
         pos_alignment[int(row[1])] = (int(row[-4]), int(row[-3]), int(row[-2]), reverse)
     return reduced_network, pos_alignments
 
-def create_working_set(run, cluster_names, domain_list, bgc_info, mix) -> dict:
+def create_working_set(run, cluster_names, domain_list, bgc_info: BgcInfo, mix) -> dict:
     bgc_classes = defaultdict(list)
 
     if mix:
@@ -87,7 +88,7 @@ def create_working_set(run, cluster_names, domain_list, bgc_info, mix) -> dict:
     return bgc_classes
 
 
-def generate_network(run, cluster_names, domain_list, bgc_info, query_bgc, domain_count_per_gene,
+def generate_network(run, cluster_names, domain_list, bgc_info: BgcInfo, query_bgc, domain_count_per_gene,
                      corebiosynthetic_pos, bgc_gene_orientation, bgcs, aligned_domain_seqs,
                      mibig_set_indices, mibig_set, rundata_networks_per_run,
                      html_subs_per_run, mix=False):

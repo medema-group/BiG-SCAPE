@@ -49,7 +49,7 @@ def import_mibig_gbk(run: Run, bgc_info, genbank_dict):
 
     return mibig_set
 
-def process_gbk_files(
+def process_gbk_file(
         gbk_file_path: str,
         run: Run,
         bgc_info: dict,
@@ -406,16 +406,16 @@ def get_gbk_files(gbk_path: str, run: Run, bgc_info, gen_bank_dict, include_all=
         include_gbk = run.gbk.include
 
     if os.path.isfile(gbk_path):
-        files = [gbk_path]
+        file_paths = [gbk_path]
     else:
         # Unfortunately, this does not work in Python 2:
         #files = glob(os.path.join(inputpath,"**/*.gbk"), recursive=True)
-        files = [os.path.join(dirpath, f) for dirpath, dirnames, files in os.walk(gbk_path)
+        file_paths = [os.path.join(dirpath, f) for dirpath, dirnames, files in os.walk(gbk_path)
                  for f in files if f.endswith(".gbk")]
 
 
-    for filepath in files:
-        file_folder, fname = os.path.split(filepath)
+    for file_path in file_paths:
+        file_folder, fname = os.path.split(file_path)
 
         if len(include_gbk) == 1 and include_gbk[0] == "*":
             pass
@@ -431,11 +431,11 @@ def get_gbk_files(gbk_path: str, run: Run, bgc_info, gen_bank_dict, include_all=
             print(" Skipping file {} (string '_ORF' is used internally)".format(fname))
             continue
 
-        if " " in filepath:
+        if " " in file_path:
             sys.exit("\nError: Input GenBank files should not have spaces in their path as hmmscan cannot process them properly ('too many arguments').")
 
         file_counter += 1
-        if process_gbk_files(filepath, run, bgc_info, files_no_proteins, files_no_biosynthetic_genes, gen_bank_dict):
+        if process_gbk_file(file_path, run, bgc_info, files_no_proteins, files_no_biosynthetic_genes, gen_bank_dict):
             processed_sequences += 1
 
     if len(files_no_proteins) > 0:
