@@ -4,12 +4,13 @@ import sys
 from collections import defaultdict
 from itertools import combinations
 from itertools import product as combinations_product
+import debugpy
 
 import networkx as nx
 
+from src.big_scape.bgc_collection import BgcCollection
 from src.big_scape.clustering import clusterJsonBatch
-from src.big_scape.distance import write_distance_matrix, get_cluster_cache_async, get_cluster_cache, gen_dist_matrix_async, gen_dist_matrix
-from src.big_scape.bgc_info import BgcInfo
+from src.big_scape.distance import write_distance_matrix, gen_dist_matrix_async, gen_dist_matrix
 from src.bgctools import sort_bgc
 from src.utility import create_directory
 
@@ -35,20 +36,21 @@ def reduce_network(network_matrix):
         pos_alignment[int(row[1])] = (int(row[-4]), int(row[-3]), int(row[-2]), reverse)
     return reduced_network, pos_alignments
 
-def create_working_set(run, cluster_names, domain_list, bgc_info: BgcInfo, mix) -> dict:
+def create_working_set(run, bgc_collection: BgcCollection, mix) -> dict:
     bgc_classes = defaultdict(list)
 
     if mix:
         bgc_classes["mix"] = []
 
-    for cluster_idx, cluster_name in enumerate(cluster_names):
+    for cluster_idx, cluster_name in enumerate(bgc_collection.bgc_name_tuple):
         if run.has_includelist:
             # extra processing because pfs info includes model version
-            bgc_domain_set = set({x.split(".")[0] for x in domain_list[cluster_name]})
+            bgc_domain_set = set({x.split(".")[0] for x in bgc_collection.bgc_ordered_domain_list[cluster_name]})
 
             if len(run.domain_includelist & bgc_domain_set) == 0:
                 continue
-        product = bgc_info[cluster_name].product
+        product = bgc_collection.bgc_collection_dict[cluster_name].bgc_info.product
+        
         predicted_class = sort_bgc(product)
 
         if predicted_class.lower() in run.valid_classes:
@@ -88,25 +90,23 @@ def create_working_set(run, cluster_names, domain_list, bgc_info: BgcInfo, mix) 
     return bgc_classes
 
 
-def generate_network(run, cluster_names, domain_list, bgc_info: BgcInfo, domain_count_per_gene,
-                     corebiosynthetic_pos, bgc_gene_orientation, bgcs, aligned_domain_seqs,
+def generate_network(run, bgc_collection: BgcCollection, aligned_domain_seqs,
                      mibig_set_indices, mibig_set, rundata_networks_per_run,
                      html_subs_per_run, mix=False):
     print("\n Working for each BGC class")
 
     # we have to find the idx of query_bgc
     if run.directories.has_query_bgc:
-        if run.directories.query_bgc_name in cluster_names:
-            query_bgc_idx = cluster_names.index(run.directories.query_bgc_name)
+        if run.directories.query_bgc_name in bgc_collection.bgc_name_set:
+            query_bgc_idx = bgc_collection.bgc_name_tuple.index(run.directories.query_bgc_name)
         else:
             sys.exit("Error finding the index of Query BGC")
 
     # we will need this for the two distance matrix generation calls
 
-    cluster_cache = get_cluster_cache_async(run, cluster_names, domain_list, domain_count_per_gene, corebiosynthetic_pos, bgc_gene_orientation, bgcs.domain_name_info, bgc_info)
-
+    # cluster_cache = get_cluster_cache_async(run, cluster_names, domain_list, domain_count_per_gene, corebiosynthetic_pos, bgc_gene_orientation, domain_name_info, bgc_info)
     # create working set with indices of valid clusters
-    bgc_classes = create_working_set(run, cluster_names, domain_list, bgc_info, mix)
+    bgc_classes = create_working_set(run, bgc_collection, mix)
 
     if mix:
         print("\n  {} ({} BGCs)".format("Mix", str(len(bgc_classes["mix"]))))
@@ -144,9 +144,13 @@ def generate_network(run, cluster_names, domain_list, bgc_info: BgcInfo, domain_
         with open(network_annotation_path, "w") as network_annotation_file:
             network_annotation_file.write("BGC\tAccession ID\tDescription\tProduct Prediction\tBiG-SCAPE class\tOrganism\tTaxonomy\n")
             for idx in bgc_classes[bgc_class]:
-                bgc = cluster_names[idx]
-                product = bgc_info[bgc].product
-                network_annotation_file.write("\t".join([bgc, bgc_info[bgc].accession_id, bgc_info[bgc].description, product, sort_bgc(product), bgc_info[bgc].organism, bgc_info[bgc].taxonomy]) + "\n")
+                bgc = bgc_collection.bgc_name_tuple[idx]
+                accession_id = product = bgc_collection.bgc_collection_dict[bgc].bgc_info.accession_id
+                description = product = bgc_collection.bgc_collection_dict[bgc].bgc_info.description
+                product = bgc_collection.bgc_collection_dict[bgc].bgc_info.product
+                organism = bgc_collection.bgc_collection_dict[bgc].bgc_info.organism
+                taxonomy = bgc_collection.bgc_collection_dict[bgc].bgc_info.taxonomy
+                network_annotation_file.write("\t".join([bgc, accession_id, description, product, sort_bgc(product), organism, taxonomy]) + "\n")
 
         print("   Calculating all pairwise distances")
         if run.directories.has_query_bgc:
@@ -161,11 +165,8 @@ def generate_network(run, cluster_names, domain_list, bgc_info: BgcInfo, domain_
             cluster_pairs = [(x, y, bgc_class_name_2_index[bgc_class]) for (x, y) in pairs]
 
         pairs.clear()
-
-        network_matrix = gen_dist_matrix_async(run, cluster_pairs,
-                                               cluster_names,
-                                               cluster_cache,
-                                               aligned_domain_seqs)
+        network_matrix = gen_dist_matrix_async(run, cluster_pairs, 
+                                               bgc_collection, aligned_domain_seqs)
         #pickle.dump(network_matrix,open("others.ntwrk",'wb'))
         del cluster_pairs[:]
         #network_matrix = pickle.load(open("others.ntwrk", "rb"))
@@ -204,8 +205,7 @@ def generate_network(run, cluster_names, domain_list, bgc_info: BgcInfo, domain_
                 cluster_pairs = [(x, y, bgc_class_name_2_index[bgc_class]) for (x, y) in pairs]
 
             pairs.clear()
-            network_matrix_new_set = gen_dist_matrix_async(run, cluster_pairs, cluster_names,
-                                                           cluster_cache, aligned_domain_seqs)
+            network_matrix_new_set = gen_dist_matrix_async(run, cluster_pairs, bgc_collection, aligned_domain_seqs)
             del cluster_pairs[:]
 
             # Update the network matrix (QBGC-vs-all) with the distances of
@@ -224,9 +224,13 @@ def generate_network(run, cluster_names, domain_list, bgc_info: BgcInfo, domain_
             with open(network_annotation_path, "w") as network_annotation_file:
                 network_annotation_file.write("BGC\tAccession ID\tDescription\tProduct Prediction\tBiG-SCAPE class\tOrganism\tTaxonomy\n")
                 for idx in bgc_classes[bgc_class]:
-                    bgc = cluster_names[idx]
-                    product = bgc_info[bgc].product
-                    network_annotation_file.write("\t".join([bgc, bgc_info[bgc].accession_id, bgc_info[bgc].description, product, sort_bgc(product), bgc_info[bgc].organism, bgc_info[bgc].taxonomy]) + "\n")
+                    bgc = bgc_collection.bgc_name_tuple[idx]
+                    accession_id = product = bgc_collection.bgc_collection_dict[bgc].bgc_info.accession_id
+                    description = product = bgc_collection.bgc_collection_dict[bgc].bgc_info.description
+                    product = bgc_collection.bgc_collection_dict[bgc].bgc_info.product
+                    organism = product = bgc_collection.bgc_collection_dict[bgc].bgc_info.organism
+                    taxonomy = product = bgc_collection.bgc_collection_dict[bgc].bgc_info.taxonomy
+                    network_annotation_file.write("\t".join([bgc, accession_id, description, product, sort_bgc(product), organism, taxonomy]) + "\n")
         elif run.mibig.use_mibig:
             nx_graph = nx.Graph()
             nx_graph.add_nodes_from(bgc_classes[bgc_class])
@@ -272,15 +276,15 @@ def generate_network(run, cluster_names, domain_list, bgc_info: BgcInfo, domain_
         print("   Writing output files")
         path_base = os.path.join(run.directories.network, bgc_class)
         cutoffs_filenames = get_output_cutoffs_filenames(run, path_base, bgc_class)
-        write_distance_matrix(network_matrix, cutoffs_filenames, run.options.include_singletons, cluster_names, bgc_info)
+        write_distance_matrix(network_matrix, cutoffs_filenames, run.options.include_singletons, bgc_collection)
 
         print("  Calling Gene Cluster Families")
         reduced_network, pos_alignments = reduce_network(network_matrix)
 
         family_data = clusterJsonBatch(bgc_classes[bgc_class], path_base, bgc_class,
-            reduced_network, pos_alignments, cluster_names, bgc_info,
-            mibig_set, run.directories.pfd, run.directories.bgc_fasta, domain_list,
-            bgcs.domain_name_info, aligned_domain_seqs, domain_count_per_gene, bgc_gene_orientation,
+            reduced_network, pos_alignments, bgc_collection,
+            mibig_set, run.directories.pfd, run.directories.bgc_fasta,
+            aligned_domain_seqs,
             cutoffs=run.cluster.cutoff_list, clusterClans=run.options.clans, clanCutoff=run.options.clan_cutoff,
             htmlFolder=run.directories.network_html)
         for network_html_folder_cutoff in family_data:

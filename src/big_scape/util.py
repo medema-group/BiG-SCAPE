@@ -121,15 +121,16 @@ def prepare_html_subs_per_run(run):
         html_subs_per_run[network_html_folder_cutoff] = []
     return html_subs_per_run
 
-def write_network_annotation_file(run, cluster_names, bgc_info):
+def write_network_annotation_file(run, bgc_collection):
     network_annotation_path = os.path.join(run.directories.network, "Network_Annotations_Full.tsv")
     with open(network_annotation_path, "w") as network_annotation_file:
         header = "BGC\tAccession ID\tDescription\tProduct Prediction\tBiG-SCAPE class\tOrganism\t\
             Taxonomy\n"
         network_annotation_file.write(header)
-        for bgc in cluster_names:
-            product = bgc_info[bgc].product
-            bgc_info_parts = [bgc, bgc_info[bgc].accession_id, bgc_info[bgc].description,
-                              product, sort_bgc(product), bgc_info[bgc].organism,
-                              bgc_info[bgc].taxonomy]
+        for bgc in bgc_collection.bgc_name_tuple:
+            bgc_info = bgc_collection.bgc_collection_dict[bgc].bgc_info
+            product = bgc_info.product
+            bgc_info_parts = [bgc, bgc_info.accession_id, bgc_info.description,
+                              product, sort_bgc(product), bgc_info.organism,
+                              bgc_info.taxonomy]
             network_annotation_file.write("\t".join(bgc_info_parts) + "\n")

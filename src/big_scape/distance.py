@@ -3,75 +3,14 @@ from array import array
 
 from multiprocessing import Pool
 from functools import partial
-from src.big_scape.bgc_info import BgcInfo
+from src.big_scape.bgc_collection import BgcCollection
 
-from src.big_scape.cluster_info import ClusterInfo
+from src.big_scape.bgc_info import BgcInfo
 from src.pfam.misc import get_domain_list
 from src.big_scape.scores import calc_distance_lcs
 
-
-def get_cluster_cache_async(run, cluster_names, domain_list, domain_count_per_gene,
-    corebiosynthetic_positions, bgc_gene_orientation, bgcs, bgc_info):
-    pool = Pool(run.options.cores, maxtasksperchild=100)
-
-    # there are a couple of things we can calculate in advance and just once
-    # these will be contained in these cluster_info classes
-    func_preprocess = partial(generate_cluster_info, run=run, domain_list=domain_list, domain_count_per_gene=domain_count_per_gene,
-    corebiosynthetic_positions=corebiosynthetic_positions, bgc_gene_orientation=bgc_gene_orientation,
-    bgcs=bgcs, bgc_info=bgc_info)
-    cluster_cache_list: list(ClusterInfo) = pool.map(func_preprocess, cluster_names)
-    cluster_cache = dict()
-    for cluster_info in cluster_cache_list:
-        cluster_cache[cluster_info.cluster_name] = cluster_info
-    
-    return cluster_cache
-
-def get_cluster_cache(run, cluster_names, domain_list, domain_count_per_gene,
-    corebiosynthetic_positions, bgc_gene_orientation, bgcs, bgc_info):
-    cluster_cache = {}
-    for cluster_name in cluster_names:
-        cluster_info = generate_cluster_info(cluster_name, run, domain_list, domain_count_per_gene, corebiosynthetic_positions, bgc_gene_orientation, bgcs, bgc_info)
-        cluster_cache[cluster_name] = cluster_info
-    return cluster_cache
-
-def generate_cluster_info(cluster_name, run, domain_list, domain_count_per_gene,
-corebiosynthetic_positions, bgc_gene_orientation, bgcs, bgc_info: BgcInfo):
-    try:
-        cluster_domain_list = domain_list[cluster_name]
-    except KeyError:
-        print(" Warning: domain list for {} was not found. Extracting from pfs files".format(cluster_name))
-
-        cluster_pfs_file = os.path.join(run.directories.output, cluster_name + ".pfs")
-
-        cluster_domain_list = get_domain_list(cluster_pfs_file)
-
-    # "Domain Count per Gene". List of simple labels (integers) indicating number
-    # of domains belonging to each gene
-    cluster_domain_count_per_gene = domain_count_per_gene[cluster_name]
-
-    cluster_info = ClusterInfo(cluster_name)
-    
-    # add a bunch of info
-    bgcs = bgcs[cluster_name]
-    cluster_info.add_bgc_domain_info(bgcs, cluster_domain_list, cluster_domain_count_per_gene)
-
-    domain_count = domain_count_per_gene[cluster_name]
-    gene_orientations = bgc_gene_orientation[cluster_name]
-    core_pos = corebiosynthetic_positions[cluster_name]
-    cluster_info.add_bgc_domain_gene_info(domain_count, gene_orientations, core_pos)
-
-    # add this bgc object
-    cluster_info.add_bgc_info_obj(bgc_info)
-
-    # add gene string
-    cluster_info.init_gene_string()
-
-    return cluster_info
-
 # @timeit
-def gen_dist_matrix_async(run, cluster_pairs, cluster_names,
-                          cluster_info_cache,
-                          aligned_domain_sequences):
+def gen_dist_matrix_async(run, cluster_pairs, bgc_collection: BgcCollection, aligned_domain_sequences):
     """Distributes the distance calculation part
     cluster_pairs is a list of triads (cluster1_index, cluster2_index, BGC class)
     """
@@ -81,45 +20,40 @@ def gen_dist_matrix_async(run, cluster_pairs, cluster_names,
     #Assigns the data to the different workers and pools the results back into
     # the network_matrix variable
     # TODO: reduce argument count
-    func_dist_matrix = partial(generate_dist_matrix, run=run, cluster_names=cluster_names,
-                               cluster_info_cache=cluster_info_cache,
+    func_dist_matrix = partial(generate_dist_matrix, run=run, bgc_collection=bgc_collection,
                                aligned_domain_sequences=aligned_domain_sequences)
     network_matrix = pool.map(func_dist_matrix, cluster_pairs)
 
     return network_matrix
 
-def gen_dist_matrix(run, cluster_pairs, cluster_names,
-                          cluster_info_cache,
-                          aligned_domain_sequences):
+def gen_dist_matrix(run, cluster_pairs, bgc_collection: BgcCollection, aligned_domain_sequences):
     # --- Serialized version of distance calculation ---
     # For the time being, use this if you have memory issues
     network_matrix = []
     for pair in cluster_pairs:
-        network_matrix.append(generate_dist_matrix(pair, run, cluster_names, cluster_info_cache,
-                           aligned_domain_sequences))
+        network_matrix.append(generate_dist_matrix(pair, run, bgc_collection, aligned_domain_sequences))
 
     return network_matrix
 
-def generate_dist_matrix(parms, run, cluster_names, cluster_info_cache,
-                         aligned_domain_sequences):
+def generate_dist_matrix(parms, run, bgc_collection: BgcCollection, aligned_domain_sequences):
     """Unpack data to actually launch cluster_distance for one pair of BGCs"""
 
     cluster_1_idx, cluster_2_idx, bgc_class_idx = [int(parm) for parm in parms]
 
     bgc_class = run.distance.bgc_class_names[bgc_class_idx]
 
-    cluster_name_a = cluster_names[cluster_1_idx]
-    cluster_name_b = cluster_names[cluster_2_idx]
+    cluster_name_a = bgc_collection.bgc_name_tuple[cluster_1_idx]
+    cluster_name_b = bgc_collection.bgc_name_tuple[cluster_2_idx]
 
-    cluster_info_a: ClusterInfo = cluster_info_cache[cluster_name_a]
-    cluster_info_b: ClusterInfo = cluster_info_cache[cluster_name_b]
+    cluster_a = bgc_collection.bgc_collection_dict[cluster_name_a]
+    cluster_b = bgc_collection.bgc_collection_dict[cluster_name_b]
 
     # this really shouldn't happen if we've filtered domain-less gene clusters already
-    if len(cluster_info_a.domlist) == 0 or len(cluster_info_b.domlist) == 0:
+    if len(cluster_a.ordered_domain_list) == 0 or len(cluster_b.ordered_domain_list) == 0:
         print("   Warning: Regarding distance between clusters {} and {}:".format(cluster_name_a, cluster_name_b))
-        if len(cluster_info_a.domlist) == 0 and len(cluster_info_b.domlist) == 0:
+        if len(cluster_a.ordered_domain_list) == 0 and len(cluster_b.ordered_domain_list) == 0:
             print("   None have identified domains. Distance cannot be calculated")
-        elif (cluster_info_a.domlist) == 0:
+        elif (cluster_a.ordered_domain_list) == 0:
             print("   Cluster {} has no identified domains. Distance set to 1".format(cluster_name_a))
         else:
             print("   Cluster {} has no identified domains. Distance set to 1".format(cluster_name_b))
@@ -134,7 +68,7 @@ def generate_dist_matrix(parms, run, cluster_names, cluster_info_cache,
     weights = run.distance.bgc_class_weight[bgc_class]
 
     dist, jaccard, dss, ai, rDSSna, rDSS, S, Sa, lcsStartA, lcsStartB, seedLength, reverse = calc_distance_lcs(run,
-                cluster_info_a, cluster_info_b, weights, aligned_domain_sequences)
+                cluster_a, cluster_b, weights, aligned_domain_sequences)
 
     network_row = array('f', [cluster_1_idx, cluster_2_idx, dist, (1-dist)**2, jaccard,
                               dss, ai, rDSSna, rDSS, S, Sa, lcsStartA, lcsStartB,
@@ -143,7 +77,7 @@ def generate_dist_matrix(parms, run, cluster_names, cluster_info_cache,
 
 
 
-def write_distance_matrix(distance_matrix, cutoffs_filenames, include_singletons, cluster_names, bgc_info):
+def write_distance_matrix(distance_matrix, cutoffs_filenames, include_singletons, bgc_collection: BgcCollection):
     """
     An entry in the distance matrix is currently (all floats):
       0         1       2      3      4    5    6    7    8        9    10    11        12
@@ -185,13 +119,13 @@ def write_distance_matrix(distance_matrix, cutoffs_filenames, include_singletons
         cluster_set_connected[cutoff] = set()
 
     for matrix_entry in distance_matrix:
-        gene_cluster_a = cluster_names[int(matrix_entry[0])]
-        gene_cluster_b = cluster_names[int(matrix_entry[1])]
+        gene_cluster_a = bgc_collection.bgc_name_tuple[int(matrix_entry[0])]
+        gene_cluster_b = bgc_collection.bgc_name_tuple[int(matrix_entry[1])]
         row = [gene_cluster_a, gene_cluster_b]
 
         # get AntiSMASH annotations
-        cluster_group_a = bgc_info[gene_cluster_a].product
-        cluster_group_b = bgc_info[gene_cluster_b].product
+        cluster_group_a = bgc_collection.bgc_collection_dict[gene_cluster_a].bgc_info.product
+        cluster_group_b = bgc_collection.bgc_collection_dict[gene_cluster_b].bgc_info.product
 
         # add all the other floats
         row.extend(matrix_entry[2:-6])

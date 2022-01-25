@@ -7,7 +7,6 @@ import json
 import shutil
 
 
-from array import array
 from collections import defaultdict
 from operator import itemgetter
 from itertools import combinations
@@ -15,15 +14,14 @@ from sklearn.cluster import AffinityPropagation
 from scipy.optimize import linear_sum_assignment
 from Bio import Phylo
 
-from src.pfam.misc import get_domain_list
-from src.big_scape.cluster_info import ClusterInfo
 from src.bgctools import get_composite_bgc_similarities
+from src.big_scape.bgc_collection import BgcCollection
 from src.utility.io import create_directory
 
 
-def clusterJsonBatch(bgcs, pathBase, className, matrix, pos_alignments, clusterNames, bgc_info,
-                     mibig_set, pfd_folder, bgc_fasta_folder, DomainList, BGCs,
-                     AlignedDomainSequences, DomainCountGene, BGCGeneOrientation, cutoffs=[1.0],
+def clusterJsonBatch(bgcs, pathBase, className, matrix, pos_alignments, bgc_collection: BgcCollection,
+                     mibig_set, pfd_folder, bgc_fasta_folder,
+                     AlignedDomainSequences, cutoffs=[1.0],
                      damping=0.9, clusterClans=False, clanCutoff=(0.5, 0.8), htmlFolder=None,
                      verbose=False):
     """BGC Family calling
@@ -67,12 +65,12 @@ def clusterJsonBatch(bgcs, pathBase, className, matrix, pos_alignments, clusterN
     bs_data = []
     bgcJsonDict = {}
     for bgc in bgcs:
-        bgcName = clusterNames[bgc]
+        bgcName = bgc_collection.bgc_name_tuple[bgc]
         bgcJsonDict[bgcName] = {}
         bgcJsonDict[bgcName]["id"] = bgcName
-        bgcJsonDict[bgcName]["desc"] = bgc_info[bgcName].description
+        bgcJsonDict[bgcName]["desc"] = bgc_collection.bgc_collection_dict[bgcName].bgc_info.description
         bgcJsonDict[bgcName]["start"] = 1
-        bgcJsonDict[bgcName]["end"] = bgc_info[bgcName].bgc_size
+        bgcJsonDict[bgcName]["end"] = bgc_collection.bgc_collection_dict[bgcName].bgc_info.bgc_size
         bgcJsonDict[bgcName]["mibig"] = bgcName in mibig_set
 
         pfdFile = os.path.join(pfd_folder, bgcName + ".pfd")
@@ -119,7 +117,7 @@ def clusterJsonBatch(bgcs, pathBase, className, matrix, pos_alignments, clusterN
         # order of ORFs is important here because I use it to get a translation
         # between the "list of ORFs with domains" to "list of all ORFs" later on
         bgcJsonDict[bgcName]['orfs'] = sorted(orfDict.values(), key=itemgetter("start"))
-    bs_data = [bgcJsonDict[clusterNames[bgc]] for bgc in bgcs]
+    bs_data = [bgcJsonDict[bgc_collection.bgc_name_tuple[bgc]] for bgc in bgcs]
 
 
     # Create network
@@ -213,7 +211,7 @@ def clusterJsonBatch(bgcs, pathBase, className, matrix, pos_alignments, clusterN
 
         newick_trees = {} # key:original bgc index
         for exemplar_idx in familiesDict:
-            exemplar = clusterNames[exemplar_idx]
+            exemplar = bgc_collection.bgc_name_tuple[exemplar_idx]
             gcf = familiesDict[exemplar_idx][:]
             if len(gcf) < 3:
                 newick_trees[exemplar_idx] = "({}):0.01;".format(",".join([str(bgcExt2Int[x])+":0.0" for x in gcf]))
@@ -227,7 +225,7 @@ def clusterJsonBatch(bgcs, pathBase, className, matrix, pos_alignments, clusterN
             # make a frequency table (not counting copies):
             frequency_table = defaultdict(int)
             for bgc in gcf:
-                domain_sets[bgc] = set(DomainList[clusterNames[bgc]])
+                domain_sets[bgc] = set(bgc_collection.bgc_ordered_domain_list[bgc_collection.bgc_name_tuple[bgc]])
                 for domain in domain_sets[bgc]:
                     frequency_table[domain] += 1
 
@@ -274,7 +272,7 @@ def clusterJsonBatch(bgcs, pathBase, className, matrix, pos_alignments, clusterN
 
             match_dict = {}
             for domain in tree_domains:
-                specific_domain_list_A = BGCs[exemplar][domain]
+                specific_domain_list_A = bgc_collection.bgc_collection_dict[exemplar].domain_name_info[domain]
                 num_copies_a = len(specific_domain_list_A)
                 for exemplar_domain_copy in specific_domain_list_A:
                     alignments[exemplar_idx] += AlignedDomainSequences[exemplar_domain_copy]
@@ -287,14 +285,13 @@ def clusterJsonBatch(bgcs, pathBase, className, matrix, pos_alignments, clusterN
                         pass
                     elif domain not in domain_sets[bgc]:
                         if verbose:
-                            print("   BGC {} ({}) does not share a common domain core (GCF: {}, domain: {})".format(clusterNames[bgc], bgc, exemplar_idx, domain))
+                            print("   BGC {} ({}) does not share a common domain core (GCF: {}, domain: {})".format(bgc_collection.bgc_name_tuple[bgc], bgc, exemplar_idx, domain))
                         out_of_tree_bgcs.append(bgc)
                         delete_list.add(bgc)
                     elif bgc in delete_list:
                         pass
                     else:
-                        specific_domain_list_B = BGCs[clusterNames[bgc]][domain]
-
+                        specific_domain_list_B = bgc_collection.bgc_collection_dict[bgc_collection.bgc_name_tuple[bgc]].domain_name_info[domain]
                         num_copies_b = len(specific_domain_list_B)
 
                         DistanceMatrix = np.ndarray((num_copies_a,num_copies_b))
@@ -352,8 +349,8 @@ def clusterJsonBatch(bgcs, pathBase, className, matrix, pos_alignments, clusterN
 
                 for bgc in alignments:
                     if bgc != exemplar_idx:
-                        gcf_alignment_file.write(">{}\n{}\n".format(clusterNames[bgc], alignments[bgc]))
-                        bgc_name_to_idx[clusterNames[bgc]] = bgc
+                        gcf_alignment_file.write(">{}\n{}\n".format(bgc_collection.bgc_name_tuple[bgc], alignments[bgc]))
+                        bgc_name_to_idx[bgc_collection.bgc_name_tuple[bgc]] = bgc
 
             # launch fasttree to make tree
             if verbose:
@@ -512,7 +509,7 @@ def clusterJsonBatch(bgcs, pathBase, className, matrix, pos_alignments, clusterN
                             pass
                         elif reverse:
                             # special case. bgc was reference (first) in lcs
-                            a = domainGenes2allGenes[family][len(DomainCountGene[clusterNames[family]])-a-length]
+                            a = domainGenes2allGenes[family][len(bgc_collection.bgc_collection_dict[bgc_collection.bgc_name_tuple[family]].gene_domain_counts)-a-length]
                             b = domainGenes2allGenes[bgc][b+length-1] # -1 go to 0-index
                         else:
                             a = domainGenes2allGenes[family][a]
@@ -524,7 +521,7 @@ def clusterJsonBatch(bgcs, pathBase, className, matrix, pos_alignments, clusterN
 
                         elif reverse:
 
-                            b = domainGenes2allGenes[bgc][len(DomainCountGene[clusterNames[bgc]])-b-1]
+                            b = domainGenes2allGenes[bgc][len(bgc_collection.bgc_collection_dict[bgc_collection.bgc_name_tuple[bgc]].gene_domain_counts)-b-1]
                         else:
                             b = domainGenes2allGenes[bgc][b]
 
@@ -534,19 +531,19 @@ def clusterJsonBatch(bgcs, pathBase, className, matrix, pos_alignments, clusterN
                         # let's try aligning using the genes with most domains
                         # after all, they ended up being in the same GCF
                         # for some reason
-                        x = max(DomainCountGene[clusterNames[family]])
-                        x = DomainCountGene[clusterNames[family]].index(x)
+                        x = max(bgc_collection.bgc_collection_dict[bgc_collection.bgc_name_tuple[family]].gene_domain_counts)
+                        x = bgc_collection.bgc_collection_dict[bgc_collection.bgc_name_tuple[family]].gene_domain_counts.index(x)
                         a = domainGenes2allGenes[family][x]
 
-                        y = max(list(DomainCountGene[clusterNames[bgc]]))
-                        y = DomainCountGene[clusterNames[bgc]].index(y)
+                        y = max(list(bgc_collection.bgc_collection_dict[bgc_collection.bgc_name_tuple[bgc]].gene_domain_counts))
+                        y = bgc_collection.bgc_collection_dict[bgc_collection.bgc_name_tuple[bgc]].gene_domain_counts.index(y)
 
                         #check orientation
-                        if BGCGeneOrientation[clusterNames[family]][x] == BGCGeneOrientation[clusterNames[bgc]][y]:
+                        if bgc_collection.bgc_collection_dict[bgc_collection.bgc_name_tuple[family]].gene_orientations[x] == bgc_collection.bgc_collection_dict[bgc_collection.bgc_name_tuple[bgc]].gene_orientations[y]:
                             b = domainGenes2allGenes[bgc][y]
                             reverse = False
                         else:
-                            b = domainGenes2allGenes[bgc][len(DomainCountGene[clusterNames[bgc]])-y-1]
+                            b = domainGenes2allGenes[bgc][len(bgc_collection.bgc_collection_dict[bgc_collection.bgc_name_tuple[bgc]].gene_domain_counts)-y-1]
                             reverse = True
 
                     ref_genes_.add(a)
@@ -583,7 +580,7 @@ def clusterJsonBatch(bgcs, pathBase, className, matrix, pos_alignments, clusterN
             clustering_file.write('#BGC Name\tFamily Number\n')
             for family in familyIdx:
                 for bgc in familiesDict[family]:
-                    clustering_file.write("{}\t{}\n".format(clusterNames[bgc], family))
+                    clustering_file.write("{}\t{}\n".format(bgc_collection.bgc_name_tuple[bgc], family))
 
         # get family-family similarity matrix
         bs_similarity_families = [[get_composite_bgc_similarities([bgcs[bid] for bid in bs_families[row]["members"]], [bgcs[bid] for bid in bs_families[col]["members"]], simDict) if (row != col) else (1.00, (1.00, bgcs[bs_families[row]["members"][0]], bgcs[bs_families[row]["members"][0]]), (1.00, bgcs[bs_families[row]["members"][0]], bgcs[bs_families[row]["members"][0]])) for col in
@@ -622,7 +619,7 @@ def clusterJsonBatch(bgcs, pathBase, className, matrix, pos_alignments, clusterN
                 for clan in clansDict.keys():
                     for family in clansDict[clan]:
                         for bgc in familiesDict[family]:
-                            clansFile.write("{}\t{}\t{}\n".format(clusterNames[bgc], clan, family))
+                            clansFile.write("{}\t{}\t{}\n".format(bgc_collection.bgc_name_tuple[bgc], clan, family))
 
         results[htmlFolder_run] = family_data
 

@@ -88,25 +88,23 @@ if __name__ == "__main__":
     # 2. genbank
     # 3. query BGC
     # all of these are generalized into this method, which returns the bgc info and gen bank info
-    # TODO: generalize into object
-    BGC_INFO, GEN_BANK_DICT, MIBIG_SET = gbk.import_gbks(RUN)
-
-    # CLUSTERS and SAMPLE_DICT contain the necessary structure for all-vs-all and sample analysis
-    CLUSTERS = list(GEN_BANK_DICT.keys())
-
-    print("\nTrying threading on {} cores".format(str(RUN.options.cores)))
+    BGC_INFO_DICT, GBK_FILE_DICT, MIBIG_SET = gbk.import_gbks(RUN)
+    
+    # base name as a list and as a set
+    # also used in all vs all analysis
+    CLUSTER_NAME_LIST = list(GBK_FILE_DICT.keys())
+    CLUSTER_NAME_SET = set(CLUSTER_NAME_LIST)
 
 
     ### Step 2: Run hmmscan
+    print("\nTrying threading on {} cores".format(str(RUN.options.cores)))
     print("\nPredicting domains using hmmscan")
-
-    CLUSTER_BASE_NAMES = set(CLUSTERS)
 
     # get all fasta files in cache directory
     CACHED_FASTA_FILES = hmm.get_cached_fasta_files(RUN)
 
     # verify that all clusters have a corresponding fasta file in cache
-    hmm.check_fasta_files(RUN, CLUSTER_BASE_NAMES, CACHED_FASTA_FILES)
+    hmm.check_fasta_files(RUN, CLUSTER_NAME_SET, CACHED_FASTA_FILES)
 
     # Make a list of all fasta files that need to be processed by hmmscan & BiG-SCAPE
     # (i.e., they don't yet have a corresponding .domtable)
@@ -130,7 +128,7 @@ if __name__ == "__main__":
 
     # verify that domtable files were generated successfully. each cluster should have a domtable
     # file.
-    hmm.check_domtable_files(RUN, CLUSTER_BASE_NAMES, CACHED_DOMTABLE_FILES)
+    hmm.check_domtable_files(RUN, CLUSTER_NAME_SET, CACHED_DOMTABLE_FILES)
 
     # find unprocessed files (assuming that if the pfd file exists, the pfs should too)
     # this will just return all domtable files if force_hmmscan is set
@@ -138,15 +136,15 @@ if __name__ == "__main__":
 
     for domtableFile in DOMTABLE_FILES_TO_PROCESS:
         hmm.parse_hmmscan(domtableFile, RUN.directories.pfd, RUN.directories.pfs,
-                          RUN.options.domain_overlap_cutoff, RUN.options.verbose, GEN_BANK_DICT,
-                          CLUSTERS, CLUSTER_BASE_NAMES, MIBIG_SET)
+                          RUN.options.domain_overlap_cutoff, RUN.options.verbose, GBK_FILE_DICT,
+                          CLUSTER_NAME_LIST, CLUSTER_NAME_SET, MIBIG_SET)
 
     # If number of pfd files did not change, no new sequences were added to the
     #  domain fastas and we could try to resume the multiple alignment phase
     # baseNames have been pruned of BGCs with no domains that might've been added temporarily
     TRY_RESUME_MULTIPLE_ALIGNMENT = False
     ALREADY_DONE = hmm.get_processed_domtable_files(RUN, CACHED_DOMTABLE_FILES)
-    if len(CLUSTER_BASE_NAMES - set(pfd.split(os.sep)[-1][:-9] for pfd in ALREADY_DONE)) == 0:
+    if len(CLUSTER_NAME_SET - set(pfd.split(os.sep)[-1][:-9] for pfd in ALREADY_DONE)) == 0:
         TRY_RESUME_MULTIPLE_ALIGNMENT = True
     else:
         # new sequences will be added to the domain fasta files. Clean domains folder
@@ -165,39 +163,59 @@ if __name__ == "__main__":
     print("\nProcessing domains sequence files")
 
     # do one more check of pfd files to see if they are all there
-    hmm.check_pfd_files(RUN, CLUSTER_BASE_NAMES)
+    hmm.check_pfd_files(RUN, CLUSTER_NAME_SET)
 
     # BGCs --
-    BGCS = big_scape.BgcInfo() #will contain the BGCs
+    # this collection will contain all bgc objects
+    BGC_COLLECTION = big_scape.BgcCollection()
+
+    # init the collection with the acquired names from importing GBK files
+    BGC_COLLECTION.initialize(CLUSTER_NAME_LIST)
+
+    # the BGCs need to know which domains belong where
+    # this is done in this step
+    BGC_COLLECTION.init_ordered_domain_list(RUN)
+
+    # add info and source gbk files
+    BGC_COLLECTION.add_bgc_info(BGC_INFO_DICT)
+    BGC_COLLECTION.add_source_gbk_files(GBK_FILE_DICT)
 
     if RUN.options.skip_ma:
         print(" Running with skip_ma parameter: Assuming that the domains folder has all the \
             fasta files")
-        BGCS.load_from_file(RUN)
+        BGC_COLLECTION.load_domain_names_from_dict(RUN)
     else:
         print(" Adding sequences to corresponding domains file")
-        BGCS.load_pfds(RUN, CLUSTER_BASE_NAMES, TRY_RESUME_MULTIPLE_ALIGNMENT)
+        BGC_COLLECTION.load_domain_names_from_pfd(RUN, TRY_RESUME_MULTIPLE_ALIGNMENT)
 
-        BGCS.save_to_file(RUN)
+        BGC_COLLECTION.save_domain_names_to_dict(RUN)
 
     # Key: BGC. Item: ordered list of simple integers with the number of domains
     # in each gene
     # Instead of `DomainCountGene = defaultdict(list)`, let's try arrays of
     # unsigned ints
-    GENE_DOMAIN_COUNT = {}
+    # GENE_DOMAIN_COUNT = {}
     # list of gene-numbers that have a hit in the anchor domain list. Zero based
-    COREBIOSYNTHETIC_POS = {}
+    # COREBIOSYNTHETIC_POS = {}
     # list of +/- orientation
-    BGC_GENE_ORIENTATION = {}
+    # BGC_GENE_ORIENTATION = {}
 
     # TODO: remove this comment? not sure what it relates to
     # if it's a re-run, the pfd/pfs files were not changed, so the skip_ma flag
     # is activated. We have to open the pfd files to get the gene labels for
     # each domain
     # We now always have to have this data so the alignments are produced
-    big_scape.parse_pfd(RUN, CLUSTER_BASE_NAMES, GENE_DOMAIN_COUNT, COREBIOSYNTHETIC_POS,
-                        BGC_GENE_ORIENTATION, BGC_INFO)
+    PARSE_PFD_RESULTS = big_scape.parse_pfd(RUN, BGC_COLLECTION)
+    GENE_DOMAIN_COUNT, COREBIOSYNTHETIC_POS, BGC_GENE_ORIENTATION = PARSE_PFD_RESULTS
 
+    BGC_COLLECTION.add_gene_domain_counts(GENE_DOMAIN_COUNT)
+    BGC_COLLECTION.add_bio_synth_core_pos(COREBIOSYNTHETIC_POS)
+    BGC_COLLECTION.add_gene_orientations(BGC_GENE_ORIENTATION)
+
+    # at this point we can assemble a gene string for bgc info
+    BGC_COLLECTION.init_gene_strings()
+
+    
 
     ### Step 5: Create SVG figures
     print(" Creating arrower-like figures for each BGC")
@@ -209,7 +227,7 @@ if __name__ == "__main__":
 
     # verify if there are figures already generated
 
-    big_scape.generate_images(RUN, CLUSTER_BASE_NAMES, GEN_BANK_DICT, PFAM_INFO, BGC_INFO)
+    big_scape.generate_images(RUN, CLUSTER_NAME_SET, GBK_FILE_DICT, PFAM_INFO, BGC_INFO_DICT)
     print(" Finished creating figures")
     print("\n\n   - - Calculating distance matrix - -")
 
@@ -221,7 +239,6 @@ if __name__ == "__main__":
     print(" Trying to read domain alignments (*.algn files)")
     ALIGNED_DOMAIN_SEQS = hmm.read_aligned_files(RUN)
 
-    CLUSTER_NAMES = tuple(sorted(CLUSTERS))
     # copy html templates
     HTML_TEMPLATE_PATH = os.path.join(ROOT_PATH, "html_template", "output")
     dir_util.copy_tree(HTML_TEMPLATE_PATH, RUN.directories.output)
@@ -239,52 +256,44 @@ if __name__ == "__main__":
 
     # This version contains info on all bgcs with valid classes
     print("   Writing the complete Annotations file for the complete set")
-    big_scape.write_network_annotation_file(RUN, CLUSTER_NAMES, BGC_INFO)
+    big_scape.write_network_annotation_file(RUN, BGC_COLLECTION)
 
     # Find index of all MIBiG BGCs if necessary
     if RUN.mibig.use_mibig:
         NAME_TO_IDX = {}
-        for clusterIdx, clusterName in enumerate(CLUSTER_NAMES):
+        for clusterIdx, clusterName in enumerate(BGC_COLLECTION.bgc_name_tuple):
             NAME_TO_IDX[clusterName] = clusterIdx
 
         MIBIG_SET_INDICES = set()
         for bgc in MIBIG_SET:
             MIBIG_SET_INDICES.add(NAME_TO_IDX[bgc])
 
-
-    # Get the ordered list of domains
-    DOMAIN_LIST = big_scape.get_ordered_domain_list(RUN, CLUSTER_BASE_NAMES)
-
     # Making network files mixing all classes
     if RUN.options.mix:
-        big_scape.generate_network(RUN, CLUSTER_NAMES, DOMAIN_LIST, BGC_INFO,
-                                   GENE_DOMAIN_COUNT, COREBIOSYNTHETIC_POS,
-                                   BGC_GENE_ORIENTATION, BGCS, ALIGNED_DOMAIN_SEQS,
+        big_scape.generate_network(RUN, BGC_COLLECTION, ALIGNED_DOMAIN_SEQS,
                                    MIBIG_SET_INDICES, MIBIG_SET, RUNDATA_NETWORKS_PER_RUN,
                                    HTML_SUBS_PER_RUN, True)
 
     # Making network files separating by BGC class
     if not RUN.options.no_classify:
-        big_scape.generate_network(RUN, CLUSTER_NAMES, DOMAIN_LIST, BGC_INFO,
-                                   GENE_DOMAIN_COUNT, COREBIOSYNTHETIC_POS,
-                                   BGC_GENE_ORIENTATION, BGCS, ALIGNED_DOMAIN_SEQS,
+        big_scape.generate_network(RUN, BGC_COLLECTION, ALIGNED_DOMAIN_SEQS,
                                    MIBIG_SET_INDICES, MIBIG_SET, RUNDATA_NETWORKS_PER_RUN,
                                    HTML_SUBS_PER_RUN, False)
 
     # fetch genome list for overview.js
     INPUT_CLUSTERS_IDX = []
-    big_scape.fetch_genome_list(RUN, INPUT_CLUSTERS_IDX, CLUSTER_NAMES, MIBIG_SET, BGC_INFO,
-                                GEN_BANK_DICT)
+    big_scape.fetch_genome_list(RUN, INPUT_CLUSTERS_IDX, BGC_COLLECTION.bgc_name_tuple, MIBIG_SET, BGC_INFO_DICT,
+                                GBK_FILE_DICT)
 
     # update family data (convert global bgc indexes into input-only indexes)
-    big_scape.update_family_data(RUNDATA_NETWORKS_PER_RUN, INPUT_CLUSTERS_IDX, CLUSTER_NAMES,
+    big_scape.update_family_data(RUNDATA_NETWORKS_PER_RUN, INPUT_CLUSTERS_IDX, BGC_COLLECTION.bgc_name_tuple,
                                  MIBIG_SET)
 
     # generate overview data
     RUN.end()
     big_scape.generate_results_per_cutoff_value(RUN, RUNDATA_NETWORKS_PER_RUN, HTML_SUBS_PER_RUN)
     # dump bgc info
-    pickle.dump(BGC_INFO, open(os.path.join(RUN.directories.cache, 'bgc_info.dict'), 'wb'))
+    pickle.dump(BGC_INFO_DICT, open(os.path.join(RUN.directories.cache, 'bgc_info.dict'), 'wb'))
 
     # done
     RUN.report_runtime()

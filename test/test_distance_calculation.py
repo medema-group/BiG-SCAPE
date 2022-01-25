@@ -8,6 +8,7 @@ class TestRunBase(TestCase):
     test_run: big_scape.Run
 
     def setUp(self):
+        return
     
     def test_jaccard_index(self):
         """Tests the jaccard index caluculation """
@@ -43,7 +44,7 @@ class TestRunBase(TestCase):
         test_run = big_scape.Run()
 
 
-        distance = big_scape.scores.calc_distance_lcs(run, cluster_info_a, cluster_info_b,
-                                                      weights, bgcs, domain_count_gene
-                                                      bgc_gene_orientation, bgc_info,
-                                                      aligned_domain_sequences)
+        # distance = big_scape.scores.calc_distance_lcs(run, cluster_a, cluster_b,
+        #                                               weights, bgcs, domain_count_gene
+        #                                               bgc_gene_orientation, bgc_info,
+        #                                               aligned_domain_sequences)

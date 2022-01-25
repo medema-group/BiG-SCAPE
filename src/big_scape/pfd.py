@@ -2,11 +2,19 @@ import os
 from array import array
 from collections import defaultdict
 
-def parse_pfd(run, cluster_base_names, gene_domain_count, corebiosynthetic_pos,
-              bgc_gene_orientation, bgc_info):
+import debugpy
+
+from src.big_scape.bgc_collection import BgcCollection
+
+def parse_pfd(run, BGC_COLLECTION: BgcCollection):
+    gene_domain_count = {}
+    corebiosynthetic_pos = {}
+    bgc_gene_orientation = {}
+
     pfd_dict_domains = defaultdict(int)
     orf_keys = {}
-    for outputbase in cluster_base_names:
+
+    for outputbase in BGC_COLLECTION.bgc_name_list:
         # init as unsigned char integer array
         gene_domain_count[outputbase] = array('B')
         # init as unsigend short integer array
@@ -36,12 +44,14 @@ def parse_pfd(run, cluster_base_names, gene_domain_count, corebiosynthetic_pos,
 
             gene_domain_count[outputbase].append(pfd_dict_domains[orf])
 
-            if orf in bgc_info[outputbase].biosynthetic_genes:
+            if orf in BGC_COLLECTION.bgc_collection_dict[outputbase].bgc_info.biosynthetic_genes:
                 corebiosynthetic_pos[outputbase].append(orf_num)
+
             orf_num += 1
 
         pfd_dict_domains.clear()
         orf_keys.clear()
+    return gene_domain_count, corebiosynthetic_pos, bgc_gene_orientation
 
         ## TODO: if len(corebiosynthetic_position[outputbase]) == 0
         ## do something with the list of pfam ids. Specifically, mark

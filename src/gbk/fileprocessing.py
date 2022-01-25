@@ -3,6 +3,8 @@ import sys
 
 from Bio import SeqIO
 from itertools import combinations
+
+import debugpy
 from src.big_scape.run.base import Run
 
 from src.bgctools import sort_bgc, BgcData
@@ -57,9 +59,6 @@ def import_mibig_gbk(run: Run):
       longest record, GenBank's accession, Biosynthetic Genes' ids
     - genbankDict: {cluster_name:[genbank_path_to_1st_instance,[sample_1,sample_2,...]]}
     """
-    # set of mibig bgcs
-    mibig_set = set()
-
     print("\nImporting MIBiG files")
     mibig_gbk_path = run.mibig.gbk_path
     return get_gbk_files(mibig_gbk_path, run, True)
