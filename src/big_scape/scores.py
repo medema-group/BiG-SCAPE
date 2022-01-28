@@ -12,6 +12,45 @@ from scipy.optimize import linear_sum_assignment
 from src.big_scape.bgc_info import BgcInfo
 from src.utility.fasta import fasta_parser
 
+def gen_unrelated_pair_distance(run, cluster_a: BgcInfo, cluster_b: BgcInfo):
+
+    num_non_anchor_domains = 0
+    num_anchor_domains = 0
+    # Count total number of anchor and non-anchor domain to report in the
+    # network file. Apart from that, these BGCs are totally unrelated.
+    for domain in cluster_a.ordered_domain_set:
+        # This is a bit of a hack. If pfam domain ids ever change in size
+        # we'd be in trouble. The previous approach was to .split(".")[0]
+        # but it's more costly
+        if domain[:7] in run.network.anchor_domains:
+            num_anchor_domains += len(cluster_a.domain_name_info[domain])
+        else:
+            num_non_anchor_domains += len(cluster_a.domain_name_info[domain])
+
+    for domain in cluster_b.ordered_domain_set:
+        if domain[:7] in run.network.anchor_domains:
+            num_anchor_domains += len(cluster_b.domain_name_info[domain])
+        else:
+            num_non_anchor_domains += len(cluster_b.domain_name_info[domain])
+
+    return 1.0, 0.0, 0.0, 0.0, 1.0, 1.0, num_non_anchor_domains, num_anchor_domains, 0, 0, 0, 0
+
+def get_lcs(a_string, b_string, a_match_len, b_match_len):
+    # Longest Common Substring (LCS)
+    # construct object for finding LCS
+    seqmatch = SequenceMatcher(None, a_string, b_string)
+    # find the LCS
+    match = seqmatch.find_longest_match(0, a_match_len, 0, b_match_len)
+    # unpack
+    a_start, b_start, match_length = match
+    return a_start, b_start, match_length
+
+def get_lcs_fwd(cluster_a, cluster_b):
+    return get_lcs(cluster_a.gene_string, cluster_b.gene_string, cluster_a.num_genes, cluster_b.num_genes)
+
+def get_lcs_rev(cluster_a, cluster_b):
+    return get_lcs(cluster_a.gene_string, cluster_b.gene_string_rev, cluster_a.num_genes, cluster_b.num_genes)
+
 def score_expansion(x_string_, y_string_, downstream):
     """
     Input:
@@ -72,46 +111,6 @@ def score_expansion(x_string_, y_string_, downstream):
 
 def calc_jaccard(intersect, overlap):
     return len(intersect) / len(overlap)
-
-
-def gen_unrelated_pair_distance(run, cluster_a: BgcInfo, cluster_b: BgcInfo):
-
-    num_non_anchor_domains = 0
-    num_anchor_domains = 0
-    # Count total number of anchor and non-anchor domain to report in the
-    # network file. Apart from that, these BGCs are totally unrelated.
-    for domain in cluster_a.ordered_domain_set:
-        # This is a bit of a hack. If pfam domain ids ever change in size
-        # we'd be in trouble. The previous approach was to .split(".")[0]
-        # but it's more costly
-        if domain[:7] in run.network.anchor_domains:
-            num_anchor_domains += len(cluster_a.domain_name_info[domain])
-        else:
-            num_non_anchor_domains += len(cluster_a.domain_name_info[domain])
-
-    for domain in cluster_b.ordered_domain_set:
-        if domain[:7] in run.network.anchor_domains:
-            num_anchor_domains += len(cluster_b.domain_name_info[domain])
-        else:
-            num_non_anchor_domains += len(cluster_b.domain_name_info[domain])
-
-    return 1.0, 0.0, 0.0, 0.0, 1.0, 1.0, num_non_anchor_domains, num_anchor_domains, 0, 0, 0, 0
-
-def get_lcs(a_string, b_string, a_match_len, b_match_len):
-    # Longest Common Substring (LCS)
-    # construct object for finding LCS
-    seqmatch = SequenceMatcher(None, a_string, b_string)
-    # find the LCS
-    match = seqmatch.find_longest_match(0, a_match_len, 0, b_match_len)
-    # unpack
-    a_start, b_start, match_length = match
-    return a_start, b_start, match_length
-
-def get_lcs_fwd(cluster_a, cluster_b):
-    return get_lcs(cluster_a.gene_string, cluster_b.gene_string, cluster_a.num_genes, cluster_b.num_genes)
-
-def get_lcs_rev(cluster_a, cluster_b):
-    return get_lcs(cluster_a.gene_string, cluster_b.gene_string_rev, cluster_a.num_genes, cluster_b.num_genes)
 
 def calc_distance_lcs(run, cluster_a: BgcInfo, cluster_b: BgcInfo, weights,
                       aligned_domain_sequences):
@@ -178,11 +177,6 @@ def calc_distance_lcs(run, cluster_a: BgcInfo, cluster_b: BgcInfo, weights,
     # this returns early if there are unrelated pairs
     if len(intersect) == 0:
         return gen_unrelated_pair_distance(run, cluster_a, cluster_b)
-
-
-    # JACCARD INDEX
-    union = cluster_a.ordered_domain_set | cluster_b.ordered_domain_set
-    jaccard_index = calc_jaccard(intersect, union)
 
 
     a_start, b_start, match_length = get_lcs_fwd(cluster_a, cluster_b)
@@ -426,6 +420,10 @@ def calc_distance_lcs(run, cluster_a: BgcInfo, cluster_b: BgcInfo, weights,
         #else:
                 #print(" - - Not a valid overlap found - - (shortest slice not large enough)\n")
 
+
+    # JACCARD INDEX
+    union = cluster_a.ordered_domain_set | cluster_b.ordered_domain_set
+    jaccard_index = calc_jaccard(intersect, union)
 
 
     # DSS INDEX
