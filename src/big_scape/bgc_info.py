@@ -15,6 +15,9 @@ class BgcInfo:
     ordered_domain_list: list
     ordered_domain_set: set
 
+    gene_string: str
+    gene_string_rev: str
+
     def __init__(self, name):
         self.name = name
 
@@ -47,3 +50,4 @@ class BgcInfo:
                 a_string_doms = [self.ordered_domain_list[x][2:] for x in range(start+domain_count-1, start-1, -1)]
                 self.gene_string.append("".join(a_string_doms))
             start += domain_count
+        self.gene_string_rev = list(reversed(self.gene_string))
