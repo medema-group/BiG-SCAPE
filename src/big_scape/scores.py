@@ -134,6 +134,85 @@ def calc_adj_idx(cluster_a, cluster_b,
         adj_idx = calc_jaccard(intersect, overlap)
     return adj_idx
 
+def process_orientation(cluster_a, cluster_b):
+    # get LCS for this pair
+    a_start, b_start, match_length = get_lcs_fwd(cluster_a, cluster_b)
+
+    a_start_rev, b_start_rev, match_length_rev = get_lcs_rev(cluster_a, cluster_b)
+
+    # We need to keep working with the correct orientation
+    # forward case
+    if match_length > match_length_rev or (match_length == match_length_rev and cluster_a.gene_orientations[a_start] == cluster_b.gene_orientations[b_start]):
+        use_b_string = cluster_b.gene_string
+        # note: these slices are in terms of genes, not domains (which are
+        # ultimately what is used for distance)
+        # Currently, the following values represent the Core Overlap
+        slice_start_a = a_start
+        slice_start_b = b_start
+        slice_length_a = match_length
+        slice_length_b = match_length
+
+        reverse = False
+    # reverse based on match length case
+    elif match_length < match_length_rev:
+        use_b_string = cluster_b.gene_string_rev
+
+        slice_start_a = a_start_rev
+        slice_start_b = b_start_rev
+        slice_length_a = match_length_rev
+        slice_length_b = match_length_rev
+
+        # We'll need to know if we're working in reverse so that the start
+        # postion of the final slice can be transformed to the original orientation
+        reverse = True
+
+    # only one gene matches case
+    # choose the one with the most domains
+    elif match_length == 1:
+        seqmatch = SequenceMatcher(None, cluster_a.gene_string, cluster_b.gene_string)
+        max_domains = 0
+        index_a = 0   # index in A with the gene with most domains
+        index_b = 0   # index in B with the gene with most domains
+        for a_start, b_start, block_match_len in seqmatch.get_matching_blocks():
+            if block_match_len != 0:
+                if cluster_a.gene_domain_counts[a_start] > max_domains:
+                    index_a = a_start
+                    index_b = b_start
+                    max_domains = cluster_a.gene_domain_counts[a_start]
+
+
+        # note: these slices are in terms of genes, not domains (which are
+        # ultimately what is used for distance)
+        # Currently, the following values represent the Core Overlap
+        slice_start_a = index_a
+        slice_length_a = 1
+        slice_length_b = 1
+
+        if cluster_a.gene_orientations[index_a] == cluster_b.gene_orientations[index_b]:
+            slice_start_b = index_b
+            use_b_string = cluster_b.gene_string
+            reverse = False
+        else:
+            slice_start_b = len(cluster_b.gene_orientations) - index_b - 1
+            use_b_string = cluster_b.gene_string_rev
+            reverse = True
+
+    # s == sr and (s == 0 or s > 1)
+    # match_len == match_len_rev, and:
+    # match_len == 0, or match_len > 1
+    else:
+        use_b_string = cluster_b.gene_string
+        # note: these slices are in terms of genes, not domains (which are
+        # ultimately what is used for distance)
+        # Currently, the following values represent the Core Overlap
+        slice_start_a = a_start
+        slice_start_b = b_start
+        slice_length_a = match_length
+        slice_length_b = match_length
+
+        reverse = False
+    return slice_start_a, slice_start_b, slice_length_a, slice_length_b, use_b_string, reverse
+
 def calc_distance_lcs(run, cluster_a: BgcInfo, cluster_b: BgcInfo, weights,
                       aligned_domain_sequences):
     """Compare two clusters using information on their domains, and the
@@ -200,81 +279,10 @@ def calc_distance_lcs(run, cluster_a: BgcInfo, cluster_b: BgcInfo, weights,
     if len(intersect) == 0:
         return gen_unrelated_pair_distance(run, cluster_a, cluster_b)
 
-    # get LCS for this pair
-    a_start, b_start, match_length = get_lcs_fwd(cluster_a, cluster_b)
 
-    a_start_rev, b_start_rev, match_length_rev = get_lcs_rev(cluster_a, cluster_b)
+    slice_data = process_orientation(cluster_a, cluster_b)
 
-
-    # We need to keep working with the correct orientation
-    if match_length > match_length_rev or (match_length == match_length_rev and cluster_a.gene_orientations[a_start] == cluster_b.gene_orientations[b_start]):
-        use_b_string = cluster_b.gene_string
-        # note: these slices are in terms of genes, not domains (which are
-        # ultimately what is used for distance)
-        # Currently, the following values represent the Core Overlap
-        slice_start_a = a_start
-        slice_start_b = b_start
-        slice_length_a = match_length
-        slice_length_b = match_length
-
-        reverse = False
-
-    elif match_length < match_length_rev:
-        use_b_string = cluster_b.gene_string_rev
-
-        slice_start_a = a_start_rev
-        slice_start_b = b_start_rev
-        slice_length_a = match_length_rev
-        slice_length_b = match_length_rev
-
-        # We'll need to know if we're working in reverse so that the start
-        # postion of the final slice can be transformed to the original orientation
-        reverse = True
-
-    # special cases: s == sr
-
-    # if only one gene matches, choose the one with the most domains
-    elif match_length == 1:
-        seqmatch = SequenceMatcher(None, cluster_a.gene_string, cluster_b.gene_string)
-        max_domains = 0
-        index_a = 0   # index in A with the gene with most domains
-        index_b = 0   # index in B with the gene with most domains
-        for a_start, b_start, block_match_len in seqmatch.get_matching_blocks():
-            if block_match_len != 0:
-                if cluster_a.gene_domain_counts[a_start] > max_domains:
-                    index_a = a_start
-                    index_b = b_start
-                    max_domains = cluster_a.gene_domain_counts[a_start]
-
-
-        # note: these slices are in terms of genes, not domains (which are
-        # ultimately what is used for distance)
-        # Currently, the following values represent the Core Overlap
-        slice_start_a = index_a
-        slice_length_a = 1
-        slice_length_b = 1
-
-        if cluster_a.gene_orientations[index_a] == cluster_b.gene_orientations[index_b]:
-            slice_start_b = index_b
-            use_b_string = cluster_b.gene_string
-            reverse = False
-        else:
-            slice_start_b = len(cluster_b.gene_orientations) - index_b - 1
-            use_b_string = cluster_b.gene_string_rev
-            reverse = True
-
-    # s == sr and (s == 0 or s > 1)
-    else:
-        use_b_string = cluster_b.gene_string
-        # note: these slices are in terms of genes, not domains (which are
-        # ultimately what is used for distance)
-        # Currently, the following values represent the Core Overlap
-        slice_start_a = a_start
-        slice_start_b = b_start
-        slice_length_a = match_length
-        slice_length_b = match_length
-
-        reverse = False
+    slice_start_a, slice_start_b, slice_length_a, slice_length_b, use_b_string, reverse = slice_data
 
 
     lcs_start_a = slice_start_a
