@@ -134,7 +134,6 @@ def calc_distance_lcs(run, cluster_a: BgcInfo, cluster_b: BgcInfo, weights,
 
     """
 
-    # FIXME: this function manipulates variables in cluster_a and cluster_b. it shouldn't.
     # FIXME: some variables were renamed in such a way that the funcionality of this function
     # is probably broken. See line 163 for example. this used to be an assignment to a different
     # function, now it's the same one. Probably because uppercase characters were replaced with
