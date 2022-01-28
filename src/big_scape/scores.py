@@ -112,6 +112,29 @@ def score_expansion(x_string_, y_string_, downstream):
 def calc_jaccard(intersect, overlap):
     return len(intersect) / len(overlap)
 
+def calc_adj_idx(cluster_a, cluster_b,
+                 cluster_a_dom_start, cluster_b_dom_start,
+                 cluster_a_dom_end, cluster_b_dom_end):
+    # ADJACENCY INDEX
+    # calculates the Tanimoto similarity of pairs of adjacent domains
+
+    if len(cluster_a.ordered_domain_list[cluster_a_dom_start:cluster_a_dom_end]) < 2 or len(cluster_b.ordered_domain_list[cluster_b_dom_start:cluster_b_dom_end]) < 2:
+        adj_idx = 0.0
+    else:
+        set_a_pairs = set()
+        for l in range(cluster_a_dom_start, cluster_a_dom_end-1):
+            set_a_pairs.add(tuple(sorted([cluster_a.ordered_domain_list[l], cluster_a.ordered_domain_list[l+1]])))
+
+        set_b_pairs = set()
+        for l in range(cluster_b_dom_start, cluster_b_dom_end-1):
+            set_b_pairs.add(tuple(sorted([cluster_b.ordered_domain_list[l], cluster_b.ordered_domain_list[l+1]])))
+
+        # same treatment as in Jaccard
+        intersect = set_a_pairs & set_b_pairs
+        overlap = set_a_pairs | set_b_pairs
+        adj_idx = calc_jaccard(intersect, overlap)
+    return adj_idx
+
 def calc_distance_lcs(run, cluster_a: BgcInfo, cluster_b: BgcInfo, weights,
                       aligned_domain_sequences):
     """Compare two clusters using information on their domains, and the
@@ -580,23 +603,10 @@ def calc_distance_lcs(run, cluster_a: BgcInfo, cluster_b: BgcInfo, weights,
 
     dss = 1-dss #transform into similarity
 
-
-    # ADJACENCY INDEX
-    # calculates the Tanimoto similarity of pairs of adjacent domains
-
-    if len(cluster_a.ordered_domain_list[cluster_a_dom_start:cluster_a_dom_end]) < 2 or len(cluster_b.ordered_domain_list[cluster_b_dom_start:cluster_b_dom_end]) < 2:
-        adj_index = 0.0
-    else:
-        set_a_pairs = set()
-        for l in range(cluster_a_dom_start, cluster_a_dom_end-1):
-            set_a_pairs.add(tuple(sorted([cluster_a.ordered_domain_list[l],cluster_a.ordered_domain_list[l+1]])))
-
-        set_b_pairs = set()
-        for l in range(cluster_b_dom_start, cluster_b_dom_end-1):
-            set_b_pairs.add(tuple(sorted([cluster_b.ordered_domain_list[l],cluster_b.ordered_domain_list[l+1]])))
-
-        # same treatment as in Jaccard
-        adj_index = len(set_a_pairs & set_b_pairs) / len(set_a_pairs | set_b_pairs)
+    adj_index = calc_adj_idx(cluster_a, cluster_b,
+                             cluster_a_dom_start, cluster_b_dom_start,
+                             cluster_a_dom_end, cluster_b_dom_end)
+    
 
     distance = 1 - (jaccard_weight * jaccard_index) - (dss_weight * dss) - (ai_weight * adj_index)
 
