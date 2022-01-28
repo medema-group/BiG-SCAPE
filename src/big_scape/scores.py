@@ -97,6 +97,22 @@ def gen_unrelated_pair_distance(run, cluster_a: BgcInfo, cluster_b: BgcInfo):
 
     return 1.0, 0.0, 0.0, 0.0, 1.0, 1.0, num_non_anchor_domains, num_anchor_domains, 0, 0, 0, 0
 
+def get_lcs(a_string, b_string, a_match_len, b_match_len):
+    # Longest Common Substring (LCS)
+    # construct object for finding LCS
+    seqmatch = SequenceMatcher(None, a_string, b_string)
+    # find the LCS
+    match = seqmatch.find_longest_match(0, a_match_len, 0, b_match_len)
+    # unpack
+    a_start, b_start, match_length = match
+    return a_start, b_start, match_length
+
+def get_lcs_fwd(cluster_a, cluster_b):
+    return get_lcs(cluster_a.gene_string, cluster_b.gene_string, cluster_a.num_genes, cluster_b.num_genes)
+
+def get_lcs_rev(cluster_a, cluster_b):
+    return get_lcs(cluster_a.gene_string, cluster_b.gene_string_rev, cluster_a.num_genes, cluster_b.num_genes)
+
 def calc_distance_lcs(run, cluster_a: BgcInfo, cluster_b: BgcInfo, weights,
                       aligned_domain_sequences):
     """Compare two clusters using information on their domains, and the
@@ -170,22 +186,9 @@ def calc_distance_lcs(run, cluster_a: BgcInfo, cluster_b: BgcInfo, weights,
     jaccard_index = calc_jaccard(intersect, union)
 
 
-    # Longest Common Substring (LCS)
-    # get reverse string for other cluster
-    b_string_reverse = list(reversed(cluster_b.gene_string))
+    a_start, b_start, match_length = get_lcs_fwd(cluster_a, cluster_b)
 
-    # construct object for finding LCS
-    seqmatch = SequenceMatcher(None, cluster_a.gene_string, cluster_b.gene_string)
-    # find the LCS
-    match = seqmatch.find_longest_match(0, cluster_a.num_genes, 0, cluster_b.num_genes)
-    # unpack
-    a_start, b_start, match_length = match
-
-    # do the same for the reverse
-    seqmatch_rev = SequenceMatcher(None, cluster_a.gene_string, b_string_reverse)
-    match = seqmatch_rev.find_longest_match(0, cluster_a.num_genes, 0, cluster_b.num_genes)
-    # unpack
-    a_start_rev, b_start_rev, match_length_rev = match
+    a_start_rev, b_start_rev, match_length_rev = get_lcs_rev(cluster_a, cluster_b)
 
 
     # We need to keep working with the correct orientation
@@ -203,7 +206,7 @@ def calc_distance_lcs(run, cluster_a: BgcInfo, cluster_b: BgcInfo, weights,
         b_name = cluster_b.name
 
     elif match_length < match_length_rev:
-        use_b_string = b_string_reverse
+        use_b_string = cluster_b.gene_string_rev
 
         slice_start_a = a_start_rev
         slice_start_b = b_start_rev
@@ -245,7 +248,7 @@ def calc_distance_lcs(run, cluster_a: BgcInfo, cluster_b: BgcInfo, weights,
             b_name = cluster_b.name
         else:
             slice_start_b = len(cluster_b.gene_orientations) - index_b - 1
-            use_b_string = b_string_reverse
+            use_b_string = cluster_b.gene_string_rev
             reverse = True
             b_name = cluster_b.name + "*"
 
