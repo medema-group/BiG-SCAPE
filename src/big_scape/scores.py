@@ -134,6 +134,166 @@ def calc_adj_idx(cluster_a, cluster_b,
         adj_idx = calc_jaccard(intersect, overlap)
     return adj_idx
 
+def calc_dss(run, cluster_a, cluster_b, intersect, aligned_domain_sequences, anchor_boost,
+             cluster_a_temp_domain_set, cluster_b_temp_domain_set,
+             cluster_a_domain_seq_slice_top, cluster_a_domain_seq_slice_bottom,
+             cluster_b_domain_seq_slice_top, cluster_b_domain_seq_slice_bottom):
+    # DSS INDEX
+    #domain_difference: Difference in sequence per domain. If one cluster does
+    # not have a domain at all, but the other does, this is a (complete)
+    # difference in sequence 1. If both clusters contain the domain once, and
+    # the sequence is the same, there is a seq diff of 0.
+    #S: Max occurence of each domain
+    domain_difference_anchor, num_anchor_domains = 0, 0
+    domain_difference, num_non_anchor_domains = 0, 0
+
+    temp_domain_fastas = {}
+
+
+    not_intersect = cluster_a_temp_domain_set.symmetric_difference(cluster_b_temp_domain_set)
+
+    # Case 1
+    #no need to look at seq identity, since these domains are unshared
+    for unshared_domain in not_intersect:
+        #for each occurence of an unshared domain do domain_difference += count
+        # of domain and S += count of domain
+
+        try:
+            num_unshared = cluster_a_domain_seq_slice_top[unshared_domain] - cluster_a_domain_seq_slice_bottom[unshared_domain]
+        except KeyError:
+            num_unshared = cluster_b_domain_seq_slice_top[unshared_domain] - cluster_b_domain_seq_slice_bottom[unshared_domain]
+
+        # don't look at domain version, hence the split
+        if unshared_domain[:7] in run.network.anchor_domains:
+            domain_difference_anchor += num_unshared
+        else:
+            domain_difference += num_unshared
+
+    num_non_anchor_domains = domain_difference # can be done because it's the first use of these
+    num_anchor_domains = domain_difference_anchor
+
+    # Cases 2 and 3 (now merged)
+    missing_aligned_domain_files = []
+
+    for shared_domain in intersect:
+        specific_domain_list_a = cluster_a.domain_name_info[shared_domain]
+        specific_domain_list_b = cluster_b.domain_name_info[shared_domain]
+
+        num_copies_a = cluster_a_domain_seq_slice_top[shared_domain] - cluster_a_domain_seq_slice_bottom[shared_domain]
+        num_copies_b = cluster_b_domain_seq_slice_top[shared_domain] - cluster_b_domain_seq_slice_bottom[shared_domain]
+
+        temp_domain_fastas.clear()
+
+        accumulated_distance = 0
+
+        # Fill distance matrix between domain's A and B versions
+        distance_matrix = np.ndarray((num_copies_a, num_copies_b))
+        for domsa in range(num_copies_a):
+            for domsb in range(num_copies_b):
+                sequence_tag_a = specific_domain_list_a[domsa + cluster_a_domain_seq_slice_bottom[shared_domain]]
+                sequence_tag_b = specific_domain_list_b[domsb + cluster_b_domain_seq_slice_bottom[shared_domain]]
+
+                seq_length = 0
+                matches = 0
+                gaps = 0
+
+                try:
+                    aligned_seq_a = aligned_domain_sequences[sequence_tag_a]
+                    aligned_seq_b = aligned_domain_sequences[sequence_tag_b]
+
+                except KeyError:
+                    # For some reason we don't have the multiple alignment files.
+                    # Try manual alignment
+                    if shared_domain not in missing_aligned_domain_files and run.options.verbose:
+                        # this will print everytime an unfound <domain>.algn is not found for every
+                        # distance calculation (but at least, not for every domain pair!)
+                        print("  Warning: {}.algn not found. Trying pairwise alignment...".format(shared_domain))
+                        missing_aligned_domain_files.append(shared_domain)
+
+                    try:
+                        unaligned_seq_a = temp_domain_fastas[sequence_tag_a]
+                        unaligned_seq_b = temp_domain_fastas[sequence_tag_b]
+                    except KeyError:
+                        # parse the file for the first time and load all the sequences
+                        with open(os.path.join(run.directories.domains, shared_domain + ".fasta"),"r") as domain_fasta_handle:
+                            temp_domain_fastas = fasta_parser(domain_fasta_handle)
+
+                        unaligned_seq_a = temp_domain_fastas[sequence_tag_a]
+                        unaligned_seq_b = temp_domain_fastas[sequence_tag_b]
+
+                    # gap_open = -15
+                    # gap_extend = -6.67. These parameters were set up by Emzo
+                    align_score = pairwise2.align.globalds(unaligned_seq_a, unaligned_seq_b, scoring_matrix, -15, -6.67, one_alignment_only=True)
+                    best_alignment = align_score[0]
+                    aligned_seq_a = best_alignment[0]
+                    aligned_seq_b = best_alignment[1]
+
+
+                # - Calculate aligned domain sequences similarity -
+                # Sequences *should* be of the same length unless something went
+                # wrong elsewhere
+                if len(aligned_seq_a) != len(aligned_seq_b):
+                    print("\tWARNING: mismatch in sequences' lengths while calculating sequence identity ({})".format(shared_domain))
+                    print("\t  Specific domain 1: {} len: {}".format(sequence_tag_a, str(len(aligned_seq_a))))
+                    print("\t  Specific domain 2: {} len: {}".format(sequence_tag_b, str(len(aligned_seq_b))))
+                    seq_length = min(len(aligned_seq_a), len(aligned_seq_b))
+                else:
+                    seq_length = len(aligned_seq_a)
+
+                for position in range(seq_length):
+                    if aligned_seq_a[position] == aligned_seq_b[position]:
+                        if aligned_seq_a[position] != "-":
+                            matches += 1
+                        else:
+                            gaps += 1
+
+                distance_matrix[domsa][domsb] = 1 - (matches/(seq_length-gaps))
+
+        #Only use the best scoring pairs
+        best_indexes = linear_sum_assignment(distance_matrix)
+        accumulated_distance = distance_matrix[best_indexes].sum()
+
+        # the difference in number of domains accounts for the "lost" (or not duplicated) domains
+        sum_seq_dist = (abs(num_copies_a-num_copies_b) + accumulated_distance)  #essentially 1-sim
+        normalization_element = max(num_copies_a, num_copies_b)
+
+        if shared_domain[:7] in run.network.anchor_domains:
+            num_anchor_domains += normalization_element
+            domain_difference_anchor += sum_seq_dist
+        else:
+            num_non_anchor_domains += normalization_element
+            domain_difference += sum_seq_dist
+
+    if num_anchor_domains != 0 and num_non_anchor_domains != 0:
+        dss_non_anchor = domain_difference / num_non_anchor_domains
+        dss_anchor = domain_difference_anchor / num_anchor_domains
+
+        # Calculate proper, proportional weight to each kind of domain
+        non_anchor_prct = num_non_anchor_domains / (num_non_anchor_domains + num_anchor_domains)
+        anchor_prct = num_anchor_domains / (num_non_anchor_domains + num_anchor_domains)
+
+        # boost anchor subcomponent and re-normalize
+        non_anchor_weight = non_anchor_prct / (anchor_prct*anchor_boost + non_anchor_prct)
+        anchor_weight = anchor_prct*anchor_boost / (anchor_prct*anchor_boost + non_anchor_prct)
+
+        # Use anchorboost parameter to boost percieved rDSS_anchor
+        dss = (non_anchor_weight*dss_non_anchor) + (anchor_weight*dss_anchor)
+
+    elif num_anchor_domains == 0:
+        dss_non_anchor = domain_difference / num_non_anchor_domains
+        dss_anchor = 0.0
+
+        dss = dss_non_anchor
+
+    else: #only anchor domains were found
+        dss_non_anchor = 0.0
+        dss_anchor = domain_difference_anchor / num_anchor_domains
+
+        dss = dss_anchor
+
+    dss = 1-dss #transform into similarity
+    return dss, dss_non_anchor, dss_anchor, num_non_anchor_domains, num_anchor_domains
+
 def process_orientation(cluster_a, cluster_b):
     # get LCS for this pair
     a_start, b_start, match_length = get_lcs_fwd(cluster_a, cluster_b)
@@ -269,8 +429,6 @@ def calc_distance_lcs(run, cluster_a: BgcInfo, cluster_b: BgcInfo, weights,
     ## common variables
     # unpack weights
     jaccard_weight, dss_weight, ai_weight, anchor_boost = weights
-
-    temp_domain_fastas = {}
 
     intersect = cluster_a.ordered_domain_set & cluster_b.ordered_domain_set
 
@@ -451,158 +609,13 @@ def calc_distance_lcs(run, cluster_a: BgcInfo, cluster_b: BgcInfo, weights,
     jaccard_index = calc_jaccard(intersect, union)
 
 
-    # DSS INDEX
-    #domain_difference: Difference in sequence per domain. If one cluster does
-    # not have a domain at all, but the other does, this is a (complete)
-    # difference in sequence 1. If both clusters contain the domain once, and
-    # the sequence is the same, there is a seq diff of 0.
-    #S: Max occurence of each domain
-    domain_difference_anchor, num_anchor_domains = 0, 0
-    domain_difference, num_non_anchor_domains = 0, 0
-
-
-    not_intersect = cluster_a_temp_domain_set.symmetric_difference(cluster_b_temp_domain_set)
-
-    # Case 1
-    #no need to look at seq identity, since these domains are unshared
-    for unshared_domain in not_intersect:
-        #for each occurence of an unshared domain do domain_difference += count
-        # of domain and S += count of domain
-
-        try:
-            num_unshared = cluster_a_domain_seq_slice_top[unshared_domain] - cluster_a_domain_seq_slice_bottom[unshared_domain]
-        except KeyError:
-            num_unshared = cluster_b_domain_seq_slice_top[unshared_domain] - cluster_b_domain_seq_slice_bottom[unshared_domain]
-
-        # don't look at domain version, hence the split
-        if unshared_domain[:7] in run.network.anchor_domains:
-            domain_difference_anchor += num_unshared
-        else:
-            domain_difference += num_unshared
-
-    num_non_anchor_domains = domain_difference # can be done because it's the first use of these
-    num_anchor_domains = domain_difference_anchor
-
-    # Cases 2 and 3 (now merged)
-    missing_aligned_domain_files = []
-
-    for shared_domain in intersect:
-        specific_domain_list_a = cluster_a.domain_name_info[shared_domain]
-        specific_domain_list_b = cluster_b.domain_name_info[shared_domain]
-
-        num_copies_a = cluster_a_domain_seq_slice_top[shared_domain] - cluster_a_domain_seq_slice_bottom[shared_domain]
-        num_copies_b = cluster_b_domain_seq_slice_top[shared_domain] - cluster_b_domain_seq_slice_bottom[shared_domain]
-
-        temp_domain_fastas.clear()
-
-        accumulated_distance = 0
-
-        # Fill distance matrix between domain's A and B versions
-        distance_matrix = np.ndarray((num_copies_a, num_copies_b))
-        for domsa in range(num_copies_a):
-            for domsb in range(num_copies_b):
-                sequence_tag_a = specific_domain_list_a[domsa + cluster_a_domain_seq_slice_bottom[shared_domain]]
-                sequence_tag_b = specific_domain_list_b[domsb + cluster_b_domain_seq_slice_bottom[shared_domain]]
-
-                seq_length = 0
-                matches = 0
-                gaps = 0
-
-                try:
-                    aligned_seq_a = aligned_domain_sequences[sequence_tag_a]
-                    aligned_seq_b = aligned_domain_sequences[sequence_tag_b]
-
-                except KeyError:
-                    # For some reason we don't have the multiple alignment files.
-                    # Try manual alignment
-                    if shared_domain not in missing_aligned_domain_files and run.options.verbose:
-                        # this will print everytime an unfound <domain>.algn is not found for every
-                        # distance calculation (but at least, not for every domain pair!)
-                        print("  Warning: {}.algn not found. Trying pairwise alignment...".format(shared_domain))
-                        missing_aligned_domain_files.append(shared_domain)
-
-                    try:
-                        unaligned_seq_a = temp_domain_fastas[sequence_tag_a]
-                        unaligned_seq_b = temp_domain_fastas[sequence_tag_b]
-                    except KeyError:
-                        # parse the file for the first time and load all the sequences
-                        with open(os.path.join(run.directories.domains, shared_domain + ".fasta"),"r") as domain_fasta_handle:
-                            temp_domain_fastas = fasta_parser(domain_fasta_handle)
-
-                        unaligned_seq_a = temp_domain_fastas[sequence_tag_a]
-                        unaligned_seq_b = temp_domain_fastas[sequence_tag_b]
-
-                    # gap_open = -15
-                    # gap_extend = -6.67. These parameters were set up by Emzo
-                    align_score = pairwise2.align.globalds(unaligned_seq_a, unaligned_seq_b, scoring_matrix, -15, -6.67, one_alignment_only=True)
-                    best_alignment = align_score[0]
-                    aligned_seq_a = best_alignment[0]
-                    aligned_seq_b = best_alignment[1]
-
-
-                # - Calculate aligned domain sequences similarity -
-                # Sequences *should* be of the same length unless something went
-                # wrong elsewhere
-                if len(aligned_seq_a) != len(aligned_seq_b):
-                    print("\tWARNING: mismatch in sequences' lengths while calculating sequence identity ({})".format(shared_domain))
-                    print("\t  Specific domain 1: {} len: {}".format(sequence_tag_a, str(len(aligned_seq_a))))
-                    print("\t  Specific domain 2: {} len: {}".format(sequence_tag_b, str(len(aligned_seq_b))))
-                    seq_length = min(len(aligned_seq_a), len(aligned_seq_b))
-                else:
-                    seq_length = len(aligned_seq_a)
-
-                for position in range(seq_length):
-                    if aligned_seq_a[position] == aligned_seq_b[position]:
-                        if aligned_seq_a[position] != "-":
-                            matches += 1
-                        else:
-                            gaps += 1
-
-                distance_matrix[domsa][domsb] = 1 - (matches/(seq_length-gaps))
-
-        #Only use the best scoring pairs
-        best_indexes = linear_sum_assignment(distance_matrix)
-        accumulated_distance = distance_matrix[best_indexes].sum()
-
-        # the difference in number of domains accounts for the "lost" (or not duplicated) domains
-        sum_seq_dist = (abs(num_copies_a-num_copies_b) + accumulated_distance)  #essentially 1-sim
-        normalization_element = max(num_copies_a, num_copies_b)
-
-        if shared_domain[:7] in run.network.anchor_domains:
-            num_anchor_domains += normalization_element
-            domain_difference_anchor += sum_seq_dist
-        else:
-            num_non_anchor_domains += normalization_element
-            domain_difference += sum_seq_dist
-
-    if num_anchor_domains != 0 and num_non_anchor_domains != 0:
-        dss_non_anchor = domain_difference / num_non_anchor_domains
-        dss_anchor = domain_difference_anchor / num_anchor_domains
-
-        # Calculate proper, proportional weight to each kind of domain
-        non_anchor_prct = num_non_anchor_domains / (num_non_anchor_domains + num_anchor_domains)
-        anchor_prct = num_anchor_domains / (num_non_anchor_domains + num_anchor_domains)
-
-        # boost anchor subcomponent and re-normalize
-        non_anchor_weight = non_anchor_prct / (anchor_prct*anchor_boost + non_anchor_prct)
-        anchor_weight = anchor_prct*anchor_boost / (anchor_prct*anchor_boost + non_anchor_prct)
-
-        # Use anchorboost parameter to boost percieved rDSS_anchor
-        dss = (non_anchor_weight*dss_non_anchor) + (anchor_weight*dss_anchor)
-
-    elif num_anchor_domains == 0:
-        dss_non_anchor = domain_difference / num_non_anchor_domains
-        dss_anchor = 0.0
-
-        dss = dss_non_anchor
-
-    else: #only anchor domains were found
-        dss_non_anchor = 0.0
-        dss_anchor = domain_difference_anchor / num_anchor_domains
-
-        dss = dss_anchor
-
-    dss = 1-dss #transform into similarity
+    dss_data = calc_dss(run, cluster_a, cluster_b, intersect,
+                        aligned_domain_sequences, anchor_boost,
+                        cluster_a_temp_domain_set, cluster_b_temp_domain_set,
+                        cluster_a_domain_seq_slice_top, cluster_a_domain_seq_slice_bottom,
+                        cluster_b_domain_seq_slice_top, cluster_b_domain_seq_slice_bottom)
+    # unpack variables
+    dss, dss_non_anchor, dss_anchor, num_non_anchor_domains, num_anchor_domains = dss_data
 
     adj_index = calc_adj_idx(cluster_a, cluster_b,
                              cluster_a_dom_start, cluster_b_dom_start,
