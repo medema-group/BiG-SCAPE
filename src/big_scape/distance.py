@@ -7,7 +7,7 @@ from src.big_scape.bgc_collection import BgcCollection
 
 from src.big_scape.bgc_info import BgcInfo
 from src.pfam.misc import get_domain_list
-from src.big_scape.scores import calc_distance_lcs
+from src.big_scape.scores import calc_distance, calc_distance_lcs, calc_jaccard, gen_unrelated_pair_distance
 
 # @timeit
 def gen_dist_matrix_async(run, cluster_pairs, bgc_collection: BgcCollection, aligned_domain_sequences):
@@ -67,8 +67,18 @@ def generate_dist_matrix(parms, run, bgc_collection: BgcCollection, aligned_doma
 
     weights = run.distance.bgc_class_weight[bgc_class]
 
-    dist, jaccard, dss, ai, rDSSna, rDSS, S, Sa, lcsStartA, lcsStartB, seedLength, reverse = calc_distance_lcs(run,
-                cluster_a, cluster_b, weights, aligned_domain_sequences)
+    intersect = cluster_a.ordered_domain_set & cluster_b.ordered_domain_set
+    
+    # Detect totally unrelated pairs from the beginning
+    if len(intersect) == 0:
+        score_data = gen_unrelated_pair_distance(run, cluster_a, cluster_b)
+        jaccard, dss, ai, rDSSna, rDSS, S, Sa, lcsStartA, lcsStartB, seedLength, reverse = score_data
+    else:
+        score_data = calc_distance_lcs(run, cluster_a, cluster_b, weights, aligned_domain_sequences)
+                
+        jaccard, dss, ai, rDSSna, rDSS, S, Sa, lcsStartA, lcsStartB, seedLength, reverse = score_data
+
+    dist = calc_distance(weights, jaccard, dss, ai, cluster_a.name, cluster_b.name)
 
     network_row = array('f', [cluster_1_idx, cluster_2_idx, dist, (1-dist)**2, jaccard,
                               dss, ai, rDSSna, rDSS, S, Sa, lcsStartA, lcsStartB,

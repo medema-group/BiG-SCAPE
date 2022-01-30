@@ -32,7 +32,7 @@ def gen_unrelated_pair_distance(run, cluster_a: BgcInfo, cluster_b: BgcInfo):
         else:
             num_non_anchor_domains += len(cluster_b.domain_name_info[domain])
 
-    return 1.0, 0.0, 0.0, 0.0, 1.0, 1.0, num_non_anchor_domains, num_anchor_domains, 0, 0, 0, 0
+    return 0.0, 0.0, 0.0, 1.0, 1.0, num_non_anchor_domains, num_anchor_domains, 0, 0, 0, 0
 
 def get_lcs(a_string, b_string, a_match_len, b_match_len):
     # Longest Common Substring (LCS)
@@ -432,11 +432,6 @@ def calc_distance_lcs(run, cluster_a: BgcInfo, cluster_b: BgcInfo, weights,
 
     intersect = cluster_a.ordered_domain_set & cluster_b.ordered_domain_set
 
-    # Detect totally unrelated pairs from the beginning
-    # this returns early if there are unrelated pairs
-    if len(intersect) == 0:
-        return gen_unrelated_pair_distance(run, cluster_a, cluster_b)
-
 
     slice_data = process_orientation(cluster_a, cluster_b)
 
@@ -622,6 +617,16 @@ def calc_distance_lcs(run, cluster_a: BgcInfo, cluster_b: BgcInfo, weights,
                              cluster_a_dom_end, cluster_b_dom_end)
 
 
+
+    rev = 0.0
+    if reverse:
+        rev = 1.0
+
+    return jaccard_index, dss, adj_index, dss_non_anchor, dss_anchor, num_non_anchor_domains, num_anchor_domains, lcs_start_a, lcs_start_b, seed_length, rev
+
+def calc_distance(weights, jaccard_index, dss, adj_index, cluster_a_name, cluster_b_name):
+    jaccard_weight, dss_weight, ai_weight, anchor_boost = weights
+    
     distance = 1 - (jaccard_weight * jaccard_index) - (dss_weight * dss) - (ai_weight * adj_index)
 
     # This could happen due to numerical innacuracies
@@ -629,13 +634,8 @@ def calc_distance_lcs(run, cluster_a: BgcInfo, cluster_b: BgcInfo, weights,
         if distance < -0.000001: # this definitely is something else...
             print("Negative distance detected!")
             print(distance)
-            print("{} - {}".format(cluster_a.name, cluster_b.name))
+            print("{} - {}".format(cluster_a_name, cluster_b_name))
             print("J: {}\tDSS: {}\tAI: {}".format(str(jaccard_index), str(dss), str(adj_index)))
             print("Jw: {}\tDSSw: {}\tAIw: {}".format(str(jaccard_weight), str(dss_weight), str(ai_weight)))
         distance = 0.0
-
-    rev = 0.0
-    if reverse:
-        rev = 1.0
-
-    return distance, jaccard_index, dss, adj_index, dss_non_anchor, dss_anchor, num_non_anchor_domains, num_anchor_domains, lcs_start_a, lcs_start_b, seed_length, rev
+    return distance
