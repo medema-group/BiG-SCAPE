@@ -1,7 +1,7 @@
 from .network import generate_network
 from .distance import write_distance_matrix
 from .clustering import clusterJsonBatch
-from .scores import calc_jaccard, calc_distance_lcs
+from .scores import calc_jaccard
 from .run.base import Run, ClusterParam, DirParam, DistParam, GbkParam, MibigParam, NetworkParam, PfamParam
 from .pfd import parse_pfd
 from .svg import generate_images

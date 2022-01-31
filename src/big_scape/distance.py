@@ -3,11 +3,12 @@ from array import array
 
 from multiprocessing import Pool
 from functools import partial
-from src.big_scape.bgc_collection import BgcCollection
 
+from src.big_scape.bgc_dom_info import BgcDomainInfo
+from src.big_scape.bgc_collection import BgcCollection
 from src.big_scape.bgc_info import BgcInfo
 from src.pfam.misc import get_domain_list
-from src.big_scape.scores import calc_distance, calc_distance_lcs, calc_jaccard, gen_unrelated_pair_distance
+from src.big_scape.scores import calc_adj_idx, calc_distance, calc_dss, calc_jaccard, gen_unrelated_pair_distance, process_orientation
 
 # @timeit
 def gen_dist_matrix_async(run, cluster_pairs, bgc_collection: BgcCollection, aligned_domain_sequences):
@@ -34,6 +35,19 @@ def gen_dist_matrix(run, cluster_pairs, bgc_collection: BgcCollection, aligned_d
         network_matrix.append(generate_dist_matrix(pair, run, bgc_collection, aligned_domain_sequences))
 
     return network_matrix
+
+
+def calc_ai_pair(cluster_a: BgcInfo, cluster_b: BgcInfo, pair_dom_info: BgcDomainInfo):
+    a_dom_list = cluster_a.ordered_domain_list
+    b_dom_list = cluster_b.ordered_domain_list
+
+    a_dom_start = pair_dom_info.a_dom_start
+    a_dom_end = pair_dom_info.a_dom_end
+
+    b_dom_start = pair_dom_info.b_dom_start
+    b_dom_end = pair_dom_info.b_dom_end
+
+    return calc_adj_idx(a_dom_list, b_dom_list, a_dom_start, a_dom_end, b_dom_start, b_dom_end)
 
 def generate_dist_matrix(parms, run, bgc_collection: BgcCollection, aligned_domain_sequences):
     """Unpack data to actually launch cluster_distance for one pair of BGCs"""
@@ -65,24 +79,46 @@ def generate_dist_matrix(parms, run, bgc_collection: BgcCollection, aligned_doma
         #   S, Sa, lcsStartA, lcsStartB
         return array('f', [cluster_1_idx, cluster_2_idx, 1, 0, 0, 0, 0, 0, 1, 1, 0, 0])
 
+    # unpack weights
     weights = run.distance.bgc_class_weight[bgc_class]
+    jaccard_weight, dss_weight, ai_weight, anchor_boost = weights
 
-    intersect = cluster_a.ordered_domain_set & cluster_b.ordered_domain_set
+    # initialize domain specific info
+    # this contains the domain slice information, which may change if expansion is needed
+    pair_dom_info = BgcDomainInfo(cluster_a, cluster_b)
     
     # Detect totally unrelated pairs from the beginning
-    if len(intersect) == 0:
+    if len(pair_dom_info.intersect) == 0:
         score_data = gen_unrelated_pair_distance(run, cluster_a, cluster_b)
-        jaccard, dss, ai, rDSSna, rDSS, S, Sa, lcsStartA, lcsStartB, seedLength, reverse = score_data
+        jaccard, dss, ai, dss_non_anchor, dss_anchor, num_non_anchor_domains, num_anchor_domains, slice_start_a, slice_start_b, slice_length_a, rev = score_data
     else:
-        score_data = calc_distance_lcs(run, cluster_a, cluster_b, weights, aligned_domain_sequences)
-                
-        jaccard, dss, ai, rDSSna, rDSS, S, Sa, lcsStartA, lcsStartB, seedLength, reverse = score_data
+        slice_data = process_orientation(cluster_a, cluster_b)
+
+        slice_start_a, slice_start_b, slice_length_a, slice_length_b, use_b_string, slice_reverse = slice_data
+
+        rev = 0.0
+        if slice_reverse:
+            rev = 1.0
+
+        pair_dom_info.expand_score(run, cluster_a, cluster_b, slice_data)
+
+
+        # JACCARD INDEX
+        union = cluster_a.ordered_domain_set | cluster_b.ordered_domain_set
+        jaccard = calc_jaccard(pair_dom_info.intersect, union)
+
+        dss_data = calc_dss(run, cluster_a, cluster_b, aligned_domain_sequences, anchor_boost, pair_dom_info)
+        # unpack variables
+        dss, dss_non_anchor, dss_anchor, num_non_anchor_domains, num_anchor_domains = dss_data
+
+        ai = calc_ai_pair(cluster_a, cluster_b, pair_dom_info)
+
 
     dist = calc_distance(weights, jaccard, dss, ai, cluster_a.name, cluster_b.name)
 
     network_row = array('f', [cluster_1_idx, cluster_2_idx, dist, (1-dist)**2, jaccard,
-                              dss, ai, rDSSna, rDSS, S, Sa, lcsStartA, lcsStartB,
-                              seedLength, reverse])
+                              dss, ai, dss_non_anchor, dss_anchor, num_non_anchor_domains, num_anchor_domains, slice_start_a, slice_start_b,
+                              slice_length_a, rev])
     return network_row
 
 
