@@ -3,7 +3,7 @@ from array import array
 from src.bgctools import BgcData
 
 class BgcInfo:
-    cluster_name: str
+    name: str
     bgc_info: BgcData
     src_gbk_file: str
     
