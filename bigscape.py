@@ -215,7 +215,7 @@ if __name__ == "__main__":
     # at this point we can assemble a gene string for bgc info
     BGC_COLLECTION.init_gene_strings()
 
-    
+
 
     ### Step 5: Create SVG figures
     print(" Creating arrower-like figures for each BGC")
