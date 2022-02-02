@@ -91,7 +91,7 @@ if __name__ == "__main__":
 
 
     ### Step 1: Get all the input files. Write extract sequence and write fasta if necessary
-    logging.info("\n\n   - - Processing input files - -")
+    logging.info("   - - Processing input files - -")
 
     mibig.extract_mibig(RUN)
 
@@ -109,8 +109,8 @@ if __name__ == "__main__":
 
 
     ### Step 2: Run hmmscan
-    logging.info("\nTrying threading on {} cores".format(str(RUN.options.cores)))
-    logging.info("\nPredicting domains using hmmscan")
+    logging.info("Trying threading on {} cores".format(str(RUN.options.cores)))
+    logging.info("Predicting domains using hmmscan")
 
     # get all fasta files in cache directory
     CACHED_FASTA_FILES = hmm.get_cached_fasta_files(RUN)
