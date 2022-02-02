@@ -60,5 +60,5 @@ class MibigParam():
                 self.file_name = "MIBiG_1.3_final"
                 self.expected_num_bgc = 1393
 
-            self.zip_path = self.file_name + ".zip"
+            self.zip_path = os.path.join(options.mibig_path, self.file_name + ".zip")
             self.gbk_path = os.path.join(options.mibig_path, self.file_name)
