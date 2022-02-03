@@ -59,7 +59,7 @@ elif version_info[0] == 3:
     import pickle # for storing and retrieving dictionaries
 #pylint: enable=wrong-import-order,redefined-builtin,invalid-name,undefined-variable,import-error
 
-def init_logger(root_path, options):
+def init_logger(options):
     """Initializes the logger for big-scape
 
     input:
@@ -72,12 +72,11 @@ def init_logger(root_path, options):
     root_logger = logging.getLogger()
 
     # create log dir
-    log_dir = os.path.join(root_path, "log")
-    if not os.path.exists(log_dir):
-        os.mkdir(log_dir)
+    if not os.path.exists(options.log_path):
+        os.mkdir(options.log_path)
     # set log file
     log_time_stamp = time.strftime("%Y-%m-%d_%H-%M-%S", time.localtime())
-    log_file = "log/" + log_time_stamp + ".log"
+    log_file = os.path.join(options.log_path, log_time_stamp + ".log")
 
     file_handler = logging.FileHandler(log_file)
     file_handler.setFormatter(log_formatter)
@@ -102,7 +101,7 @@ if __name__ == "__main__":
     OPTIONS = utility.cmd_parser(ROOT_PATH)
 
     # init logger
-    init_logger(ROOT_PATH, OPTIONS)
+    init_logger(OPTIONS)
 
     # ignore specific warnings from sklearn
     # TODO: investigate whether this can be mediated by changing the affinity propagation.
