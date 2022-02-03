@@ -58,7 +58,7 @@ elif version_info[0] == 3:
     import pickle # for storing and retrieving dictionaries
 #pylint: enable=wrong-import-order,redefined-builtin,invalid-name,undefined-variable,import-error
 
-def init_logger(root_path, verbose=False):
+def init_logger(root_path, options):
 
     ## logging
     log_formatter = logging.Formatter("%(asctime)s %(threadName)-12.12s %(levelname)-7.7s %(message)s")
@@ -76,11 +76,12 @@ def init_logger(root_path, verbose=False):
     fileHandler.setFormatter(log_formatter)
     root_logger.addHandler(fileHandler)
 
-    consoleHandler = logging.StreamHandler()
-    consoleHandler.setFormatter(log_formatter)
-    root_logger.addHandler(consoleHandler)
+    if not options.quiet:
+        consoleHandler = logging.StreamHandler()
+        consoleHandler.setFormatter(log_formatter)
+        root_logger.addHandler(consoleHandler)
 
-    if verbose:
+    if options.verbose:
         root_logger.level = logging.DEBUG
     else:
         root_logger.level = logging.INFO
@@ -94,7 +95,7 @@ if __name__ == "__main__":
     OPTIONS = utility.cmd_parser(ROOT_PATH)
 
     # init logger
-    init_logger(ROOT_PATH, OPTIONS.verbose)
+    init_logger(ROOT_PATH, OPTIONS)
 
     # create new run details
     # ideally we parse all the options and remember them in this object
