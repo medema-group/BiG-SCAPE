@@ -1,3 +1,4 @@
+import logging
 import os
 import numpy as np
 
@@ -199,10 +200,11 @@ def calc_dss(run, cluster_a, cluster_b, aligned_domain_sequences, anchor_boost, 
                 except KeyError:
                     # For some reason we don't have the multiple alignment files.
                     # Try manual alignment
+                    # FIXME: this is a very strange condition. compare with master
                     if shared_domain not in missing_aligned_domain_files and run.options.verbose:
                         # this will print everytime an unfound <domain>.algn is not found for every
                         # distance calculation (but at least, not for every domain pair!)
-                        print("  Warning: {}.algn not found. Trying pairwise alignment...".format(shared_domain))
+                        logging.warning("  %s.algn not found. Trying pairwise alignment...", shared_domain)
                         missing_aligned_domain_files.append(shared_domain)
 
                     try:
@@ -228,9 +230,9 @@ def calc_dss(run, cluster_a, cluster_b, aligned_domain_sequences, anchor_boost, 
                 # Sequences *should* be of the same length unless something went
                 # wrong elsewhere
                 if len(aligned_seq_a) != len(aligned_seq_b):
-                    print("\tWARNING: mismatch in sequences' lengths while calculating sequence identity ({})".format(shared_domain))
-                    print("\t  Specific domain 1: {} len: {}".format(sequence_tag_a, str(len(aligned_seq_a))))
-                    print("\t  Specific domain 2: {} len: {}".format(sequence_tag_b, str(len(aligned_seq_b))))
+                    logging.warning("    mismatch in sequences' lengths while calculating sequence identity (%s)", shared_domain)
+                    logging.warning("      Specific domain 1: %s len: %d", sequence_tag_a, len(aligned_seq_a))
+                    logging.warning("      Specific domain 2: %s len: %d", sequence_tag_b, len(aligned_seq_b))
                     seq_length = min(len(aligned_seq_a), len(aligned_seq_b))
                 else:
                     seq_length = len(aligned_seq_a)
@@ -376,10 +378,11 @@ def calc_distance(weights, jaccard_index, dss, adj_index, cluster_a_name, cluste
     # This could happen due to numerical innacuracies
     if distance < 0.0:
         if distance < -0.000001: # this definitely is something else...
-            print("Negative distance detected!")
-            print(distance)
-            print("{} - {}".format(cluster_a_name, cluster_b_name))
-            print("J: {}\tDSS: {}\tAI: {}".format(str(jaccard_index), str(dss), str(adj_index)))
-            print("Jw: {}\tDSSw: {}\tAIw: {}".format(str(jaccard_weight), str(dss_weight), str(ai_weight)))
+            logging.warning("Negative distance detected!")
+            logging.warning(distance)
+            logging.warning("%s - %s", cluster_a_name, cluster_b_name)
+            logging.warning("J: %d\tDSS: %d\tAI: %d", jaccard_index, dss, adj_index)
+            logging.warning("Jw: %d\tDSSw: %d\tAIw: %d", jaccard_weight, dss_weight, ai_weight)
+            logging.warning("This distance is considered 0!")
         distance = 0.0
     return distance

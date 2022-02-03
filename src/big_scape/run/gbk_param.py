@@ -2,6 +2,7 @@
 
 Author: Arjan Draisma
 """
+import logging
 import sys
 
 class GbkParam:
@@ -26,11 +27,11 @@ class GbkParam:
         # Exclude single string
         self.include = options.include_gbk_str
         if len(self.include) == 1 and self.include[0] == "*":
-            print(" Including all files")
+            logging.info(" Including all files")
         elif len(self.include) == 1 and self.include[0] == "":
             sys.exit(" Stop: no strings specified for '--include_gbk_str'")
         else:
-            print(" Including files with one or more of the following strings in their filename: \
+            logging.info(" Including files with one or more of the following strings in their filename: \
                 '{}'".format("', '".join(self.include)))
 
     def set_exclude_list(self, options):
@@ -41,5 +42,5 @@ class GbkParam:
 
         self.exclude = options.exclude_gbk_str
         if self.exclude != []:
-            print(" Skipping files with one or more of the following strings in their filename: \
+            logging.info(" Skipping files with one or more of the following strings in their filename: \
                 '{}'".format("', '".join(self.exclude)))

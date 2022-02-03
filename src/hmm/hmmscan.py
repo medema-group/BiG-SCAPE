@@ -1,3 +1,4 @@
+import logging
 import os
 import sys
 import subprocess
@@ -19,7 +20,7 @@ def parse_domtable(gbk, dom_file):
     try:
         dom_handle = open(dom_file, 'r')
     except IOError:
-        print("  Error! Could not find file " + dom_file)
+        logging.error("  Could not find file %s", dom_file)
     else:
         for line in dom_handle:
             if line[0] != "#":
@@ -33,7 +34,7 @@ def parse_domtable(gbk, dom_file):
                 try:
                     pfd_row.append(header_list[header_list.index("gid")+1]) #add gene ID if known
                 except ValueError:
-                    print("No gene ID in " + gbk)
+                    logging.warning("No gene ID in %s", gbk)
                     pfd_row.append('')
 
                 pfd_row.append(splitline[19])#first coordinate, env coord from
@@ -79,8 +80,8 @@ def run_hmmscan(fasta_path, hmm_path, outputdir, verbose):
         output_name = os.path.join(outputdir, name+".domtable")
 
         hmmscan_cmd = "hmmscan --cpu 0 --domtblout {} --cut_tc {} {}".format(output_name, hmm_file, fasta_path)
-        if verbose:
-            print("   " + hmmscan_cmd)
+
+        logging.debug("   " + hmmscan_cmd)
         subprocess.check_output(hmmscan_cmd, shell=True)
 
     else:
@@ -120,8 +121,7 @@ def parse_hmmscan(hmm_scan_results, pfd_folder, pfs_folder, overlap_cutoff, verb
         num_domains = len(pfd_matrix)
 
         if num_domains > 0:
-            if verbose:
-                print("  Processing domtable file: " + outputbase)
+            logging.debug("  Processing domtable file: %s", outputbase)
 
             # check_overlap also sorts the filtered_matrix results and removes
             # overlapping domains, keeping the highest scoring one
@@ -139,7 +139,7 @@ def parse_hmmscan(hmm_scan_results, pfd_folder, pfs_folder, overlap_cutoff, verb
         else:
             # there aren't any domains in this BGC
             # delete from all data structures
-            print("  No domains where found in {}.domtable. Removing it from further analysis".format(outputbase))
+            logging.info("  No domains were found in %s.domtable. Removing it from further analysis", outputbase)
             info = genbank_dict.get(outputbase)
             clusters.remove(outputbase)
             base_names.remove(outputbase)

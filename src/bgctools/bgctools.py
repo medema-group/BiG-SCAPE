@@ -1,3 +1,6 @@
+from asyncio.log import logger
+
+
 def sort_bgc(product):
     """Sort BGC by its type. Uses AntiSMASH annotations
     (see https://docs.antismash.secondarymetabolites.org/glossary/#cluster-types)"""
@@ -75,7 +78,7 @@ def sort_bgc(product):
         # No product annotation. Perhaps not analyzed by antiSMASH
         return "Others"
     else:
-        print("  Warning: unknown product '{}'".format(product))
+        logger.warning("  unknown product '{}'".format(product))
         return "Others"
 
 def get_composite_bgc_similarities(bgcs_1, bgcs_2, sim_matrix):

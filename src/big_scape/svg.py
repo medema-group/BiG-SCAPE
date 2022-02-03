@@ -1,3 +1,4 @@
+import logging
 import os
 
 from glob import glob
@@ -28,7 +29,7 @@ def generate_images(run, cluster_base_names, gen_bank_dic, pfam_info, bgc_info):
 
         #This must be done serially, because if a color for a gene/domain
         # is not found, the text files with colors need to be updated
-        print("  Reading BGC information and writing SVG")
+        logging.info("  Reading BGC information and writing SVG")
         for bgc in working_set:
             with open(gen_bank_dic[bgc][0], "r") as handle:
                 utility.SVG(False, os.path.join(run.directories.svg, bgc+".svg"), handle, bgc,
@@ -40,6 +41,6 @@ def generate_images(run, cluster_base_names, gen_bank_dic, pfam_info, bgc_info):
         color_domains.clear()
         pfam_domain_categories.clear()
     elif len(working_set) == 0:
-        print("  All SVG from the input files seem to be in the SVG folder")
+        logging.info("  All SVG from the input files seem to be in the SVG folder")
 
     available_svg.clear()

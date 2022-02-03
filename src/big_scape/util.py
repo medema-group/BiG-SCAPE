@@ -1,3 +1,4 @@
+import logging
 import os
 import json
 import sys
@@ -9,7 +10,7 @@ from src.pfam import get_domain_list
 from src.utility import create_directory
 
 def get_ordered_domain_list(run, cluster_base_names):
-    print(" Reading the ordered list of domains from the pfs files")
+    logging.info(" Reading the ordered list of domains from the pfs files")
 
     domain_list = {} # Key: BGC. Item: ordered list of domains
     for outputbase in cluster_base_names:

@@ -3,6 +3,7 @@
 Author: Arjan Draisma
 """
 
+import logging
 import os
 import src.utility
 
@@ -21,5 +22,4 @@ class NetworkParam():
             self.anchor_domains = src.utility.get_anchor_domains(anchorfile)
         else:
             self.anchor_domains = set()
-            # TODO: convert to log warning
-            print("File with list of anchor domains not found")
+            logging.warning("File with list of anchor domains not found")

@@ -1,3 +1,4 @@
+import logging
 import os
 import sys
 import numpy as np
@@ -54,8 +55,9 @@ def clusterJsonBatch(bgcs, pathBase, className, matrix, pos_alignments, bgc_coll
         gcSimilarities[gc2] = similarity
 
     clanClassificationCutoff, clanDistanceCutoff = clanCutoff
-    if clusterClans and verbose:
-        print('Clustering Clans Enabled with parameters clanClassificationCutoff: {}, clanDistanceCutoff: {}'.format(clanClassificationCutoff,clanDistanceCutoff))
+    if clusterClans:
+        logging.debug('Clustering Clans Enabled with parameters clanClassificationCutoff: %s, \
+                      clanDistanceCutoff: %s', clanClassificationCutoff, clanDistanceCutoff)
 
     # External index number to Internal, consecutive, index
     # If needed, bgcInt2Ext[i] would simply be bgcs[i]
@@ -131,7 +133,7 @@ def clusterJsonBatch(bgcs, pathBase, className, matrix, pos_alignments, bgc_coll
             "families_similarity": []
         }
 
-        print("  Cutoff: {}".format(cutoff))
+        logging.info("  Cutoff: %s", cutoff)
         # first task is to find labels (exemplars) for each node.
         # Assign disconnected (singleton) BGCs to themselves
         labels = [0 for i in range(numBGCs)]
@@ -189,8 +191,7 @@ def clusterJsonBatch(bgcs, pathBase, className, matrix, pos_alignments, bgc_coll
                     simMatrix[bgcExt2Int[bgc1], bgcExt2Int[bgc2]] = simDict[bgc1][bgc2]
                     simMatrix[bgcExt2Int[bgc2], bgcExt2Int[bgc1]] = simDict[bgc1][bgc2]
 
-        if verbose:
-            print("   ...done")
+        logging.debug("   ...done")
 
         bs_distances = [[float("{:.3f}".format(simMatrix[row, col])) for col in
                          range(row+1)] for row in range(numBGCs)]
@@ -256,8 +257,7 @@ def clusterJsonBatch(bgcs, pathBase, className, matrix, pos_alignments, bgc_coll
 
 
             if len(tree_domains) == 1:
-                if verbose:
-                    print("  Warning: core shared domains for GCF {} consists of a single domain ({})".format(exemplar_idx, [x for x in tree_domains][0]))
+                logging.debug("  Note: core shared domains for GCF %s consists of a single domain (%s)", exemplar_idx, [x for x in tree_domains][0])
 
             # Get the alignments of the core domains
             alignments = {}
@@ -284,8 +284,9 @@ def clusterJsonBatch(bgcs, pathBase, className, matrix, pos_alignments, bgc_coll
                     if bgc == exemplar_idx:
                         pass
                     elif domain not in domain_sets[bgc]:
-                        if verbose:
-                            print("   BGC {} ({}) does not share a common domain core (GCF: {}, domain: {})".format(bgc_collection.bgc_name_tuple[bgc], bgc, exemplar_idx, domain))
+                        logging.debug("   BGC %s (%s) does not share a common domain core \
+                                      (GCF: %s, domain: %s)", 
+                                      bgc_collection.bgc_name_tuple[bgc], bgc, exemplar_idx, domain)
                         out_of_tree_bgcs.append(bgc)
                         delete_list.add(bgc)
                     elif bgc in delete_list:
@@ -353,8 +354,7 @@ def clusterJsonBatch(bgcs, pathBase, className, matrix, pos_alignments, bgc_coll
                         bgc_name_to_idx[bgc_collection.bgc_name_tuple[bgc]] = bgc
 
             # launch fasttree to make tree
-            if verbose:
-                print("  Working GCF {}, cutoff {}".format(exemplar_idx, cutoff))
+            logging.debug("  Working GCF %s, cutoff %s", exemplar_idx, cutoff)
 
             # make tree
             newick_file_path = os.path.join(gcf_trees_path, "GCF_c{:4.2f}_{:05d}.newick".format(cutoff,exemplar_idx))
@@ -365,15 +365,17 @@ def clusterJsonBatch(bgcs, pathBase, className, matrix, pos_alignments, bgc_coll
 
             # read tree, post-process it and save it
             if not os.path.isfile(newick_file_path) or os.path.getsize(newick_file_path) == 0:
-                print(newick_file_path)
-                sys.exit(" ERROR: newick file not created or empty (GCF_c{:4.2f}_{:05d})".format(cutoff,exemplar_idx))
+                logging.error(newick_file_path)
+                logging.error("The above newick file was not created or is empty (GCF_c%2f_%5d)", 
+                              cutoff, exemplar_idx)
+                sys.exit()
             else:
                 with open(newick_file_path,"r") as newick_file:
                     try:
                         tree = Phylo.read(newick_file, 'newick')
                     except ValueError as e:
-                        print(" Warning! There was an error while reading tree file {}".format(newick_file))
-                        print(str(e))
+                        logging.warning(" There was an error while reading tree file %s", newick_file)
+                        logging.warning(str(e))
                         newick_trees[exemplar_idx] = ""
                     else:
                         try:
@@ -381,8 +383,8 @@ def clusterJsonBatch(bgcs, pathBase, className, matrix, pos_alignments, bgc_coll
                         except UnboundLocalError:
                             # Noticed this could happen if the sequences are exactly
                             # the same and all distances == 0
-                            if verbose:
-                                print(" Warning: Unable to root at midpoint file {}".format(newick_file_path))
+                            
+                            logging.debug(" Note: Unable to root at midpoint file %s", newick_file_path)
                             pass
                         newick = tree.format("newick")
 
@@ -573,8 +575,8 @@ def clusterJsonBatch(bgcs, pathBase, className, matrix, pos_alignments, bgc_coll
         ## End of BGC Family alignment information
 
         # column1: BGC, column2: clustering pseudo family
-        if verbose:
-            print("  Writing clustering file")
+        
+        logging.debug("  Writing clustering file")
         clustering_file_path = os.path.join(pathBase, "{}_clustering_c{:4.2f}.tsv".format(className, cutoff))
         with open(clustering_file_path, "w") as clustering_file:
             clustering_file.write('#BGC Name\tFamily Number\n')
@@ -611,8 +613,7 @@ def clusterJsonBatch(bgcs, pathBase, className, matrix, pos_alignments, bgc_coll
 
 
         if len(clanLabels) > 0:
-            if verbose:
-                print("   Writing Clans file")
+            logging.debug("   Writing Clans file")
             clans_file_path = os.path.join(pathBase, "{}_clans_{:4.2f}_{:4.2f}.tsv".format(className,clanClassificationCutoff,clanDistanceCutoff))
             with open(clans_file_path,'w') as clansFile:
                 clansFile.write('#BGC Name\tClan Number\tFamily Number\n')

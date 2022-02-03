@@ -1,3 +1,4 @@
+import logging
 import os
 import sys
 
@@ -21,16 +22,16 @@ def import_gbks(run):
     for key in mibig_gen_bank_dict:
         mibig_set.add(key)
 
-    print("\nImporting GenBank files")
+    logging.info("Importing GenBank files")
     gbk_bgc_info, gbk_gen_bank_dict = import_genbank_gbk(run)
     bgc_info.update(gbk_bgc_info)
     gen_bank_dict.update(gbk_gen_bank_dict)
     
     if run.directories.has_query_bgc:
         if run.directories.query_bgc_name in gen_bank_dict:
-            print("\nQuery BGC already added")
+            logging.info("Query BGC already added")
         else:
-            print("\nImporting query BGC file")
+            logging.info("Importing query BGC file")
             query_bgc_info, query_gen_bank_dict = import_query_gbk(run)
             bgc_info.update(query_bgc_info)
             gen_bank_dict.update(query_gen_bank_dict)
@@ -59,7 +60,7 @@ def import_mibig_gbk(run: Run):
       longest record, GenBank's accession, Biosynthetic Genes' ids
     - genbankDict: {cluster_name:[genbank_path_to_1st_instance,[sample_1,sample_2,...]]}
     """
-    print("\nImporting MIBiG files")
+    logging.info("Importing MIBiG files")
     mibig_gbk_path = run.mibig.gbk_path
     return get_gbk_files(mibig_gbk_path, run, True)
     # gbk.get_gbk_files(run.mibig.gbk_path, run.directories.output, run.directories.bgc_fasta,
@@ -102,8 +103,7 @@ def process_gbk_file(
     # properties for bgc_info anyway...
     outputfile = os.path.join(run.directories.bgc_fasta, cluster_name + '.fasta')
     if os.path.isfile(outputfile) and os.path.getsize(outputfile) > 0 and not run.options.force_hmmscan:
-        if run.options.verbose:
-            print(" File {} already processed".format(outputfile))
+        logging.debug(" File %s already processed", outputfile)
         save_fasta = False
     else:
         save_fasta = True
@@ -112,8 +112,8 @@ def process_gbk_file(
         # basic file verification. Substitutes check_data_integrity
         records = list(SeqIO.parse(gbk_file_path, "genbank"))
     except ValueError as e:
-        print("   Error with file {}: \n    '{}'".format(gbk_file_path, str(e)))
-        print("    (This file will be excluded from the analysis)")
+        logging.warning("   Error with file %s: \n    '%s'", gbk_file_path, str(e))
+        logging.warning("    (This file will be excluded from the analysis)")
         return
     else:
         total_seq_length = 0
@@ -145,8 +145,7 @@ def process_gbk_file(
                         # in multi-record files. Turn on contig_edge when
                         # there's at least one annotation
                         if feature.qualifiers["contig_edge"][0] == "True":
-                            if run.options.verbose:
-                                print(" Contig edge detected in {}".format(fname))
+                            logging.debug(" Contig edge detected in %s", fname)
                             contig_edge = True
 
                 # antiSMASH = 5
@@ -160,8 +159,7 @@ def process_gbk_file(
                         # in multi-record files. Turn on contig_edge when
                         # there's at least one annotation
                         if feature.qualifiers["contig_edge"][0] == "True":
-                            if run.options.verbose:
-                                print(" Contig edge detected in {}".format(fname))
+                            logging.debug(" Contig edge detected in %s", fname)
                             contig_edge = True
 
 
@@ -241,11 +239,11 @@ def process_gbk_file(
                         reminder = len(nt_seq)%3
                         if reminder > 0:
                             if fuzzy_start and fuzzy_end:
-                                print("Warning, CDS ({}, {}) has fuzzy\
+                                qualifier = CDS.qualifiers.get('locus_tag', "")[0]
+                                logging.warning("CDS (%s, %s) has fuzzy\
                                     start and end positions, and a \
                                     sequence length not multiple of \
-                                    three. Skipping".format(cluster_name,
-                                    CDS.qualifiers.get('locus_tag',"")[0]))
+                                    three. Skipping", cluster_name, qualifier)
                                 break
 
                             if fuzzy_start:
@@ -307,8 +305,7 @@ def process_gbk_file(
                 subproduct.add("pks-nrp_hybrids")
 
             if len(run.valid_classes & subproduct) == 0:
-                if run.options.verbose:
-                    print(" Skipping {} (type: {})".format(cluster_name, product))
+                logging.debug(" Skipping %s (type: %s)", cluster_name, product)
                 return False
 
             # assuming that the definition field is the same in all records
@@ -383,8 +380,7 @@ def process_gbk_file(
                                         del_list.add(a)
 
                         for locus in del_list:
-                            if run.options.verbose:
-                                print("   Removing {} because it overlaps with other ORF".format(locus))
+                            logging.debug("   Removing %s because it overlaps with other ORF", locus)
                             bgc_locus_tags.remove(locus)
 
                         with open(outputfile, 'w') as fasta_handle:
@@ -395,11 +391,10 @@ def process_gbk_file(
                 else:
                     files_no_proteins.append(fname)
 
-            if run.options.verbose:
-                print("  Adding {} ({} bps)".format(fname, str(bgc_size)))
+            logging.debug("  Adding %s (%d bps)", fname, bgc_size)
 
         else:
-            print(" Discarding {} (size less than {} bp, was {})".format(cluster_name, str(run.min_bgc_size), str(bgc_size)))
+            logging.info(" Discarding %s (size less than %d bp, was %d)", cluster_name, run.min_bgc_size, bgc_size)
 
     return adding_sequence, bgc_info, gen_bank_dict
 
@@ -448,15 +443,16 @@ def get_gbk_files(gbk_path: str, run: Run, include_all=False):
                 continue
 
             if run.gbk.exclude != [] and any([word in fname for word in run.gbk.exclude]):
-                print(" Skipping file " + fname)
+                logging.info(" Skipping file %s", fname)
                 continue
 
         if "_ORF" in fname:
-            print(" Skipping file {} (string '_ORF' is used internally)".format(fname))
+            logging.info(" Skipping file %s (string '_ORF' is used internally)", fname)
             continue
 
         if " " in file_path:
-            sys.exit("\nError: Input GenBank files should not have spaces in their path as hmmscan cannot process them properly ('too many arguments').")
+            logging.error("Error: Input GenBank files should not have spaces in their path as hmmscan cannot process them properly ('too many arguments').")
+            sys.exit(0)
 
         file_counter += 1
         gbk_file_process_results = process_gbk_file(file_path, run, files_no_proteins, files_no_biosynthetic_genes)
@@ -469,20 +465,20 @@ def get_gbk_files(gbk_path: str, run: Run, include_all=False):
             processed_sequences += 1
 
     if len(files_no_proteins) > 0:
-        print("  Warning: Input set has files without protein sequences. They will be discarded")
-        print("   (See no_sequences_list.txt)")
+        logging.warning("  Input set has files without protein sequences. They will be discarded")
+        logging.warning("   (See no_sequences_list.txt)")
         with open(os.path.join(run.directories.output, "no_sequences_list.txt"), "w") as noseqs:
             for file in sorted(files_no_proteins):
                 noseqs.write("{}\n".format(file))
 
     if len(files_no_biosynthetic_genes) > 0 and (run.run_mode == "glocal" or run.run_mode == "auto"):
-        print("  Warning: Input set has files with no Biosynthetic Genes (affects alignment mode)")
-        print("   See no_biosynthetic_genes_list.txt")
+        logging.warning("  Input set has files with no Biosynthetic Genes (affects alignment mode)")
+        logging.warning("   See no_biosynthetic_genes_list.txt")
         with open(os.path.join(run.directories.output, "logs", "no_biosynthetic_genes_list.txt"), "w") as nobiogenes:
             for file in sorted(files_no_biosynthetic_genes):
                 nobiogenes.write("{}\n".format(file))
 
-    print("\n Starting with {:d} files".format(file_counter))
-    print(" Files that had its sequence extracted: {:d}".format(processed_sequences))
+    logging.info("Starting with %d files", file_counter)
+    logging.info(" Files that had its sequence extracted: %d", processed_sequences)
 
     return bgc_info, gen_bank_dict

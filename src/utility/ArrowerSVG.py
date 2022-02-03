@@ -44,7 +44,7 @@ def read_color_genes_file():
     color_genes = {}
     
     if os.path.isfile(gene_color_file):
-        print("  Found file with gene colors")
+        logging.info("  Found file with gene colors")
         with open(gene_color_file, "r") as color_genes_handle:
             for line in color_genes_handle:
                 # handle comments and empty lines
@@ -54,7 +54,7 @@ def read_color_genes_file():
                     rgb = row[1].split(",")
                     color_genes[name] = [int(rgb[x]) for x in range(3)]
     else:
-        print("  Gene color file was not found. A new file will be created")
+        logging.info("  Gene color file was not found. A new file will be created")
         with open(gene_color_file, "w") as color_genes_handle:
             color_genes_handle.write("NoName\t255,255,255\n")
         color_genes = {"NoName":[255, 255, 255]}
@@ -67,7 +67,7 @@ def read_color_domains_file():
     color_domains = {}
     
     if os.path.isfile(domains_color_file):
-        print("  Found file with domains colors")
+        logging.info("  (ArrowerSVG) Found file with domains colors")
         with open(domains_color_file, "r") as color_domains_handle:
             for line in color_domains_handle:
                 # handle comments and empty lines
@@ -77,7 +77,7 @@ def read_color_domains_file():
                     rgb = row[1].split(",")
                     color_domains[name] = [int(rgb[x]) for x in range(3)]
     else:
-        print("  Domains colors file was not found. An empty file will be created")
+        logging.info("  (ArrowerSVG) Domains colors file was not found. An empty file will be created")
         color_domains_handle = open(domains_color_file, "a+")
         
     return color_domains
@@ -88,7 +88,7 @@ def read_pfam_domain_categories():
     pfam_category = {}
     
     if os.path.isfile(pfam_domain_categories):
-        print("  Found file with Pfam domain categories")
+        logging.info("  (ArrowerSVG) Found file with Pfam domain categories")
         with open(pfam_domain_categories, "r") as cat_handle:            
             for line in cat_handle:
                 # handle comments and empty lines
@@ -98,7 +98,7 @@ def read_pfam_domain_categories():
                     category = row[0]
                     pfam_category[domain] = category
     else:
-        print("  File pfam_domain_categories was NOT found")
+        logging.info("  (ArrowerSVG) File pfam_domain_categories was NOT found")
                     
     return pfam_category
    
@@ -381,7 +381,8 @@ def SVG(write_html, outputfile, GenBankFile, BGCname, pfdFile, use_pfd, color_ge
     # check whether we have a corresponding pfd file wih domain annotations
     if use_pfd:
         if not os.path.isfile(pfdFile):
-            sys.exit("Error (Arrower): " + pfdFile + " not found")
+            logging.error("(ArrowerSVG) %s not found", pfdFile)
+            sys.exit(0)
    
 
     # --- create SVG header. We have to get max_width first
@@ -390,7 +391,8 @@ def SVG(write_html, outputfile, GenBankFile, BGCname, pfdFile, use_pfd, color_ge
         try:
             records = list(SeqIO.parse(GenBankFile), "genbank")
         except:
-            sys.exit(" Arrower: error while opening GenBank")
+            sys.exit(" (ArrowerSVG) error while opening GenBank")
+            sys.exit(0)
         else:
             loci = len(records)
             max_width = 0
@@ -574,7 +576,8 @@ def SVG(write_html, outputfile, GenBankFile, BGCname, pfdFile, use_pfd, color_ge
                 elif strand == 1:
                     strand = '+'
                 else:
-                    sys.exit("Weird strand value: " + strand)
+                    logging.error("Weird strand value: %s", strand)
+                    sys.exit()
                 
                 # define arrow's start and end
                 # http://biopython.org/DIST/docs/api/Bio.SeqFeature.FeatureLocation-class.html#start
@@ -630,7 +633,7 @@ def SVG(write_html, outputfile, GenBankFile, BGCname, pfdFile, use_pfd, color_ge
                 #X, Y, L, l, H, h, strand, color, color_contour, category, gid, domain_list
                 arrow = draw_arrow(additional_tabs, start+mX, add_origin_Y+mY+h, int(feature.location.end-feature.location.start)/scaling, l, H, h, strand, color, color_contour, gene_category, cds_tag, identifiers[identifier])
                 if arrow == "":
-                    print("  (ArrowerSVG) Warning: something went wrong with {}".format(BGCname))
+                    logging.warning("  (ArrowerSVG) something went wrong with %s", BGCname)
                 SVG_TEXT += arrow
                 
                 feature_counter += 1

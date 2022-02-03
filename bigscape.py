@@ -58,23 +58,43 @@ elif version_info[0] == 3:
     import pickle # for storing and retrieving dictionaries
 #pylint: enable=wrong-import-order,redefined-builtin,invalid-name,undefined-variable,import-error
 
+def init_logger(root_path, verbose = False):
+
+    ## logging
+    log_formatter = logging.Formatter("%(asctime)s %(threadName)-12.12s %(levelname)-5.5s %(message)s")
+    root_logger = logging.getLogger()
+
+    # create log dir
+    log_dir = os.path.join(root_path, "log")
+    if not os.path.exists(log_dir):
+        os.mkdir(log_dir)
+    # set log file
+    log_time_stamp = time.strftime("%Y-%m-%d_%H-%M-%S", time.localtime())
+    log_file = "log/" + log_time_stamp + ".log"
+
+    fileHandler = logging.FileHandler(log_file)
+    fileHandler.setFormatter(log_formatter)
+    root_logger.addHandler(fileHandler)
+
+    consoleHandler = logging.StreamHandler()
+    consoleHandler.setFormatter(log_formatter)
+    root_logger.addHandler(consoleHandler)
+
+    if verbose:
+        root_logger.level = logging.DEBUG
+    else:
+        root_logger.level = logging.INFO
+
 if __name__ == "__main__":
     # get root path of this project
     ROOT_PATH = os.path.dirname(__file__)
 
-    # create log dir
-    LOG_DIR = os.path.join(ROOT_PATH, "log")
-    if not os.path.exists(LOG_DIR):
-        os.mkdir(LOG_DIR)
-    # set log file
-    LOG_TIME_STAMP = time.strftime("%Y-%m-%d_%H-%M-%S", time.localtime())
-    LOG_FILE = "log/" + LOG_TIME_STAMP + ".log"
-    logging.basicConfig(filename=LOG_FILE, level=logging.INFO)
-
-
     # get run options
     # ROOT_PATH is passed here because the imports no longer allow us to use __file__
     OPTIONS = utility.cmd_parser(ROOT_PATH)
+
+    # init logger
+    init_logger(ROOT_PATH, OPTIONS.verbose)
 
     # create new run details
     # ideally we parse all the options and remember them in this object
@@ -109,7 +129,7 @@ if __name__ == "__main__":
 
 
     ### Step 2: Run hmmscan
-    logging.info("Trying threading on {} cores".format(str(RUN.options.cores)))
+    logging.info("Trying threading on %d cores", RUN.options.cores)
     logging.info("Predicting domains using hmmscan")
 
     # get all fasta files in cache directory
@@ -172,7 +192,7 @@ if __name__ == "__main__":
 
     ### Step 4: Parse the pfs, pfd files to generate BGC dictionary, clusters, and clusters per
     ### sample objects
-    logging.info("\nProcessing domains sequence files")
+    logging.info("Processing domains sequence files")
 
     # do one more check of pfd files to see if they are all there
     hmm.check_pfd_files(RUN, CLUSTER_NAME_SET)
@@ -264,7 +284,7 @@ if __name__ == "__main__":
     pfam.create_pfam_js(RUN, PFAM_INFO)
 
     # Try to make default analysis using all files found inside the input folder
-    logging.info("\nGenerating distance network files with ALL available input files")
+    logging.info("Generating distance network files with ALL available input files")
 
     # This version contains info on all bgcs with valid classes
     logging.info("   Writing the complete Annotations file for the complete set")

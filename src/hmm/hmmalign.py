@@ -1,3 +1,4 @@
+import logging
 import os
 import subprocess
 import sys
@@ -11,7 +12,7 @@ from src.pfam.stockholm import stockholm_parser
 
 
 def do_multiple_align(run, try_resume):
-    print("Performing multiple alignment of domain sequences")
+    logging.info("Performing multiple alignment of domain sequences")
     # obtain all fasta files with domain sequences
     domain_sequence_list = set(glob(os.path.join(run.directories.domains, "*.fasta")))
 
@@ -21,7 +22,7 @@ def do_multiple_align(run, try_resume):
         temp_aligned = set(glob(os.path.join(run.directories.domains, "*.algn")))
 
         if len(temp_aligned) > 0:
-            print(" Found domain fasta files without corresponding alignments")
+            logging.info(" Found domain fasta files without corresponding alignments")
 
             for algn_file in temp_aligned:
                 if os.path.getsize(algn_file) > 0:
@@ -48,9 +49,9 @@ def do_multiple_align(run, try_resume):
         if len(sequence_tag_list) == 1:
             # avoid multiple alignment if the domains all belong to the same BGC
             domain_sequence_list.remove(domain_file)
-            if run.options.verbose:
-                print(" Skipping Multiple Alignment for {} \
-                    (appears only in one BGC)".format(domain_name))
+
+            logging.debug(" Skipping Multiple Alignment for %s \
+                   (appears only in one BGC)", domain_name)
 
     sequence_tag_list.clear()
     del header_list[:]
@@ -60,20 +61,20 @@ def do_multiple_align(run, try_resume):
     # Do the multiple alignment
     stop_flag = False
     if len(domain_sequence_list) > 0:
-        print("\n Using hmmalign")
+        logging.info("\n Using hmmalign")
         launch_hmmalign(run.options.cores, domain_sequence_list, run.directories.pfam,
                         run.options.verbose)
 
         # verify all tasks were completed by checking existance of alignment files
         for domain_file in domain_sequence_list:
             if not os.path.isfile(domain_file[:-6]+".algn"):
-                print("   ERROR, {}.algn could not be found \
-                    (possible issue with aligner).".format(domain_file[:-6]))
+                logging.error("   %s.algn could not be found \
+                    (possible issue with aligner).", domain_file[:-6])
                 stop_flag = True
         if stop_flag:
             sys.exit()
     else:
-        print(" No domain fasta files found to align")
+        logging.info(" No domain fasta files found to align")
 
 
 def launch_hmmalign(cores, domain_sequence_list, pfam_dir, verbose):
@@ -103,8 +104,7 @@ def run_hmmalign(domain_file, pfam_dir, verbose):
     proc_hmmalign.communicate()[0]
     proc_hmmfetch.wait()
 
-    if verbose:
-        print(" ".join(hmmfetch_pars) + " | " + " ".join(hmmalign_pars))
+    logging.debug(" ".join(hmmfetch_pars) + " | " + " ".join(hmmalign_pars))
 
     stockholm_parser(domain_file_stk)
     #SeqIO.convert(domain_file_stk, "stockholm", domain_file[:-6]+".algn", "fasta")

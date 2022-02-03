@@ -1,3 +1,4 @@
+import logging
 import os
 import sys
 
@@ -93,7 +94,7 @@ def create_working_set(run, bgc_collection: BgcCollection, mix) -> dict:
 def generate_network(run, bgc_collection: BgcCollection, aligned_domain_seqs,
                      mibig_set_indices, mibig_set, rundata_networks_per_run,
                      html_subs_per_run, mix=False):
-    print("\n Working for each BGC class")
+    logging.info(" Working for each BGC class")
 
     # we have to find the idx of query_bgc
     if run.directories.has_query_bgc:
@@ -109,13 +110,13 @@ def generate_network(run, bgc_collection: BgcCollection, aligned_domain_seqs,
     bgc_classes = create_working_set(run, bgc_collection, mix)
 
     if mix:
-        print("\n  {} ({} BGCs)".format("Mix", str(len(bgc_classes["mix"]))))
+        logging.info("  %s (%d BGCs)", "Mix", len(bgc_classes["mix"]))
 
         # create output directory
         create_directory(os.path.join(run.directories.network, "mix"), "  Mix", False)
     else:
         # Preparing gene cluster classes
-        print("  Sorting the input BGCs\n")
+        logging.info("  Sorting the input BGCs\n")
 
         class_names_len = len(run.distance.bgc_class_names)
         bgc_class_name_2_index = dict(zip(run.distance.bgc_class_names, range(class_names_len)))
@@ -127,19 +128,19 @@ def generate_network(run, bgc_collection: BgcCollection, aligned_domain_seqs,
             if query_bgc_idx not in bgc_classes[bgc_class]:
                 continue
 
-        print("\n  {} ({} BGCs)".format(bgc_class, str(len(bgc_classes[bgc_class]))))
+        logging.info("  %s (%d BGCs)", bgc_class, len(bgc_classes[bgc_class]))
         if run.mibig.use_mibig:
             if len(set(bgc_classes[bgc_class]) & mibig_set_indices) == len(bgc_classes[bgc_class]):
-                print(" - All clusters in this class are MIBiG clusters -")
-                print("  If you'd like to analyze MIBiG clusters, turn off the --mibig option")
-                print("  and point --inputdir to the Annotated_MIBiG_reference folder")
+                logging.info(" - All clusters in this class are MIBiG clusters -")
+                logging.info("  If you'd like to analyze MIBiG clusters, turn off the --mibig option")
+                logging.info("  and point --inputdir to the Annotated_MIBiG_reference folder")
                 continue
 
         # create output directory
         create_directory(os.path.join(run.directories.network, bgc_class), "  All - " + bgc_class, False)
 
         # Create an additional file with the final list of all clusters in the class
-        print("   Writing annotation files")
+        logging.info("   Writing annotation files")
         network_annotation_path = os.path.join(run.directories.network, bgc_class, "Network_Annotations_" + bgc_class + ".tsv")
         with open(network_annotation_path, "w") as network_annotation_file:
             network_annotation_file.write("BGC\tAccession ID\tDescription\tProduct Prediction\tBiG-SCAPE class\tOrganism\tTaxonomy\n")
@@ -152,7 +153,7 @@ def generate_network(run, bgc_collection: BgcCollection, aligned_domain_seqs,
                 taxonomy = bgc_collection.bgc_collection_dict[bgc].bgc_info.taxonomy
                 network_annotation_file.write("\t".join([bgc, accession_id, description, product, sort_bgc(product), organism, taxonomy]) + "\n")
 
-        print("   Calculating all pairwise distances")
+        logging.info("   Calculating all pairwise distances")
         if run.directories.has_query_bgc:
             pairs = set([tuple(sorted(combo)) for combo in combinations_product([query_bgc_idx], bgc_classes[bgc_class])])
         else:
@@ -219,7 +220,7 @@ def generate_network(run, bgc_collection: BgcCollection, aligned_domain_seqs,
 
             # Create an additional file with the list of all clusters in the class + other info
             # This version of the file only has information on the BGCs connected to Query BGC
-            print("   Writing annotation file (Query BGC)")
+            logging.info("   Writing annotation file (Query BGC)")
             network_annotation_path = os.path.join(run.directories.network, bgc_class, "Network_Annotations_" + bgc_class + "_QueryBGC.tsv")
             with open(network_annotation_path, "w") as network_annotation_file:
                 network_annotation_file.write("BGC\tAccession ID\tDescription\tProduct Prediction\tBiG-SCAPE class\tOrganism\tTaxonomy\n")
@@ -259,7 +260,7 @@ def generate_network(run, bgc_collection: BgcCollection, aligned_domain_seqs,
                 del network_matrix[row_idx]
             del network_matrix_set_del[:]
 
-            print("   Removing {} non-relevant MIBiG BGCs".format(len(mibig_set_del)))
+            logging.info("   Removing %d non-relevant MIBiG BGCs", len(mibig_set_del))
             bgc_to_class_idx = {}
             for idx, bgc in enumerate(bgc_classes[bgc_class]):
                 bgc_to_class_idx[bgc] = idx
@@ -273,12 +274,12 @@ def generate_network(run, bgc_collection: BgcCollection, aligned_domain_seqs,
             if len(bgc_classes[bgc_class]) < 2:
                 continue
 
-        print("   Writing output files")
+        logging.info("   Writing output files")
         path_base = os.path.join(run.directories.network, bgc_class)
         cutoffs_filenames = get_output_cutoffs_filenames(run, path_base, bgc_class)
         write_distance_matrix(network_matrix, cutoffs_filenames, run.options.include_singletons, bgc_collection)
 
-        print("  Calling Gene Cluster Families")
+        logging.info("  Calling Gene Cluster Families")
         reduced_network, pos_alignments = reduce_network(network_matrix)
 
         family_data = clusterJsonBatch(bgc_classes[bgc_class], path_base, bgc_class,
