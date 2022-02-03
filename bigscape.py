@@ -35,6 +35,7 @@ from __future__ import division
 
 import os
 import logging
+import warnings
 import time
 
 from distutils import dir_util
@@ -103,6 +104,13 @@ if __name__ == "__main__":
     # init logger
     init_logger(ROOT_PATH, OPTIONS)
 
+    # ignore specific warnings from sklearn
+    # TODO: investigate whether this can be mediated by changing the affinity propagation.
+    # concerns the following warning:
+    # UserWarning: All samples have mutually equal similarities. Returning arbitrary cluster
+    # center(s).
+    warnings.filterwarnings(action="ignore", category=UserWarning)
+
     # create new run details
     # ideally we parse all the options and remember them in this object
     # we will later use options to describe what parameters were used, and
@@ -160,7 +168,7 @@ if __name__ == "__main__":
 
 
     ### Step 3: Parse hmmscan domtable results and generate pfs and pfd files
-    logging.info("\nParsing hmmscan domtable files")
+    logging.info("Parsing hmmscan domtable files")
 
     # All available domtable files
     CACHED_DOMTABLE_FILES = hmm.get_cached_domtable_files(RUN)
@@ -268,7 +276,7 @@ if __name__ == "__main__":
 
     big_scape.generate_images(RUN, CLUSTER_NAME_SET, GBK_FILE_DICT, PFAM_INFO, BGC_INFO_DICT)
     logging.info(" Finished creating figures")
-    logging.info("\n\n   - - Calculating distance matrix - -")
+    logging.info("   - - Calculating distance matrix - -")
 
     # Do multiple alignments if needed
     if not RUN.options.skip_ma:
