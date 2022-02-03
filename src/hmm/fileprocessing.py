@@ -124,9 +124,9 @@ def log_unprocessed_domtable_files(files_to_process, first_run):
         if len(files_to_process) == 0:
             logging.info(" All domtable files had already been processed")
         elif len(files_to_process) < 20:
-            logging.warning(" The following domtable files had not been processed:")
+            logging.info(" The following domtable files had not been processed:")
             for unprocessed_domtable_file in files_to_process:
-                logging.warning(unprocessed_domtable_file.split(os.sep)[-1].split('.')[:-1][0])
+                logging.info(unprocessed_domtable_file.split(os.sep)[-1].split('.')[:-1][0])
         else:
             logging.info(" %d domtable files will be processed", len(files_to_process))
 
