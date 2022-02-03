@@ -453,7 +453,7 @@ def get_gbk_files(gbk_path: str, run: Run, include_all=False):
 
         if " " in file_path:
             logging.error("Error: Input GenBank files should not have spaces in their path as hmmscan cannot process them properly ('too many arguments').")
-            sys.exit(0)
+            sys.exit(1)
 
         file_counter += 1
         gbk_file_process_results = process_gbk_file(file_path, run, files_no_proteins, files_no_biosynthetic_genes)

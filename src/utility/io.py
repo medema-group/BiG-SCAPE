@@ -18,7 +18,7 @@ def create_directory(path, kind, clean):
         else:
             logging.error("unexpected error creating " + kind + " folder")
             logging.error(exception.strerror)
-            sys.exit(0)
+            sys.exit(1)
 
 def write_parameters(output_folder, parameters):
     """Write a file with all the details of the run.

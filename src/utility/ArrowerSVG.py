@@ -383,7 +383,7 @@ def SVG(write_html, outputfile, GenBankFile, BGCname, pfdFile, use_pfd, color_ge
     if use_pfd:
         if not os.path.isfile(pfdFile):
             logging.error("(ArrowerSVG) %s not found", pfdFile)
-            sys.exit(0)
+            sys.exit(1)
    
 
     # --- create SVG header. We have to get max_width first
@@ -393,7 +393,7 @@ def SVG(write_html, outputfile, GenBankFile, BGCname, pfdFile, use_pfd, color_ge
             records = list(SeqIO.parse(GenBankFile), "genbank")
         except:
             logging.error(" (ArrowerSVG) error while opening GenBank")
-            sys.exit(0)
+            sys.exit(1)
         else:
             loci = len(records)
             max_width = 0

@@ -33,7 +33,7 @@ def extract_mibig(run: big_scape.Run):
         if not zipfile.is_zipfile(run.mibig.zip_path):
             logging.error("Did not find file %s. \
                           Please re-download it from the official repository", run.mibig.zip_path)
-            sys.exit(0)
+            sys.exit(1)
 
         with zipfile.ZipFile(run.mibig.zip_path, 'r') as mibig_zip:
             for fname in mibig_zip.namelist():
@@ -50,4 +50,4 @@ def extract_mibig(run: big_scape.Run):
         logging.error("Did not find the correct number of MIBiG BGCs (%d). \
             Please clean the 'Annotated MIBiG reference' folder from any \
             .gbk files first", run.mibig.expected_num_bgc)
-        sys.exit(0)
+        sys.exit(1)

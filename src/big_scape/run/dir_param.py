@@ -96,7 +96,7 @@ class DirParam():
         if options.outputdir == "":
             # TODO: convert to log error
             logging.error("please provide a name for an output folder using parameter -o or --outputdir")
-            sys.exit(0)
+            sys.exit(1)
         # TODO: check if writable
         self.output = options.outputdir
 
