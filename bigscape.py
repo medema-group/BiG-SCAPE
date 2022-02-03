@@ -58,10 +58,10 @@ elif version_info[0] == 3:
     import pickle # for storing and retrieving dictionaries
 #pylint: enable=wrong-import-order,redefined-builtin,invalid-name,undefined-variable,import-error
 
-def init_logger(root_path, verbose = False):
+def init_logger(root_path, verbose=False):
 
     ## logging
-    log_formatter = logging.Formatter("%(asctime)s %(threadName)-12.12s %(levelname)-5.5s %(message)s")
+    log_formatter = logging.Formatter("%(asctime)s %(threadName)-12.12s %(levelname)-7.7s %(message)s")
     root_logger = logging.getLogger()
 
     # create log dir
