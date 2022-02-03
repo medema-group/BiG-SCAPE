@@ -117,7 +117,7 @@ def generate_network(run, bgc_collection: BgcCollection, aligned_domain_seqs,
         create_directory(os.path.join(run.directories.network, "mix"), "  Mix", False)
     else:
         # Preparing gene cluster classes
-        logging.info("  Sorting the input BGCs\n")
+        logging.info("  Sorting the input BGCs")
 
         class_names_len = len(run.distance.bgc_class_names)
         bgc_class_name_2_index = dict(zip(run.distance.bgc_class_names, range(class_names_len)))
