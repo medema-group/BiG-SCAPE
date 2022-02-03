@@ -59,6 +59,12 @@ elif version_info[0] == 3:
 #pylint: enable=wrong-import-order,redefined-builtin,invalid-name,undefined-variable,import-error
 
 def init_logger(root_path, options):
+    """Initializes the logger for big-scape
+
+    input:
+        root_path - root path of this bigscape.py file
+        options - options object containing command line arument information
+    """
 
     ## logging
     log_formatter = logging.Formatter("%(asctime)s %(levelname)-7.7s %(message)s")
