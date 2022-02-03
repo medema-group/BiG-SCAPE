@@ -76,7 +76,7 @@ def check_overlap(pfd_matrix, overlap_cutoff):
     except ValueError as e:
         logging.error("Something went wrong during the sorting of the fourth column (ValueError): %s", str(e))
         logging.error(pfd_matrix)
-        sys.exit()
+        sys.exit(1)
 
     domains = []
     for row in pfd_matrix:

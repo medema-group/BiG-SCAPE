@@ -104,7 +104,8 @@ class BgcCollection:
                     self.bgc_collection_dict[cluster_name].domain_name_info = domain_name_info
                 bgc_file.close()
         except IOError:
-            sys.exit("BGCs file not found...")
+            logging.error("BGCs file not found...")
+            sys.exit(1)
 
     def load_domain_names_from_pfd(self, run, try_resume_multiple_alignment):
         for outputbase in self.bgc_name_list:

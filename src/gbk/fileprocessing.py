@@ -46,8 +46,9 @@ def import_query_gbk(run):
     bgc_info, gen_bank_dict = get_gbk_files(run.options.query_bgc, run, True)
 
     if run.directories.query_bgc_name not in gen_bank_dict:
-        sys.exit("Error: not able to include Query BGC (check valid classes, BGC size, etc. \
-                    Run again with --verbose)")
+        logging.error("Error: not able to include Query BGC (check valid classes, BGC size, etc. \
+                      Run again with --verbose)")
+        sys.exit(1)
     return bgc_info, gen_bank_dict
 
 

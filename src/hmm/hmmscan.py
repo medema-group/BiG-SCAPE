@@ -21,6 +21,7 @@ def parse_domtable(gbk, dom_file):
         dom_handle = open(dom_file, 'r')
     except IOError:
         logging.error("  Could not find file %s", dom_file)
+        sys.exit(1)
     else:
         for line in dom_handle:
             if line[0] != "#":
@@ -81,11 +82,12 @@ def run_hmmscan(fasta_path, hmm_path, outputdir, verbose):
 
         hmmscan_cmd = "hmmscan --cpu 0 --domtblout {} --cut_tc {} {}".format(output_name, hmm_file, fasta_path)
 
-        logging.debug("   " + hmmscan_cmd)
+        logging.debug("   %s", hmmscan_cmd)
         subprocess.check_output(hmmscan_cmd, shell=True)
 
     else:
-        sys.exit("Error running hmmscan: Fasta file " + fasta_path + " doesn't exist")
+        logging.error("Error running hmmscan: Fasta file %s doesn't exist", fasta_path)
+        sys.exit(1)
 
 def parse_hmmscan_async():
     # copied from bigscape.py, unused
@@ -151,4 +153,5 @@ def parse_hmmscan(hmm_scan_results, pfd_folder, pfs_folder, overlap_cutoff, verb
                 mibig_set.remove(outputbase)
 
     else:
-        sys.exit("Error: hmmscan file " + outputbase + " was not found! (parseHmmScan)")
+        logging.error("hmmscan file %s was not found! (parseHmmScan)", outputbase)
+        sys.exit(1)

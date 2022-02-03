@@ -3,6 +3,7 @@
 Author: Arjan Draisma
 """
 
+import logging
 import sys
 import os
 
@@ -37,7 +38,8 @@ class MibigParam():
             selected_mibig += 1
 
         if selected_mibig > 1:
-            sys.exit("Error: choose only one MIBiG version")
+            logging.error("choose only one MIBiG version")
+            sys.exit(1)
 
         self.use_mibig = selected_mibig == 1
 

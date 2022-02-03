@@ -27,7 +27,7 @@ def check_fasta_files(run, cluster_base_names, all_fasta_files):
         unextracted_files = existing_fasta_files - fasta_bases
         for unextracted_file in unextracted_files:
             logging.error(unextracted_file)
-        sys.exit()
+        sys.exit(1)
 
 def get_fasta_files_to_process(run, fasta_files):
     if run.options.force_hmmscan:
@@ -113,7 +113,7 @@ def check_domtable_files(run, cluster_base_names, cached_domtable_files):
         logging.error("The following files did NOT have their domains predicted: ")
         for skipped_file in skipped_files:
             logging.error(skipped_file)
-        sys.exit()
+        sys.exit(1)
 
 
 def log_unprocessed_domtable_files(files_to_process, first_run):
@@ -155,4 +155,4 @@ def check_pfd_files(run, cluster_base_names):
         unprocessed_domtable_files = pfd_files - pfd_bases
         for unprocessed_domtable_file in unprocessed_domtable_files:
             logging.error(unprocessed_domtable_file)
-        sys.exit()
+        sys.exit(1)

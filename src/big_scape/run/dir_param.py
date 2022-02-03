@@ -80,7 +80,8 @@ class DirParam():
             self.has_query_bgc = True
             self.query_bgc_name = ".".join(options.query_bgc.split(os.sep)[-1].split(".")[:-1])
             if not os.path.isfile(options.query_bgc):
-                sys.exit("Error: Query BGC not found")
+                logging.error("Query BGC not found")
+                sys.exit(1)
             self.query_bgc = options.query_bgc
         else:
             self.has_query_bgc = False
@@ -141,7 +142,7 @@ class DirParam():
                 logging.error("Please download the latest Pfam-A.hmm file from http://pfam.xfam.org/")
                 logging.error("Then use hmmpress on it, and use the --pfam_dir parameter \
                                to point to the location of the files")
-            sys.exit()
+            sys.exit(1)
         else:
             self.pfam = options.pfam_dir
 

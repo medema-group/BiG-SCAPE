@@ -101,7 +101,8 @@ class Run:
                 else:
                     self.has_includelist = True
             else:
-                sys.exit("Error: domain_includelist.txt file not found")
+                logging.error("domain_includelist.txt file not found")
+                sys.exit(1)
 
     def set_valid_classes(self, options):
         #define which classes will be analyzed (if in the options_classify mode)

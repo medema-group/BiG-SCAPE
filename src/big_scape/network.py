@@ -101,7 +101,8 @@ def generate_network(run, bgc_collection: BgcCollection, aligned_domain_seqs,
         if run.directories.query_bgc_name in bgc_collection.bgc_name_set:
             query_bgc_idx = bgc_collection.bgc_name_tuple.index(run.directories.query_bgc_name)
         else:
-            sys.exit("Error finding the index of Query BGC")
+            logging.error("Error finding the index of Query BGC")
+            sys.exit(1)
 
     # we will need this for the two distance matrix generation calls
 

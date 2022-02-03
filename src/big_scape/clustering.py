@@ -368,7 +368,7 @@ def clusterJsonBatch(bgcs, pathBase, className, matrix, pos_alignments, bgc_coll
                 logging.error(newick_file_path)
                 logging.error("The above newick file was not created or is empty (GCF_c%2f_%5d)", 
                               cutoff, exemplar_idx)
-                sys.exit()
+                sys.exit(1)
             else:
                 with open(newick_file_path,"r") as newick_file:
                     try:

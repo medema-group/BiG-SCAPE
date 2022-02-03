@@ -29,7 +29,8 @@ class GbkParam:
         if len(self.include) == 1 and self.include[0] == "*":
             logging.info(" Including all files")
         elif len(self.include) == 1 and self.include[0] == "":
-            sys.exit(" Stop: no strings specified for '--include_gbk_str'")
+            logging.error(" no strings specified for '--include_gbk_str'")
+            sys.exit(1)
         else:
             logging.info(" Including files with one or more of the following strings in their filename: \
                 '{}'".format("', '".join(self.include)))

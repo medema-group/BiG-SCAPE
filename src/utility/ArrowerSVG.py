@@ -356,7 +356,8 @@ def new_color(gene_or_domain):
         s = uniform(0.5, 0.75) # lower: less saturated
         v = uniform(0.7, 0.9) # lower = darker
     else:
-        sys.exit("unknown kind of color. Should be 'gene' or 'domain'")
+        logging.error("unknown kind of color. Should be 'gene' or 'domain'")
+        sys.exit(1)
         
     r, g, b = tuple(int(c * 255) for c in hsv_to_rgb(h, s, v))
     
@@ -391,7 +392,7 @@ def SVG(write_html, outputfile, GenBankFile, BGCname, pfdFile, use_pfd, color_ge
         try:
             records = list(SeqIO.parse(GenBankFile), "genbank")
         except:
-            sys.exit(" (ArrowerSVG) error while opening GenBank")
+            logging.error(" (ArrowerSVG) error while opening GenBank")
             sys.exit(0)
         else:
             loci = len(records)
@@ -577,7 +578,7 @@ def SVG(write_html, outputfile, GenBankFile, BGCname, pfdFile, use_pfd, color_ge
                     strand = '+'
                 else:
                     logging.error("Weird strand value: %s", strand)
-                    sys.exit()
+                    sys.exit(1)
                 
                 # define arrow's start and end
                 # http://biopython.org/DIST/docs/api/Bio.SeqFeature.FeatureLocation-class.html#start

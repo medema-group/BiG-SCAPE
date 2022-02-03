@@ -72,7 +72,7 @@ def do_multiple_align(run, try_resume):
                     (possible issue with aligner).", domain_file[:-6])
                 stop_flag = True
         if stop_flag:
-            sys.exit()
+            sys.exit(1)
     else:
         logging.info(" No domain fasta files found to align")
 
@@ -114,8 +114,9 @@ def read_aligned_files(run):
     aligned_domain_seqs = {} # Key: specific domain sequence label. Item: aligned sequence
     aligned_files_list = glob(os.path.join(run.directories.domains, "*.algn"))
     if len(aligned_files_list) == 0:
-        sys.exit("No aligned sequences found in the domain folder (run without the --skip_ma \
+        logging.error("No aligned sequences found in the domain folder (run without the --skip_ma \
                  parameter or point to the correct output folder)")
+        sys.exit(1)
     for aligned_file in aligned_files_list:
         with open(aligned_file, "r") as aligned_file_handle:
             fasta_dict = fasta_parser(aligned_file_handle)
