@@ -1,3 +1,4 @@
+import logging
 import os
 import sys
 from glob import glob
@@ -22,15 +23,15 @@ def check_fasta_files(run, cluster_base_names, all_fasta_files):
 
     # Verify that all input files had their fasta sequences extracted
     if len(existing_fasta_files - fasta_bases) > 0:
-        print("Error! The following files did NOT have their fasta sequences extracted: ")
+        logging.error("The following files did NOT have their fasta sequences extracted: ")
         unextracted_files = existing_fasta_files - fasta_bases
         for unextracted_file in unextracted_files:
-            print(unextracted_file)
-        sys.exit()
+            logging.error(unextracted_file)
+        sys.exit(1)
 
 def get_fasta_files_to_process(run, fasta_files):
     if run.options.force_hmmscan:
-        print(" Forcing domain prediction on ALL fasta files (--force_hmmscan)")
+        logging.info(" Forcing domain prediction on ALL fasta files (--force_hmmscan)")
         return fasta_files
 
     already_done = set()
@@ -53,15 +54,15 @@ def get_fasta_files_to_process(run, fasta_files):
 
     task_set = fasta_files - already_done
     if len(task_set) == 0:
-        print(" All fasta files had already been processed")
+        logging.info(" All fasta files had already been processed")
     elif len(already_done) > 0:
         if len(task_set) < 20:
             tasks = ", ".join(".".join(x.split(os.sep)[-1].split(".")[:-1]) for x in task_set)
-            print(" Warning! The following NEW fasta file(s) will be processed: {}".format(tasks))
+            logging.warning(" The following NEW fasta file(s) will be processed: %s", tasks)
         else:
-            print(" Warning: {} NEW fasta files will be processed".format(len(task_set)))
+            logging.warning(" %d NEW fasta files will be processed", len(task_set))
     else:
-        print(" Predicting domains for {} fasta files".format(str(len(fasta_files))))
+        logging.info(" Predicting domains for %d fasta files", len(fasta_files))
 
     return task_set
 
@@ -109,25 +110,25 @@ def check_domtable_files(run, cluster_base_names, cached_domtable_files):
     # Verify that all input files have a corresponding domtable file
     if len(existing_domtable_files - domtable_bases) > 0:
         skipped_files = existing_domtable_files - domtable_bases
-        print("Error! The following files did NOT have their domains predicted: ")
+        logging.error("The following files did NOT have their domains predicted: ")
         for skipped_file in skipped_files:
-            print(skipped_file)
-        sys.exit()
+            logging.error(skipped_file)
+        sys.exit(1)
 
 
 def log_unprocessed_domtable_files(files_to_process, first_run):
     if first_run:
-        print(" Processing {} domtable files".format(str(len(files_to_process))))
+        logging.info(" Processing %d domtable files", len(files_to_process))
         return
     else:
         if len(files_to_process) == 0:
-            print(" All domtable files had already been processed")
+            logging.info(" All domtable files had already been processed")
         elif len(files_to_process) < 20:
-            print(" Warning! The following domtable files had not been processed:")
+            logging.info(" The following domtable files had not been processed:")
             for unprocessed_domtable_file in files_to_process:
-                print(unprocessed_domtable_file.split(os.sep)[-1].split('.')[:-1][0])
+                logging.info(unprocessed_domtable_file.split(os.sep)[-1].split('.')[:-1][0])
         else:
-            print(" Warning: {} domtable files will be processed".format(str(len(files_to_process))))
+            logging.info(" %d domtable files will be processed", len(files_to_process))
 
 def get_cached_pfd_files(run):
     file_path = os.path.join(run.directories.pfd, "*.pfd")
@@ -150,8 +151,8 @@ def check_pfd_files(run, cluster_base_names):
     # verify previous step.
     # All BGCs without predicted domains should no longer be in baseNames
     if len(pfd_files - pfd_bases) > 0:
-        print("Error! The following files did NOT have their domtable files processed:")
+        logging.error("The following files did NOT have their domtable files processed:")
         unprocessed_domtable_files = pfd_files - pfd_bases
         for unprocessed_domtable_file in unprocessed_domtable_files:
-            print(unprocessed_domtable_file)
-        sys.exit()
+            logging.error(unprocessed_domtable_file)
+        sys.exit(1)

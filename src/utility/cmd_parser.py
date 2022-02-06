@@ -162,6 +162,13 @@ def cmd_parser(root_path):
                         include domains with the pfam accessions found in the \
                         domain_includelist.txt file", default=False,
                         action="store_true")
+    
+    parser.add_argument("--quiet", help="Don't print logs to output, only to log file.",
+                        default=False, action="store_true")
+    
+    default_log_path = os.path.join(os.path.dirname(root_path), "log")
+    parser.add_argument("--log_path", dest="log_path", help="Location where to write logs",
+                        default=default_log_path)
 
     parser.add_argument("--version", action="version", version="%(prog)s 1.1.2 (2021-06-03)")
 

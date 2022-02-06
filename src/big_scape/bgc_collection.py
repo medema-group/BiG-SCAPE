@@ -4,6 +4,7 @@ import sys
 from typing import Dict
 
 import debugpy
+import logging
 
 from src.big_scape.util import get_ordered_domain_list
 from src.big_scape.bgc_info import BgcInfo
@@ -54,7 +55,7 @@ class BgcCollection:
                 self.bgc_collection_dict[cluster_name].bgc_info = bgc_info
             else:
                 # TODO: replace with logger
-                print("Warning: BGC info for {} was not found".format(cluster_name))
+                logging.warning("BGC info for %s was not found", cluster_name)
 
     def add_source_gbk_files(self, source_gbk_file_dict):
         for cluster_name in self.bgc_collection_dict:
@@ -63,7 +64,7 @@ class BgcCollection:
                 self.bgc_collection_dict[cluster_name].src_gbk_file = source_gbk_file
             else:
                 # TODO: replace with logger
-                print("Warning: BGC info for {} was not found".format(cluster_name))
+                logging.warning("BGC info for %s was not found", cluster_name)
 
     def add_gene_domain_counts(self, gene_domain_count_dict):
         for cluster_name in self.bgc_collection_dict:
@@ -74,7 +75,7 @@ class BgcCollection:
             else:
                 self.bgc_collection_dict[cluster_name].num_genes = 0
                 # TODO: replace with logger
-                print("Warning: Domain count info for {} was not found".format(cluster_name))
+                logging.warning("Domain count info for %s was not found", cluster_name)
 
     def add_gene_orientations(self, gene_orientation_dict):
         for cluster_name in self.bgc_collection_dict:
@@ -83,7 +84,7 @@ class BgcCollection:
                 self.bgc_collection_dict[cluster_name].gene_orientations = gene_orientations
             else:
                 # TODO: replace with logger
-                print("Warning: Gene orientation info for {} was not found".format(cluster_name))
+                logging.warning("Gene orientation info for %s was not found", cluster_name)
 
     def add_bio_synth_core_pos(self, bio_synth_core_positions):
         for cluster_name in self.bgc_collection_dict:
@@ -92,7 +93,7 @@ class BgcCollection:
                 self.bgc_collection_dict[cluster_name].bio_synth_core_positions = cluster_bio_synth_core_positions
             else:
                 # TODO: replace with logger
-                print("Warning: Biosynthetic gene core position info for {} was not found".format(cluster_name))
+                logging.warning("Biosynthetic gene core position info for %s was not found", cluster_name)
 
     def load_domain_names_from_dict(self, run):
         try:
@@ -103,12 +104,12 @@ class BgcCollection:
                     self.bgc_collection_dict[cluster_name].domain_name_info = domain_name_info
                 bgc_file.close()
         except IOError:
-            sys.exit("BGCs file not found...")
+            logging.error("BGCs file not found...")
+            sys.exit(1)
 
     def load_domain_names_from_pfd(self, run, try_resume_multiple_alignment):
         for outputbase in self.bgc_name_list:
-            if run.options.verbose:
-                print("   Processing: " + outputbase)
+            logging.debug("   Processing: %s", outputbase)
 
             pfd_file = os.path.join(run.directories.pfd, outputbase + ".pfd")
             filtered_matrix = [[part.strip() for part in l.split('\t')] for l in open(pfd_file)]

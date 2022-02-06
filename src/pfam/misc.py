@@ -1,3 +1,4 @@
+import logging
 import sys
 import os
 
@@ -73,9 +74,9 @@ def check_overlap(pfd_matrix, overlap_cutoff):
         # sorted by absolute position: env coordinate start + gene locus start
         pfd_matrix = [x for (y, x) in sorted(zip(absolute_start_positions, pfd_matrix), key=lambda pair: pair[0])]
     except ValueError as e:
-        print("Something went wrong during the sorting of the fourth column (ValueError): " + str(e))
-        print(pfd_matrix)
-        sys.exit()
+        logging.error("Something went wrong during the sorting of the fourth column (ValueError): %s", str(e))
+        logging.error(pfd_matrix)
+        sys.exit(1)
 
     domains = []
     for row in pfd_matrix:
@@ -137,6 +138,6 @@ def generate_pfam_colors_matrix(pfam_domain_colors):
                     rgb = row[-1]
                     pfam_colors[domain] = rgb
     else:
-        print("  File pfam_domain_colors was NOT found")
+        logging.warning("  File pfam_domain_colors was NOT found")
 
     return pfam_colors

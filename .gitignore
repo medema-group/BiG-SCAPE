@@ -12,3 +12,6 @@ domains_color_file.tsv
 
 # vscode files
 .vscode/**/*
+
+# logs
+log/**/*

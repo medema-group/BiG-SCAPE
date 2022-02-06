@@ -1,3 +1,6 @@
+import logging
+
+
 def get_anchor_domains(filename):
     """Get the anchor/marker domains from a txt file.
     This text file should contain one Pfam id per line.
@@ -14,7 +17,7 @@ def get_anchor_domains(filename):
                     domains.add(line.strip().split("\t")[0].split(".")[0])
         return domains
     except IOError:
-        print("You have not provided the anchor_domains.txt file.")
-        print("if you want to make use of the anchor domains in the DSS distance\
+        logging.warning("You have not provided the anchor_domains.txt file.")
+        logging.warning("if you want to make use of the anchor domains in the DSS distance\
             metric, make a file that contains a Pfam domain on each line.")
         return set()

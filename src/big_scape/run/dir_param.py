@@ -3,6 +3,7 @@
 Author: Arjan Draisma
 """
 
+import logging
 import sys
 import os
 
@@ -79,7 +80,8 @@ class DirParam():
             self.has_query_bgc = True
             self.query_bgc_name = ".".join(options.query_bgc.split(os.sep)[-1].split(".")[:-1])
             if not os.path.isfile(options.query_bgc):
-                sys.exit("Error: Query BGC not found")
+                logging.error("Query BGC not found")
+                sys.exit(1)
             self.query_bgc = options.query_bgc
         else:
             self.has_query_bgc = False
@@ -93,8 +95,8 @@ class DirParam():
 
         if options.outputdir == "":
             # TODO: convert to log error
-            print("please provide a name for an output folder using parameter -o or --outputdir")
-            sys.exit(0)
+            logging.error("please provide a name for an output folder using parameter -o or --outputdir")
+            sys.exit(1)
         # TODO: check if writable
         self.output = options.outputdir
 
@@ -132,15 +134,15 @@ class DirParam():
         h3m_exists = os.path.isfile(os.path.join(options.pfam_dir, "Pfam-A.hmm.h3m"))
         h3p_exists = os.path.isfile(os.path.join(options.pfam_dir, "Pfam-A.hmm.h3p"))
         if not (h3f_exists and h3i_exists and h3m_exists and h3p_exists):
-            print("One or more of the necessary Pfam files (.h3f, .h3i, .h3m, .h3p) \
+            logging.error("One or more of the necessary Pfam files (.h3f, .h3i, .h3m, .h3p) \
                 were not found")
             if os.path.isfile(os.path.join(options.pfam_dir, "Pfam-A.hmm")):
-                print("Please use hmmpress with Pfam-A.hmm")
+                logging.error("Please use hmmpress with Pfam-A.hmm")
             else:
-                print("Please download the latest Pfam-A.hmm file from http://pfam.xfam.org/")
-                print("Then use hmmpress on it, and use the --pfam_dir parameter \
-                    to point to the location of the files")
-            sys.exit()
+                logging.error("Please download the latest Pfam-A.hmm file from http://pfam.xfam.org/")
+                logging.error("Then use hmmpress on it, and use the --pfam_dir parameter \
+                               to point to the location of the files")
+            sys.exit(1)
         else:
             self.pfam = options.pfam_dir
 

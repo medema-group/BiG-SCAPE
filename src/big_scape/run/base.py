@@ -2,6 +2,7 @@
 
 Author: Arjan Draisma
 """
+import logging
 import sys
 import os
 import time
@@ -96,11 +97,12 @@ class Run:
                         continue
                     self.domain_includelist.add(line.split("\t")[0].strip())
                 if len(self.domain_includelist) == 0:
-                    print("Warning: --domain_includelist used, but no domains found in the file")
+                    logging.warning("--domain_includelist used, but no domains found in the file")
                 else:
                     self.has_includelist = True
             else:
-                sys.exit("Error: domain_includelist.txt file not found")
+                logging.error("domain_includelist.txt file not found")
+                sys.exit(1)
 
     def set_valid_classes(self, options):
         #define which classes will be analyzed (if in the options_classify mode)
@@ -168,9 +170,9 @@ class Run:
 
     def report_runtime(self):
         runtime = time.time()-self.start_time
-        runtime_string = "\n\n\tMain function took {:.3f} s".format(runtime)
+        runtime_string = "Main function took {:.3f} s".format(runtime)
         with open(os.path.join(self.directories.log, "runtimes.txt"), 'a') as timings_file:
             timings_file.write(runtime_string + "\n")
 
         # print runtime
-        print(runtime_string)
+        logging.info(runtime_string)

@@ -34,6 +34,9 @@ from __future__ import division
 
 
 import os
+import logging
+import warnings
+import time
 
 from distutils import dir_util
 
@@ -56,6 +59,39 @@ elif version_info[0] == 3:
     import pickle # for storing and retrieving dictionaries
 #pylint: enable=wrong-import-order,redefined-builtin,invalid-name,undefined-variable,import-error
 
+def init_logger(options):
+    """Initializes the logger for big-scape
+
+    input:
+        root_path - root path of this bigscape.py file
+        options - options object containing command line arument information
+    """
+
+    ## logging
+    log_formatter = logging.Formatter("%(asctime)s %(levelname)-7.7s %(message)s")
+    root_logger = logging.getLogger()
+
+    # create log dir
+    if not os.path.exists(options.log_path):
+        os.mkdir(options.log_path)
+    # set log file
+    log_time_stamp = time.strftime("%Y-%m-%d_%H-%M-%S", time.localtime())
+    log_file = os.path.join(options.log_path, log_time_stamp + ".log")
+
+    file_handler = logging.FileHandler(log_file)
+    file_handler.setFormatter(log_formatter)
+    root_logger.addHandler(file_handler)
+
+    if not options.quiet:
+        console_handler = logging.StreamHandler()
+        console_handler.setFormatter(log_formatter)
+        root_logger.addHandler(console_handler)
+
+    if options.verbose:
+        root_logger.level = logging.DEBUG
+    else:
+        root_logger.level = logging.INFO
+
 if __name__ == "__main__":
     # get root path of this project
     ROOT_PATH = os.path.dirname(__file__)
@@ -63,6 +99,16 @@ if __name__ == "__main__":
     # get run options
     # ROOT_PATH is passed here because the imports no longer allow us to use __file__
     OPTIONS = utility.cmd_parser(ROOT_PATH)
+
+    # init logger
+    init_logger(OPTIONS)
+
+    # ignore specific warnings from sklearn
+    # TODO: investigate whether this can be mediated by changing the affinity propagation.
+    # concerns the following warning:
+    # UserWarning: All samples have mutually equal similarities. Returning arbitrary cluster
+    # center(s).
+    warnings.filterwarnings(action="ignore", category=UserWarning)
 
     # create new run details
     # ideally we parse all the options and remember them in this object
@@ -79,7 +125,7 @@ if __name__ == "__main__":
 
 
     ### Step 1: Get all the input files. Write extract sequence and write fasta if necessary
-    print("\n\n   - - Processing input files - -")
+    logging.info("   - - Processing input files - -")
 
     mibig.extract_mibig(RUN)
 
@@ -97,8 +143,8 @@ if __name__ == "__main__":
 
 
     ### Step 2: Run hmmscan
-    print("\nTrying threading on {} cores".format(str(RUN.options.cores)))
-    print("\nPredicting domains using hmmscan")
+    logging.info("Trying threading on %d cores", RUN.options.cores)
+    logging.info("Predicting domains using hmmscan")
 
     # get all fasta files in cache directory
     CACHED_FASTA_FILES = hmm.get_cached_fasta_files(RUN)
@@ -115,13 +161,13 @@ if __name__ == "__main__":
     if len(FASTA_FILES_TO_PROCESS) > 0:
         # this function blocks the main thread until finished
         hmm.run_hmmscan_async(RUN, FASTA_FILES_TO_PROCESS)
-        print(" Finished generating domtable files.")
+        logging.info(" Finished generating domtable files.")
     else:
-        print(" All files were processed by hmmscan. Skipping step...")
+        logging.info(" All files were processed by hmmscan. Skipping step...")
 
 
     ### Step 3: Parse hmmscan domtable results and generate pfs and pfd files
-    print("\nParsing hmmscan domtable files")
+    logging.info("Parsing hmmscan domtable files")
 
     # All available domtable files
     CACHED_DOMTABLE_FILES = hmm.get_cached_domtable_files(RUN)
@@ -151,16 +197,16 @@ if __name__ == "__main__":
         # We could try to make it so it's not necessary to re-calculate every alignment,
         #  either by expanding previous alignment files or at the very least,
         #  re-aligning only the domain files of the newly added BGCs
-        print(" New domain sequences to be added; cleaning domains folder")
+        logging.info(" New domain sequences to be added; cleaning domains folder")
         for thing in os.listdir(RUN.directories.domains):
             os.remove(os.path.join(RUN.directories.domains, thing))
 
-    print(" Finished generating pfs and pfd files.")
+    logging.info(" Finished generating pfs and pfd files.")
 
 
     ### Step 4: Parse the pfs, pfd files to generate BGC dictionary, clusters, and clusters per
     ### sample objects
-    print("\nProcessing domains sequence files")
+    logging.info("Processing domains sequence files")
 
     # do one more check of pfd files to see if they are all there
     hmm.check_pfd_files(RUN, CLUSTER_NAME_SET)
@@ -181,11 +227,11 @@ if __name__ == "__main__":
     BGC_COLLECTION.add_source_gbk_files(GBK_FILE_DICT)
 
     if RUN.options.skip_ma:
-        print(" Running with skip_ma parameter: Assuming that the domains folder has all the \
+        logging.info(" Running with skip_ma parameter: Assuming that the domains folder has all the \
             fasta files")
         BGC_COLLECTION.load_domain_names_from_dict(RUN)
     else:
-        print(" Adding sequences to corresponding domains file")
+        logging.info(" Adding sequences to corresponding domains file")
         BGC_COLLECTION.load_domain_names_from_pfd(RUN, TRY_RESUME_MULTIPLE_ALIGNMENT)
 
         BGC_COLLECTION.save_domain_names_to_dict(RUN)
@@ -218,25 +264,25 @@ if __name__ == "__main__":
 
 
     ### Step 5: Create SVG figures
-    print(" Creating arrower-like figures for each BGC")
+    logging.info(" Creating arrower-like figures for each BGC")
 
     # read hmm file. We'll need that info anyway for final visualization
-    print("  Parsing hmm file for domain information")
+    logging.info("  Parsing hmm file for domain information")
     PFAM_INFO = pfam.parse_pfam_a(RUN)
-    print("    Done")
+    logging.info("    Done")
 
     # verify if there are figures already generated
 
     big_scape.generate_images(RUN, CLUSTER_NAME_SET, GBK_FILE_DICT, PFAM_INFO, BGC_INFO_DICT)
-    print(" Finished creating figures")
-    print("\n\n   - - Calculating distance matrix - -")
+    logging.info(" Finished creating figures")
+    logging.info("   - - Calculating distance matrix - -")
 
     # Do multiple alignments if needed
     if not RUN.options.skip_ma:
         hmm.do_multiple_align(RUN, TRY_RESUME_MULTIPLE_ALIGNMENT)
 
     # If there's something to analyze, load the aligned sequences
-    print(" Trying to read domain alignments (*.algn files)")
+    logging.info(" Trying to read domain alignments (*.algn files)")
     ALIGNED_DOMAIN_SEQS = hmm.read_aligned_files(RUN)
 
     # copy html templates
@@ -252,10 +298,10 @@ if __name__ == "__main__":
     pfam.create_pfam_js(RUN, PFAM_INFO)
 
     # Try to make default analysis using all files found inside the input folder
-    print("\nGenerating distance network files with ALL available input files")
+    logging.info("Generating distance network files with ALL available input files")
 
     # This version contains info on all bgcs with valid classes
-    print("   Writing the complete Annotations file for the complete set")
+    logging.info("   Writing the complete Annotations file for the complete set")
     big_scape.write_network_annotation_file(RUN, BGC_COLLECTION)
 
     # Find index of all MIBiG BGCs if necessary

@@ -1,3 +1,4 @@
+import logging
 import os
 from array import array
 
@@ -64,13 +65,13 @@ def generate_dist_matrix(parms, run, bgc_collection: BgcCollection, aligned_doma
 
     # this really shouldn't happen if we've filtered domain-less gene clusters already
     if len(cluster_a.ordered_domain_list) == 0 or len(cluster_b.ordered_domain_list) == 0:
-        print("   Warning: Regarding distance between clusters {} and {}:".format(cluster_name_a, cluster_name_b))
+        logging.warning("   Regarding distance between clusters %s and %s:", cluster_name_a, cluster_name_b)
         if len(cluster_a.ordered_domain_list) == 0 and len(cluster_b.ordered_domain_list) == 0:
-            print("   None have identified domains. Distance cannot be calculated")
+            logging.warning("   None have identified domains. Distance cannot be calculated")
         elif (cluster_a.ordered_domain_list) == 0:
-            print("   Cluster {} has no identified domains. Distance set to 1".format(cluster_name_a))
+            logging.warning("   Cluster %s has no identified domains. Distance set to 1", cluster_name_a)
         else:
-            print("   Cluster {} has no identified domains. Distance set to 1".format(cluster_name_b))
+            logging.warning("   Cluster %s has no identified domains. Distance set to 1", cluster_name_b)
 
         # last two values (S, Sa) should really be zero but this could give rise to errors when parsing
         # the network file (unless we catched the case S = Sa = 0

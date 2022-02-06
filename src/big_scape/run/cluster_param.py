@@ -4,6 +4,7 @@ Author: Arjan Draisma
 """
 
 import sys
+import logging
 
 class ClusterParam():
     """Class which keeps track of run options relating to clustering"""
@@ -23,20 +24,24 @@ class ClusterParam():
         self.cutoff_list = options.cutoffs
         for cutoff in self.cutoff_list:
             if cutoff <= 0.0 or cutoff > 1.0:
-                sys.exit(" Invalid cutoff value {}".format(str(cutoff)))
+                logging.error(" Invalid cutoff value %s", str(cutoff))
+                sys.exit(1)
         self.max_cutoff = max(self.cutoff_list)
 
     def add_clan_cutoffs(self, options):
         family_cutoff, clan_cutoff = options.clan_cutoff
         if clan_cutoff < family_cutoff:
-            sys.exit("Error: first value in the clan_cutoff parameter should be smaller than the \
+            logging.error("first value in the clan_cutoff parameter should be smaller than the \
             second")
+            sys.exit(1)
         if family_cutoff not in self.cutoff_list:
             if family_cutoff <= 0.0 or family_cutoff > 1.0:
-                sys.exit("Error: invalid cutoff value for GCF calling")
+                logging.error("invalid cutoff value for GCF calling")
+                sys.exit(1)
             else:
                 self.cutoff_list.append(family_cutoff)
                 self.cutoff_list.sort()
 
         if clan_cutoff <= 0.0 or clan_cutoff > 1.0:
-            sys.exit("Error: invalid cutoff value for GCC calling")
+            logging.error("invalid cutoff value for GCC calling")
+            sys.exit(1)

@@ -1,5 +1,6 @@
 import os
 import sys
+import logging
 
 def create_directory(path, kind, clean):
     # TODO consider makedirs(path,exists_ok=True)
@@ -9,14 +10,15 @@ def create_directory(path, kind, clean):
         # 17 (Linux): "[Errno 17] File exists";
         # 183 (Windows) "[Error 183] Cannot create a file when that file already exists"
         if "Errno 17" in str(exception) or "Error 183" in str(exception):
-            print(" " + kind + " folder already exists")
+            logging.info(" %s folder already exists", kind)
             if clean:
-                print("  Cleaning folder")
+                logging.info("  Cleaning folder")
                 for thing in os.listdir(path):
                     os.remove(os.path.join(path, thing))
         else:
-            print("Error: unexpected error creating " + kind + " folder")
-            sys.exit(str(exception))
+            logging.error("unexpected error creating " + kind + " folder")
+            logging.error(exception.strerror)
+            sys.exit(1)
 
 def write_parameters(output_folder, parameters):
     """Write a file with all the details of the run.
