@@ -125,7 +125,7 @@ def generate_network(run, bgc_collection: BgcCollection, aligned_domain_seqs,
     skip_set = set()
 
     if run.distance.diss_skip:
-        logging.info("  Skipping BGCs with a common dissimilar BGC (cuttoff: %d)", run.distance.diss_skip_cutoff)
+        logging.info("  Skipping BGCs with a common dissimilar BGC")
     else:
         logging.info("  Not using dissimilarity skipping")
 

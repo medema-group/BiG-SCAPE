@@ -171,14 +171,9 @@ def cmd_parser(root_path):
                         default=default_log_path)
 
     parser.add_argument("--diss_skip", dest="diss_skip",
-                        help="Skip bgcs that have a third BGC with close to \
-                        skip_cutoff (default 0.0001) distance in common \
-                        E.g. if AB=0 & AC=0, skip BC", default=False,
-                        action="store_true")
-
-    parser.add_argument("--diss_skip_cutoff", dest="diss_skip_cutoff", type=float,
-                        default=0.0001, help="Cutoff for the dissimilarity skip function \
-                        (default 0.0001)")
+                        help="Skip bgcs that have a third BGC with 0 \
+                        distance in common E.g. if AB=0 & AC=0, skip BC",
+                        default=False, action="store_true")
 
     parser.add_argument("--version", action="version", version="%(prog)s 1.1.2 (2021-06-03)")
 

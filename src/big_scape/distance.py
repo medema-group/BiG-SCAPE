@@ -197,7 +197,7 @@ def generate_dist_matrix(parms, run, bgc_collection: BgcCollection, aligned_doma
 
     dist = calc_distance(weights, jaccard, dss, ai, cluster_a.name, cluster_b.name)
 
-    if run.distance.diss_skip and math.isclose(dist, 0.0, abs_tol=run.distance.diss_skip_cutoff):
+    if run.distance.diss_skip and dist == 0.0:
         skip_set.add(cluster_name_a)
         skip_set.add(cluster_name_b)
         # logging.info("     Adding %s and %s to similary skip set", cluster_name_a, cluster_name_b)
