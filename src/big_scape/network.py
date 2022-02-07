@@ -5,7 +5,6 @@ import sys
 from collections import defaultdict
 from itertools import combinations
 from itertools import product as combinations_product
-import debugpy
 
 import networkx as nx
 
@@ -122,6 +121,14 @@ def generate_network(run, bgc_collection: BgcCollection, aligned_domain_seqs,
         class_names_len = len(run.distance.bgc_class_names)
         bgc_class_name_2_index = dict(zip(run.distance.bgc_class_names, range(class_names_len)))
 
+    # only used when diss_skip is true
+    skip_set = set()
+
+    if run.distance.diss_skip:
+        logging.info("  Skipping BGCs with a common dissimilar BGC (cuttoff: %d)", run.distance.diss_skip_cutoff)
+    else:
+        logging.info("  Not using dissimilarity skipping")
+
     # only make folders for the bgc_classes that are found
     for bgc_class in bgc_classes:
         if run.directories.has_query_bgc:
@@ -167,8 +174,12 @@ def generate_network(run, bgc_collection: BgcCollection, aligned_domain_seqs,
             cluster_pairs = [(x, y, bgc_class_name_2_index[bgc_class]) for (x, y) in pairs]
 
         pairs.clear()
-        network_matrix = gen_dist_matrix_async(run, cluster_pairs, 
-                                               bgc_collection, aligned_domain_seqs)
+
+        network_matrix, add_skip_set = gen_dist_matrix_async(run, cluster_pairs, bgc_collection,
+                                                             aligned_domain_seqs, skip_set)
+        
+        skip_set = skip_set | add_skip_set
+
         #pickle.dump(network_matrix,open("others.ntwrk",'wb'))
         del cluster_pairs[:]
         #network_matrix = pickle.load(open("others.ntwrk", "rb"))
@@ -207,7 +218,8 @@ def generate_network(run, bgc_collection: BgcCollection, aligned_domain_seqs,
                 cluster_pairs = [(x, y, bgc_class_name_2_index[bgc_class]) for (x, y) in pairs]
 
             pairs.clear()
-            network_matrix_new_set = gen_dist_matrix_async(run, cluster_pairs, bgc_collection, aligned_domain_seqs)
+            network_matrix_new_set, add_skip_set = gen_dist_matrix_async(run, cluster_pairs, bgc_collection, aligned_domain_seqs, skip_set)
+            skip_set = skip_set | add_skip_set
             del cluster_pairs[:]
 
             # Update the network matrix (QBGC-vs-all) with the distances of
