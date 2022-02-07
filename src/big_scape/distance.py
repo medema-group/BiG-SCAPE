@@ -28,13 +28,19 @@ def gen_dist_matrix_async(run, cluster_pairs, bgc_collection: BgcCollection, ali
     cluster_pairs is a list of triads (cluster1_index, cluster2_index, BGC class)
     """
 
-    working_q = Queue(run.options.cores)
-    output_q = Queue(len(cluster_pairs))
+    num_processes = run.options.cores * 2
 
-    processes = [Process(target=gen_dist_matrix_worker, args=(working_q, output_q, run, bgc_collection, aligned_domain_sequences)) for i in range(run.options.cores)]
+    working_q = Queue(num_processes)
 
-    for proc in processes:
-        proc.start()
+    num_tasks = len(cluster_pairs)
+
+    output_q = Queue(num_tasks)
+
+    processes = []
+    for i in range(num_processes):
+        new_process = Process(target=gen_dist_matrix_worker, args=(working_q, output_q, run, bgc_collection, aligned_domain_sequences))
+        processes.append(new_process)
+        new_process.start()
 
     network_matrix = []
 
@@ -43,8 +49,8 @@ def gen_dist_matrix_async(run, cluster_pairs, bgc_collection: BgcCollection, ali
     # number of bgcs skipped due to dissimilarity skip
     skipped_bgcs = 0
     while True:
-        all_tasks_put = cluster_idx == len(cluster_pairs)
-        all_tasks_done = len(network_matrix) == len(cluster_pairs)
+        all_tasks_put = cluster_idx == num_tasks
+        all_tasks_done = len(network_matrix) == num_tasks
 
         if all_tasks_put and all_tasks_done:
             break
@@ -67,9 +73,12 @@ def gen_dist_matrix_async(run, cluster_pairs, bgc_collection: BgcCollection, ali
             if skipped:
                 skipped_bgcs += 1
 
-            if len(network_matrix) % math.ceil(len(cluster_pairs) / 10) == 0:
-                percent_done = len(network_matrix) / len(cluster_pairs) * 100
-                logging.info("    %d%% (%d/%d)", percent_done, cluster_idx + 1, len(cluster_pairs))
+            num_tasks_done = len(network_matrix)
+            
+            # print progress every 10%
+            if num_tasks_done % math.ceil(num_tasks / 10) == 0:
+                percent_done = num_tasks_done / num_tasks * 100
+                logging.info("    %d%% (%d/%d)", percent_done, num_tasks_done, num_tasks)
             # logging.info("adding result (now %d)", len(network_matrix))
 
     #Assigns the data to the different workers and pools the results back into
@@ -80,7 +89,7 @@ def gen_dist_matrix_async(run, cluster_pairs, bgc_collection: BgcCollection, ali
     # network_matrix = pool.map(func_dist_matrix, cluster_pairs)
 
     # clean up threads
-    for i in range(run.options.cores):
+    for i in range(num_processes):
         working_q.put(((None, None, -1), None))
 
     for process in processes:
