@@ -5,13 +5,13 @@ from typing import Dict
 
 import debugpy
 import logging
+import pickle
 
 from src.big_scape.util import get_ordered_domain_list
 from src.big_scape.bgc_info import BgcInfo
 from src.bgctools import generate_domain_name_info_dict
 from src.utility import fasta_parser, save_domain_seqs
 
-import pickle
 
 
 class BgcCollection:
