@@ -78,7 +78,7 @@ def sort_bgc(product):
         # No product annotation. Perhaps not analyzed by antiSMASH
         return "Others"
     else:
-        logger.warning("  unknown product '{}'".format(product))
+        logger.warning("  unknown product %s", product)
         return "Others"
 
 def get_composite_bgc_similarities(bgcs_1, bgcs_2, sim_matrix):

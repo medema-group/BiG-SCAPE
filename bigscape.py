@@ -37,6 +37,7 @@ import os
 import logging
 import warnings
 import time
+import pickle
 
 from distutils import dir_util
 
@@ -49,15 +50,6 @@ from src import hmm
 from src import mibig
 from src import pfam
 from src import utility
-
-# disable pyling complaining about backwards compatibility measures
-#pylint: disable=wrong-import-order,redefined-builtin,invalid-name,undefined-variable,import-error
-if version_info[0] == 2:
-    range = xrange
-    import cPickle as pickle # for storing and retrieving dictionaries
-elif version_info[0] == 3:
-    import pickle # for storing and retrieving dictionaries
-#pylint: enable=wrong-import-order,redefined-builtin,invalid-name,undefined-variable,import-error
 
 def init_logger(options):
     """Initializes the logger for big-scape
@@ -93,6 +85,11 @@ def init_logger(options):
         root_logger.level = logging.INFO
 
 if __name__ == "__main__":
+    # show an error if we're not on python 3
+    if version_info[0] != 3:
+        logging.error("This python program was developed for Python 3. Please make sure to use \
+            python 3 when running BiG-SCAPE")
+
     # get root path of this project
     ROOT_PATH = os.path.dirname(__file__)
 
