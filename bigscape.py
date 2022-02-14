@@ -100,6 +100,10 @@ if __name__ == "__main__":
     # init logger
     init_logger(OPTIONS)
 
+    # initialize the profiler & start it
+    PROFILER = utility.Profiler(OPTIONS)
+    PROFILER.start()
+
     # ignore specific warnings from sklearn
     # TODO: investigate whether this can be mediated by changing the affinity propagation.
     # concerns the following warning:
@@ -340,3 +344,5 @@ if __name__ == "__main__":
 
     # done
     RUN.report_runtime()
+
+    PROFILER.stop()
