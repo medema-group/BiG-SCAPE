@@ -191,7 +191,11 @@ if __name__ == "__main__":
     # baseNames have been pruned of BGCs with no domains that might've been added temporarily
     TRY_RESUME_MULTIPLE_ALIGNMENT = False
     ALREADY_DONE = hmm.get_processed_domtable_files(RUN, CACHED_DOMTABLE_FILES)
-    if len(CLUSTER_NAME_SET - set(pfd.split(os.sep)[-1][:-9] for pfd in ALREADY_DONE)) == 0:
+    PFD_FILES_UNCHANGED = len(CLUSTER_NAME_SET - set(pfd.split(os.sep)[-1][:-9] for pfd in ALREADY_DONE)) == 0
+
+    DOMAIN_FASTAS_GENERATED = hmm.get_cached_domain_fasta_files(RUN)
+    DOMAIN_FASTAS_NOT_EMPTY = len(DOMAIN_FASTAS_GENERATED) > 0
+    if PFD_FILES_UNCHANGED and DOMAIN_FASTAS_NOT_EMPTY:
         TRY_RESUME_MULTIPLE_ALIGNMENT = True
     else:
         # new sequences will be added to the domain fasta files. Clean domains folder
