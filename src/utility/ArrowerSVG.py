@@ -18,6 +18,7 @@ if version_info[0]==2:
 import os
 import sys
 import argparse
+import logging
 from Bio import SeqIO
 from random import uniform
 from colorsys import hsv_to_rgb
