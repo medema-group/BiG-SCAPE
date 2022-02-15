@@ -89,20 +89,6 @@ def run_hmmscan(fasta_path, hmm_path, outputdir, verbose):
         logging.error("Error running hmmscan: Fasta file %s doesn't exist", fasta_path)
         sys.exit(1)
 
-def parse_hmmscan_async():
-    # copied from bigscape.py, unused
-    # TODO: evaluate if still needed, reimplement?
-    # If using the multiprocessing version and outputbase doesn't have any
-    #  predicted domains, it's not as easy to remove if from the analysis
-    #  (probably because parseHmmScan only has a copy of clusters et al?)
-    # Using serialized version for now. Probably doesn't have too bad an impact
-    #pool = Pool(cores,maxtasksperchild=32)
-        #task_args = (domtableFile,output_folder,options.domain_overlap_cutoff)
-        #pool.apply_async(parseHmmScan, args = task_args)
-    #pool.close()
-    #pool.join()
-    return
-
 def parse_hmmscan(hmm_scan_results, pfd_folder, pfs_folder, overlap_cutoff, verbose, genbank_dict, clusters, base_names, mibig_set):
     sample_dict = {} # {sampleName:set(bgc1,bgc2,...)}
     gbk_files = [] # raw list of gbk file locations
