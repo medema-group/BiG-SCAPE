@@ -5,6 +5,12 @@ from multiprocessing import cpu_count
 
 
 def cmd_parser(root_path):
+    """Parses arugments given in the command line and returns an object with parameters as
+    accessible fields
+
+    Inputs:
+        root_path: path to the big_scape script file
+    """
     parser = ArgumentParser(prog="BiG-SCAPE")
 
     parser.add_argument("-l", "--label", dest="label", help="An extra label for\
@@ -162,13 +168,18 @@ def cmd_parser(root_path):
                         include domains with the pfam accessions found in the \
                         domain_includelist.txt file", default=False,
                         action="store_true")
-    
+
     parser.add_argument("--quiet", help="Don't print logs to output, only to log file.",
                         default=False, action="store_true")
-    
+
     default_log_path = os.path.join(os.path.dirname(root_path), "log")
     parser.add_argument("--log_path", dest="log_path", help="Location where to write logs",
                         default=default_log_path)
+
+    parser.add_argument("--diss_skip", dest="diss_skip",
+                        help="Skip bgcs that have a third BGC with 0 \
+                        distance in common E.g. if AB=0 & AC=0, skip BC",
+                        default=False, action="store_true")
 
     parser.add_argument("--version", action="version", version="%(prog)s 1.1.2 (2021-06-03)")
 

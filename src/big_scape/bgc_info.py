@@ -3,6 +3,7 @@ from array import array
 from src.bgctools import BgcData
 
 class BgcInfo:
+    """Class to contain info on individual BGCs"""
     name: str
     bgc_info: BgcData
     src_gbk_file: str
@@ -31,6 +32,7 @@ class BgcInfo:
     domain_name_info = {}
 
     def init_gene_string(self):
+        """Initialize the gene string later used in DSS calculation"""
         # always find lcs seed to use for offset alignment in visualization
         # Compress the list of domains according to gene information. For example:
         # A_domlist = a b c d e f g

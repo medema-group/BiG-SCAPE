@@ -21,6 +21,11 @@ class ClusterParam():
             self.add_clan_cutoffs(options)
 
     def add_cutoffs(self, options):
+        """Add the cutoff options to this object
+
+        Inputs:
+            options: options object parsed from parameters
+        """
         self.cutoff_list = options.cutoffs
         for cutoff in self.cutoff_list:
             if cutoff <= 0.0 or cutoff > 1.0:
@@ -29,6 +34,11 @@ class ClusterParam():
         self.max_cutoff = max(self.cutoff_list)
 
     def add_clan_cutoffs(self, options):
+        """Add clann cutoff options to this object
+
+        Inputs:
+            options: options object parsed from parameters
+        """
         family_cutoff, clan_cutoff = options.clan_cutoff
         if clan_cutoff < family_cutoff:
             logging.error("first value in the clan_cutoff parameter should be smaller than the \

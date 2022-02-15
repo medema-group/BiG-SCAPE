@@ -1,44 +1,134 @@
 import logging
-import os
+import math
 from array import array
 
-from multiprocessing import Pool
-from functools import partial
+from multiprocessing import Queue, Process
 
 from src.big_scape.bgc_dom_info import BgcDomainInfo
 from src.big_scape.bgc_collection import BgcCollection
 from src.big_scape.bgc_info import BgcInfo
-from src.pfam.misc import get_domain_list
 from src.big_scape.scores import calc_adj_idx, calc_distance, calc_dss, calc_jaccard, gen_unrelated_pair_distance, process_orientation
 
+def gen_dist_matrix_worker(input_queue: Queue, output_queue: Queue, run, bgc_collection, aligned_domain_sequences):
+    """Worker method for threads that process distance calculation. Takes bgc pairs from an input
+    queue and generates distances between the bgc pairs which it puts back into the output queue.
+    
+    Inputs in the queue are expected to be a tuple of the format (pair, skip_set), where:
+    - pair is a tuple containing two bgc indices
+    - skip_set is to be removed (TODO)
+
+    This thread continues to run until an explicit exit signal is received.
+
+    Inputs:
+        input_queue: task queue for new tasks given to this thread
+        output_queue: result queue for completed distance calculations
+        run: run details for this execution of BiG-SCAPE
+        bgc_collection: collection of BGCs
+        aligned_domain_sequences: list of aligned domain sequences from hmm.read_aligned_files
+    """
+    while True:
+        input_task = input_queue.get(True)
+        pair, skip_set = input_task
+        if pair[0] is None:
+            break
+        # logging.info("launching task on pair %s, %s", pair[0], pair[1])
+
+        result, new_skip_set, skipped = generate_dist_matrix(pair, run, bgc_collection, aligned_domain_sequences, skip_set)
+        output_queue.put((result, new_skip_set, skipped))
+
+
 # @timeit
-def gen_dist_matrix_async(run, cluster_pairs, bgc_collection: BgcCollection, aligned_domain_sequences):
+def gen_dist_matrix_async(run, cluster_pairs, bgc_collection: BgcCollection, aligned_domain_sequences, skip_set):
     """Distributes the distance calculation part
     cluster_pairs is a list of triads (cluster1_index, cluster2_index, BGC class)
     """
 
-    pool = Pool(run.options.cores, maxtasksperchild=100)
+    num_processes = run.options.cores * 2
 
-    #Assigns the data to the different workers and pools the results back into
-    # the network_matrix variable
-    # TODO: reduce argument count
-    func_dist_matrix = partial(generate_dist_matrix, run=run, bgc_collection=bgc_collection,
-                               aligned_domain_sequences=aligned_domain_sequences)
-    network_matrix = pool.map(func_dist_matrix, cluster_pairs)
+    working_q = Queue(num_processes)
 
-    return network_matrix
+    num_tasks = len(cluster_pairs)
+
+    output_q = Queue(num_tasks)
+
+    processes = []
+    for thread_num in range(num_processes):
+        thread_name = f"distance_thread_{thread_num}"
+        logging.debug("Starting %s", thread_name)
+        new_process = Process(target=gen_dist_matrix_worker, args=(working_q, output_q, run,
+                              bgc_collection, aligned_domain_sequences), name=thread_name)
+        processes.append(new_process)
+        new_process.start()
+
+    network_matrix = []
+
+    cluster_idx = 0
+
+    # number of bgcs skipped due to dissimilarity skip
+    skipped_bgcs = 0
+    while True:
+        all_tasks_put = cluster_idx == num_tasks
+        all_tasks_done = len(network_matrix) == num_tasks
+
+        if all_tasks_put and all_tasks_done:
+            break
+
+        if not working_q.full() and not all_tasks_put:
+            working_q.put((cluster_pairs[cluster_idx], skip_set))
+            cluster_idx += 1
+            if not working_q.full():
+                continue
+
+        if not output_q.empty():
+            network_row, skip_set_add, skipped = output_q.get()
+            # add row to matrix
+            network_matrix.append(network_row)
+
+            # update skip set
+            skip_set = skip_set | skip_set_add
+
+            # add to skip count
+            if skipped:
+                skipped_bgcs += 1
+
+            num_tasks_done = len(network_matrix)
+            
+            # print progress every 10%
+            if num_tasks_done % math.ceil(num_tasks / 10) == 0:
+                percent_done = num_tasks_done / num_tasks * 100
+                logging.info("    %d%% (%d/%d)", percent_done, num_tasks_done, num_tasks)
+            # logging.info("adding result (now %d)", len(network_matrix))
+
+    # clean up threads
+    for thread_num in range(num_processes):
+        working_q.put(((None, None, -1), None))
+
+    for process in processes:
+        process.join()
+        thread_name = process.name
+        logging.debug("Thread %s stopped", thread_name)
+
+    if run.distance.diss_skip:
+        logging.info("    Skipped %d bgcs due to dissimilarity skipping ", skipped_bgcs)
+
+    return network_matrix, skip_set
 
 def gen_dist_matrix(run, cluster_pairs, bgc_collection: BgcCollection, aligned_domain_sequences):
-    # --- Serialized version of distance calculation ---
-    # For the time being, use this if you have memory issues
+    """Serialized version of distance calculation. Used for debugging and memory issues"""
     network_matrix = []
     for pair in cluster_pairs:
-        network_matrix.append(generate_dist_matrix(pair, run, bgc_collection, aligned_domain_sequences))
+        network_matrix.append(generate_dist_matrix(pair, run, bgc_collection, aligned_domain_sequences, set()))
 
     return network_matrix
 
 
 def calc_ai_pair(cluster_a: BgcInfo, cluster_b: BgcInfo, pair_dom_info: BgcDomainInfo):
+    """Calculate the adjacency index of a pair of BGCs
+
+    Inputs:
+        cluster_a, cluster_b: BgcInfo objects of the clusters to be compared
+        pair_dom_info: BgcDomainInfo of this pair
+    """
     a_dom_list = cluster_a.ordered_domain_list
     b_dom_list = cluster_b.ordered_domain_list
 
@@ -50,8 +140,16 @@ def calc_ai_pair(cluster_a: BgcInfo, cluster_b: BgcInfo, pair_dom_info: BgcDomai
 
     return calc_adj_idx(a_dom_list, b_dom_list, a_dom_start, a_dom_end, b_dom_start, b_dom_end)
 
-def generate_dist_matrix(parms, run, bgc_collection: BgcCollection, aligned_domain_sequences):
-    """Unpack data to actually launch cluster_distance for one pair of BGCs"""
+def generate_dist_matrix(parms, run, bgc_collection: BgcCollection, aligned_domain_sequences, skip_set: set):
+    """Unpack data to actually launch cluster_distance for one pair of BGCs
+
+    Inputs:
+        parms: a tuple of the form (bgc_a_idx, bgc_b_idx, class_idx) for this comparison
+        bgc_collection: BgcCollection object containing bgc info objects and necessary data for 
+            distance calculation
+        aligned_domain_sequences: list of aligned domain sequences from hmm.read_aligned_files
+        skip_set is to be removed (TODO)
+    """
 
     cluster_1_idx, cluster_2_idx, bgc_class_idx = [int(parm) for parm in parms]
 
@@ -87,9 +185,17 @@ def generate_dist_matrix(parms, run, bgc_collection: BgcCollection, aligned_doma
     # initialize domain specific info
     # this contains the domain slice information, which may change if expansion is needed
     pair_dom_info = BgcDomainInfo(cluster_a, cluster_b)
-    
+
     # Detect totally unrelated pairs from the beginning
-    if len(pair_dom_info.intersect) == 0:
+    # lack of intersect
+    no_intersect = len(pair_dom_info.intersect) == 0
+
+    # both already in skip set
+    in_skip_set = cluster_name_a in skip_set and cluster_name_b in skip_set
+    # if in_skip_set:
+    #     logging.info("     %s and %s have common 0-distance BGC. skipping...", cluster_name_a, cluster_name_b)
+
+    if no_intersect or in_skip_set:
         score_data = gen_unrelated_pair_distance(run, cluster_a, cluster_b)
         jaccard, dss, ai, dss_non_anchor, dss_anchor, num_non_anchor_domains, num_anchor_domains, slice_start_a, slice_start_b, slice_length_a, rev = score_data
     else:
@@ -117,10 +223,15 @@ def generate_dist_matrix(parms, run, bgc_collection: BgcCollection, aligned_doma
 
     dist = calc_distance(weights, jaccard, dss, ai, cluster_a.name, cluster_b.name)
 
+    if run.distance.diss_skip and dist == 0.0:
+        skip_set.add(cluster_name_a)
+        skip_set.add(cluster_name_b)
+        # logging.info("     Adding %s and %s to similary skip set", cluster_name_a, cluster_name_b)
+
     network_row = array('f', [cluster_1_idx, cluster_2_idx, dist, (1-dist)**2, jaccard,
                               dss, ai, dss_non_anchor, dss_anchor, num_non_anchor_domains, num_anchor_domains, slice_start_a, slice_start_b,
                               slice_length_a, rev])
-    return network_row
+    return network_row, skip_set, in_skip_set
 
 
 

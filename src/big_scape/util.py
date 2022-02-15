@@ -10,6 +10,14 @@ from src.pfam import get_domain_list
 from src.utility import create_directory
 
 def get_ordered_domain_list(run, cluster_base_names):
+    """Reads the domain list from pfs files
+    
+    Inputs:
+        run: run details for this execution of BiG-SCAPE
+        cluster_base_names: list of base BGC names
+    
+    returns: dictionary in the form {bgc_name: [domains]}
+    """
     logging.info(" Reading the ordered list of domains from the pfs files")
 
     domain_list = {} # Key: BGC. Item: ordered list of domains
