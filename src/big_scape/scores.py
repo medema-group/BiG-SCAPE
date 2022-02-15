@@ -13,7 +13,16 @@ from src.big_scape.bgc_info import BgcInfo
 from src.utility.fasta import fasta_parser
 
 def gen_unrelated_pair_distance(run, cluster_a: BgcInfo, cluster_b: BgcInfo):
+    """Generates a matrix row for a pair of unrelated clusters. This is done when two BGCs contain
+    no domain overlap
 
+    Inputs:
+        run: run details for this execution of BiG-SCAPE
+        cluster_a, cluster_b: BgcInfo objects for unrelated clusters
+
+    Returns:
+        a network matrix row with distances and scores set to 0
+    """
     num_non_anchor_domains = 0
     num_anchor_domains = 0
     # Count total number of anchor and non-anchor domain to report in the
@@ -36,6 +45,15 @@ def gen_unrelated_pair_distance(run, cluster_a: BgcInfo, cluster_b: BgcInfo):
     return 0.0, 0.0, 0.0, 1.0, 1.0, num_non_anchor_domains, num_anchor_domains, 0, 0, 0, 0
 
 def get_lcs(a_string, b_string, a_match_len, b_match_len):
+    """Returns the longest common substring between two text strings
+
+    Inputs:
+        a_string, b_string: strings to be compared
+        a_match_len, b_match_len: the expected maximum match lengths for each string
+
+    Returns:
+        the start and end indices of the LCS, and the length of the sequence
+    """
     # Longest Common Substring (LCS)
     # construct object for finding LCS
     seqmatch = SequenceMatcher(None, a_string, b_string)
@@ -46,13 +64,17 @@ def get_lcs(a_string, b_string, a_match_len, b_match_len):
     return a_start, b_start, match_length
 
 def get_lcs_fwd(cluster_a, cluster_b):
+    """Returns the LCS normally, using the forward diretions of the gene strings"""
     return get_lcs(cluster_a.gene_string, cluster_b.gene_string, cluster_a.num_genes, cluster_b.num_genes)
 
 def get_lcs_rev(cluster_a, cluster_b):
+    """Returns the LCS using the backwards gene string for cluster B"""
     return get_lcs(cluster_a.gene_string, cluster_b.gene_string_rev, cluster_a.num_genes, cluster_b.num_genes)
 
 def score_expansion(x_string_, y_string_, downstream):
-    """
+    """Performs score expansion with simple mismatch penalties
+
+
     Input:
     x_string: list of strings. This one tries to expand based on max score
     y_string: reference list. This was already expanded.
@@ -110,9 +132,26 @@ def score_expansion(x_string_, y_string_, downstream):
     return max_score, expand_len
 
 def calc_jaccard(intersect, overlap):
+    """Calcualte the jaccard distance between two sets
+
+    Inputs:
+        intersect: the intersect of two lists (seta & setb)
+        overlap: the overlap of two lists (seta | setb)
+
+    returns: the jaccard distance
+    """
     return len(intersect) / len(overlap)
 
 def calc_adj_idx(list_a, list_b, a_start, a_end, b_start, b_end):
+    """Calculate the adjacency index of two domain lists
+
+    Inputs:
+        list_a, list_b: domain lists of BGC a and BGC b
+        a_start, b_start: where to start comparing lists
+        a_end, b_end: where to end comparing the lists
+
+    returns: the adjacency index
+    """
     # ADJACENCY INDEX
     # calculates the Tanimoto similarity of a pair of lists
 
@@ -134,6 +173,15 @@ def calc_adj_idx(list_a, list_b, a_start, a_end, b_start, b_end):
     return adj_idx
 
 def calc_dss(run, cluster_a, cluster_b, aligned_domain_sequences, anchor_boost, dom_info):
+    """Calculate the dmain sequence similarity; the similarity of the actual protiein sequences
+    within BGC domains
+
+    Inputs:
+        run: run details for this execution of BiG-SCAPE
+        cluster_a, cluster_b: BgcInfo objects containing bgc information for the compared pair
+        aligned_domain_sequences: list of aligned domain sequences from hmm.read_aligned_files
+        anchor_boost: anchor boost value for increasing the impact of domain anchors
+        dom_info: dictionary in the form {bgc: """
     # DSS INDEX
     #domain_difference: Difference in sequence per domain. If one cluster does
     # not have a domain at all, but the other does, this is a (complete)
@@ -292,6 +340,15 @@ def calc_dss(run, cluster_a, cluster_b, aligned_domain_sequences, anchor_boost, 
     return dss, dss_non_anchor, dss_anchor, num_non_anchor_domains, num_anchor_domains
 
 def process_orientation(cluster_a, cluster_b):
+    """Finds the orientations of the domain sequences and returns directional information
+    for this pair of BGCs
+
+    Inputs:
+        cluster_a, cluster_b: BgcInfo objects for a pair of BGCs
+
+    returns:
+        the start and end locations of common domain sequences and whether the 'B' gene is reversed
+    """
     # get LCS for this pair
     a_start, b_start, match_length = get_lcs_fwd(cluster_a, cluster_b)
 
@@ -371,8 +428,20 @@ def process_orientation(cluster_a, cluster_b):
     return slice_start_a, slice_start_b, slice_length_a, slice_length_b, use_b_string, reverse
 
 def calc_distance(weights, jaccard_index, dss, adj_index, cluster_a_name, cluster_b_name):
+    """Calculate a number between 1 and 0, where 1 are dissimilar BGCs and 0 are similar BGCs
+
+    Inputs:
+        weights: a tuple in the form: (jaccard_weight, dss_weight, ai_weight, anchor_boost)
+        jaccard_index: the jaccard index calculated from cluster_a and cluster_b
+        dss: the domain sequence similarity calculated from cluster_a and cluster_b
+        adj_index: the adjacency index calculated from cluster_a and cluster_b
+        cluster_a_name, cluster_b_name: names of BGC a and BGC b
+
+    returns:
+        the calculated distance between BGC a and BGC b
+    """
     jaccard_weight, dss_weight, ai_weight, anchor_boost = weights
-    
+
     distance = 1 - (jaccard_weight * jaccard_index) - (dss_weight * dss) - (ai_weight * adj_index)
 
     # This could happen due to numerical innacuracies

@@ -6,16 +6,24 @@ from glob import glob
 import src.utility as utility
 
 
-
-
 def get_available_svg(run):
+    """Gets a set of available svg files from the svg directory"""
     available_svg = set()
     for svg in glob(os.path.join(run.directories.svg, "*.svg")):
         (root, ext) = os.path.splitext(svg)
         available_svg.add(root.split(os.sep)[-1])
     return available_svg
 
-def generate_images(run, cluster_base_names, gen_bank_dic, pfam_info, bgc_info):
+def generate_images(run, cluster_base_names, gen_bank_dict, pfam_info, bgc_info):
+    """Generates SVG images
+    
+    Inputs:
+        run: run details for this execution of BiG-SCAPE
+        cluster_base_names: base names of all clusters in this run
+        gen_bank_dict: dictionary of gen bank gbk files used
+        pfam_info: pfam info from parsing Pfam-A.hmm
+        bgc_info: dictionary of format {bgcname: {field: obj}}
+    """
     # All available SVG files
     available_svg = get_available_svg(run)
 
@@ -31,7 +39,7 @@ def generate_images(run, cluster_base_names, gen_bank_dic, pfam_info, bgc_info):
         # is not found, the text files with colors need to be updated
         logging.info("  Reading BGC information and writing SVG")
         for bgc in working_set:
-            with open(gen_bank_dic[bgc][0], "r") as handle:
+            with open(gen_bank_dict[bgc][0], "r") as handle:
                 utility.SVG(False, os.path.join(run.directories.svg, bgc+".svg"), handle, bgc,
                             os.path.join(run.directories.pfd, bgc+".pfd"), True, color_genes,
                             color_domains, pfam_domain_categories, pfam_info,

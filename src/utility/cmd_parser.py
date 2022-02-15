@@ -5,6 +5,12 @@ from multiprocessing import cpu_count
 
 
 def cmd_parser(root_path):
+    """Parses arugments given in the command line and returns an object with parameters as
+    accessible fields
+
+    Inputs:
+        root_path: path to the big_scape script file
+    """
     parser = ArgumentParser(prog="BiG-SCAPE")
 
     parser.add_argument("-l", "--label", dest="label", help="An extra label for\

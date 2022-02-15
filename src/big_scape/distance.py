@@ -7,14 +7,29 @@ from multiprocessing import Queue, Process
 from src.big_scape.bgc_dom_info import BgcDomainInfo
 from src.big_scape.bgc_collection import BgcCollection
 from src.big_scape.bgc_info import BgcInfo
-from src.pfam.misc import get_domain_list
 from src.big_scape.scores import calc_adj_idx, calc_distance, calc_dss, calc_jaccard, gen_unrelated_pair_distance, process_orientation
 
 def gen_dist_matrix_worker(input_queue: Queue, output_queue: Queue, run, bgc_collection, aligned_domain_sequences):
+    """Worker method for threads that process distance calculation. Takes bgc pairs from an input
+    queue and generates distances between the bgc pairs which it puts back into the output queue.
+    
+    Inputs in the queue are expected to be a tuple of the format (pair, skip_set), where:
+    - pair is a tuple containing two bgc indices
+    - skip_set is to be removed (TODO)
+
+    This thread continues to run until an explicit exit signal is received.
+
+    Inputs:
+        input_queue: task queue for new tasks given to this thread
+        output_queue: result queue for completed distance calculations
+        run: run details for this execution of BiG-SCAPE
+        bgc_collection: collection of BGCs
+        aligned_domain_sequences: list of aligned domain sequences from hmm.read_aligned_files
+    """
     while True:
         input_task = input_queue.get(True)
         pair, skip_set = input_task
-        if pair[0] == None:
+        if pair[0] is None:
             break
         # logging.info("launching task on pair %s, %s", pair[0], pair[1])
 
@@ -37,8 +52,11 @@ def gen_dist_matrix_async(run, cluster_pairs, bgc_collection: BgcCollection, ali
     output_q = Queue(num_tasks)
 
     processes = []
-    for i in range(num_processes):
-        new_process = Process(target=gen_dist_matrix_worker, args=(working_q, output_q, run, bgc_collection, aligned_domain_sequences))
+    for thread_num in range(num_processes):
+        thread_name = f"distance_thread_{thread_num}"
+        logging.debug("Starting %s", thread_name)
+        new_process = Process(target=gen_dist_matrix_worker, args=(working_q, output_q, run,
+                              bgc_collection, aligned_domain_sequences), name=thread_name)
         processes.append(new_process)
         new_process.start()
 
@@ -81,19 +99,14 @@ def gen_dist_matrix_async(run, cluster_pairs, bgc_collection: BgcCollection, ali
                 logging.info("    %d%% (%d/%d)", percent_done, num_tasks_done, num_tasks)
             # logging.info("adding result (now %d)", len(network_matrix))
 
-    #Assigns the data to the different workers and pools the results back into
-    # the network_matrix variable
-    # TODO: reduce argument count
-    # func_dist_matrix = partial(generate_dist_matrix, run=run, bgc_collection=bgc_collection,
-    #                            aligned_domain_sequences=aligned_domain_sequences)
-    # network_matrix = pool.map(func_dist_matrix, cluster_pairs)
-
     # clean up threads
-    for i in range(num_processes):
+    for thread_num in range(num_processes):
         working_q.put(((None, None, -1), None))
 
     for process in processes:
         process.join()
+        thread_name = process.name
+        logging.debug("Thread %s stopped", thread_name)
 
     if run.distance.diss_skip:
         logging.info("    Skipped %d bgcs due to dissimilarity skipping ", skipped_bgcs)
@@ -101,8 +114,7 @@ def gen_dist_matrix_async(run, cluster_pairs, bgc_collection: BgcCollection, ali
     return network_matrix, skip_set
 
 def gen_dist_matrix(run, cluster_pairs, bgc_collection: BgcCollection, aligned_domain_sequences):
-    # --- Serialized version of distance calculation ---
-    # For the time being, use this if you have memory issues
+    """Serialized version of distance calculation. Used for debugging and memory issues"""
     network_matrix = []
     for pair in cluster_pairs:
         network_matrix.append(generate_dist_matrix(pair, run, bgc_collection, aligned_domain_sequences, set()))
@@ -111,6 +123,12 @@ def gen_dist_matrix(run, cluster_pairs, bgc_collection: BgcCollection, aligned_d
 
 
 def calc_ai_pair(cluster_a: BgcInfo, cluster_b: BgcInfo, pair_dom_info: BgcDomainInfo):
+    """Calculate the adjacency index of a pair of BGCs
+
+    Inputs:
+        cluster_a, cluster_b: BgcInfo objects of the clusters to be compared
+        pair_dom_info: BgcDomainInfo of this pair
+    """
     a_dom_list = cluster_a.ordered_domain_list
     b_dom_list = cluster_b.ordered_domain_list
 
@@ -123,7 +141,15 @@ def calc_ai_pair(cluster_a: BgcInfo, cluster_b: BgcInfo, pair_dom_info: BgcDomai
     return calc_adj_idx(a_dom_list, b_dom_list, a_dom_start, a_dom_end, b_dom_start, b_dom_end)
 
 def generate_dist_matrix(parms, run, bgc_collection: BgcCollection, aligned_domain_sequences, skip_set: set):
-    """Unpack data to actually launch cluster_distance for one pair of BGCs"""
+    """Unpack data to actually launch cluster_distance for one pair of BGCs
+
+    Inputs:
+        parms: a tuple of the form (bgc_a_idx, bgc_b_idx, class_idx) for this comparison
+        bgc_collection: BgcCollection object containing bgc info objects and necessary data for 
+            distance calculation
+        aligned_domain_sequences: list of aligned domain sequences from hmm.read_aligned_files
+        skip_set is to be removed (TODO)
+    """
 
     cluster_1_idx, cluster_2_idx, bgc_class_idx = [int(parm) for parm in parms]
 

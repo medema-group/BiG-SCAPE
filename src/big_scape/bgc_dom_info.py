@@ -5,7 +5,7 @@ from src.big_scape.bgc_info import BgcInfo
 
 
 class BgcDomainInfo():
-
+    """Class to contain bgc specific domain information used in distance calculation"""
     def __init__(self, cluster_a: BgcInfo, cluster_b: BgcInfo):
 
         self.intersect = cluster_a.ordered_domain_set & cluster_b.ordered_domain_set
@@ -37,8 +37,17 @@ class BgcDomainInfo():
 
 
     def expand_score(self, run, cluster_a, cluster_b, slice_data):
+        """Expand the selection of genes for score calculation. Since this function is relktively
+        costly, Score is only expanded ifLCS is at least 3 genes long, or has at least one gene
+        marked as core biosynthetic
+
+        Inputs:
+            run: run details for this execution of BiG-SCAPE
+            cluster_a, cluster_b: bgcInfo objects for bgcs of which distance is calculated
+            slice_data: slice data from the bgc comparison
+        """
         slice_start_a, slice_start_b, slice_length_a, slice_length_b, use_b_string, reverse = slice_data
-        
+
         is_glocal = run.options.mode == "glocal"
         is_auto = run.options.mode == "auto"
         is_contig_edge_a = cluster_a.bgc_info.contig_edge

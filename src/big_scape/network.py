@@ -9,12 +9,19 @@ from itertools import product as combinations_product
 import networkx as nx
 
 from src.big_scape.bgc_collection import BgcCollection
-from src.big_scape.clustering import clusterJsonBatch
-from src.big_scape.distance import write_distance_matrix, gen_dist_matrix_async, gen_dist_matrix
+from src.big_scape.clustering import cluster_json_batch
+from src.big_scape.distance import write_distance_matrix, gen_dist_matrix_async
 from src.bgctools import sort_bgc
 from src.utility import create_directory
 
 def get_output_cutoffs_filenames(run, path_base, bgc_class):
+    """Generate filenames for cutoffs in the run details
+
+    Inputs:
+        run: run details for this execution of BiG-SCAPE
+        path_base: base path for network files
+        bgc_class: the class to generate filenames for
+    """
     file_names = []
     for cutoff in run.cluster.cutoff_list:
         file_names.append(os.path.join(path_base, "{}_c{:.2f}.network".format(bgc_class, cutoff)))
@@ -24,6 +31,10 @@ def get_output_cutoffs_filenames(run, path_base, bgc_class):
 
 
 def reduce_network(network_matrix):
+    """reduce network matrix to only the relevant fieldsfor clustering
+
+    inputs: network_matrix. a list of lists in the shape of [pair [dist, ]]
+    """
     reduced_network = []
     pos_alignments = {}
     for row in network_matrix:
@@ -37,6 +48,16 @@ def reduce_network(network_matrix):
     return reduced_network, pos_alignments
 
 def create_working_set(run, bgc_collection: BgcCollection, mix) -> dict:
+    """Creates a working set of bgc class dictionaries that will later be looped through in
+    pairwise distance calculation
+
+    Inputs:
+        run: run details for this execution of BiG-SCAPE
+        bgc_collection: BgcCollection object which contains the collection of BGCs which will
+            be used in pairwise comparison
+        mix: boolean indicating if an additional 'mix' class should be created which will contain
+            all BGCs. Note: this means that the comparison space is essentially doubled, and the
+            comparisons increase exponentially."""
     bgc_classes = defaultdict(list)
 
     if mix:
@@ -50,7 +71,7 @@ def create_working_set(run, bgc_collection: BgcCollection, mix) -> dict:
             if len(run.domain_includelist & bgc_domain_set) == 0:
                 continue
         product = bgc_collection.bgc_collection_dict[cluster_name].bgc_info.product
-        
+
         predicted_class = sort_bgc(product)
 
         if predicted_class.lower() in run.valid_classes:
@@ -93,6 +114,22 @@ def create_working_set(run, bgc_collection: BgcCollection, mix) -> dict:
 def generate_network(run, bgc_collection: BgcCollection, aligned_domain_seqs,
                      mibig_set_indices, mibig_set, rundata_networks_per_run,
                      html_subs_per_run, mix=False):
+    """Performs pairwise comparison between BGCs. By default, this only compares BGCs from the
+    input set. With --mix enabled, this also creates a mix class containing all BGCs for an
+    all-vs-all comparison
+
+    Inputs:
+        run: run details for this execution of BiG-SCAPE
+        bgc_collection: BgcCollection object containing all BGCs collected in this run for
+            comparison
+        aligned_domain_seqs: list of aligned domain sequences from hmm.read_aligned_files
+        migib_set_indices: list of mibig set BGC indices used to discern mibig BGCs from
+            input BGCs
+        mibig_set: set of paths pointing to mibig gbk files
+        rundata_networks_per_run: TODO
+        html_subs_per_run: TODO:
+        mix: boolean indicating whether to use a mix class. Default: False
+    """
     logging.info(" Working for each BGC class")
 
     # we have to find the idx of query_bgc
@@ -177,7 +214,7 @@ def generate_network(run, bgc_collection: BgcCollection, aligned_domain_seqs,
 
         network_matrix, add_skip_set = gen_dist_matrix_async(run, cluster_pairs, bgc_collection,
                                                              aligned_domain_seqs, skip_set)
-        
+
         skip_set = skip_set | add_skip_set
 
         #pickle.dump(network_matrix,open("others.ntwrk",'wb'))
@@ -295,12 +332,12 @@ def generate_network(run, bgc_collection: BgcCollection, aligned_domain_seqs,
         logging.info("  Calling Gene Cluster Families")
         reduced_network, pos_alignments = reduce_network(network_matrix)
 
-        family_data = clusterJsonBatch(bgc_classes[bgc_class], path_base, bgc_class,
+        family_data = cluster_json_batch(bgc_classes[bgc_class], path_base, bgc_class,
             reduced_network, pos_alignments, bgc_collection,
             mibig_set, run.directories.pfd, run.directories.bgc_fasta,
             aligned_domain_seqs,
-            cutoffs=run.cluster.cutoff_list, clusterClans=run.options.clans, clanCutoff=run.options.clan_cutoff,
-            htmlFolder=run.directories.network_html)
+            cutoffs=run.cluster.cutoff_list, cluster_clans=run.options.clans, clan_cutoff=run.options.clan_cutoff,
+            html_folder=run.directories.network_html)
         for network_html_folder_cutoff in family_data:
             rundata_networks_per_run[network_html_folder_cutoff].append(family_data[network_html_folder_cutoff])
             if mix:

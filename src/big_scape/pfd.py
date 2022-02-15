@@ -2,11 +2,21 @@ import os
 from array import array
 from collections import defaultdict
 
-import debugpy
-
 from src.big_scape.bgc_collection import BgcCollection
 
-def parse_pfd(run, BGC_COLLECTION: BgcCollection):
+def parse_pfd(run, bgc_collection: BgcCollection):
+    """Parses PFD files and returns gene information for each BGC in a set of dictionaries
+
+    Inputs:
+        run: run details for this execution of BiG-SCAPE
+        bgc_collection: collection of BgcInfo objects and other information
+
+    Returns:
+        three dictionaries, all using Bgc names as keys, which contain:
+            gene_domain_count: domain counts per gene in the BGC
+            corebiosynthetic_pos: the position of the core biosynthetic gene, if available
+            bgc_gene_orientation: orientations of genes in the BGC
+        """
     gene_domain_count = {}
     corebiosynthetic_pos = {}
     bgc_gene_orientation = {}
@@ -14,7 +24,7 @@ def parse_pfd(run, BGC_COLLECTION: BgcCollection):
     pfd_dict_domains = defaultdict(int)
     orf_keys = {}
 
-    for outputbase in BGC_COLLECTION.bgc_name_list:
+    for outputbase in bgc_collection.bgc_name_list:
         # init as unsigned char integer array
         gene_domain_count[outputbase] = array('B')
         # init as unsigend short integer array
@@ -44,7 +54,7 @@ def parse_pfd(run, BGC_COLLECTION: BgcCollection):
 
             gene_domain_count[outputbase].append(pfd_dict_domains[orf])
 
-            if orf in BGC_COLLECTION.bgc_collection_dict[outputbase].bgc_info.biosynthetic_genes:
+            if orf in bgc_collection.bgc_collection_dict[outputbase].bgc_info.biosynthetic_genes:
                 corebiosynthetic_pos[outputbase].append(orf_num)
 
             orf_num += 1

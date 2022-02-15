@@ -20,11 +20,10 @@ from src.big_scape.bgc_collection import BgcCollection
 from src.utility.io import create_directory
 
 
-def clusterJsonBatch(bgcs, pathBase, className, matrix, pos_alignments, bgc_collection: BgcCollection,
-                     mibig_set, pfd_folder, bgc_fasta_folder,
-                     AlignedDomainSequences, cutoffs=[1.0],
-                     damping=0.9, clusterClans=False, clanCutoff=(0.5, 0.8), htmlFolder=None,
-                     verbose=False):
+def cluster_json_batch(bgcs, path_base, class_name, matrix, pos_alignments,
+                       bgc_collection: BgcCollection, mibig_set, pfd_folder, bgc_fasta_folder,
+                       aligned_domain_seqs, cutoffs=None, damping=0.9, cluster_clans=False,
+                       clan_cutoff=(0.5, 0.8), html_folder=None, verbose=False):
     """BGC Family calling
     Uses csr sparse matrices to call Gene Cluster Families (GCFs) using Affinity
     Propagation.
@@ -33,13 +32,31 @@ def clusterJsonBatch(bgcs, pathBase, className, matrix, pos_alignments, bgc_coll
     value, similarity is 0)
     Larger cutoff values are more permissive
 
-    bgcs: ordered list of integers (ascending, unique, but not necessarily
-        consecutive) representing the index in the main clusterNames list. Every
-        number here is an "external" index
-    matrix: list of lists of idx0, idx1, d where the first two elements correspond
-        to indices from `bgcs`
-    pathBase: folder where GCF files will be deposited
+    Inputs:
+        bgcs: ordered list of integers (ascending, unique, but not necessarily
+            consecutive) representing the index in the main clusterNames list. Every
+            number here is an "external" index
+        path_base: folder where GCF files will be deposited
+        class_name: name of the class for the clustering
+        matrix: list of lists of idx0, idx1, d where the first two elements correspond
+            to indices from `bgcs`
+        pos_alignments: dictionary of alignment positions from reduce_network
+        bgc_collection: collection of BGCs
+        mibig_set: set of mibig files used in this run
+        pfd_folder: pfam pfd folder path
+        bgc_fasta_folder: folder for bgc fasta files
+        aligned_domain_seqs: list of aligned domain sequences from hmm.read_aligned_files
+        cutoffs: list of node cutoff values to generate networks for. Default: [1.0]
+        damping: damping value passed into the affinity propagation. Default: 0.9
+        cluster_clans: whether to cluster clans. Default: False
+        clan_cutoff: a tuple of cutoff values for clan clustering. Default: (0.5, 0.8)
+        html_folder: folder for HTML files relating to this clustering step. Default: None
+        verbose: whether to report application processes verbosely. Default: False
     """
+
+    # set default cutoff value
+    if cutoffs == None:
+        cutoffs = [1.0]
     numBGCs = len(bgcs)
 
     simDict = {} # dictionary of dictionaries
@@ -54,8 +71,8 @@ def clusterJsonBatch(bgcs, pathBase, className, matrix, pos_alignments, bgc_coll
         gcSimilarities = simDict.setdefault(gc1, {})
         gcSimilarities[gc2] = similarity
 
-    clanClassificationCutoff, clanDistanceCutoff = clanCutoff
-    if clusterClans:
+    clanClassificationCutoff, clanDistanceCutoff = clan_cutoff
+    if cluster_clans:
         logging.debug('Clustering Clans Enabled with parameters clanClassificationCutoff: %s, \
                       clanDistanceCutoff: %s', clanClassificationCutoff, clanDistanceCutoff)
 
@@ -128,7 +145,7 @@ def clusterJsonBatch(bgcs, pathBase, className, matrix, pos_alignments, bgc_coll
     results = {}
     for cutoff in cutoffs:
         family_data = { # will be returned, for use in overview.js
-            "label": className,
+            "label": class_name,
             "families": [],
             "families_similarity": []
         }
@@ -206,7 +223,7 @@ def clusterJsonBatch(bgcs, pathBase, className, matrix, pos_alignments, bgc_coll
         ##
         ## Get conserved domain core information to build phylogenetic tree
         ##
-        gcf_trees_path = os.path.join(pathBase, "GCF_trees")
+        gcf_trees_path = os.path.join(path_base, "GCF_trees")
         if not os.path.exists(gcf_trees_path):
             os.makedirs(gcf_trees_path)
 
@@ -275,9 +292,9 @@ def clusterJsonBatch(bgcs, pathBase, className, matrix, pos_alignments, bgc_coll
                 specific_domain_list_A = bgc_collection.bgc_collection_dict[exemplar].domain_name_info[domain]
                 num_copies_a = len(specific_domain_list_A)
                 for exemplar_domain_copy in specific_domain_list_A:
-                    alignments[exemplar_idx] += AlignedDomainSequences[exemplar_domain_copy]
+                    alignments[exemplar_idx] += aligned_domain_seqs[exemplar_domain_copy]
 
-                seq_length = len(AlignedDomainSequences[specific_domain_list_A[0]])
+                seq_length = len(aligned_domain_seqs[specific_domain_list_A[0]])
 
                 for bgc in alignments:
                     match_dict.clear()
@@ -304,8 +321,8 @@ def clusterJsonBatch(bgcs, pathBase, className, matrix, pos_alignments, bgc_coll
                                 sequence_tag_a = specific_domain_list_A[domsa]
                                 sequence_tag_b = specific_domain_list_B[domsb]
 
-                                aligned_seqA = AlignedDomainSequences[sequence_tag_a]
-                                aligned_seqB = AlignedDomainSequences[sequence_tag_b]
+                                aligned_seqA = aligned_domain_seqs[sequence_tag_a]
+                                aligned_seqB = aligned_domain_seqs[sequence_tag_b]
 
                                 matches = 0
                                 gaps = 0
@@ -328,7 +345,7 @@ def clusterJsonBatch(bgcs, pathBase, className, matrix, pos_alignments, bgc_coll
 
                         for copy in range(num_copies_a):
                             try:
-                                alignments[bgc] += AlignedDomainSequences[specific_domain_list_B[match_dict[copy]]]
+                                alignments[bgc] += aligned_domain_seqs[specific_domain_list_B[match_dict[copy]]]
                             except KeyError:
                                 # This means that this copy of exemplar did not
                                 # have a match in bgc (i.e. bgc has less copies
@@ -396,7 +413,7 @@ def clusterJsonBatch(bgcs, pathBase, className, matrix, pos_alignments, bgc_coll
 
         ### - - - GCC - - -
         bs_similarity_families = []
-        if clusterClans and cutoff == clanClassificationCutoff:
+        if cluster_clans and cutoff == clanClassificationCutoff:
             # Detect if there's only 1 GCF. It makes pySAPC crash
             if len(familyIdx) == 1:
                 clanLabels = [1]
@@ -577,7 +594,7 @@ def clusterJsonBatch(bgcs, pathBase, className, matrix, pos_alignments, bgc_coll
         # column1: BGC, column2: clustering pseudo family
         
         logging.debug("  Writing clustering file")
-        clustering_file_path = os.path.join(pathBase, "{}_clustering_c{:4.2f}.tsv".format(className, cutoff))
+        clustering_file_path = os.path.join(path_base, "{}_clustering_c{:4.2f}.tsv".format(class_name, cutoff))
         with open(clustering_file_path, "w") as clustering_file:
             clustering_file.write('#BGC Name\tFamily Number\n')
             for family in familyIdx:
@@ -591,9 +608,9 @@ def clusterJsonBatch(bgcs, pathBase, className, matrix, pos_alignments, bgc_coll
         family_data["families_similarity"] = bs_similarity_families
 
         ## Write html output folder structure (and update bigscape_results.js) for this module
-        htmlFolder_run = "{}_c{:.2f}".format(htmlFolder, cutoff)
+        htmlFolder_run = "{}_c{:.2f}".format(html_folder, cutoff)
         assert os.path.isdir(htmlFolder_run)
-        module_html_path = os.path.join(htmlFolder_run, className)
+        module_html_path = os.path.join(htmlFolder_run, class_name)
         create_directory(module_html_path, "Network HTML", False)
         with open(os.path.join(module_html_path, "bs_data.js"), "w") as bs_data_js:
             bs_data_js.write("var bs_data={};\n".format(json.dumps(bs_data, indent=4, separators=(',', ':'), sort_keys=True)))
@@ -614,7 +631,7 @@ def clusterJsonBatch(bgcs, pathBase, className, matrix, pos_alignments, bgc_coll
 
         if len(clanLabels) > 0:
             logging.debug("   Writing Clans file")
-            clans_file_path = os.path.join(pathBase, "{}_clans_{:4.2f}_{:4.2f}.tsv".format(className,clanClassificationCutoff,clanDistanceCutoff))
+            clans_file_path = os.path.join(path_base, "{}_clans_{:4.2f}_{:4.2f}.tsv".format(class_name,clanClassificationCutoff,clanDistanceCutoff))
             with open(clans_file_path,'w') as clansFile:
                 clansFile.write('#BGC Name\tClan Number\tFamily Number\n')
                 for clan in clansDict.keys():
