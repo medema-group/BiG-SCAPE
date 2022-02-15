@@ -9,6 +9,12 @@ def get_cached_fasta_files(run):
     fasta_files = glob(file_path)
     return set(fasta_files)
 
+def get_cached_domain_fasta_files(run):
+    """Get the cached domain fasta files (in output/cache/domains/*fasta)"""
+    file_path = os.path.join(run.directories.domains, "*.fasta")
+    fasta_files = glob(file_path)
+    return set(fasta_files)
+
 
 def check_fasta_files(run, cluster_base_names, all_fasta_files):
     # fastaFiles: all the fasta files that should be there
