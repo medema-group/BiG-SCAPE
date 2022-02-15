@@ -12,6 +12,12 @@ from src.pfam.stockholm import stockholm_parser
 
 
 def do_multiple_align(run, try_resume):
+    """Perform multiple alignment of domain sequences
+    
+    inputs:
+        run: run details for this execution of BiG-SCAPE
+        try_resume: boolean indicating if BiG-SCAPE detected an interrupted alignment
+    """
     logging.info("Performing multiple alignment of domain sequences")
     # obtain all fasta files with domain sequences
     domain_sequence_list = set(glob(os.path.join(run.directories.domains, "*.fasta")))
@@ -90,6 +96,7 @@ def launch_hmmalign(cores, domain_sequence_list, pfam_dir, verbose):
 
 
 def run_hmmalign(domain_file, pfam_dir, verbose):
+    """Runs hmmalign on a domain file amd passes the result to stockholm_parser"""
     #domain_file already contains the full path, with the file extension
     domain_base = domain_file.split(os.sep)[-1][:-6]
     hmmfetch_pars = ["hmmfetch", os.path.join(pfam_dir, "Pfam-A.hmm.h3m"), domain_base]
