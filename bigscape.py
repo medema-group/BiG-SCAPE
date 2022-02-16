@@ -85,6 +85,7 @@ def init_logger(options):
         root_logger.level = logging.INFO
 
 if __name__ == "__main__":
+    ## Initialization steps
     # show an error if we're not on python 3
     if version_info[0] != 3:
         logging.error("This python program was developed for Python 3. Please make sure to use \
@@ -110,6 +111,12 @@ if __name__ == "__main__":
     # UserWarning: All samples have mutually equal similarities. Returning arbitrary cluster
     # center(s).
     warnings.filterwarnings(action="ignore", category=UserWarning)
+
+    
+    # TODO: download whatever version of pfam is necessary if it isn't there
+
+    # TODO: next press the hmm file into more optimal formats
+    # hmm.pyhmmer_hmmpress(OPTIONS)
 
     # create new run details
     # ideally we parse all the options and remember them in this object
@@ -144,9 +151,6 @@ if __name__ == "__main__":
 
 
     ### Step 2: Run hmmscan
-    logging.info("Trying threading on %d cores", RUN.options.cores)
-    logging.info("Predicting domains using hmmscan")
-
     # get all fasta files in cache directory
     CACHED_FASTA_FILES = hmm.get_cached_fasta_files(RUN)
 
@@ -158,33 +162,37 @@ if __name__ == "__main__":
     # includes all fasta files if force_hmmscan is set
     FASTA_FILES_TO_PROCESS = hmm.get_fasta_files_to_process(RUN, CACHED_FASTA_FILES)
 
+    logging.info("Trying threading on %d cores", RUN.options.cores)
+    logging.info("Predicting domains using hmmsearch")
+
     # if any are there, run hmmscan
     if len(FASTA_FILES_TO_PROCESS) > 0:
         # this function blocks the main thread until finished
-        hmm.run_hmmscan_async(RUN, FASTA_FILES_TO_PROCESS)
+        hmm.run_pyhmmer(RUN, FASTA_FILES_TO_PROCESS, RUN.directories.pfd, RUN.directories.pfs, RUN.options.domain_overlap_cutoff,
+                        GBK_FILE_DICT, CLUSTER_NAME_LIST, CLUSTER_NAME_SET, MIBIG_SET)
         logging.info(" Finished generating domtable files.")
     else:
         logging.info(" All files were processed by hmmscan. Skipping step...")
 
 
     ### Step 3: Parse hmmscan domtable results and generate pfs and pfd files
-    logging.info("Parsing hmmscan domtable files")
+    # logging.info("Parsing hmmscan domtable files")
 
     # All available domtable files
     CACHED_DOMTABLE_FILES = hmm.get_cached_domtable_files(RUN)
 
     # verify that domtable files were generated successfully. each cluster should have a domtable
     # file.
-    hmm.check_domtable_files(RUN, CLUSTER_NAME_SET, CACHED_DOMTABLE_FILES)
+    # hmm.check_domtable_files(RUN, CLUSTER_NAME_SET, CACHED_DOMTABLE_FILES)
 
     # find unprocessed files (assuming that if the pfd file exists, the pfs should too)
     # this will just return all domtable files if force_hmmscan is set
-    DOMTABLE_FILES_TO_PROCESS = hmm.get_domtable_files_to_process(RUN, CACHED_DOMTABLE_FILES)
+    # DOMTABLE_FILES_TO_PROCESS = hmm.get_domtable_files_to_process(RUN, CACHED_DOMTABLE_FILES)
 
-    for domtableFile in DOMTABLE_FILES_TO_PROCESS:
-        hmm.parse_hmmscan(domtableFile, RUN.directories.pfd, RUN.directories.pfs,
-                          RUN.options.domain_overlap_cutoff, RUN.options.verbose, GBK_FILE_DICT,
-                          CLUSTER_NAME_LIST, CLUSTER_NAME_SET, MIBIG_SET)
+    # for domtableFile in DOMTABLE_FILES_TO_PROCESS:
+    #     hmm.parse_pyhmmer(domtableFile, RUN.directories.pfd, RUN.directories.pfs,
+    #                       RUN.options.domain_overlap_cutoff, RUN.options.verbose, GBK_FILE_DICT,
+    #                       CLUSTER_NAME_LIST, CLUSTER_NAME_SET, MIBIG_SET)
 
     # If number of pfd files did not change, no new sequences were added to the
     #  domain fastas and we could try to resume the multiple alignment phase

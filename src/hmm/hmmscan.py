@@ -1,143 +1,217 @@
 import logging
+import math
 import os
-import sys
-import subprocess
-import multiprocessing
+
+from multiprocessing import Queue, Process
+
+import pyhmmer
+
 
 from src.pfam.misc import check_overlap
 
-def parse_domtable(gbk, dom_file):
-    """Parses the domain table output files from hmmscan"""
-
-##example from domain table output:
-    # target name        accession   tlen query name                                    accession   qlen   E-value  score  bias   #  of  c-Evalue  i-Evalue  score  bias  from    to  from    to  from    to  acc description of target
-    #------------------- ---------- -----                          -------------------- ---------- ----- --------- ------ ----- --- --- --------- --------- ------ ----- ----- ----- ----- ----- ----- ----- ---- ---------------------
-    #Lycopene_cycl        PF05834.8    378 loc:[0:960](-):gid::pid::loc_tag:['ctg363_1'] -            320   3.1e-38  131.7   0.0   1   1   1.1e-40   1.8e-36  126.0   0.0     7   285    33   295    31   312 0.87 Lycopene cyclase protein
-
-    #pfd_matrix columns: gbk filename - score - gene id - first coordinate - second coordinate - pfam id - domain name -start coordinate of gene - end coordinate of gene - cds header
-
-    pfd_matrix = []
-    try:
-        dom_handle = open(dom_file, 'r')
-    except IOError:
-        logging.error("  Could not find file %s", dom_file)
-        sys.exit(1)
-    else:
-        for line in dom_handle:
-            if line[0] != "#":
-                splitline = line.split()
-                pfd_row = []
-                pfd_row.append(gbk)         #add clustername or gbk filename
-
-                pfd_row.append(splitline[13]) #add the score
-
-                header_list = splitline[3].split(":")
-                try:
-                    pfd_row.append(header_list[header_list.index("gid")+1]) #add gene ID if known
-                except ValueError:
-                    logging.warning("No gene ID in %s", gbk)
-                    pfd_row.append('')
-
-                pfd_row.append(splitline[19])#first coordinate, env coord from
-                pfd_row.append(splitline[20])#second coordinate, env coord to
-
-                #===================================================================
-                # loc_split = header_list[2].split("]") #second coordinate (of CDS) and the direction
-                # pfd_row.append(loc_split[1]) #add direction
-                #===================================================================
-
-                pfd_row.append(splitline[1]) #pfam id
-                pfd_row.append(splitline[0]) #domain name
-                pfd_row.append(header_list[header_list.index("loc")+1]) #start coordinate of gene
-                pfd_row.append(header_list[header_list.index("loc")+2]) #end coordinate of gene
-
-                pfd_row.append(splitline[3])#cds header
-                pfd_matrix.append(pfd_row)
-
-    return pfd_matrix
 
 def write_pfd(pfd_handle, matrix):
+    """Writes all rows in a pfd matrix to the file given by pfd_handle"""
     for row in matrix:
         row = "\t".join(row)
         pfd_handle.write(row+"\n")
 
     pfd_handle.close()
 
+def pyhmmer_hmmpress(options):
+    """Presses the Pfam-A.hmm file into optimized files for further analysis
 
-def run_hmmscan_async(run, task_set):
-    pool = multiprocessing.Pool(run.options.cores, maxtasksperchild=1)
-    for fasta_file in task_set:
-        task_args = (fasta_file, run.directories.pfam, run.directories.domtable, run.options.verbose)
-        pool.apply_async(run_hmmscan, args=task_args)
-    pool.close()
-    pool.join()
+    Inputs:
+        run: run details for this execution of BiG-SCAPE
+    """
+    hmm_file_path = os.path.join(options.pfam_dir, "Pfam-A.hmm")
+    with pyhmmer.plan7.HMMFile(hmm_file_path) as hmm_file:
+        if hmm_file.is_pressed():
+            logging.info(" PFAM Hmm file was already pressed.")
+            return
 
-def run_hmmscan(fasta_path, hmm_path, outputdir, verbose):
-    """ Runs hmmscan command on a fasta file with a single core to generate a
-    domtable file"""
-    hmm_file = os.path.join(hmm_path, "Pfam-A.hmm")
-    if os.path.isfile(fasta_path):
-        name = ".".join(fasta_path.split(os.sep)[-1].split(".")[:-1])
-        output_name = os.path.join(outputdir, name+".domtable")
+        logging.info(" Pressing Pfam HMM file...")
+        pyhmmer.hmmer.hmmpress(hmm_file, os.path.join(options.pfam_dir, "Pfam-A.hmm"))
 
-        hmmscan_cmd = "hmmscan --cpu 0 --domtblout {} --cut_tc {} {}".format(output_name, hmm_file, fasta_path)
+def pyhmmer_search_hmm(base_name, profiles, sequences, pipeline):
+    """scan an iterable of pyhmmer sequences using an optimized profiles
 
-        logging.debug("   %s", hmmscan_cmd)
-        subprocess.check_output(hmmscan_cmd, shell=True)
+    Inputs:
+        profiles: optimized profiles from HMMFile.optimized_profiles()
+        pipeline: pipeline object for HMM searching
+        sequences: iterable of sequences
 
-    else:
-        logging.error("Error running hmmscan: Fasta file %s doesn't exist", fasta_path)
-        sys.exit(1)
+    Yields:
+        A list of domains, similar to what hmmsearch would return
+    """
+    cutoffs = dict()
+    for profile in profiles:
+        cutoffs[profile.accession.decode()] = profile.cutoffs.trusted
 
-def parse_hmmscan(hmm_scan_results, pfd_folder, pfs_folder, overlap_cutoff, verbose, genbank_dict, clusters, base_names, mibig_set):
-    sample_dict = {} # {sampleName:set(bgc1,bgc2,...)}
-    gbk_files = [] # raw list of gbk file locations
-    for (cluster, (path, cluster_sample)) in genbank_dict.items():
-        gbk_files.append(path)
-        for sample in cluster_sample:
-            clusters_in_sample = sample_dict.get(sample, set())
-            clusters_in_sample.add(cluster)
-            sample_dict[sample] = clusters_in_sample
+        try:
+            search_result = pipeline.search_hmm(profile, sequences)
+        except TypeError:
+            logging.warning("    parsing %s threw TypeError. Ignoring...", base_name)
+            return
 
-    outputbase = ".".join(hmm_scan_results.split(os.sep)[-1].split(".")[:-1])
-    # try to read the domtable file to find out if this gbk has domains. Domains
-    # need to be parsed into fastas anyway.
-    if os.path.isfile(hmm_scan_results):
-        pfd_matrix = parse_domtable(outputbase, hmm_scan_results)
+        for hit in search_result:
+            if hit.is_included():
+                for domain in hit.domains:
+                    accession = domain.alignment.hmm_accession.decode()
+                    if domain.score > cutoffs[accession][1]:
+                        yield domain
 
-        # get number of domains to decide if this BGC should be removed
-        num_domains = len(pfd_matrix)
+def run_pyhmmer_worker(input_queue, output_queue, profiles, pipeline):
+    """worker for the run_pyhmmer method"""
+    alphabet = pyhmmer.easel.Alphabet.amino()
+    while True:
+        base_name, fasta_file = input_queue.get(True)
+        if base_name is None:
+            break
 
-        if num_domains > 0:
-            logging.debug("  Processing domtable file: %s", outputbase)
+        with pyhmmer.easel.SequenceFile(fasta_file) as seq_file:
+            seq_file.set_digital(alphabet)
+            try:
+                sequences = list(seq_file)
+            except ValueError:
+                logging.warning("  Parsing %s threw ValueError.", base_name)
+                logging.warning("  This means something in the source fasta file is wrong.")
+                logging.warning("  A known case is a protein starting with a - instead of M.")
+                logging.warning("  For the time being, this FASTA file will be skipped")
+                output_queue.put((base_name, []))
+                continue
+            domains = pyhmmer_search_hmm(base_name, profiles, sequences, pipeline)
+            del sequences
 
-            # check_overlap also sorts the filtered_matrix results and removes
-            # overlapping domains, keeping the highest scoring one
-            filtered_matrix, domains = check_overlap(pfd_matrix, overlap_cutoff)
+        pfd_matrix = []
+        for domain in domains:
+            score = f"{domain.score:.2f}"
+            env_from = str(domain.env_from)
+            env_to = str(domain.env_to)
+            pfam_id = domain.alignment.hmm_accession.decode()
+            domain_name = domain.alignment.hmm_name.decode()
 
-            # Save list of domains per BGC
-            pfsoutput = os.path.join(pfs_folder, outputbase + ".pfs")
-            with open(pfsoutput, 'w') as pfs_handle:
-                pfs_handle.write(" ".join(domains))
+            header = domain.alignment.target_name.decode()
+            header_list = header.split(":")
+            try:
+                gene_id = header_list[header_list.index("gid")+1]
+            except ValueError:
+                logging.warning("  No gene ID in %s", base_name)
+                gene_id = ''
+            gene_start = header_list[header_list.index("loc")+1]
+            gene_end = header_list[header_list.index("loc")+2]
 
-            # Save more complete information of each domain per BGC
-            pfdoutput = os.path.join(pfd_folder, outputbase + ".pfd")
-            with open(pfdoutput, 'w') as pfd_handle:
-                write_pfd(pfd_handle, filtered_matrix)
-        else:
-            # there aren't any domains in this BGC
-            # delete from all data structures
-            logging.info("  No domains were found in %s.domtable. Removing it from further analysis", outputbase)
-            info = genbank_dict.get(outputbase)
-            clusters.remove(outputbase)
-            base_names.remove(outputbase)
-            gbk_files.remove(info[0])
-            for sample in info[1]:
-                sample_dict[sample].remove(outputbase)
-            del genbank_dict[outputbase]
-            if outputbase in mibig_set:
-                mibig_set.remove(outputbase)
+            pfd_row = [base_name]
+            pfd_row.append(score)
+            pfd_row.append(gene_id)
+            pfd_row.append(env_from)
+            pfd_row.append(env_to)
+            pfd_row.append(pfam_id)
+            pfd_row.append(domain_name)
+            pfd_row.append(gene_start)
+            pfd_row.append(gene_end)
+            pfd_row.append(header)
 
-    else:
-        logging.error("hmmscan file %s was not found! (parseHmmScan)", outputbase)
-        sys.exit(1)
+            pfd_matrix.append(pfd_row)
+            del pfd_row
+
+        output_queue.put((base_name, pfd_matrix))
+
+
+def run_pyhmmer(run, fasta_files_to_process, pfd_folder, pfs_folder, overlap_cutoff, genbank_dict, clusters, base_names, mibig_set):
+    """Scan a list of fastas using pyhmmer scan
+
+    inputs:
+        run: run details for this execution of BiG-SCAPE
+        task_set: a list of fasta file paths
+
+    returns:
+        a list of hits
+    """
+    hmm_file_path = os.path.join(run.directories.pfam, "Pfam-A.hmm")
+    # get hmm profiles
+    with pyhmmer.plan7.HMMFile(hmm_file_path) as hmm_file:
+        profiles = list(hmm_file.optimized_profiles())
+
+    pipeline = pyhmmer.plan7.Pipeline(pyhmmer.easel.Alphabet.amino(), Z=len(profiles), bit_cutoffs="trusted")
+
+    num_processes = run.options.cores
+    # num_processes = 8
+
+    working_q = Queue(num_processes)
+
+    num_tasks = len(fasta_files_to_process)
+
+    output_q = Queue(num_tasks)
+
+    processes = []
+    for thread_num in range(num_processes):
+        thread_name = f"distance_thread_{thread_num}"
+        logging.debug("Starting %s", thread_name)
+        new_process = Process(target=run_pyhmmer_worker, args=(working_q, output_q, profiles, pipeline))
+        processes.append(new_process)
+        new_process.start()
+
+    pfd_matrix = []
+    fasta_idx = 0
+    fastas_done = 0
+
+    while True:
+        all_tasks_put = fasta_idx == num_tasks
+        all_tasks_done = fastas_done == num_tasks
+
+        if all_tasks_put and all_tasks_done:
+            break
+
+        if not working_q.full() and not all_tasks_put:
+            fasta_file = fasta_files_to_process[fasta_idx]
+            base_name = ".".join(fasta_file.split(os.sep)[-1].split(".")[:-1])
+            working_q.put((base_name, fasta_file))
+            fasta_idx += 1
+            if not working_q.full():
+                continue
+
+        if not output_q.empty():
+            base_name, pfd_matrix = output_q.get()
+
+            if len(pfd_matrix) == 0:
+                # there aren't any domains in this BGC
+                # delete from all data structures
+                logging.info("  No domains were found in %s. Removing it from further analysis", base_name)
+                clusters.remove(base_name)
+                base_names.remove(base_name)
+                del genbank_dict[base_name]
+                if base_name in mibig_set:
+                    mibig_set.remove(base_name)
+            else:
+
+                # check_overlap also sorts the filtered_matrix results and removes
+                # overlapping domains, keeping the highest scoring one
+                filtered_matrix, domains = check_overlap(pfd_matrix, overlap_cutoff)
+
+                # Save list of domains per BGC
+                pfsoutput = os.path.join(pfs_folder, base_name + ".pfs")
+                with open(pfsoutput, 'w', encoding="UTF-8") as pfs_handle:
+                    pfs_handle.write(" ".join(domains))
+
+                # Save more complete information of each domain per BGC
+                pfdoutput = os.path.join(pfd_folder, base_name + ".pfd")
+                with open(pfdoutput, 'w', encoding="UTF-8") as pfd_handle:
+                    write_pfd(pfd_handle, filtered_matrix)
+
+            fastas_done += 1
+
+            # print progress every 10%
+            if fastas_done % math.ceil(num_tasks / 10) == 0:
+                percent_done = fastas_done / num_tasks * 100
+                logging.info("  %d%% (%d/%d)", percent_done, fastas_done, num_tasks)
+            # logging.info("adding result (now %d)", len(network_matrix))
+
+    # clean up threads
+    for thread_num in range(num_processes):
+        working_q.put((None, None))
+
+    for process in processes:
+        process.join()
+        thread_name = process.name
+        logging.debug("Thread %s stopped", thread_name)

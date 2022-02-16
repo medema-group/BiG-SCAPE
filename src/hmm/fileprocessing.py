@@ -36,6 +36,7 @@ def check_fasta_files(run, cluster_base_names, all_fasta_files):
         sys.exit(1)
 
 def get_fasta_files_to_process(run, fasta_files):
+    """Gets the fasta files that do not have an associated pfd file"""
     if run.options.force_hmmscan:
         logging.info(" Forcing domain prediction on ALL fasta files (--force_hmmscan)")
         return fasta_files
@@ -43,20 +44,12 @@ def get_fasta_files_to_process(run, fasta_files):
     already_done = set()
     for fasta in fasta_files:
         outputbase = ".".join(fasta.split(os.sep)[-1].split(".")[:-1])
-        outputfile = os.path.join(run.directories.domtable, outputbase + '.domtable')
+        outputfile = os.path.join(run.directories.pfd, outputbase + '.pfd')
 
         # ignore directories or empty files
-        if not os.path.isfile(outputfile) or os.path.getsize(outputfile) == 0:
-            continue
+        if os.path.isfile(outputfile):
+            already_done.add(fasta)
 
-        # verify domtable content
-        with open(outputfile, "r") as domtablefile:
-            for line in domtablefile.readlines():
-                if line.startswith("# Option settings:"):
-                    linecols = line.split()
-                    if "hmmscan" in linecols and "--domtblout" in linecols:
-                        already_done.add(fasta)
-                        break
 
     task_set = fasta_files - already_done
     if len(task_set) == 0:
@@ -70,7 +63,7 @@ def get_fasta_files_to_process(run, fasta_files):
     else:
         logging.info(" Predicting domains for %d fasta files", len(fasta_files))
 
-    return task_set
+    return list(task_set)
 
 def get_cached_domtable_files(run):
     file_path = os.path.join(run.directories.domtable, "*.domtable")
