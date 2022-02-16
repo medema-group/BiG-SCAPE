@@ -178,9 +178,6 @@ if __name__ == "__main__":
     ### Step 3: Parse hmmscan domtable results and generate pfs and pfd files
     # logging.info("Parsing hmmscan domtable files")
 
-    # All available domtable files
-    CACHED_DOMTABLE_FILES = hmm.get_cached_domtable_files(RUN)
-
     # verify that domtable files were generated successfully. each cluster should have a domtable
     # file.
     # hmm.check_domtable_files(RUN, CLUSTER_NAME_SET, CACHED_DOMTABLE_FILES)
@@ -198,21 +195,23 @@ if __name__ == "__main__":
     #  domain fastas and we could try to resume the multiple alignment phase
     # baseNames have been pruned of BGCs with no domains that might've been added temporarily
     TRY_RESUME_MULTIPLE_ALIGNMENT = False
-    ALREADY_DONE = hmm.get_processed_domtable_files(RUN, CACHED_DOMTABLE_FILES)
-    PFD_FILES_UNCHANGED = len(CLUSTER_NAME_SET - set(pfd.split(os.sep)[-1][:-9] for pfd in ALREADY_DONE)) == 0
+    ALREADY_DONE = hmm.get_searched_fasta_files(RUN, CACHED_FASTA_FILES)
+    PFD_FILES_UNCHANGED = len(CLUSTER_NAME_SET - ALREADY_DONE) == 0
 
     DOMAIN_FASTAS_GENERATED = hmm.get_cached_domain_fasta_files(RUN)
     DOMAIN_FASTAS_NOT_EMPTY = len(DOMAIN_FASTAS_GENERATED) > 0
-    if PFD_FILES_UNCHANGED and DOMAIN_FASTAS_NOT_EMPTY:
-        TRY_RESUME_MULTIPLE_ALIGNMENT = True
-    else:
-        # new sequences will be added to the domain fasta files. Clean domains folder
-        # We could try to make it so it's not necessary to re-calculate every alignment,
-        #  either by expanding previous alignment files or at the very least,
-        #  re-aligning only the domain files of the newly added BGCs
-        logging.info(" New domain sequences to be added; cleaning domains folder")
-        for thing in os.listdir(RUN.directories.domains):
-            os.remove(os.path.join(RUN.directories.domains, thing))
+    
+    if not RUN.options.skip_ma:
+        if PFD_FILES_UNCHANGED and DOMAIN_FASTAS_NOT_EMPTY:
+            TRY_RESUME_MULTIPLE_ALIGNMENT = True
+        else:
+            # new sequences will be added to the domain fasta files. Clean domains folder
+            # We could try to make it so it's not necessary to re-calculate every alignment,
+            #  either by expanding previous alignment files or at the very least,
+            #  re-aligning only the domain files of the newly added BGCs
+            logging.info(" New domain sequences to be added; cleaning domains folder")
+            for thing in os.listdir(RUN.directories.domains):
+                os.remove(os.path.join(RUN.directories.domains, thing))
 
     logging.info(" Finished generating pfs and pfd files.")
 

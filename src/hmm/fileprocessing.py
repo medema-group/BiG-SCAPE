@@ -75,7 +75,7 @@ def get_domtable_files_to_process(run, domtable_files):
     if run.options.force_hmmscan:
         return domtable_files
 
-    already_done = get_processed_domtable_files(run, domtable_files)
+    already_done = get_searched_fasta_files(run, domtable_files)
 
     # the domtable files to be processed is the difference between all, and those which were
     # already done
@@ -86,14 +86,14 @@ def get_domtable_files_to_process(run, domtable_files):
 
     return unprocessed_domtable_files
 
-def get_processed_domtable_files(run, domtable_files):
+def get_searched_fasta_files(run, fasta_files):
     # otherwise find what still needs to be done
     already_done = set()
-    for domtable in domtable_files:
+    for domtable in fasta_files:
         outputbase = ".".join(domtable.split(os.sep)[-1].split(".")[:-1])
         outputfile = os.path.join(run.directories.pfd, outputbase + '.pfd')
-        if os.path.isfile(outputfile) and os.path.getsize(outputfile) > 0:
-            already_done.add(domtable)
+        if os.path.isfile(outputfile):
+            already_done.add(outputbase)
     return already_done
 
 

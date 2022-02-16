@@ -178,6 +178,8 @@ def run_pyhmmer(run, fasta_files_to_process, pfd_folder, pfs_folder, overlap_cut
                 # there aren't any domains in this BGC
                 # delete from all data structures
                 logging.info("  No domains were found in %s. Removing it from further analysis", base_name)
+
+                pfdoutput = os.path.join(pfd_folder, base_name + ".pfd")
                 clusters.remove(base_name)
                 base_names.remove(base_name)
                 del genbank_dict[base_name]
