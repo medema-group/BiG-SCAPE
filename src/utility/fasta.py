@@ -39,6 +39,6 @@ def save_domain_seqs(filtered_matrix, fasta_dict, domains_folder, outputbase):
         #append to existing file
         domain_file = open(os.path.join(domains_folder, domain + ".fasta"), 'a')
         #only use the range of the pfam domain within the sequence
-        line = ">{}:{}:{}\n{}\n".format(header, row[3], row[4], seq[int(row[3]):int(row[4])])
+        line = ">{}:{}:{}\n{}\n".format(header, row[3], row[4], seq[int(row[3])-1:int(row[4])])
         domain_file.write(line)
         domain_file.close()

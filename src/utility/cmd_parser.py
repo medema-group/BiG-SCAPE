@@ -181,6 +181,6 @@ def cmd_parser(root_path):
                         distance in common E.g. if AB=0 & AC=0, skip BC",
                         default=False, action="store_true")
 
-    parser.add_argument("--version", action="version", version="%(prog)s 1.1.2 (2021-06-03)")
+    parser.add_argument("--version", action="version", version="%(prog)s 1.1.3 (2022-02-18)")
 
     return parser.parse_args()
