@@ -36,7 +36,7 @@ def check_fasta_files(run, cluster_base_names, all_fasta_files):
         sys.exit(1)
 
 def get_fasta_files_to_process(run, fasta_files):
-    """Gets the fasta files that do not have an associated pfd file"""
+    """Gets the fasta files that do not have an associated pfd or pfs file"""
     if run.options.force_hmmscan:
         logging.info(" Forcing domain prediction on ALL fasta files (--force_hmmscan)")
         return fasta_files
@@ -44,10 +44,11 @@ def get_fasta_files_to_process(run, fasta_files):
     already_done = set()
     for fasta in fasta_files:
         outputbase = ".".join(fasta.split(os.sep)[-1].split(".")[:-1])
-        outputfile = os.path.join(run.directories.pfd, outputbase + '.pfd')
+        pfs_file_path = os.path.join(run.directories.pfd, outputbase + '.pfs')
+        pfd_file_path = os.path.join(run.directories.pfd, outputbase + '.pfd')
 
-        # ignore directories or empty files
-        if os.path.isfile(outputfile):
+        # ignore directories
+        if os.path.isfile(pfs_file_path) and os.path.isfile(pfd_file_path):
             already_done.add(fasta)
 
 

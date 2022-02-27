@@ -158,7 +158,7 @@ if __name__ == "__main__":
     hmm.check_fasta_files(RUN, CLUSTER_NAME_SET, CACHED_FASTA_FILES)
 
     # Make a list of all fasta files that need to be processed by hmmscan & BiG-SCAPE
-    # (i.e., they don't yet have a corresponding .domtable)
+    # (i.e., they don't yet have corresponding .pfd and .pfs files)
     # includes all fasta files if force_hmmscan is set
     FASTA_FILES_TO_PROCESS = hmm.get_fasta_files_to_process(RUN, CACHED_FASTA_FILES)
 
