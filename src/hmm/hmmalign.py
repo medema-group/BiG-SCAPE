@@ -69,7 +69,7 @@ def do_multiple_align(run, try_resume):
     # Do the multiple alignment
     stop_flag = False
     if len(domain_sequence_list) > 0:
-        logging.info("\n Using hmmalign")
+        logging.info("Using hmmalign")
         # load the hmm profiles
         hmm_file_path = os.path.join(run.directories.pfam, "Pfam-A.hmm")
         # get hmm profiles
