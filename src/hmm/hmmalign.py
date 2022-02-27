@@ -68,8 +68,7 @@ def do_multiple_align(run, try_resume):
     stop_flag = False
     if len(domain_sequence_list) > 0:
         logging.info("\n Using hmmalign")
-        launch_hmmalign(run.options.cores, domain_sequence_list, run.directories.pfam,
-                        run.options.verbose)
+        launch_hmmalign(run, domain_sequence_list)
 
         # verify all tasks were completed by checking existance of alignment files
         for domain_file in domain_sequence_list:
@@ -83,23 +82,23 @@ def do_multiple_align(run, try_resume):
         logging.info(" No domain fasta files found to align")
 
 
-def launch_hmmalign(cores, domain_sequence_list, pfam_dir, verbose):
+def launch_hmmalign(run, domain_sequence_list):
     """
     Launches instances of hmmalign with multiprocessing.
     Note that the domains parameter contains the .fasta extension
     """
-    pool = Pool(cores, maxtasksperchild=32)
-    partial_func = partial(run_hmmalign, pfam_dir=pfam_dir, verbose=verbose)
+    pool = Pool(run.options.cores, maxtasksperchild=32)
+    partial_func = partial(run_hmmalign, run=run)
     pool.map(partial_func, domain_sequence_list)
     pool.close()
     pool.join()
 
 
-def run_hmmalign(domain_file, pfam_dir, verbose):
+def run_hmmalign(domain_file, run):
     """Runs hmmalign on a domain file amd passes the result to stockholm_parser"""
     #domain_file already contains the full path, with the file extension
     domain_base = domain_file.split(os.sep)[-1][:-6]
-    hmmfetch_pars = ["hmmfetch", os.path.join(pfam_dir, "Pfam-A.hmm.h3m"), domain_base]
+    hmmfetch_pars = ["hmmfetch", os.path.join(run.directories.pfam, "Pfam-A.hmm.h3m"), domain_base]
     proc_hmmfetch = subprocess.Popen(hmmfetch_pars, stdout=subprocess.PIPE, shell=False)
 
     domain_file_stk = domain_file[:-6]+".stk"
