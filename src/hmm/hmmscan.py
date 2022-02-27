@@ -118,7 +118,7 @@ def run_pyhmmer_worker(input_queue, output_queue, profiles, pipeline):
         output_queue.put((base_name, pfd_matrix))
 
 
-def run_pyhmmer(run, fasta_files_to_process, pfd_folder, pfs_folder, overlap_cutoff, genbank_dict, clusters, base_names, mibig_set):
+def run_pyhmmer(run, fasta_files_to_process, genbank_dict, clusters, base_names, mibig_set):
     """Scan a list of fastas using pyhmmer scan
 
     inputs:
@@ -179,7 +179,7 @@ def run_pyhmmer(run, fasta_files_to_process, pfd_folder, pfs_folder, overlap_cut
                 # delete from all data structures
                 logging.info("  No domains were found in %s. Removing it from further analysis", base_name)
 
-                pfdoutput = os.path.join(pfd_folder, base_name + ".pfd")
+                pfdoutput = os.path.join(run.directories.pfd, base_name + ".pfd")
                 clusters.remove(base_name)
                 base_names.remove(base_name)
                 del genbank_dict[base_name]
@@ -189,15 +189,15 @@ def run_pyhmmer(run, fasta_files_to_process, pfd_folder, pfs_folder, overlap_cut
 
                 # check_overlap also sorts the filtered_matrix results and removes
                 # overlapping domains, keeping the highest scoring one
-                filtered_matrix, domains = check_overlap(pfd_matrix, overlap_cutoff)
+                filtered_matrix, domains = check_overlap(pfd_matrix, run.options.domain_overlap_cutoff)
 
                 # Save list of domains per BGC
-                pfsoutput = os.path.join(pfs_folder, base_name + ".pfs")
+                pfsoutput = os.path.join(run.directories.pfs, base_name + ".pfs")
                 with open(pfsoutput, 'w', encoding="UTF-8") as pfs_handle:
                     pfs_handle.write(" ".join(domains))
 
                 # Save more complete information of each domain per BGC
-                pfdoutput = os.path.join(pfd_folder, base_name + ".pfd")
+                pfdoutput = os.path.join(run.directories.pfd, base_name + ".pfd")
                 with open(pfdoutput, 'w', encoding="UTF-8") as pfd_handle:
                     write_pfd(pfd_handle, filtered_matrix)
 
