@@ -85,6 +85,7 @@ def init_logger(options):
         root_logger.level = logging.INFO
 
 if __name__ == "__main__":
+    ## Initialization steps
     # show an error if we're not on python 3
     if version_info[0] != 3:
         logging.error("This python program was developed for Python 3. Please make sure to use \
@@ -110,6 +111,14 @@ if __name__ == "__main__":
     # UserWarning: All samples have mutually equal similarities. Returning arbitrary cluster
     # center(s).
     warnings.filterwarnings(action="ignore", category=UserWarning)
+
+    
+    # TODO: download whatever version of pfam is necessary if it isn't there
+
+    # TODO: next press the hmm file into more optimal formats
+    # this currently does not work since it generates hmm files that don't work with the
+    # optimized profiles used later on. User still needs to generate their own pressed hmms
+    # hmm.pyhmmer_hmmpress(OPTIONS)
 
     # create new run details
     # ideally we parse all the options and remember them in this object
@@ -143,68 +152,56 @@ if __name__ == "__main__":
     CLUSTER_NAME_SET = set(CLUSTER_NAME_LIST)
 
 
-    ### Step 2: Run hmmscan
-    logging.info("Trying threading on %d cores", RUN.options.cores)
-    logging.info("Predicting domains using hmmscan")
-
+    ### Step 2: Run hmmscan (generates .pfs and .pfd files)
     # get all fasta files in cache directory
     CACHED_FASTA_FILES = hmm.get_cached_fasta_files(RUN)
 
     # verify that all clusters have a corresponding fasta file in cache
     hmm.check_fasta_files(RUN, CLUSTER_NAME_SET, CACHED_FASTA_FILES)
 
+    # get all fasta files that were already done in a previous run
+    SEARCHED_FASTAS = hmm.get_searched_fasta_files(RUN, CACHED_FASTA_FILES)
+
     # Make a list of all fasta files that need to be processed by hmmscan & BiG-SCAPE
-    # (i.e., they don't yet have a corresponding .domtable)
+    # (i.e., they don't yet have corresponding .pfd and .pfs files)
     # includes all fasta files if force_hmmscan is set
-    FASTA_FILES_TO_PROCESS = hmm.get_fasta_files_to_process(RUN, CACHED_FASTA_FILES)
+    FASTA_FILES_TO_PROCESS = hmm.get_fasta_files_to_process(CACHED_FASTA_FILES, SEARCHED_FASTAS)
+
+    logging.info("Trying threading on %d cores", RUN.options.cores)
+    logging.info("Predicting domains using hmmsearch")
 
     # if any are there, run hmmscan
     if len(FASTA_FILES_TO_PROCESS) > 0:
         # this function blocks the main thread until finished
-        hmm.run_hmmscan_async(RUN, FASTA_FILES_TO_PROCESS)
+        hmm.run_pyhmmer(RUN, FASTA_FILES_TO_PROCESS, GBK_FILE_DICT, CLUSTER_NAME_LIST, CLUSTER_NAME_SET, MIBIG_SET)
         logging.info(" Finished generating domtable files.")
     else:
         logging.info(" All files were processed by hmmscan. Skipping step...")
-
-
-    ### Step 3: Parse hmmscan domtable results and generate pfs and pfd files
-    logging.info("Parsing hmmscan domtable files")
-
-    # All available domtable files
-    CACHED_DOMTABLE_FILES = hmm.get_cached_domtable_files(RUN)
-
-    # verify that domtable files were generated successfully. each cluster should have a domtable
-    # file.
-    hmm.check_domtable_files(RUN, CLUSTER_NAME_SET, CACHED_DOMTABLE_FILES)
-
-    # find unprocessed files (assuming that if the pfd file exists, the pfs should too)
-    # this will just return all domtable files if force_hmmscan is set
-    DOMTABLE_FILES_TO_PROCESS = hmm.get_domtable_files_to_process(RUN, CACHED_DOMTABLE_FILES)
-
-    for domtableFile in DOMTABLE_FILES_TO_PROCESS:
-        hmm.parse_hmmscan(domtableFile, RUN.directories.pfd, RUN.directories.pfs,
-                          RUN.options.domain_overlap_cutoff, RUN.options.verbose, GBK_FILE_DICT,
-                          CLUSTER_NAME_LIST, CLUSTER_NAME_SET, MIBIG_SET)
 
     # If number of pfd files did not change, no new sequences were added to the
     #  domain fastas and we could try to resume the multiple alignment phase
     # baseNames have been pruned of BGCs with no domains that might've been added temporarily
     TRY_RESUME_MULTIPLE_ALIGNMENT = False
-    ALREADY_DONE = hmm.get_processed_domtable_files(RUN, CACHED_DOMTABLE_FILES)
-    PFD_FILES_UNCHANGED = len(CLUSTER_NAME_SET - set(pfd.split(os.sep)[-1][:-9] for pfd in ALREADY_DONE)) == 0
+    # get the fasta files that now have an asscociated pfs & pfd file
+    SEARCHED_THIS_RUN = hmm.get_searched_fasta_files(RUN, CACHED_FASTA_FILES)
+    SEARCHED_THIS_RUN = SEARCHED_THIS_RUN - SEARCHED_FASTAS
+    # check if pfd files were unchanged
+    PFD_FILES_UNCHANGED = len(SEARCHED_THIS_RUN) == 0
 
     DOMAIN_FASTAS_GENERATED = hmm.get_cached_domain_fasta_files(RUN)
     DOMAIN_FASTAS_NOT_EMPTY = len(DOMAIN_FASTAS_GENERATED) > 0
-    if PFD_FILES_UNCHANGED and DOMAIN_FASTAS_NOT_EMPTY:
-        TRY_RESUME_MULTIPLE_ALIGNMENT = True
-    else:
-        # new sequences will be added to the domain fasta files. Clean domains folder
-        # We could try to make it so it's not necessary to re-calculate every alignment,
-        #  either by expanding previous alignment files or at the very least,
-        #  re-aligning only the domain files of the newly added BGCs
-        logging.info(" New domain sequences to be added; cleaning domains folder")
-        for thing in os.listdir(RUN.directories.domains):
-            os.remove(os.path.join(RUN.directories.domains, thing))
+    
+    if not RUN.options.skip_ma:
+        if PFD_FILES_UNCHANGED and DOMAIN_FASTAS_NOT_EMPTY:
+            TRY_RESUME_MULTIPLE_ALIGNMENT = True
+        else:
+            # new sequences will be added to the domain fasta files. Clean domains folder
+            # TODO: We could try to make it so it's not necessary to re-calculate every alignment,
+            #  either by expanding previous alignment files or at the very least,
+            #  re-aligning only the domain files of the newly added BGCs
+            logging.info(" New domain sequences to be added; cleaning domains folder")
+            for thing in os.listdir(RUN.directories.domains):
+                os.remove(os.path.join(RUN.directories.domains, thing))
 
     logging.info(" Finished generating pfs and pfd files.")
 
