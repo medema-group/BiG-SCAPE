@@ -116,6 +116,8 @@ if __name__ == "__main__":
     # TODO: download whatever version of pfam is necessary if it isn't there
 
     # TODO: next press the hmm file into more optimal formats
+    # this currently does not work since it generates hmm files that don't work with the
+    # optimized profiles used later on. User still needs to generate their own pressed hmms
     # hmm.pyhmmer_hmmpress(OPTIONS)
 
     # create new run details
