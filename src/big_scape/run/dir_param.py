@@ -135,7 +135,8 @@ class DirParam():
         h3p_exists = os.path.isfile(os.path.join(options.pfam_dir, "Pfam-A.hmm.h3p"))
         if not (h3f_exists and h3i_exists and h3m_exists and h3p_exists):
             logging.error("One or more of the necessary Pfam files (.h3f, .h3i, .h3m, .h3p) \
-                were not found")
+                were not found in the given pfam directory. Directory given: ")
+            logging.error("%s", options.pfam_dir)
             if os.path.isfile(os.path.join(options.pfam_dir, "Pfam-A.hmm")):
                 logging.error("Please use hmmpress with Pfam-A.hmm")
             else:
