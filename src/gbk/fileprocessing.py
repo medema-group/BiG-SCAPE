@@ -5,7 +5,6 @@ import sys
 from Bio import SeqIO
 from itertools import combinations
 
-import debugpy
 from src.big_scape.run.base import Run
 
 from src.bgctools import sort_bgc, BgcData
