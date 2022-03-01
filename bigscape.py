@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 
 
 """
@@ -87,9 +87,10 @@ def init_logger(options):
 if __name__ == "__main__":
     ## Initialization steps
     # show an error if we're not on python 3
-    if version_info[0] != 3:
+    if version_info.major != 3:
         logging.error("This python program was developed for Python 3. Please make sure to use \
             python 3 when running BiG-SCAPE")
+        exit(1)
 
     # get root path of this project
     ROOT_PATH = os.path.dirname(__file__)
