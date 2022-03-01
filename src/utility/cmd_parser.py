@@ -18,7 +18,7 @@ def cmd_parser(root_path):
                         the network_files results)")
 
     parser.add_argument("-i", "--inputdir", dest="inputdir",
-                        default=os.path.dirname(root_path),
+                        default=root_path,
                         help="Input directory of gbk files, if left empty, all \
                         gbk files in current and lower directories will be used.")
 
@@ -27,7 +27,7 @@ def cmd_parser(root_path):
                         all output data files.")
 
     parser.add_argument("--pfam_dir", dest="pfam_dir",
-                        default=os.path.dirname(root_path),
+                        default=root_path,
                         help="Location of hmmpress-processed Pfam files. Default \
                         is same location of BiG-SCAPE")
 
@@ -129,7 +129,7 @@ def cmd_parser(root_path):
                         otherwise use global mode on that pair")
 
     parser.add_argument("--anchorfile", dest="anchorfile",
-                        default=os.path.join(os.path.dirname(root_path), "anchor_domains.txt"),
+                        default=os.path.join(root_path, "anchor_domains.txt"),
                         help="Provide a custom location for the anchor domains \
                         file, default is anchor_domains.txt.")
 
@@ -155,7 +155,7 @@ def cmd_parser(root_path):
     parser.add_argument("--mibig13", dest="mibig13", default=False, action="store_true",
                         help="Include BGCs from version 1.3 of MIBiG")
 
-    default_mibig_path = os.path.join(os.path.dirname(root_path), "Annotated_MIBiG_reference")
+    default_mibig_path = os.path.join(root_path, "Annotated_MIBiG_reference")
     parser.add_argument("--mibig_path", dest="mibig_path", default=default_mibig_path,
                         help="Location of MIBiG zip files (e.g. MIBiG_2.1_final.zip)")
 
@@ -172,7 +172,7 @@ def cmd_parser(root_path):
     parser.add_argument("--quiet", help="Don't print logs to output, only to log file.",
                         default=False, action="store_true")
 
-    default_log_path = os.path.join(os.path.dirname(root_path), "log")
+    default_log_path = os.path.join(root_path, "log")
     parser.add_argument("--log_path", dest="log_path", help="Location where to write logs",
                         default=default_log_path)
 

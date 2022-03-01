@@ -93,7 +93,7 @@ if __name__ == "__main__":
         exit(1)
 
     # get root path of this project
-    ROOT_PATH = os.path.dirname(__file__)
+    ROOT_PATH = os.path.realpath(os.path.dirname(__file__))
 
     # get run options
     # ROOT_PATH is passed here because the imports no longer allow us to use __file__
