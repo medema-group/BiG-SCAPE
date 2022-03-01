@@ -12,14 +12,15 @@ from src.bgctools import sort_bgc, BgcData
 def import_gbks(run):
     bgc_info = {}
     gen_bank_dict = {}
-
-    mibig_bgc_info, mibig_gen_bank_dict = import_mibig_gbk(run)
-    bgc_info.update(mibig_bgc_info)
-    gen_bank_dict.update(mibig_gen_bank_dict)
-
     mibig_set = set()
-    for key in mibig_gen_bank_dict:
-        mibig_set.add(key)
+
+    if run.mibig.use_mibig:
+        mibig_bgc_info, mibig_gen_bank_dict = import_mibig_gbk(run)
+        bgc_info.update(mibig_bgc_info)
+        gen_bank_dict.update(mibig_gen_bank_dict)
+
+        for key in mibig_gen_bank_dict:
+            mibig_set.add(key)
 
     logging.info("Importing GenBank files")
     gbk_bgc_info, gbk_gen_bank_dict = import_genbank_gbk(run)

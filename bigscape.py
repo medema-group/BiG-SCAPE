@@ -138,7 +138,8 @@ if __name__ == "__main__":
     ### Step 1: Get all the input files. Write extract sequence and write fasta if necessary
     logging.info("   - - Processing input files - -")
 
-    mibig.extract_mibig(RUN)
+    if RUN.mibig.use_mibig:
+        mibig.extract_mibig(RUN)
 
     # there are three steps where BiG-SCAPE will import GBK files:
     # 1. mibig
@@ -308,12 +309,12 @@ if __name__ == "__main__":
     big_scape.write_network_annotation_file(RUN, BGC_COLLECTION)
 
     # Find index of all MIBiG BGCs if necessary
+    MIBIG_SET_INDICES = set()
     if RUN.mibig.use_mibig:
         NAME_TO_IDX = {}
         for clusterIdx, clusterName in enumerate(BGC_COLLECTION.bgc_name_tuple):
             NAME_TO_IDX[clusterName] = clusterIdx
 
-        MIBIG_SET_INDICES = set()
         for bgc in MIBIG_SET:
             MIBIG_SET_INDICES.add(NAME_TO_IDX[bgc])
 
