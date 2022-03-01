@@ -170,8 +170,8 @@ class BgcDomainInfo():
                 cluster_b_dom_start = sum(self.b_rev_gene_dom_counts[:slice_start_b])
                 cluster_b_dom_end = cluster_b_dom_start + sum(self.b_rev_gene_dom_counts[slice_start_b:slice_start_b+slice_length_b])
             else:
-                cluster_b_dom_start = sum(cluster_b.domain_gene_counts[:slice_start_b])
-                cluster_b_dom_end = cluster_b_dom_start + sum(cluster_b.domain_gene_counts[slice_start_b:slice_start_b+slice_length_b])
+                cluster_b_dom_start = sum(cluster_b.gene_domain_counts[:slice_start_b])
+                cluster_b_dom_end = cluster_b_dom_start + sum(cluster_b.gene_domain_counts[slice_start_b:slice_start_b+slice_length_b])
             cluster_b_temp_domain_set = set(cluster_b.ordered_domain_list[cluster_b_dom_start:cluster_b_dom_end])
 
             self.intersect = cluster_a_temp_domain_set & cluster_b_temp_domain_set
