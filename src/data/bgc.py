@@ -190,7 +190,7 @@ class BGC:
                 if "contig_edge" in qual:
                     on_edge = qual["contig_edge"][0] == "True"
                 else:
-                    on_edge = None
+                    on_edge = False
                 loc = cluster.location
                 len_nt = loc.end - loc.start
                 chem_subclasses = qual["product"]
