@@ -187,7 +187,10 @@ class BGC:
                 if not gbk_type:
                     gbk_type = "as4"
                 name = path.splitext(orig_gbk_path)[0]
-                on_edge = None
+                if "contig_edge" in qual:
+                    on_edge = qual["contig_edge"][0] == "True"
+                else:
+                    on_edge = None
                 loc = cluster.location
                 len_nt = loc.end - loc.start
                 chem_subclasses = qual["product"]
