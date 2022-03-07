@@ -50,6 +50,7 @@ from src import hmm
 from src import mibig
 from src import pfam
 from src import utility
+from src import data
 
 def init_logger(options):
     """Initializes the logger for big-scape
@@ -134,12 +135,17 @@ if __name__ == "__main__":
     # preparation is done. run timing formally starts here
     RUN.start()
 
+    # init database
+    DB_PATH = os.path.join(RUN.directories.output, "data.db")
+    DB = data.Database(DB_PATH)
 
     ### Step 1: Get all the input files. Write extract sequence and write fasta if necessary
     logging.info("   - - Processing input files - -")
 
     if RUN.mibig.use_mibig:
         mibig.extract_mibig(RUN)
+
+    data.initialize_db(RUN, DB)
 
     # there are three steps where BiG-SCAPE will import GBK files:
     # 1. mibig
