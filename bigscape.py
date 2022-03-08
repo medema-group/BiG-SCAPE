@@ -35,6 +35,7 @@ from __future__ import division
 
 import os
 import logging
+import sys
 import warnings
 import time
 import pickle
@@ -147,42 +148,27 @@ if __name__ == "__main__":
 
     data.initialize_db(RUN, DB)
 
-    # there are three steps where BiG-SCAPE will import GBK files:
-    # 1. mibig
-    # 2. genbank
-    # 3. query BGC
-    # all of these are generalized into this method, which returns the bgc info and gen bank info
-    BGC_INFO_DICT, GBK_FILE_DICT, MIBIG_SET = gbk.import_gbks(RUN)
     
     # base name as a list and as a set
     # also used in all vs all analysis
-    CLUSTER_NAME_LIST = list(GBK_FILE_DICT.keys())
-    CLUSTER_NAME_SET = set(CLUSTER_NAME_LIST)
+    BGC_IDS = data.get_cluster_id_list(DB)
 
 
-    ### Step 2: Run hmmscan (generates .pfs and .pfd files)
-    # get all fasta files in cache directory
-    CACHED_FASTA_FILES = hmm.get_cached_fasta_files(RUN)
+    ### Step 2: Run hmmscan
+    # find which genomes have already had their domains predicted
+    PREDICTED_IDS = data.get_predicted_bgc_list(DB)
 
-    # verify that all clusters have a corresponding fasta file in cache
-    hmm.check_fasta_files(RUN, CLUSTER_NAME_SET, CACHED_FASTA_FILES)
+    # find the difference
+    IDS_TODO = list(set(BGC_IDS) - set(PREDICTED_IDS))
 
-    # get all fasta files that were already done in a previous run
-    SEARCHED_FASTAS = hmm.get_searched_fasta_files(RUN, CACHED_FASTA_FILES)
-
-    # Make a list of all fasta files that need to be processed by hmmscan & BiG-SCAPE
-    # (i.e., they don't yet have corresponding .pfd and .pfs files)
-    # includes all fasta files if force_hmmscan is set
-    FASTA_FILES_TO_PROCESS = hmm.get_fasta_files_to_process(CACHED_FASTA_FILES, SEARCHED_FASTAS)
-
-    logging.info("Trying threading on %d cores", RUN.options.cores)
-    logging.info("Predicting domains using hmmsearch")
+    logging.info("Options set to use %d cores", RUN.options.cores)
 
     # if any are there, run hmmscan
-    if len(FASTA_FILES_TO_PROCESS) > 0:
+    if len(IDS_TODO) > 0:
+        logging.info("Predicting domains using hmmsearch")
         # this function blocks the main thread until finished
-        hmm.run_pyhmmer(RUN, FASTA_FILES_TO_PROCESS, GBK_FILE_DICT, CLUSTER_NAME_LIST, CLUSTER_NAME_SET, MIBIG_SET)
-        logging.info(" Finished generating domtable files.")
+        hmm.run_pyhmmer(RUN, DB, IDS_TODO)
+        logging.info(" Finished predicting domains.")
     else:
         logging.info(" All files were processed by hmmscan. Skipping step...")
 
@@ -226,7 +212,7 @@ if __name__ == "__main__":
     BGC_COLLECTION = big_scape.BgcCollection()
 
     # init the collection with the acquired names from importing GBK files
-    BGC_COLLECTION.initialize(CLUSTER_NAME_LIST)
+    BGC_COLLECTION.initialize(BGC_IDS)
 
     # the BGCs need to know which domains belong where
     # this is done in this step

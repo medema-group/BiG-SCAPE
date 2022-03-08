@@ -212,6 +212,19 @@ class BGC:
             break
 
         return results
+    
+    @staticmethod
+    def get_bgc_base_name(bgc_id: int, database: Database):
+        """Return the accession associated with a BGC of a given ID"""
+        predicted_bgcs = [
+            row["name"] for row in database.select(
+                "bgc",
+                f"where id = {bgc_id}",
+                props=["name"])]
+        if len(predicted_bgcs) == 0:
+            return None
+        
+        return predicted_bgcs[0].split("/")[-1]
 
     @staticmethod
     def get_all_cds_fasta(bgc_ids: List[int], database: Database):
@@ -232,6 +245,20 @@ class BGC:
                 0, len(row["aa_seq"]))
             multifasta += "{}\n".format(row["aa_seq"])
         return multifasta
+
+    @staticmethod
+    def get_all_cds(bgc_ids: List[int], database: Database):
+        """query database, get all aa sequences
+        of the CDS into a multifasta string
+        e.g. for the purpose of doing hmmscan"""
+
+        rows = database.select(
+            "cds",
+            "WHERE bgc_id IN (" + ",".join(map(str, bgc_ids)) + ")",
+            props=["nt_start", "nt_end", "strand", "locus_tag", "protein_id", "product", "aa_seq"]
+        )
+
+        return rows
 
     @staticmethod
     def get_all_aligned_hsp(bgc_ids: List[int], hmm_ids: List[int],
@@ -399,6 +426,16 @@ class BGC:
                         "aa_seq": self.aa_seq
                     }
                 )
+
+        @staticmethod
+        def gen_accession(base_name, cds_row):
+            """generates an accession id for a cds. e.g.
+            >AL645882.2.cluster001:gid::pid::loc:12131939:strand:-"""
+            nt_start = cds_row["nt_start"]
+            nt_end = cds_row["nt_end"]
+            strand = cds_row["strand"]
+            return f">{base_name}:gid::pid::loc:{nt_start}:{nt_end}:strand:{strand}"
+
 
         @staticmethod
         def from_feature(feature: SeqFeature):

@@ -104,11 +104,6 @@ def insert_dataset_gbks(run, database, dataset_id, dataset_name, dataset_meta, b
                 count_gbk_exists += 1
                 bgc_ids.update(bgc_ids)
 
-    logging.info("Found %d BGCs from %d GBKs, another %d to be parsed.",
-        len(bgc_ids),
-        count_gbk_exists,
-        len(files_to_process))
-
     # parse and insert new GBKs #
     print("Parsing and inserting {} GBKs...".format(len(files_to_process)))
     mp_pool = Pool(run.options.cores)
@@ -118,6 +113,14 @@ def insert_dataset_gbks(run, database, dataset_id, dataset_name, dataset_meta, b
             bgc.save(dataset_id, database)
             new_bgcs_count += 1
             bgc_ids.add(bgc.id)
+            database.insert(
+                "run_bgc_status",
+                {
+                    "bgc_id": bgc.id,
+                    "run_id": 1,
+                    "status": 0
+                }
+            )
     database.commit_inserts()
     print("Inserted {} new BGCs.".format(new_bgcs_count))
     return bgc_ids
@@ -141,3 +144,35 @@ def initialize_db(run: Run, database: Database):
         dataset_id, bgc_ids = insert_dataset(database, dataset_name, dataset_meta)
         bgc_ids = insert_dataset_gbks(run, database, dataset_id, dataset_name, dataset_meta, bgc_ids)
         dataset_bgc_ids[dataset_name] = bgc_ids
+
+
+def get_cluster_id_list(database):
+    """Returns a list of all bgc ids in the database"""
+    bgc_ids = [
+        row["id"] for row in database.select(
+            "bgc",
+            "",
+            props=["id"])]
+    return bgc_ids
+
+
+def get_mibig_id_list(database):
+    """returns a list of all bgc ids associated with"""
+    mibig_bgc_ids = [
+        row["id"] for row in database.select(
+            "bgc",
+            "where dataset id = (",
+            "select id from dataset",
+            "where name = 'mibig'",
+            ")",
+            props=["id"])]
+    return mibig_bgc_ids
+
+def get_predicted_bgc_list(database):
+    """Returns a list of ids of genomes which already have predicted bgcs"""
+    predicted_bgcs = [
+        row["bgc_id"] for row in database.select(
+            "run_bgc_status",
+            "where status > 2",
+            props=["bgc_id"])]
+    return predicted_bgcs

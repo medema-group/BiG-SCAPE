@@ -221,29 +221,29 @@ INSERT OR IGNORE INTO enum_run_status VALUES (1, 'RUN_STARTED');
 INSERT OR IGNORE INTO enum_run_status VALUES (2, 'BIOSYN_SCANNED');
 INSERT OR IGNORE INTO enum_run_status VALUES (3, 'SUBPFAM_SCANNED');
 INSERT OR IGNORE INTO enum_run_status VALUES (4, 'FEATURES_EXTRACTED');
-INSERT OR IGNORE INTO enum_run_status VALUES (5, 'CLUSTERING_FINISHED');
-INSERT OR IGNORE INTO enum_run_status VALUES (6, 'MEMBERSHIPS_ASSIGNED');
+-- INSERT OR IGNORE INTO enum_run_status VALUES (5, 'CLUSTERING_FINISHED');
+-- INSERT OR IGNORE INTO enum_run_status VALUES (6, 'MEMBERSHIPS_ASSIGNED');
 INSERT OR IGNORE INTO enum_run_status VALUES (7, 'RUN_FINISHED');
 CREATE UNIQUE INDEX IF NOT EXISTS enumrunstatus_name ON enum_run_status(name);
 
 -- run
-CREATE TABLE IF NOT EXISTS run (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    status INTEGER NOT NULL,
-    prog_params VARCHAR(250) NOT NULL,
-    hmm_db_id INTEGER,
-    FOREIGN KEY(status) REFERENCES enum_run_status(id),
-    FOREIGN KEY(hmm_db_id) REFERENCES hmm_db(id)
-);
-CREATE INDEX IF NOT EXISTS run_hmmdb ON run(hmm_db_id, status);
+-- CREATE TABLE IF NOT EXISTS run (
+--     id INTEGER PRIMARY KEY AUTOINCREMENT,
+--     status INTEGER NOT NULL,
+--     prog_params VARCHAR(250) NOT NULL,
+--     hmm_db_id INTEGER,
+--     FOREIGN KEY(status) REFERENCES enum_run_status(id),
+--     FOREIGN KEY(hmm_db_id) REFERENCES hmm_db(id)
+-- );
+-- CREATE INDEX IF NOT EXISTS run_hmmdb ON run(hmm_db_id, status);
 
 -- run_log
-CREATE TABLE IF NOT EXISTS run_log (
-    run_id INTEGER NOT NULL,
-    time_stamp DATETIME NOT NULL,
-    message VARCHAR(500) NOT NULL
-);
-CREATE INDEX IF NOT EXISTS runlog_run ON run_log(run_id, time_stamp);
+-- CREATE TABLE IF NOT EXISTS run_log (
+--     run_id INTEGER NOT NULL,
+--     time_stamp DATETIME NOT NULL,
+--     message VARCHAR(500) NOT NULL
+-- );
+-- CREATE INDEX IF NOT EXISTS runlog_run ON run_log(run_id, time_stamp);
 
 -- run_bgc_status
 CREATE TABLE IF NOT EXISTS run_bgc_status (
@@ -272,51 +272,51 @@ CREATE INDEX IF NOT EXISTS bgc_features_hmm ON bgc_features(hmm_id, bgc_id, valu
 CREATE INDEX IF NOT EXISTS bgc_features_hmm_value ON bgc_features(value, hmm_id, bgc_id);
 
 -- clustering
-CREATE TABLE IF NOT EXISTS clustering (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    run_id INTEGER NOT NULL UNIQUE,
-    clustering_method VARCHAR(100) NOT NULL,
-    num_centroids INTEGER NOT NULL,
-    threshold REAL NOT NULL,
-    random_seed INTEGER NOT NULL,
-    FOREIGN KEY(run_id) REFERENCES run(id)
-);
-CREATE INDEX IF NOT EXISTS clustering_run ON clustering(run_id);
+-- CREATE TABLE IF NOT EXISTS clustering (
+--     id INTEGER PRIMARY KEY AUTOINCREMENT,
+--     run_id INTEGER NOT NULL UNIQUE,
+--     clustering_method VARCHAR(100) NOT NULL,
+--     num_centroids INTEGER NOT NULL,
+--     threshold REAL NOT NULL,
+--     random_seed INTEGER NOT NULL,
+--     FOREIGN KEY(run_id) REFERENCES run(id)
+-- );
+-- CREATE INDEX IF NOT EXISTS clustering_run ON clustering(run_id);
 
 -- gcf
-CREATE TABLE IF NOT EXISTS gcf (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    id_in_run INTEGER NOT NULL,
-    clustering_id INTEGER NOT NULL,
-    UNIQUE(id_in_run, clustering_id),
-    FOREIGN KEY(clustering_id) REFERENCES clustering(id)
-);
-CREATE INDEX IF NOT EXISTS gcf_clustering ON gcf(clustering_id, id_in_run);
+-- CREATE TABLE IF NOT EXISTS gcf (
+--     id INTEGER PRIMARY KEY AUTOINCREMENT,
+--     id_in_run INTEGER NOT NULL,
+--     clustering_id INTEGER NOT NULL,
+--     UNIQUE(id_in_run, clustering_id),
+--     FOREIGN KEY(clustering_id) REFERENCES clustering(id)
+-- );
+-- CREATE INDEX IF NOT EXISTS gcf_clustering ON gcf(clustering_id, id_in_run);
 
 -- gcf_models
-CREATE TABLE IF NOT EXISTS gcf_models (
-    gcf_id INTEGER NOT NULL,
-    hmm_id INTEGER NOT NULL,
-    value INTEGER NOT NULL,
-    UNIQUE(gcf_id, hmm_id),
-    FOREIGN KEY(gcf_id) REFERENCES gcf(id),
-    FOREIGN KEY(hmm_id) REFERENCES hmm(id)
-);
-CREATE INDEX IF NOT EXISTS gcf_models_gcf ON gcf_models(gcf_id, hmm_id, value);
-CREATE INDEX IF NOT EXISTS gcf_models_gcf_value ON gcf_models(value, gcf_id, hmm_id);
-CREATE INDEX IF NOT EXISTS gcf_models_hmm ON gcf_models(hmm_id, gcf_id);
-CREATE INDEX IF NOT EXISTS gcf_models_hmm_value ON gcf_models(value, hmm_id, gcf_id);
+-- CREATE TABLE IF NOT EXISTS gcf_models (
+--     gcf_id INTEGER NOT NULL,
+--     hmm_id INTEGER NOT NULL,
+--     value INTEGER NOT NULL,
+--     UNIQUE(gcf_id, hmm_id),
+--     FOREIGN KEY(gcf_id) REFERENCES gcf(id),
+--     FOREIGN KEY(hmm_id) REFERENCES hmm(id)
+-- );
+-- CREATE INDEX IF NOT EXISTS gcf_models_gcf ON gcf_models(gcf_id, hmm_id, value);
+-- CREATE INDEX IF NOT EXISTS gcf_models_gcf_value ON gcf_models(value, gcf_id, hmm_id);
+-- CREATE INDEX IF NOT EXISTS gcf_models_hmm ON gcf_models(hmm_id, gcf_id);
+-- CREATE INDEX IF NOT EXISTS gcf_models_hmm_value ON gcf_models(value, hmm_id, gcf_id);
 
 -- gcf_membership
-CREATE TABLE IF NOT EXISTS gcf_membership (
-    gcf_id INTEGER NOT NULL,
-    bgc_id INTEGER NOT NULL,
-    membership_value INTEGER NOT NULL,
-    rank INTEGER NOT NULL,
-    FOREIGN KEY(gcf_id) REFERENCES gcf(id),
-    FOREIGN KEY(bgc_id) REFERENCES bgc(id)
-);
-CREATE INDEX IF NOT EXISTS gcf_membership_gcf_rank ON gcf_membership(gcf_id, rank);
-CREATE INDEX IF NOT EXISTS gcf_membership_gcf_val ON gcf_membership(gcf_id, membership_value);
-CREATE INDEX IF NOT EXISTS gcf_membership_bgc_rank ON gcf_membership(bgc_id, rank);
-CREATE INDEX IF NOT EXISTS gcf_membership_bgc_val ON gcf_membership(bgc_id, membership_value);
+-- CREATE TABLE IF NOT EXISTS gcf_membership (
+--     gcf_id INTEGER NOT NULL,
+--     bgc_id INTEGER NOT NULL,
+--     membership_value INTEGER NOT NULL,
+--     rank INTEGER NOT NULL,
+--     FOREIGN KEY(gcf_id) REFERENCES gcf(id),
+--     FOREIGN KEY(bgc_id) REFERENCES bgc(id)
+-- );
+-- CREATE INDEX IF NOT EXISTS gcf_membership_gcf_rank ON gcf_membership(gcf_id, rank);
+-- CREATE INDEX IF NOT EXISTS gcf_membership_gcf_val ON gcf_membership(gcf_id, membership_value);
+-- CREATE INDEX IF NOT EXISTS gcf_membership_bgc_rank ON gcf_membership(bgc_id, rank);
+-- CREATE INDEX IF NOT EXISTS gcf_membership_bgc_val ON gcf_membership(bgc_id, membership_value);
