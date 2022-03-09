@@ -230,7 +230,7 @@ class Database:
 
         return db_cur.rowcount
 
-    def insert(self, table: str, data: dict):
+    def insert(self, table: str, data: dict, ignore = False):
         """execute an INSERT INTO ... VALUES ...
         !!don't use the returned IDs unless you are sure
         that the INSERTs all will be successful and there
@@ -239,7 +239,7 @@ class Database:
         new_id = self._last_indexes.get(table, 0) + 1
         self._last_indexes[table] = new_id
 
-        self._insert_queues.append((table, data, new_id))
+        self._insert_queues.append((table, data, new_id, ignore))
         if table not in self._insert_queues_index:
             self._insert_queues_index[table] = []
         self._insert_queues_index[table].append(len(self._insert_queues) - 1)
@@ -269,7 +269,7 @@ class Database:
         """perform actual commit for the insert queue"""
 
         db_cur = self._connection.cursor()
-        for table, data, _ in self._insert_queues:
+        for table, data, _, ignore in self._insert_queues:
             keys = []
             values = []
             for key, value in data.items():
@@ -277,11 +277,18 @@ class Database:
                     raise Exception("Don't specify id for INSERTs!")
                 keys.append(key)
                 values.append(value)
-            sql = "INSERT INTO {}({}) VALUES ({})".format(
-                table,
-                ",".join(keys),
-                ",".join(["?" for i in range(len(values))])
-            )
+            if ignore:
+                sql = "INSERT OR IGNORE INTO {}({}) VALUES ({})".format(
+                    table,
+                    ",".join(keys),
+                    ",".join(["?" for i in range(len(values))])
+                )
+            else:
+                sql = "INSERT INTO {}({}) VALUES ({})".format(
+                    table,
+                    ",".join(keys),
+                    ",".join(["?" for i in range(len(values))])
+                )
             db_cur.execute(sql, tuple(values))
         self._connection.commit()
         self._insert_queues = []

@@ -255,7 +255,7 @@ class BGC:
         rows = database.select(
             "cds",
             "WHERE bgc_id IN (" + ",".join(map(str, bgc_ids)) + ")",
-            props=["nt_start", "nt_end", "strand", "locus_tag", "protein_id", "product", "aa_seq"]
+            props=["id", "nt_start", "nt_end", "strand", "locus_tag", "protein_id", "product", "aa_seq"]
         )
 
         return rows

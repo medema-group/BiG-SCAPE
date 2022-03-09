@@ -62,24 +62,14 @@ CREATE TABLE IF NOT EXISTS cds (
 );
 CREATE INDEX IF NOT EXISTS cds_bgc ON cds(bgc_id,nt_start,nt_end);
 
--- hmm_db
-CREATE TABLE IF NOT EXISTS hmm_db (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    md5_biosyn_pfam CHAR(32) NOT NULL,
-    md5_sub_pfam CHAR(32) NOT NULL
-);
-
 -- hmm
 CREATE TABLE IF NOT EXISTS hmm (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     accession VARCHAR(10),
     name VARCHAR(25) NOT NULL,
-    db_id INTEGER NOT NULL,
-    model_length INTEGER NOT NULL,
-    FOREIGN KEY(db_id) REFERENCES hmm_db(id)
+    model_length INTEGER NOT NULL
+    UNIQUE(id, accession)
 );
-CREATE INDEX IF NOT EXISTS hmm_acc ON hmm(db_id, accession);
-CREATE INDEX IF NOT EXISTS hmm_name ON hmm(db_id, name);
 
 -- subpfam
 CREATE TABLE IF NOT EXISTS subpfam (
@@ -97,7 +87,8 @@ CREATE TABLE IF NOT EXISTS hsp (
     hmm_id INTEGER NOT NULL,
     bitscore REAL NOT NULL,
     FOREIGN KEY(cds_id) REFERENCES cds(id),
-    FOREIGN KEY(hmm_id) REFERENCES hmm(id)    
+    FOREIGN KEY(hmm_id) REFERENCES hmm(id),
+    UNIQUE (cds_id, hmm_id)
 );
 CREATE INDEX IF NOT EXISTS hsp_cdshmm ON hsp(cds_id, hmm_id);
 CREATE INDEX IF NOT EXISTS hsp_bitscore ON hsp(bitscore);
@@ -127,6 +118,33 @@ CREATE TABLE IF NOT EXISTS hsp_subpfam (
 );
 CREATE INDEX IF NOT EXISTS hspsubpfam_parent ON hsp_subpfam(hsp_parent_id, hsp_subpfam_id);
 CREATE INDEX IF NOT EXISTS hspsubpfam_sub ON hsp_subpfam(hsp_subpfam_id, hsp_parent_id);
+
+-- msa
+CREATE TABLE IF NOT EXISTS msa (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    cds_id INTEGER NOT NULL,
+    hmm_id INTEGER NOT NULL,
+    bitscore REAL NOT NULL,
+    FOREIGN KEY(cds_id) REFERENCES cds(id),
+    FOREIGN KEY(hmm_id) REFERENCES hmm(id)    
+);
+CREATE INDEX IF NOT EXISTS msa_cdshmm ON msa(cds_id, hmm_id);
+CREATE INDEX IF NOT EXISTS msa_bitscore ON hsp(bitscore);
+
+-- msa_alignment
+CREATE TABLE IF NOT EXISTS msa_alignment (
+    msa_id INTEGER UNIQUE NOT NULL,
+    model_start INTEGER NOT NULL,
+    model_end INTEGER NOT NULL,
+    model_gaps TEXT NOT NULL,
+    cds_start INTEGER NOT NULL,
+    cds_end INTEGER NOT NULL,
+    cds_gaps TEXT NOT NULL,
+    FOREIGN KEY(msa_id) REFERENCES msa(id)
+);
+CREATE INDEX IF NOT EXISTS msaalign_id ON msa_alignment(msa_id);
+CREATE INDEX IF NOT EXISTS msaalign_model ON msa_alignment(model_start);
+CREATE INDEX IF NOT EXISTS msaalign_cds ON msa_alignment(cds_start);
 
 -- taxon_class
 CREATE TABLE IF NOT EXISTS taxon_class (
@@ -218,44 +236,41 @@ CREATE TABLE IF NOT EXISTS enum_run_status (
     name VARCHAR(100) NOT NULL UNIQUE
 );
 INSERT OR IGNORE INTO enum_run_status VALUES (1, 'RUN_STARTED');
-INSERT OR IGNORE INTO enum_run_status VALUES (2, 'BIOSYN_SCANNED');
-INSERT OR IGNORE INTO enum_run_status VALUES (3, 'SUBPFAM_SCANNED');
-INSERT OR IGNORE INTO enum_run_status VALUES (4, 'FEATURES_EXTRACTED');
--- INSERT OR IGNORE INTO enum_run_status VALUES (5, 'CLUSTERING_FINISHED');
--- INSERT OR IGNORE INTO enum_run_status VALUES (6, 'MEMBERSHIPS_ASSIGNED');
+INSERT OR IGNORE INTO enum_run_status VALUES (2, 'FULL_HMM_SCANNED');
+INSERT OR IGNORE INTO enum_run_status VALUES (3, 'MSA_FINISHED');
+INSERT OR IGNORE INTO enum_run_status VALUES (4, 'SUBPFAM_SCANNED');
+INSERT OR IGNORE INTO enum_run_status VALUES (5, 'FEATURES_EXTRACTED');
+INSERT OR IGNORE INTO enum_run_status VALUES (6, 'CLUSTERING_FINISHED');
 INSERT OR IGNORE INTO enum_run_status VALUES (7, 'RUN_FINISHED');
 CREATE UNIQUE INDEX IF NOT EXISTS enumrunstatus_name ON enum_run_status(name);
 
--- run
--- CREATE TABLE IF NOT EXISTS run (
---     id INTEGER PRIMARY KEY AUTOINCREMENT,
---     status INTEGER NOT NULL,
---     prog_params VARCHAR(250) NOT NULL,
---     hmm_db_id INTEGER,
---     FOREIGN KEY(status) REFERENCES enum_run_status(id),
---     FOREIGN KEY(hmm_db_id) REFERENCES hmm_db(id)
--- );
--- CREATE INDEX IF NOT EXISTS run_hmmdb ON run(hmm_db_id, status);
+-- run_status
+CREATE TABLE IF NOT EXISTS run_status (
+    id INTEGER PRIMARY KEY AUTOINCREMENT
+    status INTEGER NOT NULL
+    FOREIGN KEY(status) REFERENCES 
+)
 
--- run_log
--- CREATE TABLE IF NOT EXISTS run_log (
---     run_id INTEGER NOT NULL,
---     time_stamp DATETIME NOT NULL,
---     message VARCHAR(500) NOT NULL
--- );
--- CREATE INDEX IF NOT EXISTS runlog_run ON run_log(run_id, time_stamp);
-
--- run_bgc_status
-CREATE TABLE IF NOT EXISTS run_bgc_status (
-    bgc_id INTEGER NOT NULL,
-    run_id INTEGER NOT NULL,
-    status INTEGER NOT NULL,
-    FOREIGN KEY(bgc_id) REFERENCES bgc(id),
-    FOREIGN KEY(run_id) REFERENCES run(id),
-    FOREIGN KEY(status) REFERENCES enum_run_status(id)
+-- enum_bgc_status
+CREATE TABLE IF NOT EXISTS enum_bgc_status (
+    id INTEGER PRIMARY KEY UNIQUE AUTOINCREMENT,
+    name VARCHAR(100) NOT NULL UNIQUE
 );
-CREATE INDEX IF NOT EXISTS runbgcstatus_run_status ON run_bgc_status(run_id, status, bgc_id);
-CREATE INDEX IF NOT EXISTS runbgcstatus_run_bgc ON run_bgc_status(run_id, bgc_id, status);
+INSERT OR IGNORE INTO enum_bgc_status VALUES (1, 'LOADED');
+INSERT OR IGNORE INTO enum_bgc_status VALUES (2, 'FULL_HMM_SCANNED');
+INSERT OR IGNORE INTO enum_bgc_status VALUES (3, 'SUBPFAM_SCANNED');
+INSERT OR IGNORE INTO enum_bgc_status VALUES (4, 'FEATURES_EXTRACTED');
+CREATE UNIQUE INDEX IF NOT EXISTS enumbgcstatus_name ON enum_bgc_status(name);
+
+-- bgc_status
+CREATE TABLE IF NOT EXISTS bgc_status (
+    bgc_id INTEGER NOT NULL,
+    status INTEGER NOT NULL,
+    UNIQUE(bgc_id)
+    FOREIGN KEY(bgc_id) REFERENCES bgc(id),
+    FOREIGN KEY(status) REFERENCES enum_bgc_status(id)
+);
+CREATE INDEX IF NOT EXISTS bgc_id_status ON bgc_status(bgc_id, status);
 
 -- bgc_features
 CREATE TABLE IF NOT EXISTS bgc_features (
@@ -270,53 +285,3 @@ CREATE INDEX IF NOT EXISTS bgc_features_bgc ON bgc_features(bgc_id, hmm_id, valu
 CREATE INDEX IF NOT EXISTS bgc_features_bgc_value ON bgc_features(value, bgc_id, hmm_id);
 CREATE INDEX IF NOT EXISTS bgc_features_hmm ON bgc_features(hmm_id, bgc_id, value);
 CREATE INDEX IF NOT EXISTS bgc_features_hmm_value ON bgc_features(value, hmm_id, bgc_id);
-
--- clustering
--- CREATE TABLE IF NOT EXISTS clustering (
---     id INTEGER PRIMARY KEY AUTOINCREMENT,
---     run_id INTEGER NOT NULL UNIQUE,
---     clustering_method VARCHAR(100) NOT NULL,
---     num_centroids INTEGER NOT NULL,
---     threshold REAL NOT NULL,
---     random_seed INTEGER NOT NULL,
---     FOREIGN KEY(run_id) REFERENCES run(id)
--- );
--- CREATE INDEX IF NOT EXISTS clustering_run ON clustering(run_id);
-
--- gcf
--- CREATE TABLE IF NOT EXISTS gcf (
---     id INTEGER PRIMARY KEY AUTOINCREMENT,
---     id_in_run INTEGER NOT NULL,
---     clustering_id INTEGER NOT NULL,
---     UNIQUE(id_in_run, clustering_id),
---     FOREIGN KEY(clustering_id) REFERENCES clustering(id)
--- );
--- CREATE INDEX IF NOT EXISTS gcf_clustering ON gcf(clustering_id, id_in_run);
-
--- gcf_models
--- CREATE TABLE IF NOT EXISTS gcf_models (
---     gcf_id INTEGER NOT NULL,
---     hmm_id INTEGER NOT NULL,
---     value INTEGER NOT NULL,
---     UNIQUE(gcf_id, hmm_id),
---     FOREIGN KEY(gcf_id) REFERENCES gcf(id),
---     FOREIGN KEY(hmm_id) REFERENCES hmm(id)
--- );
--- CREATE INDEX IF NOT EXISTS gcf_models_gcf ON gcf_models(gcf_id, hmm_id, value);
--- CREATE INDEX IF NOT EXISTS gcf_models_gcf_value ON gcf_models(value, gcf_id, hmm_id);
--- CREATE INDEX IF NOT EXISTS gcf_models_hmm ON gcf_models(hmm_id, gcf_id);
--- CREATE INDEX IF NOT EXISTS gcf_models_hmm_value ON gcf_models(value, hmm_id, gcf_id);
-
--- gcf_membership
--- CREATE TABLE IF NOT EXISTS gcf_membership (
---     gcf_id INTEGER NOT NULL,
---     bgc_id INTEGER NOT NULL,
---     membership_value INTEGER NOT NULL,
---     rank INTEGER NOT NULL,
---     FOREIGN KEY(gcf_id) REFERENCES gcf(id),
---     FOREIGN KEY(bgc_id) REFERENCES bgc(id)
--- );
--- CREATE INDEX IF NOT EXISTS gcf_membership_gcf_rank ON gcf_membership(gcf_id, rank);
--- CREATE INDEX IF NOT EXISTS gcf_membership_gcf_val ON gcf_membership(gcf_id, membership_value);
--- CREATE INDEX IF NOT EXISTS gcf_membership_bgc_rank ON gcf_membership(bgc_id, rank);
--- CREATE INDEX IF NOT EXISTS gcf_membership_bgc_val ON gcf_membership(bgc_id, membership_value);

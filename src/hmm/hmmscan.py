@@ -10,6 +10,9 @@ import pyhmmer
 
 from src.data import Database
 from src.data import BGC
+from src.data.hmm import from_accession
+from src.data.hsp import insert_hsp
+from src.data.status import update_bgc_status
 from src.pfam.misc import check_overlap
 
 
@@ -72,58 +75,34 @@ def run_pyhmmer_worker(input_queue, output_queue, profiles, pipeline, database: 
         if bgc_id is None:
             break
 
-        accession = BGC.get_bgc_base_name(bgc_id, database)
+        base_name = BGC.get_bgc_base_name(bgc_id, database)
+        bgc_cds_list = BGC.get_all_cds([bgc_id], database)
 
-        cds_fasta = BGC.get_all_cds_fasta([bgc_id], database)
-        cds_fasta_io = StringIO(cds_fasta)
+        sequences = []
+        for cds_row in bgc_cds_list:
+            accession = BGC.CDS.gen_accession(base_name, cds_row)
+            ds = pyhmmer.easel.TextSequence(accession=accession.encode(), name=str(cds_row["id"]).encode(), sequence=cds_row["aa_seq"]).digitize(pyhmmer.easel.Alphabet.amino())
+            sequences.append(ds)
 
-        with pyhmmer.easel.SequenceFile(cds_fasta_io) as seq_file:
-            seq_file.set_digital(alphabet)
-            try:
-                sequences = list(seq_file)
-            except ValueError:
-                logging.warning("  Parsing %s threw ValueError.", accession)
-                logging.warning("  This means something in the source fasta file is wrong.")
-                logging.warning("  A known case is a protein starting with a - instead of M.")
-                logging.warning("  For the time being, this FASTA file will be skipped")
-                output_queue.put(bgc_id)
-                continue
-            domains = pyhmmer_search_hmm(accession, profiles, sequences, pipeline)
-            del sequences
+        domains = pyhmmer_search_hmm(accession, profiles, sequences, pipeline)
 
-        # pfd_matrix = []
-        # for domain in domains:
-        #     score = f"{domain.score:.2f}"
-        #     env_from = str(domain.env_from)
-        #     env_to = str(domain.env_to)
-        #     pfam_id = domain.alignment.hmm_accession.decode()
-        #     domain_name = domain.alignment.hmm_name.decode()
+        hsps = list()
+        for domain in domains:
+            domain: pyhmmer.plan7.Domain
+            # cds id
+            cds_id = int(domain.alignment.target_name.decode())
 
-        #     header = domain.alignment.target_name.decode()
-        #     header_list = header.split(":")
-        #     try:
-        #         gene_id = header_list[header_list.index("gid")+1]
-        #     except ValueError:
-        #         logging.warning("  No gene ID in %s", base_name)
-        #         gene_id = ''
-        #     gene_start = header_list[header_list.index("loc")+1]
-        #     gene_end = header_list[header_list.index("loc")+2]
+            # hmm id
+            hmm_accession = domain.alignment.hmm_accession.decode()
+            hmm = from_accession(database, hmm_accession)
+            hmm_id = hmm["id"]
 
-        #     pfd_row = [base_name]
-        #     pfd_row.append(score)
-        #     pfd_row.append(gene_id)
-        #     pfd_row.append(env_from)
-        #     pfd_row.append(env_to)
-        #     pfd_row.append(pfam_id)
-        #     pfd_row.append(domain_name)
-        #     pfd_row.append(gene_start)
-        #     pfd_row.append(gene_end)
-        #     pfd_row.append(header)
+            # score
+            bitscore = domain.score
 
-        #     pfd_matrix.append(pfd_row)
-        #     del pfd_row
+            hsps.append((cds_id, hmm_id, bitscore))
 
-        output_queue.put(bgc_id)
+        output_queue.put((bgc_id, hsps))
 
 
 def run_pyhmmer(run, database: Database, ids_todo):
@@ -141,25 +120,25 @@ def run_pyhmmer(run, database: Database, ids_todo):
     with pyhmmer.plan7.HMMFile(hmm_file_path) as hmm_file:
         profiles = list(hmm_file.optimized_profiles())
 
+
     pipeline = pyhmmer.plan7.Pipeline(pyhmmer.easel.Alphabet.amino(), Z=len(profiles), bit_cutoffs="trusted")
 
-    # num_processes = run.options.cores
+    num_processes = run.options.cores
 
-    # working_q = Queue(num_processes)
+    working_q = Queue(num_processes)
 
     num_tasks = len(ids_todo)
 
-    # output_q = Queue(num_tasks)
+    output_q = Queue(num_tasks)
 
-    # processes = []
-    # for thread_num in range(num_processes):
-    #     thread_name = f"distance_thread_{thread_num}"
-    #     logging.debug("Starting %s", thread_name)
-    #     new_process = Process(target=run_pyhmmer_worker, args=(working_q, output_q, profiles, pipeline, database))
-    #     processes.append(new_process)
-    #     new_process.start()
+    processes = []
+    for thread_num in range(num_processes):
+        thread_name = f"distance_thread_{thread_num}"
+        logging.debug("Starting %s", thread_name)
+        new_process = Process(target=run_pyhmmer_worker, args=(working_q, output_q, profiles, pipeline, database))
+        processes.append(new_process)
+        new_process.start()
 
-    # pfd_matrix = []
     id_idx = 0
     ids_done = 0
 
@@ -170,27 +149,23 @@ def run_pyhmmer(run, database: Database, ids_todo):
         if all_tasks_put and all_tasks_done:
             break
         
-        if not all_tasks_put:
-        # if not working_q.full() and not all_tasks_put:
+        # if not all_tasks_put:
+        if not working_q.full() and not all_tasks_put:
             bgc_id = ids_todo[id_idx]
-            # working_q.put(bgc_id)
+            working_q.put(bgc_id)
             id_idx += 1
-            # if not working_q.full():
-            #     continue
-            base_name = BGC.get_bgc_base_name(bgc_id, database)
-            bgc_cds_list = BGC.get_all_cds([bgc_id], database)
+            if not working_q.full():
+                continue
+           
+        if not output_q.empty():
+            bgc_id, hsps = output_q.get()
+            # insert
+            for hsp in hsps:
+                cds_id, hmm_id, bitscore = hsp
+                insert_hsp(database, cds_id, hmm_id, bitscore)
 
-            sequences = []
-            for cds_row in bgc_cds_list:
-                accession = BGC.CDS.gen_accession(base_name, cds_row)
-                ds = pyhmmer.easel.TextSequence(accession=accession.encode(), sequence=cds_row["aa_seq"]).digitize(pyhmmer.easel.Alphabet.amino())
-                sequences.append(ds)
-
-            domains = pyhmmer_search_hmm(accession, profiles, sequences, pipeline)
-
-            for domain in domains:
-                hmm_accession = domain.alignment.hmm_accession.decode()
-                hmm_id = 
+            # update bgc status when done
+            update_bgc_status(database, bgc_id, 2)
 
             ids_done += 1
 
@@ -198,13 +173,15 @@ def run_pyhmmer(run, database: Database, ids_todo):
             if ids_done % math.ceil(num_tasks / 10) == 0:
                 percent_done = ids_done / num_tasks * 100
                 logging.info("  %d%% (%d/%d)", percent_done, ids_done, num_tasks)
-            # logging.info("adding result (now %d)", len(network_matrix))
+        # logging.info("adding result (now %d)", len(network_matrix))
+    
+    database.commit_inserts()
 
     # clean up threads
-    # for thread_num in range(num_processes):
-    #     working_q.put((None, None))
+    for thread_num in range(num_processes):
+        working_q.put(None)
 
-    # for process in processes:
-    #     process.join()
-    #     thread_name = process.name
-    #     logging.debug("Thread %s stopped", thread_name)
+    for process in processes:
+        process.join()
+        thread_name = process.name
+        logging.debug("Thread %s stopped", thread_name)

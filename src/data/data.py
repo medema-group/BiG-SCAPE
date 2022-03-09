@@ -1,4 +1,4 @@
-"""Module containing helper functions to load data into the database
+"""Module containing general helper functions to load input data into the database
 """
 
 import logging
@@ -9,6 +9,7 @@ from os import path
 from multiprocessing import Pool
 
 from src.big_scape import Run
+from src.data.hmm import load_hmms
 from .database import Database
 from .bgc import BGC
 
@@ -64,7 +65,7 @@ def insert_dataset(database, dataset_name, dataset_meta):
 
     return dataset_id, bgc_ids
 
-def insert_dataset_gbks(run, database, dataset_id, dataset_name, dataset_meta, bgc_ids):
+def insert_dataset_gbks(run, database: Database, dataset_id, dataset_name, dataset_meta, bgc_ids):
     """Performs the insertion of GBK information into the database"""
     new_bgcs_count = 0
     files_to_process = []
@@ -114,16 +115,22 @@ def insert_dataset_gbks(run, database, dataset_id, dataset_name, dataset_meta, b
             new_bgcs_count += 1
             bgc_ids.add(bgc.id)
             database.insert(
-                "run_bgc_status",
+                "bgc_status",
                 {
                     "bgc_id": bgc.id,
-                    "run_id": 1,
-                    "status": 0
-                }
+                    "status": 1
+                }, True
             )
     database.commit_inserts()
     print("Inserted {} new BGCs.".format(new_bgcs_count))
     return bgc_ids
+
+def create_bgc_status(db: Database, bgc_ids):
+    """Create rows for the bgc_status table for each id passed in bgc_ids
+    """
+    # dictionary of {bgc_id: 1}
+    bgc_ids_dict = {bgc_id: 1 for bgc_id in bgc_ids}
+    db.insert("bgc_status", bgc_ids_dict)
 
 def initialize_db(run: Run, database: Database):
     """Fills the database with input data"""
@@ -133,7 +140,7 @@ def initialize_db(run: Run, database: Database):
             "path": run.mibig.gbk_path,
             "desc": "Mibig dataset"
         }
-    
+
     datasets["input"] = {
         "path": run.directories.input,
         "desc": "Input files"
@@ -143,7 +150,9 @@ def initialize_db(run: Run, database: Database):
     for dataset_name, dataset_meta in datasets.items():
         dataset_id, bgc_ids = insert_dataset(database, dataset_name, dataset_meta)
         bgc_ids = insert_dataset_gbks(run, database, dataset_id, dataset_name, dataset_meta, bgc_ids)
+        # create_bgc_status(database, bgc_ids)
         dataset_bgc_ids[dataset_name] = bgc_ids
+
 
 
 def get_cluster_id_list(database):
@@ -157,7 +166,7 @@ def get_cluster_id_list(database):
 
 
 def get_mibig_id_list(database):
-    """returns a list of all bgc ids associated with"""
+    """returns a list of all bgc ids associated with MIBiG input files"""
     mibig_bgc_ids = [
         row["id"] for row in database.select(
             "bgc",
@@ -167,12 +176,3 @@ def get_mibig_id_list(database):
             ")",
             props=["id"])]
     return mibig_bgc_ids
-
-def get_predicted_bgc_list(database):
-    """Returns a list of ids of genomes which already have predicted bgcs"""
-    predicted_bgcs = [
-        row["bgc_id"] for row in database.select(
-            "run_bgc_status",
-            "where status > 2",
-            props=["bgc_id"])]
-    return predicted_bgcs

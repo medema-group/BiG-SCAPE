@@ -133,6 +133,8 @@ if __name__ == "__main__":
     # this should be the only occasion where options is needed. no further than this.
     RUN.init(OPTIONS)
 
+    logging.info("Options set to use %d cores", RUN.options.cores)
+
     # preparation is done. run timing formally starts here
     RUN.start()
 
@@ -146,24 +148,27 @@ if __name__ == "__main__":
     if RUN.mibig.use_mibig:
         mibig.extract_mibig(RUN)
 
+    # load the input data into the database
     data.initialize_db(RUN, DB)
 
-    
+    # load hmm information into databse
+    # first load the full list of accessions in the hmm
+    # data.load_hmms(RUN, DB)
+    # TODO: find the biosynthetic pfams and load the accessions into the database as well
+
     # base name as a list and as a set
     # also used in all vs all analysis
     BGC_IDS = data.get_cluster_id_list(DB)
 
 
     ### Step 2: Run hmmscan
-    # find which genomes have already had their domains predicted
+    # find which sequences have already had their domains predicted
     PREDICTED_IDS = data.get_predicted_bgc_list(DB)
 
     # find the difference
     IDS_TODO = list(set(BGC_IDS) - set(PREDICTED_IDS))
 
-    logging.info("Options set to use %d cores", RUN.options.cores)
-
-    # if any are there, run hmmscan
+    # run hmmscan if there are any sequences which have not yet been processed by hmmscan
     if len(IDS_TODO) > 0:
         logging.info("Predicting domains using hmmsearch")
         # this function blocks the main thread until finished
@@ -172,18 +177,10 @@ if __name__ == "__main__":
     else:
         logging.info(" All files were processed by hmmscan. Skipping step...")
 
-    # If number of pfd files did not change, no new sequences were added to the
-    #  domain fastas and we could try to resume the multiple alignment phase
-    # baseNames have been pruned of BGCs with no domains that might've been added temporarily
-    TRY_RESUME_MULTIPLE_ALIGNMENT = False
-    # get the fasta files that now have an asscociated pfs & pfd file
-    SEARCHED_THIS_RUN = hmm.get_searched_fasta_files(RUN, CACHED_FASTA_FILES)
-    SEARCHED_THIS_RUN = SEARCHED_THIS_RUN - SEARCHED_FASTAS
-    # check if pfd files were unchanged
-    PFD_FILES_UNCHANGED = len(SEARCHED_THIS_RUN) == 0
 
-    DOMAIN_FASTAS_GENERATED = hmm.get_cached_domain_fasta_files(RUN)
-    DOMAIN_FASTAS_NOT_EMPTY = len(DOMAIN_FASTAS_GENERATED) > 0
+    ALIGNED_IDS = data.get_aligned_bgc_list(DB)
+
+    sys.exit()
     
     if not RUN.options.skip_ma:
         if PFD_FILES_UNCHANGED and DOMAIN_FASTAS_NOT_EMPTY:
