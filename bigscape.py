@@ -159,7 +159,7 @@ if __name__ == "__main__":
     # base name as a list and as a set
     # also used in all vs all analysis
     BGC_IDS = data.get_cluster_id_list(DB)
-
+    logging.info("Working with %d total bgcs", len(BGC_IDS))
 
     ### Step 2: Run hmmscan
     # find which sequences have already had their domains predicted

@@ -65,12 +65,11 @@ def insert_dataset(database, dataset_name, dataset_meta):
 
     return dataset_id, bgc_ids
 
-def insert_dataset_gbks(run, database: Database, dataset_id, dataset_name, dataset_meta, bgc_ids):
-    """Performs the insertion of GBK information into the database"""
-    new_bgcs_count = 0
-    files_to_process = []
-    count_gbk_exists = 0
-
+def list_gbk_files(data_path):
+    """Returns a list of full paths to gbk files under a certain directory
+    This lists files recursively (also in directories of directories)
+    """
+    files = []
     # define eligible regexes for clustergbks
     eligible_regexes = [re.compile(rgx) for rgx in [
         "^BGC[0-9]{7}\.?[0-9]?$",  # MIBiG
@@ -80,7 +79,7 @@ def insert_dataset_gbks(run, database: Database, dataset_id, dataset_name, datas
 
     # fetch gbk files
     for gbk_full_path in glob.iglob(path.join(
-            dataset_meta["path"],
+            data_path,
             "**/*.gbk"),
             recursive=True):
 
@@ -94,19 +93,46 @@ def insert_dataset_gbks(run, database: Database, dataset_id, dataset_name, datas
 
         # second check: see if already exists in db
         if eligible_file:
-            gbk_path = path.join(path.dirname(gbk_full_path).split("/")[-1], path.basename(gbk_full_path))
-            # note: this check is turned off for now,
-            # see above note
-            # check_gbk_exists(dataset_id, gbk_path, database)
-            bgc_ids = set()
-            if len(bgc_ids) < 1:
-                files_to_process.append((gbk_path, gbk_full_path))
-            else:
-                count_gbk_exists += 1
-                bgc_ids.update(bgc_ids)
+            files.append(gbk_full_path)
+
+    return files
+
+def check_gbk_exists(run, database: Database, dataset_id: int, gbk_path: str):
+    """Returns the presence of a given gbk file in the database"""
+    gbk_name = path.splitext(gbk_path)[0]
+    names = database.select("bgc",
+                            f"where dataset_id = {dataset_id}\
+                              and name = \"{gbk_name}\"")
+    return len(names) > 0
+
+def insert_dataset_gbks(run, database: Database, dataset_id, dataset_name, dataset_meta, bgc_ids):
+    """Performs the insertion of GBK information into the database"""
+    new_bgcs_count = 0
+    files_to_process = []
+    count_gbk_exists = 0
+
+
+    for gbk_full_path in list_gbk_files(dataset_meta["path"]):
+        gbk_path = path.join(path.dirname(gbk_full_path).split("/")[-1], path.basename(gbk_full_path))
+        # note: this check is turned off for now,
+        # see above note
+
+        bgc_ids = set()
+        if check_gbk_exists(run, database, dataset_id, gbk_path):
+            count_gbk_exists += 1
+            bgc_ids.update(bgc_ids)
+        else:
+            files_to_process.append((gbk_path, gbk_full_path))
+
+    if len(files_to_process) == 0:
+        logging.info("Found no new GBK files.")
+        return
+
+    if count_gbk_exists > 0:
+        logging.info("Found %d existing GBKs...", count_gbk_exists)
 
     # parse and insert new GBKs #
-    print("Parsing and inserting {} GBKs...".format(len(files_to_process)))
+    logging.info("Parsing and inserting %d new GBKs...", len(files_to_process))
     mp_pool = Pool(run.options.cores)
     pool_results = mp_pool.map(parse_input_gbk, files_to_process)
     for file_path, bgcs in pool_results:
@@ -122,7 +148,7 @@ def insert_dataset_gbks(run, database: Database, dataset_id, dataset_name, datas
                 }, True
             )
     database.commit_inserts()
-    print("Inserted {} new BGCs.".format(new_bgcs_count))
+    logging.info("Inserted %d new BGCs.", new_bgcs_count)
     return bgc_ids
 
 def create_bgc_status(db: Database, bgc_ids):
@@ -134,6 +160,8 @@ def create_bgc_status(db: Database, bgc_ids):
 
 def initialize_db(run: Run, database: Database):
     """Fills the database with input data"""
+    logging.debug("Initializing database")
+
     datasets = dict()
     if run.mibig.use_mibig:
         datasets["mibig"] = {
@@ -146,12 +174,10 @@ def initialize_db(run: Run, database: Database):
         "desc": "Input files"
     }
 
-    dataset_bgc_ids = dict()
     for dataset_name, dataset_meta in datasets.items():
         dataset_id, bgc_ids = insert_dataset(database, dataset_name, dataset_meta)
         bgc_ids = insert_dataset_gbks(run, database, dataset_id, dataset_name, dataset_meta, bgc_ids)
-        # create_bgc_status(database, bgc_ids)
-        dataset_bgc_ids[dataset_name] = bgc_ids
+
 
 
 
