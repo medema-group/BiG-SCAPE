@@ -2,6 +2,7 @@ import os
 from collections import defaultdict
 
 def stockholm_parser(stk_file):
+    """shoo"""
     reference = ""
     algn_dict = defaultdict(str)
     algn_file = stk_file[:-3] + 'algn'

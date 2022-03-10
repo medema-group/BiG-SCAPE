@@ -2,5 +2,5 @@
 from .fileprocessing import get_cached_fasta_files, get_cached_domain_fasta_files, get_fasta_files_to_process, check_fasta_files, get_searched_fasta_files
 # pfd and pfs
 from .fileprocessing import check_pfd_files
-from .hmmalign import do_multiple_align, launch_hmmalign, stockholm_parser, read_aligned_files
+from .hmmalign import do_multiple_align, launch_hmmalign, stockholm_parser
 from .hmmscan import pyhmmer_hmmpress, run_pyhmmer

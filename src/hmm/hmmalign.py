@@ -1,6 +1,7 @@
 import logging
 import math
 import os
+import string
 import subprocess
 import sys
 import pyhmmer
@@ -8,128 +9,117 @@ import pyhmmer
 from multiprocessing import Pool, Process, Queue
 from functools import partial
 from glob import glob
+from src.data.cds import gen_accession, get_cds_rows
+from src.data.database import Database
+from src.data.hsp import get_multiple_align_hsps
+from src.data.msa import insert_msa
+from src.data.status import update_bgc_status
 
 from src.utility import get_fasta_keys, fasta_parser
 from src.pfam.stockholm import stockholm_parser
 
+def generate_task_list(hsp_rows):
+    """Generates a task list suitable for launch_hmmalign from a list of rows from the hsp table
+    This is in the form of a list with the following structure:
+    [(accession, [data row])]
+    """
+    # first convert relevant information into a dictionary
+    data_dict = dict()
+    for row in hsp_rows:
+        if row["accession"] not in data_dict:
+            data_dict[row["accession"]] = []
+        data_dict[row["accession"]].append(row)
+    task_list = []
+    for accession, rows in data_dict.items():
+        task_list.append((accession, rows))
 
-def do_multiple_align(run, try_resume):
-    """Perform multiple alignment of domain sequences
+    return task_list
+
+def do_multiple_align(run, database: Database, hsp_ids: list()):
+    """Perform multiple alignment of high scoring protein domain sequences
 
     inputs:
         run: run details for this execution of BiG-SCAPE
-        try_resume: boolean indicating if BiG-SCAPE detected an interrupted alignment
+        database: database object for this data set
+        hsp_ids: List of high scoring protein domains to analyze
     """
-    logging.info("Performing multiple alignment of domain sequences")
-    # obtain all fasta files with domain sequences
-    domain_sequence_list = set(glob(os.path.join(run.directories.domains, "*.fasta")))
+    logging.info(" Performing multiple alignment of domain sequences")
 
-    # compare with .algn set of files. Maybe resuming is possible if
-    # no new sequences were added
-    if try_resume:
-        temp_aligned = set(glob(os.path.join(run.directories.domains, "*.algn")))
+    # remove any hmms with only one bgc
+    hsp_rows = get_multiple_align_hsps(database)
+    algn_task_list = generate_task_list(hsp_rows)
 
-        if len(temp_aligned) > 0:
-            logging.info(" Found domain fasta files without corresponding alignments")
+    # quitting early if there are no alignments left.
+    if len(algn_task_list) == 0:
+        logging.info(" No alignments actually need to be done")
+        return
 
-            for algn_file in temp_aligned:
-                if os.path.getsize(algn_file) > 0:
-                    domain_sequence_list.remove(algn_file[:-5]+".fasta")
 
-        temp_aligned.clear()
-
-    # Try to further reduce the set of domain fastas that need alignment
-    sequence_tag_list = set()
-    header_list = []
-    domain_sequence_list_temp = domain_sequence_list.copy()
-    for domain_file in domain_sequence_list_temp:
-        domain_name = ".".join(domain_file.split(os.sep)[-1].split(".")[:-1])
-
-        # fill fasta_dict...
-        with open(domain_file, "r") as fasta_handle:
-            header_list = get_fasta_keys(fasta_handle)
-
-        # Get the BGC name from the sequence tag. The form of the tag is:
-        # >BGCXXXXXXX_BGCXXXXXXX_ORF25:gid...
-        sequence_tag_list = set(s.split("_ORF")[0] for s in header_list)
-
-        # ...to find out how many sequences do we actually have
-        if len(sequence_tag_list) == 1:
-            # avoid multiple alignment if the domains all belong to the same BGC
-            domain_sequence_list.remove(domain_file)
-
-            logging.debug(" Skipping Multiple Alignment for %s \
-                   (appears only in one BGC)", domain_name)
-
-    sequence_tag_list.clear()
-    del header_list[:]
-
-    domain_sequence_list_temp.clear()
-
-    # Do the multiple alignment
     stop_flag = False
-    if len(domain_sequence_list) > 0:
-        logging.info("Using hmmalign")
-        # load the hmm profiles
-        hmm_file_path = os.path.join(run.directories.pfam, "Pfam-A.hmm")
-        # get hmm profiles
+    logging.info(" Using hmmalign")
+    # load the hmm profiles
+    hmm_file_path = os.path.join(run.directories.pfam, "Pfam-A.hmm")
+    # get hmm profiles
 
-        # load the hmm file
-        with pyhmmer.plan7.HMMFile(hmm_file_path) as hmm_file:
-            profiles = list(hmm_file)
+    # load the hmm file
+    with pyhmmer.plan7.HMMFile(hmm_file_path) as hmm_file:
+        profiles = list(hmm_file)
 
-        # we will pass the relevant profiles to the subprocesses later on
-        # so we want to assemble a dictionary of profiles
-        profile_dictionary = dict()
-        for profile in profiles:
-            profile_accession = profile.accession.decode()
-            profile_dictionary[profile_accession] = profile
-        # clear this data
-        del profiles
+    # we will pass the relevant profiles to the subprocesses later on
+    # so we want to assemble a dictionary of profiles
+    profile_dictionary = dict()
+    for profile in profiles:
+        profile_accession = profile.accession.decode()
+        profile_dictionary[profile_accession] = profile
+    # clear this data
+    del profiles
 
-        launch_hmmalign(run, domain_sequence_list, profile_dictionary)
+    # hand off to the thread handler
+    launch_hmmalign(run, algn_task_list, profile_dictionary, database)
 
-        # verify all tasks were completed by checking existance of alignment files
-        for domain_file in domain_sequence_list:
-            if not os.path.isfile(domain_file[:-6]+".algn"):
-                logging.error("   %s.algn could not be found \
-                    (possible issue with aligner).", domain_file[:-6])
-                stop_flag = True
-        if stop_flag:
-            sys.exit(1)
-    else:
-        logging.info(" No domain fasta files found to align")
+def process_algn_string(algn_string: str):
+    """removes any model gaps from the alignment string and returns a string with only cds gaps"""
+    return algn_string.translate(str.maketrans('', '', string.ascii_lowercase + "."))
 
-def launch_hmmalign_worker(input_queue, output_queue, profile_dict):
+def launch_hmmalign_worker(input_queue, output_queue, profile_dict, database):
     """worker for the run_pyhmmer method"""
     alphabet = pyhmmer.easel.Alphabet.amino()
     while True:
-        domain_fasta, temp = input_queue.get(True)
-        if domain_fasta is None:
+        accession, hsp_rows = input_queue.get(True)
+        if accession is None:
             break
 
-        base_name = ".".join(domain_fasta.split(os.sep)[-1].split(".")[:-1])
-        profile = profile_dict[base_name]
-        with pyhmmer.easel.SequenceFile(domain_fasta) as seq_file:
-            seq_file.set_digital(alphabet)
-            sequences = list(seq_file)
+        # get profile
+        profile = profile_dict[accession]
 
-            # do the alignment
-            msa = pyhmmer.hmmer.hmmalign(profile, sequences)
-
-            # write stk TODO: remove, write stuff directly
-            domain_file_stk = domain_fasta[:-6]+".stk"
-            with open(domain_file_stk, "wb") as stk_file:
-                msa.write(stk_file, "stockholm")
-
-            # parse stockholm file
-            stockholm_parser(domain_file_stk)
-
-            # done, write something to output
-            output_queue.put((domain_fasta, None))
+        # get hmm_id
+        hmm_id = hsp_rows[0]["hmm_id"]
 
 
-def launch_hmmalign(run, domain_sequence_set, profile_dict):
+        # get cds sequences
+        cds_ids = [hsp_row["cds_id"] for hsp_row in hsp_rows]
+        cds_rows = get_cds_rows(database, cds_ids)
+
+        sequences = list()
+        for cds_row in cds_rows:
+            ds = pyhmmer.easel.TextSequence(name=str(cds_row["id"]).encode(), sequence=cds_row["aa_seq"]).digitize(pyhmmer.easel.Alphabet.amino())
+            sequences.append(ds)
+
+
+        # do the alignment
+        msa = pyhmmer.hmmer.hmmalign(profile, sequences)
+
+        alignments = []
+        for idx, alignment in enumerate(msa.alignment):
+            cds_id = msa.sequences[idx].name.decode()
+            algn_string = process_algn_string(alignment)
+            alignments.append((cds_id, hmm_id, algn_string))
+
+        # done, write something to output
+        output_queue.put(alignments)
+
+
+def launch_hmmalign(run, algn_task_list, profile_dict, database: Database):
     """
     Launches instances of hmmalign with multiprocessing.
     Note that the domains parameter contains the .fasta extension
@@ -140,48 +130,54 @@ def launch_hmmalign(run, domain_sequence_set, profile_dict):
 
     working_q = Queue(num_processes)
 
-    domain_sequence_list = list(domain_sequence_set)
-    num_tasks = len(domain_sequence_list)
+    num_tasks = len(algn_task_list)
 
     output_q = Queue(num_tasks)
 
     processes = []
     for thread_num in range(num_processes):
-        thread_name = f"distance_thread_{thread_num}"
+        thread_name = f"MSA_thread_{thread_num}"
         logging.debug("Starting %s", thread_name)
-        new_process = Process(target=launch_hmmalign_worker, args=(working_q, output_q, profile_dict))
+        new_process = Process(target=launch_hmmalign_worker, args=(working_q, output_q, profile_dict, database))
         processes.append(new_process)
         new_process.start()
 
-    fasta_idx = 0
-    fastas_done = 0
+    task_idx = 0
+    tasks_done = 0
 
     while True:
-        all_tasks_put = fasta_idx == num_tasks
-        all_tasks_done = fastas_done == num_tasks
+        all_tasks_put = task_idx == num_tasks
+        all_tasks_done = tasks_done == num_tasks
 
         if all_tasks_put and all_tasks_done:
             break
 
         if not working_q.full() and not all_tasks_put:
-            fasta_file = domain_sequence_list[fasta_idx]
-            working_q.put((fasta_file, None))
-            fasta_idx += 1
+            task = algn_task_list[task_idx]
+            working_q.put(task)
+            task_idx += 1
             if not working_q.full():
                 continue
 
         if not output_q.empty():
-            fasta_file, temp = output_q.get()
-        
-            fastas_done += 1
+            alignments = output_q.get()
+            for alignment in alignments:
+                cds_id, hmm_id, algn_string = alignment
+
+                insert_msa(database, cds_id, hmm_id, algn_string)
+
+            tasks_done += 1
 
             # print progress every 10%
-            if fastas_done % math.ceil(num_tasks / 10) == 0:
-                percent_done = fastas_done / num_tasks * 100
-                logging.info("  %d%% (%d/%d)", percent_done, fastas_done, num_tasks)
+            if tasks_done % math.ceil(num_tasks / 10) == 0:
+                percent_done = tasks_done / num_tasks * 100
+                logging.info("  %d%% (%d/%d)", percent_done, tasks_done, num_tasks)
+
+    # commit changes to database
+    database.commit_inserts()
 
     # clean up threads
-    for thread_num in range(num_processes):
+    for thread_num in range(num_processes * 2):
         working_q.put((None, None))
 
     for process in processes:
@@ -189,17 +185,3 @@ def launch_hmmalign(run, domain_sequence_set, profile_dict):
         thread_name = process.name
         logging.debug("Thread %s stopped", thread_name)
 
-
-def read_aligned_files(run):
-    aligned_domain_seqs = {} # Key: specific domain sequence label. Item: aligned sequence
-    aligned_files_list = glob(os.path.join(run.directories.domains, "*.algn"))
-    if len(aligned_files_list) == 0:
-        logging.error("No aligned sequences found in the domain folder (run without the --skip_ma \
-                 parameter or point to the correct output folder)")
-        sys.exit(1)
-    for aligned_file in aligned_files_list:
-        with open(aligned_file, "r") as aligned_file_handle:
-            fasta_dict = fasta_parser(aligned_file_handle)
-            for header in fasta_dict:
-                aligned_domain_seqs[header] = fasta_dict[header]
-    return aligned_domain_seqs

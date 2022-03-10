@@ -178,6 +178,8 @@ def initialize_db(run: Run, database: Database):
         dataset_id, bgc_ids = insert_dataset(database, dataset_name, dataset_meta)
         bgc_ids = insert_dataset_gbks(run, database, dataset_id, dataset_name, dataset_meta, bgc_ids)
 
+    # load_hmms(run, database)
+
 
 
 

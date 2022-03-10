@@ -67,7 +67,7 @@ CREATE TABLE IF NOT EXISTS hmm (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     accession VARCHAR(10),
     name VARCHAR(25) NOT NULL,
-    model_length INTEGER NOT NULL
+    model_length INTEGER NOT NULL,
     UNIQUE(id, accession)
 );
 
@@ -124,27 +124,12 @@ CREATE TABLE IF NOT EXISTS msa (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     cds_id INTEGER NOT NULL,
     hmm_id INTEGER NOT NULL,
-    bitscore REAL NOT NULL,
+    algn_string TEXT NOT NULL,
     FOREIGN KEY(cds_id) REFERENCES cds(id),
     FOREIGN KEY(hmm_id) REFERENCES hmm(id)    
 );
 CREATE INDEX IF NOT EXISTS msa_cdshmm ON msa(cds_id, hmm_id);
 CREATE INDEX IF NOT EXISTS msa_bitscore ON hsp(bitscore);
-
--- msa_alignment
-CREATE TABLE IF NOT EXISTS msa_alignment (
-    msa_id INTEGER UNIQUE NOT NULL,
-    model_start INTEGER NOT NULL,
-    model_end INTEGER NOT NULL,
-    model_gaps TEXT NOT NULL,
-    cds_start INTEGER NOT NULL,
-    cds_end INTEGER NOT NULL,
-    cds_gaps TEXT NOT NULL,
-    FOREIGN KEY(msa_id) REFERENCES msa(id)
-);
-CREATE INDEX IF NOT EXISTS msaalign_id ON msa_alignment(msa_id);
-CREATE INDEX IF NOT EXISTS msaalign_model ON msa_alignment(model_start);
-CREATE INDEX IF NOT EXISTS msaalign_cds ON msa_alignment(cds_start);
 
 -- taxon_class
 CREATE TABLE IF NOT EXISTS taxon_class (
@@ -244,16 +229,9 @@ INSERT OR IGNORE INTO enum_run_status VALUES (6, 'CLUSTERING_FINISHED');
 INSERT OR IGNORE INTO enum_run_status VALUES (7, 'RUN_FINISHED');
 CREATE UNIQUE INDEX IF NOT EXISTS enumrunstatus_name ON enum_run_status(name);
 
--- run_status
-CREATE TABLE IF NOT EXISTS run_status (
-    id INTEGER PRIMARY KEY AUTOINCREMENT
-    status INTEGER NOT NULL
-    FOREIGN KEY(status) REFERENCES 
-)
-
 -- enum_bgc_status
 CREATE TABLE IF NOT EXISTS enum_bgc_status (
-    id INTEGER PRIMARY KEY UNIQUE AUTOINCREMENT,
+    id INTEGER PRIMARY KEY UNIQUE,
     name VARCHAR(100) NOT NULL UNIQUE
 );
 INSERT OR IGNORE INTO enum_bgc_status VALUES (1, 'LOADED');

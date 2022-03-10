@@ -34,3 +34,46 @@ def insert_hsp(database: Database, cds_id: int, hmm_id: int, bitscore: float):
         "bitscore": bitscore
     }
     database.insert("hsp", entry, True)
+
+def insert_hsp_alignment(database: Database, hsp_id, model_start, model_end, model_gaps, cds_start, cds_end, cds_gaps):
+    """Inserts (or ignores if already there) a new high scoring protein into the database"""
+    entry = {
+        "hsp_id": hsp_id,
+        "model_start": model_start,
+        "model_end": model_end,
+        "model_gaps": model_gaps,
+        "cds_start": cds_start,
+        "cds_end": cds_end,
+        "cds_gaps": cds_gaps
+    }
+    database.insert("hsp_alignment", entry, True)
+
+def get_hsp_id_list(database):
+    """Returns a list of all hsp ids"""
+    return [row["id"] for row in database.select("hsp", "", props=["id"])]
+
+def get_hsp_id(database, cds_id, hmm_id):
+    """Returns an hsp id based on a given cds id and hmm id"""
+    res = database.select("hsp", f"where cds_id = {cds_id} and hmm_id = {hmm_id}", props=["id"])
+    if len(res) == 0:
+        return None
+    else:
+        return res[0]["id"]
+
+
+
+def get_multiple_align_hsps(database: Database):
+    """Returns the rows in the hsp table, joined with the hmm table for accession info
+    This also leaves out any rows which have an hmm_id that only occurs once
+    """
+    # subquery to get a count of hmms (protein domains)
+    # done by grouping on hmm_id. if there is only one occurence, it should be removed
+    sub_table_query = "hsp \
+                       JOIN (SELECT hmm_id AS hmm_count_id, count(*) AS hmmcount \
+                       FROM hsp \
+                       GROUP BY hmm_count_id)\
+                       ON hmm_count_id = hmm_id\
+                       JOIN hmm\
+                       ON hmm.id = hmm_id"
+    rows = database.select(sub_table_query, "WHERE hmmcount > 1", props=["hsp.id", "cds_id", "hmm_id", "hmm.accession"])
+    return rows

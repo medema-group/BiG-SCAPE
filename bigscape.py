@@ -170,39 +170,38 @@ if __name__ == "__main__":
 
     # run hmmscan if there are any sequences which have not yet been processed by hmmscan
     if len(IDS_TODO) > 0:
-        logging.info("Predicting domains using hmmsearch")
+        logging.info("Predicting %d domains using hmmsearch", len(IDS_TODO))
         # this function blocks the main thread until finished
         hmm.run_pyhmmer(RUN, DB, IDS_TODO)
         logging.info(" Finished predicting domains.")
     else:
         logging.info(" All files were processed by hmmscan. Skipping step...")
 
+    # get a list of high scoring protein hits
+    HSPS = data.get_hsp_id_list(DB)
 
-    ALIGNED_IDS = data.get_aligned_bgc_list(DB)
+    # get a list of already-aligned hsps
+    # TODO: work this into a status table like with bgcs
+    # currently this just checks if there is an entry for this HSP in the hsp_alignment table
+    # TODO: identify changes in dataset and realign
+    ALIGNED_HSPS = data.get_aligned_hsp_list(DB)
 
-    sys.exit()
-    
-    if not RUN.options.skip_ma:
-        if PFD_FILES_UNCHANGED and DOMAIN_FASTAS_NOT_EMPTY:
-            TRY_RESUME_MULTIPLE_ALIGNMENT = True
-        else:
-            # new sequences will be added to the domain fasta files. Clean domains folder
-            # TODO: We could try to make it so it's not necessary to re-calculate every alignment,
-            #  either by expanding previous alignment files or at the very least,
-            #  re-aligning only the domain files of the newly added BGCs
-            logging.info(" New domain sequences to be added; cleaning domains folder")
-            for thing in os.listdir(RUN.directories.domains):
-                os.remove(os.path.join(RUN.directories.domains, thing))
+    # get the alignments to be done
+    HSPS_TODO = list(set(HSPS) - set(ALIGNED_HSPS))
 
-    logging.info(" Finished generating pfs and pfd files.")
+    # if there are any to be done, we'll align
+    if len(HSPS) > 0:
+        logging.info("Performing multiple alignments using hmmalign")
+        hmm.do_multiple_align(RUN, DB, HSPS)
+    else:
+        logging.info(" All high scoring protein domains were already aligned. Skipping step...")
+
+    sys.exit(0)
 
 
     ### Step 4: Parse the pfs, pfd files to generate BGC dictionary, clusters, and clusters per
     ### sample objects
     logging.info("Processing domains sequence files")
-
-    # do one more check of pfd files to see if they are all there
-    hmm.check_pfd_files(RUN, CLUSTER_NAME_SET)
 
     # BGCs --
     # this collection will contain all bgc objects

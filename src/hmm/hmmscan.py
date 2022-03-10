@@ -11,7 +11,7 @@ import pyhmmer
 from src.data import Database
 from src.data import BGC
 from src.data.hmm import from_accession
-from src.data.hsp import insert_hsp
+from src.data.hsp import get_hsp_id, insert_hsp, insert_hsp_alignment
 from src.data.status import update_bgc_status
 from src.pfam.misc import check_overlap
 
@@ -50,10 +50,7 @@ def pyhmmer_search_hmm(base_name, profiles, sequences, pipeline):
     Yields:
         A list of domains, similar to what hmmsearch would return
     """
-    cutoffs = dict()
     for profile in profiles:
-        cutoffs[profile.accession.decode()] = profile.cutoffs.trusted
-
         try:
             search_result = pipeline.search_hmm(profile, sequences)
         except TypeError:
@@ -64,8 +61,24 @@ def pyhmmer_search_hmm(base_name, profiles, sequences, pipeline):
             if hit.is_included():
                 for domain in hit.domains:
                     accession = domain.alignment.hmm_accession.decode()
-                    if domain.score > cutoffs[accession][1]:
+                    if domain.score > profile.cutoffs.trusted[1]:
                         yield domain
+
+def get_cds_gaps(cds_sequence):
+    "gets a comma-separated list of gap locations in the cds sequence"
+    gaps = []
+    for idx, aa in enumerate(cds_sequence):
+        if aa == "-":
+            gaps.append(idx)
+    return ",".join(map(str, gaps))
+
+def get_hmm_gaps(hmm_sequence):
+    "gets a comma-separated list of gap locations in the model sequence"
+    gaps = []
+    for idx, aa in enumerate(hmm_sequence):
+        if aa == ".":
+            gaps.append(idx)
+    return ",".join(map(str, gaps))
 
 def run_pyhmmer_worker(input_queue, output_queue, profiles, pipeline, database: Database):
     """worker for the run_pyhmmer method"""
@@ -81,7 +94,7 @@ def run_pyhmmer_worker(input_queue, output_queue, profiles, pipeline, database: 
         sequences = []
         for cds_row in bgc_cds_list:
             accession = BGC.CDS.gen_accession(base_name, cds_row)
-            ds = pyhmmer.easel.TextSequence(accession=accession.encode(), name=str(cds_row["id"]).encode(), sequence=cds_row["aa_seq"]).digitize(pyhmmer.easel.Alphabet.amino())
+            ds = pyhmmer.easel.TextSequence(accession=accession.encode(), name=str(cds_row["id"]).encode(), sequence=cds_row["aa_seq"]).digitize(alphabet)
             sequences.append(ds)
 
         domains = pyhmmer_search_hmm(accession, profiles, sequences, pipeline)
@@ -100,7 +113,19 @@ def run_pyhmmer_worker(input_queue, output_queue, profiles, pipeline, database: 
             # score
             bitscore = domain.score
 
-            hsps.append((cds_id, hmm_id, bitscore))
+            # model coords
+            model_start = domain.alignment.hmm_from
+            model_end = domain.alignment.hmm_to
+
+            # cds coords
+            cds_start = domain.alignment.target_from
+            cds_end = domain.alignment.target_to
+
+            # gaps
+            model_gaps = get_hmm_gaps(domain.alignment.hmm_sequence)
+            cds_gaps = get_cds_gaps(domain.alignment.target_sequence)
+
+            hsps.append((cds_id, hmm_id, bitscore, model_start, model_end, cds_start, cds_end, model_gaps, cds_gaps))
 
         output_queue.put((bgc_id, hsps))
 
@@ -142,6 +167,8 @@ def run_pyhmmer(run, database: Database, ids_todo):
     id_idx = 0
     ids_done = 0
 
+    hsps = []
+
     while True:
         all_tasks_put = id_idx == num_tasks
         all_tasks_done = ids_done == num_tasks
@@ -158,11 +185,14 @@ def run_pyhmmer(run, database: Database, ids_todo):
                 continue
            
         if not output_q.empty():
-            bgc_id, hsps = output_q.get()
-            # insert
-            for hsp in hsps:
-                cds_id, hmm_id, bitscore = hsp
+            bgc_id, task_hsps = output_q.get()
+            for hsp in task_hsps:
+                cds_id = hsp[0]
+                hmm_id = hsp[1]
+                bitscore = hsp[2]
+                # insert hsp
                 insert_hsp(database, cds_id, hmm_id, bitscore)
+                hsps.append(hsp)
 
             # update bgc status when done
             update_bgc_status(database, bgc_id, 2)
@@ -174,11 +204,26 @@ def run_pyhmmer(run, database: Database, ids_todo):
                 percent_done = ids_done / num_tasks * 100
                 logging.info("  %d%% (%d/%d)", percent_done, ids_done, num_tasks)
         # logging.info("adding result (now %d)", len(network_matrix))
-    
+
+    database.commit_inserts()
+
+    # insert alignments. Has to be done after inserts because only then are ids available
+    for hsp in hsps:
+        cds_id, hmm_id, bitscore, model_start, model_end, cds_start, cds_end, model_gaps, cds_gaps = hsp
+
+        # get hsp id
+        hsp_id = get_hsp_id(database, cds_id, hmm_id)
+        if hsp_id is None:
+            logging.error("Could not find hsp_id associated with newly added hsp")
+
+        
+        # insert hsp_alignment
+        insert_hsp_alignment(database, hsp_id, model_start, model_end, model_gaps, cds_start, cds_end, cds_gaps)
+
     database.commit_inserts()
 
     # clean up threads
-    for thread_num in range(num_processes):
+    for thread_num in range(num_processes * 2):
         working_q.put(None)
 
     for process in processes:
