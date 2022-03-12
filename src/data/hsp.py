@@ -35,10 +35,12 @@ def insert_hsp(database: Database, cds_id: int, hmm_id: int, bitscore: float):
     }
     database.insert("hsp", entry, True)
 
-def insert_hsp_alignment(database: Database, hsp_id, model_start, model_end, model_gaps, cds_start, cds_end, cds_gaps):
+def insert_hsp_alignment(database: Database, hsp_id, env_start, env_end, model_start, model_end, model_gaps, cds_start, cds_end, cds_gaps):
     """Inserts (or ignores if already there) a new high scoring protein into the database"""
     entry = {
         "hsp_id": hsp_id,
+        "env_start": env_start,
+        "env_end": env_end,
         "model_start": model_start,
         "model_end": model_end,
         "model_gaps": model_gaps,

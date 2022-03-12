@@ -96,6 +96,8 @@ CREATE INDEX IF NOT EXISTS hsp_bitscore ON hsp(bitscore);
 -- hsp_alignment
 CREATE TABLE IF NOT EXISTS hsp_alignment (
     hsp_id INTEGER UNIQUE NOT NULL,
+    env_start INTEGER NOT NULL,
+    env_end INTEGER NOT NULL,
     model_start INTEGER NOT NULL,
     model_end INTEGER NOT NULL,
     model_gaps TEXT NOT NULL,

@@ -9,11 +9,10 @@ from multiprocessing import Queue, Process
 import pyhmmer
 
 from src.data import Database
-from src.data import BGC
+from src.data.bgc import BGC
 from src.data.hmm import from_accession
 from src.data.hsp import get_hsp_id, insert_hsp, insert_hsp_alignment
 from src.data.status import update_bgc_status
-from src.pfam.misc import check_overlap
 
 
 def write_pfd(pfd_handle, matrix):
@@ -80,6 +79,73 @@ def get_hmm_gaps(hmm_sequence):
             gaps.append(idx)
     return ",".join(map(str, gaps))
 
+
+
+def no_overlap(a_start, a_end, b_start, b_end):
+    """Return True if there is no overlap between two regions"""
+    if a_start < b_start and a_end < b_start:
+        return True
+    elif a_start > b_end and a_end > b_end:
+        return True
+    else:
+        return False
+
+def len_overlap(a_start, a_end, b_start, b_end):
+    """Returns the length of an overlapping sequence"""
+
+    if a_start < b_start:
+        cor1 = a_start
+    else:
+        cor1 = b_start
+
+    if a_end > b_end:
+        cor2 = a_end
+    else:
+        cor2 = b_end
+
+    total_region = cor2 - cor1
+    sum_len = (a_end - a_start) + (b_end - b_start)
+
+    return sum_len - total_region
+
+def filter_overlap(hsps, overlap_cutoff):
+    """Check if domains overlap for a certain overlap_cutoff.
+     If so, remove the domain(s) with the lower score."""
+
+    delete_list = []
+    for i in range(len(hsps)-1):
+        for j in range(i+1, len(hsps)):
+            row1 = hsps[i]
+            row2 = hsps[j]
+
+            # using env coords
+            a_start = row1[3]
+            a_end = row1[4]
+            b_start = row2[3]
+            b_end = row2[4]
+
+            #check if we are the same CDS
+            if row1[0] == row2[0]:
+                #check if there is overlap between the domains
+                if not no_overlap(a_start, a_end, b_start, b_end):
+                    overlapping_aminoacids = len_overlap(a_start, a_end, b_start, b_end)
+                    overlap_perc_loc1 = overlapping_aminoacids / (a_end - a_start)
+                    overlap_perc_loc2 = overlapping_aminoacids / (b_end - b_start)
+                    #check if the amount of overlap is significant
+                    if overlap_perc_loc1 > overlap_cutoff or overlap_perc_loc2 > overlap_cutoff:
+                        if float(row1[2]) >= float(row2[2]): #see which has a better score
+                            delete_list.append(row2)
+                        elif float(row1[2]) < float(row2[2]):
+                            delete_list.append(row1)
+
+    for lst in delete_list:
+        try:
+            hsps.remove(lst)
+        except ValueError:
+            pass
+    return hsps
+
+
 def run_pyhmmer_worker(input_queue, output_queue, profiles, pipeline, database: Database):
     """worker for the run_pyhmmer method"""
     alphabet = pyhmmer.easel.Alphabet.amino()
@@ -113,6 +179,10 @@ def run_pyhmmer_worker(input_queue, output_queue, profiles, pipeline, database: 
             # score
             bitscore = domain.score
 
+            # env coords
+            env_start = domain.env_from
+            env_end = domain.env_to
+
             # model coords
             model_start = domain.alignment.hmm_from
             model_end = domain.alignment.hmm_to
@@ -125,7 +195,7 @@ def run_pyhmmer_worker(input_queue, output_queue, profiles, pipeline, database: 
             model_gaps = get_hmm_gaps(domain.alignment.hmm_sequence)
             cds_gaps = get_cds_gaps(domain.alignment.target_sequence)
 
-            hsps.append((cds_id, hmm_id, bitscore, model_start, model_end, cds_start, cds_end, model_gaps, cds_gaps))
+            hsps.append((cds_id, hmm_id, bitscore, env_start, env_end, model_start, model_end, cds_start, cds_end, model_gaps, cds_gaps))
 
         output_queue.put((bgc_id, hsps))
 
@@ -186,7 +256,10 @@ def run_pyhmmer(run, database: Database, ids_todo):
            
         if not output_q.empty():
             bgc_id, task_hsps = output_q.get()
-            for hsp in task_hsps:
+
+            filtered_hsps = filter_overlap(task_hsps, run.options.domain_overlap_cutoff)
+
+            for hsp in filtered_hsps:
                 cds_id = hsp[0]
                 hmm_id = hsp[1]
                 bitscore = hsp[2]
@@ -199,9 +272,7 @@ def run_pyhmmer(run, database: Database, ids_todo):
 
             ids_done += 1
 
-            # commit every 500 rows
-            if ids_done % 500 == 0:
-                database.commit_inserts()
+            database.commit_inserts()
 
             # print progress every 10%
             if ids_done % math.ceil(num_tasks / 10) == 0:
@@ -209,11 +280,12 @@ def run_pyhmmer(run, database: Database, ids_todo):
                 logging.info("  %d%% (%d/%d)", percent_done, ids_done, num_tasks)
         # logging.info("adding result (now %d)", len(network_matrix))
 
+    # just making sure
     database.commit_inserts()
 
     # insert alignments. Has to be done after inserts because only then are ids available
     for idx, hsp in enumerate(hsps):
-        cds_id, hmm_id, bitscore, model_start, model_end, cds_start, cds_end, model_gaps, cds_gaps = hsp
+        cds_id, hmm_id, bitscore, env_start, env_end, model_start, model_end, cds_start, cds_end, model_gaps, cds_gaps = hsp
 
         # get hsp id
         hsp_id = get_hsp_id(database, cds_id, hmm_id)
@@ -222,7 +294,7 @@ def run_pyhmmer(run, database: Database, ids_todo):
 
         
         # insert hsp_alignment
-        insert_hsp_alignment(database, hsp_id, model_start, model_end, model_gaps, cds_start, cds_end, cds_gaps)
+        insert_hsp_alignment(database, hsp_id, env_start, env_end, model_start, model_end, model_gaps, cds_start, cds_end, cds_gaps)
 
         # commit every 500 rows
         if idx % 500 == 0:
