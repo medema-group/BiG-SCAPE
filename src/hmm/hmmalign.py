@@ -168,6 +168,10 @@ def launch_hmmalign(run, algn_task_list, profile_dict, database: Database):
 
             tasks_done += 1
 
+            # commit every 500 results
+            if tasks_done % 500 == 0:
+                database.commit_inserts()
+
             # print progress every 10%
             if tasks_done % math.ceil(num_tasks / 10) == 0:
                 percent_done = tasks_done / num_tasks * 100

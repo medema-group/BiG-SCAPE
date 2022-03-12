@@ -199,6 +199,10 @@ def run_pyhmmer(run, database: Database, ids_todo):
 
             ids_done += 1
 
+            # commit every 500 rows
+            if ids_done % 500 == 0:
+                database.commit_inserts()
+
             # print progress every 10%
             if ids_done % math.ceil(num_tasks / 10) == 0:
                 percent_done = ids_done / num_tasks * 100
@@ -208,7 +212,7 @@ def run_pyhmmer(run, database: Database, ids_todo):
     database.commit_inserts()
 
     # insert alignments. Has to be done after inserts because only then are ids available
-    for hsp in hsps:
+    for idx, hsp in enumerate(hsps):
         cds_id, hmm_id, bitscore, model_start, model_end, cds_start, cds_end, model_gaps, cds_gaps = hsp
 
         # get hsp id
@@ -219,6 +223,10 @@ def run_pyhmmer(run, database: Database, ids_todo):
         
         # insert hsp_alignment
         insert_hsp_alignment(database, hsp_id, model_start, model_end, model_gaps, cds_start, cds_end, cds_gaps)
+
+        # commit every 500 rows
+        if idx % 500 == 0:
+            database.commit_inserts()
 
     database.commit_inserts()
 
