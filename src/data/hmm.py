@@ -8,7 +8,7 @@ from src.data.database import Database
 def load_hmms(run, database: Database):
     """Loads the hmm information into the database"""
     hmm_file_path = os.path.join(run.directories.pfam, "Pfam-A.hmm")
-    logging.info("Loading HMM information into database")
+    logging.info(" Loading HMM information into database")
     # get hmm profiles
     with pyhmmer.plan7.HMMFile(hmm_file_path) as hmm_file:
     
