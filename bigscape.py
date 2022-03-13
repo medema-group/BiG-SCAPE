@@ -115,7 +115,6 @@ if __name__ == "__main__":
     # center(s).
     warnings.filterwarnings(action="ignore", category=UserWarning)
 
-    
     # TODO: download whatever version of pfam is necessary if it isn't there
 
     # TODO: next press the hmm file into more optimal formats
@@ -151,9 +150,6 @@ if __name__ == "__main__":
     # load the input data into the database
     data.initialize_db(RUN, DB)
 
-    # load hmm information into databse
-    # first load the full list of accessions in the hmm
-    # data.load_hmms(RUN, DB)
     # TODO: find the biosynthetic pfams and load the accessions into the database as well
 
     # base name as a list and as a set
