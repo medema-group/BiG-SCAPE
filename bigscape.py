@@ -245,13 +245,13 @@ if __name__ == "__main__":
 
     # Making network files mixing all classes
     if RUN.options.mix:
-        big_scape.generate_network(RUN, BGC_COLLECTION, ALIGNED_DOMAIN_SEQS,
+        big_scape.generate_network(RUN, DB, BGC_COLLECTION, ALIGNED_DOMAIN_SEQS,
                                    MIBIG_SET_INDICES, MIBIG_SET, RUNDATA_NETWORKS_PER_RUN,
                                    HTML_SUBS_PER_RUN, True)
 
     # Making network files separating by BGC class
     if not RUN.options.no_classify:
-        big_scape.generate_network(RUN, BGC_COLLECTION, ALIGNED_DOMAIN_SEQS,
+        big_scape.generate_network(RUN, DB, BGC_COLLECTION, ALIGNED_DOMAIN_SEQS,
                                    MIBIG_SET_INDICES, MIBIG_SET, RUNDATA_NETWORKS_PER_RUN,
                                    HTML_SUBS_PER_RUN, False)
 

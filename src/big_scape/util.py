@@ -40,7 +40,7 @@ def fetch_genome_list(run, input_clusters_idx, cluster_names, mibig_set, bgc_inf
             continue
         input_clusters_idx.append(idx)
         # get class info
-        product = bgc_info[bgc].product
+        product = bgc_info[bgc]["product"]
         predicted_class = sort_bgc(product)
         if predicted_class not in classes:
             cluster_names_to_classes[bgc] = len(classes)
@@ -49,8 +49,8 @@ def fetch_genome_list(run, input_clusters_idx, cluster_names, mibig_set, bgc_inf
             cluster_names_to_classes[bgc] = classes.index(predicted_class)
         # get identifier info
         identifier = ""
-        if len(bgc_info[bgc].organism) > 1:
-            identifier = bgc_info[bgc].organism
+        if len(bgc_info[bgc]["organism"]) > 1:
+            identifier = bgc_info[bgc]["organism"]
         else: # use original genome file name (i.e. exclude "..clusterXXX from antiSMASH run")
             file_name_base = os.path.splitext(os.path.basename(gen_bank_dict[bgc][0]))[0]
             identifier = file_name_base.rsplit(".cluster", 1)[0].rsplit(".region", 1)[0]

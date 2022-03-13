@@ -134,8 +134,8 @@ class BGC:
                                 "orig_folder": path.dirname(orig_gbk_path),
                                 "orig_filename": path.basename(orig_gbk_path),
                                 "chem_subclasses": chem_subclasses,
-                                "cds": [BGC.CDS.from_feature(f)
-                                        for f in cds_features]
+                                "cds": [BGC.CDS.from_feature(f, i+1)
+                                        for i, f in enumerate(cds_features)]
                             }))
                             break
 
@@ -161,8 +161,8 @@ class BGC:
                                 "orig_folder": path.dirname(orig_gbk_path),
                                 "orig_filename": path.basename(orig_gbk_path),
                                 "chem_subclasses": chem_subclasses,
-                                "cds": [BGC.CDS.from_feature(f)
-                                        for f in cds_features]
+                                "cds": [BGC.CDS.from_feature(f, i+1)
+                                        for i, f in enumerate(cds_features)]
                             }))
 
             else:  # assume antiSMASH 4
@@ -205,8 +205,8 @@ class BGC:
                     "orig_folder": path.dirname(orig_gbk_path),
                     "orig_filename": path.basename(orig_gbk_path),
                     "chem_subclasses": chem_subclasses,
-                    "cds": [BGC.CDS.from_feature(f)
-                            for f in cds_features]
+                    "cds": [BGC.CDS.from_feature(f, i+1)
+                        for i, f in enumerate(cds_features)]
                 }))
 
             break
@@ -385,6 +385,7 @@ class BGC:
 
         def __init__(self, properties: dict):
             self.id = properties.get("id", -1)
+            self.orf_id = properties["orf_id"]
             self.nt_start = properties["nt_start"]
             self.nt_end = properties["nt_end"]
             self.strand = properties["strand"]
@@ -418,6 +419,7 @@ class BGC:
                     "cds",
                     {
                         "bgc_id": self.bgc_id,
+                        "orf_id": self.orf_id,
                         "nt_start": self.nt_start,
                         "nt_end": self.nt_end,
                         "strand": self.strand,
@@ -440,7 +442,7 @@ class BGC:
 
 
         @staticmethod
-        def from_feature(feature: SeqFeature):
+        def from_feature(feature: SeqFeature, orf_id: int):
             """Generates a CDS row from a GBK feature"""
             def get_prop(prop):
                 return feature.qualifiers.get(prop, [None])[0]
@@ -454,6 +456,7 @@ class BGC:
                     is_biosynthetic = 1
                     break
             properties = {
+                "orf_id": orf_id,
                 "nt_start": loc.start,
                 "nt_end": loc.end,
                 "strand": feature.strand,

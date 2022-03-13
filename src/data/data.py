@@ -9,7 +9,6 @@ import glob
 from os import path
 from multiprocessing import Pool
 
-from src.big_scape import Run
 from src.data.hmm import load_hmms
 from .database import Database
 from .bgc import BGC
@@ -159,7 +158,7 @@ def create_bgc_status(db: Database, bgc_ids):
     bgc_ids_dict = {bgc_id: 1 for bgc_id in bgc_ids}
     db.insert("bgc_status", bgc_ids_dict)
 
-def initialize_db(run: Run, database: Database):
+def initialize_db(run, database: Database):
     """Fills the database with input data"""
     logging.debug("Initializing database")
 
@@ -205,7 +204,7 @@ def get_cluster_name_list(database):
 
 
 
-def get_cluster_gbk_dict(run: Run, database: Database):
+def get_cluster_gbk_dict(run, database: Database):
     """Gets a list of source gbk file paths for each bgc in the database"""
     # mibig paths
     gbk_dict = dict()
@@ -245,12 +244,15 @@ def gen_bgc_info_for_fetch_genome(database: Database):
     """Generates a dictionary of BGC info objects that are needed for the SVG image generation"""
     bgc_info = dict()
     rows = database.select(
-        "bgc",
-        props=["bgc.name as bgc_name"])
+        "bgc \
+        join cds on cds.bgc_id = bgc.id",
+        "" ,
+        props=["bgc.name as bgc_name, cds.product as product"])
     for row in rows:
         bgc_info[row["bgc_name"]] = {
             "organism": "TODO",
-            "records": "TODO"
+            "records": "TODO",
+            "product": row["product"]
         }
     return bgc_info
 
@@ -265,4 +267,17 @@ def get_mibig_id_list(database):
             "where name = 'mibig'",
             ")",
             props=["id"])]
+    return mibig_bgc_ids
+
+
+def get_mibig_name_list(database):
+    """returns a list of all bgc ids associated with MIBiG input files"""
+    mibig_bgc_ids = [
+        row["name"] for row in database.select(
+            "bgc",
+            "where dataset id = (",
+            "select id from dataset",
+            "where name = 'mibig'",
+            ")",
+            props=["name"])]
     return mibig_bgc_ids

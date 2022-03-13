@@ -9,7 +9,7 @@ from src.big_scape.bgc_collection import BgcCollection
 from src.big_scape.bgc_info import BgcInfo
 from src.big_scape.scores import calc_adj_idx, calc_distance, calc_dss, calc_jaccard, gen_unrelated_pair_distance, process_orientation
 
-def gen_dist_matrix_worker(input_queue: Queue, output_queue: Queue, run, bgc_collection, aligned_domain_sequences):
+def gen_dist_matrix_worker(input_queue: Queue, output_queue: Queue, run, database, bgc_collection, aligned_domain_sequences):
     """Worker method for threads that process distance calculation. Takes bgc pairs from an input
     queue and generates distances between the bgc pairs which it puts back into the output queue.
     
@@ -33,12 +33,12 @@ def gen_dist_matrix_worker(input_queue: Queue, output_queue: Queue, run, bgc_col
             break
         # logging.info("launching task on pair %s, %s", pair[0], pair[1])
 
-        result, new_skip_set, skipped = generate_dist_matrix(pair, run, bgc_collection, aligned_domain_sequences, skip_set)
+        result, new_skip_set, skipped = generate_dist_matrix(pair, database, run, bgc_collection, aligned_domain_sequences, skip_set)
         output_queue.put((result, new_skip_set, skipped))
 
 
 # @timeit
-def gen_dist_matrix_async(run, cluster_pairs, bgc_collection: BgcCollection, aligned_domain_sequences, skip_set):
+def gen_dist_matrix_async(run, database, cluster_pairs, bgc_collection: BgcCollection, aligned_domain_sequences, skip_set):
     """Distributes the distance calculation part
     cluster_pairs is a list of triads (cluster1_index, cluster2_index, BGC class)
     """
@@ -55,8 +55,9 @@ def gen_dist_matrix_async(run, cluster_pairs, bgc_collection: BgcCollection, ali
     for thread_num in range(num_processes):
         thread_name = f"distance_thread_{thread_num}"
         logging.debug("Starting %s", thread_name)
-        new_process = Process(target=gen_dist_matrix_worker, args=(working_q, output_q, run,
-                              bgc_collection, aligned_domain_sequences), name=thread_name)
+        process_args = (working_q, output_q, run, database, bgc_collection,
+            aligned_domain_sequences)
+        new_process = Process(target=gen_dist_matrix_worker, args=process_args, name=thread_name)
         processes.append(new_process)
         new_process.start()
 
@@ -113,14 +114,6 @@ def gen_dist_matrix_async(run, cluster_pairs, bgc_collection: BgcCollection, ali
 
     return network_matrix, skip_set
 
-def gen_dist_matrix(run, cluster_pairs, bgc_collection: BgcCollection, aligned_domain_sequences):
-    """Serialized version of distance calculation. Used for debugging and memory issues"""
-    network_matrix = []
-    for pair in cluster_pairs:
-        network_matrix.append(generate_dist_matrix(pair, run, bgc_collection, aligned_domain_sequences, set()))
-
-    return network_matrix
-
 
 def calc_ai_pair(cluster_a: BgcInfo, cluster_b: BgcInfo, pair_dom_info: BgcDomainInfo):
     """Calculate the adjacency index of a pair of BGCs
@@ -140,7 +133,7 @@ def calc_ai_pair(cluster_a: BgcInfo, cluster_b: BgcInfo, pair_dom_info: BgcDomai
 
     return calc_adj_idx(a_dom_list, b_dom_list, a_dom_start, a_dom_end, b_dom_start, b_dom_end)
 
-def generate_dist_matrix(parms, run, bgc_collection: BgcCollection, aligned_domain_sequences, skip_set: set):
+def generate_dist_matrix(parms, database, run, bgc_collection: BgcCollection, aligned_domain_sequences, skip_set: set):
     """Unpack data to actually launch cluster_distance for one pair of BGCs
 
     Inputs:
@@ -214,7 +207,7 @@ def generate_dist_matrix(parms, run, bgc_collection: BgcCollection, aligned_doma
         union = cluster_a.ordered_domain_set | cluster_b.ordered_domain_set
         jaccard = calc_jaccard(pair_dom_info.intersect, union)
 
-        dss_data = calc_dss(run, cluster_a, cluster_b, aligned_domain_sequences, anchor_boost, pair_dom_info)
+        dss_data = calc_dss(run, database, cluster_a, cluster_b, aligned_domain_sequences, anchor_boost, pair_dom_info)
         # unpack variables
         dss, dss_non_anchor, dss_anchor, num_non_anchor_domains, num_anchor_domains = dss_data
 

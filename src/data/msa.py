@@ -5,7 +5,14 @@ from src.data.database import Database
 
 def get_aligned_hsp_list(database: Database):
     """Returns a list of all hsp ids in the hsp_alignment table"""
-    return [row["hsp_id"] for row in database.select("hsp_alignment", "", props=["hsp_id"])]
+    return [row["id"]
+        for row in database.select(
+            "hsp \
+            join msa on msa.cds_id = hsp.cds_id \
+            and msa.hmm_id = hsp.hmm_id",
+            "",
+            props=["hsp.id"]
+    )]
 
 def calc_model_gaps():
     return

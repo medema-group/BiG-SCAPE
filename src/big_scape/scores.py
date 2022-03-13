@@ -11,6 +11,7 @@ from scipy.optimize import linear_sum_assignment
 
 from src.big_scape.bgc_info import BgcInfo
 from src.utility.fasta import fasta_parser
+from src.data.cds import get_aa_from_header
 
 def gen_unrelated_pair_distance(run, cluster_a: BgcInfo, cluster_b: BgcInfo):
     """Generates a matrix row for a pair of unrelated clusters. This is done when two BGCs contain
@@ -172,7 +173,7 @@ def calc_adj_idx(list_a, list_b, a_start, a_end, b_start, b_end):
         adj_idx = calc_jaccard(intersect, overlap)
     return adj_idx
 
-def calc_dss(run, cluster_a, cluster_b, aligned_domain_sequences, anchor_boost, dom_info):
+def calc_dss(run, database, cluster_a, cluster_b, aligned_domain_sequences, anchor_boost, dom_info):
     """Calculate the dmain sequence similarity; the similarity of the actual protiein sequences
     within BGC domains
 
@@ -255,16 +256,16 @@ def calc_dss(run, cluster_a, cluster_b, aligned_domain_sequences, anchor_boost, 
                         logging.warning("  %s.algn not found. Trying pairwise alignment...", shared_domain)
                         missing_aligned_domain_files.append(shared_domain)
 
-                    try:
-                        unaligned_seq_a = temp_domain_fastas[sequence_tag_a]
-                        unaligned_seq_b = temp_domain_fastas[sequence_tag_b]
-                    except KeyError:
-                        # parse the file for the first time and load all the sequences
-                        with open(os.path.join(run.directories.domains, shared_domain + ".fasta"),"r") as domain_fasta_handle:
-                            temp_domain_fastas = fasta_parser(domain_fasta_handle)
+                    # try:
+                    #     unaligned_seq_a = temp_domain_fastas[sequence_tag_a]
+                    #     unaligned_seq_b = temp_domain_fastas[sequence_tag_b]
+                    # except KeyError:
+                    #     # parse the file for the first time and load all the sequences
+                    #     # with open(os.path.join(run.directories.domains, shared_domain + ".fasta"),"r") as domain_fasta_handle:
+                    #     #     temp_domain_fastas = fasta_parser(domain_fasta_handle)
 
-                        unaligned_seq_a = temp_domain_fastas[sequence_tag_a]
-                        unaligned_seq_b = temp_domain_fastas[sequence_tag_b]
+                    unaligned_seq_a = get_aa_from_header(database, sequence_tag_a)
+                    unaligned_seq_b = get_aa_from_header(database, sequence_tag_b)
 
                     # gap_open = -15
                     # gap_extend = -6.67. These parameters were set up by Emzo

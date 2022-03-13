@@ -33,7 +33,8 @@ def sort_bgc(product):
                        'siderophore', 'blactam', 'fatty_acid', 'PpyS-KS', 'CDPS',
                        'betalactone', 'PBDE', 'tropodithietic-acid', 'NAGGN',
                        'halogenated', 'pyrrolidine'}
-
+    if product is None:
+        return "Others"
     # PKS_Type I
     if product in pks1_products:
         return "PKSI"

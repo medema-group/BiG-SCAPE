@@ -51,6 +51,7 @@ INSERT OR IGNORE INTO enum_bgc_type VALUES ('mibig', 'MIBiG >= 2.0 gbk');
 CREATE TABLE IF NOT EXISTS cds (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     bgc_id INTEGER NOT NULL,
+    orf_id INTEGER NOT NULL,
     nt_start INTEGER NOT NULL,
     nt_end INTEGER NOT NULL,
     strand INTEGER CHECK(strand IN (-1,0,1)),
@@ -60,8 +61,9 @@ CREATE TABLE IF NOT EXISTS cds (
     biosynthetic BOOLEAN NOT NULL,
     aa_seq TEXT NOT NULL,
     FOREIGN KEY(bgc_id) REFERENCES bgc(id)
+    UNIQUE (bgc_id, orf_id)
 );
-CREATE INDEX IF NOT EXISTS cds_bgc ON cds(bgc_id,nt_start,nt_end);
+CREATE INDEX IF NOT EXISTS cds_bgc ON cds(bgc_id,orf_id,nt_start,nt_end);
 
 -- hmm
 CREATE TABLE IF NOT EXISTS hmm (

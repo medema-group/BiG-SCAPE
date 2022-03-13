@@ -97,7 +97,7 @@ def process_gbk_file(
     gen_bank_dict = {}
 
     file_folder, fname = os.path.split(gbk_file_path)
-    cluster_name = fname[:-4]
+    cluster_name = file_folder.split('/')[-1] + "/" + fname[:-4]
 
     # See if we need to keep the sequence
     # (Currently) we have to open the file anyway to read all its
@@ -384,11 +384,11 @@ def process_gbk_file(
                             logging.debug("   Removing %s because it overlaps with other ORF", locus)
                             bgc_locus_tags.remove(locus)
 
-                        with open(outputfile, 'w') as fasta_handle:
-                            for locus in bgc_locus_tags:
-                                fasta_handle.write("{}\n".format(locus))
-                                fasta_handle.write("{}\n".format(locus_sequences[locus]))
-                            adding_sequence = True
+                        # with open(outputfile, 'w') as fasta_handle:
+                        #     for locus in bgc_locus_tags:
+                        #         fasta_handle.write("{}\n".format(locus))
+                        #         fasta_handle.write("{}\n".format(locus_sequences[locus]))
+                        adding_sequence = True
                 else:
                     files_no_proteins.append(fname)
 

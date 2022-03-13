@@ -111,7 +111,7 @@ def create_working_set(run, bgc_collection: BgcCollection, mix) -> dict:
     return bgc_classes
 
 
-def generate_network(run, bgc_collection: BgcCollection, aligned_domain_seqs,
+def generate_network(run, database, bgc_collection: BgcCollection, aligned_domain_seqs,
                      mibig_set_indices, mibig_set, rundata_networks_per_run,
                      html_subs_per_run, mix=False):
     """Performs pairwise comparison between BGCs. By default, this only compares BGCs from the
@@ -212,8 +212,9 @@ def generate_network(run, bgc_collection: BgcCollection, aligned_domain_seqs,
 
         pairs.clear()
 
-        network_matrix, add_skip_set = gen_dist_matrix_async(run, cluster_pairs, bgc_collection,
-                                                             aligned_domain_seqs, skip_set)
+        network_matrix, add_skip_set = gen_dist_matrix_async(run, database, cluster_pairs,
+                                                             bgc_collection, aligned_domain_seqs,
+                                                             skip_set)
 
         skip_set = skip_set | add_skip_set
 
@@ -255,7 +256,7 @@ def generate_network(run, bgc_collection: BgcCollection, aligned_domain_seqs,
                 cluster_pairs = [(x, y, bgc_class_name_2_index[bgc_class]) for (x, y) in pairs]
 
             pairs.clear()
-            network_matrix_new_set, add_skip_set = gen_dist_matrix_async(run, cluster_pairs, bgc_collection, aligned_domain_seqs, skip_set)
+            network_matrix_new_set, add_skip_set = gen_dist_matrix_async(run, database, cluster_pairs, bgc_collection, aligned_domain_seqs, skip_set)
             skip_set = skip_set | add_skip_set
             del cluster_pairs[:]
 
@@ -332,7 +333,7 @@ def generate_network(run, bgc_collection: BgcCollection, aligned_domain_seqs,
         logging.info("  Calling Gene Cluster Families")
         reduced_network, pos_alignments = reduce_network(network_matrix)
 
-        family_data = cluster_json_batch(bgc_classes[bgc_class], path_base, bgc_class,
+        family_data = cluster_json_batch(database, bgc_classes[bgc_class], path_base, bgc_class,
             reduced_network, pos_alignments, bgc_collection,
             mibig_set, run.directories.pfd, run.directories.bgc_fasta,
             aligned_domain_seqs,
