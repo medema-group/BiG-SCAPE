@@ -245,13 +245,13 @@ def gen_bgc_info_for_fetch_genome(database: Database):
     bgc_info = dict()
     rows = database.select(
         "bgc \
-        join cds on cds.bgc_id = bgc.id",
+        join bgc_class on bgc_class.bgc_id = bgc.id \
+        join chem_subclass on chem_subclass.id = bgc_class.chem_subclass_id",
         "" ,
-        props=["bgc.name as bgc_name, cds.product as product"])
+        props=["bgc.name as name, chem_subclass.name as product"])
     for row in rows:
-        bgc_info[row["bgc_name"]] = {
+        bgc_info[row["name"]] = {
             "organism": "TODO",
-            "records": "TODO",
             "product": row["product"]
         }
     return bgc_info
