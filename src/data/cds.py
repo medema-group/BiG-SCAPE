@@ -12,7 +12,7 @@ def get_cds_rows(database: Database, cds_ids: list = None):
     else:
         return database.select("cds", "where id in (" + ",".join(map(str, cds_ids)) + ")")
 
-def gen_accession(base_name, cds_row):
+def gen_header(base_name, cds_row):
     """generates an accession id for a cds. e.g.
     >AL645882.2.cluster001:gid::pid::loc:12131939:strand:-"""
     nt_start = cds_row["nt_start"]

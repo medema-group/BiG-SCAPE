@@ -132,6 +132,7 @@ def prepare_html_subs_per_run(run):
     return html_subs_per_run
 
 def write_network_annotation_file(run, bgc_collection):
+    """Writes the network annotations to a tsv file"""
     network_annotation_path = os.path.join(run.directories.network, "Network_Annotations_Full.tsv")
     with open(network_annotation_path, "w") as network_annotation_file:
         header = "BGC\tAccession ID\tDescription\tProduct Prediction\tBiG-SCAPE class\tOrganism\t\

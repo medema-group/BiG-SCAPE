@@ -2,6 +2,7 @@
 """
 
 import logging
+import os
 import re
 import glob
 
@@ -191,6 +192,67 @@ def get_cluster_id_list(database):
             "",
             props=["id"])]
     return bgc_ids
+
+
+def get_cluster_name_list(database):
+    """Returns a list of all bgc ids in the database"""
+    bgc_ids = [
+        row["name"] for row in database.select(
+            "bgc",
+            "",
+            props=["name"])]
+    return bgc_ids
+
+
+
+def get_cluster_gbk_dict(run: Run, database: Database):
+    """Gets a list of source gbk file paths for each bgc in the database"""
+    # mibig paths
+    gbk_dict = dict()
+    if run.mibig.use_mibig:
+        rows = database.select(
+            "bgc",
+            "where bgc.dataset_id = (select id from dataset where name = \"mibig\")",
+            props=["name", "orig_filename"])
+        for row in rows:
+            gbk_dict[row["name"]] = os.path.join(run.directories.mibig, row["orig_filename"])
+
+    # input paths
+    rows = database.select(
+        "bgc",
+        "where bgc.dataset_id = (select id from dataset where name = \"input\")",
+        props=["name", "orig_folder", "orig_filename"])
+    for row in rows:
+        gbk_dict[row["name"]] = os.path.join(run.directories.input, row["orig_folder"], row["orig_filename"])
+
+    return gbk_dict
+
+def gen_bgc_info_for_svg(database: Database):
+    """Generates a dictionary of BGC info objects that are needed for the SVG image generation"""
+    bgc_info = dict()
+    rows = database.select(
+        "cds",
+        "join bgc on cds.bgc_id = bgc.id group by bgc_id",
+        props=["bgc_id", "bgc.name as bgc_name", "max(nt_end - nt_start) as max_width", "count(cds.id) as records"])
+    for row in rows:
+        bgc_info[row["bgc_name"]] = {
+            "max_width": row["max_width"],
+            "records": row["records"]
+        }
+    return bgc_info
+
+def gen_bgc_info_for_fetch_genome(database: Database):
+    """Generates a dictionary of BGC info objects that are needed for the SVG image generation"""
+    bgc_info = dict()
+    rows = database.select(
+        "bgc",
+        props=["bgc.name as bgc_name"])
+    for row in rows:
+        bgc_info[row["bgc_name"]] = {
+            "organism": "TODO",
+            "records": "TODO"
+        }
+    return bgc_info
 
 
 def get_mibig_id_list(database):

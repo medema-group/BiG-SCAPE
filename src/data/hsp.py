@@ -79,3 +79,7 @@ def get_multiple_align_hsps(database: Database):
                        ON hmm.id = hmm_id"
     rows = database.select(sub_table_query, "WHERE hmmcount > 1", props=["hsp.id", "cds_id", "hmm_id", "hmm.accession"])
     return rows
+
+def generate_pfd_files(run: Run, database: Database):
+    """Generates PFS files based on the data in the database"""
+    return

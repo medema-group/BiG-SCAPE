@@ -9,7 +9,7 @@ import pyhmmer
 from multiprocessing import Pool, Process, Queue
 from functools import partial
 from glob import glob
-from src.data.cds import gen_accession, get_cds_rows
+from src.data.cds import get_cds_rows
 from src.data.database import Database
 from src.data.hsp import get_multiple_align_hsps
 from src.data.msa import insert_msa

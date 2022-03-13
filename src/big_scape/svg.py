@@ -2,6 +2,8 @@ import logging
 import os
 
 from glob import glob
+from src.data.database import Database
+from src.data import get_cluster_gbk_dict, gen_bgc_info_for_svg, get_cluster_name_list
 
 import src.utility as utility
 
@@ -14,7 +16,7 @@ def get_available_svg(run):
         available_svg.add(root.split(os.sep)[-1])
     return available_svg
 
-def generate_images(run, cluster_base_names, gen_bank_dict, pfam_info, bgc_info):
+def generate_images(run, database: Database, pfam_info):
     """Generates SVG images
     
     Inputs:
@@ -24,11 +26,17 @@ def generate_images(run, cluster_base_names, gen_bank_dict, pfam_info, bgc_info)
         pfam_info: pfam info from parsing Pfam-A.hmm
         bgc_info: dictionary of format {bgcname: {field: obj}}
     """
+    gen_bank_dict = get_cluster_gbk_dict(run, database)
+
+    bgc_info = gen_bgc_info_for_svg(database)
+
+    bgc_names = get_cluster_name_list(database)
+
     # All available SVG files
     available_svg = get_available_svg(run)
 
     # Which files actually need to be generated
-    working_set = cluster_base_names - available_svg
+    working_set = set(bgc_names) - available_svg
 
     if len(working_set) > 0:
         color_genes = {}
@@ -39,11 +47,11 @@ def generate_images(run, cluster_base_names, gen_bank_dict, pfam_info, bgc_info)
         # is not found, the text files with colors need to be updated
         logging.info("  Reading BGC information and writing SVG")
         for bgc in working_set:
-            with open(gen_bank_dict[bgc][0], "r") as handle:
+            with open(gen_bank_dict[bgc], "r") as handle:
                 utility.SVG(False, os.path.join(run.directories.svg, bgc+".svg"), handle, bgc,
                             os.path.join(run.directories.pfd, bgc+".pfd"), True, color_genes,
                             color_domains, pfam_domain_categories, pfam_info,
-                            bgc_info[bgc].records, bgc_info[bgc].max_width)
+                            bgc_info[bgc]["records"], bgc_info[bgc]["max_width"])
 
         color_genes.clear()
         color_domains.clear()
