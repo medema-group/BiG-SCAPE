@@ -391,6 +391,7 @@ class BGC:
             self.locus_tag = properties["locus_tag"]
             self.protein_id = properties["protein_id"]
             self.product = properties["product"]
+            self.biosynthetic = properties["biosynthetic"]
             self.aa_seq = properties["aa_seq"]
 
         def __save__(self, database: Database):
@@ -423,6 +424,7 @@ class BGC:
                         "locus_tag": self.locus_tag,
                         "protein_id": self.protein_id,
                         "product": self.product,
+                        "biosynthetic": self.biosynthetic,
                         "aa_seq": self.aa_seq
                     }
                 )
@@ -439,9 +441,18 @@ class BGC:
 
         @staticmethod
         def from_feature(feature: SeqFeature):
+            """Generates a CDS row from a GBK feature"""
             def get_prop(prop):
                 return feature.qualifiers.get(prop, [None])[0]
+            def get_props(prop):
+                return feature.qualifiers.get(prop, [None])
             loc = feature.location
+            sec_met_props = get_props("sec_met")
+            is_biosynthetic = 0
+            for sec_met_prop in sec_met_props:
+                if sec_met_prop is not None and "biosynthetic" in sec_met_prop:
+                    is_biosynthetic = 1
+                    break
             properties = {
                 "nt_start": loc.start,
                 "nt_end": loc.end,
@@ -449,6 +460,7 @@ class BGC:
                 "locus_tag": get_prop("locus_tag"),
                 "protein_id": get_prop("protein_id"),
                 "product": get_prop("product"),
+                "biosynthetic": is_biosynthetic,
                 "aa_seq": get_prop("translation")
             }
             return BGC.CDS(properties)

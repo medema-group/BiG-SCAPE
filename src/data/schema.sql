@@ -57,6 +57,7 @@ CREATE TABLE IF NOT EXISTS cds (
     locus_tag VARCHAR(100),
     protein_id VARCHAR(100),
     product VARCHAR(100),
+    biosynthetic BOOLEAN NOT NULL,
     aa_seq TEXT NOT NULL,
     FOREIGN KEY(bgc_id) REFERENCES bgc(id)
 );
