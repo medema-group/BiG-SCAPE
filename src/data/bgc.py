@@ -20,7 +20,7 @@ class BGC:
 
     def __init__(self, properties: dict):
         self.id = properties.get("id", -1)
-        self.name = properties["name"]
+        self.name = properties["name"].replace("/", "_")
         self.type = properties["type"]
         self.on_contig_edge = properties["on_contig_edge"]
         self.length_nt = properties["length_nt"]

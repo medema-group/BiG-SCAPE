@@ -183,8 +183,8 @@ if __name__ == "__main__":
     ALIGNED_HSPS = data.get_aligned_hsp_list(DB)
 
     # get the alignments to be done
-    # HSPS_TODO = list(set(HSPS) - set(ALIGNED_HSPS))
-    HSPS_TODO = list()
+    HSPS_TODO = list(set(HSPS) - set(ALIGNED_HSPS))
+    # HSPS_TODO = list()
 
     # if there are any to be done, we'll align
     if len(HSPS_TODO) > 0:
@@ -204,7 +204,7 @@ if __name__ == "__main__":
 
     # verify if there are figures already generated
 
-    # big_scape.generate_images(RUN, DB, PFAM_INFO)
+    big_scape.generate_images(RUN, DB, PFAM_INFO)
     logging.info(" Finished creating figures")
     logging.info("   - - Calculating distance matrix - -")
 
@@ -266,7 +266,7 @@ if __name__ == "__main__":
     RUN.end()
     big_scape.generate_results_per_cutoff_value(RUN, RUNDATA_NETWORKS_PER_RUN, HTML_SUBS_PER_RUN)
     # dump bgc info
-    # pickle.dump(BGC_INFO_DICT, open(os.path.join(RUN.directories.cache, 'bgc_info.dict'), 'wb'))
+    pickle.dump(BGC_INFO_DICT, open(os.path.join(RUN.directories.cache, 'bgc_info.dict'), 'wb'))
 
     # done
     RUN.report_runtime()

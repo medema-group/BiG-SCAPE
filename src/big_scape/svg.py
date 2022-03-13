@@ -49,7 +49,7 @@ def generate_images(run, database: Database, pfam_info):
         for bgc in working_set:
             with open(gen_bank_dict[bgc], "r") as handle:
                 utility.SVG(False, os.path.join(run.directories.svg, bgc+".svg"), handle, bgc,
-                            os.path.join(run.directories.pfd, bgc+".pfd"), True, color_genes,
+                            database, color_genes,
                             color_domains, pfam_domain_categories, pfam_info,
                             bgc_info[bgc]["records"], bgc_info[bgc]["max_width"])
 

@@ -26,6 +26,8 @@ from colorsys import rgb_to_hsv
 from math import sin, atan2, pi
 from collections import defaultdict
 
+
+
 global internal_domain_margin
 global gene_contour_thickness
 global stripe_thickness
@@ -365,7 +367,42 @@ def new_color(gene_or_domain):
     return [r, g, b]
 
 
-def SVG(write_html, outputfile, GenBankFile, BGCname, pfdFile, use_pfd, color_genes, color_domains, pfam_domain_categories, pfam_info, loci, max_width, H=30, h=15, l=30, mX=10, mY=10, scaling=30, absolute_start=0, absolute_end=-1):
+def get_cds_with_alignment(database, bgc_name = None):
+    """Returns a complete list of cds entries and protein domain alignment details"""
+    if bgc_name is None:
+        clause = ""
+    else:
+        clause = f"where bgc.name = \"{bgc_name}\""
+    return database.select(
+        "hsp_alignment \
+        join hsp on hsp.id = hsp_alignment.hsp_id \
+        join cds on cds.id = hsp.cds_id \
+        join bgc on bgc.id = cds.bgc_id \
+        join hmm on hmm.id = hsp.hmm_id",
+        clause,
+        props=[
+            "bgc.name",
+            "cds.orf_id",
+            "cds.nt_start",
+            "cds.nt_end",
+            "cds.strand",
+            "hmm.accession",
+            "hsp_alignment.env_start",
+            "hsp_alignment.env_end",
+            "hsp.bitscore"
+        ]
+    )
+
+def gen_header(base_name, cds_row):
+    """generates an accession id for a cds. e.g.
+    >AL645882.2.cluster001:gid::pid::loc:12131939:strand:-"""
+    nt_start = cds_row["nt_start"]
+    nt_end = cds_row["nt_end"]
+    strand = "+" if cds_row["strand"] == 1 else "-"
+    return f">{base_name}:gid::pid::loc:{nt_start}:{nt_end}:strand:{strand}"
+
+
+def SVG(write_html, outputfile, GenBankFile, BGCname, database, color_genes, color_domains, pfam_domain_categories, pfam_info, loci, max_width, H=30, h=15, l=30, mX=10, mY=10, scaling=30, absolute_start=0, absolute_end=-1):
     '''
     Create the main SVG document:
         - read pfd file with domain information (pfdFile contains complete path)
@@ -379,12 +416,7 @@ def SVG(write_html, outputfile, GenBankFile, BGCname, pfdFile, use_pfd, color_ge
     new_color_domains = {}
     
     SVG_TEXT = "" # here we keep all the text that will be written down as a file
-    
-    # check whether we have a corresponding pfd file wih domain annotations
-    if use_pfd:
-        if not os.path.isfile(pfdFile):
-            logging.error("(ArrowerSVG) %s not found", pfdFile)
-            sys.exit(1)
+
    
 
     # --- create SVG header. We have to get max_width first
@@ -468,59 +500,61 @@ def SVG(write_html, outputfile, GenBankFile, BGCname, pfdFile, use_pfd, color_ge
     # --- read in GenBank file
 
     # handle domains
-    if use_pfd:
-        identifiers = defaultdict(list)
-        with open(pfdFile, "r") as pfd_handle:
-            for line in pfd_handle:
-                row = line.strip().split("\t")
-                
-                # use to access to parent's properties
-                identifier = row[9].replace("<","").replace(">","")
-                # if it's the new version of pfd file, we can take the last part 
-                #  to make it equal to the identifiers used in gene_list. Strand
-                #  is recorded in parent gene anyway
-                if ":strand:+" in identifier:
-                    identifier = identifier.replace(":strand:+", "")
-                    strand = "+"
-                if ":strand:-" in identifier:
-                    identifier = identifier.replace(":strand:-", "")
-                    strand = "-"
-                
+    identifiers = defaultdict(list)
+    rows = get_cds_with_alignment(database, BGCname)
+    for row in rows:
+        env_start = row["env_start"]
+        env_end = row["env_end"]
+        accession = row["accession"]
+        nt_start = row["nt_start"]
+        nt_end = row["nt_end"]
+        header = gen_header(BGCname, row)
+        
+        # use to access to parent's properties
+        identifier = header.replace("<","").replace(">","")
+        # if it's the new version of pfd file, we can take the last part 
+        #  to make it equal to the identifiers used in gene_list. Strand
+        #  is recorded in parent gene anyway
+        if ":strand:+" in identifier:
+            identifier = identifier.replace(":strand:+", "")
+            strand = "+"
+        if ":strand:-" in identifier:
+            identifier = identifier.replace(":strand:-", "")
+            strand = "-"
+        
 
-                width = 3*(int(row[4]) - int(row[3]))
+        width = 3*(int(env_end) - int(env_start))
+                    
+        if strand == "+":
+            # multiply by 3 because the env. coordinate is in aminoacids, not in bp
+            # This start is relative to the start of the gene
+            start = 3*int(env_start)
+        else:
                             
-                if strand == "+":
-                    # multiply by 3 because the env. coordinate is in aminoacids, not in bp
-                    # This start is relative to the start of the gene
-                    start = 3*int(row[3])
-                else:
-                    loci_start = int(row[7].replace("<","").replace(">",""))
-                    loci_end = int(row[8].replace("<","").replace(">",""))
-                                    
-                    start = loci_end - loci_start - 3*int(row[3]) - width
-                
-                # geometry
-                start = int(start/scaling)
-                width = int(width/scaling)
+            start = nt_start - nt_end - 3*int(env_start) - width
+        
+        # geometry
+        start = int(start/scaling)
+        width = int(width/scaling)
 
-                # accession
-                domain_acc = row[5].split(".")[0]
-                
-                # colors
-                try:
-                    color = color_domains[domain_acc]
-                except KeyError:
-                    color = new_color("domain")
-                    new_color_domains[domain_acc] = color
-                    color_domains[domain_acc] = color
-                    pass
-                # contour color is a bit darker. We go to h,s,v space for that
-                h_, s, v = rgb_to_hsv(float(color[0])/255.0, float(color[1])/255.0, float(color[2])/255.0)
-                color_contour = tuple(int(c * 255) for c in hsv_to_rgb(h_, s, 0.8*v))
+        # accession
+        domain_acc = accession.split(".")[0]
+        
+        # colors
+        try:
+            color = color_domains[domain_acc]
+        except KeyError:
+            color = new_color("domain")
+            new_color_domains[domain_acc] = color
+            color_domains[domain_acc] = color
+            pass
+        # contour color is a bit darker. We go to h,s,v space for that
+        h_, s, v = rgb_to_hsv(float(color[0])/255.0, float(color[1])/255.0, float(color[2])/255.0)
+        color_contour = tuple(int(c * 255) for c in hsv_to_rgb(h_, s, 0.8*v))
 
 
-                # [X, L, H, domain_acc, color, color_contour]
-                identifiers[identifier].append([start, width, int(H - 2*internal_domain_margin), domain_acc, pfam_info[domain_acc], color, color_contour])
+        # [X, L, H, domain_acc, color, color_contour]
+        identifiers[identifier].append([start, width, int(H - 2*internal_domain_margin), domain_acc, pfam_info[domain_acc], color, color_contour])
     
     loci = 0
     feature_counter = 1
