@@ -19,7 +19,7 @@ from src.bgctools import get_composite_bgc_similarities
 from src.big_scape.bgc_collection import BgcCollection
 from src.utility.io import create_directory
 from src.data.data import Database
-from src.data.cds import get_cds_json_dict_rows
+from src.data.cds import get_cds_with_alignment
 
 
 def cluster_json_batch(db: Database, bgcs, path_base, class_name, matrix, pos_alignments,
@@ -100,7 +100,7 @@ def cluster_json_batch(db: Database, bgcs, path_base, class_name, matrix, pos_al
         orfDict = defaultdict(dict)
 
         # get orfs from database
-        rows = get_cds_json_dict_rows(db, bgcName)
+        rows = get_cds_with_alignment(db, bgcName)
         # We cannot get all the info exclusively from the hsp table because that only
         # contains ORFs with predicted domains (and we need to draw empty genes
         # as well)

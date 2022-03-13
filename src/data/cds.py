@@ -12,7 +12,7 @@ def get_cds_rows(database: Database, cds_ids: list = None):
     else:
         return database.select("cds", "where id in (" + ",".join(map(str, cds_ids)) + ")")
 
-def get_cds_json_dict_rows(database: Database, bgc_name = None):
+def get_cds_with_alignment(database: Database, bgc_name = None):
     """Returns a complete list of cds entries and protein domain alignment details"""
     if bgc_name is None:
         clause = ""
