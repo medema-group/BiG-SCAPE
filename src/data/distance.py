@@ -15,7 +15,7 @@ def generate_bgc_collection(run, database: Database, BGC_INFO_DICT, GBK_FILE_DIC
     cluster_name_list = get_cluster_name_list(database)
 
     bgc_collection.initialize(cluster_name_list)
-    
+
     # protein domain needs to be sorted by the absolute start
     # we could do this in python but somehow it seems it might be easier to do in
     # sqlite
@@ -36,6 +36,7 @@ def generate_bgc_collection(run, database: Database, BGC_INFO_DICT, GBK_FILE_DIC
             "strand",
             "env_start",
             "env_end",
+            "orf_id",
             "CASE WHEN strand = 1 \
                 THEN 3 * env_start + nt_start \
             ELSE \
@@ -58,23 +59,23 @@ def generate_bgc_collection(run, database: Database, BGC_INFO_DICT, GBK_FILE_DIC
         if bgc_name not in odomlist:
             odomlist[bgc_name] = []
         odomlist[bgc_name].append(accession)
-        
+
         # domain name info
         if bgc_name not in bgc_domain_name_info:
             bgc_domain_name_info[bgc_name] = {}
         if accession not in bgc_domain_name_info[bgc_name]:
             bgc_domain_name_info[bgc_name][accession] = []
-            
+
         # assemble header expected later on
         header = gen_header(bgc_name, row)[1:] + ":" + str(row["env_start"]) + ":" + str(row["env_end"])
 
         bgc_domain_name_info[bgc_name][accession].append(header)
-    
+
     # domain count, core biosynth pos and gene orientation
     gene_domain_count = dict()
     corebiosynthetic_pos = dict()
     bgc_gene_orientation = dict()
-    
+
     rows = database.select(
         "hsp \
         join cds on hsp.cds_id = cds.id \
@@ -98,7 +99,7 @@ def generate_bgc_collection(run, database: Database, BGC_INFO_DICT, GBK_FILE_DIC
             corebiosynthetic_pos[bgc_name] = array('H')
         if bgc_name not in bgc_gene_orientation:
             bgc_gene_orientation[bgc_name] = array('b')
-        
+
         gene_domain_count[bgc_name].append(row["cds_count"])
         if row["biosynthetic"] == 1:
             corebiosynthetic_pos[bgc_name].append(idx)
@@ -134,7 +135,7 @@ def generate_bgc_collection(run, database: Database, BGC_INFO_DICT, GBK_FILE_DIC
 def generate_aligned_domain_seqs(run, database):
     """Generates an aligned domain seqs dictionary for use in generate_network"""
     aligned_domain_seqs = dict()
-    
+
     rows = database.select(
         "hsp \
         join hsp_alignment on hsp_alignment.hsp_id = hsp.id \
@@ -146,10 +147,11 @@ def generate_aligned_domain_seqs(run, database):
             "bgc.name as bgc_name",
             "nt_start",
             "nt_end",
-            "env_start",
-            "env_end",
+            "msa.env_start",
+            "msa.env_end",
             "strand",
-            "algn_string"
+            "algn_string",
+            "orf_id"
         ]
     )
 
