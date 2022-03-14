@@ -132,6 +132,7 @@ CREATE TABLE IF NOT EXISTS msa (
     cds_id INTEGER NOT NULL,
     hmm_id INTEGER NOT NULL,
     algn_string TEXT NOT NULL,
+    UNIQUE (cds_id, hmm_id),
     FOREIGN KEY(cds_id) REFERENCES cds(id),
     FOREIGN KEY(hmm_id) REFERENCES hmm(id)    
 );
