@@ -267,12 +267,18 @@ def run_pyhmmer(run, database: Database, ids_todo):
                 insert_hsp(database, cds_id, hmm_id, bitscore)
                 hsps.append(hsp)
 
+                # commit every 500 hsps
+                if len(hsps) % 500 == 0:
+                    database.commit_inserts()
+
             # update bgc status when done
             update_bgc_status(database, bgc_id, 2)
 
             ids_done += 1
 
-            database.commit_inserts()
+            # commit every 500 bgcs also
+            if ids_done % 500 == 0:
+                database.commit_inserts()
 
             # print progress every 10%
             if ids_done % math.ceil(num_tasks / 10) == 0:
