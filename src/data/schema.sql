@@ -92,8 +92,7 @@ CREATE TABLE IF NOT EXISTS hsp (
     hmm_id INTEGER NOT NULL,
     bitscore REAL NOT NULL,
     FOREIGN KEY(cds_id) REFERENCES cds(id),
-    FOREIGN KEY(hmm_id) REFERENCES hmm(id),
-    UNIQUE (cds_id, hmm_id)
+    FOREIGN KEY(hmm_id) REFERENCES hmm(id)
 );
 CREATE INDEX IF NOT EXISTS hsp_cdshmm ON hsp(cds_id, hmm_id);
 CREATE INDEX IF NOT EXISTS hsp_bitscore ON hsp(bitscore);
