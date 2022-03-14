@@ -198,7 +198,7 @@ def get_cluster_name_list(database):
     bgc_ids = [
         row["name"] for row in database.select(
             "bgc",
-            "",
+            "order by id",
             props=["name"])]
     return bgc_ids
 
