@@ -21,11 +21,13 @@ def calc_model_gaps():
 def calc_cds_gaps():
     return
 
-def insert_msa(database: Database, cds_id, hmm_id, algn_string):
+def insert_msa(database: Database, cds_id, hmm_id, env_start, env_end, algn_string):
     """Inserts (or ignores if already there) a new entry into the msa table"""
     entry = {
         "cds_id": cds_id,
         "hmm_id": hmm_id,
+        "env_start": env_start,
+        "env_end": env_end,
         "algn_string": algn_string
     }
     database.insert("msa", entry, True)

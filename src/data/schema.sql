@@ -88,13 +88,15 @@ CREATE INDEX IF NOT EXISTS subpfam_parenthmm ON subpfam(parent_hmm_id, hmm_id);
 -- hsp
 CREATE TABLE IF NOT EXISTS hsp (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
+    serial_nr INTEGER NOT NULL,
     cds_id INTEGER NOT NULL,
     hmm_id INTEGER NOT NULL,
     bitscore REAL NOT NULL,
     FOREIGN KEY(cds_id) REFERENCES cds(id),
-    FOREIGN KEY(hmm_id) REFERENCES hmm(id)
+    FOREIGN KEY(hmm_id) REFERENCES hmm(id),
+    UNIQUE(serial_nr, cds_id, hmm_id)
 );
-CREATE INDEX IF NOT EXISTS hsp_cdshmm ON hsp(cds_id, hmm_id);
+CREATE INDEX IF NOT EXISTS hsp_cdshmm ON hsp(serial_nr, cds_id, hmm_id);
 CREATE INDEX IF NOT EXISTS hsp_bitscore ON hsp(bitscore);
 
 -- hsp_alignment
@@ -130,8 +132,10 @@ CREATE TABLE IF NOT EXISTS msa (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     cds_id INTEGER NOT NULL,
     hmm_id INTEGER NOT NULL,
+    env_start INTEGER NOT NULL,
+    env_end INTEGER NOT NULL,
     algn_string TEXT NOT NULL,
-    UNIQUE (cds_id, hmm_id),
+    UNIQUE (cds_id, hmm_id, env_start, env_end),
     FOREIGN KEY(cds_id) REFERENCES cds(id),
     FOREIGN KEY(hmm_id) REFERENCES hmm(id)    
 );

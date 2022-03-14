@@ -196,10 +196,11 @@ def calc_dss(run, database, cluster_a, cluster_b, aligned_domain_sequences, anch
 
 
     not_intersect = dom_info.a_dom_set.symmetric_difference(dom_info.b_dom_set)
+    not_intersect_list = sorted(list(not_intersect))
 
     # Case 1
     #no need to look at seq identity, since these domains are unshared
-    for unshared_domain in not_intersect:
+    for unshared_domain in not_intersect_list:
         #for each occurence of an unshared domain do domain_difference += count
         # of domain and S += count of domain
 
@@ -220,7 +221,9 @@ def calc_dss(run, database, cluster_a, cluster_b, aligned_domain_sequences, anch
     # Cases 2 and 3 (now merged)
     missing_aligned_domain_files = []
 
-    for shared_domain in dom_info.intersect:
+    intersect_list = sorted(list(dom_info.intersect))
+
+    for shared_domain in intersect_list:
         specific_domain_list_a = cluster_a.domain_name_info[shared_domain]
         specific_domain_list_b = cluster_b.domain_name_info[shared_domain]
 

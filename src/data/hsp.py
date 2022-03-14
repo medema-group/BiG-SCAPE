@@ -26,14 +26,15 @@ def aa_seq_from_accession(database: Database, accession: str):
             props=["cds.aa_seq"])]
     return aa_seq
 
-def insert_hsp(database: Database, cds_id: int, hmm_id: int, bitscore: float):
+def insert_hsp(database: Database, serial_nr: int, cds_id: int, hmm_id: int, bitscore: float):
     """Inserts (or ignores if already there) a new high scoring protein into the database"""
     entry = {
+        "serial_nr": serial_nr,
         "cds_id": cds_id,
         "hmm_id": hmm_id,
         "bitscore": bitscore
     }
-    database.insert("hsp", entry, True)
+    return database.insert("hsp", entry, True)
 
 def insert_hsp_alignment(database: Database, hsp_id, env_start, env_end, model_start, model_end, model_gaps, cds_start, cds_end, cds_gaps):
     """Inserts (or ignores if already there) a new high scoring protein into the database"""
@@ -54,15 +55,34 @@ def get_hsp_id_list(database):
     """Returns a list of all hsp ids"""
     return [row["id"] for row in database.select("hsp", "", props=["id"])]
 
-def get_hsp_id(database, cds_id, hmm_id):
+def get_hsp_id(database, serial_nr, cds_id, hmm_id):
     """Returns an hsp id based on a given cds id and hmm id"""
-    res = database.select("hsp", f"where cds_id = {cds_id} and hmm_id = {hmm_id}", props=["id"])
+    res = database.select("hsp", f"where serial_nr = {serial_nr} and cds_id = {cds_id} and hmm_id = {hmm_id}", props=["id"])
     if len(res) == 0:
         return None
     else:
         return res[0]["id"]
 
-
+def get_hsp_cds(database: Database, cds_ids: list(), hmm_id: int):
+    """Gets a list of hsp coding domain sequences from cds ids and the relevant hmm id
+    This is done by taking the substring of the original cds based on the
+    env_start and env_end parameters in a hsp"""
+    rows = database.select(
+        "hsp_alignment\
+        JOIN cds\
+        ON cds.id = hsp.cds_id\
+        JOIN hsp\
+        ON hsp.id = hsp_alignment.hsp_id",
+        f"WHERE cds.id in ({','.join(map(str, cds_ids))})\
+        AND hsp.hmm_id = {hmm_id}",
+        props=[
+            "cds_id",
+            "env_start",
+            "env_end",
+            "substr(aa_seq, env_start, env_end - env_start + 1) as sequence"
+        ]
+    )
+    return rows
 
 def get_multiple_align_hsps(database: Database):
     """Returns the rows in the hsp table, joined with the hmm table for accession info

@@ -2,21 +2,12 @@ import logging
 import math
 import os
 import string
-import subprocess
-import sys
 import pyhmmer
 
 from multiprocessing import Pool, Process, Queue
-from functools import partial
-from glob import glob
-from src.data.cds import get_cds_rows
 from src.data.database import Database
-from src.data.hsp import get_multiple_align_hsps
+from src.data.hsp import get_multiple_align_hsps, get_hsp_cds
 from src.data.msa import insert_msa
-from src.data.status import update_bgc_status
-
-from src.utility import get_fasta_keys, fasta_parser
-from src.pfam.stockholm import stockholm_parser
 
 def generate_task_list(hsp_rows):
     """Generates a task list suitable for launch_hmmalign from a list of rows from the hsp table
@@ -98,11 +89,19 @@ def launch_hmmalign_worker(input_queue, output_queue, profile_dict, database):
 
         # get cds sequences
         cds_ids = [hsp_row["cds_id"] for hsp_row in hsp_rows]
-        cds_rows = get_cds_rows(database, cds_ids)
+        cds_rows = get_hsp_cds(database, cds_ids, hmm_id)
 
         sequences = list()
         for cds_row in cds_rows:
-            ds = pyhmmer.easel.TextSequence(name=str(cds_row["id"]).encode(), sequence=cds_row["aa_seq"]).digitize(pyhmmer.easel.Alphabet.amino())
+            cds_id = cds_row["cds_id"]
+            env_start = cds_row["env_start"]
+            env_end = cds_row["env_end"]
+            name = f"{cds_id}_{env_start}_{env_end}".encode()
+            sequence = sequence=cds_row["sequence"]
+            ds = pyhmmer.easel.TextSequence(
+                name = name,
+                sequence = sequence
+            ).digitize(pyhmmer.easel.Alphabet.amino())
             sequences.append(ds)
 
 
@@ -111,9 +110,10 @@ def launch_hmmalign_worker(input_queue, output_queue, profile_dict, database):
 
         alignments = []
         for idx, alignment in enumerate(msa.alignment):
-            cds_id = msa.sequences[idx].name.decode()
+            name = msa.sequences[idx].name.decode()
+            cds_id, env_start, env_end = name.split("_")
             algn_string = process_algn_string(alignment)
-            alignments.append((cds_id, hmm_id, algn_string))
+            alignments.append((cds_id, hmm_id, env_start, env_end, algn_string))
 
         # done, write something to output
         output_queue.put(alignments)
@@ -162,9 +162,9 @@ def launch_hmmalign(run, algn_task_list, profile_dict, database: Database):
         if not output_q.empty():
             alignments = output_q.get()
             for alignment in alignments:
-                cds_id, hmm_id, algn_string = alignment
+                cds_id, hmm_id, env_start, env_end, algn_string = alignment
 
-                insert_msa(database, cds_id, hmm_id, algn_string)
+                insert_msa(database, cds_id, hmm_id, env_start, env_end, algn_string)
 
             tasks_done += 1
 

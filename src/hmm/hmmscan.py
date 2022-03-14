@@ -119,13 +119,13 @@ def filter_overlap(hsps, overlap_cutoff):
             row2 = hsps[j]
 
             # using env coords
-            a_start = row1[3]
-            a_end = row1[4]
-            b_start = row2[3]
-            b_end = row2[4]
+            a_start = row1[4]
+            a_end = row1[5]
+            b_start = row2[4]
+            b_end = row2[5]
 
             #check if we are the same CDS
-            if row1[0] == row2[0]:
+            if row1[1] == row2[1]:
                 #check if there is overlap between the domains
                 if not no_overlap(a_start, a_end, b_start, b_end):
                     overlapping_aminoacids = len_overlap(a_start, a_end, b_start, b_end)
@@ -133,9 +133,9 @@ def filter_overlap(hsps, overlap_cutoff):
                     overlap_perc_loc2 = overlapping_aminoacids / (b_end - b_start)
                     #check if the amount of overlap is significant
                     if overlap_perc_loc1 > overlap_cutoff or overlap_perc_loc2 > overlap_cutoff:
-                        if float(row1[2]) >= float(row2[2]): #see which has a better score
+                        if float(row1[3]) >= float(row2[3]): #see which has a better score
                             delete_list.append(row2)
-                        elif float(row1[2]) < float(row2[2]):
+                        elif float(row1[3]) < float(row2[3]):
                             delete_list.append(row1)
 
     for lst in delete_list:
@@ -166,7 +166,7 @@ def run_pyhmmer_worker(input_queue, output_queue, profiles, pipeline, database: 
         domains = pyhmmer_search_hmm(accession, profiles, sequences, pipeline)
 
         hsps = list()
-        for domain in domains:
+        for idx, domain in enumerate(domains):
             domain: pyhmmer.plan7.Domain
             # cds id
             cds_id = int(domain.alignment.target_name.decode())
@@ -195,7 +195,7 @@ def run_pyhmmer_worker(input_queue, output_queue, profiles, pipeline, database: 
             model_gaps = get_hmm_gaps(domain.alignment.hmm_sequence)
             cds_gaps = get_cds_gaps(domain.alignment.target_sequence)
 
-            hsps.append((cds_id, hmm_id, bitscore, env_start, env_end, model_start, model_end, cds_start, cds_end, model_gaps, cds_gaps))
+            hsps.append((idx, cds_id, hmm_id, bitscore, env_start, env_end, model_start, model_end, cds_start, cds_end, model_gaps, cds_gaps))
 
         output_queue.put((bgc_id, hsps))
 
@@ -260,11 +260,13 @@ def run_pyhmmer(run, database: Database, ids_todo):
             filtered_hsps = filter_overlap(task_hsps, run.options.domain_overlap_cutoff)
 
             for hsp in filtered_hsps:
-                cds_id = hsp[0]
-                hmm_id = hsp[1]
-                bitscore = hsp[2]
+                
+                serial_nr = hsp[0]
+                cds_id = hsp[1]
+                hmm_id = hsp[2]
+                bitscore = hsp[3]
                 # insert hsp
-                insert_hsp(database, cds_id, hmm_id, bitscore)
+                insert_hsp(database, serial_nr, cds_id, hmm_id, bitscore)
                 hsps.append(hsp)
 
                 # commit every 500 hsps
@@ -291,14 +293,14 @@ def run_pyhmmer(run, database: Database, ids_todo):
 
     # insert alignments. Has to be done after inserts because only then are ids available
     for idx, hsp in enumerate(hsps):
-        cds_id, hmm_id, bitscore, env_start, env_end, model_start, model_end, cds_start, cds_end, model_gaps, cds_gaps = hsp
+        serial_nr, cds_id, hmm_id, bitscore, env_start, env_end, model_start, model_end, cds_start, cds_end, model_gaps, cds_gaps = hsp
 
         # get hsp id
-        hsp_id = get_hsp_id(database, cds_id, hmm_id)
+        hsp_id = get_hsp_id(database, serial_nr, cds_id, hmm_id)
         if hsp_id is None:
             logging.error("Could not find hsp_id associated with newly added hsp")
 
-        
+
         # insert hsp_alignment
         insert_hsp_alignment(database, hsp_id, env_start, env_end, model_start, model_end, model_gaps, cds_start, cds_end, cds_gaps)
 
