@@ -10,6 +10,7 @@ Handle manipulation and storing of 'bgc' table
 """
 
 from os import path
+import os
 from Bio import SeqIO, SeqFeature
 from typing import List
 from .database import Database
@@ -32,7 +33,7 @@ class BGC:
 
     def __init__(self, properties: dict):
         self.id = properties.get("id", -1)
-        self.name = properties["name"].replace("/", "_")
+        self.name = properties["name"]
         self.type = properties["type"]
         self.on_contig_edge = properties["on_contig_edge"]
         self.length_nt = properties["length_nt"]
@@ -100,6 +101,9 @@ class BGC:
 
         results = []
 
+        file_folder, fname = os.path.split(orig_gbk_path)
+        name = fname[:-4]
+
         gbk_type = None
         records = SeqIO.parse(gbk_path, "gb")
         for gbk in records:
@@ -133,7 +137,6 @@ class BGC:
                             "aStool" in qual and \
                                 qual["aStool"][0] == "mibig":
                             subreg = feature
-                            name = gbk.id
                             on_edge = True
                             loc = subreg.location
                             len_nt = loc.end - loc.start
@@ -163,7 +166,6 @@ class BGC:
                         qual = feature.qualifiers
                         if feature.type == "region":
                             reg = feature
-                            name = path.splitext(orig_gbk_path)[0]
                             on_edge = qual["contig_edge"][0] == "True"
                             loc = reg.location
                             len_nt = loc.end - loc.start
@@ -206,7 +208,6 @@ class BGC:
                         break
                 if not gbk_type:
                     gbk_type = "as4"
-                name = path.splitext(orig_gbk_path)[0]
                 if "contig_edge" in qual:
                     on_edge = qual["contig_edge"][0] == "True"
                 else:
