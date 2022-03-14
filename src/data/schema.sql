@@ -26,6 +26,8 @@ CREATE TABLE IF NOT EXISTS bgc (
     length_nt INTEGER NOT NULL,
     orig_folder VARCHAR(1500) NOT NULL,
     orig_filename VARCHAR(1500) NOT NULL,
+    bigscape_product VARCHAR(300),
+    bigscape_organism VARCHAR(300),
     UNIQUE(orig_folder, orig_filename, dataset_id),
     FOREIGN KEY(dataset_id) REFERENCES dataset(id),
     FOREIGN KEY(type) REFERENCES enum_bgc_type(code)

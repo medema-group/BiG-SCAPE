@@ -18,6 +18,18 @@ from .database import Database
 class BGC:
     """Represents a BGC in the database"""
 
+    @staticmethod
+    def process_product(products):
+        """Transforms products values into a format big-scape expects"""
+        result = []
+        for product in products:
+            for split_product in product.replace(" ", "").split("-"):
+                if split_product == "other":
+                    continue
+                result.append(split_product)
+        return ".".join(result)
+            
+
     def __init__(self, properties: dict):
         self.id = properties.get("id", -1)
         self.name = properties["name"].replace("/", "_")
@@ -27,6 +39,8 @@ class BGC:
         self.orig_folder = properties["orig_folder"]
         self.orig_filename = properties["orig_filename"]
         self.chem_subclasses = properties["chem_subclasses"]
+        self.bigscape_product = BGC.process_product(properties["bigscape_product"])
+        self.bigscape_organism = properties["bigscape_organism"]
         self.cds = properties["cds"]
 
     def save(self, dataset_id: int, database: Database):
@@ -59,7 +73,9 @@ class BGC:
                     "on_contig_edge": self.on_contig_edge,
                     "length_nt": self.length_nt,
                     "orig_folder": self.orig_folder,
-                    "orig_filename": self.orig_filename
+                    "orig_filename": self.orig_filename,
+                    "bigscape_product": self.bigscape_product,
+                    "bigscape_organism": self.bigscape_organism
                 }
             )
             # insert classes
@@ -134,6 +150,8 @@ class BGC:
                                 "orig_folder": path.dirname(orig_gbk_path),
                                 "orig_filename": path.basename(orig_gbk_path),
                                 "chem_subclasses": chem_subclasses,
+                                "bigscape_product": qual["product"],
+                                "bigscape_organism": gbk.annotations.get("organism"),
                                 "cds": [BGC.CDS.from_feature(f, i+1)
                                         for i, f in enumerate(cds_features)]
                             }))
@@ -161,6 +179,8 @@ class BGC:
                                 "orig_folder": path.dirname(orig_gbk_path),
                                 "orig_filename": path.basename(orig_gbk_path),
                                 "chem_subclasses": chem_subclasses,
+                                "bigscape_product": qual["product"],
+                                "bigscape_organism": gbk.annotations.get("organism"),
                                 "cds": [BGC.CDS.from_feature(f, i+1)
                                         for i, f in enumerate(cds_features)]
                             }))
@@ -205,6 +225,8 @@ class BGC:
                     "orig_folder": path.dirname(orig_gbk_path),
                     "orig_filename": path.basename(orig_gbk_path),
                     "chem_subclasses": chem_subclasses,
+                    "bigscape_product": qual["product"],
+                    "bigscape_organism": gbk.annotations.get("organism"),
                     "cds": [BGC.CDS.from_feature(f, i+1)
                         for i, f in enumerate(cds_features)]
                 }))

@@ -244,14 +244,16 @@ def gen_bgc_info_for_fetch_genome(database: Database):
     """Generates a dictionary of BGC info objects that are needed for the SVG image generation"""
     bgc_info = dict()
     rows = database.select(
-        "bgc \
-        join bgc_class on bgc_class.bgc_id = bgc.id \
-        join chem_subclass on chem_subclass.id = bgc_class.chem_subclass_id",
-        "" ,
-        props=["bgc.name as name, chem_subclass.name as product"])
+        "bgc",
+        "",
+        props=[
+            "bgc.name as name",
+            "bgc.bigscape_product as product",
+            "bgc.bigscape_organism as organism"
+        ])
     for row in rows:
         bgc_info[row["name"]] = {
-            "organism": "TODO",
+            "organism": row["organism"],
             "product": row["product"]
         }
     return bgc_info
