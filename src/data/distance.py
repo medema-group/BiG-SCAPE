@@ -16,13 +16,18 @@ def generate_bgc_collection(run, database: Database, BGC_INFO_DICT, GBK_FILE_DIC
 
     bgc_collection.initialize(cluster_name_list)
     
+    # protein domain needs to be sorted by the absolute start
+    # we could do this in python but somehow it seems it might be easier to do in
+    # sqlite
+    # the CASE statement here calculates the absolute start of the domain
+    # this is used to order by absolute start
     rows = database.select(
         "hsp \
-        join hsp_alignment on hsp_alignment.hsp_id = hsp.id \
-        join cds on hsp.cds_id = cds.id \
-        join bgc on bgc.id = cds.bgc_id \
-        join hmm on hmm.id = hsp.hmm_id",
-        "",
+        JOIN hsp_alignment ON hsp_alignment.hsp_id = hsp.id \
+        JOIN cds ON hsp.cds_id = cds.id \
+        JOIN bgc ON bgc.id = cds.bgc_id \
+        JOIN hmm ON hmm.id = hsp.hmm_id",
+        "ORDER BY bgc_id, absolute_start",
         props=[
             "accession",
             "bgc.name as bgc_name",
@@ -30,7 +35,12 @@ def generate_bgc_collection(run, database: Database, BGC_INFO_DICT, GBK_FILE_DIC
             "nt_end",
             "strand",
             "env_start",
-            "env_end"
+            "env_end",
+            "CASE WHEN strand = 1 \
+                THEN 3 * env_start + nt_start \
+            ELSE \
+                nt_end - 3 * env_start - 3 * (env_end - env_start) \
+            END AS absolute_start"
         ]
     )
 
