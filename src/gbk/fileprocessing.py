@@ -97,7 +97,7 @@ def process_gbk_file(
     gen_bank_dict = {}
 
     file_folder, fname = os.path.split(gbk_file_path)
-    cluster_name = file_folder.split('/')[-1] + "_" + fname[:-4]
+    cluster_name = fname[:-4]
 
     # See if we need to keep the sequence
     # (Currently) we have to open the file anyway to read all its
