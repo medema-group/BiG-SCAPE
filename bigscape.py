@@ -139,7 +139,7 @@ if __name__ == "__main__":
 
     # init database
     DB_PATH = os.path.join(RUN.directories.output, "data.db")
-    DB = data.Database(DB_PATH)
+    DB = data.Database(DB_PATH, True)
 
     ### Step 1: Get all the input files. Write extract sequence and write fasta if necessary
     logging.info("   - - Processing input files - -")

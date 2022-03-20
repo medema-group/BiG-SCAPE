@@ -28,17 +28,16 @@ def gen_dist_matrix_worker(input_queue: Queue, output_queue: Queue, run, databas
     """
     while True:
         input_task = input_queue.get(True)
-        pair, skip_set = input_task
-        if pair[0] is None:
+        if input_task is None:
             break
         # logging.info("launching task on pair %s, %s", pair[0], pair[1])
 
-        result, new_skip_set, skipped = generate_dist_matrix(pair, database, run, bgc_collection, aligned_domain_sequences, skip_set)
-        output_queue.put((result, new_skip_set, skipped))
+        result = generate_dist_matrix(input_task, database, run, bgc_collection, aligned_domain_sequences)
+        output_queue.put(result)
 
 
 # @timeit
-def gen_dist_matrix_async(run, database, cluster_pairs, bgc_collection: BgcCollection, aligned_domain_sequences, skip_set):
+def gen_dist_matrix_async(run, database, cluster_pairs, bgc_collection: BgcCollection, aligned_domain_sequences):
     """Distributes the distance calculation part
     cluster_pairs is a list of triads (cluster1_index, cluster2_index, BGC class)
     """
@@ -75,22 +74,15 @@ def gen_dist_matrix_async(run, database, cluster_pairs, bgc_collection: BgcColle
             break
 
         if not working_q.full() and not all_tasks_put:
-            working_q.put((cluster_pairs[cluster_idx], skip_set))
+            working_q.put(cluster_pairs[cluster_idx])
             cluster_idx += 1
             if not working_q.full():
                 continue
 
         if not output_q.empty():
-            network_row, skip_set_add, skipped = output_q.get()
+            network_row = output_q.get()
             # add row to matrix
             network_matrix.append(network_row)
-
-            # update skip set
-            skip_set = skip_set | skip_set_add
-
-            # add to skip count
-            if skipped:
-                skipped_bgcs += 1
 
             num_tasks_done = len(network_matrix)
             
@@ -98,21 +90,18 @@ def gen_dist_matrix_async(run, database, cluster_pairs, bgc_collection: BgcColle
             if num_tasks_done % math.ceil(num_tasks / 10) == 0:
                 percent_done = num_tasks_done / num_tasks * 100
                 logging.info("    %d%% (%d/%d)", percent_done, num_tasks_done, num_tasks)
-            # logging.info("adding result (now %d)", len(network_matrix))
+
 
     # clean up threads
     for thread_num in range(num_processes):
-        working_q.put(((None, None, -1), None))
+        working_q.put(None)
 
     for process in processes:
         process.join()
         thread_name = process.name
         logging.debug("Thread %s stopped", thread_name)
 
-    if run.distance.diss_skip:
-        logging.info("    Skipped %d bgcs due to dissimilarity skipping ", skipped_bgcs)
-
-    return network_matrix, skip_set
+    return network_matrix
 
 
 def calc_ai_pair(cluster_a: BgcInfo, cluster_b: BgcInfo, pair_dom_info: BgcDomainInfo):
@@ -133,7 +122,7 @@ def calc_ai_pair(cluster_a: BgcInfo, cluster_b: BgcInfo, pair_dom_info: BgcDomai
 
     return calc_adj_idx(a_dom_list, b_dom_list, a_dom_start, a_dom_end, b_dom_start, b_dom_end)
 
-def generate_dist_matrix(parms, database, run, bgc_collection: BgcCollection, aligned_domain_sequences, skip_set: set):
+def generate_dist_matrix(parms, database, run, bgc_collection: BgcCollection, aligned_domain_sequences):
     """Unpack data to actually launch cluster_distance for one pair of BGCs
 
     Inputs:
@@ -141,10 +130,9 @@ def generate_dist_matrix(parms, database, run, bgc_collection: BgcCollection, al
         bgc_collection: BgcCollection object containing bgc info objects and necessary data for 
             distance calculation
         aligned_domain_sequences: list of aligned domain sequences from hmm.read_aligned_files
-        skip_set is to be removed (TODO)
     """
 
-    cluster_1_idx, cluster_2_idx, bgc_class_idx = [int(parm) for parm in parms]
+    cluster_1_idx, cluster_2_idx, bgc_class_idx = parms
 
     bgc_class = run.distance.bgc_class_names[bgc_class_idx]
 
@@ -183,12 +171,7 @@ def generate_dist_matrix(parms, database, run, bgc_collection: BgcCollection, al
     # lack of intersect
     no_intersect = len(pair_dom_info.intersect) == 0
 
-    # both already in skip set
-    in_skip_set = cluster_name_a in skip_set and cluster_name_b in skip_set
-    # if in_skip_set:
-    #     logging.info("     %s and %s have common 0-distance BGC. skipping...", cluster_name_a, cluster_name_b)
-
-    if no_intersect or in_skip_set:
+    if no_intersect:
         score_data = gen_unrelated_pair_distance(run, cluster_a, cluster_b)
         jaccard, dss, ai, dss_non_anchor, dss_anchor, num_non_anchor_domains, num_anchor_domains, slice_start_a, slice_start_b, slice_length_a, rev = score_data
     else:
@@ -216,15 +199,11 @@ def generate_dist_matrix(parms, database, run, bgc_collection: BgcCollection, al
 
     dist = calc_distance(weights, jaccard, dss, ai, cluster_a.name, cluster_b.name)
 
-    if run.distance.diss_skip and dist == 0.0:
-        skip_set.add(cluster_name_a)
-        skip_set.add(cluster_name_b)
-        # logging.info("     Adding %s and %s to similary skip set", cluster_name_a, cluster_name_b)
 
     network_row = array('f', [cluster_1_idx, cluster_2_idx, dist, (1-dist)**2, jaccard,
                               dss, ai, dss_non_anchor, dss_anchor, num_non_anchor_domains, num_anchor_domains, slice_start_a, slice_start_b,
                               slice_length_a, rev])
-    return network_row, skip_set, in_skip_set
+    return network_row
 
 
 
