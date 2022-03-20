@@ -158,9 +158,6 @@ def generate_network(run, database, bgc_collection: BgcCollection, aligned_domai
         class_names_len = len(run.distance.bgc_class_names)
         bgc_class_name_2_index = dict(zip(run.distance.bgc_class_names, range(class_names_len)))
 
-    # only used when diss_skip is true
-    skip_set = set()
-
     if run.distance.diss_skip:
         logging.info("  Skipping BGCs with a common dissimilar BGC")
     else:
@@ -212,11 +209,8 @@ def generate_network(run, database, bgc_collection: BgcCollection, aligned_domai
 
         pairs.clear()
 
-        network_matrix, add_skip_set = gen_dist_matrix_async(run, database, cluster_pairs,
-                                                             bgc_collection, aligned_domain_seqs,
-                                                             skip_set)
-
-        skip_set = skip_set | add_skip_set
+        network_matrix = gen_dist_matrix_async(run, database, cluster_pairs,
+                                               bgc_collection, aligned_domain_seqs)
 
         #pickle.dump(network_matrix,open("others.ntwrk",'wb'))
         del cluster_pairs[:]
@@ -256,8 +250,8 @@ def generate_network(run, database, bgc_collection: BgcCollection, aligned_domai
                 cluster_pairs = [(x, y, bgc_class_name_2_index[bgc_class]) for (x, y) in pairs]
 
             pairs.clear()
-            network_matrix_new_set, add_skip_set = gen_dist_matrix_async(run, database, cluster_pairs, bgc_collection, aligned_domain_seqs, skip_set)
-            skip_set = skip_set | add_skip_set
+            network_matrix_new_set = gen_dist_matrix_async(run, database, cluster_pairs,
+                                                           bgc_collection, aligned_domain_seqs)
             del cluster_pairs[:]
 
             # Update the network matrix (QBGC-vs-all) with the distances of
