@@ -5,11 +5,16 @@ from distutils.core import setup
 
 def generate_data_files():
     data_files = []
-    for directory in ['html_template','Annotated_MIBiG_reference']:
+    for directory in ['html_template',
+                      'Annotated_MIBiG_reference']:
         for path, dirs, files in os.walk(directory):
             install_dir = os.path.join('bin',path)
             list_entry = (install_dir, [os.path.join(path, f) for f in files ])
             data_files.append(list_entry)
+    for file in ['anchor_domains.txt',
+                 'domain_includelist.txt',
+                 'domains_color_file.tsv']:
+        data_files.append(('bin', [file]))
     return data_files
 
 setup(
