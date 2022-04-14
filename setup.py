@@ -10,8 +10,8 @@ def generate_data_files():
             install_dir = os.path.join('bin',path)
             list_entry = (install_dir, [os.path.join(path, f) for f in files ])
             data_files.append(list_entry)
-     data_files.append(('bin', ['anchor_domains.txt','domain_includelist.txt','domains_color_file.tsv']))
-     return data_files
+    data_files.append(('bin', ['anchor_domains.txt','domain_includelist.txt','domains_color_file.tsv']))
+    return data_files
 
 setup(
      name='BiG-SCAPE',
