@@ -18,7 +18,7 @@ def generate_data_files():
 
 setup(
      name='BiG-SCAPE',
-     version='1.1.3',
+     version='1.1.4',
      py_modules=['functions','ArrowerSVG'],
      scripts=['bigscape.py'],
      data_files=generate_data_files(),
