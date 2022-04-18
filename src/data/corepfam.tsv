@@ -1,0 +1,113 @@
+Acc	Name	Desc
+PF00067.21	p450	Cytochrome P450
+PF00082.21	Peptidase_S8	Subtilase family
+PF00085.19	Thioredoxin	Thioredoxin
+PF00106.24	adh_short	short chain dehydrogenase
+PF00107.25	ADH_zinc_N	Zinc-binding dehydrogenase
+PF00109.25	ketoacyl-synt	Beta-ketoacyl synthase, N-terminal domain
+PF00117.27	GATase	Glutamine amidotransferase class-I
+PF00155.20	Aminotran_1_2	Aminotransferase class I and II
+PF00182.18	Glyco_hydro_19	Chitinase class I
+PF00195.18	Chal_sti_synt_N	Chalcone and stilbene synthases, N-terminal domain
+PF00201.17	UDPGT	UDP-glucoronosyl and UDP-glucosyl transferase
+PF00202.20	Aminotran_3	Aminotransferase class-III
+PF00264.19	Tyrosinase	Common central domain of tyrosinase
+PF00266.18	Aminotran_5	Aminotransferase class-V
+PF00278.21	Orn_DAP_Arg_deC	Pyridoxal-dependent decarboxylase, C-terminal sheet domain
+PF00348.16	polyprenyl_synt	Polyprenyl synthetase
+PF00378.19	ECH_1	Enoyl-CoA hydratase/isomerase
+PF00407.18	Bet_v_1	Pathogenesis-related protein Bet v I family
+PF00425.17	Chorismate_bind	chorismate binding enzyme
+PF00441.23	Acyl-CoA_dh_1	Acyl-CoA dehydrogenase, C-terminal domain
+PF00450.21	Peptidase_S10	Serine carboxypeptidase
+PF00491.20	Arginase	Arginase family
+PF00494.18	SQS_PSY	Squalene/phytoene synthase
+PF00501.27	AMP-binding	AMP-binding enzyme
+PF00534.19	Glycos_transf_1	Glycosyl transferases group 1
+PF00535.25	Glycos_transf_2	Glycosyl transferase family 2
+PF00544.18	Pec_lyase_C	Pectate lyase
+PF00550.24	PP-binding	Phosphopantetheine attachment site
+PF00561.19	Abhydrolase_1	alpha/beta hydrolase fold
+PF00583.24	Acetyltransf_1	Acetyltransferase (GNAT) family
+PF00662.19	Proton_antipo_N	NADH-Ubiquinone oxidoreductase (complex I), chain 5 N-terminus
+PF00668.19	Condensation	Condensation domain
+PF00675.19	Peptidase_M16	Insulinase (Peptidase family M16)
+PF00696.27	AA_kinase	Amino acid kinase family
+PF00698.20	Acyl_transf_1	Acyl transferase domain
+PF00724.19	Oxidored_FMN	NADH:flavin oxidoreductase / NADH oxidase family
+PF00733.20	Asn_synthase	Asparagine synthase
+PF00817.19	IMS	impB/mucB/samB family
+PF00857.19	Isochorismatase	Isochorismatase family
+PF00881.23	Nitroreductase	Nitroreductase family
+PF00903.24	Glyoxalase	Glyoxalase/Bleomycin resistance protein/Dioxygenase superfamily
+PF00975.19	Thioesterase	Thioesterase domain
+PF01041.16	DegT_DnrJ_EryC1	DegT/DnrJ/EryC1/StrS aminotransferase family
+PF01053.19	Cys_Met_Meta_PP	Cys/Met metabolism PLP-dependent enzyme
+PF01066.20	CDP-OH_P_transf	CDP-alcohol phosphatidyltransferase
+PF01179.19	Cu_amine_oxid	Copper amine oxidase, enzyme domain
+PF01243.19	Putative_PNPOx	Pyridoxamine 5'-phosphate oxidase
+PF01370.20	Epimerase	NAD dependent epimerase/dehydratase family
+PF01397.20	Terpene_synth	Terpene synthase, N-terminal domain
+PF01408.21	GFO_IDH_MocA	Oxidoreductase family, NAD-binding Rossmann fold
+PF01474.15	DAHP_synth_2	Class-II DAHP synthetase family
+PF01494.18	FAD_binding_3	FAD binding domain
+PF01593.23	Amino_oxidase	Flavin containing amine oxidoreductase
+PF01648.19	ACPS	4'-phosphopantetheinyl transferase superfamily
+PF01761.19	DHQ_synthase	3-dehydroquinate synthase
+PF02310.18	B12-binding	B12 binding domain
+PF02458.14	Transferase	Transferase family
+PF02567.15	PhzC-PhzF	Phenazine biosynthesis-like protein
+PF02668.15	TauD	Taurine catabolism dioxygenase TauD, TfdA family
+PF02727.15	Cu_amine_oxidN2	Copper amine oxidase, N2 domain
+PF02728.15	Cu_amine_oxidN3	Copper amine oxidase, N3 domain
+PF02775.20	TPP_enzyme_C	Thiamine pyrophosphate enzyme, C-terminal TPP binding domain
+PF02776.17	TPP_enzyme_N	Thiamine pyrophosphate enzyme, N-terminal TPP binding domain
+PF02784.15	Orn_Arg_deC_N	Pyridoxal-dependent decarboxylase, pyridoxal binding domain
+PF02797.14	Chal_sti_synt_C	Chalcone and stilbene synthases, C-terminal domain
+PF02801.21	Ketoacyl-synt_C	Beta-ketoacyl synthase, C-terminal domain
+PF03061.21	4HBT	Thioesterase superfamily
+PF03171.19	2OG-FeII_Oxy	2OG-Fe(II) oxygenase superfamily
+PF03328.13	HpcH_HpaI	HpcH/HpaI aldolase/citrate lyase family
+PF03412.14	Peptidase_C39	Peptidase C39 family
+PF03459.16	TOBE	TOBE domain
+PF03936.15	Terpene_synth_C	Terpene synthase family, metal binding domain
+PF03992.15	ABM	Antibiotic biosynthesis monooxygenase
+PF04055.20	Radical_SAM	Radical SAM superfamily
+PF04140.13	ICMT	Isoprenylcysteine carboxyl methyltransferase (ICMT) family
+PF04183.11	IucA_IucC	IucA / IucC family
+PF04261.11	Dyp_perox	Dyp-type peroxidase family
+PF05193.20	Peptidase_M16_C	Peptidase M16 inactive domain
+PF05199.12	GMC_oxred_C	GMC oxidoreductase
+PF05402.11	PqqD	Coenzyme PQQ synthesis protein D (PqqD)
+PF05721.12	PhyH	Phytanoyl-CoA dioxygenase (PhyH)
+PF06722.11	DUF1205	Protein of unknown function (DUF1205)
+PF07977.12	FabA	FabA-like domain
+PF07992.13	Pyr_redox_2	Pyridine nucleotide-disulphide oxidoreductase
+PF07993.11	NAD_binding_4	Male sterility protein
+PF08022.11	FAD_binding_8	FAD-binding domain
+PF08240.11	ADH_N	Alcohol dehydrogenase GroES-like domain
+PF08241.11	Methyltransf_11	Methyltransferase domain
+PF08242.11	Methyltransf_12	Methyltransferase domain
+PF08392.11	FAE1_CUT1_RppA	FAE1/Type III polyketide synthase-like protein
+PF08541.9	ACP_syn_III_C	3-Oxoacyl-[acyl-carrier-protein (ACP)] synthase III C terminal
+PF08545.9	ACP_syn_III	3-Oxoacyl-[acyl-carrier-protein (ACP)] synthase III
+PF08659.9	KR	KR domain
+PF10590.8	PNP_phzG_C	Pyridoxine 5'-phosphate oxidase C-terminal dimerisation region
+PF11991.7	Trp_DMAT	Tryptophan dimethylallyltransferase
+PF12680.6	SnoaL_2	SnoaL-like domain
+PF12804.6	NTP_transf_3	MobA-like NTP transferase domain
+PF13186.5	SPASM	Iron-sulfur cluster-binding domain
+PF13193.5	AMP-binding_C	AMP-binding enzyme C-terminal domain
+PF13243.5	SQHop_cyclase_C	Squalene-hopene cyclase C-terminal domain
+PF13302.6	Acetyltransf_3	Acetyltransferase (GNAT) domain
+PF13419.5	HAD_2	Haloacid dehalogenase-like hydrolase
+PF13434.5	K_oxygenase	L-lysine 6-monooxygenase (NADPH-requiring)
+PF13439.5	Glyco_transf_4	Glycosyltransferase Family 4
+PF13450.5	NAD_binding_8	NAD(P)-binding Rossmann-like domain
+PF13537.5	GATase_7	Glutamine amidotransferase domain
+PF13579.5	Glyco_trans_4_4	Glycosyl transferase 4-like domain
+PF13649.5	Methyltransf_25	Methyltransferase domain
+PF13692.5	Glyco_trans_1_4	Glycosyl transferases group 1
+PF13905.5	Thioredoxin_8	Thioredoxin-like
+PF14226.5	DIOX_N	non-haem dioxygenase in morphine synthesis N-terminal
+PF14765.5	PS-DH	Polyketide synthase dehydratase
