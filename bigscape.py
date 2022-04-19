@@ -139,7 +139,7 @@ if __name__ == "__main__":
 
     # init database
     DB_PATH = os.path.join(RUN.directories.output, "data.db")
-    DB = data.Database(DB_PATH)
+    DB = data.Database(DB_PATH, True)
 
     ### Step 1: Get all the input files. Write extract sequence and write fasta if necessary
     logging.info("   - - Processing input files - -")
@@ -172,6 +172,19 @@ if __name__ == "__main__":
         logging.info(" Finished predicting domains.")
     else:
         logging.info(" All files were processed by hmmscan. Skipping step...")
+    
+    # DB.dump_db_file()
+
+    features = data.Features.extract(data.get_cluster_id_list(DB), DB)
+
+    for feature in features:
+        feature.save(DB)
+    
+    DB.commit_inserts()
+
+    DB.dump_db_file()
+
+    sys.exit()
 
     # get a list of high scoring protein hits
     HSPS = data.get_hsp_id_list(DB)

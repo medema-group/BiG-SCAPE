@@ -52,19 +52,16 @@ class Features:
             )
 
     @staticmethod
-    def extract(bgc_ids: int, hmm_db_id: int,
-                database: Database, hmm_db_source: Database = None):
+    def extract(bgc_ids: int,
+                database: Database):
         """ Extract features from domain hits
         """
-        if not hmm_db_source:
-            hmm_db_source = database
 
         # prepare features extraction
         hmm_ids, parent_hmm_ids, hmm_names = map(
-            tuple, list(zip(*hmm_db_source.select(
-                "hmm,run LEFT JOIN subpfam ON hmm.id=subpfam.hmm_id",
-                "WHERE hmm.db_id=?",
-                parameters=(hmm_db_id, ),
+            tuple, list(zip(*database.select(
+                "hmm LEFT JOIN subpfam ON hmm.id=subpfam.hmm_id",
+                "",
                 props=["hmm.id", "subpfam.parent_hmm_id", "hmm.name"],
                 as_tuples=True
             ))))
