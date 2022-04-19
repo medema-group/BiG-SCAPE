@@ -176,10 +176,16 @@ def cmd_parser(root_path):
     parser.add_argument("--log_path", dest="log_path", help="Location where to write logs",
                         default=default_log_path)
 
-    parser.add_argument("--diss_skip", dest="diss_skip",
-                        help="Skip bgcs that have a third BGC with 0 \
-                        distance in common E.g. if AB=0 & AC=0, skip BC",
+    parser.add_argument("--bs_filter", dest="bigslice_filter",
+                        help="Use a light implementation of BiG-SLICE to filter unrelated \
+                        BG comparisons. This will generally reduce the runtime for larger \
+                        datasets at the cost of some accuracy",
                         default=False, action="store_true")
+
+    parser.add_argument("--bs_filter_cutoff", dest="bigslice_filter_cutoff", default=0.8,
+                        help="The cutoff to use for the bigslice filter. BGC pairs with a \
+                        distance larger than this value are assumed to be unrelated. BGC pairs \
+                        under this cutoff are analyzed by BiG-SCAPE as usual (default 0.3)")
 
     parser.add_argument("--version", action="version", version="%(prog)s 1.1.3 (2022-02-18)")
 
