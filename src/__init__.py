@@ -6,3 +6,4 @@ from . import js
 from . import mibig
 from . import pfam
 from . import utility
+from . import data
