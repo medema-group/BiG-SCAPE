@@ -17,10 +17,10 @@ def get_bigslice_subset():
                     "biopfam.tsv"
     )
 
-    corepfam_path = os.path.join(
-                    os.path.dirname(os.path.abspath(__file__)),
-                    "corepfam.tsv"
-    )
+    # corepfam_path = os.path.join(
+    #                 os.path.dirname(os.path.abspath(__file__)),
+    #                 "corepfam.tsv"
+    # )
 
     with open(biopfam_path, encoding="utf-8") as bio_pfam_file:
         for line in bio_pfam_file:
@@ -30,12 +30,12 @@ def get_bigslice_subset():
                 bigslice_accessions.add(lineparts[0])
                 bigslice_names.add(lineparts[1])
 
-    with open(corepfam_path, encoding="utf-8") as core_pfam_file:
-        for line in core_pfam_file:
-            lineparts = line.rstrip().split("\t")
+    # with open(corepfam_path, encoding="utf-8") as core_pfam_file:
+    #     for line in core_pfam_file:
+    #         lineparts = line.rstrip().split("\t")
 
-            bigslice_accessions.add(lineparts[0])
-            bigslice_names.add(lineparts[1])
+    #         bigslice_accessions.add(lineparts[0])
+    #         bigslice_names.add(lineparts[1])
 
     print(len(bigslice_accessions))
 
@@ -53,18 +53,19 @@ def load_hmms(run, database: Database):
         for profile in hmm_file:
             profile: pyhmmer.plan7.Profile
 
-            bigslice_subset = False
+            model_type = 0
 
             if profile.accession.decode() in bigslice_accessions:
-                bigslice_subset = True
+                model_type = 1
 
             elif profile.name.decode() in bigslice_descriptions:
-                bigslice_subset = True
+                model_type = 1
 
             database.insert("hmm", {
                 "accession": profile.accession.decode(),
                 "name": profile.name.decode(),
-                "model_length": profile.M
+                "model_length": profile.M,
+                "model_type": model_type
             }, True)
     database.commit_inserts()
 

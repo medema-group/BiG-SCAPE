@@ -73,8 +73,18 @@ CREATE TABLE IF NOT EXISTS hmm (
     accession VARCHAR(10),
     name VARCHAR(25) NOT NULL,
     model_length INTEGER NOT NULL,
+    model_type INTEGER NOT NULL REFERENCES enum_bigslice_type(id),
     UNIQUE(id, accession)
 );
+
+-- bigslice_type
+CREATE TABLE IF NOT EXISTS enum_bigslice_type (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    name VARCHAR(100) NOT NULL UNIQUE
+);
+INSERT OR IGNORE INTO enum_bigslice_type VALUES (0, 'BIGSCAPE_ONLY');
+INSERT OR IGNORE INTO enum_bigslice_type VALUES (1, 'BIGSCAPE_BIGSLICE');
+INSERT OR IGNORE INTO enum_bigslice_type VALUES (2, 'BIGSLICE_ONLY');
 
 -- subpfam
 CREATE TABLE IF NOT EXISTS subpfam (
