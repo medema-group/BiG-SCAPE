@@ -18,7 +18,7 @@ from Bio import Phylo
 from src.bgctools import get_composite_bgc_similarities
 from src.big_scape.bgc_collection import BgcCollection
 from src.utility.io import create_directory
-from src.data.data import Database
+from src.data import Database
 from src.data.cds import get_cds_with_alignment
 
 

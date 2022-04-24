@@ -12,7 +12,7 @@ class BigsliceParam():
     use_bigslice = False
 
     # where to store any files downloaded for the functionality
-    bigslice_data_folder: str
+    bigslice_data_path: str
 
     # cutoff value to use for distances
     bigslice_cutoff: float
@@ -36,11 +36,11 @@ class BigsliceParam():
     def set_bigslice(self, options):
         """Set basic values relating to bigslice"""
         self.use_bigslice = options.bigslice_filter
-        self.bigslice_cutoff = options.bs_filter_cutoff
+        self.bigslice_cutoff = options.bigslice_filter_cutoff
         return
 
     def set_bigslice_folder(self, options):
         """Sets the bigslice data folder and creates it if it does not yet exist"""
-        self.bigslice_data_folder = options.bigslice_data_folder
-        utility.create_directory(self.bigslice_data_folder, "bigslice_data", False)
+        self.bigslice_data_path = options.bigslice_data_path
+        utility.create_directory(self.bigslice_data_path, "bigslice_data", False)
         return

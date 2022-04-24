@@ -158,11 +158,6 @@ def generate_network(run, database, bgc_collection: BgcCollection, aligned_domai
         class_names_len = len(run.distance.bgc_class_names)
         bgc_class_name_2_index = dict(zip(run.distance.bgc_class_names, range(class_names_len)))
 
-    if run.distance.diss_skip:
-        logging.info("  Skipping BGCs with a common dissimilar BGC")
-    else:
-        logging.info("  Not using dissimilarity skipping")
-
     # only make folders for the bgc_classes that are found
     for bgc_class in bgc_classes:
         if run.directories.has_query_bgc:

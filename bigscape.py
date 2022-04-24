@@ -147,10 +147,11 @@ if __name__ == "__main__":
     if RUN.mibig.use_mibig:
         mibig.extract_mibig(RUN)
 
+    if RUN.bigslice.use_bigslice:
+        data.generate_core_bio_hmm(RUN)
+
     # load the input data into the database
     data.initialize_db(RUN, DB)
-
-    # TODO: find the biosynthetic pfams and load the accessions into the database as well
 
     # base name as a list and as a set
     # also used in all vs all analysis

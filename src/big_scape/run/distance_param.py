@@ -16,9 +16,6 @@ class DistParam:
     def __init__(self, options):
         self.set_weights(options)
 
-        # dissimilarity skipping
-        self.diss_skip = options.diss_skip
-
     def set_weights(self, options):
         """Initializes weights with default options
 
