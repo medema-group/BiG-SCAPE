@@ -186,6 +186,11 @@ def cmd_parser(root_path):
                         help="The cutoff to use for the bigslice filter. BGC pairs with a \
                         distance larger than this value are assumed to be unrelated. BGC pairs \
                         under this cutoff are analyzed by BiG-SCAPE as usual (default 0.3)")
+    
+    default_bigslice_data_path = os.path.join(root_path, "bigslice_data")
+    parser.add_argument("--bs_data_path", dest="bigslice_data_path",
+                        default=default_bigslice_data_path,
+                        help="The path to use for saving files related to bigslice")
 
     parser.add_argument("--version", action="version", version="%(prog)s 1.1.3 (2022-02-18)")
 
