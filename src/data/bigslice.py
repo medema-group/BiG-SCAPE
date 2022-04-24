@@ -21,7 +21,7 @@ def download_bigslice_db(run):
     models_folder = run.bigslice.bigslice_data_path
 
     # if not path.exists(models_folder):
-    if True:
+    if not path.exists(path.join(models_folder, "biosynthetic_pfams")):
         zipped_file = "bigslice_models.tar.gz"
         if not path.exists(zipped_file):
             print("Downloading bigslice_models.tar.gz...")
