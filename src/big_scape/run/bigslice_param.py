@@ -3,6 +3,7 @@
 Author: Arjan Draisma
 """
 
+from os import path
 from src import utility
 
 
@@ -17,16 +18,8 @@ class BigsliceParam():
     # cutoff value to use for distances
     bigslice_cutoff: float
 
-    ANTISMASH_URL = "https://github.com/" + \
-        "antismash/antismash/archive/5-1-1.tar.gz"
-    ANTISMASH_VERSION = "antismash-5-1-1"
-    REFERENCE_PROTEINS_URL = "ftp://ftp.pir.georgetown.edu/" + \
-        "databases/rps/rp-seqs-15.fasta.gz"
-
-    # build_subpfam algorithm parameters
-    MIN_CLADE_NUMBERS = 3
-    MAX_CLADE_NUMBERS = 50
-    MIN_PROTEIN_SEQUENCES = 5
+    bigslice_db_location = "https://github.com/medema-group/bigslice/releases/download/v1.0.0/bigslice-models.2020-04-27.tar.gz"
+    bigslice_db_md5 = "d875dd0166f1c79167c53970314c3ac7"
     
     def __init__(self, options):
         self.set_bigslice(options)
@@ -43,4 +36,10 @@ class BigsliceParam():
         """Sets the bigslice data folder and creates it if it does not yet exist"""
         self.bigslice_data_path = options.bigslice_data_path
         utility.create_directory(self.bigslice_data_path, "bigslice_data", False)
+
+        biosyn_pfam_dir = path.join(
+            self.bigslice_data_path,
+            "biosynthetic_pfams"
+        )
+        utility.create_directory(biosyn_pfam_dir, "bigslice_data", False)
         return

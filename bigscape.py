@@ -148,7 +148,7 @@ if __name__ == "__main__":
         mibig.extract_mibig(RUN)
 
     if RUN.bigslice.use_bigslice:
-        data.generate_core_bio_hmm(RUN)
+        data.download_bigslice_db(RUN)
 
     # load the input data into the database
     data.initialize_db(RUN, DB)
