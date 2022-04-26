@@ -153,6 +153,11 @@ if __name__ == "__main__":
     # load the input data into the database
     data.initialize_db(RUN, DB)
 
+    # save db with bgc and hmm info
+    DB.dump_db_file()
+
+    sys.exit()
+
     # base name as a list and as a set
     # also used in all vs all analysis
     BGC_IDS = data.get_cluster_id_list(DB)
