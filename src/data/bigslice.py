@@ -23,10 +23,10 @@ def download_bigslice_db(run):
 
     # if not path.exists(models_folder):
     if not path.exists(path.join(models_folder, "biosynthetic_pfams")):
-        zipped_file = "bigslice_models.tar.gz"
+        zipped_file = path.join(run.bigslice.bigslice_data_path, "bigslice_models.tar.gz")
         if not path.exists(zipped_file):
             print("Downloading bigslice_models.tar.gz...")
-            urllib.request.urlretrieve(run.bigslice_db_location, zipped_file)
+            urllib.request.urlretrieve(run.bigslice.bigslice_db_location, zipped_file)
 
         print("Checking MD5 sums...")
         md5sum_downloaded = md5sum(zipped_file)
