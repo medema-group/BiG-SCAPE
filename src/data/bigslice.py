@@ -1,10 +1,10 @@
+import glob
 from os import path, makedirs, remove, rename, SEEK_END, sched_getaffinity
 from shutil import copy, rmtree, copyfileobj
 from hashlib import md5
 import urllib.request
 import gzip
 import csv
-import glob
 from tempfile import TemporaryDirectory
 import subprocess
 import tarfile
@@ -32,19 +32,36 @@ def download_bigslice_db(run):
         if run.bigslice.bigslice_db_md5 != md5sum_downloaded:
             print("'{}' vs '{}': doesn't match!".format(
                 run.bigslice.bigslice_db_md5, md5sum_downloaded))
-            return(1)
 
         print("Extracting bigslice_models.tar.gz...")
 
         with tarfile.open(zipped_file, "r:gz") as fp:
             fp.extractall(path=models_folder)
 
-        print("done! (please remove the downloaded tar.gz file manually)")
-        return(0)
-
     else:
         print("models folder exists!")
-        return(1)
+
+
+def download_antismash_files(run):
+    """download and extract antiSMASH models"""
+    antismash_folder = path.join(
+        run.bigslice.bigslice_data_path,
+        "antismash"
+    )
+    if not path.exists(antismash_folder):
+        antismash_zipped_file = path.join(
+            run.bigslice.bigslice_data_path,
+            "antismash.tar.gz"
+        )
+        if not path.exists(antismash_zipped_file):
+            print("Downloading antismash.tar.gz...")
+            urllib.request.urlretrieve(
+                run.bigslice.antismash_url, antismash_zipped_file)
+
+        print("Extracting antismash.tar.gz...")
+        with tarfile.open(antismash_zipped_file, "r:gz") as as_zipped:
+            as_zipped.extractall(path=antismash_folder)
+        print("Done extracting antismash.tar.gz")
 
 
 def md5sum(filename):

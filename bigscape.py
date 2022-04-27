@@ -148,6 +148,7 @@ if __name__ == "__main__":
         mibig.extract_mibig(RUN)
 
     if RUN.bigslice.use_bigslice:
+        data.download_antismash_files(RUN)
         data.download_bigslice_db(RUN)
 
     # load the input data into the database
@@ -155,8 +156,6 @@ if __name__ == "__main__":
 
     # save db with bgc and hmm info
     DB.dump_db_file()
-
-    sys.exit()
 
     # base name as a list and as a set
     # also used in all vs all analysis

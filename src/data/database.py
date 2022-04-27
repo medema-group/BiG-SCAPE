@@ -284,7 +284,7 @@ class Database:
                     ",".join(["?" for i in range(len(values))])
                 )
             else:
-                sql = "INSERT INTO {}({}) VALUES ({})".format(
+                sql = "INSERT OR REPLACE INTO {}({}) VALUES ({})".format(
                     table,
                     ",".join(keys),
                     ",".join(["?" for i in range(len(values))])

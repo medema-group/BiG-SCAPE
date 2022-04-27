@@ -20,6 +20,13 @@ class BigsliceParam():
 
     bigslice_db_location = "https://github.com/medema-group/bigslice/releases/download/v1.0.0/bigslice-models.2020-04-27.tar.gz"
     bigslice_db_md5 = "d875dd0166f1c79167c53970314c3ac7"
+
+    # url to download antismash files from
+    antismash_url = "https://github.com/" + \
+    "antismash/antismash/archive/5-1-1.tar.gz"
+    # this needs to reflect the version number in the tar because of how the tarfile is structured
+    antismash_tar_folder = "antismash-5-1-1"
+
     
     def __init__(self, options):
         self.set_bigslice(options)

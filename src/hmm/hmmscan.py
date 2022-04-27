@@ -10,7 +10,7 @@ import pyhmmer
 
 from src.data import Database
 from src.data.bgc import BGC
-from src.data.hmm import from_accession
+from src.data.hmm import from_accession, from_model_type
 from src.data.hsp import get_hsp_id, insert_hsp, insert_hsp_alignment
 from src.data.status import update_bgc_status
 
@@ -214,6 +214,9 @@ def run_pyhmmer(run, database: Database, ids_todo):
     # get hmm profiles
     with pyhmmer.plan7.HMMFile(hmm_file_path) as hmm_file:
         profiles = list(hmm_file.optimized_profiles())
+    
+    if run.bigslice.use_bigslice:
+        pass
 
 
     pipeline = pyhmmer.plan7.Pipeline(pyhmmer.easel.Alphabet.amino(), Z=len(profiles), bit_cutoffs="trusted")
