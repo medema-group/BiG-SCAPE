@@ -129,8 +129,6 @@ def load_hmms(run, database: Database):
                 else:
                     accession = name
 
-
-
                 hmm_id = database.insert("hmm", {
                     "accession": accession,
                     "name": name,

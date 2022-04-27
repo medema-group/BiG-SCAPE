@@ -149,7 +149,11 @@ def get_bigslice_profiles(run, bigslice_accessions):
         optimized_profiles = hmm_file.optimized_profiles()
         # this should only ever be one profile, but just to be sure let's loop through
         for profile in optimized_profiles:
-            profile: pyhmmer.plan7.Profile
+            profile: pyhmmer.plan7.OptimizedProfile
+
+            # cheat to set the trusted cutoffs to the gathering cutoffs
+            # used in BiG-SLICE
+            profile.cutoffs.trusted = profile.cutoffs.gathering
 
             # only include ones we didn't previously include
             if profile.accession in bigslice_accessions:

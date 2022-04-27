@@ -173,7 +173,7 @@ def run_pyhmmer_worker(input_queue, output_queue, profiles, pipeline, database: 
             # hmm id
             hmm_accession = domain.alignment.hmm_accession.decode()
             # only happens on subpfams
-            if hmm_accession == "":
+            if hmm_accession == "" or hmm_accession is None:
                 hmm_accession = domain.alignment.hmm_name.decode()
             hmm = from_accession(database, hmm_accession)
             hmm_id = hmm["id"]
@@ -243,7 +243,7 @@ def run_pyhmmer(run, database: Database, ids_todo):
 
     pipeline = pyhmmer.plan7.Pipeline(pyhmmer.easel.Alphabet.amino(), Z=len(profiles), bit_cutoffs="trusted")
 
-    num_processes = run.options.cores
+    num_processes = run.options.cores - 1
 
     working_q = Queue(num_processes)
 
