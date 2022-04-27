@@ -156,7 +156,7 @@ def get_bigslice_profiles(run, bigslice_accessions):
             profile.cutoffs.trusted = profile.cutoffs.gathering
 
             # only include ones we didn't previously include
-            if profile.accession in bigslice_accessions:
+            if profile.accession.decode() in bigslice_accessions:
                 bigslice_profiles.append(profile)
 
     # subpfams

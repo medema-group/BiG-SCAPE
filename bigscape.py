@@ -173,7 +173,9 @@ if __name__ == "__main__":
     if len(IDS_TODO) > 0:
         logging.info("Predicting %d domains using hmmsearch", len(IDS_TODO))
         # this function blocks the main thread until finished
-        hmm.run_pyhmmer(RUN, DB, IDS_TODO)
+        hmm.run_pyhmmer_pfam(RUN, DB, IDS_TODO)
+        if RUN.bigslice.use_bigslice:
+            hmm.run_pyhmmer_bigslice(RUN, DB, IDS_TODO)
         logging.info(" Finished predicting domains.")
     else:
         logging.info(" All files were processed by hmmscan. Skipping step...")

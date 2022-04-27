@@ -201,8 +201,42 @@ def run_pyhmmer_worker(input_queue, output_queue, profiles, pipeline, database: 
 
         output_queue.put((bgc_id, hsps))
 
+def run_pyhmmer_pfam(run, database: Database, ids_todo):
+    """Runs the pyhmmer pipeline using the pfam hmm"""
+    hmm_file_path = os.path.join(run.directories.pfam, "Pfam-A.hmm")
+    # get hmm profiles
+    # pfam
+    profiles = list()
+    with pyhmmer.plan7.HMMFile(hmm_file_path) as hmm_file:
+        profiles.extend(list(hmm_file.optimized_profiles()))
+        logging.info("Found %d hmm profiles", len(profiles))
 
-def run_pyhmmer(run, database: Database, ids_todo):
+    run_pyhmmer(run, database, "hsp", ids_todo, profiles)
+
+
+def run_pyhmmer_bigslice(run, database: Database, ids_todo):
+    """Runs the pyhmmer pipeline for bigslice feature generation"""
+    logging.info("Using BiG-SLICE pre-filtering")
+
+
+    # get the subset of profiles which were not yet analyzed
+    profiles = list()
+    # from loading the HMMs we know that these are
+    # marked as model type 2 in the database
+    hmm_rows = from_model_type(database, 2)
+    bigslice_accessions = set()
+    for row in hmm_rows:
+        bigslice_accessions.add(row["accession"])
+
+    bigslice_profiles = get_bigslice_profiles(run, bigslice_accessions)
+    logging.info("Adding %d hmm profiles", len(bigslice_profiles))
+    profiles.extend(bigslice_profiles)
+    logging.info("%d total profiles", len(profiles))
+
+    run_pyhmmer(run, database, "hsp_bigslice", ids_todo, profiles, False, False)
+
+
+def run_pyhmmer(run, database: Database, hsp_table, ids_todo, profiles, use_filter_overlap=True, insert_alignments=True):
     """Scan a list of fastas using pyhmmer scan
 
     inputs:
@@ -212,35 +246,6 @@ def run_pyhmmer(run, database: Database, ids_todo):
     returns:
         a list of hits
     """
-    hmm_file_path = os.path.join(run.directories.pfam, "Pfam-A.hmm")
-    # get hmm profiles
-    # pfam
-    profiles = list()
-    with pyhmmer.plan7.HMMFile(hmm_file_path) as hmm_file:
-        profiles.extend(list(hmm_file.optimized_profiles()))
-        logging.info("Found %d hmm profiles", len(profiles))
-
-    
-    # bigslice sets
-    if run.bigslice.use_bigslice:
-        logging.info("Using BiG-SLICE pre-filtering")
-        
-
-        # get the subset of profiles which were not yet analyzed
-        # from loading the HMMs we know that these are
-        # marked as model type 2 in the database
-        hmm_rows = from_model_type(database, 2)
-        bigslice_accessions = set()
-        for row in hmm_rows:
-            bigslice_accessions.add(row["accession"])
-
-        bigslice_profiles = get_bigslice_profiles(run, bigslice_accessions)
-        logging.info("Adding %d hmm profiles", len(bigslice_profiles))
-        profiles.extend(bigslice_profiles)
-        logging.info("%d total profiles", len(profiles))
-
-
-
     pipeline = pyhmmer.plan7.Pipeline(pyhmmer.easel.Alphabet.amino(), Z=len(profiles), bit_cutoffs="trusted")
 
     num_processes = run.options.cores - 1
@@ -282,16 +287,19 @@ def run_pyhmmer(run, database: Database, ids_todo):
         if not output_q.empty():
             bgc_id, task_hsps = output_q.get()
 
-            filtered_hsps = filter_overlap(task_hsps, run.options.domain_overlap_cutoff)
+            entry_hsps = task_hsps
+            
+            if use_filter_overlap:
+                entry_hsps = filter_overlap(entry_hsps, run.options.domain_overlap_cutoff)
 
-            for hsp in filtered_hsps:
+            for hsp in entry_hsps:
                 
                 serial_nr = hsp[0]
                 cds_id = hsp[1]
                 hmm_id = hsp[2]
                 bitscore = hsp[3]
                 # insert hsp
-                insert_hsp(database, serial_nr, cds_id, hmm_id, bitscore)
+                insert_hsp(database, hsp_table, serial_nr, cds_id, hmm_id, bitscore)
                 hsps.append(hsp)
 
                 # commit every 500 hsps
@@ -316,7 +324,19 @@ def run_pyhmmer(run, database: Database, ids_todo):
     # just making sure
     database.commit_inserts()
 
+    # clean up threads
+    for thread_num in range(num_processes * 2):
+        working_q.put(None)
+
+    for process in processes:
+        process.join()
+        thread_name = process.name
+        logging.debug("Thread %s stopped", thread_name)
+
     # insert alignments. Has to be done after inserts because only then are ids available
+    if not insert_alignments:
+        return
+
     for idx, hsp in enumerate(hsps):
         serial_nr, cds_id, hmm_id, bitscore, env_start, env_end, model_start, model_end, cds_start, cds_end, model_gaps, cds_gaps = hsp
 
@@ -334,12 +354,3 @@ def run_pyhmmer(run, database: Database, ids_todo):
             database.commit_inserts()
 
     database.commit_inserts()
-
-    # clean up threads
-    for thread_num in range(num_processes * 2):
-        working_q.put(None)
-
-    for process in processes:
-        process.join()
-        thread_name = process.name
-        logging.debug("Thread %s stopped", thread_name)

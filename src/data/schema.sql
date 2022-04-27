@@ -110,6 +110,20 @@ CREATE TABLE IF NOT EXISTS hsp (
 CREATE INDEX IF NOT EXISTS hsp_cdshmm ON hsp(serial_nr, cds_id, hmm_id);
 CREATE INDEX IF NOT EXISTS hsp_bitscore ON hsp(bitscore);
 
+-- hsp_bigslice
+CREATE TABLE IF NOT EXISTS hsp_bigslice (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    serial_nr INTEGER NOT NULL,
+    cds_id INTEGER NOT NULL,
+    hmm_id INTEGER NOT NULL,
+    bitscore REAL NOT NULL,
+    FOREIGN KEY(cds_id) REFERENCES cds(id),
+    FOREIGN KEY(hmm_id) REFERENCES hmm(id),
+    UNIQUE(serial_nr, cds_id, hmm_id)
+);
+CREATE INDEX IF NOT EXISTS hsp_bigslice_cdshmm ON hsp(serial_nr, cds_id, hmm_id);
+CREATE INDEX IF NOT EXISTS hsp_bigslice_bitscore ON hsp(bitscore);
+
 -- hsp_alignment
 CREATE TABLE IF NOT EXISTS hsp_alignment (
     hsp_id INTEGER UNIQUE NOT NULL,
