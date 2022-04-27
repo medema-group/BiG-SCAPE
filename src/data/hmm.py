@@ -98,7 +98,7 @@ def load_hmms(run, database: Database):
             # BiG-SCAPE
             if accession in bigslice_accessions or name in bigslice_accessions:
                 model_type = 1
-                # name = "AS-" + name
+                name = "AS-" + name
 
             hmm_id = database.insert("hmm", {
                 "accession": accession,
@@ -140,11 +140,11 @@ def load_hmms(run, database: Database):
                 accession = None
                 if profile.accession is not None:
                     accession = profile.accession.decode()
-                name = profile.name.decode()
+                name = "AS-" + profile.name.decode()
 
                 hmm_id = database.insert("hmm", {
-                    "accession": "AS-" + name,
-                    "name": "AS-" + name,
+                    "accession": name,
+                    "name": name,
                     "model_length": profile.M,
                     "model_type": model_type
                 }, True)
@@ -185,17 +185,17 @@ def load_hmms(run, database: Database):
                 # first check if a HMM with a corresponding name is found
                 if base_name in domain_name_ids:
                     parent_id = domain_name_ids[base_name]
+                
+                # we can check whether a version with
 
                 # if not, then we check if there is an accession
                 elif base_name in domain_accession_ids:
-                    # accessions do not have AS- prefixed
-                    trimmed_base_name = base_name
-                    if trimmed_base_name[0:3] == "AS-":
-                        trimmed_base_name = trimmed_base_name[3:]
-                    parent_id = domain_accession_ids[trimmed_base_name]
+                    parent_id = domain_accession_ids[base_name]
+
                 # otherwise we will just have to skip it
                 else:
                     continue
+
                 database.insert("subpfam", {
                     "hmm_id": hmm_id,
                     "parent_hmm_id": parent_id
