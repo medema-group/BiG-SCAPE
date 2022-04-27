@@ -98,7 +98,7 @@ def load_hmms(run, database: Database):
             # BiG-SCAPE
             if accession in bigslice_accessions or name in bigslice_accessions:
                 model_type = 1
-                name = "AS-" + name
+                # name = "AS-" + name
 
             hmm_id = database.insert("hmm", {
                 "accession": accession,
