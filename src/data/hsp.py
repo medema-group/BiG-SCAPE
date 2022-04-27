@@ -26,7 +26,14 @@ def aa_seq_from_accession(database: Database, accession: str):
             props=["cds.aa_seq"])]
     return aa_seq
 
-def insert_hsp(database: Database, hsp_table: str, serial_nr: int, cds_id: int, hmm_id: int, bitscore: float):
+def insert_hsp(
+    database: Database,
+    hsp_table: str,
+    serial_nr: int,
+    cds_id: int,
+    hmm_id: int,
+    bitscore: float
+):
     """Inserts (or ignores if already there) a new high scoring protein into the database"""
     entry = {
         "serial_nr": serial_nr,

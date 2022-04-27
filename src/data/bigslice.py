@@ -129,9 +129,8 @@ def get_antismash_domains(run):
     return as_domains, as_domain_info
 
 
-def get_bigslice_profiles(run, bigslice_accessions):
-    """Gets a list of pyhmmer profiles specific for the bigslice pre-filtering
-    work
+def get_bigslice_biosynth_profiles(run, bigslice_accessions):
+    """Gets a list of pyhmmer profiles specific for biosynthetic hmm search
     """
     bigslice_profiles = list()
 
@@ -158,13 +157,13 @@ def get_bigslice_profiles(run, bigslice_accessions):
             # only include ones we didn't previously include
             if profile.accession.decode() in bigslice_accessions:
                 bigslice_profiles.append(profile)
+    return bigslice_profiles
 
-    # subpfams
 
-    # get domain info
-    antismash_domains, domain_info = get_antismash_domains(run)
-
-    # get profiles
+def get_bigslice_subpfam_profiles(run):
+    """Gets a list of pyhmmer profiles for subpfam hmmsearch
+    """
+    bigslice_profiles = list()
     sub_pfam_path = path.join(
         run.bigslice.bigslice_data_path,
         "sub_pfams",
@@ -177,7 +176,6 @@ def get_bigslice_profiles(run, bigslice_accessions):
             optimized_profiles = hmm_file.optimized_profiles()
             for profile in optimized_profiles:
                 profile: pyhmmer.plan7.OptimizedProfile
-
 
                 accession = None
                 name = profile.name.decode()
