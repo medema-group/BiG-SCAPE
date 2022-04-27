@@ -2,64 +2,9 @@ import glob
 import logging
 import os
 import pyhmmer
-from src.big_scape.run.base import Run
+from src.data.bigslice import get_antismash_domains, get_bigslice_subset
 
 from src.data import Database
-
-def get_bigslice_subset():
-    """Returns a list of pfam accessions that are included in the bigslice subset of
-    accessions, and which will be used later on to do a pre-filter step
-    """
-    bigslice_accessions = set()
-    bigslice_names = set()
-
-    biopfam_path = os.path.join(
-                    os.path.dirname(os.path.abspath(__file__)),
-                    "biopfam.tsv"
-    )
-
-    # corepfam_path = os.path.join(
-    #                 os.path.dirname(os.path.abspath(__file__)),
-    #                 "corepfam.tsv"
-    # )
-
-    with open(biopfam_path, encoding="utf-8") as bio_pfam_file:
-        for line in bio_pfam_file:
-            lineparts = line.rstrip().split("\t")
-
-            if lineparts[3] == "included":
-                bigslice_accessions.add(lineparts[0])
-                bigslice_names.add(lineparts[1])
-
-    # with open(corepfam_path, encoding="utf-8") as core_pfam_file:
-    #     for line in core_pfam_file:
-    #         lineparts = line.rstrip().split("\t")
-
-    #         bigslice_accessions.add(lineparts[0])
-    #         bigslice_names.add(lineparts[1])
-
-    print(len(bigslice_accessions))
-
-    return bigslice_accessions, bigslice_names
-
-def get_antismash_domains(run):
-    """Returns a set of antismash domain names and a dictionary of domain info
-    """
-    as_domains = set()
-    as_domain_info = dict()
-    as_domain_info_file = os.path.join(
-                    os.path.dirname(os.path.abspath(__file__)),
-                    "hmmdetails.txt"
-    )
-    for line in open(as_domain_info_file, "r"):
-        name, desc, cutoff, filename = line.rstrip().split("\t")
-        as_domains.add(name)
-        as_domain_info[name] = {
-            "desc": desc,
-            "cutoff": cutoff,
-            "filename": filename
-        }
-    return as_domains, as_domain_info
 
 
 def load_hmms(run, database: Database):
@@ -96,9 +41,16 @@ def load_hmms(run, database: Database):
             # prefix names with AS- if it is a parent antismash domain
             # needed for bigslice feature calculation and not a problem for
             # BiG-SCAPE
-            if accession in bigslice_accessions or name in bigslice_accessions:
+            if accession in bigslice_accessions:
                 model_type = 1
                 name = "AS-" + name
+                bigslice_accessions.remove(accession)
+            
+            if name in bigslice_accessions:
+                model_type = 1
+                name = "AS-" + name
+                bigslice_accessions.remove(name)
+                
 
             hmm_id = database.insert("hmm", {
                 "accession": accession,
@@ -116,40 +68,43 @@ def load_hmms(run, database: Database):
         return
 
     # add any missing antismash domains
-    # base data dir where antismash files were extracted to
-    antismash_data_dir = os.path.join(
-    run.bigslice.bigslice_data_path,
-    "antismash",
-    run.bigslice.antismash_tar_folder,
-    "antismash",
-    "detection",
-    "hmm_detection",
-    "data")
+    bigslice_pfam_path = os.path.join(
+        run.bigslice.bigslice_data_path,
+        "biosynthetic_pfams",
+        "Pfam-A.biosynthetic.hmm"
+    )
 
-    for antismash_domain in antismash_domains:
-        # get domain info
-        domain_info = antismash_domain_info[antismash_domain]
+    with pyhmmer.plan7.HMMFile(bigslice_pfam_path) as hmm_file:
+        for profile in hmm_file:
+            profile: pyhmmer.plan7.Profile
 
-        hmm_file_path = os.path.join(antismash_data_dir, domain_info["filename"])
-        with pyhmmer.plan7.HMMFile(hmm_file_path) as hmm_file:
-            # this should only ever be one profile, but just to be sure let's loop through
-            for profile in hmm_file:
-                profile: pyhmmer.plan7.Profile
+            # skip anything that doesn't have an accession
+            if profile.accession is None:
+                continue
 
-                model_type = 2
-                accession = None
-                if profile.accession is not None:
-                    accession = profile.accession.decode()
-                name = "AS-" + profile.name.decode()
+            accession = profile.accession.decode()
+            # only check ones prefixed with AS-
+            if not accession.startswith("AS-"):
+                continue
 
-                hmm_id = database.insert("hmm", {
-                    "accession": name,
-                    "name": name,
-                    "model_length": profile.M,
-                    "model_type": model_type
-                }, True)
+            # then check if it's there. we need to trim the "AS-" for this
+            if accession[3:] not in antismash_domains:
+                continue
 
-                domain_name_ids[name] = hmm_id
+            model_type = 2
+            accession = None
+            if profile.accession is not None:
+                accession = profile.accession.decode()
+            name = profile.name.decode()
+
+            hmm_id = database.insert("hmm", {
+                "accession": accession,
+                "name": name,
+                "model_length": profile.M,
+                "model_type": model_type
+            }, True)
+
+            domain_name_ids[name] = hmm_id
     database.commit_inserts()
 
     # finally, sub pfams
@@ -167,13 +122,18 @@ def load_hmms(run, database: Database):
                 profile: pyhmmer.plan7.Profile
 
                 accession = None
+                name = profile.name.decode()
+
                 if profile.accession is not None:
                     accession = profile.accession.decode()
+                else:
+                    accession = name
+
 
 
                 hmm_id = database.insert("hmm", {
                     "accession": accession,
-                    "name": profile.name.decode(),
+                    "name": name,
                     "model_length": profile.M,
                     "model_type": 3
                 }, True)

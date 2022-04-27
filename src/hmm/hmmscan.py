@@ -9,6 +9,7 @@ from multiprocessing import Queue, Process
 import pyhmmer
 
 from src.data import Database
+from src.data.bigslice import get_bigslice_profiles
 from src.data.bgc import BGC
 from src.data.hmm import from_accession, from_model_type
 from src.data.hsp import get_hsp_id, insert_hsp, insert_hsp_alignment
@@ -78,8 +79,6 @@ def get_hmm_gaps(hmm_sequence):
         if aa == ".":
             gaps.append(idx)
     return ",".join(map(str, gaps))
-
-
 
 def no_overlap(a_start, a_end, b_start, b_end):
     """Return True if there is no overlap between two regions"""
@@ -173,6 +172,9 @@ def run_pyhmmer_worker(input_queue, output_queue, profiles, pipeline, database: 
 
             # hmm id
             hmm_accession = domain.alignment.hmm_accession.decode()
+            # only happens on subpfams
+            if hmm_accession == "":
+                hmm_accession = domain.alignment.hmm_name.decode()
             hmm = from_accession(database, hmm_accession)
             hmm_id = hmm["id"]
 
@@ -212,11 +214,31 @@ def run_pyhmmer(run, database: Database, ids_todo):
     """
     hmm_file_path = os.path.join(run.directories.pfam, "Pfam-A.hmm")
     # get hmm profiles
+    # pfam
+    profiles = list()
     with pyhmmer.plan7.HMMFile(hmm_file_path) as hmm_file:
-        profiles = list(hmm_file.optimized_profiles())
+        profiles.extend(list(hmm_file.optimized_profiles()))
+        logging.info("Found %d hmm profiles", len(profiles))
+
     
+    # bigslice sets
     if run.bigslice.use_bigslice:
-        pass
+        logging.info("Using BiG-SLICE pre-filtering")
+        
+
+        # get the subset of profiles which were not yet analyzed
+        # from loading the HMMs we know that these are
+        # marked as model type 2 in the database
+        hmm_rows = from_model_type(database, 2)
+        bigslice_accessions = set()
+        for row in hmm_rows:
+            bigslice_accessions.add(row["accession"])
+
+        bigslice_profiles = get_bigslice_profiles(run, bigslice_accessions)
+        logging.info("Adding %d hmm profiles", len(bigslice_profiles))
+        profiles.extend(bigslice_profiles)
+        logging.info("%d total profiles", len(profiles))
+
 
 
     pipeline = pyhmmer.plan7.Pipeline(pyhmmer.easel.Alphabet.amino(), Z=len(profiles), bit_cutoffs="trusted")

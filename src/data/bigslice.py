@@ -11,6 +11,7 @@ import tarfile
 
 # external imports
 import numpy as np
+import pyhmmer
 from sklearn.cluster import AgglomerativeClustering
 from sklearn.metrics import pairwise_distances
 from Bio.SearchIO import parse
@@ -70,3 +71,125 @@ def md5sum(filename):
         for chunk in iter(lambda: f.read(128 * hash.block_size), b""):
             hash.update(chunk)
     return hash.hexdigest()
+
+
+def get_bigslice_subset():
+    """Returns a list of pfam accessions that are included in the bigslice subset of
+    accessions, and which will be used later on to do a pre-filter step
+    """
+    bigslice_accessions = set()
+    bigslice_names = set()
+
+    biopfam_path = path.join(
+                    path.dirname(path.abspath(__file__)),
+                    "biopfam.tsv"
+    )
+
+    # corepfam_path = os.path.join(
+    #                 os.path.dirname(os.path.abspath(__file__)),
+    #                 "corepfam.tsv"
+    # )
+
+    with open(biopfam_path, encoding="utf-8") as bio_pfam_file:
+        for line in bio_pfam_file:
+            lineparts = line.rstrip().split("\t")
+
+            if lineparts[3] == "included":
+                bigslice_accessions.add(lineparts[0])
+                bigslice_names.add(lineparts[1])
+
+    # with open(corepfam_path, encoding="utf-8") as core_pfam_file:
+    #     for line in core_pfam_file:
+    #         lineparts = line.rstrip().split("\t")
+
+    #         bigslice_accessions.add(lineparts[0])
+    #         bigslice_names.add(lineparts[1])
+
+    print(len(bigslice_accessions))
+
+    return bigslice_accessions, bigslice_names
+
+def get_antismash_domains(run):
+    """Returns a set of antismash domain names and a dictionary of domain info
+    """
+    as_domains = set()
+    as_domain_info = dict()
+    as_domain_info_file = path.join(
+                    path.dirname(path.abspath(__file__)),
+                    "hmmdetails.txt"
+    )
+    for line in open(as_domain_info_file, "r"):
+        name, desc, cutoff, filename = line.rstrip().split("\t")
+        as_domains.add(name)
+        as_domain_info[name] = {
+            "desc": desc,
+            "cutoff": cutoff,
+            "filename": filename
+        }
+    return as_domains, as_domain_info
+
+
+def get_bigslice_profiles(run, bigslice_accessions):
+    """Gets a list of pyhmmer profiles specific for the bigslice pre-filtering
+    work
+    """
+    bigslice_profiles = list()
+
+    # start with the antismash profiles that weren't included
+    # in the full Pfam-A hmm
+
+    # we'll get them from the BiG-SLICE models
+    bigslice_pfam_path = path.join(
+        run.bigslice.bigslice_data_path,
+        "biosynthetic_pfams",
+        "Pfam-A.biosynthetic.hmm"
+    )
+
+    with pyhmmer.plan7.HMMFile(bigslice_pfam_path) as hmm_file:
+        optimized_profiles = hmm_file.optimized_profiles()
+        # this should only ever be one profile, but just to be sure let's loop through
+        for profile in optimized_profiles:
+            profile: pyhmmer.plan7.Profile
+
+            # only include ones we didn't previously include
+            if profile.accession in bigslice_accessions:
+                bigslice_profiles.append(profile)
+
+    # subpfams
+
+    # get domain info
+    antismash_domains, domain_info = get_antismash_domains(run)
+
+    # get profiles
+    sub_pfam_path = path.join(
+        run.bigslice.bigslice_data_path,
+        "sub_pfams",
+        "hmm"
+    )
+    for hmm_path in glob.iglob(path.join(
+        sub_pfam_path,
+        "*.hmm")):
+        with pyhmmer.plan7.HMMFile(hmm_path) as hmm_file:
+            optimized_profiles = hmm_file.optimized_profiles()
+            for profile in optimized_profiles:
+                profile: pyhmmer.plan7.OptimizedProfile
+
+
+                accession = None
+                name = profile.name.decode()
+
+                if profile.accession is not None:
+                    accession = profile.accession.decode()
+                else:
+                    accession = name
+
+                # we can set the cutoff manually for this as it is in BiG-SLICE
+                cutoff = 20
+                profile.cutoffs.trusted = [cutoff, cutoff]
+                
+                # profile.accession = accession.encode()
+
+                bigslice_profiles.append(profile)
+
+    return bigslice_profiles
+
