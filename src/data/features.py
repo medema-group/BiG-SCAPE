@@ -80,11 +80,11 @@ class Features:
         features = []
         hsps = {bgc_id: {} for bgc_id in bgc_ids}
         for bgc_id, cds_id, hmm_id, bitscore in database.select(
-            "hsp,cds",
-            "WHERE hsp.cds_id = cds.id" +
+            "hsp_bigslice,cds",
+            "WHERE hsp_bigslice.cds_id = cds.id" +
             " AND cds.bgc_id in (" + ",".join(map(str, bgc_ids)) + ")" +
-            " AND hsp.hmm_id in (" + ",".join(map(str, hmm_ids)) + ")",
-            props=["cds.bgc_id", "cds.id", "hsp.hmm_id",
+            " AND hsp_bigslice.hmm_id in (" + ",".join(map(str, hmm_ids)) + ")",
+            props=["cds.bgc_id", "cds.id", "hsp_bigslice.hmm_id",
                    "CAST(bitscore as INTEGER)"],
             as_tuples=True
         ):
