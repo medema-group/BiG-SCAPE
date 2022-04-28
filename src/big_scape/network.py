@@ -252,12 +252,12 @@ def generate_network(run, database, bgc_collection: BgcCollection, aligned_domai
                 if distance[3] < run.bigslice.bigslice_cutoff:
                     group = distance[2]
                     cluster_pairs.append([bgc_a_id, bgc_b_id, group])
-                    filtered_pairs += 1
+                    remaining_pairs += 1
                 else:
                     network_matrix.append(generate_unrelated_row(bgc_a_id, bgc_b_id))
                     filtered_pairs += 1
             logging.info(
-                "%d/%d pairs with distance < %d in cosine distances",
+                "%d/%d pairs with distance > %d in cosine distances",
                 filtered_pairs,
                 filtered_pairs + remaining_pairs,
                 run.bigslice.bigslice_cutoff
