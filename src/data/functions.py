@@ -283,3 +283,46 @@ def get_mibig_name_list(database):
             ")",
             props=["name"])]
     return mibig_bgc_ids
+
+def get_bgc_ids(db):
+    return [row["bgcid"] for row in db.select(
+        "bgc",
+        "",
+        props=[
+            "bgc.id as bgcid"
+        ]
+    )]
+
+def get_hmm_ids(db):
+    return [row["hmmid"] for row in db.select(
+        "hmm",
+        "",
+        props=[
+            "hmm.id as hmmid"
+        ]
+    )]
+
+def get_bgc_id_name_dict(db):
+    bgc_id_name_dict = dict()
+    for row in db.select(
+        "bgc",
+        "",
+        props=[
+            "bgc.id",
+            "bgc.name"
+        ]
+    ):
+        bgc_id_name_dict[row["id"]] = row["name"][1]
+    return bgc_id_name_dict
+
+def get_features(db):
+    return db.select(
+        "bgc,hmm,bgc_features",
+        " WHERE bgc_features.bgc_id=bgc.id" +
+        " AND bgc_features.hmm_id=hmm.id" +
+        "",
+        props=["bgc_features.bgc_id",
+                "bgc_features.hmm_id",
+                "bgc_features.value"],
+        as_tuples=True
+    )

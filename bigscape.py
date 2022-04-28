@@ -168,6 +168,7 @@ if __name__ == "__main__":
 
     # find the difference
     IDS_TODO = list(set(BGC_IDS) - set(PREDICTED_IDS))
+    # IDS_TODO = list()
 
     # run hmmscan if there are any sequences which have not yet been processed by hmmscan
     if len(IDS_TODO) > 0:
@@ -176,11 +177,13 @@ if __name__ == "__main__":
         hmm.run_pyhmmer_pfam(RUN, DB, IDS_TODO)
         if RUN.bigslice.use_bigslice:
             hmm.run_pyhmmer_bigslice(RUN, DB, IDS_TODO)
-        logging.info(" Finished predicting domains.")
+        logging.info(" Finished predicting domains")
     else:
         logging.info(" All files were processed by hmmscan. Skipping step...")
     
-    # DB.dump_db_file()
+    DB.dump_db_file()
+    
+    logging.info(" Generating features")
 
     features = data.Features.extract(data.get_cluster_id_list(DB), DB)
 
@@ -210,6 +213,10 @@ if __name__ == "__main__":
         hmm.do_multiple_align(RUN, DB, HSPS)
     else:
         logging.info(" All high scoring protein domains were already aligned. Skipping step...")
+    
+    DB.commit_inserts()
+
+    DB.dump_db_file()
 
 
     ### Step 4: Create SVG figures

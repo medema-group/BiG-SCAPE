@@ -5,14 +5,20 @@ import sys
 from collections import defaultdict
 from itertools import combinations
 from itertools import product as combinations_product
+from array import array
 
 import networkx as nx
+
+import pandas as pd
+import numpy as np
 
 from src.big_scape.bgc_collection import BgcCollection
 from src.big_scape.clustering import cluster_json_batch
 from src.big_scape.distance import write_distance_matrix, gen_dist_matrix_async
 from src.bgctools import sort_bgc
 from src.utility import create_directory
+from src.data.functions import get_bgc_ids, get_hmm_ids, get_bgc_id_name_dict, get_features
+from src.big_scape.cosine import get_corr_cosine_dists
 
 def get_output_cutoffs_filenames(run, path_base, bgc_class):
     """Generate filenames for cutoffs in the run details
@@ -110,6 +116,8 @@ def create_working_set(run, bgc_collection: BgcCollection, mix) -> dict:
 
     return bgc_classes
 
+def generate_unrelated_row(cluster_1_idx, cluster_2_idx,):
+    return array('f', [cluster_1_idx, cluster_2_idx, 1, 0, 0, 0, 0, 0, 1, 1, 0, 0])
 
 def generate_network(run, database, bgc_collection: BgcCollection, aligned_domain_seqs,
                      mibig_set_indices, mibig_set, rundata_networks_per_run,
@@ -190,7 +198,7 @@ def generate_network(run, database, bgc_collection: BgcCollection, aligned_domai
                 taxonomy = bgc_collection.bgc_collection_dict[bgc].bgc_info.taxonomy
                 network_annotation_file.write("\t".join([bgc, accession_id, description, product, sort_bgc(product), organism, taxonomy]) + "\n")
 
-        logging.info("   Calculating all pairwise distances")
+            
         if run.directories.has_query_bgc:
             pairs = set([tuple(sorted(combo)) for combo in combinations_product([query_bgc_idx], bgc_classes[bgc_class])])
         else:
@@ -198,14 +206,74 @@ def generate_network(run, database, bgc_collection: BgcCollection, aligned_domai
             pairs = set([tuple(sorted(combo)) for combo in combinations(bgc_classes[bgc_class], 2)])
 
         if mix:
-            cluster_pairs = [(x, y, -1) for (x, y) in pairs]
+            pairs = [(x, y, -1) for (x, y) in pairs]
         else:
-            cluster_pairs = [(x, y, bgc_class_name_2_index[bgc_class]) for (x, y) in pairs]
+            pairs = [(x, y, bgc_class_name_2_index[bgc_class]) for (x, y) in pairs]
+        
+        network_matrix = []
+
+        # assemble a list of skippable pairs
+        if run.bigslice.use_bigslice:
+            logging.info("   Generating a list of skippable pairs using BiG-SLICE features")
+            logging.info("    Loading stored info from database")
+
+            
+            bgc_ids = get_bgc_ids(database)
+            hmm_ids = get_hmm_ids(database)
+
+            bgc_id_name_dict = {idx: name for idx, name in enumerate(bgc_collection.bgc_name_list)}
+            bgc_name_id_dict = {name: id for id, name in bgc_id_name_dict.items()}
+
+            features_nan = pd.DataFrame(
+                np.nan,
+                index=bgc_ids,
+                columns=hmm_ids
+            )
+
+            bgc_hmm_features = get_features(database)
+
+            # fetch feature values from db
+            for bgc_id, hmm_id, value in bgc_hmm_features:
+                features_nan.at[bgc_id, hmm_id] = value
+
+            logging.info("    Calculating cosine distances")
+            cosine_dist_corr = get_corr_cosine_dists(
+                pairs,
+                bgc_hmm_features,
+                bgc_ids,
+                bgc_name_id_dict
+            )
+            filtered_pairs = 0
+            remaining_pairs = 0
+            cluster_pairs = []
+            for distance in cosine_dist_corr:
+                bgc_a_id = distance[0]
+                bgc_b_id = distance[1]
+                if distance[3] < run.bigslice.bigslice_cutoff:
+                    group = distance[2]
+                    cluster_pairs.append([bgc_a_id, bgc_b_id, group])
+                    filtered_pairs += 1
+                else:
+                    network_matrix.append(generate_unrelated_row(bgc_a_id, bgc_b_id))
+                    filtered_pairs += 1
+            logging.info(
+                "%d/%d pairs with distance < %d in cosine distances",
+                filtered_pairs,
+                filtered_pairs + remaining_pairs,
+                run.bigslice.bigslice_cutoff
+            )
+        else:
+            cluster_pairs = pairs
+            logging.info("   Calculating all pairwise distances")
 
         pairs.clear()
 
-        network_matrix = gen_dist_matrix_async(run, database, cluster_pairs,
-                                               bgc_collection, aligned_domain_seqs)
+        network_matrix.extend(gen_dist_matrix_async(
+            run,database,
+            cluster_pairs,
+            bgc_collection,
+            aligned_domain_seqs
+        ))
 
         #pickle.dump(network_matrix,open("others.ntwrk",'wb'))
         del cluster_pairs[:]
