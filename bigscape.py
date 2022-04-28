@@ -173,7 +173,7 @@ if __name__ == "__main__":
     if len(IDS_TODO) > 0:
         logging.info("Predicting %d domains using hmmsearch", len(IDS_TODO))
         # this function blocks the main thread until finished
-        # hmm.run_pyhmmer_pfam(RUN, DB, IDS_TODO)
+        hmm.run_pyhmmer_pfam(RUN, DB, IDS_TODO)
         if RUN.bigslice.use_bigslice:
             hmm.run_pyhmmer_bigslice(RUN, DB, IDS_TODO)
         logging.info(" Finished predicting domains.")
@@ -190,8 +190,6 @@ if __name__ == "__main__":
     DB.commit_inserts()
 
     DB.dump_db_file()
-
-    sys.exit()
 
     # get a list of high scoring protein hits
     HSPS = data.get_hsp_id_list(DB)
