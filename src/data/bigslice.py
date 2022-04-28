@@ -154,9 +154,7 @@ def get_bigslice_biosynth_profiles(run, bigslice_accessions):
             # used in BiG-SLICE
             profile.cutoffs.trusted = profile.cutoffs.gathering
 
-            # only include ones we didn't previously include
-            if profile.accession.decode() in bigslice_accessions:
-                bigslice_profiles.append(profile)
+            bigslice_profiles.append(profile)
     return bigslice_profiles
 
 
@@ -207,7 +205,7 @@ def get_bgc_cds_profiles(database):
         join hsp_bigslice on hsp_bigslice.cds_id = cds.id\
         join subpfam on subpfam.parent_hmm_id = hsp_bigslice.hmm_id\
         join hmm on hmm.id = subpfam.hmm_id",
-        "where hsp_bigslice.hmm_id in (select id from hmm where model_type = 2)",
+        "where hsp_bigslice.hmm_id in (select id from hmm where model_type > 0 and model_type < 3)",
         props=[
             "bgc.id as bgc_id",
             "cds.id as cds_id",
