@@ -195,3 +195,33 @@ def get_bigslice_subpfam_profiles(run):
 
     return bigslice_profiles
 
+
+def get_bgc_cds_profiles(database):
+    """returns a dict of bgcs with corresponding cdses that have a hsp
+    in a biosynthetic pfam profile
+    """
+    result = dict()
+    rows = database.select(
+        "bgc\
+        join cds on cds.bgc_id = bgc.id\
+        join hsp_bigslice on hsp_bigslice.cds_id = cds.id\
+        join subpfam on subpfam.parent_hmm_id = hsp_bigslice.hmm_id\
+        join hmm on hmm.id = subpfam.hmm_id",
+        "where hsp_bigslice.hmm_id in (select id from hmm where model_type = 2)",
+        props=[
+            "bgc.id as bgc_id",
+            "cds.id as cds_id",
+            "hmm.accession"
+        ]
+    )
+    for row in rows:
+        bgc_id = row["bgc_id"]
+        cds_id = row["cds_id"]
+        accession = row["accession"]
+        if bgc_id not in result:
+            result[bgc_id] = dict()
+        if cds_id not in result[bgc_id]:
+            result[bgc_id][cds_id] = set()
+        result[bgc_id][cds_id].add(accession)
+
+    return result
