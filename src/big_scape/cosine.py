@@ -73,6 +73,7 @@ def cosine_worker(
     return
 
 def get_corr_cosine_dists(
+    run,
     pairs,
     bgc_hmm_features,
     bgc_ids,
@@ -95,7 +96,7 @@ def get_corr_cosine_dists(
 
     comparisons = len(pairs)
 
-    num_threads = 8
+    num_threads = run.options.cores * 4
 
 
     working_q = multiprocessing.Queue(num_threads)

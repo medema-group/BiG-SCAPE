@@ -238,6 +238,7 @@ def generate_network(run, database, bgc_collection: BgcCollection, aligned_domai
 
             logging.info("    Calculating cosine distances")
             cosine_dist_corr = get_corr_cosine_dists(
+                run,
                 pairs,
                 bgc_hmm_features,
                 bgc_ids,
@@ -257,7 +258,7 @@ def generate_network(run, database, bgc_collection: BgcCollection, aligned_domai
                     network_matrix.append(generate_unrelated_row(bgc_a_id, bgc_b_id))
                     filtered_pairs += 1
             logging.info(
-                "%d/%d pairs with distance > %d in cosine distances",
+                "%d/%d pairs with distance > %f in cosine distances",
                 filtered_pairs,
                 filtered_pairs + remaining_pairs,
                 run.bigslice.bigslice_cutoff

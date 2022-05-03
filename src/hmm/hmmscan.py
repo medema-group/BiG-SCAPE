@@ -264,11 +264,12 @@ def run_pyhmmer_bigslice(run, database: Database, ids_todo):
     bigslice_accessions = set()
     for row in hmm_rows:
         bigslice_accessions.add(row["accession"])
-
+    logging.info("Preparing profiles for biosynthetic domains")
     pfam_profiles = get_bigslice_biosynth_profiles(run, bigslice_accessions)
-    logging.info("Searching through %d profiles for biosynthetic profiles", len(pfam_profiles))
+    logging.info("Searching through %d bgcs using %d profiles for biosynthetic domains", len(ids_todo), len(pfam_profiles))
     run_pyhmmer(run, database, "hsp_bigslice", ids_todo, pfam_profiles, False, False)
 
+    logging.info("Preparing profiles for subpfam domains")
     # get a list of bgc ids with corresponding hps that have a biosynthetic pfam hit
     # this is done to skip any bgcs that don't have hsp matches on biosynthetic pfams.
     # it also includes per cds a list of profile accessions that need to be scanned, so any
@@ -276,7 +277,7 @@ def run_pyhmmer_bigslice(run, database: Database, ids_todo):
     bgc_cds_profiles = get_bgc_cds_profiles(database)
 
     subpfam_profiles = get_bigslice_subpfam_profiles(run)
-    logging.info("Searching through %d profiles for subpfam profiles", len(subpfam_profiles))
+    logging.info("Searching through %d bgcs using  %d profiles for subpfam profiles", len(ids_todo), len(subpfam_profiles))
     run_pyhmmer(run, database, "hsp_bigslice", ids_todo, subpfam_profiles, False, False, True, 3, bgc_cds_profiles)
 
 

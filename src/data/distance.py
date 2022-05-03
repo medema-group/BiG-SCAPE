@@ -86,7 +86,8 @@ def generate_bgc_collection(run, database: Database, BGC_INFO_DICT, GBK_FILE_DIC
             "bgc.name as bgc_name",
             "count(cds_id) as cds_count",
             "biosynthetic",
-            "strand"
+            "strand",
+            "orf_id"
         ]
     )
 
@@ -102,7 +103,7 @@ def generate_bgc_collection(run, database: Database, BGC_INFO_DICT, GBK_FILE_DIC
 
         gene_domain_count[bgc_name].append(row["cds_count"])
         if row["biosynthetic"] == 1:
-            corebiosynthetic_pos[bgc_name].append(idx)
+            corebiosynthetic_pos[bgc_name].append(row["orf_id"])
         bgc_gene_orientation[bgc_name].append(row["strand"])
 
     ## populate the bgc collection

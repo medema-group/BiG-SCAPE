@@ -145,16 +145,14 @@ def get_bigslice_biosynth_profiles(run, bigslice_accessions):
     )
 
     with pyhmmer.plan7.HMMFile(bigslice_pfam_path) as hmm_file:
-        optimized_profiles = hmm_file.optimized_profiles()
+        bigslice_profiles = list(hmm_file.optimized_profiles())
         # this should only ever be one profile, but just to be sure let's loop through
-        for profile in optimized_profiles:
+        for profile in bigslice_profiles:
             profile: pyhmmer.plan7.OptimizedProfile
 
             # cheat to set the trusted cutoffs to the gathering cutoffs
             # used in BiG-SLICE
             profile.cutoffs.trusted = profile.cutoffs.gathering
-
-            bigslice_profiles.append(profile)
     return bigslice_profiles
 
 
@@ -171,26 +169,13 @@ def get_bigslice_subpfam_profiles(run):
         sub_pfam_path,
         "*.hmm")):
         with pyhmmer.plan7.HMMFile(hmm_path) as hmm_file:
-            optimized_profiles = hmm_file.optimized_profiles()
-            for profile in optimized_profiles:
-                profile: pyhmmer.plan7.OptimizedProfile
-
-                accession = None
-                name = profile.name.decode()
-
-                if profile.accession is not None:
-                    accession = profile.accession.decode()
-                else:
-                    accession = name
-
+            subpfam_profiles = list(hmm_file.optimized_profiles())
+            
+            for profile in subpfam_profiles:
                 # we can set the cutoff manually for this as it is in BiG-SLICE
                 cutoff = 20
                 profile.cutoffs.trusted = [cutoff, cutoff]
-                
-                # profile.accession = accession.encode()
-
-                bigslice_profiles.append(profile)
-
+            bigslice_profiles.extend(subpfam_profiles)
     return bigslice_profiles
 
 
