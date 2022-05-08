@@ -191,6 +191,13 @@ def cmd_parser(root_path):
     parser.add_argument("--bs_data_path", dest="bigslice_data_path",
                         default=default_bigslice_data_path,
                         help="The path to use for saving files related to bigslice")
+    
+    parser.add_argument("--jaccard_treshold", dest="jaccard_treshold",
+                        default=0.0, type=float,
+                        help="The jaccard index treshold to use for jaccard filtering. \
+                        Pairs that have a jaccard index below this value are skipped. Note that \
+                        this is the jaccard index, not the distance. Lower values are more \
+                        distant")
 
     parser.add_argument("--version", action="version", version="%(prog)s 1.1.3 (2022-02-18)")
 

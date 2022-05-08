@@ -178,16 +178,16 @@ if __name__ == "__main__":
         logging.info(" Finished predicting domains")
     else:
         logging.info(" All files were processed by hmmscan. Skipping step...")
-    
+
     DB.dump_db_file()
-    
+
     logging.info(" Generating features")
 
     features = data.Features.extract(data.get_cluster_id_list(DB), DB)
 
     for feature in features:
         feature.save(DB)
-    
+
     DB.commit_inserts()
 
     DB.dump_db_file()
@@ -211,7 +211,7 @@ if __name__ == "__main__":
         hmm.do_multiple_align(RUN, DB, HSPS)
     else:
         logging.info(" All high scoring protein domains were already aligned. Skipping step...")
-    
+
     DB.commit_inserts()
 
     DB.dump_db_file()
@@ -254,7 +254,7 @@ if __name__ == "__main__":
     logging.info("   Writing the complete Annotations file for the complete set")
     # big_scape.write_network_annotation_file(RUN, BGC_COLLECTION)
 
-    # TODO: rework data storage from this point onwards. Now we're converting 
+    # TODO: rework data storage from this point onwards. Now we're converting
     # back to large amounts of data in memory because refactoring the storage
     # after this point is a massive task
     BGC_INFO_DICT, GBK_FILE_DICT, MIBIG_SET = gbk.import_gbks(RUN)

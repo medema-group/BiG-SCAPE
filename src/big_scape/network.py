@@ -263,21 +263,28 @@ def generate_network(run, database, bgc_collection: BgcCollection, aligned_domai
                 filtered_pairs + remaining_pairs,
                 run.bigslice.bigslice_cutoff
             )
+            pairs = cluster_pairs
         else:
-            cluster_pairs = pairs
             logging.info("   Calculating all pairwise distances")
+
+        # get jaccard treshold from options
+        jaccard_treshold = run.options.jaccard_treshold
+
+        # generate network matrix
+        network_matrix.extend(gen_dist_matrix_async(
+            run,
+            database,
+            pairs,
+            bgc_collection,
+            aligned_domain_seqs,
+            jaccard_treshold
+        ))
 
         pairs.clear()
 
-        network_matrix.extend(gen_dist_matrix_async(
-            run,database,
-            cluster_pairs,
-            bgc_collection,
-            aligned_domain_seqs
-        ))
-
         #pickle.dump(network_matrix,open("others.ntwrk",'wb'))
-        del cluster_pairs[:]
+        if run.bigslice.use_bigslice:
+            del cluster_pairs[:]
         #network_matrix = pickle.load(open("others.ntwrk", "rb"))
 
         # add the rest of the edges in the "Query network"

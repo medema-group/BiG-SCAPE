@@ -9,7 +9,15 @@ from src.big_scape.bgc_collection import BgcCollection
 from src.big_scape.bgc_info import BgcInfo
 from src.big_scape.scores import calc_adj_idx, calc_distance, calc_dss, calc_jaccard, gen_unrelated_pair_distance, process_orientation
 
-def gen_dist_matrix_worker(input_queue: Queue, output_queue: Queue, run, database, bgc_collection, aligned_domain_sequences):
+def gen_dist_matrix_worker(
+    input_queue: Queue,
+    output_queue: Queue,
+    run,
+    database,
+    bgc_collection,
+    aligned_domain_sequences,
+    jaccard_treshold = 0.0
+):
     """Worker method for threads that process distance calculation. Takes bgc pairs from an input
     queue and generates distances between the bgc pairs which it puts back into the output queue.
     
@@ -32,12 +40,26 @@ def gen_dist_matrix_worker(input_queue: Queue, output_queue: Queue, run, databas
             break
         # logging.info("launching task on pair %s, %s", pair[0], pair[1])
 
-        result = generate_dist_matrix(input_task, database, run, bgc_collection, aligned_domain_sequences)
+        result = generate_dist_matrix(
+            input_task,
+            database,
+            run,
+            bgc_collection,
+            aligned_domain_sequences,
+            jaccard_treshold = jaccard_treshold
+        )
         output_queue.put(result)
 
 
 # @timeit
-def gen_dist_matrix_async(run, database, cluster_pairs, bgc_collection: BgcCollection, aligned_domain_sequences):
+def gen_dist_matrix_async(
+    run,
+    database,
+    cluster_pairs,
+    bgc_collection: BgcCollection,
+    aligned_domain_sequences,
+    jaccard_treshold = 0.0
+):
     """Distributes the distance calculation part
     cluster_pairs is a list of triads (cluster1_index, cluster2_index, BGC class)
     """
@@ -54,8 +76,15 @@ def gen_dist_matrix_async(run, database, cluster_pairs, bgc_collection: BgcColle
     for thread_num in range(num_processes):
         thread_name = f"distance_thread_{thread_num}"
         logging.debug("Starting %s", thread_name)
-        process_args = (working_q, output_q, run, database, bgc_collection,
-            aligned_domain_sequences)
+        process_args = (
+            working_q,
+            output_q,
+            run,
+            database,
+            bgc_collection,
+            aligned_domain_sequences,
+            jaccard_treshold
+        )
         new_process = Process(target=gen_dist_matrix_worker, args=process_args, name=thread_name)
         processes.append(new_process)
         new_process.start()
@@ -122,7 +151,14 @@ def calc_ai_pair(cluster_a: BgcInfo, cluster_b: BgcInfo, pair_dom_info: BgcDomai
 
     return calc_adj_idx(a_dom_list, b_dom_list, a_dom_start, a_dom_end, b_dom_start, b_dom_end)
 
-def generate_dist_matrix(parms, database, run, bgc_collection: BgcCollection, aligned_domain_sequences):
+def generate_dist_matrix(
+    parms,
+    database,
+    run,
+    bgc_collection: BgcCollection,
+    aligned_domain_sequences,
+    jaccard_treshold = 0.0
+):
     """Unpack data to actually launch cluster_distance for one pair of BGCs
 
     Inputs:
@@ -173,7 +209,7 @@ def generate_dist_matrix(parms, database, run, bgc_collection: BgcCollection, al
 
     if no_intersect:
         score_data = gen_unrelated_pair_distance(run, cluster_a, cluster_b)
-        jaccard, dss, ai, dss_non_anchor, dss_anchor, num_non_anchor_domains, num_anchor_domains, slice_start_a, slice_start_b, slice_length_a, rev = score_data
+        jaccard_index, dss, adjacency_index, dss_non_anchor, dss_anchor, num_non_anchor_domains, num_anchor_domains, slice_start_a, slice_start_b, slice_length_a, rev = score_data
     else:
         slice_data = process_orientation(cluster_a, cluster_b)
 
@@ -188,20 +224,33 @@ def generate_dist_matrix(parms, database, run, bgc_collection: BgcCollection, al
 
         # JACCARD INDEX
         union = cluster_a.ordered_domain_set | cluster_b.ordered_domain_set
-        jaccard = calc_jaccard(pair_dom_info.intersect, union)
+        jaccard_index = calc_jaccard(pair_dom_info.intersect, union)
 
-        dss_data = calc_dss(run, database, cluster_a, cluster_b, aligned_domain_sequences, anchor_boost, pair_dom_info)
-        # unpack variables
-        dss, dss_non_anchor, dss_anchor, num_non_anchor_domains, num_anchor_domains = dss_data
+        # Jaccard skip treshold. If jaccard index is under this treshold, skip full comparison
+        if jaccard_index < jaccard_treshold:
+            score_data = gen_unrelated_pair_distance(run, cluster_a, cluster_b)
+            jaccard_index, dss, adjacency_index, dss_non_anchor, dss_anchor, num_non_anchor_domains, num_anchor_domains, slice_start_a, slice_start_b, slice_length_a, rev = score_data
+        else:
+            dss_data = calc_dss(
+                run,
+                database,
+                cluster_a,
+                cluster_b,
+                aligned_domain_sequences,
+                anchor_boost,
+                pair_dom_info
+            )
+            # unpack variables
+            dss, dss_non_anchor, dss_anchor, num_non_anchor_domains, num_anchor_domains = dss_data
 
-        ai = calc_ai_pair(cluster_a, cluster_b, pair_dom_info)
+            adjacency_index = calc_ai_pair(cluster_a, cluster_b, pair_dom_info)
 
 
-    dist = calc_distance(weights, jaccard, dss, ai, cluster_a.name, cluster_b.name)
+    dist = calc_distance(weights, jaccard_index, dss, adjacency_index, cluster_a.name, cluster_b.name)
 
 
-    network_row = array('f', [cluster_1_idx, cluster_2_idx, dist, (1-dist)**2, jaccard,
-                              dss, ai, dss_non_anchor, dss_anchor, num_non_anchor_domains, num_anchor_domains, slice_start_a, slice_start_b,
+    network_row = array('f', [cluster_1_idx, cluster_2_idx, dist, (1-dist)**2, jaccard_index,
+                              dss, adjacency_index, dss_non_anchor, dss_anchor, num_non_anchor_domains, num_anchor_domains, slice_start_a, slice_start_b,
                               slice_length_a, rev])
     return network_row
 
