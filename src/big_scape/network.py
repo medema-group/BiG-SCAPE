@@ -268,7 +268,7 @@ def generate_network(run, database, bgc_collection: BgcCollection, aligned_domai
             logging.info("   Calculating all pairwise distances")
 
         # get jaccard treshold from options
-        jaccard_treshold = run.options.jaccard_treshold
+        jaccard_threshold = run.options.jaccard_threshold
 
         # generate network matrix
         network_matrix.extend(gen_dist_matrix_async(
@@ -277,7 +277,7 @@ def generate_network(run, database, bgc_collection: BgcCollection, aligned_domai
             pairs,
             bgc_collection,
             aligned_domain_seqs,
-            jaccard_treshold
+            jaccard_threshold
         ))
 
         pairs.clear()

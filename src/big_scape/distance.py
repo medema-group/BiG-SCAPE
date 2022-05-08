@@ -16,7 +16,7 @@ def gen_dist_matrix_worker(
     database,
     bgc_collection,
     aligned_domain_sequences,
-    jaccard_treshold = 0.0
+    jaccard_threshold = 0.0
 ):
     """Worker method for threads that process distance calculation. Takes bgc pairs from an input
     queue and generates distances between the bgc pairs which it puts back into the output queue.
@@ -46,7 +46,7 @@ def gen_dist_matrix_worker(
             run,
             bgc_collection,
             aligned_domain_sequences,
-            jaccard_treshold = jaccard_treshold
+            jaccard_threshold = jaccard_threshold
         )
         output_queue.put(result)
 
@@ -58,7 +58,7 @@ def gen_dist_matrix_async(
     cluster_pairs,
     bgc_collection: BgcCollection,
     aligned_domain_sequences,
-    jaccard_treshold = 0.0
+    jaccard_threshold = 0.0
 ):
     """Distributes the distance calculation part
     cluster_pairs is a list of triads (cluster1_index, cluster2_index, BGC class)
@@ -83,7 +83,7 @@ def gen_dist_matrix_async(
             database,
             bgc_collection,
             aligned_domain_sequences,
-            jaccard_treshold
+            jaccard_threshold
         )
         new_process = Process(target=gen_dist_matrix_worker, args=process_args, name=thread_name)
         processes.append(new_process)
@@ -157,7 +157,7 @@ def generate_dist_matrix(
     run,
     bgc_collection: BgcCollection,
     aligned_domain_sequences,
-    jaccard_treshold = 0.0
+    jaccard_threshold = 0.0
 ):
     """Unpack data to actually launch cluster_distance for one pair of BGCs
 
@@ -227,7 +227,7 @@ def generate_dist_matrix(
         jaccard_index = calc_jaccard(pair_dom_info.intersect, union)
 
         # Jaccard skip treshold. If jaccard index is under this treshold, skip full comparison
-        if jaccard_index < jaccard_treshold:
+        if jaccard_index < jaccard_threshold:
             score_data = gen_unrelated_pair_distance(run, cluster_a, cluster_b)
             jaccard_index, dss, adjacency_index, dss_non_anchor, dss_anchor, num_non_anchor_domains, num_anchor_domains, slice_start_a, slice_start_b, slice_length_a, rev = score_data
         else:

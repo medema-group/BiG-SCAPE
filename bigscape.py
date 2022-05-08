@@ -181,16 +181,13 @@ if __name__ == "__main__":
 
     DB.dump_db_file()
 
-    logging.info(" Generating features")
+    if RUN.options.feature_filter:
+        logging.info(" Generating features")
 
-    features = data.Features.extract(data.get_cluster_id_list(DB), DB)
+        features = data.Features.extract(data.get_cluster_id_list(DB), DB)
 
-    for feature in features:
-        feature.save(DB)
-
-    DB.commit_inserts()
-
-    DB.dump_db_file()
+        for feature in features:
+            feature.save(DB)
 
     # get a list of high scoring protein hits
     HSPS = data.get_hsp_id_list(DB)
@@ -211,10 +208,6 @@ if __name__ == "__main__":
         hmm.do_multiple_align(RUN, DB, HSPS)
     else:
         logging.info(" All high scoring protein domains were already aligned. Skipping step...")
-
-    DB.commit_inserts()
-
-    DB.dump_db_file()
 
 
     ### Step 4: Create SVG figures

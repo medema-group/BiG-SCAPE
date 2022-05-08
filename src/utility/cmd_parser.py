@@ -176,28 +176,24 @@ def cmd_parser(root_path):
     parser.add_argument("--log_path", dest="log_path", help="Location where to write logs",
                         default=default_log_path)
 
-    parser.add_argument("--bs_filter", dest="bigslice_filter",
-                        help="Use a light implementation of BiG-SLICE to filter unrelated \
-                        BG comparisons. This will generally reduce the runtime for larger \
-                        datasets at the cost of some accuracy",
+    parser.add_argument("--feature_filter", dest="feature_filter",
+                        help="Filter using normalized features from HMMScan results  \
+                        This should reduce the runtime for larger datasets at the cost \
+                        of some accuracy",
                         default=False, action="store_true")
 
-    parser.add_argument("--bs_filter_cutoff", dest="bigslice_filter_cutoff", default=0.8,
-                        help="The cutoff to use for the bigslice filter. BGC pairs with a \
-                        distance larger than this value are assumed to be unrelated. BGC pairs \
-                        under this cutoff are analyzed by BiG-SCAPE as usual (default 0.3)")
+    parser.add_argument("--feature_threshold", dest="feature_threshold",
+                        help="The threshold to use in feature filtering",
+                        default=False, action="store_true")
     
-    default_bigslice_data_path = os.path.join(root_path, "bigslice_data")
-    parser.add_argument("--bs_data_path", dest="bigslice_data_path",
-                        default=default_bigslice_data_path,
-                        help="The path to use for saving files related to bigslice")
-    
-    parser.add_argument("--jaccard_treshold", dest="jaccard_treshold",
+    parser.add_argument("--jaccard_threshold", dest="jaccard_threshold",
                         default=0.0, type=float,
-                        help="The jaccard index treshold to use for jaccard filtering. \
+                        help="The jaccard index threshold to use for jaccard filtering. \
                         Pairs that have a jaccard index below this value are skipped. Note that \
                         this is the jaccard index, not the distance. Lower values are more \
-                        distant")
+                        distant \
+                        This should reduce the runtime for larger datasets at the cost \
+                        of some accuracy")
 
     parser.add_argument("--version", action="version", version="%(prog)s 1.1.3 (2022-02-18)")
 
