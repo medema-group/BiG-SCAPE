@@ -16,7 +16,7 @@ def gen_dist_matrix_worker(
     database,
     bgc_collection,
     aligned_domain_sequences,
-    jaccard_threshold = 0.0
+    jaccard_threshold
 ):
     """Worker method for threads that process distance calculation. Takes bgc pairs from an input
     queue and generates distances between the bgc pairs which it puts back into the output queue.
@@ -58,7 +58,7 @@ def gen_dist_matrix_async(
     cluster_pairs,
     bgc_collection: BgcCollection,
     aligned_domain_sequences,
-    jaccard_threshold = 0.0
+    jaccard_threshold
 ):
     """Distributes the distance calculation part
     cluster_pairs is a list of triads (cluster1_index, cluster2_index, BGC class)
@@ -94,7 +94,7 @@ def gen_dist_matrix_async(
     cluster_idx = 0
 
     # number of bgcs skipped due to dissimilarity skip
-    skipped_bgcs = 0
+    jaccard_skipped_bgcs = 0
     while True:
         all_tasks_put = cluster_idx == num_tasks
         all_tasks_done = len(network_matrix) == num_tasks
@@ -110,6 +110,10 @@ def gen_dist_matrix_async(
 
         if not output_q.empty():
             network_row = output_q.get()
+            jaccard_index = network_row[4]
+            if jaccard_threshold is not None and jaccard_index < jaccard_threshold:
+                jaccard_skipped_bgcs += 1
+
             # add row to matrix
             network_matrix.append(network_row)
 
@@ -120,6 +124,12 @@ def gen_dist_matrix_async(
                 percent_done = num_tasks_done / num_tasks * 100
                 logging.info("    %d%% (%d/%d)", percent_done, num_tasks_done, num_tasks)
 
+    if jaccard_threshold is not None:
+        logging.info(
+            "    Skipped %d comparisons with jaccard < %f",
+            jaccard_skipped_bgcs,
+            jaccard_threshold
+        )
 
     # clean up threads
     for thread_num in range(num_processes):
@@ -226,8 +236,8 @@ def generate_dist_matrix(
         union = cluster_a.ordered_domain_set | cluster_b.ordered_domain_set
         jaccard_index = calc_jaccard(pair_dom_info.intersect, union)
 
-        # Jaccard skip treshold. If jaccard index is under this treshold, skip full comparison
-        if jaccard_index < jaccard_threshold:
+        # Jaccard skip treshold. If jaccard index is under this treshold, skip other indexes
+        if jaccard_threshold is not None and jaccard_index < jaccard_threshold:
             score_data = gen_unrelated_pair_distance(run, cluster_a, cluster_b)
             jaccard_index, dss, adjacency_index, dss_non_anchor, dss_anchor, num_non_anchor_domains, num_anchor_domains, slice_start_a, slice_start_b, slice_length_a, rev = score_data
         else:

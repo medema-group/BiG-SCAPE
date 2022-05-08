@@ -8,7 +8,6 @@ import os
 import time
 
 from src.big_scape.run.dir_param import DirParam
-from src.big_scape.run.bigslice_param import BigsliceParam
 from src.big_scape.run.gbk_param import GbkParam
 from src.big_scape.run.mibig_param import MibigParam
 from src.big_scape.run.pfam_param import PfamParam
@@ -43,9 +42,6 @@ class Run:
 
     # networking
     network: NetworkParam
-
-    # bigslice filter
-    bigslice: BigsliceParam
 
     ## other run parameters
     # run mode
@@ -128,7 +124,6 @@ class Run:
         self.distance = DistParam(options)
         self.cluster = ClusterParam(options)
         self.network = NetworkParam(options)
-        self.bigslice = BigsliceParam(options)
 
         self.set_run_mode(options)
 

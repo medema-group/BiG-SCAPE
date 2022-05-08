@@ -212,66 +212,11 @@ def generate_network(run, database, bgc_collection: BgcCollection, aligned_domai
         
         network_matrix = []
 
-        # assemble a list of skippable pairs
-        if run.bigslice.use_bigslice:
-            logging.info("   Generating a list of skippable pairs using BiG-SLICE features")
-            logging.info("    Loading stored info from database")
-
-            
-            bgc_ids = get_bgc_ids(database)
-            hmm_ids = get_hmm_ids(database)
-
-            bgc_id_name_dict = {idx: name for idx, name in enumerate(bgc_collection.bgc_name_list)}
-            bgc_name_id_dict = {name: id for id, name in bgc_id_name_dict.items()}
-
-            features_nan = pd.DataFrame(
-                np.nan,
-                index=bgc_ids,
-                columns=hmm_ids
-            )
-
-            bgc_hmm_features = get_features(database)
-
-            # fetch feature values from db
-            for bgc_id, hmm_id, value in bgc_hmm_features:
-                features_nan.at[bgc_id, hmm_id] = value
-
-            logging.info("    Calculating cosine distances")
-            cosine_dist_corr = get_corr_cosine_dists(
-                run,
-                pairs,
-                bgc_hmm_features,
-                bgc_ids,
-                bgc_name_id_dict
-            )
-            filtered_pairs = 0
-            remaining_pairs = 0
-            cluster_pairs = []
-            for distance in cosine_dist_corr:
-                bgc_a_id = distance[0]
-                bgc_b_id = distance[1]
-                if distance[3] < run.bigslice.bigslice_cutoff:
-                    group = distance[2]
-                    cluster_pairs.append([bgc_a_id, bgc_b_id, group])
-                    remaining_pairs += 1
-                else:
-                    network_matrix.append(generate_unrelated_row(bgc_a_id, bgc_b_id))
-                    filtered_pairs += 1
-            logging.info(
-                "%d/%d pairs with distance > %f in cosine distances",
-                filtered_pairs,
-                filtered_pairs + remaining_pairs,
-                run.bigslice.bigslice_cutoff
-            )
-            pairs = cluster_pairs
-        else:
-            logging.info("   Calculating all pairwise distances")
-
         # get jaccard treshold from options
+        jaccard_threshold = None
         if run.options.jaccard_filter:
             jaccard_threshold = run.options.jaccard_threshold
-        else:
-            jaccard_threshold = 0.0
+            logging.info("    Using jaccard treshold filtering: %f", jaccard_threshold)
 
         # generate network matrix
         network_matrix.extend(gen_dist_matrix_async(
@@ -284,11 +229,6 @@ def generate_network(run, database, bgc_collection: BgcCollection, aligned_domai
         ))
 
         pairs.clear()
-
-        #pickle.dump(network_matrix,open("others.ntwrk",'wb'))
-        if run.bigslice.use_bigslice:
-            del cluster_pairs[:]
-        #network_matrix = pickle.load(open("others.ntwrk", "rb"))
 
         # add the rest of the edges in the "Query network"
         if run.directories.has_query_bgc:
@@ -319,14 +259,14 @@ def generate_network(run, database, bgc_collection: BgcCollection, aligned_domai
             pairs = set([tuple(sorted(combo)) for combo in combinations(new_set, 2)])
 
             if mix:
-                cluster_pairs = [(x, y, -1) for (x, y) in pairs]
+                pairs = [(x, y, -1) for (x, y) in pairs]
             else:
-                cluster_pairs = [(x, y, bgc_class_name_2_index[bgc_class]) for (x, y) in pairs]
+                pairs = [(x, y, bgc_class_name_2_index[bgc_class]) for (x, y) in pairs]
 
+            network_matrix_new_set = gen_dist_matrix_async(run, database, pairs,
+                                                           bgc_collection, aligned_domain_seqs,
+                                                           jaccard_threshold)
             pairs.clear()
-            network_matrix_new_set = gen_dist_matrix_async(run, database, cluster_pairs,
-                                                           bgc_collection, aligned_domain_seqs)
-            del cluster_pairs[:]
 
             # Update the network matrix (QBGC-vs-all) with the distances of
             # QBGC's GCF
