@@ -183,7 +183,7 @@ def cmd_parser(root_path):
                         default=False, action="store_true")
 
     parser.add_argument("--feature_threshold", dest="feature_threshold",
-                        default=0.1, type=float,
+                        default=0.7, type=float,
                         help="The threshold to use in feature filtering")
 
     parser.add_argument("--jaccard_filter", dest="jaccard_filter",

@@ -212,6 +212,59 @@ def generate_network(run, database, bgc_collection: BgcCollection, aligned_domai
         
         network_matrix = []
 
+        # cosine distance filtering from features
+        if run.options.feature_filter:
+            logging.info("   Generating a list of skippable pairs using numerical features")
+            logging.info("    Loading stored info from database")
+
+            
+            bgc_ids = get_bgc_ids(database)
+            hmm_ids = get_hmm_ids(database)
+
+            bgc_id_name_dict = {idx: name for idx, name in enumerate(bgc_collection.bgc_name_list)}
+            bgc_name_id_dict = {name: id for id, name in bgc_id_name_dict.items()}
+
+            features_nan = pd.DataFrame(
+                np.nan,
+                index=bgc_ids,
+                columns=hmm_ids
+            )
+
+            bgc_hmm_features = get_features(database)
+
+            # fetch feature values from db
+            for bgc_id, hmm_id, value in bgc_hmm_features:
+                features_nan.at[bgc_id, hmm_id] = value
+
+            logging.info("    Calculating cosine distances")
+            cosine_dist_corr = get_corr_cosine_dists(
+                run,
+                pairs,
+                bgc_hmm_features,
+                bgc_ids,
+                bgc_name_id_dict
+            )
+            filtered_pairs = 0
+            remaining_pairs = 0
+            remaining_pair_list = []
+            for distance in cosine_dist_corr:
+                bgc_a_id = distance[0]
+                bgc_b_id = distance[1]
+                if distance[3] < run.options.feature_threshold:
+                    group = distance[2]
+                    remaining_pair_list.append([bgc_a_id, bgc_b_id, group])
+                    remaining_pairs += 1
+                else:
+                    network_matrix.append(generate_unrelated_row(bgc_a_id, bgc_b_id))
+                    filtered_pairs += 1
+            logging.info(
+                "%d/%d pairs with distance > %f in cosine distances",
+                filtered_pairs,
+                filtered_pairs + remaining_pairs,
+                run.options.feature_threshold
+            )
+            pairs = remaining_pair_list
+
         # get jaccard treshold from options
         jaccard_threshold = None
         if run.options.jaccard_filter:
