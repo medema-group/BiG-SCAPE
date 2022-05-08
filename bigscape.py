@@ -182,6 +182,8 @@ if __name__ == "__main__":
         for feature in features:
             feature.save(DB)
 
+        DB.commit_inserts()
+
     # get a list of high scoring protein hits
     HSPS = data.get_hsp_id_list(DB)
 
@@ -202,6 +204,8 @@ if __name__ == "__main__":
     else:
         logging.info(" All high scoring protein domains were already aligned. Skipping step...")
 
+
+    DB.dump_db_file()
 
     ### Step 4: Create SVG figures
     logging.info(" Creating arrower-like figures for each BGC")
