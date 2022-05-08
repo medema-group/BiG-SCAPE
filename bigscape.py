@@ -35,7 +35,6 @@ from __future__ import division
 
 import os
 import logging
-import sys
 import warnings
 import time
 import pickle
@@ -147,15 +146,8 @@ if __name__ == "__main__":
     if RUN.mibig.use_mibig:
         mibig.extract_mibig(RUN)
 
-    if RUN.bigslice.use_bigslice:
-        data.download_antismash_files(RUN)
-        data.download_bigslice_db(RUN)
-
     # load the input data into the database
     data.initialize_db(RUN, DB)
-
-    # save db with bgc and hmm info
-    DB.dump_db_file()
 
     # base name as a list and as a set
     # also used in all vs all analysis
@@ -179,6 +171,7 @@ if __name__ == "__main__":
     else:
         logging.info(" All files were processed by hmmscan. Skipping step...")
 
+    # dumping db here since this is the largest task until this point.
     DB.dump_db_file()
 
     if RUN.options.feature_filter:
@@ -271,12 +264,12 @@ if __name__ == "__main__":
     INPUT_CLUSTERS_IDX = []
     BGC_INFO_DICT = data.gen_bgc_info_for_fetch_genome(DB)
     GBK_FILE_DICT = data.get_cluster_gbk_dict(RUN, DB)
-    big_scape.fetch_genome_list(RUN, INPUT_CLUSTERS_IDX, BGC_COLLECTION.bgc_name_tuple, MIBIG_SET, BGC_INFO_DICT,
-                                GBK_FILE_DICT)
+    big_scape.fetch_genome_list(RUN, INPUT_CLUSTERS_IDX, BGC_COLLECTION.bgc_name_tuple, MIBIG_SET,
+                                BGC_INFO_DICT, GBK_FILE_DICT)
 
     # update family data (convert global bgc indexes into input-only indexes)
-    big_scape.update_family_data(RUNDATA_NETWORKS_PER_RUN, INPUT_CLUSTERS_IDX, BGC_COLLECTION.bgc_name_tuple,
-                                 MIBIG_SET)
+    big_scape.update_family_data(RUNDATA_NETWORKS_PER_RUN, INPUT_CLUSTERS_IDX,
+                                 BGC_COLLECTION.bgc_name_tuple, MIBIG_SET)
 
     # generate overview data
     RUN.end()
