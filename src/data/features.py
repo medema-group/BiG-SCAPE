@@ -96,25 +96,25 @@ class Features:
 
         for bgc_id in hsps:
             biosyn_present = set()  # per-bgc
-            subpfam_bitscores = {}  # per-hmm, per cds-region
+            hsp_bitscores = {}  # per-hmm, per cds-region
             for cds_id in hsps[bgc_id]:
                 for hmm_id in hsps[bgc_id][cds_id]:
                     bitscore = max(hsps[bgc_id][cds_id][hmm_id])
-                    parent_hmm_id = parent_hmm_ids[hmm_idx[hmm_id]]
-                    if not parent_hmm_id:  # biosyn
-                        biosyn_present.add(hmm_id)
-                    else:  # subpfam
-                        subpfam_bitscores[hmm_id] = int(
-                            np.max(hsps[bgc_id][cds_id][hmm_id]))
+                    # parent_hmm_id = parent_hmm_ids[hmm_idx[hmm_id]]
+                    # if not parent_hmm_id:  # biosyn
+                    #     biosyn_present.add(hmm_id)
+                    # else:  # subpfam
+                    hsp_bitscores[hmm_id] = int(
+                        np.max(hsps[bgc_id][cds_id][hmm_id]))
 
-            for hmm_id in biosyn_present:
-                features.append(Features({
-                    "bgc_id": bgc_id,
-                    "hmm_id": hmm_id,
-                    "value": 255
-                }))
+            # for hmm_id in biosyn_present:
+            #     features.append(Features({
+            #         "bgc_id": bgc_id,
+            #         "hmm_id": hmm_id,
+            #         "value": 255
+            #     }))
 
-            for hmm_id, bitscore in subpfam_bitscores.items():
+            for hmm_id, bitscore in hsp_bitscores.items():
                 features.append(Features({
                     "bgc_id": bgc_id,
                     "hmm_id": hmm_id,

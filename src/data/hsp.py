@@ -43,6 +43,23 @@ def insert_hsp(
     }
     return database.insert(hsp_table, entry, True)
 
+def insert_feature(
+    database: Database,
+    hsp: list
+):
+    """Inserts (or ignores if already there) a new bgc feature into the database"""
+    serial_nr = hsp[0]
+    cds_id = hsp[1]
+    hmm_id = hsp[2]
+    value = hsp[3]
+    entry = {
+        "serial_nr": serial_nr,
+        "cds_id": cds_id,
+        "hmm_id": hmm_id,
+        "bitscore": value
+    }
+    return database.insert("hsp_bigslice", entry, True)
+
 def insert_hsp_alignment(database: Database, hsp_id, env_start, env_end, model_start, model_end, model_gaps, cds_start, cds_end, cds_gaps):
     """Inserts (or ignores if already there) a new high scoring protein into the database"""
     entry = {

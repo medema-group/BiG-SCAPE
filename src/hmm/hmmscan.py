@@ -10,7 +10,7 @@ from src.data import Database
 from src.data.bigslice import get_bgc_cds_profiles, get_bigslice_biosynth_profiles, get_bigslice_subpfam_profiles
 from src.data.bgc import BGC
 from src.data.hmm import from_accession, from_model_type
-from src.data.hsp import get_hsp_id, insert_hsp, insert_hsp_alignment
+from src.data.hsp import get_hsp_id, insert_feature, insert_hsp, insert_hsp_alignment
 from src.data.status import update_bgc_status
 
 
@@ -37,7 +37,7 @@ def pyhmmer_hmmpress(options):
         logging.info(" Pressing Pfam HMM file...")
         pyhmmer.hmmer.hmmpress(hmm_file, os.path.join(options.pfam_dir, "Pfam-A.hmm"))
 
-def pyhmmer_search_hmm(base_name, profiles, sequences, pipeline, cds_profiles = None):
+def pyhmmer_search_hmm(base_name, profiles, sequences, pipeline):
     """scan an iterable of pyhmmer sequences using an optimized profiles
 
     Inputs:
@@ -50,25 +50,7 @@ def pyhmmer_search_hmm(base_name, profiles, sequences, pipeline, cds_profiles = 
     """
     for profile in profiles:
         try:
-            # we need to use name here, since we know the subpfams don't have
-            # accessions. ideally this is fixed by setting the accessions
-            # to the names
-            profile_accession = profile.name.decode()
-            if cds_profiles is None:
-                filtered_sequences = sequences
-            else:
-                filtered_sequences = list()
-                for sequence in sequences:
-                    cds_id = int(sequence.name.decode())
-                    if cds_id not in cds_profiles:
-                        continue
-                    if profile_accession in cds_profiles[cds_id]:
-                        filtered_sequences.append(sequence)
-
-                if len(filtered_sequences) == 0:
-                    continue
-            
-            search_result = pipeline.search_hmm(profile, filtered_sequences)
+            search_result = pipeline.search_hmm(profile, sequences)
         except TypeError:
             logging.warning("    parsing %s threw TypeError. Ignoring...", base_name)
             return
@@ -78,7 +60,7 @@ def pyhmmer_search_hmm(base_name, profiles, sequences, pipeline, cds_profiles = 
                 for domain in hit.domains:
                     if domain.score > profile.cutoffs.trusted[1]:
                         yield domain
-                        
+
 
 def get_cds_gaps(cds_sequence):
     "gets a comma-separated list of gap locations in the cds sequence"
@@ -170,14 +152,14 @@ def rank_normalize_hsps(hsps, top_k):
         serial_nr = hsp[0]
         cds_id = hsp[1]
         hmm_id = hsp[2]
-        bitscore = hsp[3]
+        value = int(hsp[3])
         if cds_id not in cds_hsp_count:
             cds_hsp_count[cds_id] = 0
         if top_k > 0 and top_k < cds_hsp_count[cds_id] + 1:
             continue
-        bitscore = 255 - int((255 / top_k) * cds_hsp_count[cds_id])
+        value = int(255 - int((255 / top_k) * cds_hsp_count[cds_id]))
         cds_hsp_count[cds_id] += 1
-        result_hsps.append([serial_nr, cds_id, hmm_id, bitscore])
+        result_hsps.append([serial_nr, cds_id, hmm_id, value])
     return result_hsps
 
 
@@ -185,7 +167,7 @@ def run_pyhmmer_worker(input_queue, output_queue, profiles, pipeline, database: 
     """worker for the run_pyhmmer method"""
     alphabet = pyhmmer.easel.Alphabet.amino()
     while True:
-        bgc_id, cds_profiles = input_queue.get(True)
+        bgc_id = input_queue.get(True)
         if bgc_id is None:
             break
 
@@ -194,13 +176,11 @@ def run_pyhmmer_worker(input_queue, output_queue, profiles, pipeline, database: 
 
         sequences = []
         for cds_row in bgc_cds_list:
-            if cds_profiles and cds_row["id"] not in cds_profiles:
-                continue
             accession = BGC.CDS.gen_accession(base_name, cds_row)
             ds = pyhmmer.easel.TextSequence(accession=accession.encode(), name=str(cds_row["id"]).encode(), sequence=cds_row["aa_seq"]).digitize(alphabet)
             sequences.append(ds)
 
-        domains = pyhmmer_search_hmm(accession, profiles, sequences, pipeline, cds_profiles)
+        domains = pyhmmer_search_hmm(accession, profiles, sequences, pipeline)
 
         hsps = list()
         for idx, domain in enumerate(domains):
@@ -252,46 +232,15 @@ def run_pyhmmer_pfam(run, database: Database, ids_todo):
     run_pyhmmer(run, database, "hsp", ids_todo, profiles)
 
 
-def run_pyhmmer_bigslice(run, database: Database, ids_todo):
-    """Runs the pyhmmer pipeline for bigslice feature generation"""
-    logging.info("Using BiG-SLICE pre-filtering")
-
-
-    # get the subset of profiles which were not yet analyzed.
-    # from loading the HMMs we know that these are
-    # marked as model type 2 in the database
-    hmm_rows = from_model_type(database, 2)
-    bigslice_accessions = set()
-    for row in hmm_rows:
-        bigslice_accessions.add(row["accession"])
-    logging.info("Preparing profiles for biosynthetic domains")
-    pfam_profiles = get_bigslice_biosynth_profiles(run, bigslice_accessions)
-    logging.info("Searching through %d bgcs using %d profiles for biosynthetic domains", len(ids_todo), len(pfam_profiles))
-    run_pyhmmer(run, database, "hsp_bigslice", ids_todo, pfam_profiles, False, False)
-
-    logging.info("Preparing profiles for subpfam domains")
-    # get a list of bgc ids with corresponding hps that have a biosynthetic pfam hit
-    # this is done to skip any bgcs that don't have hsp matches on biosynthetic pfams.
-    # it also includes per cds a list of profile accessions that need to be scanned, so any
-    # others can be skipped
-    bgc_cds_profiles = get_bgc_cds_profiles(database)
-
-    subpfam_profiles = get_bigslice_subpfam_profiles(run)
-    logging.info("Searching through %d bgcs using  %d profiles for subpfam profiles", len(ids_todo), len(subpfam_profiles))
-    run_pyhmmer(run, database, "hsp_bigslice", ids_todo, subpfam_profiles, False, False, True, 3, bgc_cds_profiles)
-
-
 def run_pyhmmer(
     run,
     database: Database,
     hsp_table,
-    ids_todo, 
+    ids_todo,
     profiles,
     use_filter_overlap=True,
     insert_alignments=True,
-    rank_normalize=False,
-    top_k=0,
-    bgc_cds_profiles=None
+    generate_features=False
 ):
     """Scan a list of fastas using pyhmmer scan
 
@@ -331,34 +280,22 @@ def run_pyhmmer(
 
         if all_tasks_put and all_tasks_done:
             break
-        
+
         # if not all_tasks_put:
         if not working_q.full() and not all_tasks_put:
             bgc_id = ids_todo[id_idx]
-            cds_profiles = None
-            if bgc_cds_profiles is not None:
-                if bgc_id not in bgc_cds_profiles:
-                    id_idx += 1
-                    ids_done += 1
-                    continue
-                cds_profiles = bgc_cds_profiles[bgc_id]
-            working_q.put((bgc_id, cds_profiles))
+            working_q.put(bgc_id)
             id_idx += 1
             if not working_q.full():
                 continue
-           
+
         if not output_q.empty():
             bgc_id, task_hsps = output_q.get()
 
             result_hsps: list = task_hsps
-            
+
             if use_filter_overlap:
                 result_hsps = filter_overlap(result_hsps, run.options.domain_overlap_cutoff)
-
-            # order by bitscore if rank_normalize is true
-            if rank_normalize:
-                result_hsps = rank_normalize_hsps(result_hsps, top_k)
-
 
             for idx, hsp in enumerate(result_hsps):
                 serial_nr = hsp[0]
@@ -372,6 +309,19 @@ def run_pyhmmer(
                 # commit every 500 hsps
                 if len(hsps) % 500 == 0:
                     database.commit_inserts()
+
+            if generate_features:
+                # order by bitscore if rank_normalize is true
+                rank_normalized_hsps = rank_normalize_hsps(result_hsps, 3)
+
+                for idx, hsp in enumerate(rank_normalized_hsps):
+                    # insert hsp
+                    insert_feature(database, hsp)
+
+                    # commit every 500 hsps
+                    if len(hsps) % 500 == 0:
+                        database.commit_inserts()
+
 
             # update bgc status when done
             update_bgc_status(database, bgc_id, 2)
@@ -393,7 +343,7 @@ def run_pyhmmer(
 
     # clean up threads
     for thread_num in range(num_processes * 2):
-        working_q.put((None, None))
+        working_q.put(None)
 
     for process in processes:
         process.join()
