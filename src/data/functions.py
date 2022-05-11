@@ -105,6 +105,21 @@ def check_gbk_exists(run, database: Database, dataset_id: int, gbk_path: str):
                               and name = \"{gbk_name}\"")
     return len(names) > 0
 
+def filter_bgc_cds_overlap(bgc_input_info):
+    """Filters BGC cds regions based on overlapping start and end coordinates
+    By default, this will allow a 10% of shortest cds overlap in base pairs. So
+    if there are 2 cds regions that overlap of size 100 and 500, it will allow
+    10 bp overlap, otherwise it discards the shortest cds
+
+    Inputs:
+        - bgc_input_info: a list of input paths and bgc objects from the
+        parse_input_gbk method
+    Returns:
+        - bgc_input_info where each BGC has cds domains filtered based on the
+        description above
+    """
+    return bgc_input_info
+
 def insert_dataset_gbks(run, database: Database, dataset_id, dataset_name, dataset_meta, bgc_ids):
     """Performs the insertion of GBK information into the database"""
     new_bgcs_count = 0
@@ -135,6 +150,9 @@ def insert_dataset_gbks(run, database: Database, dataset_id, dataset_name, datas
     logging.info("Parsing and inserting %d new GBKs...", len(files_to_process))
     mp_pool = Pool(run.options.cores)
     pool_results = mp_pool.map(parse_input_gbk, files_to_process)
+    # filter out overlapping cds regions
+
+    # save bgcs in database
     for file_path, bgcs in pool_results:
         for bgc in bgcs:
             bgc.save(dataset_id, database)
