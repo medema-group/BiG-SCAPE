@@ -18,9 +18,11 @@ from Bio import Phylo
 from src.bgctools import get_composite_bgc_similarities
 from src.big_scape.bgc_collection import BgcCollection
 from src.utility.io import create_directory
+from src.data import Database
+from src.data.cds import get_cds_with_alignment
 
 
-def cluster_json_batch(bgcs, path_base, class_name, matrix, pos_alignments,
+def cluster_json_batch(db: Database, bgcs, path_base, class_name, matrix, pos_alignments,
                        bgc_collection: BgcCollection, mibig_set, pfd_folder, bgc_fasta_folder,
                        aligned_domain_seqs, cutoffs=None, damping=0.9, cluster_clans=False,
                        clan_cutoff=(0.5, 0.8), html_folder=None, verbose=False):
@@ -97,42 +99,73 @@ def cluster_json_batch(bgcs, path_base, class_name, matrix, pos_alignments,
 
         orfDict = defaultdict(dict)
 
-        ## read fasta file first to get orfs
-        # We cannot get all the info exclusively from the pfd because that only
+        # get orfs from database
+        rows = get_cds_with_alignment(db, bgcName)
+        # We cannot get all the info exclusively from the hsp table because that only
         # contains ORFs with predicted domains (and we need to draw empty genes
         # as well)
-        for line in open(fastaFile):
-            if line[0] == ">":
-                header = line.strip()[1:].split(':')
-                orf = header[0]
-                if header[2]:
-                    orfDict[orf]["id"] = header[2]
-                elif header[4]:
-                    orfDict[orf]["id"] = header[4]
-                else:
-                    orfDict[orf]["id"] = orf
-
+        for row in rows:
+            orf = row["name"] + "_ORF" + str(row["orf_id"])
+            if orf not in orfDict:
+                orfDict[orf]["id"] = orf
+            
                 ## broken gene goes into cluster, need this so js doesn't throw an error
-                if int(header[6]) <= 1:
+                ## this is totally taken from the original code. Not sure if this occurs
+                ## using pyhmmer at all
+                if row["nt_start"] <= 1:
                     orfDict[orf]["start"] = 1
                 else:
-                    orfDict[orf]["start"] = int(header[6])
+                    orfDict[orf]["start"] = row["nt_start"]
 
-                orfDict[orf]["end"] = int(header[7])
+                orfDict[orf]["end"] = row["nt_end"]
 
-                if header[-1] == '+':
-                    orfDict[orf]["strand"] = 1
-                else:
-                    orfDict[orf]["strand"] = -1
+                orfDict[orf]["strand"] = row["strand"]
 
                 orfDict[orf]["domains"] = []
 
-        ## now read pfd file to add the domains to each of the orfs
-        for line in open(pfdFile):
-            entry = line.split('\t')
-            orf = entry[-1].strip().split(':')[0]
-            pfamID = entry[5].split('.')[0]
-            orfDict[orf]["domains"].append({'code': pfamID, 'start': int(entry[3]), 'end': int(entry[4]), 'bitscore': float(entry[1])})
+            orfDict[orf]["domains"].append({'code': row["accession"],
+                'start': row["env_start"],
+                'end': row["env_end"],
+                'bitscore': row["bitscore"]
+            })
+
+
+        # ## read fasta file first to get orfs
+        # # We cannot get all the info exclusively from the pfd because that only
+        # # contains ORFs with predicted domains (and we need to draw empty genes
+        # # as well)
+        # for line in open(fastaFile):
+        #     if line[0] == ">":
+        #         header = line.strip()[1:].split(':')
+        #         orf = header[0]
+        #         if header[2]:
+        #             orfDict[orf]["id"] = header[2]
+        #         elif header[4]:
+        #             orfDict[orf]["id"] = header[4]
+        #         else:
+        #             orfDict[orf]["id"] = orf
+
+        #         ## broken gene goes into cluster, need this so js doesn't throw an error
+        #         if int(header[6]) <= 1:
+        #             orfDict[orf]["start"] = 1
+        #         else:
+        #             orfDict[orf]["start"] = int(header[6])
+
+        #         orfDict[orf]["end"] = int(header[7])
+
+        #         if header[-1] == '+':
+        #             orfDict[orf]["strand"] = 1
+        #         else:
+        #             orfDict[orf]["strand"] = -1
+
+        #         orfDict[orf]["domains"] = []
+
+        # ## now read pfd file to add the domains to each of the orfs
+        # for line in open(pfdFile):
+        #     entry = line.split('\t')
+        #     orf = entry[-1].strip().split(':')[0]
+        #     pfamID = entry[5].split('.')[0]
+        #     orfDict[orf]["domains"].append({'code': pfamID, 'start': int(entry[3]), 'end': int(entry[4]), 'bitscore': float(entry[1])})
         # order of ORFs is important here because I use it to get a translation
         # between the "list of ORFs with domains" to "list of all ORFs" later on
         bgcJsonDict[bgcName]['orfs'] = sorted(orfDict.values(), key=itemgetter("start"))

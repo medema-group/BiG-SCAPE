@@ -384,11 +384,11 @@ def process_gbk_file(
                             logging.debug("   Removing %s because it overlaps with other ORF", locus)
                             bgc_locus_tags.remove(locus)
 
-                        with open(outputfile, 'w') as fasta_handle:
-                            for locus in bgc_locus_tags:
-                                fasta_handle.write("{}\n".format(locus))
-                                fasta_handle.write("{}\n".format(locus_sequences[locus]))
-                            adding_sequence = True
+                        # with open(outputfile, 'w') as fasta_handle:
+                        #     for locus in bgc_locus_tags:
+                        #         fasta_handle.write("{}\n".format(locus))
+                        #         fasta_handle.write("{}\n".format(locus_sequences[locus]))
+                        adding_sequence = True
                 else:
                     files_no_proteins.append(fname)
 

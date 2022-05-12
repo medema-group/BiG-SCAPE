@@ -50,6 +50,7 @@ from src import hmm
 from src import mibig
 from src import pfam
 from src import utility
+from src import data
 
 def init_logger(options):
     """Initializes the logger for big-scape
@@ -113,7 +114,6 @@ if __name__ == "__main__":
     # center(s).
     warnings.filterwarnings(action="ignore", category=UserWarning)
 
-    
     # TODO: download whatever version of pfam is necessary if it isn't there
 
     # TODO: next press the hmm file into more optimal formats
@@ -131,9 +131,14 @@ if __name__ == "__main__":
     # this should be the only occasion where options is needed. no further than this.
     RUN.init(OPTIONS)
 
+    logging.info("Options set to use %d cores", RUN.options.cores)
+
     # preparation is done. run timing formally starts here
     RUN.start()
 
+    # init database
+    DB_PATH = os.path.join(RUN.directories.output, "data.db")
+    DB = data.Database(DB_PATH, True)
 
     ### Step 1: Get all the input files. Write extract sequence and write fasta if necessary
     logging.info("   - - Processing input files - -")
@@ -141,133 +146,68 @@ if __name__ == "__main__":
     if RUN.mibig.use_mibig:
         mibig.extract_mibig(RUN)
 
-    # there are three steps where BiG-SCAPE will import GBK files:
-    # 1. mibig
-    # 2. genbank
-    # 3. query BGC
-    # all of these are generalized into this method, which returns the bgc info and gen bank info
-    BGC_INFO_DICT, GBK_FILE_DICT, MIBIG_SET = gbk.import_gbks(RUN)
-    
+    # load the input data into the database
+    data.initialize_db(RUN, DB)
+
     # base name as a list and as a set
     # also used in all vs all analysis
-    CLUSTER_NAME_LIST = list(GBK_FILE_DICT.keys())
-    CLUSTER_NAME_SET = set(CLUSTER_NAME_LIST)
+    BGC_IDS = data.get_cluster_id_list(DB)
+    logging.info("Working with %d total bgcs", len(BGC_IDS))
 
+    ### Step 2: Run hmmscan
+    # find which sequences have already had their domains predicted
+    PREDICTED_IDS = data.get_predicted_bgc_list(DB)
 
-    ### Step 2: Run hmmscan (generates .pfs and .pfd files)
-    # get all fasta files in cache directory
-    CACHED_FASTA_FILES = hmm.get_cached_fasta_files(RUN)
+    # find the difference
+    IDS_TODO = list(set(BGC_IDS) - set(PREDICTED_IDS))
+    # IDS_TODO = list()
 
-    # verify that all clusters have a corresponding fasta file in cache
-    hmm.check_fasta_files(RUN, CLUSTER_NAME_SET, CACHED_FASTA_FILES)
-
-    # get all fasta files that were already done in a previous run
-    SEARCHED_FASTAS = hmm.get_searched_fasta_files(RUN, CACHED_FASTA_FILES)
-
-    # Make a list of all fasta files that need to be processed by hmmscan & BiG-SCAPE
-    # (i.e., they don't yet have corresponding .pfd and .pfs files)
-    # includes all fasta files if force_hmmscan is set
-    FASTA_FILES_TO_PROCESS = hmm.get_fasta_files_to_process(CACHED_FASTA_FILES, SEARCHED_FASTAS)
-
-    logging.info("Trying threading on %d cores", RUN.options.cores)
-    logging.info("Predicting domains using hmmsearch")
-
-    # if any are there, run hmmscan
-    if len(FASTA_FILES_TO_PROCESS) > 0:
+    # run hmmscan if there are any sequences which have not yet been processed by hmmscan
+    if len(IDS_TODO) > 0:
+        logging.info("Predicting %d domains using hmmsearch", len(IDS_TODO))
         # this function blocks the main thread until finished
-        hmm.run_pyhmmer(RUN, FASTA_FILES_TO_PROCESS, GBK_FILE_DICT, CLUSTER_NAME_LIST, CLUSTER_NAME_SET, MIBIG_SET)
-        logging.info(" Finished generating domtable files.")
+        hmm.run_pyhmmer_pfam(RUN, DB, IDS_TODO)
+        logging.info(" Finished predicting domains")
     else:
         logging.info(" All files were processed by hmmscan. Skipping step...")
 
-    # If number of pfd files did not change, no new sequences were added to the
-    #  domain fastas and we could try to resume the multiple alignment phase
-    # baseNames have been pruned of BGCs with no domains that might've been added temporarily
-    TRY_RESUME_MULTIPLE_ALIGNMENT = False
-    # get the fasta files that now have an asscociated pfs & pfd file
-    SEARCHED_THIS_RUN = hmm.get_searched_fasta_files(RUN, CACHED_FASTA_FILES)
-    SEARCHED_THIS_RUN = SEARCHED_THIS_RUN - SEARCHED_FASTAS
-    # check if pfd files were unchanged
-    PFD_FILES_UNCHANGED = len(SEARCHED_THIS_RUN) == 0
+    # dumping db here since this is the largest task until this point.
+    DB.dump_db_file()
 
-    DOMAIN_FASTAS_GENERATED = hmm.get_cached_domain_fasta_files(RUN)
-    DOMAIN_FASTAS_NOT_EMPTY = len(DOMAIN_FASTAS_GENERATED) > 0
-    
-    if not RUN.options.skip_ma:
-        if PFD_FILES_UNCHANGED and DOMAIN_FASTAS_NOT_EMPTY:
-            TRY_RESUME_MULTIPLE_ALIGNMENT = True
-        else:
-            # new sequences will be added to the domain fasta files. Clean domains folder
-            # TODO: We could try to make it so it's not necessary to re-calculate every alignment,
-            #  either by expanding previous alignment files or at the very least,
-            #  re-aligning only the domain files of the newly added BGCs
-            logging.info(" New domain sequences to be added; cleaning domains folder")
-            for thing in os.listdir(RUN.directories.domains):
-                os.remove(os.path.join(RUN.directories.domains, thing))
+    if RUN.options.feature_filter:
+        logging.info(" Generating features")
 
-    logging.info(" Finished generating pfs and pfd files.")
+        features = data.Features.extract(data.get_cluster_id_list(DB), DB)
 
+        for feature in features:
+            feature.save(DB)
 
-    ### Step 4: Parse the pfs, pfd files to generate BGC dictionary, clusters, and clusters per
-    ### sample objects
-    logging.info("Processing domains sequence files")
+        DB.commit_inserts()
 
-    # do one more check of pfd files to see if they are all there
-    hmm.check_pfd_files(RUN, CLUSTER_NAME_SET)
+    # get a list of high scoring protein hits
+    HSPS = data.get_hsp_id_list(DB)
 
-    # BGCs --
-    # this collection will contain all bgc objects
-    BGC_COLLECTION = big_scape.BgcCollection()
+    # get a list of already-aligned hsps
+    # TODO: work this into a status table like with bgcs
+    # currently this just checks if there is an entry for this HSP in the hsp_alignment table
+    # TODO: identify changes in dataset and realign
+    ALIGNED_HSPS = data.get_aligned_hsp_list(DB)
 
-    # init the collection with the acquired names from importing GBK files
-    BGC_COLLECTION.initialize(CLUSTER_NAME_LIST)
+    # get the alignments to be done
+    HSPS_TODO = list(set(HSPS) - set(ALIGNED_HSPS))
+    # HSPS_TODO = list()
 
-    # the BGCs need to know which domains belong where
-    # this is done in this step
-    BGC_COLLECTION.init_ordered_domain_list(RUN)
-
-    # add info and source gbk files
-    BGC_COLLECTION.add_bgc_info(BGC_INFO_DICT)
-    BGC_COLLECTION.add_source_gbk_files(GBK_FILE_DICT)
-
-    if RUN.options.skip_ma:
-        logging.info(" Running with skip_ma parameter: Assuming that the domains folder has all the \
-            fasta files")
-        BGC_COLLECTION.load_domain_names_from_dict(RUN)
+    # if there are any to be done, we'll align
+    if len(HSPS_TODO) > 0:
+        logging.info("Performing multiple alignments using hmmalign")
+        hmm.do_multiple_align(RUN, DB, HSPS)
     else:
-        logging.info(" Adding sequences to corresponding domains file")
-        BGC_COLLECTION.load_domain_names_from_pfd(RUN, TRY_RESUME_MULTIPLE_ALIGNMENT)
-
-        BGC_COLLECTION.save_domain_names_to_dict(RUN)
-
-    # Key: BGC. Item: ordered list of simple integers with the number of domains
-    # in each gene
-    # Instead of `DomainCountGene = defaultdict(list)`, let's try arrays of
-    # unsigned ints
-    # GENE_DOMAIN_COUNT = {}
-    # list of gene-numbers that have a hit in the anchor domain list. Zero based
-    # COREBIOSYNTHETIC_POS = {}
-    # list of +/- orientation
-    # BGC_GENE_ORIENTATION = {}
-
-    # TODO: remove this comment? not sure what it relates to
-    # if it's a re-run, the pfd/pfs files were not changed, so the skip_ma flag
-    # is activated. We have to open the pfd files to get the gene labels for
-    # each domain
-    # We now always have to have this data so the alignments are produced
-    PARSE_PFD_RESULTS = big_scape.parse_pfd(RUN, BGC_COLLECTION)
-    GENE_DOMAIN_COUNT, COREBIOSYNTHETIC_POS, BGC_GENE_ORIENTATION = PARSE_PFD_RESULTS
-
-    BGC_COLLECTION.add_gene_domain_counts(GENE_DOMAIN_COUNT)
-    BGC_COLLECTION.add_bio_synth_core_pos(COREBIOSYNTHETIC_POS)
-    BGC_COLLECTION.add_gene_orientations(BGC_GENE_ORIENTATION)
-
-    # at this point we can assemble a gene string for bgc info
-    BGC_COLLECTION.init_gene_strings()
+        logging.info(" All high scoring protein domains were already aligned. Skipping step...")
 
 
+    DB.dump_db_file()
 
-    ### Step 5: Create SVG figures
+    ### Step 4: Create SVG figures
     logging.info(" Creating arrower-like figures for each BGC")
 
     # read hmm file. We'll need that info anyway for final visualization
@@ -277,17 +217,9 @@ if __name__ == "__main__":
 
     # verify if there are figures already generated
 
-    big_scape.generate_images(RUN, CLUSTER_NAME_SET, GBK_FILE_DICT, PFAM_INFO, BGC_INFO_DICT)
+    big_scape.generate_images(RUN, DB, PFAM_INFO)
     logging.info(" Finished creating figures")
     logging.info("   - - Calculating distance matrix - -")
-
-    # Do multiple alignments if needed
-    if not RUN.options.skip_ma:
-        hmm.do_multiple_align(RUN, TRY_RESUME_MULTIPLE_ALIGNMENT)
-
-    # If there's something to analyze, load the aligned sequences
-    logging.info(" Trying to read domain alignments (*.algn files)")
-    ALIGNED_DOMAIN_SEQS = hmm.read_aligned_files(RUN)
 
     # copy html templates
     HTML_TEMPLATE_PATH = os.path.join(ROOT_PATH, "html_template", "output")
@@ -298,6 +230,10 @@ if __name__ == "__main__":
     RUNDATA_NETWORKS_PER_RUN = big_scape.prepare_cutoff_rundata_networks(RUN)
     HTML_SUBS_PER_RUN = big_scape.prepare_html_subs_per_run(RUN)
 
+    # TODO: refactor ArrowerSVG such that it can use the database so we don't have
+    # to generate the PFS files. currently arrowersvg requires these files to work
+    data.generate_pfd_files(RUN, DB)
+
     # create pfams.js
     pfam.create_pfam_js(RUN, PFAM_INFO)
 
@@ -306,38 +242,38 @@ if __name__ == "__main__":
 
     # This version contains info on all bgcs with valid classes
     logging.info("   Writing the complete Annotations file for the complete set")
-    big_scape.write_network_annotation_file(RUN, BGC_COLLECTION)
+    # big_scape.write_network_annotation_file(RUN, BGC_COLLECTION)
 
-    # Find index of all MIBiG BGCs if necessary
-    MIBIG_SET_INDICES = set()
-    if RUN.mibig.use_mibig:
-        NAME_TO_IDX = {}
-        for clusterIdx, clusterName in enumerate(BGC_COLLECTION.bgc_name_tuple):
-            NAME_TO_IDX[clusterName] = clusterIdx
-
-        for bgc in MIBIG_SET:
-            MIBIG_SET_INDICES.add(NAME_TO_IDX[bgc])
+    # TODO: rework data storage from this point onwards. Now we're converting
+    # back to large amounts of data in memory because refactoring the storage
+    # after this point is a massive task
+    BGC_INFO_DICT, GBK_FILE_DICT, MIBIG_SET = gbk.import_gbks(RUN)
+    BGC_COLLECTION = data.generate_bgc_collection(RUN, DB, BGC_INFO_DICT, GBK_FILE_DICT)
+    ALIGNED_DOMAIN_SEQS = data.generate_aligned_domain_seqs(RUN, DB)
+    MIBIG_SET_INDICES = data.generate_mibig_set_indices(RUN, BGC_COLLECTION, MIBIG_SET)
 
     # Making network files mixing all classes
     if RUN.options.mix:
-        big_scape.generate_network(RUN, BGC_COLLECTION, ALIGNED_DOMAIN_SEQS,
+        big_scape.generate_network(RUN, DB, BGC_COLLECTION, ALIGNED_DOMAIN_SEQS,
                                    MIBIG_SET_INDICES, MIBIG_SET, RUNDATA_NETWORKS_PER_RUN,
                                    HTML_SUBS_PER_RUN, True)
 
     # Making network files separating by BGC class
     if not RUN.options.no_classify:
-        big_scape.generate_network(RUN, BGC_COLLECTION, ALIGNED_DOMAIN_SEQS,
+        big_scape.generate_network(RUN, DB, BGC_COLLECTION, ALIGNED_DOMAIN_SEQS,
                                    MIBIG_SET_INDICES, MIBIG_SET, RUNDATA_NETWORKS_PER_RUN,
                                    HTML_SUBS_PER_RUN, False)
 
     # fetch genome list for overview.js
     INPUT_CLUSTERS_IDX = []
-    big_scape.fetch_genome_list(RUN, INPUT_CLUSTERS_IDX, BGC_COLLECTION.bgc_name_tuple, MIBIG_SET, BGC_INFO_DICT,
-                                GBK_FILE_DICT)
+    BGC_INFO_DICT = data.gen_bgc_info_for_fetch_genome(DB)
+    GBK_FILE_DICT = data.get_cluster_gbk_dict(RUN, DB)
+    big_scape.fetch_genome_list(RUN, INPUT_CLUSTERS_IDX, BGC_COLLECTION.bgc_name_tuple, MIBIG_SET,
+                                BGC_INFO_DICT, GBK_FILE_DICT)
 
     # update family data (convert global bgc indexes into input-only indexes)
-    big_scape.update_family_data(RUNDATA_NETWORKS_PER_RUN, INPUT_CLUSTERS_IDX, BGC_COLLECTION.bgc_name_tuple,
-                                 MIBIG_SET)
+    big_scape.update_family_data(RUNDATA_NETWORKS_PER_RUN, INPUT_CLUSTERS_IDX,
+                                 BGC_COLLECTION.bgc_name_tuple, MIBIG_SET)
 
     # generate overview data
     RUN.end()

@@ -6,8 +6,12 @@ from multiprocessing import Queue, Process
 
 import pyhmmer
 
-
-from src.pfam.misc import check_overlap
+from src.data import Database
+from src.data.bigslice import get_bgc_cds_profiles, get_bigslice_biosynth_profiles, get_bigslice_subpfam_profiles
+from src.data.bgc import BGC
+from src.data.hmm import from_accession, from_model_type
+from src.data.hsp import get_hsp_id, insert_feature, insert_hsp, insert_hsp_alignment
+from src.data.status import update_bgc_status
 
 
 def write_pfd(pfd_handle, matrix):
@@ -44,10 +48,7 @@ def pyhmmer_search_hmm(base_name, profiles, sequences, pipeline):
     Yields:
         A list of domains, similar to what hmmsearch would return
     """
-    cutoffs = dict()
     for profile in profiles:
-        cutoffs[profile.accession.decode()] = profile.cutoffs.trusted
-
         try:
             search_result = pipeline.search_hmm(profile, sequences)
         except TypeError:
@@ -57,68 +58,190 @@ def pyhmmer_search_hmm(base_name, profiles, sequences, pipeline):
         for hit in search_result:
             if hit.is_included():
                 for domain in hit.domains:
-                    accession = domain.alignment.hmm_accession.decode()
-                    if domain.score > cutoffs[accession][1]:
+                    if domain.score > profile.cutoffs.trusted[1]:
                         yield domain
 
-def run_pyhmmer_worker(input_queue, output_queue, profiles, pipeline):
+
+def get_cds_gaps(cds_sequence):
+    "gets a comma-separated list of gap locations in the cds sequence"
+    gaps = []
+    for idx, aa in enumerate(cds_sequence):
+        if aa == "-":
+            gaps.append(idx)
+    return ",".join(map(str, gaps))
+
+def get_hmm_gaps(hmm_sequence):
+    "gets a comma-separated list of gap locations in the model sequence"
+    gaps = []
+    for idx, aa in enumerate(hmm_sequence):
+        if aa == ".":
+            gaps.append(idx)
+    return ",".join(map(str, gaps))
+
+def no_overlap(a_start, a_end, b_start, b_end):
+    """Return True if there is no overlap between two regions"""
+    if a_start < b_start and a_end < b_start:
+        return True
+    elif a_start > b_end and a_end > b_end:
+        return True
+    else:
+        return False
+
+def len_overlap(a_start, a_end, b_start, b_end):
+    """Returns the length of an overlapping sequence"""
+
+    if a_start < b_start:
+        cor1 = a_start
+    else:
+        cor1 = b_start
+
+    if a_end > b_end:
+        cor2 = a_end
+    else:
+        cor2 = b_end
+
+    total_region = cor2 - cor1
+    sum_len = (a_end - a_start) + (b_end - b_start)
+
+    return sum_len - total_region
+
+def filter_overlap(hsps, overlap_cutoff):
+    """Check if domains overlap for a certain overlap_cutoff.
+     If so, remove the domain(s) with the lower score."""
+
+    delete_list = []
+    for i in range(len(hsps)-1):
+        for j in range(i+1, len(hsps)):
+            row1 = hsps[i]
+            row2 = hsps[j]
+
+            # using env coords
+            a_start = row1[4]
+            a_end = row1[5]
+            b_start = row2[4]
+            b_end = row2[5]
+
+            #check if we are the same CDS
+            if row1[1] == row2[1]:
+                #check if there is overlap between the domains
+                if not no_overlap(a_start, a_end, b_start, b_end):
+                    overlapping_aminoacids = len_overlap(a_start, a_end, b_start, b_end)
+                    overlap_perc_loc1 = overlapping_aminoacids / (a_end - a_start)
+                    overlap_perc_loc2 = overlapping_aminoacids / (b_end - b_start)
+                    #check if the amount of overlap is significant
+                    if overlap_perc_loc1 > overlap_cutoff or overlap_perc_loc2 > overlap_cutoff:
+                        if float(row1[3]) >= float(row2[3]): #see which has a better score
+                            delete_list.append(row2)
+                        elif float(row1[3]) < float(row2[3]):
+                            delete_list.append(row1)
+
+    for lst in delete_list:
+        try:
+            hsps.remove(lst)
+        except ValueError:
+            pass
+    return hsps
+
+def rank_normalize_hsps(hsps, top_k):
+    """Rank normalizes a set of hsps per cds
+    """
+    sorted_hsps = sorted(hsps, key = lambda elem: elem[3], reverse=True)
+    result_hsps = []
+    cds_hsp_count = dict()
+    for hsp in sorted_hsps:
+        serial_nr = hsp[0]
+        cds_id = hsp[1]
+        hmm_id = hsp[2]
+        value = int(hsp[3])
+        if cds_id not in cds_hsp_count:
+            cds_hsp_count[cds_id] = 0
+        if top_k > 0 and top_k < cds_hsp_count[cds_id] + 1:
+            continue
+        value = int(255 - int((255 / top_k) * cds_hsp_count[cds_id]))
+        cds_hsp_count[cds_id] += 1
+        result_hsps.append([serial_nr, cds_id, hmm_id, value])
+    return result_hsps
+
+
+def run_pyhmmer_worker(input_queue, output_queue, profiles, pipeline, database: Database):
     """worker for the run_pyhmmer method"""
     alphabet = pyhmmer.easel.Alphabet.amino()
     while True:
-        base_name, fasta_file = input_queue.get(True)
-        if base_name is None:
+        bgc_id = input_queue.get(True)
+        if bgc_id is None:
             break
 
-        with pyhmmer.easel.SequenceFile(fasta_file) as seq_file:
-            seq_file.set_digital(alphabet)
-            try:
-                sequences = list(seq_file)
-            except ValueError:
-                logging.warning("  Parsing %s threw ValueError.", base_name)
-                logging.warning("  This means something in the source fasta file is wrong.")
-                logging.warning("  A known case is a protein starting with a - instead of M.")
-                logging.warning("  For the time being, this FASTA file will be skipped")
-                output_queue.put((base_name, []))
-                continue
-            domains = pyhmmer_search_hmm(base_name, profiles, sequences, pipeline)
-            del sequences
+        base_name = BGC.get_bgc_base_name(bgc_id, database)
+        bgc_cds_list = BGC.get_all_cds([bgc_id], database)
 
-        pfd_matrix = []
-        for domain in domains:
-            score = f"{domain.score:.2f}"
-            env_from = str(domain.env_from)
-            env_to = str(domain.env_to)
-            pfam_id = domain.alignment.hmm_accession.decode()
-            domain_name = domain.alignment.hmm_name.decode()
+        sequences = []
+        for cds_row in bgc_cds_list:
+            accession = BGC.CDS.gen_accession(base_name, cds_row)
+            ds = pyhmmer.easel.TextSequence(accession=accession.encode(), name=str(cds_row["id"]).encode(), sequence=cds_row["aa_seq"]).digitize(alphabet)
+            sequences.append(ds)
 
-            header = domain.alignment.target_name.decode()
-            header_list = header.split(":")
-            try:
-                gene_id = header_list[header_list.index("gid")+1]
-            except ValueError:
-                logging.warning("  No gene ID in %s", base_name)
-                gene_id = ''
-            gene_start = header_list[header_list.index("loc")+1]
-            gene_end = header_list[header_list.index("loc")+2]
+        domains = pyhmmer_search_hmm(accession, profiles, sequences, pipeline)
 
-            pfd_row = [base_name]
-            pfd_row.append(score)
-            pfd_row.append(gene_id)
-            pfd_row.append(env_from)
-            pfd_row.append(env_to)
-            pfd_row.append(pfam_id)
-            pfd_row.append(domain_name)
-            pfd_row.append(gene_start)
-            pfd_row.append(gene_end)
-            pfd_row.append(header)
+        hsps = list()
+        for idx, domain in enumerate(domains):
+            domain: pyhmmer.plan7.Domain
+            # cds id
+            cds_id = int(domain.alignment.target_name.decode())
 
-            pfd_matrix.append(pfd_row)
-            del pfd_row
+            # hmm id
+            hmm_accession = domain.alignment.hmm_accession.decode()
+            # only happens on subpfams
+            if hmm_accession == "" or hmm_accession is None:
+                hmm_accession = domain.alignment.hmm_name.decode()
+            hmm = from_accession(database, hmm_accession)
+            hmm_id = hmm["id"]
 
-        output_queue.put((base_name, pfd_matrix))
+            # score
+            bitscore = domain.score
+
+            # env coords
+            env_start = domain.env_from
+            env_end = domain.env_to
+
+            # model coords
+            model_start = domain.alignment.hmm_from
+            model_end = domain.alignment.hmm_to
+
+            # cds coords
+            cds_start = domain.alignment.target_from
+            cds_end = domain.alignment.target_to
+
+            # gaps
+            model_gaps = get_hmm_gaps(domain.alignment.hmm_sequence)
+            cds_gaps = get_cds_gaps(domain.alignment.target_sequence)
+
+            hsps.append((idx, cds_id, hmm_id, bitscore, env_start, env_end, model_start, model_end, cds_start, cds_end, model_gaps, cds_gaps))
+
+        output_queue.put((bgc_id, hsps))
+
+def run_pyhmmer_pfam(run, database: Database, ids_todo):
+    """Runs the pyhmmer pipeline using the pfam hmm"""
+    hmm_file_path = os.path.join(run.directories.pfam, "Pfam-A.hmm")
+    # get hmm profiles
+    # pfam
+    profiles = list()
+    with pyhmmer.plan7.HMMFile(hmm_file_path) as hmm_file:
+        profiles.extend(list(hmm_file.optimized_profiles()))
+        logging.info("Found %d hmm profiles", len(profiles))
+
+    run_pyhmmer(run, database, "hsp", ids_todo, profiles)
 
 
-def run_pyhmmer(run, fasta_files_to_process, genbank_dict, clusters, base_names, mibig_set):
+def run_pyhmmer(
+    run,
+    database: Database,
+    hsp_table,
+    ids_todo,
+    profiles,
+    use_filter_overlap=True,
+    insert_alignments=True,
+    generate_features=False
+):
     """Scan a list of fastas using pyhmmer scan
 
     inputs:
@@ -128,19 +251,13 @@ def run_pyhmmer(run, fasta_files_to_process, genbank_dict, clusters, base_names,
     returns:
         a list of hits
     """
-    hmm_file_path = os.path.join(run.directories.pfam, "Pfam-A.hmm")
-    # get hmm profiles
-    with pyhmmer.plan7.HMMFile(hmm_file_path) as hmm_file:
-        profiles = list(hmm_file.optimized_profiles())
-
     pipeline = pyhmmer.plan7.Pipeline(pyhmmer.easel.Alphabet.amino(), Z=len(profiles), bit_cutoffs="trusted")
 
     num_processes = run.options.cores
-    # num_processes = 8
 
     working_q = Queue(num_processes)
 
-    num_tasks = len(fasta_files_to_process)
+    num_tasks = len(ids_todo)
 
     output_q = Queue(num_tasks)
 
@@ -148,72 +265,108 @@ def run_pyhmmer(run, fasta_files_to_process, genbank_dict, clusters, base_names,
     for thread_num in range(num_processes):
         thread_name = f"distance_thread_{thread_num}"
         logging.debug("Starting %s", thread_name)
-        new_process = Process(target=run_pyhmmer_worker, args=(working_q, output_q, profiles, pipeline))
+        new_process = Process(target=run_pyhmmer_worker, args=(working_q, output_q, profiles, pipeline, database))
         processes.append(new_process)
         new_process.start()
 
-    pfd_matrix = []
-    fasta_idx = 0
-    fastas_done = 0
+    id_idx = 0
+    ids_done = 0
+
+    hsps = []
 
     while True:
-        all_tasks_put = fasta_idx == num_tasks
-        all_tasks_done = fastas_done == num_tasks
+        all_tasks_put = id_idx == num_tasks
+        all_tasks_done = ids_done == num_tasks
 
         if all_tasks_put and all_tasks_done:
             break
 
+        # if not all_tasks_put:
         if not working_q.full() and not all_tasks_put:
-            fasta_file = fasta_files_to_process[fasta_idx]
-            base_name = ".".join(fasta_file.split(os.sep)[-1].split(".")[:-1])
-            working_q.put((base_name, fasta_file))
-            fasta_idx += 1
+            bgc_id = ids_todo[id_idx]
+            working_q.put(bgc_id)
+            id_idx += 1
             if not working_q.full():
                 continue
 
         if not output_q.empty():
-            base_name, pfd_matrix = output_q.get()
+            bgc_id, task_hsps = output_q.get()
 
-            if len(pfd_matrix) == 0:
-                # there aren't any domains in this BGC
-                # delete from all data structures
-                logging.info("  No domains were found in %s. Removing it from further analysis", base_name)
+            result_hsps: list = task_hsps
 
-                pfdoutput = os.path.join(run.directories.pfd, base_name + ".pfd")
-                clusters.remove(base_name)
-                base_names.remove(base_name)
-                del genbank_dict[base_name]
-                if base_name in mibig_set:
-                    mibig_set.remove(base_name)
-            else:
+            if use_filter_overlap:
+                result_hsps = filter_overlap(result_hsps, run.options.domain_overlap_cutoff)
 
-                # check_overlap also sorts the filtered_matrix results and removes
-                # overlapping domains, keeping the highest scoring one
-                filtered_matrix, domains = check_overlap(pfd_matrix, run.options.domain_overlap_cutoff)
+            for idx, hsp in enumerate(result_hsps):
+                serial_nr = hsp[0]
+                cds_id = hsp[1]
+                hmm_id = hsp[2]
+                bitscore = hsp[3]
+                # insert hsp
+                insert_hsp(database, hsp_table, serial_nr, cds_id, hmm_id, bitscore)
+                hsps.append(hsp)
 
-                # Save list of domains per BGC
-                pfsoutput = os.path.join(run.directories.pfs, base_name + ".pfs")
-                with open(pfsoutput, 'w', encoding="UTF-8") as pfs_handle:
-                    pfs_handle.write(" ".join(domains))
+                # commit every 500 hsps
+                if len(hsps) % 500 == 0:
+                    database.commit_inserts()
 
-                # Save more complete information of each domain per BGC
-                pfdoutput = os.path.join(run.directories.pfd, base_name + ".pfd")
-                with open(pfdoutput, 'w', encoding="UTF-8") as pfd_handle:
-                    write_pfd(pfd_handle, filtered_matrix)
+            if generate_features:
+                # order by bitscore if rank_normalize is true
+                rank_normalized_hsps = rank_normalize_hsps(result_hsps, 3)
 
-            fastas_done += 1
+                for idx, hsp in enumerate(rank_normalized_hsps):
+                    # insert hsp
+                    insert_feature(database, hsp)
+
+                    # commit every 500 hsps
+                    if len(hsps) % 500 == 0:
+                        database.commit_inserts()
+
+
+            # update bgc status when done
+            update_bgc_status(database, bgc_id, 2)
+
+            ids_done += 1
+
+            # commit every 500 bgcs also
+            if ids_done % 500 == 0:
+                database.commit_inserts()
 
             # print progress every 10%
-            if fastas_done % math.ceil(num_tasks / 10) == 0:
-                percent_done = fastas_done / num_tasks * 100
-                logging.info("  %d%% (%d/%d)", percent_done, fastas_done, num_tasks)
-            # logging.info("adding result (now %d)", len(network_matrix))
+            if ids_done % math.ceil(num_tasks / 10) == 0:
+                percent_done = ids_done / num_tasks * 100
+                logging.info("  %d%% (%d/%d)", percent_done, ids_done, num_tasks)
+        # logging.info("adding result (now %d)", len(network_matrix))
+
+    # just making sure
+    database.commit_inserts()
 
     # clean up threads
-    for thread_num in range(num_processes):
-        working_q.put((None, None))
+    for thread_num in range(num_processes * 2):
+        working_q.put(None)
 
     for process in processes:
         process.join()
         thread_name = process.name
         logging.debug("Thread %s stopped", thread_name)
+
+    # insert alignments. Has to be done after inserts because only then are ids available
+    if not insert_alignments:
+        return
+
+    for idx, hsp in enumerate(hsps):
+        serial_nr, cds_id, hmm_id, bitscore, env_start, env_end, model_start, model_end, cds_start, cds_end, model_gaps, cds_gaps = hsp
+
+        # get hsp id
+        hsp_id = get_hsp_id(database, serial_nr, cds_id, hmm_id)
+        if hsp_id is None:
+            logging.error("Could not find hsp_id associated with newly added hsp")
+
+        # insert hsp_alignment
+        insert_hsp_alignment(database, hsp_id, env_start, env_end, model_start, model_end, model_gaps, cds_start, cds_end, cds_gaps)
+
+        # commit every 500 rows
+        if idx % 500 == 0:
+            database.commit_inserts()
+
+    database.commit_inserts()

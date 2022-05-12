@@ -176,10 +176,33 @@ def cmd_parser(root_path):
     parser.add_argument("--log_path", dest="log_path", help="Location where to write logs",
                         default=default_log_path)
 
-    parser.add_argument("--diss_skip", dest="diss_skip",
-                        help="Skip bgcs that have a third BGC with 0 \
-                        distance in common E.g. if AB=0 & AC=0, skip BC",
+    parser.add_argument("--feature_filter", dest="feature_filter",
+                        help="Filter using normalized features from HMMScan results  \
+                        This should reduce the runtime for larger datasets at the cost \
+                        of some accuracy",
                         default=False, action="store_true")
+
+    parser.add_argument("--feature_threshold", dest="feature_threshold",
+                        default=0.7, type=float,
+                        help="The threshold to use in feature filtering")
+
+    parser.add_argument("--jaccard_filter", dest="jaccard_filter",
+                        help="Filter using a minimum jaccard distance filter. \
+                        Pairs that have a jaccard distance under jaccard_threshold \
+                        will be assumed unrelated, and DSS and AI will not be calculated. \
+                        This should reduce the runtime for larger datasets at the cost \
+                        of some accuracy",
+                        default=False, action="store_true")
+    
+    parser.add_argument("--jaccard_threshold", dest="jaccard_threshold",
+                        default=0.1, type=float,
+                        help="The jaccard index threshold to use for jaccard filtering. \
+                        Pairs that have a jaccard index below this value are skipped. Note that \
+                        this is the jaccard index, not the distance. Lower values are more \
+                        distant \
+                        This should reduce the runtime for larger datasets at the cost \
+                        of some accuracy. The higher this number, the more pairs are \
+                        included in the filter")
 
     parser.add_argument("--version", action="version", version="%(prog)s 1.1.3 (2022-02-18)")
 
