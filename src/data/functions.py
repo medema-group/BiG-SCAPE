@@ -1,6 +1,7 @@
 """Module containing general helper functions to load input data into the database
 """
 
+from itertools import combinations
 import logging
 import os
 import re
@@ -9,6 +10,7 @@ import glob
 from os import path
 from multiprocessing import Pool
 
+from src.data.cds import gen_header_cds
 from src.data.hmm import load_hmms
 from .database import Database
 from .bgc import BGC
@@ -109,7 +111,7 @@ def filter_bgc_cds_overlap(bgc_input_info):
     """Filters BGC cds regions based on overlapping start and end coordinates
     By default, this will allow a 10% of shortest cds overlap in base pairs. So
     if there are 2 cds regions that overlap of size 100 and 500, it will allow
-    10 bp overlap, otherwise it discards the shortest cds
+    10 bp overlap between the two, otherwise it discards the shortest cds
 
     Inputs:
         - bgc_input_info: a list of input paths and bgc objects from the
@@ -118,6 +120,63 @@ def filter_bgc_cds_overlap(bgc_input_info):
         - bgc_input_info where each BGC has cds domains filtered based on the
         description above
     """
+    # this implementation isn't optimal
+    # loop through each bgc set
+    for gbk_path, bgcs in bgc_input_info:
+        # loop through each bgc
+        for bgc in bgcs:
+            del_list = set()
+            # find all combinations of cds to check for overlap
+            for a, b in combinations(bgc.cds, 2):
+                a_start = int(a.nt_start)
+                b_start = int(b.nt_start)
+
+                a_end = int(a.nt_end)
+                b_end = int(b.nt_end)
+
+                # these are different from calculating end - start / 3
+                # or something similar.
+                # the number that results from this is what is used in the
+                # original implementation of this functionality, so the same is
+                # done here
+                a_len = len(a.aa_seq)
+                b_len = len(b.aa_seq)
+
+                # copy from original
+                if b_end <= a_start or b_start >= a_end:
+                    pass
+                else:
+                    # calculate overlap
+                    if a_start > b_start:
+                        ov_start = a_start
+                    else:
+                        ov_start = b_start
+
+                    if a_end < b_end:
+                        ov_end = a_end
+                    else:
+                        ov_end = b_end
+
+                    overlap_length = ov_end - ov_start
+
+                    # allow the overlap to be as large as 10% of the
+                    # shortest CDS. Overlap length is in nucleotides
+                    # here, whereas a_len, b_len are protein
+                    # sequence lengths
+                    if overlap_length/3 > 0.1*min(a_len, b_len):
+                        if a_len > b_len:
+                            del_list.add(b)
+                        else:
+                            del_list.add(a)
+            # remove any entries that need to be removed
+            for cds in del_list:
+                cds_header = gen_header_cds(bgc.name, cds)
+                logging.debug(
+                    "   Removing %s because it overlaps with another orf",
+                    cds_header
+                )
+                bgc.cds.remove(cds)
+
     return bgc_input_info
 
 def insert_dataset_gbks(run, database: Database, dataset_id, dataset_name, dataset_meta, bgc_ids):
@@ -151,9 +210,10 @@ def insert_dataset_gbks(run, database: Database, dataset_id, dataset_name, datas
     mp_pool = Pool(run.options.cores)
     pool_results = mp_pool.map(parse_input_gbk, files_to_process)
     # filter out overlapping cds regions
+    filtered_results = filter_bgc_cds_overlap(pool_results)
 
     # save bgcs in database
-    for file_path, bgcs in pool_results:
+    for file_path, bgcs in filtered_results:
         for bgc in bgcs:
             bgc.save(dataset_id, database)
             new_bgcs_count += 1

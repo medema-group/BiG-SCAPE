@@ -40,11 +40,25 @@ def get_cds_with_alignment(database: Database, bgc_name = None):
 
 def gen_header(base_name, cds_row):
     """generates an accession id for a cds. e.g.
-    >AL645882.2.cluster001:gid::pid::loc:12131939:strand:-"""
+    >AL645882.2.cluster001:gid::pid::loc:12131939:strand:-
+    From a cds row returned from the database
+    """
     nt_start = cds_row["nt_start"]
     nt_end = cds_row["nt_end"]
+    # TODO: replace 1 for forward and -1 for backwards with + and -
     strand = cds_row["strand"]
     return f">{base_name}:gid::pid::loc:{nt_start}:{nt_end}:strand:{strand}"
+
+def gen_header_cds(base_name, cds_obj):
+    """generates an accession id for a cds. e.g.
+    >AL645882.2.cluster001:gid::pid::loc:12131939:strand:-
+    from a cds object
+    """
+    nt_start = cds_obj.nt_start
+    nt_end = cds_obj.nt_end
+    strand = "+" if cds_obj.strand == 1 else "-"
+    return f">{base_name}:gid::pid::loc:{nt_start}:{nt_end}:strand:{strand}"
+
 
 def get_aa_from_header(database: Database, header):
     """Gets the amino acid sequence from a header"""
