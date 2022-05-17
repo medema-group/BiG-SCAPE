@@ -230,6 +230,21 @@ class Database:
 
         return db_cur.rowcount
 
+    def remove(self, table: str, clause: str,
+               parameters: tuple = ()):
+        """execute a DELETE FROM ...  WHERE ..."""
+
+        sql = "DELETE FROM {} {}".format(
+            table,
+            clause
+        )
+
+        db_cur = self._connection.cursor()
+        db_cur.execute(sql)
+        self._connection.commit()
+
+        return db_cur.rowcount
+
     def insert(self, table: str, data: dict, ignore = False):
         """execute an INSERT INTO ... VALUES ...
         !!don't use the returned IDs unless you are sure

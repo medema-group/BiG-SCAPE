@@ -67,6 +67,9 @@ def insert_dataset(database, dataset_name, dataset_meta):
 
     return dataset_id, bgc_ids
 
+def remove_bgc(db: Database, bgc_id):
+    db.remove("bgc", f"where id = {bgc_id}")
+
 def list_gbk_files(data_path):
     """Returns a list of full paths to gbk files under a certain directory
     This lists files recursively (also in directories of directories)
@@ -392,6 +395,19 @@ def get_bgc_id_name_dict(db):
     ):
         bgc_id_name_dict[row["id"]] = row["name"][1]
     return bgc_id_name_dict
+
+def get_bgc_name_by_id(db, id):
+    rows = db.select(
+        "bgc",
+        f"where id = {id}",
+        props=[
+            "bgc.name"
+        ]
+    )
+    if rows == 0:
+        return None
+
+    return rows[0]["name"]
 
 def get_features(db):
     return db.select(

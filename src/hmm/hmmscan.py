@@ -6,10 +6,10 @@ from multiprocessing import Queue, Process
 
 import pyhmmer
 
+from src.data.functions import get_bgc_name_by_id, remove_bgc
 from src.data import Database
-from src.data.bigslice import get_bgc_cds_profiles, get_bigslice_biosynth_profiles, get_bigslice_subpfam_profiles
 from src.data.bgc import BGC
-from src.data.hmm import from_accession, from_model_type
+from src.data.hmm import from_accession
 from src.data.hsp import get_hsp_id, insert_feature, insert_hsp, insert_hsp_alignment
 from src.data.status import update_bgc_status
 
@@ -273,6 +273,8 @@ def run_pyhmmer(
     ids_done = 0
 
     hsps = []
+    # keep track of bgs with no domains
+    bgc_no_domains = []
 
     while True:
         all_tasks_put = id_idx == num_tasks
@@ -296,6 +298,9 @@ def run_pyhmmer(
 
             if use_filter_overlap:
                 result_hsps = filter_overlap(result_hsps, run.options.domain_overlap_cutoff)
+            
+            if len(result_hsps) == 0:
+                bgc_no_domains.append(bgc_id)
 
             for idx, hsp in enumerate(result_hsps):
                 serial_nr = hsp[0]
@@ -349,6 +354,14 @@ def run_pyhmmer(
         process.join()
         thread_name = process.name
         logging.debug("Thread %s stopped", thread_name)
+
+    # clean up bgcs that didn't have any domains
+    for bgc_id in bgc_no_domains:
+        bgc_name = get_bgc_name_by_id(database, bgc_id)
+        logging.warning("BGC %s has no domains and will be removed from \
+            further analysis", bgc_name)
+        remove_bgc(database, bgc_id)
+        
 
     # insert alignments. Has to be done after inserts because only then are ids available
     if not insert_alignments:
