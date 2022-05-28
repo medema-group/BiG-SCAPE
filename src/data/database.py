@@ -162,7 +162,8 @@ class Database:
                 out_db.executescript(query)
             print("{0:.4f}s".format(time() - start))
         else:
-            raise(Exception("not an in-memory database"))
+            return
+            # raise(Exception("not an in-memory database"))
 
     def select(self, table: str, clause: str,
                parameters: tuple = None, props: list = [],
