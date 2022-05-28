@@ -298,7 +298,7 @@ def run_pyhmmer(
 
             if use_filter_overlap:
                 result_hsps = filter_overlap(result_hsps, run.options.domain_overlap_cutoff)
-            
+
             if len(result_hsps) == 0:
                 bgc_no_domains.append(bgc_id)
 
@@ -361,7 +361,6 @@ def run_pyhmmer(
         logging.warning("BGC %s has no domains and will be removed from \
             further analysis", bgc_name)
         remove_bgc(database, bgc_id)
-        
 
     # insert alignments. Has to be done after inserts because only then are ids available
     if not insert_alignments:

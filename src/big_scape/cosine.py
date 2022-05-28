@@ -26,7 +26,7 @@ def cosine_worker(
             break
         offset_bgc_a_id = bgc_a_id + 1
         offset_bgc_b_id = bgc_b_id + 1
-        
+
         hmm_ids_a = bgc_hmm_ids[offset_bgc_a_id]
         hmm_ids_b = bgc_hmm_ids[offset_bgc_b_id]
 
@@ -39,7 +39,7 @@ def cosine_worker(
         # get values
         hmm_values_a = bgc_hmm_values[offset_bgc_a_id]
         hmm_values_b = bgc_hmm_values[offset_bgc_b_id]
-        
+
         imputation_value_a = bgc_imputation_values[offset_bgc_a_id]
         imputation_value_b = bgc_imputation_values[offset_bgc_b_id]
 
@@ -57,12 +57,12 @@ def cosine_worker(
                 value_b = hmm_values_b[hmm_id]
             else:
                 value_b = imputation_value_b
-            
+
             sum_product += value_a * value_b
             a_list.append(value_a ** 2)
             b_list.append(value_b ** 2)
 
-        
+
         # get sum squares
         sum_root_square_a = math.sqrt(sum(a_list))
         sum_root_square_b = math.sqrt(sum(b_list))
@@ -152,5 +152,5 @@ def get_corr_cosine_dists(
     for process in processes:
         process.join()
         thread_name = process.name
-    
+
     return cosine_dist_corr
