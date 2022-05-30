@@ -12,12 +12,13 @@ import networkx as nx
 import pandas as pd
 import numpy as np
 
+from src.big_scape.scores import calc_jaccard
 from src.big_scape.bgc_collection import BgcCollection
 from src.big_scape.clustering import cluster_json_batch
 from src.big_scape.distance import write_distance_matrix, gen_dist_matrix_async
 from src.bgctools import sort_bgc
 from src.utility import create_directory
-from src.data.functions import get_bgc_ids, get_hmm_ids, get_bgc_id_name_dict, get_features
+from src.data.functions import get_bgc_ids, get_hmm_ids, get_features
 from src.big_scape.cosine import get_corr_cosine_dists
 
 def get_output_cutoffs_filenames(run, path_base, bgc_class):
@@ -212,6 +213,41 @@ def generate_network(run, database, bgc_collection: BgcCollection, aligned_domai
         
         network_matrix = []
 
+        bgc_id_name_dict = {idx: name for idx, name in enumerate(bgc_collection.bgc_name_list)}
+        bgc_name_id_dict = {name: id for id, name in bgc_id_name_dict.items()}
+
+        # get jaccard treshold from options
+        jaccard_threshold = None
+        if run.options.jaccard_filter:
+            jaccard_threshold = run.options.jaccard_threshold
+            logging.info("    Using jaccard treshold filtering: %f", jaccard_threshold)
+
+            filtered_pairs = 0
+            remaining_pairs = 0
+            remaining_pair_list = []
+            for bgc_a, bgc_b, group in pairs:
+                bgc_a_info = bgc_collection.bgc_collection_dict[bgc_id_name_dict[bgc_a]]
+                bgc_b_info = bgc_collection.bgc_collection_dict[bgc_id_name_dict[bgc_b]]
+
+                intersect = bgc_a_info.ordered_domain_set & bgc_b_info.ordered_domain_set
+                overlap = bgc_a_info.ordered_domain_set | bgc_b_info.ordered_domain_set
+
+                jaccard_idx = calc_jaccard(intersect, overlap)
+                
+                if jaccard_idx < jaccard_threshold:
+                    remaining_pair_list.append([bgc_a, bgc_b, group])
+                    remaining_pairs += 1
+                else:
+                    network_matrix.append(generate_unrelated_row(bgc_a, bgc_b))
+                    filtered_pairs += 1
+            logging.info(
+                "%d/%d pairs with jaccard < %f filtered out",
+                filtered_pairs,
+                filtered_pairs + remaining_pairs,
+                jaccard_threshold
+            )
+            pairs = remaining_pair_list
+
         # cosine distance filtering from features
         if run.options.feature_filter:
             logging.info("   Generating a list of skippable pairs using numerical features")
@@ -220,9 +256,6 @@ def generate_network(run, database, bgc_collection: BgcCollection, aligned_domai
             
             bgc_ids = get_bgc_ids(database)
             hmm_ids = get_hmm_ids(database)
-
-            bgc_id_name_dict = {idx: name for idx, name in enumerate(bgc_collection.bgc_name_list)}
-            bgc_name_id_dict = {name: id for id, name in bgc_id_name_dict.items()}
 
             features_nan = pd.DataFrame(
                 np.nan,
@@ -264,12 +297,6 @@ def generate_network(run, database, bgc_collection: BgcCollection, aligned_domai
                 run.options.feature_threshold
             )
             pairs = remaining_pair_list
-
-        # get jaccard treshold from options
-        jaccard_threshold = None
-        if run.options.jaccard_filter:
-            jaccard_threshold = run.options.jaccard_threshold
-            logging.info("    Using jaccard treshold filtering: %f", jaccard_threshold)
 
         # generate network matrix
         network_matrix.extend(gen_dist_matrix_async(

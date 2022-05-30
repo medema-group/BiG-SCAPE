@@ -2,7 +2,8 @@ import logging
 import math
 from array import array
 
-from multiprocessing import Queue, Process
+from multiprocessing import Pipe, Process
+from multiprocessing.connection import Connection, wait
 
 from src.big_scape.bgc_dom_info import BgcDomainInfo
 from src.big_scape.bgc_collection import BgcCollection
@@ -10,8 +11,7 @@ from src.big_scape.bgc_info import BgcInfo
 from src.big_scape.scores import calc_adj_idx, calc_distance, calc_dss, calc_jaccard, gen_unrelated_pair_distance, process_orientation
 
 def gen_dist_matrix_worker(
-    input_queue: Queue,
-    output_queue: Queue,
+    connection: Connection,
     run,
     database,
     bgc_collection,
@@ -20,7 +20,7 @@ def gen_dist_matrix_worker(
 ):
     """Worker method for threads that process distance calculation. Takes bgc pairs from an input
     queue and generates distances between the bgc pairs which it puts back into the output queue.
-    
+
     Inputs in the queue are expected to be a tuple of the format (pair, skip_set), where:
     - pair is a tuple containing two bgc indices
     - skip_set is to be removed (TODO)
@@ -35,20 +35,26 @@ def gen_dist_matrix_worker(
         aligned_domain_sequences: list of aligned domain sequences from hmm.read_aligned_files
     """
     while True:
-        input_task = input_queue.get(True)
-        if input_task is None:
-            break
-        # logging.info("launching task on pair %s, %s", pair[0], pair[1])
+        input_task_batch = connection.recv()
+        results = []
+        for input_task in input_task_batch:
+            if input_task is None:
+                if len(results) > 0:
+                    connection.send(results)
+                connection.close()
+                return
+            # logging.info("launching task on pair %s, %s", pair[0], pair[1])
 
-        result = generate_dist_matrix(
-            input_task,
-            database,
-            run,
-            bgc_collection,
-            aligned_domain_sequences,
-            jaccard_threshold = jaccard_threshold
-        )
-        output_queue.put(result)
+            result = generate_dist_matrix(
+                input_task,
+                database,
+                run,
+                bgc_collection,
+                aligned_domain_sequences,
+                jaccard_threshold = jaccard_threshold
+            )
+            results.append(result)
+        connection.send(results)
 
 
 # @timeit
@@ -64,21 +70,34 @@ def gen_dist_matrix_async(
     cluster_pairs is a list of triads (cluster1_index, cluster2_index, BGC class)
     """
 
-    num_processes = run.options.cores * 2
+    num_processes = run.options.cores
 
-    working_q = Queue(num_processes)
+    connections = list()
 
     num_tasks = len(cluster_pairs)
 
-    output_q = Queue(num_tasks)
+    cluster_idx = 0
+
+    # how many tasks to send at once to a worker
+    max_batch = 200
 
     processes = []
     for thread_num in range(num_processes):
+        # if there are fewer tasks than there are threads, don't start a new thread
+        # this is only a concern for < cores tasks
+        if cluster_idx >= num_tasks:
+            continue
+        # generate thread name
         thread_name = f"distance_thread_{thread_num}"
         logging.debug("Starting %s", thread_name)
+
+        # generate connection
+        main_connection, worker_connection = Pipe(True)
+        connections.append(main_connection)
+
+        # create and start new process
         process_args = (
-            working_q,
-            output_q,
+            worker_connection,
             run,
             database,
             bgc_collection,
@@ -89,12 +108,22 @@ def gen_dist_matrix_async(
         processes.append(new_process)
         new_process.start()
 
+        # send starting data
+        tasks_left = num_tasks - cluster_idx
+        if tasks_left < max_batch:
+            num_batch = tasks_left
+            batch = cluster_pairs[cluster_idx:cluster_idx + num_batch]
+            batch.append(None)
+        else:
+            num_batch = max_batch
+            batch = cluster_pairs[cluster_idx:cluster_idx + num_batch]
+
+        main_connection.send(batch)
+        cluster_idx += num_batch
+
+
     network_matrix = []
 
-    cluster_idx = 0
-
-    # number of bgcs skipped due to dissimilarity skip
-    jaccard_skipped_bgcs = 0
     while True:
         all_tasks_put = cluster_idx == num_tasks
         all_tasks_done = len(network_matrix) == num_tasks
@@ -102,38 +131,46 @@ def gen_dist_matrix_async(
         if all_tasks_put and all_tasks_done:
             break
 
-        if not working_q.full() and not all_tasks_put:
-            working_q.put(cluster_pairs[cluster_idx])
-            cluster_idx += 1
-            if not working_q.full():
-                continue
+        available_connections = wait(connections, timeout=1)
+        for connection in available_connections:
+            connection: Connection
 
-        if not output_q.empty():
-            network_row = output_q.get()
-            jaccard_index = network_row[4]
-            if jaccard_threshold is not None and jaccard_index < jaccard_threshold:
-                jaccard_skipped_bgcs += 1
+            # receive results
+            network_rows = connection.recv()
+            
+            # close connection if no more tasks need to be added
+            if all_tasks_put:
+                connection.send([None])
+                connection.close()
+                connections.remove(connection)
+            else:
+                # add a new batch of tasks
+                tasks_left = num_tasks - cluster_idx
+                if tasks_left < max_batch:
+                    num_batch = tasks_left
+                else:
+                    num_batch = max_batch
+
+                batch = cluster_pairs[cluster_idx:cluster_idx + num_batch]
+
+                # send batch
+                connection.send(batch)
+
+                # increment index
+                cluster_idx += num_batch
+                all_tasks_put = cluster_idx == num_tasks
 
             # add row to matrix
-            network_matrix.append(network_row)
+            network_matrix.extend(network_rows)
 
             num_tasks_done = len(network_matrix)
-            
+            all_tasks_done = len(network_matrix) == num_tasks
+
             # print progress every 10%
             if num_tasks_done % math.ceil(num_tasks / 10) == 0:
                 percent_done = num_tasks_done / num_tasks * 100
                 logging.info("    %d%% (%d/%d)", percent_done, num_tasks_done, num_tasks)
 
-    if jaccard_threshold is not None:
-        logging.info(
-            "    Skipped %d comparisons with jaccard < %f",
-            jaccard_skipped_bgcs,
-            jaccard_threshold
-        )
-
-    # clean up threads
-    for thread_num in range(num_processes):
-        working_q.put(None)
 
     for process in processes:
         process.join()
@@ -173,7 +210,7 @@ def generate_dist_matrix(
 
     Inputs:
         parms: a tuple of the form (bgc_a_idx, bgc_b_idx, class_idx) for this comparison
-        bgc_collection: BgcCollection object containing bgc info objects and necessary data for 
+        bgc_collection: BgcCollection object containing bgc info objects and necessary data for
             distance calculation
         aligned_domain_sequences: list of aligned domain sequences from hmm.read_aligned_files
     """
@@ -236,24 +273,19 @@ def generate_dist_matrix(
         union = cluster_a.ordered_domain_set | cluster_b.ordered_domain_set
         jaccard_index = calc_jaccard(pair_dom_info.intersect, union)
 
-        # Jaccard skip treshold. If jaccard index is under this treshold, skip other indexes
-        if jaccard_threshold is not None and jaccard_index < jaccard_threshold:
-            score_data = gen_unrelated_pair_distance(run, cluster_a, cluster_b)
-            jaccard_index, dss, adjacency_index, dss_non_anchor, dss_anchor, num_non_anchor_domains, num_anchor_domains, slice_start_a, slice_start_b, slice_length_a, rev = score_data
-        else:
-            dss_data = calc_dss(
-                run,
-                database,
-                cluster_a,
-                cluster_b,
-                aligned_domain_sequences,
-                anchor_boost,
-                pair_dom_info
-            )
-            # unpack variables
-            dss, dss_non_anchor, dss_anchor, num_non_anchor_domains, num_anchor_domains = dss_data
+        dss_data = calc_dss(
+            run,
+            database,
+            cluster_a,
+            cluster_b,
+            aligned_domain_sequences,
+            anchor_boost,
+            pair_dom_info
+        )
+        # unpack variables
+        dss, dss_non_anchor, dss_anchor, num_non_anchor_domains, num_anchor_domains = dss_data
 
-            adjacency_index = calc_ai_pair(cluster_a, cluster_b, pair_dom_info)
+        adjacency_index = calc_ai_pair(cluster_a, cluster_b, pair_dom_info)
 
 
     dist = calc_distance(weights, jaccard_index, dss, adjacency_index, cluster_a.name, cluster_b.name)
