@@ -171,7 +171,22 @@ def launch_hmmalign(run, algn_task_list, profile_dict, database: Database):
         for connection in available_connections:
             connection: Connection
 
+            # receive data
             alignments = connection.recv()
+
+            # add new tasks first
+            if all_tasks_put:
+                # if done close this process
+                connection.send((None, None))
+                connection.close()
+                connections.remove(connection)
+            else:
+                task = algn_task_list[task_idx]
+                connection.send(task)
+                task_idx += 1
+                all_tasks_put = task_idx == num_tasks
+
+            # process results
             for alignment in alignments:
                 cds_id, hmm_id, env_start, env_end, algn_string = alignment
 
@@ -189,17 +204,6 @@ def launch_hmmalign(run, algn_task_list, profile_dict, database: Database):
                 percent_done = tasks_done / num_tasks * 100
                 logging.info("  %d%% (%d/%d)", percent_done, tasks_done, num_tasks)
 
-            # if done close this process
-            if all_tasks_put:
-                connection.send((None, None))
-                connection.close()
-                connections.remove(connection)
-                continue
-
-            task = algn_task_list[task_idx]
-            connection.send(task)
-            task_idx += 1
-            all_tasks_put = task_idx == num_tasks
 
     # commit changes to database
     database.commit_inserts()

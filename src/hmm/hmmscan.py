@@ -308,6 +308,20 @@ def run_pyhmmer(
             # receive object
             bgc_id, task_hsps = connection.recv()
 
+            # add new tasks first
+            if all_tasks_put:
+                # if done close this process
+                connection.send(None)
+                connection.close()
+                connections.remove(connection)
+            else:
+                # else add a new task
+                bgc_id = ids_todo[id_idx]
+                connection.send(bgc_id)
+                id_idx += 1
+                all_tasks_put = id_idx == num_tasks
+
+            # process results
             result_hsps: list = task_hsps
 
             if use_filter_overlap:
@@ -356,19 +370,6 @@ def run_pyhmmer(
             if ids_done % math.ceil(num_tasks / 10) == 0:
                 percent_done = ids_done / num_tasks * 100
                 logging.info("  %d%% (%d/%d)", percent_done, ids_done, num_tasks)
-
-            # if done close this process
-            if all_tasks_put:
-                connection.send(None)
-                connection.close()
-                connections.remove(connection)
-                continue
-
-            # else add a new task
-            bgc_id = ids_todo[id_idx]
-            connection.send(bgc_id)
-            id_idx += 1
-            all_tasks_put = id_idx == num_tasks
 
     # just making sure
     database.commit_inserts()
