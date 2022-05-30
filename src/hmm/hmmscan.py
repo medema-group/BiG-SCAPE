@@ -1,8 +1,10 @@
 import logging
 import math
+import multiprocessing
 import os
 
-from multiprocessing import Queue, Process
+from multiprocessing.connection import Connection, wait
+from multiprocessing import Pipe, Process
 
 import pyhmmer
 
@@ -163,12 +165,13 @@ def rank_normalize_hsps(hsps, top_k):
     return result_hsps
 
 
-def run_pyhmmer_worker(input_queue, output_queue, profiles, pipeline, database: Database):
+def run_pyhmmer_worker(connection: Connection, profiles, pipeline, database: Database):
     """worker for the run_pyhmmer method"""
     alphabet = pyhmmer.easel.Alphabet.amino()
     while True:
-        bgc_id = input_queue.get(True)
+        bgc_id = connection.recv()
         if bgc_id is None:
+            connection.close()
             break
 
         base_name = BGC.get_bgc_base_name(bgc_id, database)
@@ -217,7 +220,7 @@ def run_pyhmmer_worker(input_queue, output_queue, profiles, pipeline, database: 
 
             hsps.append((idx, cds_id, hmm_id, bitscore, env_start, env_end, model_start, model_end, cds_start, cds_end, model_gaps, cds_gaps))
 
-        output_queue.put((bgc_id, hsps))
+        connection.send((bgc_id, hsps))
 
 def run_pyhmmer_pfam(run, database: Database, ids_todo):
     """Runs the pyhmmer pipeline using the pfam hmm"""
@@ -255,19 +258,9 @@ def run_pyhmmer(
 
     num_processes = run.options.cores
 
-    working_q = Queue(num_processes)
+    connections = list()
 
     num_tasks = len(ids_todo)
-
-    output_q = Queue(num_tasks)
-
-    processes = []
-    for thread_num in range(num_processes):
-        thread_name = f"distance_thread_{thread_num}"
-        logging.debug("Starting %s", thread_name)
-        new_process = Process(target=run_pyhmmer_worker, args=(working_q, output_q, profiles, pipeline, database))
-        processes.append(new_process)
-        new_process.start()
 
     id_idx = 0
     ids_done = 0
@@ -276,23 +269,44 @@ def run_pyhmmer(
     # keep track of bgs with no domains
     bgc_no_domains = []
 
+    processes = []
+    for thread_num in range(num_processes):
+        # if there are fewer tasks than there are threads, don't start a new thread
+        # this is only a concern for < cores * 4 tasks
+        if id_idx >= num_tasks:
+            continue
+        # generate thread name
+        thread_name = f"hmmscan_thread_{thread_num}"
+        logging.debug("Starting %s", thread_name)
+        
+        # generate connection
+        main_connection, worker_connection = Pipe(True)
+        connections.append(main_connection)
+
+        # create and start new process
+        new_process = Process(target=run_pyhmmer_worker, args=(worker_connection, profiles, pipeline, database))
+        processes.append(new_process)
+        new_process.start()
+
+        # send starting data
+        bgc_id = ids_todo[id_idx]
+        main_connection.send(bgc_id)
+        id_idx += 1
+
     while True:
         all_tasks_put = id_idx == num_tasks
         all_tasks_done = ids_done == num_tasks
 
+        # break if everything is done
         if all_tasks_put and all_tasks_done:
             break
 
-        # if not all_tasks_put:
-        if not working_q.full() and not all_tasks_put:
-            bgc_id = ids_todo[id_idx]
-            working_q.put(bgc_id)
-            id_idx += 1
-            if not working_q.full():
-                continue
+        available_connections = wait(connections)
+        for connection in available_connections:
+            connection: Connection
 
-        if not output_q.empty():
-            bgc_id, task_hsps = output_q.get()
+            # receive object
+            bgc_id, task_hsps = connection.recv()
 
             result_hsps: list = task_hsps
 
@@ -332,6 +346,7 @@ def run_pyhmmer(
             update_bgc_status(database, bgc_id, 2)
 
             ids_done += 1
+            all_tasks_done = ids_done == num_tasks
 
             # commit every 500 bgcs also
             if ids_done % 500 == 0:
@@ -341,14 +356,22 @@ def run_pyhmmer(
             if ids_done % math.ceil(num_tasks / 10) == 0:
                 percent_done = ids_done / num_tasks * 100
                 logging.info("  %d%% (%d/%d)", percent_done, ids_done, num_tasks)
-        # logging.info("adding result (now %d)", len(network_matrix))
+
+            # if done close this process
+            if all_tasks_put:
+                connection.send(None)
+                connection.close()
+                connections.remove(connection)
+                continue
+
+            # else add a new task
+            bgc_id = ids_todo[id_idx]
+            connection.send(bgc_id)
+            id_idx += 1
+            all_tasks_put = id_idx == num_tasks
 
     # just making sure
     database.commit_inserts()
-
-    # clean up threads
-    for thread_num in range(num_processes * 2):
-        working_q.put(None)
 
     for process in processes:
         process.join()

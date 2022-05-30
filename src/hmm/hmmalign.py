@@ -1,10 +1,11 @@
 import logging
 import math
+from multiprocessing.connection import Connection, wait
 import os
 import string
 import pyhmmer
 
-from multiprocessing import Pool, Process, Queue
+from multiprocessing import Pipe, Process
 from src.data.database import Database
 from src.data.hsp import get_multiple_align_hsps, get_hsp_cds
 from src.data.msa import insert_msa
@@ -72,12 +73,13 @@ def process_algn_string(algn_string: str):
     """removes any model gaps from the alignment string and returns a string with only cds gaps"""
     return algn_string.translate(str.maketrans('', '', string.ascii_lowercase + "."))
 
-def launch_hmmalign_worker(input_queue, output_queue, profile_dict, database):
+def launch_hmmalign_worker(connection: Connection, profile_dict, database):
     """worker for the run_pyhmmer method"""
     alphabet = pyhmmer.easel.Alphabet.amino()
     while True:
-        accession, hsp_rows = input_queue.get(True)
+        accession, hsp_rows = connection.recv()
         if accession is None:
+            connection.close()
             break
 
         # get profile
@@ -116,7 +118,7 @@ def launch_hmmalign_worker(input_queue, output_queue, profile_dict, database):
             alignments.append((cds_id, hmm_id, env_start, env_end, algn_string))
 
         # done, write something to output
-        output_queue.put(alignments)
+        connection.send(alignments)
 
 
 def launch_hmmalign(run, algn_task_list, profile_dict, database: Database):
@@ -126,24 +128,37 @@ def launch_hmmalign(run, algn_task_list, profile_dict, database: Database):
     """
     # prepare data
     num_processes = run.options.cores
-    # num_processes = 8
 
-    working_q = Queue(num_processes)
+    connections = list()
 
     num_tasks = len(algn_task_list)
 
-    output_q = Queue(num_tasks)
+    task_idx = 0
+    tasks_done = 0
 
     processes = []
     for thread_num in range(num_processes):
+        # if there are fewer tasks than there are threads, don't start a new thread
+        # this is only a concern for < cores * 4 tasks
+        if task_idx >= num_tasks:
+            continue
+        # generate thread name
         thread_name = f"MSA_thread_{thread_num}"
         logging.debug("Starting %s", thread_name)
-        new_process = Process(target=launch_hmmalign_worker, args=(working_q, output_q, profile_dict, database))
+
+        # generate connection
+        main_connection, worker_connection = Pipe(True)
+        connections.append(main_connection)
+
+        # create and start new process
+        new_process = Process(target=launch_hmmalign_worker, args=(worker_connection, profile_dict, database))
         processes.append(new_process)
         new_process.start()
 
-    task_idx = 0
-    tasks_done = 0
+        # send starting data
+        task = algn_task_list[task_idx]
+        main_connection.send(task)
+        task_idx += 1
 
     while True:
         all_tasks_put = task_idx == num_tasks
@@ -152,21 +167,18 @@ def launch_hmmalign(run, algn_task_list, profile_dict, database: Database):
         if all_tasks_put and all_tasks_done:
             break
 
-        if not working_q.full() and not all_tasks_put:
-            task = algn_task_list[task_idx]
-            working_q.put(task)
-            task_idx += 1
-            if not working_q.full():
-                continue
+        available_connections = wait(connections)
+        for connection in available_connections:
+            connection: Connection
 
-        if not output_q.empty():
-            alignments = output_q.get()
+            alignments = connection.recv()
             for alignment in alignments:
                 cds_id, hmm_id, env_start, env_end, algn_string = alignment
 
                 insert_msa(database, cds_id, hmm_id, env_start, env_end, algn_string)
 
             tasks_done += 1
+            all_tasks_done = tasks_done == num_tasks
 
             # commit every 500 results
             if tasks_done % 500 == 0:
@@ -177,12 +189,20 @@ def launch_hmmalign(run, algn_task_list, profile_dict, database: Database):
                 percent_done = tasks_done / num_tasks * 100
                 logging.info("  %d%% (%d/%d)", percent_done, tasks_done, num_tasks)
 
+            # if done close this process
+            if all_tasks_put:
+                connection.send((None, None))
+                connection.close()
+                connections.remove(connection)
+                continue
+
+            task = algn_task_list[task_idx]
+            connection.send(task)
+            task_idx += 1
+            all_tasks_put = task_idx == num_tasks
+
     # commit changes to database
     database.commit_inserts()
-
-    # clean up threads
-    for thread_num in range(num_processes * 2):
-        working_q.put((None, None))
 
     for process in processes:
         process.join()
