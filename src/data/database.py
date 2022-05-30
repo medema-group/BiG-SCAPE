@@ -144,6 +144,12 @@ class Database:
         # fetch last_indexes from db
         for row in self.select("sqlite_sequence", "WHERE 1"):
             self._last_indexes[row["name"]] = row["seq"]
+        
+        # this may improve performance for large databases
+        self.execute("pragma journal_mode = WAL;")
+        self.execute("pragma synchronous = normal;")
+        self.execute("pragma temp_store = memory;")
+        self.execute("pragma mmap_size = 30000000000;")
 
     def close(self):
         if self._use_memory:
@@ -316,3 +322,9 @@ class Database:
                 raise Exception("buffered indexes no longer " +
                                 "in sync with sqlite_sequence, database " +
                                 "might be corrupted!!!")
+    
+    def execute(self, query):
+        """Execute a raw query
+        """
+        self._connection.execute(query)
+        self._connection.commit()
