@@ -39,7 +39,7 @@ class Features:
         )
         if existing:
             # for now, this should not get called
-            raise Exception("not_implemented")
+            return
         else:
             # save
             database.insert(
