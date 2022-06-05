@@ -382,7 +382,7 @@ def run_pyhmmer(
     # clean up bgcs that didn't have any domains
     for bgc_id in bgc_no_domains:
         bgc_name = get_bgc_name_by_id(database, bgc_id)
-        logging.warning("BGC %s has no domains and will be removed from \
+        logging.warning("    BGC %s has no domains and will be removed from \
             further analysis", bgc_name)
         remove_bgc(database, bgc_id)
 
@@ -396,7 +396,7 @@ def run_pyhmmer(
         # get hsp id
         hsp_id = get_hsp_id(database, serial_nr, cds_id, hmm_id)
         if hsp_id is None:
-            logging.error("Could not find hsp_id associated with newly added hsp")
+            logging.error("    Could not find hsp_id associated with newly added hsp")
 
         # insert hsp_alignment
         insert_hsp_alignment(database, hsp_id, env_start, env_end, model_start, model_end, model_gaps, cds_start, cds_end, cds_gaps)
