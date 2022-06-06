@@ -1,5 +1,5 @@
 from .database import Database
-from .functions import initialize_db, create_bgc_status, get_cluster_id_list, get_mibig_id_list, get_cluster_gbk_dict, gen_bgc_info_for_svg, get_cluster_name_list, gen_bgc_info_for_fetch_genome, get_mibig_name_list
+from .functions import initialize_db, create_bgc_status, get_cluster_id_list, get_mibig_id_list, get_cluster_gbk_dict, gen_bgc_info_for_svg, get_cluster_name_list, gen_bgc_info_for_fetch_genome, get_mibig_name_list, get_bgc_names
 from .bgc import BGC
 from .cds import get_cds_rows
 from .hsp import get_predicted_bgc_list, get_hsp_id_list, get_multiple_align_hsps, generate_pfd_files

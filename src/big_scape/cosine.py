@@ -10,35 +10,17 @@ def cosine_worker(
 ):
     """Worker function for cosine distance calculation"""
     while True:
-        bgc_a_id, bgc_b_id, group = working_q.get(True)
-        if bgc_a_id is None:
+        bgc_id_a, bgc_id_b, group = working_q.get(True)
+        if bgc_id_a is None:
             break
-        offset_bgc_a_id = bgc_a_id
-        offset_bgc_b_id = bgc_b_id
 
         # start calculation
-        feature_set = features.loc[[offset_bgc_a_id, offset_bgc_b_id]]
-        similarity = cosine_similarity(feature_set)[0][1]
+        feature_set = features.loc[[bgc_id_a, bgc_id_b]]
+        similarity = cosine_similarity(feature_set)[0,1]
 
         distance = 1 - similarity
-        output_q.put((bgc_a_id, bgc_b_id, group, distance))
+        output_q.put((bgc_id_a, bgc_id_b, group, distance))
     return
-
-def get_cosine_dists(pairs, features):
-    """Function to calculate the cosine distances of BGCs
-    from a given set of pairs and features
-    """
-    cosine_dists = []
-
-    similarities = cosine_similarity(features.sort_index())
-
-    for idx, dist_item in enumerate(pairs):
-        bgc_id_a, bgc_id_b, group = dist_item
-
-        dist = 1 - similarities[bgc_id_a - 1, bgc_id_b - 1]
-        cosine_dists.append([bgc_id_a, bgc_id_b, group, dist])
-    
-    return cosine_dists
 
 def get_corr_cosine_dists(
     run,

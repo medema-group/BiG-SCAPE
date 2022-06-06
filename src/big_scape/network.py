@@ -18,7 +18,7 @@ from src.big_scape.clustering import cluster_json_batch
 from src.big_scape.distance import write_distance_matrix, gen_dist_matrix_async
 from src.bgctools import sort_bgc
 from src.utility import create_directory
-from src.data.functions import get_bgc_ids, get_hmm_ids, get_features
+from src.data.functions import get_bgc_ids, get_bgc_names, get_hmm_ids, get_features
 from src.big_scape.cosine import get_corr_cosine_dists
 
 def get_output_cutoffs_filenames(run, path_base, bgc_class):
@@ -210,11 +210,14 @@ def generate_network(run, database, bgc_collection: BgcCollection, aligned_domai
             pairs = [(x, y, -1) for (x, y) in pairs]
         else:
             pairs = [(x, y, bgc_class_name_2_index[bgc_class]) for (x, y) in pairs]
+
+        bgc_name_id_dict = {name: idx for idx, name in enumerate(bgc_collection.bgc_name_tuple)}
+
+        pair_count = len(pairs)
+        filtered_pairs_jaccard = 0
+        filtered_pairs_features = 0
         
         network_matrix = []
-
-        bgc_id_name_dict = {idx: name for idx, name in enumerate(bgc_collection.bgc_name_list)}
-        bgc_name_id_dict = {name: id for id, name in bgc_id_name_dict.items()}
 
         # get jaccard treshold from options
         jaccard_threshold = None
@@ -222,15 +225,16 @@ def generate_network(run, database, bgc_collection: BgcCollection, aligned_domai
             jaccard_threshold = run.options.jaccard_threshold
             logging.info("    Using jaccard treshold filtering: %f", jaccard_threshold)
 
-            filtered_pairs = 0
             remaining_pairs = 0
             remaining_pair_list = []
             for bgc_a, bgc_b, group in pairs:
-                bgc_a_info = bgc_collection.bgc_collection_dict[bgc_id_name_dict[bgc_a]]
-                bgc_b_info = bgc_collection.bgc_collection_dict[bgc_id_name_dict[bgc_b]]
+                bgc_name_a = bgc_collection.bgc_name_tuple[bgc_a]
+                bgc_name_b = bgc_collection.bgc_name_tuple[bgc_b]
+                bgc_info_a = bgc_collection.bgc_collection_dict[bgc_name_a]
+                bgc_info_b = bgc_collection.bgc_collection_dict[bgc_name_b]
 
-                intersect = bgc_a_info.ordered_domain_set & bgc_b_info.ordered_domain_set
-                overlap = bgc_a_info.ordered_domain_set | bgc_b_info.ordered_domain_set
+                intersect = bgc_info_a.ordered_domain_set & bgc_info_b.ordered_domain_set
+                overlap = bgc_info_a.ordered_domain_set | bgc_info_b.ordered_domain_set
 
                 jaccard_idx = calc_jaccard(intersect, overlap)
                 
@@ -239,48 +243,48 @@ def generate_network(run, database, bgc_collection: BgcCollection, aligned_domai
                     remaining_pairs += 1
                 else:
                     network_matrix.append(generate_unrelated_row(bgc_a, bgc_b))
-                    filtered_pairs += 1
+                    filtered_pairs_jaccard += 1
             logging.info(
-                "%d/%d pairs with jaccard < %f filtered out",
-                filtered_pairs,
-                filtered_pairs + remaining_pairs,
+                "    %d/%d pairs with jaccard < %f filtered out",
+                filtered_pairs_jaccard,
+                pair_count,
                 jaccard_threshold
             )
             pairs = remaining_pair_list
 
         # cosine distance filtering from features
         if run.options.feature_filter:
-            logging.info("   Generating a list of skippable pairs using numerical features")
+            logging.info("    Generating a list of skippable pairs using numerical features")
             logging.info("    Loading stored info from database")
 
-            
-            bgc_ids = get_bgc_ids(database)
+            bgc_names = get_bgc_names(database)
             hmm_ids = get_hmm_ids(database)
 
-            features_nan = pd.DataFrame(
-                np.nan,
-                index=bgc_ids,
+            feature_matrix = pd.DataFrame(
+                np.zeros((len(bgc_names), len(hmm_ids)), dtype=np.uint8),
                 columns=hmm_ids
             )
 
             bgc_hmm_features = get_features(database)
 
+            # keep track of which bgcs have features for later
+            bgcs_features = set()
             # fetch feature values from db
-            for bgc_id, hmm_id, value in bgc_hmm_features:
-                features_nan.at[bgc_id, hmm_id] = value
+            for bgc_name, hmm_id, value in bgc_hmm_features:
+                bgc_id = bgc_name_id_dict[bgc_name]
+                feature_matrix.loc[bgc_id, hmm_id] = value
+                bgcs_features.add(bgc_id)
 
             logging.info("    Calculating cosine distances")
-            cosine_dist_corr = get_corr_cosine_dists(
+            cosine_dists = get_corr_cosine_dists(
                 run,
                 pairs,
-                bgc_hmm_features,
-                bgc_ids,
-                bgc_name_id_dict
+                feature_matrix
             )
-            filtered_pairs = 0
+            logging.info("    Filtering pairs")
             remaining_pairs = 0
             remaining_pair_list = []
-            for distance in cosine_dist_corr:
+            for distance in cosine_dists:
                 bgc_a_id = distance[0]
                 bgc_b_id = distance[1]
                 if distance[3] < run.options.feature_threshold:
@@ -289,14 +293,29 @@ def generate_network(run, database, bgc_collection: BgcCollection, aligned_domai
                     remaining_pairs += 1
                 else:
                     network_matrix.append(generate_unrelated_row(bgc_a_id, bgc_b_id))
-                    filtered_pairs += 1
+                    filtered_pairs_features += 1
+
+            # re-add anything that was lost and should be included
+            for pair in pairs:
+                in_features = pair[0] in bgcs_features or pair[1] in bgcs_features
+                if not in_features:
+                    remaining_pair_list.append(pair)
+                    remaining_pairs += 1
+
             logging.info(
-                "%d/%d pairs with distance > %f in cosine distances",
-                filtered_pairs,
-                filtered_pairs + remaining_pairs,
+                "    %d/%d pairs with distance > %f in cosine distances filtered out",
+                filtered_pairs_features,
+                pair_count - filtered_pairs_jaccard,
                 run.options.feature_threshold
             )
             pairs = remaining_pair_list
+
+        if run.options.jaccard_filter and run.options.feature_filter:
+            logging.info(
+                "    %d/%d total pairs filtered out",
+                filtered_pairs_jaccard + filtered_pairs_features,
+                pair_count
+            )
 
         # generate network matrix
         network_matrix.extend(gen_dist_matrix_async(
