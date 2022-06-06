@@ -27,7 +27,8 @@ def collect_consumption(log_path: str, command_queue: Queue, update_interval: in
             cpu = process.cpu_percent()
             mem = process.memory_info()
             mem_percent = process.memory_percent()
-            profile_log.write(f"{prefix},{cpu},{mem.vms / 1000000:.2f},{mem_percent}\n")
+            log_line = f"{prefix},{cpu},{mem.vms / 1000000:.2f},{mem_percent}"
+            profile_log.writelines([log_line])
 
             sleep(update_interval)
 
@@ -38,7 +39,8 @@ class Profiler:
 
 
     def __init__(self, options):
-        log_file = os.path.join(options.log_path, "profile.log")
+        log_time_stamp = time.strftime("%Y-%m-%d_%H-%M-%S", time.localtime())
+        log_file = os.path.join(options.log_path, log_time_stamp + "_profile.log")
         self.command_queue = Queue()
         self.worker = Process(target=collect_consumption, args=(log_file, self.command_queue, 0.5))
 
