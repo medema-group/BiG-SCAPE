@@ -52,7 +52,7 @@ from src import pfam
 from src import utility
 from src import data
 
-def init_logger(options):
+def init_logger(options, log_timestamp):
     """Initializes the logger for big-scape
 
     input:
@@ -64,12 +64,17 @@ def init_logger(options):
     log_formatter = logging.Formatter("%(asctime)s %(levelname)-7.7s %(message)s")
     root_logger = logging.getLogger()
 
+    # check options override
+    if options.log_path is None:
+        log_path = options.outputdir
+    else:
+        log_path = options.log_path
+
     # create log dir
-    if not os.path.exists(options.log_path):
-        os.mkdir(options.log_path)
+    if not os.path.exists(log_path):
+        os.mkdir(log_path)
     # set log file
-    log_time_stamp = time.strftime("%Y-%m-%d_%H-%M-%S", time.localtime())
-    log_file = os.path.join(options.log_path, log_time_stamp + ".log")
+    log_file = os.path.join(log_path, log_timestamp + ".log")
 
     file_handler = logging.FileHandler(log_file)
     file_handler.setFormatter(log_formatter)
@@ -100,11 +105,16 @@ if __name__ == "__main__":
     # ROOT_PATH is passed here because the imports no longer allow us to use __file__
     OPTIONS = utility.cmd_parser(ROOT_PATH)
 
+    
+    # we want to keep the same timestamp for both the output log
+    # as well as the profile log, so define it once here
+    LOG_TIMESTAMP = time.strftime("%Y-%m-%d_%H-%M-%S", time.localtime())
+
     # init logger
-    init_logger(OPTIONS)
+    init_logger(OPTIONS, LOG_TIMESTAMP)
 
     # initialize the profiler & start it
-    PROFILER = utility.Profiler(OPTIONS)
+    PROFILER = utility.Profiler(OPTIONS, LOG_TIMESTAMP)
     PROFILER.start()
 
     # ignore specific warnings from sklearn

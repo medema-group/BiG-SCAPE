@@ -172,9 +172,9 @@ def cmd_parser(root_path):
     parser.add_argument("--quiet", help="Don't print logs to output, only to log file.",
                         default=False, action="store_true")
 
-    default_log_path = os.path.join(root_path, "log")
-    parser.add_argument("--log_path", dest="log_path", help="Location where to write logs",
-                        default=default_log_path)
+    parser.add_argument("--log_path", dest="log_path", help="Location where to write logs \
+                        (default: output folder)",
+                        default=None)
 
     parser.add_argument("--feature_filter", dest="feature_filter",
                         help="Filter using normalized features from HMMScan results  \
