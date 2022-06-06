@@ -316,8 +316,8 @@ def run_pyhmmer(
                 connections.remove(connection)
             else:
                 # else add a new task
-                bgc_id = ids_todo[id_idx]
-                connection.send(bgc_id)
+                next_bgc_id = ids_todo[id_idx]
+                connection.send(next_bgc_id)
                 id_idx += 1
                 all_tasks_put = id_idx == num_tasks
 
