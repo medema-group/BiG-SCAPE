@@ -374,6 +374,15 @@ def get_bgc_ids(db):
         ]
     )]
 
+def get_bgc_names(db):
+    return [row["bgcname"] for row in db.select(
+        "bgc",
+        "",
+        props=[
+            "bgc.name as bgcname"
+        ]
+    )]
+
 def get_hmm_ids(db):
     return [row["hmmid"] for row in db.select(
         "hmm",
@@ -415,7 +424,7 @@ def get_features(db):
         " WHERE bgc_features.bgc_id=bgc.id" +
         " AND bgc_features.hmm_id=hmm.id" +
         "",
-        props=["bgc_features.bgc_id",
+        props=["bgc.name",
                 "bgc_features.hmm_id",
                 "bgc_features.value"],
         as_tuples=True
