@@ -239,11 +239,11 @@ def generate_network(run, database, bgc_collection: BgcCollection, aligned_domai
                 jaccard_idx = calc_jaccard(intersect, overlap)
                 
                 if jaccard_idx < jaccard_threshold:
-                    remaining_pair_list.append([bgc_a, bgc_b, group])
-                    remaining_pairs += 1
-                else:
                     network_matrix.append(generate_unrelated_row(bgc_a, bgc_b))
                     filtered_pairs_jaccard += 1
+                else:
+                    remaining_pair_list.append([bgc_a, bgc_b, group])
+                    remaining_pairs += 1
             logging.info(
                 "    %d/%d pairs with jaccard < %f filtered out",
                 filtered_pairs_jaccard,
