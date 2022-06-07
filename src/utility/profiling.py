@@ -4,11 +4,10 @@ Authors:
     Arjan Draisma (arjan.draisma@wur.nl)
 """
 
+from datetime import datetime
 from multiprocessing import Process, Queue
 import os
 import threading
-from time import sleep
-import time
 import psutil
 
 def get_stats(process: psutil.Process):
@@ -25,7 +24,6 @@ def collect_consumption(log_path: str, command_queue: Queue, update_interval: in
     with open(log_path, "w", encoding="UTF-8") as profile_log:
         profile_log.write("time,cpu,processes,mem_used_mb,mem_used_perc\n")
         while threading.main_thread().is_alive():
-            prefix = time.strftime("%Y-%m-%d %H:%M:%S:%sss", time.localtime())
             if not command_queue.empty():
                 command, args = command_queue.get()
                 if command == 1:
@@ -46,6 +44,7 @@ def collect_consumption(log_path: str, command_queue: Queue, update_interval: in
             cpu = main_process.cpu_percent(update_interval)
 
             # format and write log line
+            prefix = datetime.utcnow().isoformat(sep=' ', timespec='milliseconds')
             log_line = f"{prefix},{cpu},{processes},{mem_mb:.2f},{mem_percent:.4f}\n"
             profile_log.write(log_line)
             profile_log.flush()
