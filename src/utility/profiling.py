@@ -35,7 +35,12 @@ def collect_consumption(log_path: str, command_queue: Queue, update_interval: in
 
             # children
             for c_process in main_process.children(recursive=True):
-                c_cpu, c_mem_mb, c_mem_perc = get_stats(c_process)
+                try:
+                    c_cpu, c_mem_mb, c_mem_perc = get_stats(c_process)
+                except psutil.NoSuchProcess:
+                    # ignore
+                    continue
+                cpu += c_cpu
                 mem_mb += c_mem_mb
                 mem_percent += c_mem_perc
             
