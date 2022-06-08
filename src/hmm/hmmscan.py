@@ -117,10 +117,6 @@ def filter_overlap(hsps, overlap_cutoff):
     # will end up being chosen
     hsps = sorted(hsps, key=lambda row: row[4])
 
-    for hsp in hsps:
-        if int(hsp[1]) == 22154 and int(hsp[2]) == 11560:
-            print("memes")
-
     delete_list = []
     for i in range(len(hsps)-1):
         for j in range(i+1, len(hsps)):
