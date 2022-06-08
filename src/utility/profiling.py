@@ -14,7 +14,7 @@ def get_stats(process: psutil.Process):
     """Method to return a set of current usage statistics for a given process
     """
     cpu = process.cpu_percent()
-    mem_mb = process.memory_info().vms / 1000000
+    mem_mb = process.memory_info().rss / 1000000
     mem_percent = process.memory_percent()
     return cpu, mem_mb, mem_percent
 
