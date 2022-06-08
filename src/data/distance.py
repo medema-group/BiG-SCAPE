@@ -92,8 +92,13 @@ def generate_bgc_collection(run, database: Database, BGC_INFO_DICT, GBK_FILE_DIC
     )
 
 
+    last_bgc = ""
+    bgc_cds_count = 0
     for idx, row in enumerate(rows):
         bgc_name = row["bgc_name"]
+        if bgc_name != last_bgc:
+            last_bgc = bgc_name
+            bgc_cds_count = 0
         if bgc_name not in gene_domain_count:
             gene_domain_count[bgc_name] = array('B')
         if bgc_name not in corebiosynthetic_pos:
@@ -103,8 +108,10 @@ def generate_bgc_collection(run, database: Database, BGC_INFO_DICT, GBK_FILE_DIC
 
         gene_domain_count[bgc_name].append(row["cds_count"])
         if row["biosynthetic"] == 1:
-            corebiosynthetic_pos[bgc_name].append(row["orf_id"])
+            corebiosynthetic_pos[bgc_name].append(bgc_cds_count)
         bgc_gene_orientation[bgc_name].append(row["strand"])
+
+        bgc_cds_count += 1
 
     ## populate the bgc collection
 
