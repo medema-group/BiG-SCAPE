@@ -162,34 +162,34 @@ class BgcDomainInfo():
 
         # finally...
         if biosynthetic_hit_a and biosynthetic_hit_b:
-            cluster_a_dom_start = sum(cluster_a.gene_domain_counts[:slice_start_a])
-            cluster_a_dom_end = cluster_a_dom_start + sum(cluster_a.gene_domain_counts[slice_start_a:slice_start_a+slice_length_a])
-            cluster_a_temp_domain_set = set(cluster_a.ordered_domain_list[cluster_a_dom_start:cluster_a_dom_end])
+            self.a_dom_start = sum(cluster_a.gene_domain_counts[:slice_start_a])
+            self.a_dom_end = self.a_dom_start + sum(cluster_a.gene_domain_counts[slice_start_a:slice_start_a+slice_length_a])
+            self.a_dom_set = set(cluster_a.ordered_domain_list[self.a_dom_start:self.a_dom_end])
 
             
-            cluster_b_dom_start = sum(cluster_b.gene_domain_counts[:slice_start_b])
-            cluster_b_dom_end = cluster_b_dom_start + sum(cluster_b.gene_domain_counts[slice_start_b:slice_start_b+slice_length_b])
-            cluster_b_temp_domain_set = set(cluster_b.ordered_domain_list[cluster_b_dom_start:cluster_b_dom_end])
+            self.b_dom_start = sum(cluster_b.gene_domain_counts[:slice_start_b])
+            self.b_dom_end = self.b_dom_start + sum(cluster_b.gene_domain_counts[slice_start_b:slice_start_b+slice_length_b])
+            self.b_dom_set = set(cluster_b.ordered_domain_list[self.b_dom_start:self.b_dom_end])
 
-            self.intersect = cluster_a_temp_domain_set & cluster_b_temp_domain_set
+            self.intersect = self.a_dom_set & self.b_dom_set
 
             # re-adjust the indices for each domain so we get only the sequence
             # tags in the selected slice. First step: find out which is the
             # first copy of each domain we're using
-            for domain in cluster_a.ordered_domain_list[:cluster_a_dom_start]:
+            for domain in cluster_a.ordered_domain_list[:self.a_dom_start]:
                 self.a_dom_seq_slice_bot[domain] += 1
-            for domain in cluster_b.ordered_domain_list[:cluster_b_dom_start]:
+            for domain in cluster_b.ordered_domain_list[:self.b_dom_start]:
                 self.b_dom_seq_slice_bot[domain] += 1
 
             # Step 2: work with the last copy of each domain.
             # Step 2a: make top = bottom
-            for domain in cluster_a_temp_domain_set:
+            for domain in self.a_dom_set:
                 self.a_dom_seq_slice_top[domain] = self.a_dom_seq_slice_bot[domain]
-            for domain in cluster_b_temp_domain_set:
+            for domain in self.b_dom_set:
                 self.b_dom_seq_slice_top[domain] = self.b_dom_seq_slice_bot[domain]
 
             # Step 2b: increase top with the domains in the slice
-            for domain in cluster_a.ordered_domain_list[cluster_a_dom_start:cluster_a_dom_end]:
+            for domain in cluster_a.ordered_domain_list[self.a_dom_start:self.a_dom_end]:
                 self.a_dom_seq_slice_top[domain] += 1
-            for domain in cluster_b.ordered_domain_list[cluster_b_dom_start:cluster_b_dom_end]:
+            for domain in cluster_b.ordered_domain_list[self.b_dom_start:self.b_dom_end]:
                 self.b_dom_seq_slice_top[domain] += 1

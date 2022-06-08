@@ -111,6 +111,16 @@ def filter_overlap(hsps, overlap_cutoff):
     """Check if domains overlap for a certain overlap_cutoff.
      If so, remove the domain(s) with the lower score."""
 
+    # for this the hsps have to be sorted by any of the start coordinates
+    # this is for the rare case where two hsps have the same bit score
+    # to replicate BiG-SCAPE output the hsp with a lower start coordinate
+    # will end up being chosen
+    hsps = sorted(hsps, key=lambda row: row[4])
+
+    for hsp in hsps:
+        if int(hsp[1]) == 22154 and int(hsp[2]) == 11560:
+            print("memes")
+
     delete_list = []
     for i in range(len(hsps)-1):
         for j in range(i+1, len(hsps)):
@@ -132,10 +142,14 @@ def filter_overlap(hsps, overlap_cutoff):
                     overlap_perc_loc2 = overlapping_aminoacids / (b_end - b_start)
                     #check if the amount of overlap is significant
                     if overlap_perc_loc1 > overlap_cutoff or overlap_perc_loc2 > overlap_cutoff:
-                        if float(row1[3]) >= float(row2[3]): #see which has a better score
+                        # rounding with 1 decimal to mirror domtable files
+                        row1_score = round(float(row1[3]), 1)
+                        row2_score = round(float(row2[3]), 1)
+                        if row1_score >= row2_score: #see which has a better score
                             delete_list.append(row2)
-                        elif float(row1[3]) < float(row2[3]):
+                        elif row1_score < row2_score:
                             delete_list.append(row1)
+
 
     for lst in delete_list:
         try:

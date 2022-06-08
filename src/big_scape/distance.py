@@ -270,7 +270,7 @@ def generate_dist_matrix(
 
 
         # JACCARD INDEX
-        union = cluster_a.ordered_domain_set | cluster_b.ordered_domain_set
+        union = pair_dom_info.a_dom_set | pair_dom_info.b_dom_set
         jaccard_index = calc_jaccard(pair_dom_info.intersect, union)
 
         dss_data = calc_dss(
