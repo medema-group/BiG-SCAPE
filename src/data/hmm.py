@@ -14,12 +14,6 @@ def load_hmms(run, database: Database):
     hmm_file_path = os.path.join(run.directories.pfam, "Pfam-A.hmm")
     logging.info(" Loading HMM information into database")
 
-    # get list of accessions and descriptions which bigslice uses from raw Pfam_A
-    bigslice_accessions, bigslice_descriptions = get_bigslice_subset()
-    
-    # get list of antismash domains
-    antismash_domains, antismash_domain_info = get_antismash_domains(run)
-
     # later we need to know which subpfams belong to which domains
     # in order to do this we need to keep track of all accession <-> id relations
     domain_accession_ids = {}
@@ -34,23 +28,6 @@ def load_hmms(run, database: Database):
             model_type = 0
             accession = profile.accession.decode()
             name = profile.name.decode()
-
-            # if bigslice prefiltering is enabled we need to check whether
-            # domains are parent antismash domains that are later used
-            # to calculate features for subpfam domains. to do this we
-            # prefix names with AS- if it is a parent antismash domain
-            # needed for bigslice feature calculation and not a problem for
-            # BiG-SCAPE
-            if accession in bigslice_accessions:
-                model_type = 1
-                name = "AS-" + name
-                bigslice_accessions.remove(accession)
-            
-            if name in bigslice_accessions:
-                model_type = 1
-                name = "AS-" + name
-                bigslice_accessions.remove(name)
-                
 
             hmm_id = database.insert("hmm", {
                 "accession": accession,
