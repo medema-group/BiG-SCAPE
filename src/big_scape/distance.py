@@ -161,15 +161,16 @@ def gen_dist_matrix_async(
                 all_tasks_put = cluster_idx == num_tasks
 
             # add row to matrix
-            network_matrix.extend(network_rows)
+            for network_row in network_rows:
+                network_matrix.append(network_row)
 
-            num_tasks_done = len(network_matrix)
-            all_tasks_done = len(network_matrix) == num_tasks
+                num_tasks_done = len(network_matrix)
+                all_tasks_done = len(network_matrix) == num_tasks
 
-            # print progress every 10%
-            if num_tasks_done % math.ceil(num_tasks / 10) == 0:
-                percent_done = num_tasks_done / num_tasks * 100
-                logging.info("    %d%% (%d/%d)", percent_done, num_tasks_done, num_tasks)
+                # print progress every 10%
+                if num_tasks_done % math.ceil(num_tasks / 10) == 0:
+                    percent_done = num_tasks_done / num_tasks * 100
+                    logging.info("    %d%% (%d/%d)", percent_done, num_tasks_done, num_tasks)
 
 
     for process in processes:
