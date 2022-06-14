@@ -16,7 +16,7 @@ from src.big_scape.scores import calc_jaccard
 from src.big_scape.bgc_collection import BgcCollection
 from src.big_scape.clustering import cluster_json_batch
 from src.big_scape.distance import write_distance_matrix, gen_dist_matrix_async
-from src.bgctools import sort_bgc
+from src.legacy.bgctools import sort_bgc
 from src.utility import create_directory
 from src.data.functions import get_bgc_ids, get_bgc_names, get_hmm_ids, get_features
 from src.big_scape.cosine import get_corr_cosine_dists

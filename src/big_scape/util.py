@@ -2,7 +2,7 @@ import os
 import json
 import shutil
 
-from src.bgctools import sort_bgc
+from src.legacy.bgctools import sort_bgc
 from src.js import add_to_bigscape_results_js
 from src.utility import create_directory
 

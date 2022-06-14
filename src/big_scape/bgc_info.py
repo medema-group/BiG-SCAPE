@@ -1,6 +1,6 @@
 from array import array
 
-from src.bgctools import BgcData
+from src.legacy.bgc_data import BgcData
 
 class BgcInfo:
     """Class to contain info on individual BGCs"""

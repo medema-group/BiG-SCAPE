@@ -7,7 +7,8 @@ from itertools import combinations
 
 from src.big_scape.run.base import Run
 
-from src.bgctools import sort_bgc, BgcData
+from src.legacy.bgctools import sort_bgc
+from src.legacy.bgc_data import BgcData
 
 def import_gbks(run):
     bgc_info = {}
@@ -320,7 +321,17 @@ def process_gbk_file(
             # Perhaps we can try to infer if it's in a contig edge: if
             # - first biosynthetic gene start < 10kb or
             # - max_width - last biosynthetic gene end < 10kb (but this will work only for the largest record)
-            bgc_info[cluster_name] = BgcData(records[0].id, records[0].description, product, len(records), max_width, bgc_size + (record_count-1)*1000, records[0].annotations["organism"], ",".join(records[0].annotations["taxonomy"]), biosynthetic_genes.copy(), contig_edge)
+            bgc_info[cluster_name] = BgcData(
+                records[0].id,
+                records[0].description,
+                product, len(records),
+                max_width,
+                bgc_size + (record_count-1)*1000,
+                records[0].annotations["organism"],
+                ",".join(records[0].annotations["taxonomy"]),
+                biosynthetic_genes.copy(),
+                contig_edge
+            )
 
             if len(bgc_info[cluster_name].biosynthetic_genes) == 0:
                 files_no_biosynthetic_genes.append(cluster_name+".gbk")

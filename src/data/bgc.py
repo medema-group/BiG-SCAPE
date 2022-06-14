@@ -6,7 +6,7 @@
 # Bioinformatics Group
 """bigslice.modules.data.bgc
 
-Handle manipulation and storing of 'bgc' table
+Handles manipulation and storing of 'bgc' table
 """
 
 from os import path

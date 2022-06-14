@@ -7,3 +7,4 @@ from . import mibig
 from . import pfam
 from . import utility
 from . import data
+from . import legacy

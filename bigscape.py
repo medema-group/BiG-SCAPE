@@ -9,6 +9,7 @@ PI: Marnix Medema               marnix.medema@wur.nl
 Maintainers/developers:
 Jorge Navarro                   j.navarro@westerdijkinstitute.nl
 Satria Kautsar                  satria.kautsar@wur.nl
+Arjan Draisma                   arjan.draisma@wur.nl
 
 Developer:
 Emmanuel (Emzo) de los Santos   E.De-Los-Santos@warwick.ac.uk
