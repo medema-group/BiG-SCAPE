@@ -7,4 +7,3 @@ from .hmm import load_hmms, from_id, from_accession
 from .msa import get_aligned_hsp_list, insert_msa
 from .distance import generate_bgc_collection, generate_aligned_domain_seqs, generate_mibig_set_indices
 from .features import Features
-from .bigslice import download_bigslice_db, download_antismash_files

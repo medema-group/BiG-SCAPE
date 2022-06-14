@@ -224,7 +224,10 @@ def cluster_json_batch(db: Database, bgcs, path_base, class_name, matrix, pos_al
 
                 # TODO go straight to familiesDict
                 for i in range(numBGCs_subgraph):
-                    labels[bgcExt2Int[bgcSub2Ext_[i]]] = bgcExt2Int[bgcSub2Ext_[exemplarsSub[labelsSub[i]]]]
+                    try:
+                        labels[bgcExt2Int[bgcSub2Ext_[i]]] = bgcExt2Int[bgcSub2Ext_[exemplarsSub[labelsSub[i]]]]
+                    except:
+                        pass
 
         # Recalculate distance matrix as we'll need it with clans
         #simMatrix = lil_matrix((numBGCs, numBGCs), dtype=np.float32)
@@ -493,11 +496,14 @@ def cluster_json_batch(db: Database, bgcs, path_base, class_name, matrix, pos_al
                 exemplarsClans = af.cluster_centers_indices_
 
                 # affinity propagation can fail in some circumstances (e.g. only singletons)
+                clanLabels = []
                 if exemplarsClans is not None:
                     # translate and record GCF label instead of GCF number
-                    clanLabels = [familyIdx[exemplarsClans[labelsClans[i]]] for i in range(len(familyIdx))]
-                else:
-                    clanLabels = []
+                    for i in range(len(familyIdx)):
+                        try:
+                            clanLabels[i] = familyIdx[exemplarsClans[labelsClans[i]]]
+                        except:
+                            pass
 
         else:
             clanLabels = []
@@ -567,7 +573,10 @@ def cluster_json_batch(db: Database, bgcs, path_base, class_name, matrix, pos_al
                             a = domainGenes2allGenes[family][a]
                             b = domainGenes2allGenes[bgc][b]
                     else:
-                        a = domainGenes2allGenes[family][a]
+                        try:
+                            a = domainGenes2allGenes[family][a]
+                        except:
+                            pass
                         if length == 0:
                             pass
 

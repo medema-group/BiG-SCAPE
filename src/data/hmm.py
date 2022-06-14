@@ -2,7 +2,6 @@ import glob
 import logging
 import os
 import pyhmmer
-from src.data.bigslice import get_antismash_domains, get_bigslice_subset
 
 from src.data import Database
 

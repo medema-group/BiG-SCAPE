@@ -1,6 +1,5 @@
 import logging
 import math
-import multiprocessing
 import os
 
 from multiprocessing.connection import Connection, wait

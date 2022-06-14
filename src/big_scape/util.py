@@ -1,34 +1,10 @@
-import logging
 import os
 import json
-import sys
 import shutil
 
 from src.bgctools import sort_bgc
 from src.js import add_to_bigscape_results_js
-from src.pfam import get_domain_list
 from src.utility import create_directory
-
-def get_ordered_domain_list(run, cluster_base_names):
-    """Reads the domain list from pfs files
-    
-    Inputs:
-        run: run details for this execution of BiG-SCAPE
-        cluster_base_names: list of base BGC names
-    
-    returns: dictionary in the form {bgc_name: [domains]}
-    """
-    logging.info(" Reading the ordered list of domains from the pfs files")
-
-    domain_list = {} # Key: BGC. Item: ordered list of domains
-    for outputbase in cluster_base_names:
-        pfsfile = os.path.join(run.directories.pfs, outputbase + ".pfs")
-        if os.path.isfile(pfsfile):
-            domain_list[outputbase] = get_domain_list(pfsfile)
-        else:
-            logging.error(" could not open %s.pfs", outputbase)
-            sys.exit(1)
-    return domain_list
 
 def fetch_genome_list(run, input_clusters_idx, cluster_names, mibig_set, bgc_info, gen_bank_dict):
     genomes = []

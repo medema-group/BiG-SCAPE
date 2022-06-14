@@ -1,15 +1,8 @@
-import os
-import sys
-
 from typing import Dict
 
 import logging
-import pickle
 
-from src.big_scape.util import get_ordered_domain_list
 from src.big_scape.bgc_info import BgcInfo
-from src.bgctools import generate_domain_name_info_dict
-from src.utility import fasta_parser, save_domain_seqs
 
 
 
@@ -42,21 +35,6 @@ class BgcCollection:
         self.bgc_collection_dict = {}
         for cluster_name in cluster_name_list:
             self.bgc_collection_dict[cluster_name] = BgcInfo(cluster_name)
-
-    def init_ordered_domain_list(self, run):
-        """Initialize the ordered domain list for a setof BGCs
-
-        Inputs:
-            run: run details for this execution of BiG-SCAPE
-        """
-        # Get the ordered list of domains
-        self.bgc_ordered_domain_list = get_ordered_domain_list(run, self.bgc_name_set)
-        for cluster_name in self.bgc_ordered_domain_list:
-            domain_list = self.bgc_ordered_domain_list[cluster_name]
-            self.bgc_collection_dict[cluster_name].ordered_domain_list = domain_list
-
-            # we will also want a set later on for various uses
-            self.bgc_collection_dict[cluster_name].ordered_domain_set = set(domain_list)
 
     def add_bgc_info(self, bgc_info_dict):
         """Add BGC information to each cluster in this collection
@@ -128,72 +106,6 @@ class BgcCollection:
                 # TODO: replace with logger
                 logging.warning("Biosynthetic gene core position info for %s was not found", cluster_name)
 
-    def load_domain_names_from_dict(self, run):
-        """Load list of domain naimes from a stored BGCs.dict file
-        
-        Inputs:
-            run: run details for this execution of BiG-SCAPE
-        """
-        try:
-            with open(os.path.join(run.directories.cache, "BGCs.dict"), "r") as bgc_file:
-                domain_name_info_dict = pickle.load(bgc_file)
-                for cluster_name in domain_name_info_dict:
-                    domain_name_info = domain_name_info_dict[cluster_name]
-                    self.bgc_collection_dict[cluster_name].domain_name_info = domain_name_info
-                bgc_file.close()
-        except IOError:
-            logging.error("BGCs file not found...")
-            sys.exit(1)
-
-    def load_domain_names_from_pfd(self, run, try_resume_multiple_alignment):
-        """Load domain names from PFD file
-        
-        Inputs:
-            run: run details for this execution of BiG-SCAPE
-            try_resume_multiple_aligntment: 
-        """
-        for outputbase in self.bgc_name_list:
-            logging.debug("   Processing: %s", outputbase)
-
-            pfd_file = os.path.join(run.directories.pfd, outputbase + ".pfd")
-            filtered_matrix = [[part.strip() for part in l.split('\t')] for l in open(pfd_file)]
-
-            # save each domain sequence from a single BGC in its corresponding file
-            fasta_file = os.path.join(run.directories.bgc_fasta, outputbase + ".fasta")
-
-            # only create domain fasta if the pfd content is different from original and
-            #  domains folder has been emptied. Else, if trying to resume alignment phase,
-            #  domain fasta files will contain duplicate sequence labels
-            if not try_resume_multiple_alignment:
-                with open(fasta_file, "r") as fasta_file_handle:
-                    # all fasta info from a BGC
-                    fasta_dict = fasta_parser(fasta_file_handle)
-                save_domain_seqs(filtered_matrix, fasta_dict,
-                                         run.directories.domains, outputbase)
-
-            domain_name_info = generate_domain_name_info_dict(filtered_matrix)
-            self.bgc_collection_dict[outputbase].domain_name_info = domain_name_info
-
-            del filtered_matrix[:]
-
-    def save_domain_names_to_dict(self, run):
-        """Save domain names to a dictionary file so that the pfd file does not need to be
-        re-parsed
-
-        Inputs:
-            run: run details for this execution of BiG-SCAPE
-        """
-        # store processed BGCs dictionary for future re-runs
-        with open(os.path.join(run.directories.cache, "BGCs.dict"), "wb") as bgc_file:
-            domain_name_info = {}
-            for cluster_name in self.bgc_collection_dict:
-                domain_name_info[cluster_name] = self.bgc_collection_dict[cluster_name].domain_name_info
-            pickle.dump(domain_name_info, bgc_file)
-            bgc_file.close()
-
     def init_gene_strings(self):
         for cluster_name in self.bgc_collection_dict:
             self.bgc_collection_dict[cluster_name].init_gene_string()
-
-    def is_ready(self):
-        return

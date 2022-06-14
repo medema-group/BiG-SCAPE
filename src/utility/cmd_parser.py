@@ -195,7 +195,7 @@ def cmd_parser(root_path):
                         default=False, action="store_true")
     
     parser.add_argument("--jaccard_threshold", dest="jaccard_threshold",
-                        default=0.1, type=float,
+                        default=0.2, type=float,
                         help="The jaccard index threshold to use for jaccard filtering. \
                         Pairs that have a jaccard index below this value are skipped. Note that \
                         this is the jaccard index, not the distance. Lower values are more \

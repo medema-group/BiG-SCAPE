@@ -12,8 +12,6 @@ from glob import glob
 import src.gbk as gbk
 import src.big_scape as big_scape
 
-
-
 def extract_mibig(run: big_scape.Run):
     """Extracts MIBiG zips
 

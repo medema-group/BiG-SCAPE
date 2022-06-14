@@ -261,9 +261,6 @@ def initialize_db(run, database: Database):
 
     load_hmms(run, database)
 
-
-
-
 def get_cluster_id_list(database):
     """Returns a list of all bgc ids in the database"""
     bgc_ids = [
