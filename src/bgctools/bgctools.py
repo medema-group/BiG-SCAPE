@@ -105,27 +105,6 @@ def get_composite_bgc_similarities(bgcs_1, bgcs_2, sim_matrix):
             num_pairs += 1
     return (sum_sim / num_pairs), min_sim, max_sim # let it throw infinite division error by itself
 
-
-def generate_domain_name_info_dict(filtered_matrix):
-    """Generates the: { 'general_domain_name_x' : ['specific_domain_name_1',
-     'specific_domain_name_2'] } part of the BGCs variable."""
-
-    # It would be tempting to do `bgc_dict = defaultdict(list)` but then the
-    # dictionary keeps the defaultdict definition. Later on in the distance
-    # calculation function, we do a
-    #  ```try: unshared_occurrences = BGCs[A][unshared_domain]
-    #  except KeyError: unshared_occurrences = BGCs[B][unshared_domain]```
-    # Problem is the `try` would always be successful because of defaultdict and
-    # an empty list is added for the unshared_domain!
-    domain_name_info = {}
-    for row in filtered_matrix:
-        header = row[-1] + ":" + row[3] + ":" + row[4] # add domain positions
-        try: #Should be faster than performing `if key in dictionary.keys()`
-            domain_name_info[row[5]].append(header)
-        except KeyError: # First occurrence of this domain in the cluster
-            domain_name_info[row[5]] = [header]
-    return domain_name_info
-
 class BgcData:
     """Class to contain BGC data"""
     def __init__(self, accession_id, description, product, records, max_width, bgc_size, organism,
