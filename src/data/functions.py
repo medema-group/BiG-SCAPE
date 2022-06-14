@@ -111,10 +111,15 @@ def list_gbk_files(data_path):
 
 def check_gbk_exists(run, database: Database, dataset_id: int, gbk_path: str):
     """Returns the presence of a given gbk file in the database"""
-    gbk_name = path.splitext(gbk_path)[0]
-    names = database.select("bgc",
-                            f"where dataset_id = {dataset_id}\
-                              and name = \"{gbk_name}\"")
+    gbk_path, gbk_file = gbk_path.rsplit("/")
+    names = database.select(
+        "bgc",
+        (
+            f"where dataset_id = {dataset_id} "
+            f"and orig_folder = \"{gbk_path}\" "
+            f"and orig_filename = \"{gbk_file}\""
+        )
+    )
     return len(names) > 0
 
 def filter_bgc_cds_overlap(bgc_input_info):
@@ -316,7 +321,7 @@ def get_cluster_gbk_dict(run, database: Database):
             "where bgc.dataset_id = (select id from dataset where name = \"mibig\")",
             props=["name", "orig_filename"])
         for row in rows:
-            gbk_dict[row["name"]] = os.path.join(run.directories.mibig, row["orig_filename"])
+            gbk_dict[row["name"]] = os.path.join(run.mibig.gbk_path, row["orig_filename"])
 
     # input paths
     rows = database.select(
