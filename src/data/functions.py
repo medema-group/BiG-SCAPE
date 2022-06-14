@@ -61,7 +61,6 @@ def insert_dataset(database, dataset_name, dataset_meta):
                 "WHERE dataset_id=?",
                 parameters=(dataset_id,),
                 props=["id"])]
-        logging.info("Found %d BGCs in the database.", len(bgc_ids))
     else:  # create a new dataset entry
         dataset_id = database.insert(
             "dataset",
@@ -248,7 +247,7 @@ def insert_dataset_gbks(
                 }, True
             )
     database.commit_inserts()
-    logging.info("Inserted %d new BGCs.", new_bgcs_count)
+    logging.info("   Inserted %d new BGCs.", new_bgcs_count)
     return bgc_ids
 
 def create_bgc_status(db: Database, bgc_ids):
