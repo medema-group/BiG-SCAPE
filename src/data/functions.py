@@ -17,8 +17,15 @@ from .bgc import BGC
 
 def parse_input_gbk(arguments: tuple):
     """Unwraps argument tuple and parse GBK"""
-    orig_gbk_path, file_path = arguments
-    return (file_path, BGC.parse_gbk(file_path, orig_gbk_path=orig_gbk_path))
+    orig_gbk_path, file_path, include_all = arguments
+    return (
+        file_path,
+        BGC.parse_gbk(
+            file_path,
+            orig_gbk_path=orig_gbk_path,
+            include_all=include_all
+        )
+    )
 
 def insert_dataset(database, dataset_name, dataset_meta):
     """This function inserts dataset source information into the database
@@ -182,7 +189,14 @@ def filter_bgc_cds_overlap(bgc_input_info):
 
     return bgc_input_info
 
-def insert_dataset_gbks(run, database: Database, dataset_id, dataset_name, dataset_meta, bgc_ids):
+def insert_dataset_gbks(
+    run,
+    database: Database,
+    dataset_id,
+    dataset_meta,
+    bgc_ids,
+    include_all
+):
     """Performs the insertion of GBK information into the database"""
     new_bgcs_count = 0
     files_to_process = []
@@ -199,17 +213,17 @@ def insert_dataset_gbks(run, database: Database, dataset_id, dataset_name, datas
             count_gbk_exists += 1
             bgc_ids.update(bgc_ids)
         else:
-            files_to_process.append((gbk_path, gbk_full_path))
+            files_to_process.append((gbk_path, gbk_full_path, include_all))
 
     if len(files_to_process) == 0:
-        logging.info("Found no new GBK files.")
+        logging.info("   Found no new GBK files.")
         return
 
     if count_gbk_exists > 0:
-        logging.info("Found %d existing GBKs...", count_gbk_exists)
+        logging.info("   Found %d existing GBKs...", count_gbk_exists)
 
     # parse and insert new GBKs #
-    logging.info("Parsing and inserting %d new GBKs...", len(files_to_process))
+    logging.info("   Parsing and inserting %d new GBKs...", len(files_to_process))
     mp_pool = Pool(run.options.cores)
     pool_results = mp_pool.map(parse_input_gbk, files_to_process)
     # filter out overlapping cds regions
@@ -247,17 +261,27 @@ def initialize_db(run, database: Database):
     if run.mibig.use_mibig:
         datasets["mibig"] = {
             "path": run.mibig.gbk_path,
-            "desc": "Mibig dataset"
+            "desc": "Mibig dataset",
+            "include_all": True
         }
 
     datasets["input"] = {
         "path": run.directories.input,
-        "desc": "Input files"
+        "desc": "Input files",
+        "include_all": False
     }
 
     for dataset_name, dataset_meta in datasets.items():
+        logging.info("  Inserting dataset %s", dataset_name)
         dataset_id, bgc_ids = insert_dataset(database, dataset_name, dataset_meta)
-        bgc_ids = insert_dataset_gbks(run, database, dataset_id, dataset_name, dataset_meta, bgc_ids)
+        bgc_ids = insert_dataset_gbks(
+            run,
+            database,
+            dataset_id,
+            dataset_meta,
+            bgc_ids,
+            dataset_meta["include_all"]
+        )
 
     load_hmms(run, database)
 

@@ -91,7 +91,7 @@ class BGC:
                 cds.__save__(database)
 
     @staticmethod
-    def parse_gbk(gbk_path: str, orig_gbk_path: str=None):
+    def parse_gbk(gbk_path: str, orig_gbk_path: str=None, include_all=False):
         """Load BGCs from a gbk file, return a list of BGC
         objects (one gbk file can contain multiple BGCs e.g.
         in the case of antiSMASH5 GBKs"""
@@ -124,6 +124,8 @@ class BGC:
                                 feature.qualifiers["aStool"][0] == "mibig":
                             gbk_type = "mibig"
                             break
+                    elif include_all:
+                        gbk_type = "as" + antismash_version.split(".")[0]
                 if not gbk_type:
                     print(orig_gbk_path +
                           " is not a recognized antiSMASH clustergbk")
