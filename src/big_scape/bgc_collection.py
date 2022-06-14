@@ -1,3 +1,8 @@
+"""Module to contain the bgc collection class, used in distance calculation
+
+Author: Jorge Navarro, Arjan Draisma
+"""
+
 from typing import Dict
 
 import logging
@@ -26,7 +31,8 @@ class BgcCollection:
         """Initialize the collection
 
         Input:
-            cluster_name_list: a list of names of all clusters to be added to this collection
+            cluster_name_list: a list of names of all clusters to be added to
+            this collection
         """
         self.bgc_name_list = cluster_name_list
         self.bgc_name_set = set(cluster_name_list)

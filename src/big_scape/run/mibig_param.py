@@ -51,16 +51,20 @@ class MibigParam():
         Inputs:
         - options: options object from CMD_parser"""
 
-        if self.use_mibig:
-            if options.mibig21:
-                self.file_name = "MIBiG_2.1_final"
-                self.expected_num_bgc = 1923
-            elif options.mibig14:
-                self.file_name = "MIBiG_1.4_final"
-                self.expected_num_bgc = 1808
-            else:
-                self.file_name = "MIBiG_1.3_final"
-                self.expected_num_bgc = 1393
+        if not self.use_mibig:
+            return
 
-            self.zip_path = os.path.join(options.mibig_path, self.file_name + ".zip")
-            self.gbk_path = os.path.join(options.mibig_path, self.file_name)
+        if options.mibig21:
+            self.file_name = "MIBiG_2.1_final"
+            self.expected_num_bgc = 1923
+        elif options.mibig14:
+            self.file_name = "MIBiG_1.4_final"
+            self.expected_num_bgc = 1808
+        else:
+            self.file_name = "MIBiG_1.3_final"
+            self.expected_num_bgc = 1393
+
+        self.zip_path = os.path.join(
+            options.mibig_path, self.file_name + ".zip"
+        )
+        self.gbk_path = os.path.join(options.mibig_path, self.file_name)

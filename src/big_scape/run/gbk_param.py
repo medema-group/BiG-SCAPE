@@ -32,8 +32,11 @@ class GbkParam:
             logging.error(" no strings specified for '--include_gbk_str'")
             sys.exit(1)
         else:
-            logging.info(" Including files with one or more of the following strings in their filename: \
-                '{}'".format("', '".join(self.include)))
+            include_string = "', '".join(self.include)
+            log_line = (" Including files with one or more of the following"
+            "strings in their filename:"
+            f"'{include_string}'")
+            logging.info(log_line)
 
     def set_exclude_list(self, options):
         """Sets the gbk exclusion list based on given options
@@ -43,5 +46,8 @@ class GbkParam:
 
         self.exclude = options.exclude_gbk_str
         if self.exclude != []:
-            logging.info(" Skipping files with one or more of the following strings in their filename: \
-                '{}'".format("', '".join(self.exclude)))
+            exclude_string = "', '".join(self.exclude)
+            log_line = (" Skipping files with one or more of the following "
+            "strings in their filename: "
+            f"'{exclude_string}'")
+            logging.info(log_line)

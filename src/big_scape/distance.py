@@ -1,3 +1,8 @@
+"""Module containing code for orchestrating the multithreader distance
+calculation
+
+Authors: Jorge Navarro, Arjan Draisma
+"""
 import logging
 import math
 from array import array
@@ -18,21 +23,24 @@ def gen_dist_matrix_worker(
     aligned_domain_sequences,
     jaccard_threshold
 ):
-    """Worker method for threads that process distance calculation. Takes bgc pairs from an input
-    queue and generates distances between the bgc pairs which it puts back into the output queue.
+    """Worker method for threads that process distance calculation. Takes bgc
+    pairs from an input queue and generates distances between the bgc pairs 
+    which it puts back into the output queue.
 
-    Inputs in the queue are expected to be a tuple of the format (pair, skip_set), where:
+    Inputs in the queue are expected to be a tuple of the format (pair,
+    skip_set), where:
     - pair is a tuple containing two bgc indices
-    - skip_set is to be removed (TODO)
 
     This thread continues to run until an explicit exit signal is received.
 
     Inputs:
-        input_queue: task queue for new tasks given to this thread
-        output_queue: result queue for completed distance calculations
+        connection: worker end of the pipe used for I/O
         run: run details for this execution of BiG-SCAPE
+        database: database object for this run of BiG-SCAPE
         bgc_collection: collection of BGCs
-        aligned_domain_sequences: list of aligned domain sequences from hmm.read_aligned_files
+        aligned_domain_sequences: list of aligned domain sequences from
+                                  hmm.read_aligned_files
+        jaccard_threshold: TODO: remove
     """
     while True:
         input_task_batch = connection.recv()
@@ -67,7 +75,8 @@ def gen_dist_matrix_async(
     jaccard_threshold
 ):
     """Distributes the distance calculation part
-    cluster_pairs is a list of triads (cluster1_index, cluster2_index, BGC class)
+    cluster_pairs is a list of triads (cluster1_index, cluster2_index, 
+    BGC class)
     """
 
     num_processes = run.options.cores
@@ -83,8 +92,8 @@ def gen_dist_matrix_async(
 
     processes = []
     for thread_num in range(num_processes):
-        # if there are fewer tasks than there are threads, don't start a new thread
-        # this is only a concern for < cores tasks
+        # if there are fewer tasks than there are threads, don't start a new
+        # thread. this is only a concern for < cores tasks
         if cluster_idx >= num_tasks:
             continue
         # generate thread name
@@ -104,7 +113,11 @@ def gen_dist_matrix_async(
             aligned_domain_sequences,
             jaccard_threshold
         )
-        new_process = Process(target=gen_dist_matrix_worker, args=process_args, name=thread_name)
+        new_process = Process(
+            target=gen_dist_matrix_worker,
+            args=process_args,
+            name=thread_name
+        )
         processes.append(new_process)
         new_process.start()
 
@@ -170,7 +183,12 @@ def gen_dist_matrix_async(
                 # print progress every 10%
                 if num_tasks_done % math.ceil(num_tasks / 10) == 0:
                     percent_done = num_tasks_done / num_tasks * 100
-                    logging.info("    %d%% (%d/%d)", percent_done, num_tasks_done, num_tasks)
+                    logging.info(
+                        "    %d%% (%d/%d)",
+                        percent_done,
+                        num_tasks_done,
+                        num_tasks
+                    )
 
 
     for process in processes:
@@ -181,7 +199,11 @@ def gen_dist_matrix_async(
     return network_matrix
 
 
-def calc_ai_pair(cluster_a: BgcInfo, cluster_b: BgcInfo, pair_dom_info: BgcDomainInfo):
+def calc_ai_pair(
+    cluster_a: BgcInfo,
+    cluster_b: BgcInfo,
+    pair_dom_info: BgcDomainInfo
+):
     """Calculate the adjacency index of a pair of BGCs
 
     Inputs:
@@ -197,7 +219,14 @@ def calc_ai_pair(cluster_a: BgcInfo, cluster_b: BgcInfo, pair_dom_info: BgcDomai
     b_dom_start = pair_dom_info.b_dom_start
     b_dom_end = pair_dom_info.b_dom_end
 
-    return calc_adj_idx(a_dom_list, b_dom_list, a_dom_start, a_dom_end, b_dom_start, b_dom_end)
+    return calc_adj_idx(
+        a_dom_list,
+        b_dom_list,
+        a_dom_start,
+        a_dom_end,
+        b_dom_start,
+        b_dom_end
+    )
 
 def generate_dist_matrix(
     parms,
@@ -210,10 +239,13 @@ def generate_dist_matrix(
     """Unpack data to actually launch cluster_distance for one pair of BGCs
 
     Inputs:
-        parms: a tuple of the form (bgc_a_idx, bgc_b_idx, class_idx) for this comparison
-        bgc_collection: BgcCollection object containing bgc info objects and necessary data for
+        parms: a tuple of the form (bgc_a_idx, bgc_b_idx, class_idx) for this
+            comparison
+        bgc_collection: BgcCollection object containing bgc info objects and
+            necessary data for
             distance calculation
-        aligned_domain_sequences: list of aligned domain sequences from hmm.read_aligned_files
+        aligned_domain_sequences: list of aligned domain sequences from
+            hmm.read_aligned_files
     """
 
     cluster_1_idx, cluster_2_idx, bgc_class_idx = parms
@@ -226,7 +258,8 @@ def generate_dist_matrix(
     cluster_a = bgc_collection.bgc_collection_dict[cluster_name_a]
     cluster_b = bgc_collection.bgc_collection_dict[cluster_name_b]
 
-    # this really shouldn't happen if we've filtered domain-less gene clusters already
+    # this really shouldn't happen if we've filtered domain-less gene clusters
+    # already
     if len(cluster_a.ordered_domain_list) == 0 or len(cluster_b.ordered_domain_list) == 0:
         logging.warning("   Regarding distance between clusters %s and %s:", cluster_name_a, cluster_name_b)
         if len(cluster_a.ordered_domain_list) == 0 and len(cluster_b.ordered_domain_list) == 0:
@@ -245,7 +278,7 @@ def generate_dist_matrix(
 
     # unpack weights
     weights = run.distance.bgc_class_weight[bgc_class]
-    jaccard_weight, dss_weight, ai_weight, anchor_boost = weights
+    anchor_boost = weights[3]
 
     # initialize domain specific info
     # this contains the domain slice information, which may change if expansion is needed

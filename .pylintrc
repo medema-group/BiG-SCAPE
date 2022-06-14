@@ -1,6 +1,5 @@
 [MASTER]
 missing-member-hint=yes
-# 80 lines is so 4:3 monitor ratio
-max-line-length=100
+max-line-length=80
 max-module-lines=300
 extension-pkg-allow-list=pyhmmer

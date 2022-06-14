@@ -15,8 +15,8 @@ class ClusterParam():
         # add regular cutoffs
         self.add_cutoffs(options)
 
-        # if we want to classify by clans make sure that the clanCutoff is included
-        # in the cutoffs to do AP in clusterJsonBatch
+        # if we want to classify by clans make sure that the clanCutoff i
+        # included in the cutoffs to do AP in clusterJsonBatch
         if options.clans:
             self.add_clan_cutoffs(options)
 
@@ -41,8 +41,9 @@ class ClusterParam():
         """
         family_cutoff, clan_cutoff = options.clan_cutoff
         if clan_cutoff < family_cutoff:
-            logging.error("first value in the clan_cutoff parameter should be smaller than the \
-            second")
+            log_line = ("first value in the clan_cutoff parameter should be "
+            "smaller than thesecond")
+            logging.error(log_line)
             sys.exit(1)
         if family_cutoff not in self.cutoff_list:
             if family_cutoff <= 0.0 or family_cutoff > 1.0:

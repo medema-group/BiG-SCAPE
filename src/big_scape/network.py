@@ -1,3 +1,9 @@
+"""Module containing code for network generation
+
+Authors: Jorge Navarro, Arjan Draisma
+"""
+
+
 import logging
 import os
 import sys
@@ -31,7 +37,8 @@ def get_output_cutoffs_filenames(run, path_base, bgc_class):
     """
     file_names = []
     for cutoff in run.cluster.cutoff_list:
-        file_names.append(os.path.join(path_base, "{}_c{:.2f}.network".format(bgc_class, cutoff)))
+        network_suffix = f"{bgc_class}_c{cutoff:.2f}.network"
+        file_names.append(os.path.join(path_base, network_suffix))
     cutoffs_filenames = list(zip(run.cluster.cutoff_list, file_names))
     del file_names[:]
     return cutoffs_filenames

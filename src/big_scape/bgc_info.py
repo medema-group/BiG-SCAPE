@@ -1,3 +1,9 @@
+"""Module to contain the BgcInfo class, which contains information per BGC
+used in distance calculation. These are collected in the BgcCollection class
+
+Authors: Jorge Navarro, Arjan Draisma
+"""
+
 from array import array
 
 from src.legacy.bgc_data import BgcData

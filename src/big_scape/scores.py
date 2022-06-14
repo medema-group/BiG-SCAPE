@@ -1,8 +1,12 @@
+"""Module containing the score calculation code
+
+Authors: Jorge Navarro, Arjan Draisma
+"""
+
+
 import logging
-import os
 import numpy as np
 
-from collections import defaultdict
 from difflib import SequenceMatcher
 from Bio import pairwise2
 from Bio.SubsMat.MatrixInfo import pam250 as scoring_matrix
@@ -251,7 +255,7 @@ def calc_dss(run, database, cluster_a, cluster_b, aligned_domain_sequences, anch
                 except KeyError:
                     # For some reason we don't have the multiple alignment files.
                     # Try manual alignment
-                    # FIXME: this is a very strange condition. compare with master
+                    # TODO: remove missing_aligned_domain_files, keep the log
                     if shared_domain not in missing_aligned_domain_files and run.options.verbose:
                         # this will print everytime an unfound <domain>.algn is not found for every
                         # distance calculation (but at least, not for every domain pair!)

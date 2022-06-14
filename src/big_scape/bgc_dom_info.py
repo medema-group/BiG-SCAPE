@@ -1,3 +1,9 @@
+"""Module to contain the BgcDomainInfo class, used in distance calculation
+between two pairs specifically
+
+Authors: Jorge Navarro, Arjan Draisma
+"""
+
 from collections import defaultdict
 
 from src.big_scape.scores import score_expansion
@@ -71,9 +77,17 @@ class BgcDomainInfo():
             # number, find the one that drives the expansion with highest possible score
             if slice_start_a == slice_start_b:
                 # assume complete expansion of A, try to expand B
-                exp_score_b, expansion_len_b = score_expansion(use_b_string[:slice_start_b], cluster_a.gene_string[:slice_start_a], False)
+                exp_score_b, expansion_len_b = score_expansion(
+                    use_b_string[:slice_start_b],
+                    cluster_a.gene_string[:slice_start_a],
+                    False
+                )
                 # assume complete expansion of B, try to expand A
-                exp_score_a, expansion_len_a = score_expansion(cluster_a.gene_string[:slice_start_a], use_b_string[:slice_start_b], False)
+                exp_score_a, expansion_len_a = score_expansion(
+                    cluster_a.gene_string[:slice_start_a],
+                    use_b_string[:slice_start_b],
+                    False
+                )
 
                 if exp_score_a > exp_score_b or (exp_score_a == exp_score_b and expansion_len_a > expansion_len_b):
                     slice_length_a += expansion_len_a
@@ -89,14 +103,22 @@ class BgcDomainInfo():
             else:
                 # A is shorter upstream. Assume complete extension. Find B's extension
                 if slice_start_a < slice_start_b:
-                    exp_score_b, exp_length_b = score_expansion(use_b_string[:slice_start_b], cluster_a.gene_string[:slice_start_a], False)
+                    exp_score_b, exp_length_b = score_expansion(
+                        use_b_string[:slice_start_b],
+                        cluster_a.gene_string[:slice_start_a],
+                        False
+                    )
 
                     slice_length_a += len(cluster_a.gene_string[:slice_start_a])
                     slice_length_b += exp_length_b
                     slice_start_a = 0
                     slice_start_b -= exp_length_b
                 else:
-                    exp_score_a, exp_length_a = score_expansion(cluster_a.gene_string[:slice_start_a], use_b_string[:slice_start_b], False)
+                    exp_score_a, exp_length_a = score_expansion(
+                        cluster_a.gene_string[:slice_start_a],
+                        use_b_string[:slice_start_b],
+                        False
+                    )
 
                     slice_length_a += exp_length_a
                     slice_length_b += len(use_b_string[:slice_start_b])
@@ -110,9 +132,17 @@ class BgcDomainInfo():
             downstream_b = cluster_b.num_genes - slice_start_b - slice_length_b
             if downstream_a == downstream_b:
                 # assume complete extension of A, try to expand B
-                exp_score_b, exp_len_b = score_expansion(use_b_string[slice_start_b+slice_length_b:], cluster_a.gene_string[slice_start_a+slice_length_a:], True)
+                exp_score_b, exp_len_b = score_expansion(
+                    use_b_string[slice_start_b+slice_length_b:],
+                    cluster_a.gene_string[slice_start_a+slice_length_a:],
+                    True
+                )
                 # assume complete extension of B, try to expand A
-                exp_score_a, exp_len_a = score_expansion(cluster_a.gene_string[slice_start_a+slice_length_a:], use_b_string[slice_start_b+slice_length_b:], True)
+                exp_score_a, exp_len_a = score_expansion(
+                    cluster_a.gene_string[slice_start_a+slice_length_a:],
+                    use_b_string[slice_start_b+slice_length_b:],
+                    True
+                )
 
 
                 if (exp_score_a == exp_score_b and exp_len_a > exp_len_b) or exp_score_a > exp_score_b:
@@ -125,13 +155,21 @@ class BgcDomainInfo():
             else:
                 if downstream_a < downstream_b:
                     # extend all of remaining A
-                    exp_score_b, exp_len_b = score_expansion(use_b_string[slice_start_b+slice_length_b:], cluster_a.gene_string[slice_start_a+slice_length_a:], True)
+                    exp_score_b, exp_len_b = score_expansion(
+                        use_b_string[slice_start_b+slice_length_b:],
+                        cluster_a.gene_string[slice_start_a+slice_length_a:],
+                        True
+                    )
 
                     slice_length_a += len(cluster_a.gene_string[slice_start_a+slice_length_a:])
                     slice_length_b += exp_len_b
 
                 else:
-                    exp_score_a, exp_len_a = score_expansion(cluster_a.gene_string[slice_start_a+slice_length_a:], use_b_string[slice_start_b+slice_length_b:], True)
+                    exp_score_a, exp_len_a = score_expansion(
+                        cluster_a.gene_string[slice_start_a+slice_length_a:],
+                        use_b_string[slice_start_b+slice_length_b:],
+                        True
+                    )
                     slice_length_a += exp_len_a
                     slice_length_b += len(use_b_string[slice_start_b+slice_length_b:])
 
@@ -166,7 +204,7 @@ class BgcDomainInfo():
             self.a_dom_end = self.a_dom_start + sum(cluster_a.gene_domain_counts[slice_start_a:slice_start_a+slice_length_a])
             self.a_dom_set = set(cluster_a.ordered_domain_list[self.a_dom_start:self.a_dom_end])
 
-            
+
             self.b_dom_start = sum(cluster_b.gene_domain_counts[:slice_start_b])
             self.b_dom_end = self.b_dom_start + sum(cluster_b.gene_domain_counts[slice_start_b:slice_start_b+slice_length_b])
             self.b_dom_set = set(cluster_b.ordered_domain_list[self.b_dom_start:self.b_dom_end])

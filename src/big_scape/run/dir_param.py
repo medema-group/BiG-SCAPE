@@ -10,7 +10,9 @@ import os
 import src.utility as utility
 
 class DirParam():
-    """Class which keeps track of run options relating to directories and cache locations"""
+    """Class which keeps track of run options relating to directories and cache
+    locations
+    """
     # folders
     input: str
     output: str
@@ -52,23 +54,23 @@ class DirParam():
         self.prepare_svg_dir()
 
         # cache dir
-        self.set_cache_dir(options)
+        self.set_cache_dir()
         self.prepare_cache_dir()
 
         # log dir
-        self.set_log_dir(options)
+        self.set_log_dir()
         self.prepare_log_dir()
 
         # pfam dir
         self.set_pfam_dir(options)
 
     def set_input_dir(self, options):
-        """Checks the structure of input folder, and checks if valid data exists
+        """Checks the structure of input folder, and checks if valid data
+        exists
 
         Inputs:
         - options: options object from CMD_parser"""
 
-        # TODO: check if data exists
         self.input = options.inputdir
 
     def set_has_query_bgc(self, options):
@@ -78,7 +80,8 @@ class DirParam():
         - options: options object from CMD_parser"""
         if options.query_bgc:
             self.has_query_bgc = True
-            self.query_bgc_name = ".".join(options.query_bgc.split(os.sep)[-1].split(".")[:-1])
+            base_name = options.query_bgc.split(os.sep)[-1].split(".")[:-1]
+            self.query_bgc_name = ".".join(base_name)
             if not os.path.isfile(options.query_bgc):
                 logging.error("Query BGC not found")
                 sys.exit(1)
@@ -94,10 +97,11 @@ class DirParam():
         - options: options object from CMD_parser"""
 
         if options.outputdir == "":
-            # TODO: convert to log error
-            logging.error("please provide a name for an output folder using parameter -o or --outputdir")
+            log_line = ("please provide a name for an output folder using "
+            "parameter -o or --outputdir")
+            logging.error(log_line)
             sys.exit(1)
-        # TODO: check if writable
+
         self.output = options.outputdir
 
     def set_svg_dir(self):
@@ -106,7 +110,6 @@ class DirParam():
         Inputs:
         - options: options object from CMD_parser"""
 
-        # TODO: check if writable
         self.svg = os.path.join(self.output, "SVG")
 
     def set_run_dependent_dir(self, run_name):
@@ -117,11 +120,15 @@ class DirParam():
         Inputs:
         - options: options object from CMD_parser"""
 
-        # TODO: check if writable
         network = os.path.join(self.output, "network_files")
         # create output directory for network files *for this run*
         self.network = os.path.join(network, run_name)
-        self.network_html = os.path.join(self.output, "html_content", "networks", run_name)
+        self.network_html = os.path.join(
+            self.output,
+            "html_content",
+            "networks",
+            run_name
+        )
 
     def set_pfam_dir(self, options):
         """Checks if all necessary Pfam files exist in Pfam folder
@@ -129,25 +136,32 @@ class DirParam():
         Inputs:
         - options: options object from CMD_parser"""
 
-        h3f_exists = os.path.isfile(os.path.join(options.pfam_dir, "Pfam-A.hmm.h3f"))
-        h3i_exists = os.path.isfile(os.path.join(options.pfam_dir, "Pfam-A.hmm.h3i"))
-        h3m_exists = os.path.isfile(os.path.join(options.pfam_dir, "Pfam-A.hmm.h3m"))
-        h3p_exists = os.path.isfile(os.path.join(options.pfam_dir, "Pfam-A.hmm.h3p"))
+        path_base = os.path.join(options.pfam_dir, "Pfam-A.hmm")
+        h3f_exists = os.path.isfile(path_base + ".h3f")
+        h3i_exists = os.path.isfile(path_base + ".h3i")
+        h3m_exists = os.path.isfile(path_base + ".h3m")
+        h3p_exists = os.path.isfile(path_base + ".h3p")
         if not (h3f_exists and h3i_exists and h3m_exists and h3p_exists):
-            logging.error("One or more of the necessary Pfam files (.h3f, .h3i, .h3m, .h3p) \
-                were not found in the given pfam directory. Directory given: ")
+            log_line = ("One or more of the necessary Pfam files (.h3f, "
+            ".h3i, .h3m, .h3p) were not found in the given pfam directory. "
+            "Directory given: ")
+            logging.error(log_line)
             logging.error("%s", options.pfam_dir)
             if os.path.isfile(os.path.join(options.pfam_dir, "Pfam-A.hmm")):
                 logging.error("Please use hmmpress with Pfam-A.hmm")
             else:
-                logging.error("Please download the latest Pfam-A.hmm file from http://pfam.xfam.org/")
-                logging.error("Then use hmmpress on it, and use the --pfam_dir parameter \
-                               to point to the location of the files")
+                log_line = ("Please download the latest Pfam-A.hmm file from "
+                "http://pfam.xfam.org/")
+                logging.error(log_line)
+
+                log_line = ("Then use hmmpress on it, and use the --pfam_dir "
+                "parameter to point to the location of the files")
+                logging.error(log_line)
             sys.exit(1)
         else:
             self.pfam = options.pfam_dir
 
-    def set_cache_dir(self, options):
+    def set_cache_dir(self):
         """Sets cache folder associated with this run
         Creates new folders if necessary
 
@@ -162,7 +176,7 @@ class DirParam():
         self.domains = os.path.join(self.cache, "domains")
 
 
-    def set_log_dir(self, options):
+    def set_log_dir(self):
         """Sets log directory associated with this run
         Creates a new directory if necessary
 
@@ -172,7 +186,6 @@ class DirParam():
 
     def prepare_output_dir(self):
         """Prepares the output directory by creating new folder"""
-        # TODO: simplify
         utility.create_directory(self.output, "Output", False)
 
     def prepare_svg_dir(self):
@@ -181,13 +194,16 @@ class DirParam():
 
     def prepare_run_dependent_dir(self):
         """Prepares the network directory by creating new folder"""
-        utility.create_directory(os.path.join(self.output, "network_files"), "Networks", False)
+        utility.create_directory(
+            os.path.join(self.output, "network_files"),
+            "Networks",
+            False
+        )
         utility.create_directory(self.network, "Network Files", False)
 
     def prepare_cache_dir(self):
         """Prepares the cache directory by creating new folders"""
         # create output directory within output directory
-        # TODO: simplify
         utility.create_directory(self.cache, "Cache", False)
         utility.create_directory(self.bgc_fasta, "BGC fastas", False)
         utility.create_directory(self.domtable, "Domtable", False)
@@ -197,7 +213,5 @@ class DirParam():
 
     def prepare_log_dir(self):
         """Prepares the output directory by creating new folders"""
-        # TODO: remove?
         utility.create_directory(self.log, "Logs", False)
-        # TODO: move elsewhere
         utility.write_parameters(self.log, sys.argv)

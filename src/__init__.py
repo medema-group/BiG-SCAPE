@@ -1,4 +1,3 @@
-from . import bgctools
 from . import big_scape
 from . import gbk
 from . import hmm

@@ -6,7 +6,8 @@ Author: Arjan Draisma
 from collections import defaultdict
 
 class DistParam:
-    """Class which keeps track of run options relating to distance calculation"""
+    """Class which keeps track of run options relating to distance calculation
+    """
     bgc_class_weight: dict
     bgc_classes: dict
     bgc_class_names: tuple
@@ -44,5 +45,7 @@ class DistParam:
         self.bgc_classes = defaultdict(list)
 
         # mix class will always be the last element of the tuple
-        self.bgc_class_names = tuple(sorted(list(self.bgc_class_weight)) + ["mix"])
+        self.bgc_class_names = tuple(
+            sorted(list(self.bgc_class_weight)) + ["mix"]
+        )
         assert self.bgc_class_names[-1] == 'mix'

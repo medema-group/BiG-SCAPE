@@ -11,8 +11,8 @@ Handles manipulation and storing of 'bgc' table
 
 from os import path
 import os
-from Bio import SeqIO, SeqFeature
 from typing import List
+from Bio import SeqIO, SeqFeature
 from .database import Database
 
 

@@ -8,7 +8,9 @@ import os
 import src.utility
 
 class NetworkParam():
-    """Class which keeps track of run options relating to generation of networks"""
+    """Class which keeps track of run options relating to generation of
+    networks
+    """
 
     # anchor domains for networking
     anchor_domains: set

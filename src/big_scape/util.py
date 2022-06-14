@@ -7,6 +7,7 @@ from src.js import add_to_bigscape_results_js
 from src.utility import create_directory
 
 def fetch_genome_list(run, input_clusters_idx, cluster_names, mibig_set, bgc_info, gen_bank_dict):
+    """Retrieves the genome list from a given set of BGCs"""
     genomes = []
     classes = []
     cluster_names_to_genomes = {}
@@ -52,6 +53,7 @@ def fetch_genome_list(run, input_clusters_idx, cluster_names, mibig_set, bgc_inf
                                     } for idx in input_clusters_idx]
 
 def update_family_data(rundata_networks_per_run, input_clusters_idx, cluster_names, mibig_set):
+    """Updates family information on the generated network"""
     for network_key in rundata_networks_per_run:
         for network in rundata_networks_per_run[network_key]:
             for family in network["families"]:
@@ -69,6 +71,9 @@ def update_family_data(rundata_networks_per_run, input_clusters_idx, cluster_nam
 
 
 def generate_results_per_cutoff_value(run, rundata_networks_per_run, html_subs_per_run):
+    """Generates a results javascript file per cutoff for use in the results
+    view webpage
+    """
     for cutoff in run.cluster.cutoff_list:
         # update overview.html
         cutoff_html_folder = "{}_c{:.2f}".format(run.directories.network_html, cutoff)
@@ -87,6 +92,7 @@ def generate_results_per_cutoff_value(run, rundata_networks_per_run, html_subs_p
                                    results_path)
 
 def copy_template_per_cutoff(run, root_path):
+    """Copies the html template per given cutoff for the results folder"""
     template_path = os.path.join(root_path, "html_template", "overview_html")
     for cutoff in run.cluster.cutoff_list:
         network_html_folder_cutoff = "{}_c{:.2f}".format(run.directories.network_html, cutoff)
@@ -94,6 +100,9 @@ def copy_template_per_cutoff(run, root_path):
         shutil.copy(template_path, os.path.join(network_html_folder_cutoff, "overview.html"))
 
 def prepare_cutoff_rundata_networks(run):
+    """Prepares a data structure for each cutoff in the networks per run
+    variable
+    """
     rundata_networks_per_run = {}
     for cutoff in run.cluster.cutoff_list:
         network_html_folder_cutoff = "{}_c{:.2f}".format(run.directories.network_html, cutoff)
@@ -101,6 +110,9 @@ def prepare_cutoff_rundata_networks(run):
     return rundata_networks_per_run
 
 def prepare_html_subs_per_run(run):
+    """Prepares a data structure for each cutoff in the html subs per run
+    variable
+    """
     html_subs_per_run = {}
     for cutoff in run.cluster.cutoff_list:
         network_html_folder_cutoff = "{}_c{:.2f}".format(run.directories.network_html, cutoff)

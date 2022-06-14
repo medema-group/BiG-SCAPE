@@ -1,3 +1,6 @@
+"""Module containing code relating to SVG images
+
+Authors: Jorge Navarro, Arjan Draisma"""
 import logging
 import os
 

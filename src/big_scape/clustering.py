@@ -1,3 +1,8 @@
+"""Module containing code for BGC clustering.
+
+Authors: Jorge Navarro
+"""
+
 import logging
 import os
 import sys
