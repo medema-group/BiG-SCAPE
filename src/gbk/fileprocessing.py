@@ -451,10 +451,6 @@ def get_gbk_files(gbk_path: str, run: Run, include_all=False):
             logging.info(" Skipping file %s (string '_ORF' is used internally)", fname)
             continue
 
-        if " " in file_path:
-            logging.error("Error: Input GenBank files should not have spaces in their path as hmmscan cannot process them properly ('too many arguments').")
-            sys.exit(1)
-
         file_counter += 1
         gbk_file_process_results = process_gbk_file(file_path, run, files_no_proteins, files_no_biosynthetic_genes)
         adding_sequence, file_bgc_info, file_gen_bank_dict = gbk_file_process_results
