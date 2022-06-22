@@ -511,6 +511,11 @@ class BGC:
                 if sec_met_prop is not None and "biosynthetic" in sec_met_prop:
                     is_biosynthetic = 1
                     break
+            gene_kind_props = get_props("gene_kind")
+            for gene_kind_prop in gene_kind_props:
+                if gene_kind_prop is not None and "biosynthetic" in gene_kind_prop:
+                    is_biosynthetic = 1
+                    break
             properties = {
                 "orf_id": orf_id,
                 "nt_start": loc.start,
