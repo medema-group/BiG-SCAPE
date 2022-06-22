@@ -180,5 +180,9 @@ def generate_mibig_set_indices(run, bgc_collection: BgcCollection, mibig_set):
             name_to_idx[cluster_name] = cluster_idx
 
         for bgc in mibig_set:
+            # some bgcs may be filtered out for whatever reason
+            # e.g. if they did not have any domains detected in hmmscan
+            if bgc not in name_to_idx:
+                continue
             mibig_set_indices.add(name_to_idx[bgc])
     return mibig_set_indices

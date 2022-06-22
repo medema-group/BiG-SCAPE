@@ -23,7 +23,7 @@ class BGC:
     def process_product(products):
         """Transforms products values into a format big-scape expects"""
         result = []
-        for product in products:
+        for product in set(products):
             for split_product in product.replace(" ", "").split("-"):
                 if split_product == "other":
                     continue
@@ -113,6 +113,7 @@ class BGC:
                 "structured_comment", {}).get(
                 "antiSMASH-Data", {})
             antismash_version = antismash_dict.get("Version", "")
+
             if antismash_version.split(".")[0] in ["5", "6"]:
                 for feature in gbk.features:
                     if feature.type == "protocluster":
@@ -132,7 +133,37 @@ class BGC:
                     # not recognized, skip for now
                     pass
 
-                elif gbk_type == "mibig":
+                if include_all:
+                    cds_features = []
+                    on_edge = False
+                    chem_subclasses = []
+                    for feature in gbk.features:
+                        qual = feature.qualifiers
+                        if "contig_edge" in qual:
+                            on_edge = qual["contig_edge"][0] == "True"
+
+                        if "product" in qual:
+                            chem_subclasses.extend(qual["product"])
+
+                        if feature.type == "CDS":
+                            cds_features.append(feature)
+
+                    results.append(BGC({
+                        "name": name,
+                        "type": gbk_type,
+                        "on_contig_edge": on_edge,
+                        "length_nt": len(gbk),
+                        "orig_folder": path.dirname(orig_gbk_path),
+                        "orig_filename": path.basename(orig_gbk_path),
+                        "chem_subclasses": chem_subclasses,
+                        "bigscape_product": chem_subclasses,
+                        "bigscape_organism": gbk.annotations.get("organism"),
+                        "cds": [BGC.CDS.from_feature(f, i+1)
+                                for i, f in enumerate(cds_features)]
+                    }))
+                    continue
+
+                if gbk_type == "mibig":
                     for feature in gbk.features:
                         qual = feature.qualifiers
                         if feature.type == "subregion" and \
