@@ -1,3 +1,9 @@
+"""Module containing helper functions for loading HMM data into the database
+and retrieving data about HMMs from the database
+
+Author: Arjan Draisma.
+"""
+
 import glob
 import logging
 import os

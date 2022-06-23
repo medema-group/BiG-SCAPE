@@ -1,5 +1,8 @@
-"""Module which contains helper functions for storing/retrieving data related to protein domain
-alignments (high scoring protein domains) generated using hmmscan
+"""Module which contains helper functions for storing/retrieving data related
+to protein domain alignments (high scoring protein domains) generated using
+hmmscan
+
+Author: Arjan Draisma
 """
 
 from src.data.database import Database

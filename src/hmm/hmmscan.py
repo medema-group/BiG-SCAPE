@@ -1,3 +1,8 @@
+"""Module containing code to launch and process results from hmmScan
+
+Author: Arjan Draisma
+"""
+
 import logging
 import math
 import os

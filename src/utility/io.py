@@ -1,8 +1,22 @@
+"""Module containing various input/output utilities
+
+Authors: Jorge Navarro, Arjan Draisma
+"""
+
+
 import os
 import sys
 import logging
 
 def create_directory(path, kind, clean):
+    """Create a directory at a given path
+    
+    parameters:
+        path: path to create
+        kind: description of the kind of folder that is being created
+        clean: whether or not to remove the contents of the folder if it
+        already exists
+    """
     # TODO consider makedirs(path,exists_ok=True)
     try:
         os.makedirs(path)

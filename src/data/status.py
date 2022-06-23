@@ -1,3 +1,10 @@
+"""Module containing helper functions to store/retrieve BGC status data in the 
+database
+
+Author: Arjan Draisma
+"""
+
+
 from src.data.database import Database
 
 

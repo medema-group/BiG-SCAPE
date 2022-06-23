@@ -1,9 +1,15 @@
+"""Module containing functionality to handle PFAM information gathering
+
+Authors: Jorge Navarro, Arjan Draisma
+"""
+
 import os
 import json
 
 from src.pfam.misc import generate_pfam_colors_matrix
 
 def parse_pfam_a(run):
+    """Parses a Pfam .HMM file and returns info about this PFAM model"""
     pfam_info = {}
     with open(os.path.join(run.directories.pfam, "Pfam-A.hmm"), "r") as pfam:
         put_in_dict = False
@@ -23,6 +29,7 @@ def parse_pfam_a(run):
     return pfam_info
 
 def create_pfam_js(run, pfam_info):
+    """Creates a JS file to contain result PFAM information"""
     pfams_js_file = os.path.join(run.directories.output, "html_content", "js", "pfams.js")
     if not os.path.isfile(pfams_js_file):
         with open(pfams_js_file, "w") as pfams_js:

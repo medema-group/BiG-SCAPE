@@ -1,11 +1,16 @@
-"""Module containing helper functions to store and retrieve data used in distance calculation"""
+"""Module containing code to re-generate the data required in distance
+calculation from the data stored in the database
+
+This module should be removed once full database usage is realized
+
+Authors: Arjan Draisma
+"""
 
 from array import array
 from src.data.cds import gen_header
 from src.big_scape.bgc_collection import BgcCollection
 from src.data import get_cluster_name_list
 from src.data import Database
-
 
 
 def generate_bgc_collection(run, database: Database, bgc_data_dict, gbk_file_dict):

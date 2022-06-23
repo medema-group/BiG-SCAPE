@@ -1,3 +1,6 @@
+"""Module containing miscellaneous functionality to write to the output JS file
+"""
+
 import os
 import json
 

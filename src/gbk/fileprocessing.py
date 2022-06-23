@@ -1,3 +1,11 @@
+"""Module containing the original BiG-SCAPE GBK reading functionality.
+
+This module ought to be removed once full database integration is realized
+
+Authors: Jorge Navarro, Arjan Draisma
+"""
+
+
 import logging
 import os
 import sys
@@ -11,6 +19,10 @@ from src.legacy.bgctools import sort_bgc
 from src.legacy.bgc_data import BgcData
 
 def import_gbks(run):
+    """Starts the GBK importing process and returns a dictionary of bgc info
+    dictionaries, a dictionary of original file paths for each BGC, and the set
+    of GBK file names that were part of the MiBIG set, if applicable
+    """
     bgc_info = {}
     gen_bank_dict = {}
     mibig_set = set()
@@ -40,10 +52,12 @@ def import_gbks(run):
 
 
 def import_genbank_gbk(run):
+    """Starts the import of input GBK files"""
     return get_gbk_files(run.directories.input, run)
 
 
 def import_query_gbk(run):
+    """Starts the import of the query GBK file(s)"""
     bgc_info, gen_bank_dict = get_gbk_files(run.options.query_bgc, run, True)
 
     if run.directories.query_bgc_name not in gen_bank_dict:
@@ -79,7 +93,15 @@ def process_gbk_file(
         files_no_biosynthetic_genes: list,
 
 ):
-    """ Given a file path to a GenBank file, reads information about the BGC"""
+    """Given a file path to a GenBank file, reads information about the BGC
+
+    returns:
+        adding_sequence: whether any sequences were added from this file
+        bgc_info: a dictionary containing a dictionary of information about a
+        BGC, per BGC
+        gen_bank_dict: a dictionary where keys are bgc names and values are the
+        source GBK file path
+    """
 
     biosynthetic_genes = set()
     product_list_per_record = []
