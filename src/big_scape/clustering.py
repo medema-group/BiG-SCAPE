@@ -27,10 +27,10 @@ from src.data import Database
 from src.data.cds import get_cds_with_alignment
 
 
-def cluster_json_batch(db: Database, bgcs, path_base, class_name, matrix, pos_alignments,
-                       bgc_collection: BgcCollection, mibig_set, pfd_folder, bgc_fasta_folder,
-                       aligned_domain_seqs, cutoffs=None, damping=0.9, cluster_clans=False,
-                       clan_cutoff=(0.5, 0.8), html_folder=None, verbose=False):
+def cluster_json_batch(run,db: Database, bgcs, path_base, class_name, matrix,
+    pos_alignments, bgc_collection: BgcCollection, mibig_set, 
+    aligned_domain_seqs, damping=0.9
+):
     """BGC Family calling
     Uses csr sparse matrices to call Gene Cluster Families (GCFs) using Affinity
     Propagation.
@@ -50,16 +50,24 @@ def cluster_json_batch(db: Database, bgcs, path_base, class_name, matrix, pos_al
         pos_alignments: dictionary of alignment positions from reduce_network
         bgc_collection: collection of BGCs
         mibig_set: set of mibig files used in this run
+        aligned_domain_seqs: list of aligned domain sequences from hmm.read_aligned_files
+        damping: damping value passed into the affinity propagation. Default: 0.9
+
+    This function uses these parameters from run and run.options:
         pfd_folder: pfam pfd folder path
         bgc_fasta_folder: folder for bgc fasta files
-        aligned_domain_seqs: list of aligned domain sequences from hmm.read_aligned_files
         cutoffs: list of node cutoff values to generate networks for. Default: [1.0]
-        damping: damping value passed into the affinity propagation. Default: 0.9
         cluster_clans: whether to cluster clans. Default: False
         clan_cutoff: a tuple of cutoff values for clan clustering. Default: (0.5, 0.8)
         html_folder: folder for HTML files relating to this clustering step. Default: None
-        verbose: whether to report application processes verbosely. Default: False
     """
+
+    pfd_folder = run.directories.pfd
+    bgc_fasta_folder = run.directories.bgc_fasta
+    cutoffs = run.cluster.cutoff_list
+    cluster_clans = run.options.clans
+    clan_cutoff = run.options.clan_cutoff
+    html_folder = run.directories.network_html
 
     # set default cutoff value
     if cutoffs == None:

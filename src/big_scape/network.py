@@ -450,12 +450,18 @@ def generate_network(run, database, bgc_collection: BgcCollection, aligned_domai
         logging.info("  Calling Gene Cluster Families")
         reduced_network, pos_alignments = reduce_network(network_matrix)
 
-        family_data = cluster_json_batch(database, bgc_classes[bgc_class], path_base, bgc_class,
-            reduced_network, pos_alignments, bgc_collection,
-            mibig_set, run.directories.pfd, run.directories.bgc_fasta,
-            aligned_domain_seqs,
-            cutoffs=run.cluster.cutoff_list, cluster_clans=run.options.clans, clan_cutoff=run.options.clan_cutoff,
-            html_folder=run.directories.network_html)
+        family_data = cluster_json_batch(
+            run,
+            database,
+            bgc_classes[bgc_class],
+            path_base,
+            bgc_class,
+            reduced_network,
+            pos_alignments,
+            bgc_collection,
+            mibig_set, 
+            aligned_domain_seqs
+        )
         for network_html_folder_cutoff in family_data:
             rundata_networks_per_run[network_html_folder_cutoff].append(family_data[network_html_folder_cutoff])
             if mix:
