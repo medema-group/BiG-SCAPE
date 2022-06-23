@@ -289,8 +289,6 @@ if __name__ == "__main__":
     # generate overview data
     RUN.end()
     big_scape.generate_results_per_cutoff_value(RUN, RUNDATA_NETWORKS_PER_RUN, HTML_SUBS_PER_RUN)
-    # dump bgc info
-    pickle.dump(BGC_INFO_DICT, open(os.path.join(RUN.directories.cache, 'bgc_info.dict'), 'wb'))
 
     # done
     RUN.report_runtime()
