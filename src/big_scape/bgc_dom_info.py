@@ -66,8 +66,8 @@ class BgcDomainInfo():
         is_glocal = run.options.mode == "glocal"
         is_auto = run.options.mode == "auto"
 
-        is_contig_edge_a = bgc_a.bgc_info.contig_edge
-        is_contig_edge_b = bgc_b.bgc_info.contig_edge
+        is_contig_edge_a = bgc_a.bgc_data.contig_edge
+        is_contig_edge_b = bgc_b.bgc_data.contig_edge
         is_contig_edge = is_contig_edge_a or is_contig_edge_b
 
         # don't do anything if we're not in glocal mode or we're not a contig
