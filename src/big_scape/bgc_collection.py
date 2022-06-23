@@ -42,16 +42,16 @@ class BgcCollection:
         for cluster_name in cluster_name_list:
             self.bgc_collection_dict[cluster_name] = BgcInfo(cluster_name)
 
-    def add_bgc_info(self, bgc_info_dict):
+    def add_bgc_info(self, bgc_data_dict):
         """Add BGC information to each cluster in this collection
 
         Inputs:
             bgc_info_dict: bgc info dictionary from gbk.import_gbks
         """
-        for cluster_name, bgc_collection_info in self.bgc_collection_dict.items():
-            if cluster_name in bgc_info_dict:
-                bgc_info = bgc_info_dict[cluster_name]
-                bgc_collection_info.bgc_info = bgc_info
+        for cluster_name, bgc_info in self.bgc_collection_dict.items():
+            if cluster_name in bgc_data_dict:
+                bgc_data = bgc_data_dict[cluster_name]
+                bgc_info.bgc_data = bgc_data
             else:
                 logging.warning(
                     "BGC info for %s was not found",

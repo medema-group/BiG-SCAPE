@@ -258,8 +258,8 @@ if __name__ == "__main__":
     # TODO: rework data storage from this point onwards. Now we're converting
     # back to large amounts of data in memory because refactoring the storage
     # after this point is a massive task
-    BGC_INFO_DICT, GBK_FILE_DICT, MIBIG_SET = gbk.import_gbks(RUN)
-    BGC_COLLECTION = data.generate_bgc_collection(RUN, DB, BGC_INFO_DICT, GBK_FILE_DICT)
+    BGC_DATA_DICT, GBK_FILE_DICT, MIBIG_SET = gbk.import_gbks(RUN)
+    BGC_COLLECTION = data.generate_bgc_collection(RUN, DB, BGC_DATA_DICT, GBK_FILE_DICT)
     ALIGNED_DOMAIN_SEQS = data.generate_aligned_domain_seqs(RUN, DB)
     MIBIG_SET_INDICES = data.generate_mibig_set_indices(RUN, BGC_COLLECTION, MIBIG_SET)
 
@@ -277,10 +277,10 @@ if __name__ == "__main__":
 
     # fetch genome list for overview.js
     INPUT_CLUSTERS_IDX = []
-    BGC_INFO_DICT = data.gen_bgc_info_for_fetch_genome(DB)
+    BGC_DATA_DICT = data.gen_bgc_info_for_fetch_genome(DB)
     GBK_FILE_DICT = data.get_cluster_gbk_dict(RUN, DB)
     big_scape.fetch_genome_list(RUN, INPUT_CLUSTERS_IDX, BGC_COLLECTION.bgc_name_tuple, MIBIG_SET,
-                                BGC_INFO_DICT, GBK_FILE_DICT)
+                                BGC_DATA_DICT, GBK_FILE_DICT)
 
     # update family data (convert global bgc indexes into input-only indexes)
     big_scape.update_family_data(RUNDATA_NETWORKS_PER_RUN, INPUT_CLUSTERS_IDX,

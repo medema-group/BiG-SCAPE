@@ -94,9 +94,9 @@ def cluster_json_batch(db: Database, bgcs, path_base, class_name, matrix, pos_al
         bgcName = bgc_collection.bgc_name_tuple[bgc]
         bgcJsonDict[bgcName] = {}
         bgcJsonDict[bgcName]["id"] = bgcName
-        bgcJsonDict[bgcName]["desc"] = bgc_collection.bgc_collection_dict[bgcName].bgc_info.description
+        bgcJsonDict[bgcName]["desc"] = bgc_collection.bgc_collection_dict[bgcName].bgc_data.description
         bgcJsonDict[bgcName]["start"] = 1
-        bgcJsonDict[bgcName]["end"] = bgc_collection.bgc_collection_dict[bgcName].bgc_info.bgc_size
+        bgcJsonDict[bgcName]["end"] = bgc_collection.bgc_collection_dict[bgcName].bgc_data.bgc_size
         bgcJsonDict[bgcName]["mibig"] = bgcName in mibig_set
 
         pfdFile = os.path.join(pfd_folder, bgcName + ".pfd")

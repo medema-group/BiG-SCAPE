@@ -84,7 +84,7 @@ def create_working_set(run, bgc_collection: BgcCollection, mix) -> dict:
 
             if len(run.domain_includelist & bgc_domain_set) == 0:
                 continue
-        product = bgc_collection.bgc_collection_dict[cluster_name].bgc_info.product
+        product = bgc_collection.bgc_collection_dict[cluster_name].bgc_data.product
 
         predicted_class = sort_bgc(product)
 
@@ -199,11 +199,11 @@ def generate_network(run, database, bgc_collection: BgcCollection, aligned_domai
             network_annotation_file.write("BGC\tAccession ID\tDescription\tProduct Prediction\tBiG-SCAPE class\tOrganism\tTaxonomy\n")
             for idx in bgc_classes[bgc_class]:
                 bgc = bgc_collection.bgc_name_tuple[idx]
-                accession_id = product = bgc_collection.bgc_collection_dict[bgc].bgc_info.accession_id
-                description = product = bgc_collection.bgc_collection_dict[bgc].bgc_info.description
-                product = bgc_collection.bgc_collection_dict[bgc].bgc_info.product
-                organism = bgc_collection.bgc_collection_dict[bgc].bgc_info.organism
-                taxonomy = bgc_collection.bgc_collection_dict[bgc].bgc_info.taxonomy
+                accession_id = product = bgc_collection.bgc_collection_dict[bgc].bgc_data.accession_id
+                description = product = bgc_collection.bgc_collection_dict[bgc].bgc_data.description
+                product = bgc_collection.bgc_collection_dict[bgc].bgc_data.product
+                organism = bgc_collection.bgc_collection_dict[bgc].bgc_data.organism
+                taxonomy = bgc_collection.bgc_collection_dict[bgc].bgc_data.taxonomy
                 network_annotation_file.write("\t".join([bgc, accession_id, description, product, sort_bgc(product), organism, taxonomy]) + "\n")
 
             
@@ -391,11 +391,11 @@ def generate_network(run, database, bgc_collection: BgcCollection, aligned_domai
                 network_annotation_file.write("BGC\tAccession ID\tDescription\tProduct Prediction\tBiG-SCAPE class\tOrganism\tTaxonomy\n")
                 for idx in bgc_classes[bgc_class]:
                     bgc = bgc_collection.bgc_name_tuple[idx]
-                    accession_id = product = bgc_collection.bgc_collection_dict[bgc].bgc_info.accession_id
-                    description = product = bgc_collection.bgc_collection_dict[bgc].bgc_info.description
-                    product = bgc_collection.bgc_collection_dict[bgc].bgc_info.product
-                    organism = product = bgc_collection.bgc_collection_dict[bgc].bgc_info.organism
-                    taxonomy = product = bgc_collection.bgc_collection_dict[bgc].bgc_info.taxonomy
+                    accession_id = product = bgc_collection.bgc_collection_dict[bgc].bgc_data.accession_id
+                    description = product = bgc_collection.bgc_collection_dict[bgc].bgc_data.description
+                    product = bgc_collection.bgc_collection_dict[bgc].bgc_data.product
+                    organism = product = bgc_collection.bgc_collection_dict[bgc].bgc_data.organism
+                    taxonomy = product = bgc_collection.bgc_collection_dict[bgc].bgc_data.taxonomy
                     network_annotation_file.write("\t".join([bgc, accession_id, description, product, sort_bgc(product), organism, taxonomy]) + "\n")
         elif run.mibig.use_mibig:
             nx_graph = nx.Graph()

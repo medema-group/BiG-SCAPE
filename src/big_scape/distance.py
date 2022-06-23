@@ -379,8 +379,8 @@ def write_distance_matrix(distance_matrix, cutoffs_filenames, include_singletons
         row = [gene_cluster_a, gene_cluster_b]
 
         # get AntiSMASH annotations
-        cluster_group_a = bgc_collection.bgc_collection_dict[gene_cluster_a].bgc_info.product
-        cluster_group_b = bgc_collection.bgc_collection_dict[gene_cluster_b].bgc_info.product
+        cluster_group_a = bgc_collection.bgc_collection_dict[gene_cluster_a].bgc_data.product
+        cluster_group_b = bgc_collection.bgc_collection_dict[gene_cluster_b].bgc_data.product
 
         # add all the other floats
         row.extend(matrix_entry[2:-6])
