@@ -20,8 +20,7 @@ def gen_dist_matrix_worker(
     run,
     database,
     bgc_collection,
-    aligned_domain_sequences,
-    jaccard_threshold
+    aligned_domain_sequences
 ):
     """Worker method for threads that process distance calculation. Takes bgc
     pairs from an input queue and generates distances between the bgc pairs 
@@ -40,7 +39,6 @@ def gen_dist_matrix_worker(
         bgc_collection: collection of BGCs
         aligned_domain_sequences: list of aligned domain sequences from
                                   hmm.read_aligned_files
-        jaccard_threshold: TODO: remove
     """
     while True:
         input_task_batch = connection.recv()
@@ -58,8 +56,7 @@ def gen_dist_matrix_worker(
                 database,
                 run,
                 bgc_collection,
-                aligned_domain_sequences,
-                jaccard_threshold = jaccard_threshold
+                aligned_domain_sequences
             )
             results.append(result)
         connection.send(results)
@@ -71,8 +68,7 @@ def gen_dist_matrix_async(
     database,
     cluster_pairs,
     bgc_collection: BgcCollection,
-    aligned_domain_sequences,
-    jaccard_threshold
+    aligned_domain_sequences
 ):
     """Distributes the distance calculation part
     cluster_pairs is a list of triads (cluster1_index, cluster2_index, 
@@ -110,8 +106,7 @@ def gen_dist_matrix_async(
             run,
             database,
             bgc_collection,
-            aligned_domain_sequences,
-            jaccard_threshold
+            aligned_domain_sequences
         )
         new_process = Process(
             target=gen_dist_matrix_worker,
@@ -233,8 +228,7 @@ def generate_dist_matrix(
     database,
     run,
     bgc_collection: BgcCollection,
-    aligned_domain_sequences,
-    jaccard_threshold = 0.0
+    aligned_domain_sequences
 ):
     """Unpack data to actually launch cluster_distance for one pair of BGCs
 

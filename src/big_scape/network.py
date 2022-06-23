@@ -330,8 +330,7 @@ def generate_network(run, database, bgc_collection: BgcCollection, aligned_domai
             database,
             pairs,
             bgc_collection,
-            aligned_domain_seqs,
-            jaccard_threshold
+            aligned_domain_seqs
         ))
 
         pairs.clear()
@@ -369,9 +368,13 @@ def generate_network(run, database, bgc_collection: BgcCollection, aligned_domai
             else:
                 pairs = [(x, y, bgc_class_name_2_index[bgc_class]) for (x, y) in pairs]
 
-            network_matrix_new_set = gen_dist_matrix_async(run, database, pairs,
-                                                           bgc_collection, aligned_domain_seqs,
-                                                           jaccard_threshold)
+            network_matrix_new_set = gen_dist_matrix_async(
+                run,
+                database,
+                pairs,
+                bgc_collection,
+                aligned_domain_seqs
+            )
             pairs.clear()
 
             # Update the network matrix (QBGC-vs-all) with the distances of
