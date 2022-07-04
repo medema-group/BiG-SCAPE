@@ -1,5 +1,13 @@
-"""Module that contains helper functions for loading and saving data from and to the cds table in
-the database
+"""Module that contains helper functions for loading and saving data from and
+to the cds table in a database
+
+Authors: Satria A. Kautsar, Arjan Draisma.
+
+Copied from
+https://github.com/medema-group/bigslice
+file: bigslice/modules/data/bgc.py
+
+Modified by Arjan Draisma to work with BiG-SCAPE
 """
 
 from src.data.database import Database

@@ -1,3 +1,9 @@
+"""Module containing code to launch and process results from hmmAlign
+
+Author: Arjan Draisma
+"""
+
+
 import logging
 import math
 from multiprocessing.connection import Connection, wait

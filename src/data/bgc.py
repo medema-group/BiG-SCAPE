@@ -1,12 +1,13 @@
-#!/usr/bin/env python
-# vim: set fileencoding=utf-8 :
-#
-# Copyright (C) 2019 Satria A. Kautsar
-# Wageningen University & Research
-# Bioinformatics Group
-"""bigslice.modules.data.bgc
+"""Handles manipulation and storing of 'bgc' table
 
-Handles manipulation and storing of 'bgc' table
+Authors: Satria A. Kautsar, Arjan Draisma.
+
+Copied from
+https://github.com/medema-group/bigslice
+file: bigslice/modules/data/bgc.py
+
+Modified by Arjan Draisma to work with BiG-SCAPE
+(originally, part of the BiG-SLICE workflow was integrated into BiG-SCAPE)
 """
 
 from os import path

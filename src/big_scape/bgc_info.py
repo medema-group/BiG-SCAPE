@@ -11,7 +11,7 @@ from src.legacy.bgc_data import BgcData
 class BgcInfo:
     """Class to contain info on individual BGCs"""
     name: str
-    bgc_info: BgcData
+    bgc_data: BgcData
     src_gbk_file: str
     
     num_genes: int

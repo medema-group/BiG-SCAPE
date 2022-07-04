@@ -1,3 +1,9 @@
+"""Module containing miscellaneous utility functions
+
+Authors: Jorge Navarro, Arjan Draisma
+"""
+
+
 import logging
 
 

@@ -1,4 +1,7 @@
-"""Module containing general helper functions to load input data into the database
+"""Module containing general helper functions to load input data into the
+database
+
+Authors: Jorge Navarro, Arjan Draisma
 """
 
 from itertools import combinations
@@ -391,6 +394,7 @@ def get_mibig_name_list(database):
     return mibig_bgc_ids
 
 def get_bgc_ids(db):
+    """Returns the list of BGC ids present in the database"""
     return [row["bgcid"] for row in db.select(
         "bgc",
         "",
@@ -400,6 +404,7 @@ def get_bgc_ids(db):
     )]
 
 def get_bgc_names(db):
+    """Returns the list of BGC names present in the database"""
     return [row["bgcname"] for row in db.select(
         "bgc",
         "",
@@ -409,6 +414,7 @@ def get_bgc_names(db):
     )]
 
 def get_hmm_ids(db):
+    """Returns the list of HMM ids present in the database"""
     return [row["hmmid"] for row in db.select(
         "hmm",
         "",
@@ -418,6 +424,11 @@ def get_hmm_ids(db):
     )]
 
 def get_bgc_id_name_dict(db):
+    """Returns a dictionary where each key corresponds to a database BGC id,
+    and each value corresponds to the BGC name associated with that BGC in the
+    database. Note: this does not translate to other id-name mappings, e.g. in
+    the BgcCollection object
+    """
     bgc_id_name_dict = dict()
     for row in db.select(
         "bgc",
@@ -431,6 +442,10 @@ def get_bgc_id_name_dict(db):
     return bgc_id_name_dict
 
 def get_bgc_name_by_id(db, id):
+    """Gets a BGC name by a given ID
+    Note: these are database IDS, and do not necessarily correspond to IDS
+    in other parts of the code, e.g. BgcCollection
+    """
     rows = db.select(
         "bgc",
         f"where id = {id}",
@@ -444,6 +459,9 @@ def get_bgc_name_by_id(db, id):
     return rows[0]["name"]
 
 def get_features(db):
+    """Returns a list of tuples with the following structure:
+    (bgc_name, hmm_id, feature_value)
+    """
     return db.select(
         "bgc,hmm,bgc_features",
         " WHERE bgc_features.bgc_id=bgc.id" +

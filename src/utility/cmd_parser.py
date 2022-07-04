@@ -1,3 +1,8 @@
+"""Module which contains the cmd parser used in parsing and storing command
+line arguments
+
+Authors: Jorge Navarro, Arjan Draisma
+"""
 import os
 
 from argparse import ArgumentParser

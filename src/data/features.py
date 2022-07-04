@@ -1,17 +1,17 @@
-#!/usr/bin/env python
-# vim: set fileencoding=utf-8 :
-#
-# Copyright (C) 2019 Satria A. Kautsar
-# Wageningen University & Research
-# Bioinformatics Group
-"""bigslice.modules.data.features
-
-Handle manipulation and storage of features
+"""Module to handle manipulation and storage of features
 for now, also do feature extraction
 
 todo: separate features extraction method
 todo: use parallel processing
 todo: use Dask
+
+Authors: Satria A. Kautsar, Arjan Draisma.
+
+Copied from
+https://github.com/medema-group/bigslice
+file: bigslice/modules/data/features.py
+
+Modified by Arjan Draisma to work with BiG-SCAPE
 """
 
 from os import path

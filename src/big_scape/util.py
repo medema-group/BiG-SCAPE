@@ -1,3 +1,9 @@
+"""Module containing utilities relating to common BiG-SCAPE functionality
+
+Specifically, this contains a number of functions relevant in result generation
+
+Authors: Jorge Navarro, Arjan Draisma
+"""
 import os
 import json
 import shutil

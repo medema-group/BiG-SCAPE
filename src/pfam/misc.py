@@ -1,11 +1,16 @@
+"""Module which contains code to generate colors for the results display
+
+Authors: Jorge Navarro, Arjan Draisma
+"""
+
 import logging
 import os
 
 def generate_pfam_colors_matrix(pfam_domain_colors):
-    '''
+    """
     :param pfam_domain_colors: tab-delimited file
     :return: dictionary with pfam ID as key and rgb colors as value
-    '''
+    """
     pfam_colors = {}
 
     if os.path.isfile(pfam_domain_colors):

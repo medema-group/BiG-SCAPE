@@ -1,12 +1,12 @@
-#!/usr/bin/env python
-# vim: set fileencoding=utf-8 :
-#
-# Copyright (C) 2019 Satria A. Kautsar
-# Wageningen University & Research
-# Bioinformatics Group
-"""bigslice.modules.data.database
+"""Common classes and functions to work with an SQLite3 database
 
-Common classes and functions to work with the SQLite3 database
+Authors: Satria A. Kautsar, Arjan Draisma.
+
+Copied from
+https://github.com/medema-group/bigslice
+file: bigslice/modules/data/database.py
+
+Modified by Arjan Draisma to work with BiG-SCAPE
 """
 
 from os import path
@@ -172,10 +172,13 @@ class Database:
             # raise(Exception("not an in-memory database"))
 
     def select(self, table: str, clause: str,
-               parameters: tuple = None, props: list = [],
+               parameters: tuple = None, props: list = None,
                distinct: bool = False,
                as_tuples: bool = False):
         """execute a SELECT ... FROM ... WHERE"""
+
+        if props is None:
+            props = []
 
         if len(props) < 1:
             props_string = "*"

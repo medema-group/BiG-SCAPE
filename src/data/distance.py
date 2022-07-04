@@ -1,4 +1,10 @@
-"""Module containing helper functions to store and retrieve data used in distance calculation"""
+"""Module containing code to re-generate the data required in distance
+calculation from the data stored in the database
+
+This module should be removed once full database usage is realized
+
+Authors: Arjan Draisma
+"""
 
 from array import array
 from src.data.cds import gen_header
@@ -7,8 +13,7 @@ from src.data import get_cluster_name_list
 from src.data import Database
 
 
-
-def generate_bgc_collection(run, database: Database, BGC_INFO_DICT, GBK_FILE_DICT):
+def generate_bgc_collection(run, database: Database, bgc_data_dict, gbk_file_dict):
     """Generates a bgc collection for use in generate_network"""
     bgc_collection = BgcCollection()
 
@@ -123,8 +128,8 @@ def generate_bgc_collection(run, database: Database, BGC_INFO_DICT, GBK_FILE_DIC
         # we will also want a set later on for various uses
         bgc_collection.bgc_collection_dict[cluster_name].ordered_domain_set = set(domain_list)
 
-    bgc_collection.add_bgc_info(BGC_INFO_DICT)
-    bgc_collection.add_source_gbk_files(GBK_FILE_DICT)
+    bgc_collection.add_bgc_info(bgc_data_dict)
+    bgc_collection.add_source_gbk_files(gbk_file_dict)
 
     # fill domain info
     for cluster_name, domain_name_info in bgc_domain_name_info.items():

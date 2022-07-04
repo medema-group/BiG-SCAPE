@@ -1,6 +1,7 @@
-"""Class to support file processing for MIBIG files
+"""Module containing functionality to  to support file processing for MIBIG
+files
 
-Author: Arjan Draisma
+Author: Jorge Navarro, Arjan Draisma
 """
 
 import logging

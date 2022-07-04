@@ -1,7 +1,7 @@
 """Module containing a class to store BGC info when read from the legacy GBK
 reader
 
-Author: Jorge Navarro"""
+Author: Jorge Navarro, Arjan Draisma"""
 
 
 class BgcData:
