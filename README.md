@@ -8,6 +8,6 @@ In principle, BiG-SCAPE can also be used on any other gene clusters, such as pat
 
 Learn more about BiG-SCAPE in the **[wiki](https://github.com/medema-group/BiG-SCAPE/wiki)** and in the combined [BiG-SCAPE/CORASON website](https://bigscape-corason.secondarymetabolites.org/index.html).
 
-![BiG-SCAPE/CORASON workflow](BiG-SCAPE CORASON Workflow.png)
+![BiG-SCAPE/CORASON workflow](BiG-SCAPE_CORASON_Workflow.png)
 
 If you find BiG-SCAPE useful, please [cite us](https://doi.org/10.1038/s41589-019-0400-9).

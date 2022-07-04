@@ -204,6 +204,6 @@ def cmd_parser(root_path):
                         of some accuracy. The higher this number, the more pairs are \
                         included in the filter")
 
-    parser.add_argument("--version", action="version", version="%(prog)s 1.1.3 (2022-02-18)")
+    parser.add_argument("--version", action="version", version="%(prog)s 2.0 beta (2022-07-04)")
 
     return parser.parse_args()
