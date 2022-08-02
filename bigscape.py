@@ -48,7 +48,7 @@ from glob import glob
 from itertools import combinations
 from itertools import product as combinations_product
 from collections import defaultdict
-from multiprocessing import Pool, cpu_count
+from multiprocessing import Pool, cpu_count, get_context
 from argparse import ArgumentParser
 from difflib import SequenceMatcher
 from operator import itemgetter
@@ -503,7 +503,7 @@ def generate_network(cluster_pairs, cores):
     cluster_pairs is a list of triads (cluster1_index, cluster2_index, BGC class)
     """
     
-    pool = Pool(cores, maxtasksperchild=100)
+    pool = get_context("fork").Pool(cores, maxtasksperchild=100)
     
     #Assigns the data to the different workers and pools the results back into
     # the network_matrix variable
@@ -1211,7 +1211,7 @@ def launch_hmmalign(cores, domain_sequence_list):
     Launches instances of hmmalign with multiprocessing.
     Note that the domains parameter contains the .fasta extension
     """
-    pool = Pool(cores, maxtasksperchild=32)
+    pool = get_context("fork").Pool(cores, maxtasksperchild=32)
     pool.map(run_hmmalign, domain_sequence_list)
     pool.close()
     pool.join()
@@ -2518,7 +2518,7 @@ if __name__=="__main__":
         else:
             print(" Predicting domains for {} fasta files".format(str(len(fastaFiles))))
         
-    pool = Pool(cores,maxtasksperchild=1)
+    pool = get_context("fork").Pool(cores,maxtasksperchild=1)
     for fastaFile in task_set:
         pool.apply_async(runHmmScan,args=(fastaFile, pfam_dir, domtable_folder, verbose))
     pool.close()
