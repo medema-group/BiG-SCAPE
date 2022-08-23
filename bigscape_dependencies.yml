@@ -11,4 +11,4 @@ dependencies:
   - numpy
   - scipy
   - networkx
-  - scikit-learn=0.19.12
+  - scikit-learn=0.19.2
