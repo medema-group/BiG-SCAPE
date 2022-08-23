@@ -4,10 +4,11 @@ channels:
   - bioconda
 dependencies:
   - python=3.6
+  - dataclasses
   - hmmer
   - biopython=1.70
   - fasttree
   - numpy
   - scipy
   - networkx
-  - scikit-learn=0.19.1
+  - scikit-learn=0.19.12
