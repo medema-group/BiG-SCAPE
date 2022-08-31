@@ -483,8 +483,8 @@ def sort_bgc(product):
                      'RaS-RiPP', 'fungal-RiPP', 'TfuA-related', 'guanidinotides', 
                      'RiPP-like', 'lanthipeptide-class-i', 'lanthipeptide-class-ii', 
                      'lanthipeptide-class-iii', 'lanthipeptide-class-iv',
-                     'lanthipeptide-class-v', 'ranthipeptide', 'redox-cofactor'
-                     'thioamitides' 'epipeptide', 'cyclic-lactone-autoinducer',
+                     'lanthipeptide-class-v', 'ranthipeptide', 'redox-cofactor',
+                     'thioamitides', 'epipeptide', 'cyclic-lactone-autoinducer',
                      'spliceotide', 'RRE-containing'}
     saccharide_products = {'amglyccycl', 'oligosaccharide', 'cf_saccharide', 
                      'saccharide'}
