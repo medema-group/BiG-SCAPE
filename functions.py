@@ -396,13 +396,14 @@ def sort_bgc(product):
     
     # TODO: according with current (2021-05) antiSMASH rules:
     # prodigiosin and PpyS-KS -> PKS
-    # CDPS -> NRPS
+    # CDPS, mycosporine-like -> NRPS
+    # but they should probably be kept in Others
     pks1_products = {'t1pks', 'T1PKS'}
     pksother_products = {'transatpks', 't2pks', 't3pks', 'otherks', 'hglks', 
                      'transAT-PKS', 'transAT-PKS-like', 'T2PKS', 'T3PKS', 
-                     'PKS-like', 'hglE-KS', 'prodigiosin', 'PpyS-KS'}
-    nrps_products = {'nrps', 'CDPS', 'NRPS', 'NRPS-like', 'thioamide-NRP', 
-                    'NAPAA', 'mycosporine-like'}
+                     'PKS-like', 'hglE-KS', 'prodigiosin'}
+    nrps_products = {'nrps', 'NRPS', 'NRPS-like', 'thioamide-NRP', 
+                    'NAPAA'}
     ripps_products = {'lantipeptide', 'thiopeptide', 'bacteriocin', 'linaridin', 
                      'cyanobactin', 'glycocin', 'LAP', 'lassopeptide', 
                      'sactipeptide', 'bottromycin', 'head_to_tail', 'microcin', 
@@ -422,7 +423,7 @@ def sort_bgc(product):
                        'PUFA', 'furan', 'hserlactone', 'fused', 'cf_fatty_acid', 
                        'siderophore', 'blactam', 'fatty_acid', 'PpyS-KS', 'CDPS', 
                        'betalactone', 'PBDE', 'tropodithietic-acid', 'NAGGN', 
-                       'halogenated', 'pyrrolidine'}
+                       'halogenated', 'pyrrolidine', 'mycosporine-like'}
     
     # PKS_Type I
     if product in pks1_products:
