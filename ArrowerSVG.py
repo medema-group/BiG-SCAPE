@@ -8,15 +8,8 @@
 #                heavily modified by Jorge Navarro 2016              #
 ######################################################################
 
-# Makes sure the script can be used with Python 2 as well as Python 3.
-from __future__ import print_function, division
-from sys import version_info
-if version_info[0]==2:
-    range = xrange
-
 import os
 import sys
-import argparse
 from Bio import SeqIO
 from random import uniform
 from colorsys import hsv_to_rgb
@@ -35,30 +28,6 @@ gene_contour_thickness = 2 # thickness grows outwards
 stripe_thickness = 3
 
 domains_color_file = os.path.join(os.path.dirname(os.path.realpath(__file__)), "domains_color_file.tsv")
-
-
-# read various color data
-def read_color_genes_file():
-    # Try to read already-generated colors for genes
-    color_genes = {}
-    
-    if os.path.isfile(gene_color_file):
-        print("  Found file with gene colors")
-        with open(gene_color_file, "r") as color_genes_handle:
-            for line in color_genes_handle:
-                # handle comments and empty lines
-                if line[0] != "#" and line.strip():
-                    row = line.strip().split("\t")
-                    name = row[0]
-                    rgb = row[1].split(",")
-                    color_genes[name] = [int(rgb[x]) for x in range(3)]
-    else:
-        print("  Gene color file was not found. A new file will be created")
-        with open(gene_color_file, "w") as color_genes_handle:
-            color_genes_handle.write("NoName\t255,255,255\n")
-        color_genes = {"NoName":[255, 255, 255]}
-    
-    return color_genes
 
 
 def read_color_domains_file():
@@ -80,26 +49,6 @@ def read_color_domains_file():
         color_domains_handle = open(domains_color_file, "a+")
         
     return color_domains
-
-
-# Try to read categories:
-def read_pfam_domain_categories():
-    pfam_category = {}
-    
-    if os.path.isfile(pfam_domain_categories):
-        print("  Found file with Pfam domain categories")
-        with open(pfam_domain_categories, "r") as cat_handle:            
-            for line in cat_handle:
-                # handle comments and empty lines
-                if line[0] != "#" and line.strip():
-                    row = line.strip().split("\t")
-                    domain = row[1]
-                    category = row[0]
-                    pfam_category[domain] = category
-    else:
-        print("  File pfam_domain_categories was NOT found")
-                    
-    return pfam_category
    
 
 # --- Draw arrow for gene

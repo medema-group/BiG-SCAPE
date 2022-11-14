@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 
 
 """
@@ -6,11 +6,12 @@ BiG-SCAPE
 
 PI: Marnix Medema               marnix.medema@wur.nl
 
-Maintainers/developers:
-Jorge Navarro                   j.navarro@westerdijkinstitute.nl
-Satria Kautsar                  satria.kautsar@wur.nl
+Maintainers:
+Jorge Navarro                   jorge.navarromunoz@wur.nl
 
-Developer:
+Developers:
+Jorge Navarro                   jorge.navarromunoz@wur.nl
+Satria Kautsar                  sakautsar@lbl.gov
 Emmanuel (Emzo) de los Santos   E.De-Los-Santos@warwick.ac.uk
 
 
@@ -18,28 +19,17 @@ Usage:   Please see `python bigscape.py -h`
 
 Example: python bigscape.py -c 8 --pfam_dir ./ -i ./inputfiles -o ./results
 
-Status: beta
 
 Official repository:
-https://git.wageningenur.nl/medema-group/BiG-SCAPE
+https://github.com/medema-group/BiG-SCAPE
 
 
 # License: GNU Affero General Public License v3 or later
-# A copy of GNU AGPL v3 should have been included in this software package in LICENSE.txt.
+# A copy of GNU AGPL v3 should have been included in this software package in 
+# LICENSE.txt.
 """
 
-# Makes sure the script can be used with Python 2 as well as Python 3.
-from __future__ import print_function
-from __future__ import division
-
-from sys import version_info
-if version_info[0]==2:
-    range = xrange
-    import cPickle as pickle # for storing and retrieving dictionaries
-elif version_info[0]==3:
-    import pickle # for storing and retrieving dictionaries
-
-from math import exp, log
+import pickle # for storing and retrieving dictionaries
 import os
 import subprocess
 import sys
@@ -55,10 +45,10 @@ from operator import itemgetter
 import zipfile
 
 from Bio import SeqIO
-from Bio.SeqFeature import BeforePosition, AfterPosition
-from Bio import AlignIO
-from Bio import pairwise2
-from Bio.SubsMat.MatrixInfo import pam250 as scoring_matrix
+# from Bio.SeqFeature import BeforePosition, AfterPosition
+# from Bio import AlignIO
+# from Bio import pairwise2
+# from Bio.SubsMat.MatrixInfo import pam250 as scoring_matrix
 from Bio import Phylo
 
 from functions import *
@@ -66,7 +56,6 @@ from ArrowerSVG import *
 
 import numpy as np
 from array import array
-from scipy.sparse import lil_matrix
 from scipy.optimize import linear_sum_assignment
 import json
 import shutil
@@ -86,7 +75,6 @@ def process_gbk_files(gbk, min_bgc_size, bgc_info, files_no_proteins, files_no_b
 
     biosynthetic_genes = set()
     product_list_per_record = []
-    fasta_data = []
     save_fasta = True
     adding_sequence = False
     contig_edge = False
@@ -1050,7 +1038,6 @@ def cluster_distance_lcs(A, B, A_domlist, B_domlist, dcg_A, dcg_b, core_pos_A, c
     S_anchor = domain_difference_anchor
         
     # Cases 2 and 3 (now merged)
-    missing_aligned_domain_files = []
     for shared_domain in intersect:
         specific_domain_list_A = BGCs[A][shared_domain]
         specific_domain_list_B = BGCs[B][shared_domain]
@@ -1073,37 +1060,8 @@ def cluster_distance_lcs(A, B, A_domlist, B_domlist, dcg_A, dcg_b, core_pos_A, c
                 matches = 0
                 gaps = 0
                 
-                try:
-                    aligned_seqA = AlignedDomainSequences[sequence_tag_a]
-                    aligned_seqB = AlignedDomainSequences[sequence_tag_b]
-                    
-                except KeyError:
-                    # For some reason we don't have the multiple alignment files. 
-                    # Try manual alignment
-                    if shared_domain not in missing_aligned_domain_files and verbose:
-                        # this will print everytime an unfound <domain>.algn is not found for every
-                        # distance calculation (but at least, not for every domain pair!)
-                        print("  Warning: {}.algn not found. Trying pairwise alignment...".format(shared_domain))
-                        missing_aligned_domain_files.append(shared_domain)
-                    
-                    try:
-                        unaligned_seqA = temp_domain_fastas[sequence_tag_a]
-                        unaligned_seqB = temp_domain_fastas[sequence_tag_b]
-                    except KeyError:
-                        # parse the file for the first time and load all the sequences
-                        with open(os.path.join(domains_folder, shared_domain + ".fasta"),"r") as domain_fasta_handle:
-                            temp_domain_fastas = fasta_parser(domain_fasta_handle)
-                        
-                        unaligned_seqA = temp_domain_fastas[sequence_tag_a]
-                        unaligned_seqB = temp_domain_fastas[sequence_tag_b]
-                        
-                    # gap_open = -15
-                    # gap_extend = -6.67. These parameters were set up by Emzo
-                    alignScore = pairwise2.align.globalds(unaligned_seqA, unaligned_seqB, scoring_matrix, -15, -6.67, one_alignment_only=True)
-                    bestAlignment = alignScore[0]
-                    aligned_seqA = bestAlignment[0]
-                    aligned_seqB = bestAlignment[1]
-                    
+                aligned_seqA = AlignedDomainSequences[sequence_tag_a]
+                aligned_seqB = AlignedDomainSequences[sequence_tag_b]
                     
                 # - Calculate aligned domain sequences similarity -
                 # Sequences *should* be of the same length unless something went
@@ -1406,38 +1364,40 @@ def clusterJsonBatch(bgcs, pathBase, className, matrix, pos_alignments, cutoffs=
         # We cannot get all the info exclusively from the pfd because that only
         # contains ORFs with predicted domains (and we need to draw empty genes
         # as well)
-        for line in open(fastaFile):
-            if line[0] == ">":
-                header = line.strip()[1:].split(':')
-                orf = header[0]
-                if header[2]:
-                    orfDict[orf]["id"] = header[2]
-                elif header[4]:
-                    orfDict[orf]["id"] = header[4]
-                else:
-                    orfDict[orf]["id"] = orf
+        with open(fastaFile) as fastaFile_handle:
+            for line in fastaFile_handle:
+                if line[0] == ">":
+                    header = line.strip()[1:].split(':')
+                    orf = header[0]
+                    if header[2]:
+                        orfDict[orf]["id"] = header[2]
+                    elif header[4]:
+                        orfDict[orf]["id"] = header[4]
+                    else:
+                        orfDict[orf]["id"] = orf
+                        
+                    ## broken gene goes into cluster, need this so js doesn't throw an error
+                    if int(header[6]) <= 1:
+                        orfDict[orf]["start"] = 1
+                    else:
+                        orfDict[orf]["start"] = int(header[6])
+                        
+                    orfDict[orf]["end"] = int(header[7])
                     
-                ## broken gene goes into cluster, need this so js doesn't throw an error
-                if int(header[6]) <= 1:
-                    orfDict[orf]["start"] = 1
-                else:
-                    orfDict[orf]["start"] = int(header[6])
-                    
-                orfDict[orf]["end"] = int(header[7])
-                
-                if header[-1] == '+':
-                    orfDict[orf]["strand"] = 1
-                else:
-                    orfDict[orf]["strand"] = -1
-                    
-                orfDict[orf]["domains"] = []
+                    if header[-1] == '+':
+                        orfDict[orf]["strand"] = 1
+                    else:
+                        orfDict[orf]["strand"] = -1
+                        
+                    orfDict[orf]["domains"] = []
     
         ## now read pfd file to add the domains to each of the orfs
-        for line in open(pfdFile):
-            entry = line.split('\t')
-            orf = entry[-1].strip().split(':')[0]
-            pfamID = entry[5].split('.')[0]
-            orfDict[orf]["domains"].append({'code': pfamID, 'start': int(entry[3]), 'end': int(entry[4]), 'bitscore': float(entry[1])})
+        with open(pfdFile) as pfdFile_handle:
+            for line in pfdFile_handle:
+                entry = line.split('\t')
+                orf = entry[-1].strip().split(':')[0]
+                pfamID = entry[5].split('.')[0]
+                orfDict[orf]["domains"].append({'code': pfamID, 'start': int(entry[3]), 'end': int(entry[4]), 'bitscore': float(entry[1])})
         # order of ORFs is important here because I use it to get a translation
         # between the "list of ORFs with domains" to "list of all ORFs" later on
         bgcJsonDict[bgcName]['orfs'] = sorted(orfDict.values(), key=itemgetter("start"))
@@ -1815,7 +1775,7 @@ def clusterJsonBatch(bgcs, pathBase, className, matrix, pos_alignments, cutoffs=
                         domainGenes2allGenes[bgc][has_domains] = orf
                         has_domains += 1
                         
-            assert (len(members) > 0), "Error: bs_families[{}] have no members, something went wrong?".format(fam_idx)
+            assert len(members) > 0, f"Error: bs_families[{family}] have no members, something went wrong?"
             
             ref_genes_ = set()
             aln = []
@@ -2082,12 +2042,15 @@ def CMD_parser():
                         sequences. Use if alignments have been generated in a \
                         previous run.")
     
-    parser.add_argument("--mibig", dest="mibig21", default=False, action="store_true",
-                        help="Use included BGCs from then MIBiG database. Only \
-                        relevant (i.e. those with distance < max(cutoffs) against\
-                        the input set) will be used. Currently uses version 2.1\
-                        of MIBiG. See https://mibig.secondarymetabolites.org/")
+    parser.add_argument("--mibig", dest="mibig31", default=False, 
+                        action="store_true", help="Include MIBiG 3.1 BGCs as \
+                        reference (https://mibig.secondarymetabolites.org/). \
+                        These BGCs will only be kept if they are connected to \
+                        a region in the input set (distance < max(cutoffs)).")
     
+    parser.add_argument("--mibig21", dest="mibig21", default=False, action="store_true",
+                        help="Include BGCs from version 2.1 of MIBiG")
+
     parser.add_argument("--mibig14", dest="mibig14", default=False, action="store_true",
                         help="Include BGCs from version 1.4 of MIBiG")
     
@@ -2104,7 +2067,8 @@ def CMD_parser():
                         domain_includelist.txt file", default=False,
                         action="store_true")
 
-    parser.add_argument("--version", action="version", version="%(prog)s 1.1.4 (2022-04-14)")
+    parser.add_argument("--version", action="version", version="%(prog)s 1.1.5 \
+        (2022-11-14)")
 
     return parser.parse_args()
 
@@ -2230,6 +2194,7 @@ if __name__=="__main__":
     verbose = options.verbose
     
     selected_mibig = 0
+    if options.mibig31: selected_mibig += 1
     if options.mibig21: selected_mibig += 1
     if options.mibig14: selected_mibig += 1
     if options.mibig13: selected_mibig += 1
@@ -2360,7 +2325,9 @@ if __name__=="__main__":
     # (file, final folder, number of bgcs)
     mibig_set = set()
     if use_relevant_mibig:
-        if options.mibig21:
+        if options.mibig31:
+            mibig_zipfile_numbgcs = ("MIBiG_3.1_final.zip", "MIBiG_3.1_final", 2502)
+        elif options.mibig21:
             mibig_zipfile_numbgcs = ("MIBiG_2.1_final.zip", "MIBiG_2.1_final", 1923)
         elif options.mibig14:
             mibig_zipfile_numbgcs = ("MIBiG_1.4_final.zip", "MIBiG_1.4_final", 1808)
@@ -2628,7 +2595,9 @@ if __name__=="__main__":
                 print("   Processing: " + outputbase)
 
             pfdFile = os.path.join(pfd_folder, outputbase + ".pfd")
-            filtered_matrix = [[part.strip() for part in line.split('\t')] for line in open(pfdFile)]
+            with open(pfdFile) as pfd_handle:
+                filtered_matrix = [[part.strip() for part in line.split('\t')] 
+                    for line in pfd_handle]
 
             # save each domain sequence from a single BGC in its corresponding file
             fasta_file = os.path.join(bgc_fasta_folder, outputbase + ".fasta")
@@ -2714,21 +2683,27 @@ if __name__=="__main__":
     # read hmm file. We'll need that info anyway for final visualization
     print("  Parsing hmm file for domain information")
     pfam_info = {}
+    name = ""
+    acc = "" # compulsory line
+    desc = ""
     with open(os.path.join(pfam_dir, "Pfam-A.hmm"), "r") as pfam:
-        putindict = False
-        # assuming that the order of the information never changes
         for line in pfam:
-            if line[:4] == "NAME":
-                name = line.strip()[6:]
-            if line[:3] == "ACC":
-                acc = line.strip()[6:].split(".")[0]
-            if line[:4] == "DESC":
-                desc = line.strip()[6:]
-                putindict = True
-                
-            if putindict:
-                putindict = False
-                pfam_info[acc] = (name, desc)
+            if line.strip() == "//":
+                # found new record
+                if acc: pfam_info[acc] = (name, desc)
+
+                # clear data in any case
+                name = ""
+                acc = "" # compulsory line
+                desc = ""
+
+                continue
+
+            if line[:4] not in {"NAME", "ACC ", "DESC"}: continue
+
+            if line[:4] == "NAME": name = line.strip()[6:]
+            elif line[:3] == "ACC": acc = line.strip()[6:].split(".")[0]
+            elif line[:4] == "DESC": desc = line.strip()[6:]
     print("    Done")
     
     # verify if there are figures already generated
