@@ -1,3 +1,5 @@
+WARNING: This branch is under development and not intended for use. Please use the latest [release](https://github.com/medema-group/BiG-SCAPE/releases/tag/v1.1.5)
+
 # BiG-SCAPE
 
 **BiG-SCAPE** (Biosynthetic Gene Similarity Clustering and Prospecting Engine) is a software package, written in Python, that constructs sequence similarity networks of Biosynthetic Gene Clusters (BGCs) and groups them into Gene Cluster Families (GCFs). BiG-SCAPE does this by rapidly calculating a distance matrix between gene clusters based on a comparison of their protein domain content, order, copy number and sequence identity.
