@@ -1,4 +1,4 @@
 pytest
 pre-commit
 mkdocs
-mkdocstring-python
+mkdocstrings-python
