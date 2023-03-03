@@ -1,0 +1,24 @@
+[project]
+name = "BiG-SCAPE"
+description = "A computational framework to explore large-scale biosynthetic diversity"
+version = "2.0"
+authors = [
+    { name = "Marnix Medema", email = "marnix.medema@wur.nl" },
+    { name = "Jorge Navarro-Muñoz", email = "" }
+]
+dependencies = [
+    "biopython",
+    "fasttree",
+    "networkx",
+    "numpy",
+    "pandas",
+    "pyhmmer",
+    "scikit-learn",
+    "scipy"
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest",
+    "pre-commit"
+]
