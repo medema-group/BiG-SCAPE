@@ -14,6 +14,8 @@ jobs:
   run_pytest:
     runs-on: ubuntu-latest
     steps:
+    - name: Check out code
+      uses: actions/checkout@v3
     - name: Set up python
       uses: actions/setup-python@main
       with:
