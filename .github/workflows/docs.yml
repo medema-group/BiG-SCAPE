@@ -21,7 +21,7 @@ jobs:
 
       - name: Install dependencies
         shell: bash
-        run: python -m pip install mkdocs mkdocstring-python
+        run: python -m pip install mkdocs mkdocstrings-python
 
       - name: Build docs site
         run: mkdocs build
