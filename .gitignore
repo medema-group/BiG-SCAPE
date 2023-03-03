@@ -4,3 +4,5 @@
 # python stuff
 *.pyc
 
+# documentation build
+site/
