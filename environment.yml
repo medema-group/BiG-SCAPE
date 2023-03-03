@@ -1,0 +1,14 @@
+name: BiG-SCAPE
+channels:
+  - conda-forge
+  - bioconda
+dependencies:
+  - python=3.9
+  - biopython
+  - fasttree
+  - networkx
+  - numpy
+  - pandas
+  - pyhmmer
+  - scikit-learn
+  - scipy
