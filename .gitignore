@@ -1,0 +1,6 @@
+# ide stuff
+.vscode/
+
+# python stuff
+*.pyc
+
