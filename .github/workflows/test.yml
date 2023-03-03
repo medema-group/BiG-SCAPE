@@ -1,0 +1,26 @@
+on:
+  push:
+    branches:
+      - dev
+      - feature/*
+  pull_request:
+    branches:
+      - master
+      - dev
+
+jobs:
+  run_pytest:
+    runs-on: ubuntu-latest
+    steps:
+    - name: Set up python
+      uses: actions/setup-python@main
+      with:
+        python-version: "3.9"
+
+    - name: Install dependencies
+      shell: bash
+      run: python -m pip install pytest
+
+    - name: Test with Pytest
+      shell: bash
+      run: python -m pytest .
