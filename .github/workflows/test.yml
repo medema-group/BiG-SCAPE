@@ -23,4 +23,4 @@ jobs:
 
     - name: Test with Pytest
       shell: bash
-      run: python -m pytest .
+      run: python -m pytest
