@@ -24,8 +24,15 @@ jobs:
 
     - name: Install dependencies
       shell: bash
-      run: python -m pip install pytest
+      run: python -m pip install pytest coverage coverage-badge
 
     - name: Test with Pytest
       shell: bash
-      run: python -m pytest
+      run: |
+        coverage run -m pytest
+
+    - name: Generate coverage report
+      shell: bash
+      run: |
+        coverage report
+        coverage-badge -o coverage.svg
