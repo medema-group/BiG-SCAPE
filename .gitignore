@@ -6,3 +6,7 @@
 
 # documentation build
 site/
+
+# test coverage report and svg
+.coverage
+coverage.svg
