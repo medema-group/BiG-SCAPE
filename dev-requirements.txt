@@ -1,4 +1,11 @@
+# testing
 pytest
-pre-commit
+coverage
+coverage-badge
+
+# documentation
 mkdocs
 mkdocstrings-python
+
+# other tools
+pre-commit
