@@ -35,4 +35,12 @@ jobs:
       shell: bash
       run: |
         coverage report
-        coverage-badge -o coverage.svg
+        mkdir badges
+        coverage-badge -o badges/coverage.svg
+
+    - name: Upload coverage badge
+      uses: peaceiris/actions-gh-pages@v3
+      with:
+        github_token: ${{ secrets.GITHUB_TOKEN }}
+        publish_dir: badges
+        destination_dir: badges
