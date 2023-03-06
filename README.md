@@ -1,4 +1,4 @@
-
+![Test workflow](https://github.com/medema-group/BiG-SCAPE/actions/workflows/test.yml/badge.svg) ![Test workflow](https://github.com/medema-group/BiG-SCAPE/actions/workflows/docs.yml/badge.svg)
 
 
 
