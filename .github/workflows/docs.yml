@@ -1,9 +1,20 @@
-# name: Documentation workflow
+name: Build docs
 
-# on:
-#   push:
-#     branch:
-#     - master
+on:
+  pull_request:
+    branches:
+    - dev
+
+# placeholder job just to do something
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Run a one-line script
+        run: echo Hello, world!
 
 # jobs:
 #   build:
