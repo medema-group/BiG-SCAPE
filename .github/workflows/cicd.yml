@@ -66,7 +66,7 @@ jobs:
         echo $score
         mkdir badges
         rm -f badges/pylint.svg
-        anybadge -l pylint -v $score -f pylint.svg 2=red 4=orange 8=yellow 10=green
+        anybadge -l pylint -v $score -f badges/pylint.svg 2=red 4=orange 8=yellow 10=green
 
     - name: Save badge to cache
       uses: actions/cache/save@v3
