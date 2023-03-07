@@ -35,11 +35,13 @@ jobs:
         mkdir badges
         coverage-badge -o badges/coverage.svg
 
-    # - name: Save badge to cache
-    #   uses: actions/cache/save@v3
-    #   with:
-    #     path: badges
-    #     key: cache-${{ github.run_id }}-${{ github.run_attempt }}
+    - name: Upload badges folder
+      uses: peaceiris/actions-gh-pages@v3
+      with:
+        github_token: ${{ secrets.GITHUB_TOKEN }}
+        publish_dir: badges
+        destination_dir: badges
+        keep_files: true
 
   run_pylint:
     runs-on: ubuntu-latest
@@ -72,40 +74,42 @@ jobs:
         path: badges
         key: cache-${{ github.run_id }}-${{ github.run_attempt }}
 
-  upload_badges:
-    runs-on: ubuntu-latest
-    if: ${{ !contains(github.event.head_commit.message, 'docs') && !contains(github.event.head_commit.message, 'documentation')  }}
-    needs:
-      - run_pytest
-      - run_pylint
-    steps:
-      - name: Setup cache
-        uses: actions/cache/restore@v3
-        with:
-          path: badges
-          key: cache-${{ github.run_id }}-${{ github.run_attempt }}
+    - name: Upload badges folder
+      uses: peaceiris/actions-gh-pages@v3
+      with:
+        github_token: ${{ secrets.GITHUB_TOKEN }}
+        publish_dir: badges
+        destination_dir: badges
+        keep_files: true
 
-      - name: Check cache hit
-        if: steps.cache.outputs.cache-hit != 'true'
-        run: |
-          Could not find cache
-          exit 1
+# upload_badges:
+#     runs-on: ubuntu-latest
+#     if: ${{ !contains(github.event.head_commit.message, 'docs') && !contains(github.event.head_commit.message, 'documentation')  }}
+#     needs:
+#       - run_pytest
+#       - run_pylint
+#     steps:
+#       - name: Setup cache
+#         uses: actions/cache/restore@v3
+#         with:
+#           path: badges
+#           key: cache-${{ github.run_id }}-${{ github.run_attempt }}
 
-      # - name: Setup cache
-      #   uses: actions/cache@v3
-      #   with:
-      #     path: badges
-      #     key: pylint-badges
+#       - name: Check cache hit
+#         if: steps.cache.outputs.cache-hit != 'true'
+#         run: |
+#           Could not find cache
+#           exit 1
 
-      # - name: LS badges dir
-      #   shell: bash
-      #   run: |
-      #     ls -l
-      #     ls -l badges
+#       - name: LS badges dir
+#         shell: bash
+#         run: |
+#           ls -l
+#           ls -l badges
 
-      - name: Upload badges folder
-        uses: peaceiris/actions-gh-pages@v3
-        with:
-          github_token: ${{ secrets.GITHUB_TOKEN }}
-          publish_dir: badges
-          destination_dir: badges
+#       - name: Upload badges folder
+#         uses: peaceiris/actions-gh-pages@v3
+#         with:
+#           github_token: ${{ secrets.GITHUB_TOKEN }}
+#           publish_dir: badges
+#           destination_dir: badges
