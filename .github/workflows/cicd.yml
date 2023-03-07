@@ -1,0 +1,74 @@
+name: CI/CD
+
+on:
+  push:
+    branches:
+      - dev
+      - feature/*
+  pull_request:
+    branches:
+      - master
+      - dev
+
+jobs:
+  run_pytest:
+    runs-on: ubuntu-latest
+    if: ${{ !contains(github.event.head_commit.message, 'docs') && !contains(github.event.head_commit.message, 'documentation')  }}
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v3
+
+    - name: Set up python
+      uses: actions/setup-python@main
+      with:
+        python-version: "3.9"
+
+    - name: Install dependencies
+      shell: bash
+      run: python -m pip install pytest coverage coverage-badge
+
+    - name: Test with Pytest
+      shell: bash
+      run: |
+        coverage run -m pytest
+        coverage report
+        mkdir badges
+        coverage-badge -o badges/coverage.svg
+
+  run_pylint:
+    runs-on: ubuntu-latest
+    if: ${{ !contains(github.event.head_commit.message, 'docs') && !contains(github.event.head_commit.message, 'documentation')  }}
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v3
+
+    - name: Set up python
+      uses: actions/setup-python@main
+      with:
+        python-version: "3.9"
+
+    - name: Install dependencies
+      shell: bash
+      run: python -m pip install pylint anybadge
+
+    - name: Run pylint
+      shell: bash
+      run: |
+        score=$(pylint bigscape.py | grep 'rated at' | sed -r 's|.+ at (.+)\/10 \(p.+|\1|')
+        mkdir badges
+        rm -f badges/pylint.svg
+        anybadge -l pylint -v $score -f pylint.svg 2=red 4=orange 8=yellow 10=green
+
+  upload_badges:
+    runs-on: ubuntu-latest
+    if: ${{ !contains(github.event.head_commit.message, 'docs') && !contains(github.event.head_commit.message, 'documentation')  }}
+    needs:
+      - run_pytest
+      - run_pylint
+    steps:
+      - name: Upload pylint badge
+        uses: peaceiris/actions-gh-pages@v3
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_dir: badges
+          destination_dir: badges
