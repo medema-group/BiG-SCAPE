@@ -9,3 +9,7 @@ mkdocstrings-python
 
 # other tools
 pre-commit
+anybadge
+
+# linting
+pylint
