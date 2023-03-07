@@ -54,7 +54,8 @@ jobs:
     - name: Run pylint
       shell: bash
       run: |
-        score=$(pylint bigscape.py | grep 'rated at' | sed -r 's|.+ at (.+)\/10 \(p.+|\1|')
+        score=$(pylint bigscape.py | grep 'rated at' | sed -r 's/^.*at ([0-9]+\.[0-9]+).*$/\1/')
+        echo $score
         mkdir badges
         rm -f badges/pylint.svg
         anybadge -l pylint -v $score -f pylint.svg 2=red 4=orange 8=yellow 10=green
