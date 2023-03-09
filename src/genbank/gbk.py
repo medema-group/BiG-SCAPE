@@ -1,7 +1,4 @@
-"""Module containing code to load and store GBK files
-
-Authors:
-"""
+"""Module containing code to load and store GBK files"""
 
 from pathlib import Path
 
