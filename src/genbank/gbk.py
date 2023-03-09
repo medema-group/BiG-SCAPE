@@ -15,4 +15,6 @@ class GBK:
     @staticmethod
     def parse_gbk(path: Path):
         """Parses a GBK file and returns a GBK object with all necessary information"""
-        return GBK(path)
+        gbk = GBK(path)
+
+        return gbk
