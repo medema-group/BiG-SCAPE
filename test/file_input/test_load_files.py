@@ -12,9 +12,7 @@ class TestLoadGBK(TestCase):
     def test_gbk_path_invalid(self):
         """Tests whether loading a given path returns none"""
         # path pointing to a file, not a folder
-        gbk_file_path = Path(
-            "test/file_input/test_data/valid_gbk_folder/valid_input.gbk"
-        )
+        gbk_file_path = Path("test/test_data/valid_gbk_folder/valid_input.gbk")
 
         with self.assertRaises(NotADirectoryError):
             load_datset_folder(gbk_file_path)
@@ -22,7 +20,7 @@ class TestLoadGBK(TestCase):
     def test_gbk_path_valid(self):
         """Tests whether loading a given path returns none"""
         # path pointing to a folder containing a valid gbk file
-        gbk_file_path = Path("test/file_input/test_data/valid_gbk_folder/")
+        gbk_file_path = Path("test/test_data/valid_gbk_folder/")
 
         load_result = load_datset_folder(gbk_file_path)
 
@@ -34,7 +32,7 @@ class TestLoadGBK(TestCase):
     def test_gbk_path_empty(self):
         """Tests whether loading a given path returns none if the folder is empty"""
         # path pointing to a folder containing no gbk files
-        gbk_file_path = Path("test/file_input/test_data/empty_gbk_folder/")
+        gbk_file_path = Path("test/test_data/empty_gbk_folder/")
 
         with self.assertRaises(FileNotFoundError):
             load_datset_folder(gbk_file_path)
@@ -42,7 +40,7 @@ class TestLoadGBK(TestCase):
     def test_load_gbk_not_a_file(self):
         """Tests whether the load_gbk function correctly returns none when input is not a file"""
         # path pointing to a folder, not a file
-        gbk_file_path = Path("test/file_input/test_data/valid_gbk_folder/")
+        gbk_file_path = Path("test/test_data/valid_gbk_folder/")
 
         with self.assertRaises(IsADirectoryError):
             load_gbk(gbk_file_path)
@@ -53,9 +51,7 @@ class TestLoadGBK(TestCase):
         nb: this does not test the contents of the GBK file, just the existence and reading of it
         """
 
-        gbk_file_path = Path(
-            "test/file_input/test_data/valid_gbk_folder/valid_input.gbk"
-        )
+        gbk_file_path = Path("test/test_data/valid_gbk_folder/valid_input.gbk")
         gbk = load_gbk(gbk_file_path)
 
         self.assertIsNot(gbk, None)
