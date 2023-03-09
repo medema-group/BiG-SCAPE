@@ -18,6 +18,18 @@ class TestRegion(TestCase):
 
         self.assertIsInstance(region, Region)
 
+    def test_create_region_number(self):
+        """Tests whether a region is instantiated correctly"""
+        feature = SeqFeature(type="region")
+
+        expected_number = 1
+
+        feature.qualifiers["region_number"] = [str(expected_number)]
+
+        region = Region.create_region(feature)
+
+        self.assertEqual(expected_number, region.number)
+
     def test_create_region_no_number(self):
         """Tests whether create_region correctly throws an error when given a feature
         lacking a region_number qualifier
