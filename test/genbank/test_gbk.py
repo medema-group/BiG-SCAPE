@@ -14,7 +14,7 @@ class TestGBK(TestCase):
 
         gbk_file_path = Path("test/test_data/valid_gbk_folder/valid_input.gbk")
 
-        gbk = GBK.parse_gbk(gbk_file_path)
+        gbk = GBK.parse(gbk_file_path)
 
         self.assertIsInstance(gbk, GBK)
 
@@ -24,6 +24,6 @@ class TestGBK(TestCase):
         # GBK has one region
         gbk_file_path = Path("test/test_data/valid_gbk_folder/valid_input.gbk")
 
-        gbk = GBK.parse_gbk(gbk_file_path)
+        gbk = GBK.parse(gbk_file_path)
 
         self.assertIsInstance(gbk.region, Region)

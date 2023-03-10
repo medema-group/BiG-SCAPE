@@ -38,4 +38,4 @@ def load_gbk(path: Path) -> GBK:
         logging.error("GBK path does not point to a file!")
         raise IsADirectoryError()
 
-    return GBK.parse_gbk(path)
+    return GBK.parse(path)

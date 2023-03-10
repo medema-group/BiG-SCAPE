@@ -21,7 +21,7 @@ class GBK:
         self.metadata = {}
 
     @classmethod
-    def parse_gbk(cls, path: Path):
+    def parse(cls, path: Path):
         """Parses a GBK file and returns a GBK object with all necessary information"""
         gbk = cls(path)
 
