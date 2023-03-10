@@ -18,6 +18,15 @@ class TestGBK(TestCase):
 
         self.assertIsInstance(gbk, GBK)
 
+    def test_parse_gbk_multiple_regions(self):
+        """Tests whether a GBK file has more than one region"""
+
+        gbk_file_path = Path(
+            "test/test_data/valid_gbk_multiple_regions_folder/valid_input_multiple_regions.gbk"
+        )
+
+        self.assertRaises(ValueError, GBK.parse, gbk_file_path)
+
     def test_populate_regions(self):
         """Tests whether parsing a GBK correctly populates the underlying regions"""
 

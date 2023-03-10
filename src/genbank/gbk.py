@@ -1,6 +1,8 @@
 """Module containing code to load and store GBK files"""
 
+import logging
 from pathlib import Path
+from typing import Dict
 
 from Bio import SeqIO
 from Bio.SeqRecord import SeqRecord
@@ -13,12 +15,13 @@ class GBK:
     """Class to describe a given GBK file"""
 
     path: Path
-    metadata: dict[str, str]
+    metadata: Dict[str, str]
     region: Region
 
     def __init__(self, path):
         self.path = path
         self.metadata = {}
+        self.region: Region = None
 
     @classmethod
     def parse(cls, path: Path):
@@ -32,6 +35,10 @@ class GBK:
         feature: SeqFeature
         for feature in record.features:
             if feature.type == "region":
+                if gbk.region is not None:
+                    logging.error("GBK file provided contains more than one region")
+                    raise ValueError()
+
                 region = Region.create_region(feature)
                 gbk.region = region
 
