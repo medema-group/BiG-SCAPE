@@ -3,6 +3,7 @@ from pathlib import Path
 from unittest import TestCase
 
 from src.genbank.gbk import GBK
+from src.genbank.region import Region
 
 
 class TestGBK(TestCase):
@@ -16,3 +17,13 @@ class TestGBK(TestCase):
         gbk = GBK.parse_gbk(gbk_file_path)
 
         self.assertIsInstance(gbk, GBK)
+
+    def test_populate_regions(self):
+        """Tests whether parsing a GBK correctly populates the underlying regions"""
+
+        # GBK has one region
+        gbk_file_path = Path("test/test_data/valid_gbk_folder/valid_input.gbk")
+
+        gbk = GBK.parse_gbk(gbk_file_path)
+
+        self.assertIsInstance(gbk.region, Region)

@@ -6,13 +6,15 @@ from Bio.SeqFeature import SeqFeature
 
 
 class Region:
+    """Class to describe a region within an Antismash GBK"""
+
     number: int
 
     def __init__(self, number):
         self.number = number
 
-    @staticmethod
-    def create_region(feature: SeqFeature):
+    @classmethod
+    def create_region(cls, feature: SeqFeature):
         """Creates a region object from a region feature in a GBK file"""
         if feature.type != "region":
             logging.error(
@@ -27,6 +29,6 @@ class Region:
 
         region_number = int(feature.qualifiers["region_number"][0])
 
-        region = Region(region_number)
+        region = cls(region_number)
 
         return region
