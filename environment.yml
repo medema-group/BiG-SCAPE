@@ -12,3 +12,4 @@ dependencies:
   - pyhmmer
   - scikit-learn
   - scipy
+  - sqlalchemy
