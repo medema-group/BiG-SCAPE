@@ -1,12 +1,12 @@
 #!/bin/bash
 
 if [[ $# -eq 0 || $1 == "-h" || $1 == "--help" || $1 == "--version" ]]; then
-	docker pull ghcr.io/medema-group/big-scape
+	docker pull ghcr.io/medema-group/big-scape:master
 	docker run \
 	--detach=false \
 	--rm \
 	--user=$(id -u):$(id -g) \
-	ghcr.io/medema-group/big-scape \
+	ghcr.io/medema-group/big-scape:master \
 	$@
 else
 	set -o errexit
@@ -46,14 +46,14 @@ else
 	#if [ ${INPUT_FILE} ${OUTPUT_FILE} ]; then
 	if [ ! -z ${INPUT_FILE} ] && [ ! -z ${OUTPUT_FILE} ]; then
 		echo Running BiG-SCAPE
-		docker pull ghcr.io/medema-group/big-scape
+		docker pull ghcr.io/medema-group/big-scape:master
 		docker run \
 	    	--volume ${INPUT_DIR}:${CONTAINER_SRC_DIR}:ro \
 	    	--volume ${OUTPUT_DIR}:${CONTAINER_DST_DIR}:rw \
 	    	--detach=false \
 	    	--rm \
 	    	--user=$(id -u):$(id -g) \
-	    	ghcr.io/medema-group/big-scape \
+	    	ghcr.io/medema-group/big-scape:master \
 	    	-i ${CONTAINER_SRC_DIR}/${INPUT_FILE} \
 	    	-o ${CONTAINER_DST_DIR}/${OUTPUT_FILE}\
     		$@
