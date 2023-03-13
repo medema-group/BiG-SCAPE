@@ -9,13 +9,13 @@ WORKDIR /usr/src
 RUN git clone https://github.com/medema-group/BiG-SCAPE.git
 
 # Create conda environment
-RUN conda env create -f /usr/src/BiG-SCAPE/environment.yml
+RUN conda env create -f /usr/src/BiG-SCAPE/bigscape_dependencies.yml
 RUN echo "source activate bigscape" > ~/.bashrc
 ENV PATH /usr/local/envs/bigscape/bin:$PATH
 ENV PATH /usr/src/BiG-SCAPE:$PATH
 
 RUN cd BiG-SCAPE \
- && wget ftp://ftp.ebi.ac.uk/pub/databases/Pfam/releases/Pfam34.0/Pfam-A.hmm.gz \
+ && wget https://ftp.ebi.ac.uk/pub/databases/Pfam/current_release/Pfam-A.hmm.gz \
  && gunzip Pfam-A.hmm.gz \
  && source activate bigscape \
  && hmmpress Pfam-A.hmm \

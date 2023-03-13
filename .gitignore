@@ -1,0 +1,12 @@
+# ide stuff
+.vscode/
+
+# python stuff
+*.pyc
+
+# documentation build
+site/
+
+# test coverage report and svg
+.coverage
+coverage.svg
