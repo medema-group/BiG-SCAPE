@@ -14,7 +14,7 @@ class Region:
         self.number = number
 
     @classmethod
-    def create_region(cls, feature: SeqFeature):
+    def parse_feature(cls, feature: SeqFeature):
         """Creates a region object from a region feature in a GBK file"""
         if feature.type != "region":
             logging.error(

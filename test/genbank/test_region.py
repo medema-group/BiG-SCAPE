@@ -11,38 +11,35 @@ class TestRegion(TestCase):
 
     def test_create_region(self):
         """Tests whether a region is instantiated correctly"""
-        feature = SeqFeature(type="region")
-        feature.qualifiers["region_number"] = ["1"]
-
-        region = Region.create_region(feature)
+        region = Region(1)
 
         self.assertIsInstance(region, Region)
 
-    def test_create_region_number(self):
-        """Tests whether a region is instantiated correctly"""
+    def test_parse(self):
+        """Tests whether a region correctly parsed from a feature"""
         feature = SeqFeature(type="region")
 
         expected_number = 1
 
         feature.qualifiers["region_number"] = [str(expected_number)]
 
-        region = Region.create_region(feature)
+        region = Region.parse_feature(feature)
 
         self.assertEqual(expected_number, region.number)
 
-    def test_create_region_no_number(self):
+    def test_parse_no_number(self):
         """Tests whether create_region correctly throws an error when given a feature
         lacking a region_number qualifier
         """
         feature = SeqFeature(type="region")
 
-        self.assertRaises(ValueError, Region.create_region, feature)
+        self.assertRaises(ValueError, Region.parse_feature, feature)
 
-    def test_create_region_wrong_type(self):
+    def test_parse_wrong_type(self):
         """Tests whether create_region correctly throws an error when given a feature of
         a wrong type
         """
 
         feature = SeqFeature(type="CDS")
 
-        self.assertRaises(ValueError, Region.create_region, feature)
+        self.assertRaises(ValueError, Region.parse_feature, feature)

@@ -39,7 +39,7 @@ class GBK:
                     logging.error("GBK file provided contains more than one region")
                     raise ValueError()
 
-                region = Region.create_region(feature)
+                region = Region.parse_feature(feature)
                 gbk.region = region
 
         return gbk
