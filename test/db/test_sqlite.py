@@ -2,7 +2,9 @@
 
 from unittest import TestCase
 
-from src.data.db import DB
+from sqlalchemy import text
+
+from src.data.sqlite import DB
 
 
 class TestSQLite(TestCase):
@@ -12,10 +14,22 @@ class TestSQLite(TestCase):
         """Tests whether a new db can be created using sqlalchemy"""
         DB.create_new_db()
 
-        DB.execute_raw_query(
-            "INSERT INTO gbk"
-            "(name, as_version, nt_seq, path)"
-            "VALUES ('test', 'test', 'test', 'test');"
+        get_schema_query = text("SELECT * FROM sqlite_master;")
+        result = next(DB.connection.execute(get_schema_query))
+        self.assertIsNotNone(result)
+
+        DB.connection.close()
+
+    def test_execute_raw_query(self):
+        """Tests whether a raw query can be run on a database"""
+        DB.create_new_db()
+
+        insert_row_query = (
+            "INSERT INTO gbk "
+            "(name, as_version, nt_seq, path) "
+            "VALUES ('test', 'test', 'test', 'test')"
         )
 
-        DB.execute_raw_query("SELECT * FROM gbk;")
+        result = DB.execute_raw_query(insert_row_query)
+
+        self.assertIsNotNone(result)

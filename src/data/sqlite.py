@@ -16,9 +16,19 @@ class DB:
         DB.connection = DB.engine.connect()
 
         with open(DB_SCHEMA_PATH, encoding="utf-8") as schema_file:
-            creation_query = text(schema_file.read())
+            lines = []
+            for line in schema_file:
+                lines.append(line)
+                if not line.rstrip().endswith(";"):
+                    continue
+                creation_query = text("".join(lines))
+                DB.connection.execute(creation_query)
+                lines = []
 
-        DB.connection.execute(creation_query)
+    @staticmethod
+    def close_db():
+        """Closes the database connection. This does not save the database to disk"""
+        DB.connection.close()
 
     @staticmethod
     def execute_raw_query(query: str):
