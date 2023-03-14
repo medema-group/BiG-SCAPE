@@ -1,11 +1,11 @@
 """Module containing code to load and store AntiSMASH regions"""
 
 import logging
-from typing import Dict
+from typing import Dict, Optional
 
 from Bio.SeqFeature import SeqFeature
 
-from src.errors.genbank import InvalidGBKError
+from src.errors.genbank import InvalidGBKError, InvalidGBKRegionChildError
 from src.genbank.cand_cluster import CandidateCluster
 
 
@@ -20,10 +20,13 @@ class Region:
 
     def __init__(self, number: int):
         self.number = number
-        self.cand_clusters: Dict[int, CandidateCluster] = {}
+        self.cand_clusters: Dict[int, Optional[CandidateCluster]] = {}
 
     def add_cand_cluster(self, cand_cluster: CandidateCluster):
         """Add a candidate cluster object to this region"""
+
+        if cand_cluster.number not in self.cand_clusters:
+            raise InvalidGBKRegionChildError()
 
         self.cand_clusters[cand_cluster.number] = cand_cluster
 
@@ -44,5 +47,8 @@ class Region:
         region_number = int(feature.qualifiers["region_number"][0])
 
         region = cls(region_number)
+
+        for cand_cluster_number in feature.qualifiers["candidate_cluster_numbers"]:
+            region.cand_clusters[int(cand_cluster_number)] = None
 
         return region
