@@ -1,10 +1,12 @@
 """Module containing code to load and store AntiSMASH protoclusters"""
 
 import logging
+from typing import Dict, Optional
 
 from Bio.SeqFeature import SeqFeature
 
-from src.errors.genbank import InvalidGBKError
+from src.errors.genbank import InvalidGBKError, InvalidGBKRegionChildError
+from src.genbank.proto_core import Protocore
 
 
 class Protocluster:
@@ -13,13 +15,22 @@ class Protocluster:
 
     Attributes:
         number: int
+        categoty: str
         protocore: Protocore
     """
 
-    def __init__(self, number: int, category: str):
+    def __init__(self, number: int):
         self.number = number
-        self.category = category
-        # self.protocore: Protocore = None
+        self.category: str = ""
+        self.protocore: Dict[int, Optional[Protocore]] = {}
+
+    def add_proto_core(self, proto_core: Protocore):
+        """Add a proto_core object to this region"""
+
+        if proto_core.number not in self.protocore:
+            raise InvalidGBKRegionChildError()
+
+        self.protocore[proto_core.number] = proto_core
 
     @classmethod
     def parse(cls, feature: SeqFeature):
@@ -39,12 +50,15 @@ class Protocluster:
 
         protocluster_number = int(feature.qualifiers["protocluster_number"][0])
 
+        protocluster = cls(protocluster_number)
+        protocluster.protocore[protocluster_number] = None
+
         if "category" not in feature.qualifiers:
             logging.error("category qualifier not found in protocluster feature!")
             raise InvalidGBKError()
 
         protocluster_category = feature.qualifiers["category"][0]
 
-        protocluster = cls(protocluster_number, protocluster_category)
+        protocluster.category = protocluster_category
 
         return protocluster
