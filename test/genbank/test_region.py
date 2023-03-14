@@ -40,6 +40,20 @@ class TestRegion(TestCase):
 
         self.assertRaises(InvalidGBKError, Region.parse, feature)
 
+    def test_parse_candidate_cluster_numbers(self):
+        """Tests whether a region cand_clusters is correctly parsed from a feature"""
+        feature = SeqFeature(type="region")
+
+        expected_number = 1
+        expected_cand_clusters = {1: None}
+
+        feature.qualifiers["region_number"] = [str(expected_number)]
+        feature.qualifiers["candidate_cluster_numbers"] = ["1"]
+
+        region = Region.parse(feature)
+
+        self.assertEqual(expected_cand_clusters, region.cand_clusters)
+
     def test_parse_wrong_type(self):
         """Tests whether create_region correctly throws an error when given a feature of
         a wrong type

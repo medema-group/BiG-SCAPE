@@ -15,7 +15,7 @@ class Region:
 
     Attributes:
         number: int
-        cand_cluster: Dict[int, CandidateCluster]
+        cand_clusters: Dict[int, CandidateCluster]
     """
 
     def __init__(self, number: int):
@@ -47,6 +47,12 @@ class Region:
         region_number = int(feature.qualifiers["region_number"][0])
 
         region = cls(region_number)
+
+        if "candidate_cluster_numbers" not in feature.qualifiers:
+            logging.error(
+                "candidate_cluster_numbers qualifier not found in region feature!"
+            )
+            raise InvalidGBKError()
 
         for cand_cluster_number in feature.qualifiers["candidate_cluster_numbers"]:
             region.cand_clusters[int(cand_cluster_number)] = None
