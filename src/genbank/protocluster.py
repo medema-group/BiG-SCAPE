@@ -26,21 +26,21 @@ class Protocluster:
         """Creates a Protocluster object from a region feature in a GBK file"""
         if feature.type != "protocluster":
             logging.error(
-                "Feature is not of correct type! (expected: cand_cluster, was: %s)",
+                "Feature is not of correct type! (expected: protocluster, was: %s)",
                 feature.type,
             )
             raise InvalidGBKError()
 
         if "protocluster_number" not in feature.qualifiers:
             logging.error(
-                "protocluster_number qualifier not found in cand_cluster feature!"
+                "protocluster_number qualifier not found in protocluster feature!"
             )
             raise InvalidGBKError()
 
         protocluster_number = int(feature.qualifiers["protocluster_number"][0])
 
         if "category" not in feature.qualifiers:
-            logging.error("category qualifier not found in cand_cluster feature!")
+            logging.error("category qualifier not found in protocluster feature!")
             raise InvalidGBKError()
 
         protocluster_category = feature.qualifiers["category"][0]
