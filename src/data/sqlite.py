@@ -1,6 +1,8 @@
-from sqlalchemy import Engine, Connection, create_engine, text
+from pathlib import Path
+from sqlalchemy import Engine, Connection, MetaData, create_engine, text
 
 from src.parameters.constants import DB_SCHEMA_PATH
+from src.errors.data import DBClosedError, TableNotFoundError, DBAlreadyOpenError
 
 
 class DB:
@@ -8,32 +10,50 @@ class DB:
 
     engine: Engine = None
     connection: Connection = None
+    metadata: MetaData = None
 
     @staticmethod
-    def create_new_db() -> bool:
-        """Create a new database in-memory
+    def opened():
+        """Returns true if database is already openened"""
+        return DB.connection is not None and not DB.connection.closed
 
-        Returns true if a new database was created, returns false if a database already
-        existed
+    @staticmethod
+    def reflect():
+        """Populates the metadata object with information about the tables
+
+        This is necessary since we describe our database in schema.sql and load it, instead
+        of creating it through SQLAlchemy's table syste
         """
+        if not DB.opened():
+            raise DBClosedError()
 
-        if DB.connection is not None and not DB.connection.closed:
-            return False
+        DB.metadata = MetaData()
+        DB.metadata.reflect(bind=DB.engine)
+
+    @staticmethod
+    def create_tables():
+        """Populates the database with tables"""
+        if not DB.opened:
+            raise DBClosedError()
+
+        create_queries = read_schema(DB_SCHEMA_PATH)
+
+        for create_query in create_queries:
+            DB.connection.execute(text(create_query))
+
+    @staticmethod
+    def create_in_mem():
+        """Create a new database in-memory"""
+
+        if DB.opened():
+            raise DBAlreadyOpenError()
 
         DB.engine = create_engine("sqlite:///:memory:")
         DB.connection = DB.engine.connect()
 
-        with open(DB_SCHEMA_PATH, encoding="utf-8") as schema_file:
-            lines = []
-            for line in schema_file:
-                lines.append(line)
-                if not line.rstrip().endswith(";"):
-                    continue
-                creation_query = text("".join(lines))
-                DB.connection.execute(creation_query)
-                lines = []
+        DB.create_tables()
 
-        return True
+        DB.reflect()
 
     @staticmethod
     def close_db():
@@ -44,3 +64,30 @@ class DB:
     def execute_raw_query(query: str):
         """Executes a raw simple query. Should only be used for very short queries"""
         return DB.connection.execute(text(query))
+
+    @staticmethod
+    def insert_one(table_name: str, **values):
+        if table_name not in DB.metadata.tables:
+            raise TableNotFoundError(table_name)
+
+        table_obj = DB.metadata.tables[table_name]
+        insert = table_obj.insert().values(values)
+        DB.connection.execute(insert)
+
+
+def read_schema(path: Path) -> list[str]:
+    with open(path, encoding="utf-8") as schema_file:
+        return text_to_queries(schema_file.readlines())
+
+
+def text_to_queries(schema_lines: list[str]):
+    create_queries = []
+    query_lines = []
+    for line in schema_lines:
+        query_lines.append(line)
+        if not line.rstrip().endswith(";"):
+            continue
+        creation_query = "".join(query_lines)
+        create_queries.append(creation_query)
+        query_lines = []
+    return create_queries
