@@ -4,6 +4,7 @@ from unittest import TestCase
 from Bio.SeqFeature import SeqFeature
 
 from src.genbank.region import Region
+from src.genbank.cand_cluster import CandidateCluster
 from src.errors.genbank import InvalidGBKError
 
 
@@ -47,3 +48,23 @@ class TestRegion(TestCase):
         feature = SeqFeature(type="CDS")
 
         self.assertRaises(InvalidGBKError, Region.parse, feature)
+
+    def test_add_candidate_cluster(self):
+        """Tests whether a candidate cluster is correctly added to this region"""
+        region_feature = SeqFeature(type="region")
+        region_feature.qualifiers = {
+            "region_number": "1",
+            "candidate_cluster_numbers": ["1"],
+        }
+
+        region = Region.parse(region_feature)
+
+        candidate_cluster_feature = SeqFeature(type="cand_cluster")
+        candidate_cluster_feature.qualifiers = {
+            "candidate_cluster_number": "1",
+            "kind": "neighbouring",
+        }
+
+        candidate_cluster = CandidateCluster.parse(candidate_cluster_feature)
+
+        region.add_cand_cluster(candidate_cluster)
