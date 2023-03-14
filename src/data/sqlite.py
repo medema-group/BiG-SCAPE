@@ -10,8 +10,16 @@ class DB:
     connection: Connection = None
 
     @staticmethod
-    def create_new_db():
-        """Create a new database in-memory"""
+    def create_new_db() -> bool:
+        """Create a new database in-memory
+
+        Returns true if a new database was created, returns false if a database already
+        existed
+        """
+
+        if DB.connection is not None and not DB.connection.closed:
+            return False
+
         DB.engine = create_engine("sqlite:///:memory:")
         DB.connection = DB.engine.connect()
 
@@ -24,6 +32,8 @@ class DB:
                 creation_query = text("".join(lines))
                 DB.connection.execute(creation_query)
                 lines = []
+
+        return True
 
     @staticmethod
     def close_db():

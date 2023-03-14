@@ -20,6 +20,17 @@ class TestSQLite(TestCase):
 
         DB.connection.close()
 
+    def test_already_created(self):
+        """Tests whether the create database method returns false if a database was
+        already created
+        """
+        DB.create_new_db()
+
+        expected_result = False
+        actual_result = DB.create_new_db()
+
+        self.assertEqual(expected_result, actual_result)
+
     def test_execute_raw_query(self):
         """Tests whether a raw query can be run on a database"""
         DB.create_new_db()
@@ -33,3 +44,5 @@ class TestSQLite(TestCase):
         result = DB.execute_raw_query(insert_row_query)
 
         self.assertIsNotNone(result)
+
+        DB.connection.close()
