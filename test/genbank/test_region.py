@@ -27,6 +27,7 @@ class TestRegion(TestCase):
         expected_number = 1
 
         feature.qualifiers["region_number"] = [str(expected_number)]
+        feature.qualifiers["candidate_cluster_numbers"] = ["1"]
 
         region = Region.parse(feature)
 
@@ -67,7 +68,7 @@ class TestRegion(TestCase):
         """Tests whether a candidate cluster is correctly added to this region"""
         region_feature = SeqFeature(type="region")
         region_feature.qualifiers = {
-            "region_number": "1",
+            "region_number": ["1"],
             "candidate_cluster_numbers": ["1"],
         }
 
@@ -75,8 +76,9 @@ class TestRegion(TestCase):
 
         candidate_cluster_feature = SeqFeature(type="cand_cluster")
         candidate_cluster_feature.qualifiers = {
-            "candidate_cluster_number": "1",
-            "kind": "neighbouring",
+            "candidate_cluster_number": ["1"],
+            "kind": ["neighbouring"],
+            "protoclusters": ["1"],
         }
 
         candidate_cluster = CandidateCluster.parse(candidate_cluster_feature)
