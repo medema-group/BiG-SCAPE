@@ -21,7 +21,7 @@ CREATE TABLE IF NOT EXISTS bgc_region (
     nt_stop INTEGER,
     UNIQUE(id),
     UNIQUE(parent_id, region_number)
-    FOREIGN KEY(parent_id) REFERENCES SELF(id),
+    FOREIGN KEY(parent_id) REFERENCES bgc_region(id),
     FOREIGN KEY(gbk_id) REFERENCES gbk(id)
 );
 
