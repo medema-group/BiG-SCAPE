@@ -27,7 +27,7 @@ class TestCandidateCluster(TestCase):
         expected_number = 1
         expected_kind = "any kind"
         feature.qualifiers["candidate_cluster_number"] = [str(expected_number)]
-        feature.qualifiers["kind"] = [str(expected_kind)]
+        feature.qualifiers["kind"] = [expected_kind]
 
         cand_cluster = CandidateCluster.parse(feature)
 

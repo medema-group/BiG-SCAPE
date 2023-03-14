@@ -6,7 +6,7 @@ from typing import Dict
 from Bio.SeqFeature import SeqFeature
 
 from src.errors.genbank import InvalidGBKError
-from src.genbank.protocluster import Protoluster
+from src.genbank.protocluster import Protocluster
 
 
 class CandidateCluster:
@@ -22,7 +22,7 @@ class CandidateCluster:
     def __init__(self, number: int, kind: str):
         self.number = number
         self.kind = kind
-        self.protoclusters: Dict[int, Protoluster] = {}
+        self.protoclusters: Dict[int, Protocluster] = {}
 
     @classmethod
     def parse(cls, feature: SeqFeature):
