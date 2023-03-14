@@ -6,8 +6,8 @@ from src.parameters.constants import DB_SCHEMA_PATH
 class DB:
     """Class to manage database interaction"""
 
-    engine: Engine
-    connection: Connection
+    engine: Engine = None
+    connection: Connection = None
 
     @staticmethod
     def create_new_db():
