@@ -4,6 +4,7 @@ from unittest import TestCase
 
 from src.genbank.gbk import GBK
 from src.genbank.region import Region
+from src.errors.genbank import InvalidGBKError
 
 
 class TestGBK(TestCase):
@@ -25,7 +26,7 @@ class TestGBK(TestCase):
             "test/test_data/valid_gbk_multiple_regions_folder/valid_input_multiple_regions.gbk"
         )
 
-        self.assertRaises(ValueError, GBK.parse, gbk_file_path)
+        self.assertRaises(InvalidGBKError, GBK.parse, gbk_file_path)
 
     def test_populate_regions(self):
         """Tests whether parsing a GBK correctly populates the underlying regions"""
