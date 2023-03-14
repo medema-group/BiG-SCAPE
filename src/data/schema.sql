@@ -16,7 +16,6 @@ CREATE TABLE IF NOT EXISTS bgc_region (
     parent_id INTEGER NOT NULL,
     region_number INTEGER,
     gbk_id INTEGER NOT NULL,
-    region_type TEXT NOT NULL,
     on_contig_edge BOOLEAN,
     nt_start INTEGER,
     nt_stop INTEGER,
@@ -25,6 +24,14 @@ CREATE TABLE IF NOT EXISTS bgc_region (
     FOREIGN KEY(parent_id) REFERENCES SELF(id),
     FOREIGN KEY(gbk_id) REFERENCES gbk(id)
 );
+
+CREATE TABLE IF NOT EXISTS bgc_region_type (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    region_id INTEGER NOT NULL,
+    type TEXT NOT NULL,
+    UNIQUE(region_id, type),
+    FORIEGN KEY (region_id) REFERENCES bgc_region(id)
+)
 
 CREATE TABLE IF NOT EXISTS cds (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
