@@ -1,11 +1,11 @@
 """Module containing code to load and store AntiSMASH candidate clusters"""
 
 import logging
-from typing import Dict
+from typing import Dict, Optional
 
 from Bio.SeqFeature import SeqFeature
 
-from src.errors.genbank import InvalidGBKError
+from src.errors.genbank import InvalidGBKError, InvalidGBKRegionChildError
 from src.genbank.protocluster import Protocluster
 
 
@@ -19,10 +19,18 @@ class CandidateCluster:
         protoclusters: Dict[int, Protocluster]
     """
 
-    def __init__(self, number: int, kind: str):
+    def __init__(self, number: int):
         self.number = number
-        self.kind = kind
-        self.protoclusters: Dict[int, Protocluster] = {}
+        self.kind: str = ""
+        self.protoclusters: Dict[int, Optional[Protocluster]] = {}
+
+    def add_protocluster(self, protocluster: Protocluster):
+        """Add a protocluster object to this region"""
+
+        if protocluster.number not in self.protoclusters:
+            raise InvalidGBKRegionChildError()
+
+        self.protoclusters[protocluster.number] = protocluster
 
     @classmethod
     def parse(cls, feature: SeqFeature):
@@ -48,6 +56,14 @@ class CandidateCluster:
 
         cand_cluster_kind = feature.qualifiers["kind"][0]
 
-        cand_cluster = cls(cand_cluster_number, cand_cluster_kind)
+        cand_cluster = cls(cand_cluster_number)
+        cand_cluster.kind = cand_cluster_kind
+
+        if "protoclusters" not in feature.qualifiers:
+            logging.error("protoclusters qualifier not found in region feature!")
+            raise InvalidGBKError()
+
+        for protocluster_number in feature.qualifiers["protoclusters"]:
+            cand_cluster.protoclusters[int(protocluster_number)] = None
 
         return cand_cluster
