@@ -9,7 +9,7 @@ from src.errors.genbank import InvalidGBKError
 
 class Protocluster:
     """
-    Class to describe a region within an Antismash GBK
+    Class to describe a protocore within an Antismash GBK
 
     Attributes:
         number: int

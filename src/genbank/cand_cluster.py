@@ -11,7 +11,7 @@ from src.genbank.protocluster import Protocluster
 
 class CandidateCluster:
     """
-    Class to describe a region within an Antismash GBK
+    Class to describe a candidate cluster within an Antismash GBK
 
     Attributes:
         number: int
