@@ -16,7 +16,7 @@ class CandidateCluster:
     Attributes:
         number: int
         kind: str
-        protoclusters: Dict[int, Protocluster]
+        proto_clusters: Dict[int, Protocluster]
     """
 
     def __init__(self, number: int):
@@ -24,7 +24,7 @@ class CandidateCluster:
         self.kind: str = ""
         self.proto_clusters: Dict[int, Optional[Protocluster]] = {}
 
-    def add_protocluster(self, proto_cluster: Protocluster):
+    def add_proto_cluster(self, proto_cluster: Protocluster):
         """Add a protocluster object to this region"""
 
         if proto_cluster.number not in self.proto_clusters:

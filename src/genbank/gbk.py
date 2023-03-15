@@ -60,7 +60,7 @@ class GBK:
                 cand_cluster = CandidateCluster.parse(feature)
                 tmp_cand_clusters[cand_cluster.number] = cand_cluster
 
-            elif feature.type == "proto_cluster":
+            elif feature.type == "protocluster":
                 proto_cluster = Protocluster.parse(feature)
                 tmp_proto_clusters[proto_cluster.number] = proto_cluster
 
@@ -73,8 +73,8 @@ class GBK:
             proto_cluster.add_proto_core(tmp_proto_cores[proto_cluster_nr])
 
         for cand_cluster in tmp_cand_clusters.values():
-            for proto_cluster_nr in cand_cluster.protoclusters.keys():
-                cand_cluster.add_protocluster(tmp_proto_clusters[proto_cluster_nr])
+            for proto_cluster_nr in cand_cluster.proto_clusters.keys():
+                cand_cluster.add_proto_cluster(tmp_proto_clusters[proto_cluster_nr])
 
             region.add_cand_cluster(cand_cluster)
 

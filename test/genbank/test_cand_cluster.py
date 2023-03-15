@@ -89,12 +89,12 @@ class TestCandidateCluster(TestCase):
 
         candidate_cluster = CandidateCluster.parse(candidate_cluster_feature)
 
-        protocluster_feature = SeqFeature(type="protocluster")
-        protocluster_feature.qualifiers = {
+        proto_cluster_feature = SeqFeature(type="protocluster")
+        proto_cluster_feature.qualifiers = {
             "protocluster_number": ["1"],
             "category": ["NRPS"],
         }
 
-        protocluster = Protocluster.parse(protocluster_feature)
+        proto_cluster = Protocluster.parse(proto_cluster_feature)
 
-        candidate_cluster.add_protocluster(protocluster)
+        candidate_cluster.add_proto_cluster(proto_cluster)

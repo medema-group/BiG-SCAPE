@@ -49,7 +49,7 @@ class TestGBK(TestCase):
 
         gbk = GBK.parse(gbk_file_path)
 
-        proto_core = gbk.region.cand_clusters[1].proto_clusters[1].protocore[1]
+        proto_core = gbk.region.cand_clusters[1].proto_clusters[1].proto_core[1]
 
         self.assertIsInstance(proto_core, Protocore)
 

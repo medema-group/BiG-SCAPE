@@ -22,15 +22,15 @@ class Protocluster:
     def __init__(self, number: int):
         self.number = number
         self.category: str = ""
-        self.protocore: Dict[int, Optional[Protocore]] = {}
+        self.proto_core: Dict[int, Optional[Protocore]] = {}
 
     def add_proto_core(self, proto_core: Protocore):
         """Add a proto_core object to this region"""
 
-        if proto_core.number not in self.protocore:
+        if proto_core.number not in self.proto_core:
             raise InvalidGBKRegionChildError()
 
-        self.protocore[proto_core.number] = proto_core
+        self.proto_core[proto_core.number] = proto_core
 
     @classmethod
     def parse(cls, feature: SeqFeature):
@@ -48,10 +48,10 @@ class Protocluster:
             )
             raise InvalidGBKError()
 
-        protocluster_number = int(feature.qualifiers["protocluster_number"][0])
+        proto_cluster_number = int(feature.qualifiers["protocluster_number"][0])
 
-        protocluster = cls(protocluster_number)
-        protocluster.protocore[protocluster_number] = None
+        proto_cluster = cls(proto_cluster_number)
+        proto_cluster.proto_core[proto_cluster_number] = None
 
         if "category" not in feature.qualifiers:
             logging.error("category qualifier not found in protocluster feature!")
@@ -59,6 +59,6 @@ class Protocluster:
 
         protocluster_category = feature.qualifiers["category"][0]
 
-        protocluster.category = protocluster_category
+        proto_cluster.category = protocluster_category
 
-        return protocluster
+        return proto_cluster
