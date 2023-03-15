@@ -4,6 +4,7 @@ from unittest import TestCase
 
 from src.genbank.gbk import GBK
 from src.genbank.region import Region
+from src.genbank.proto_core import Protocore
 from src.errors.genbank import InvalidGBKError
 
 
@@ -29,7 +30,7 @@ class TestGBK(TestCase):
         self.assertRaises(InvalidGBKError, GBK.parse, gbk_file_path)
 
     def test_populate_regions(self):
-        """Tests whether parsing a GBK correctly populates the underlying regions"""
+        """Tests whether parsing a GBK correctly populates the underlying region"""
 
         # GBK has one region
         gbk_file_path = Path("test/test_data/valid_gbk_folder/valid_input.gbk")
@@ -37,3 +38,15 @@ class TestGBK(TestCase):
         gbk = GBK.parse(gbk_file_path)
 
         self.assertIsInstance(gbk.region, Region)
+
+    def test_populate_hierarchical_objects(self):
+        """Tests whether parsing a GBK correclty generates parent-child feature relations
+        via checking for presence of the lowest level child - proto_core"""
+
+        gbk_file_path = Path("test/test_data/valid_gbk_folder/valid_input.gbk")
+
+        gbk = GBK.parse(gbk_file_path)
+
+        proto_core = gbk.region.cand_clusters[1].protoclusters[1].protocore[1]
+
+        self.assertIsInstance(proto_core, Protocore)
