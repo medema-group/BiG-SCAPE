@@ -6,7 +6,7 @@ from typing import Dict, Optional
 from Bio.SeqFeature import SeqFeature
 
 from src.errors.genbank import InvalidGBKError, InvalidGBKRegionChildError
-from src.genbank.protocluster import Protocluster
+from src.genbank.proto_cluster import Protocluster
 
 
 class CandidateCluster:
@@ -22,15 +22,15 @@ class CandidateCluster:
     def __init__(self, number: int):
         self.number = number
         self.kind: str = ""
-        self.protoclusters: Dict[int, Optional[Protocluster]] = {}
+        self.proto_clusters: Dict[int, Optional[Protocluster]] = {}
 
-    def add_protocluster(self, protocluster: Protocluster):
+    def add_protocluster(self, proto_cluster: Protocluster):
         """Add a protocluster object to this region"""
 
-        if protocluster.number not in self.protoclusters:
+        if proto_cluster.number not in self.proto_clusters:
             raise InvalidGBKRegionChildError()
 
-        self.protoclusters[protocluster.number] = protocluster
+        self.proto_clusters[proto_cluster.number] = proto_cluster
 
     @classmethod
     def parse(cls, feature: SeqFeature):
@@ -63,7 +63,7 @@ class CandidateCluster:
             logging.error("protoclusters qualifier not found in region feature!")
             raise InvalidGBKError()
 
-        for protocluster_number in feature.qualifiers["protoclusters"]:
-            cand_cluster.protoclusters[int(protocluster_number)] = None
+        for proto_cluster_number in feature.qualifiers["protoclusters"]:
+            cand_cluster.proto_clusters[int(proto_cluster_number)] = None
 
         return cand_cluster

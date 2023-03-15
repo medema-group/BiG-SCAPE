@@ -4,7 +4,7 @@ from unittest import TestCase
 
 from Bio.SeqFeature import SeqFeature
 
-from src.genbank.protocluster import Protocluster
+from src.genbank.proto_cluster import Protocluster
 from src.genbank.proto_core import Protocore
 from src.errors.genbank import InvalidGBKError
 

@@ -11,7 +11,7 @@ from Bio.SeqFeature import SeqFeature
 from src.errors.genbank import InvalidGBKError
 from src.genbank.region import Region
 from src.genbank.cand_cluster import CandidateCluster
-from src.genbank.protocluster import Protocluster
+from src.genbank.proto_cluster import Protocluster
 from src.genbank.proto_core import Protocore
 
 
@@ -42,7 +42,7 @@ class GBK:
         gbk.nt_seq = record.seq
 
         tmp_cand_clusters = {}
-        tmp_protoclusters = {}
+        tmp_proto_clusters = {}
         tmp_proto_cores = {}
 
         # go through features, load into tmp dicts indexed by feature number
@@ -60,24 +60,24 @@ class GBK:
                 cand_cluster = CandidateCluster.parse(feature)
                 tmp_cand_clusters[cand_cluster.number] = cand_cluster
 
-            elif feature.type == "protocluster":
-                protocluster = Protocluster.parse(feature)
-                tmp_protoclusters[protocluster.number] = protocluster
+            elif feature.type == "proto_cluster":
+                proto_cluster = Protocluster.parse(feature)
+                tmp_proto_clusters[proto_cluster.number] = proto_cluster
 
             elif feature.type == "proto_core":
                 proto_core = Protocore.parse(feature)
                 tmp_proto_cores[proto_core.number] = proto_core
 
         # add features to parent objects
-        for protocluster_nr, protocluster in tmp_protoclusters.items():
-            protocluster.add_proto_core(tmp_proto_cores[protocluster_nr])
+        for proto_cluster_nr, proto_cluster in tmp_proto_clusters.items():
+            proto_cluster.add_proto_core(tmp_proto_cores[proto_cluster_nr])
 
         for cand_cluster in tmp_cand_clusters.values():
-            for protocluster_nr in cand_cluster.protoclusters.keys():
-                cand_cluster.add_protocluster(tmp_protoclusters[protocluster_nr])
+            for proto_cluster_nr in cand_cluster.protoclusters.keys():
+                cand_cluster.add_protocluster(tmp_proto_clusters[proto_cluster_nr])
 
             region.add_cand_cluster(cand_cluster)
 
-        del tmp_protoclusters, tmp_proto_cores, tmp_cand_clusters
+        del tmp_proto_clusters, tmp_proto_cores, tmp_cand_clusters
 
         return gbk
