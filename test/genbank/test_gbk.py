@@ -2,6 +2,8 @@
 from pathlib import Path
 from unittest import TestCase
 
+from Bio.Seq import Seq
+
 from src.genbank.gbk import GBK
 from src.genbank.region import Region
 from src.genbank.proto_core import Protocore
@@ -50,3 +52,14 @@ class TestGBK(TestCase):
         proto_core = gbk.region.cand_clusters[1].protoclusters[1].protocore[1]
 
         self.assertIsInstance(proto_core, Protocore)
+
+    def test_parse_gbk_has_dna_seq(self):
+        """Tests whether parsing a GBK correclty has DNA sequence"""
+
+        gbk_file_path = Path("test/test_data/valid_gbk_folder/valid_input.gbk")
+
+        gbk = GBK.parse(gbk_file_path)
+
+        dna_sequence = gbk.nt_seq
+
+        self.assertIsInstance(dna_sequence, Seq)

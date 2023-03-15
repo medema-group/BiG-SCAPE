@@ -23,12 +23,14 @@ class GBK:
         path: Path
         metadata: Dict[str, str]
         region: Region
+        nt_seq: SeqRecord.seq
     """
 
     def __init__(self, path) -> None:
         self.path = path
         self.metadata: Dict[str, str] = {}
         self.region: Optional[Region] = None
+        self.nt_seq: SeqRecord.seq = None
 
     @classmethod
     def parse(cls, path: Path):
@@ -37,6 +39,7 @@ class GBK:
 
         # get record. should only ever be one for Antismash GBK
         record: SeqRecord = next(SeqIO.parse(path, "genbank"))
+        gbk.nt_seq = record.seq
 
         tmp_cand_clusters = {}
         tmp_protoclusters = {}
