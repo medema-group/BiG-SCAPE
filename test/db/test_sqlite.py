@@ -1,12 +1,11 @@
 """Contains tests to test sqlite database reading and writing functions"""
 
-from pathlib import Path
 from unittest import TestCase
 
 from sqlalchemy import text
 
 from src.data.sqlite import DB
-from src.errors.data import DBAlreadyOpenError, TableNotFoundError
+from src.errors.data import DBAlreadyOpenError
 
 
 class TestSQLite(TestCase):
@@ -57,40 +56,5 @@ class TestSQLite(TestCase):
         result = DB.execute_raw_query(insert_row_query)
 
         self.assertIsNotNone(result)
-
-        DB.close_db()
-
-    def test_insert_one(self):
-        """Tests the insert_one function, specifically meant to immediately insert
-        one row into a given table
-        """
-        DB.create_in_mem()
-
-        table_name = "gbk"
-        gbk_file_path = Path("test/test_data/valid_gbk_folder/valid_input.gbk")
-
-        DB.insert_one(table_name, path=str(gbk_file_path))
-
-        cursor_result = DB.connection.execute(text("SELECT * FROM gbk;"))
-
-        expected_row_count = 1
-        actual_row_count = len(cursor_result.fetchall())
-
-        self.assertEqual(expected_row_count, actual_row_count)
-
-        DB.close_db()
-
-    def test_insert_one_table_does_not_exist(self):
-        """Tests whether insert_one correctly throws an error when a table is given that
-        does not exist
-        """
-        DB.create_in_mem()
-
-        target_table = "fakename"
-        gbk_file_path = Path("test/test_data/valid_gbk_folder/valid_input.gbk")
-
-        self.assertRaises(
-            TableNotFoundError, DB.insert_one, target_table, path=gbk_file_path
-        )
 
         DB.close_db()

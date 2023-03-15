@@ -1,8 +1,16 @@
 from pathlib import Path
-from sqlalchemy import Engine, Connection, MetaData, create_engine, text
+from sqlalchemy import (
+    Engine,
+    Connection,
+    MetaData,
+    Compiled,
+    CursorResult,
+    create_engine,
+    text,
+)
 
 from src.parameters.constants import DB_SCHEMA_PATH
-from src.errors.data import DBClosedError, TableNotFoundError, DBAlreadyOpenError
+from src.errors.data import DBClosedError, DBAlreadyOpenError
 
 
 class DB:
@@ -66,13 +74,9 @@ class DB:
         return DB.connection.execute(text(query))
 
     @staticmethod
-    def insert_one(table_name: str, **values):
-        if table_name not in DB.metadata.tables:
-            raise TableNotFoundError(table_name)
-
-        table_obj = DB.metadata.tables[table_name]
-        insert = table_obj.insert().values(values)
-        DB.connection.execute(insert)
+    def execute(query: Compiled) -> CursorResult:
+        """Wrapper for SQLAlchemy.connection.execute expecting a Compiled query"""
+        return DB.connection.execute(query)
 
 
 def read_schema(path: Path) -> list[str]:
