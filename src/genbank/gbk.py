@@ -50,31 +50,33 @@ class GBK:
         for feature in record.features:
             if feature.type == "region":
                 if gbk.region is not None:
+                    # this should not happen, but just in case
+                    # since we only have one region on an object
                     logging.error("GBK file provided contains more than one region")
                     raise InvalidGBKError()
 
                 region = Region.parse(feature)
                 gbk.region = region
 
-            elif feature.type == "cand_cluster":
+            if feature.type == "cand_cluster":
                 cand_cluster = CandidateCluster.parse(feature)
                 tmp_cand_clusters[cand_cluster.number] = cand_cluster
 
-            elif feature.type == "protocluster":
+            if feature.type == "protocluster":
                 proto_cluster = Protocluster.parse(feature)
                 tmp_proto_clusters[proto_cluster.number] = proto_cluster
 
-            elif feature.type == "proto_core":
+            if feature.type == "proto_core":
                 proto_core = Protocore.parse(feature)
                 tmp_proto_cores[proto_core.number] = proto_core
 
         # add features to parent objects
-        for proto_cluster_nr, proto_cluster in tmp_proto_clusters.items():
-            proto_cluster.add_proto_core(tmp_proto_cores[proto_cluster_nr])
+        for proto_cluster_num, proto_cluster in tmp_proto_clusters.items():
+            proto_cluster.add_proto_core(tmp_proto_cores[proto_cluster_num])
 
         for cand_cluster in tmp_cand_clusters.values():
-            for proto_cluster_nr in cand_cluster.proto_clusters.keys():
-                cand_cluster.add_proto_cluster(tmp_proto_clusters[proto_cluster_nr])
+            for proto_cluster_num in cand_cluster.proto_clusters.keys():
+                cand_cluster.add_proto_cluster(tmp_proto_clusters[proto_cluster_num])
 
             region.add_cand_cluster(cand_cluster)
 
