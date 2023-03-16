@@ -75,9 +75,9 @@ class DB:
         file_engine.connect()
 
         # from
-        raw_memory_connection = DB.engine.raw_connection().connection
+        raw_memory_connection = DB.engine.raw_connection().driver_connection
         # to
-        raw_file_connection = file_engine.raw_connection().connection
+        raw_file_connection = file_engine.raw_connection().driver_connection
 
         raw_memory_connection.backup(raw_file_connection)
 
