@@ -66,6 +66,22 @@ class DB:
         DB.reflect()
 
     @staticmethod
+    def save_to_disk(db_path: Path):
+        """Saves the in-memory database to a .db file"""
+        if not DB.opened():
+            raise DBClosedError()
+
+        file_engine = create_engine("sqlite:///" + str(db_path))
+        file_engine.connect()
+
+        # from
+        raw_memory_connection = DB.engine.raw_connection().connection
+        # to
+        raw_file_connection = file_engine.raw_connection().connection
+
+        raw_memory_connection.backup(raw_file_connection)
+
+    @staticmethod
     def close_db():
         """Closes the database connection. This does not save the database to disk"""
         DB.connection.close()

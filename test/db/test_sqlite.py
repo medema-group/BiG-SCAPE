@@ -1,5 +1,6 @@
 """Contains tests to test sqlite database reading and writing functions"""
 
+from pathlib import Path
 from unittest import TestCase
 
 from sqlalchemy import text
@@ -58,3 +59,13 @@ class TestSQLite(TestCase):
         self.assertIsNotNone(result)
 
         DB.close_db()
+
+    def test_save_to_disk(self):
+        """Tests whether the sqlite database can be correctly saved to disk"""
+        DB.create_in_mem()
+
+        db_save_location = Path("tmp/test.db")
+
+        DB.save_to_disk(db_save_location)
+
+        self.assertTrue(db_save_location.exists())
