@@ -18,8 +18,13 @@ class Persistable:
         raise NotImplementedError()
 
     @classmethod
-    def load(cls):
-        """Loads the current object from a database"""
+    def load_one(cls):
+        """Loads an instance of the current object from a database"""
+        raise NotImplementedError()
+
+    @classmethod
+    def load_all(cls):
+        """Loads all instances found in the database"""
         raise NotImplementedError()
 
     @staticmethod
