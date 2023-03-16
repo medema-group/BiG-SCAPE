@@ -49,6 +49,8 @@ class DB:
         for create_query in create_queries:
             DB.connection.execute(text(create_query))
 
+        DB.connection.commit()
+
     @staticmethod
     def create_in_mem():
         """Create a new database in-memory"""
