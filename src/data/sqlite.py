@@ -44,10 +44,10 @@ class DB:
         if not DB.opened:
             raise DBClosedError()
 
-        create_queries = read_schema(DB_SCHEMA_PATH)
+        creation_queries = read_schema(DB_SCHEMA_PATH)
 
-        for create_query in create_queries:
-            DB.connection.execute(text(create_query))
+        for creation_query in creation_queries:
+            DB.connection.execute(text(creation_query))
 
         DB.connection.commit()
 
@@ -81,6 +81,7 @@ class DB:
         # to
         raw_file_connection = file_engine.raw_connection().driver_connection
 
+        # TODO: check if this appends or overwrites
         raw_memory_connection.backup(raw_file_connection)
 
     @staticmethod
