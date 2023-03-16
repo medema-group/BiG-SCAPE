@@ -71,6 +71,8 @@ class DB:
         if not DB.opened():
             raise DBClosedError()
 
+        db_path.parent.mkdir(parents=True, exist_ok=True)
+
         file_engine = create_engine("sqlite:///" + str(db_path))
         file_engine.connect()
 

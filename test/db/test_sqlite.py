@@ -64,8 +64,18 @@ class TestSQLite(TestCase):
         """Tests whether the sqlite database can be correctly saved to disk"""
         DB.create_in_mem()
 
-        db_save_location = Path("tmp/test.db")
+        db_save_location = Path("test/test_data/tmp/test.db")
 
         DB.save_to_disk(db_save_location)
 
         self.assertTrue(db_save_location.exists())
+
+    def test_save_to_disk_mkdir(self):
+        """Tests whether the sqlite database can be correctly saved to disk"""
+        DB.create_in_mem()
+
+        db_save_location = Path("test/test_data/tmp/test.db")
+
+        DB.save_to_disk(db_save_location)
+
+        self.assertTrue(db_save_location.parent.exists())
