@@ -21,15 +21,13 @@ class TestPersistable(TestCase):
         self.addCleanup(self.clean_db)
 
     def test_check_db_connected(self):
-        """Tests whether instantiating a new class without
-        starting a new database connection throws an error
+        """Tests whether instantiating a new class without starting a new database
+        connection throws an error
         """
         self.assertRaises(DBClosedError, Persistable)
 
     def test_save(self):
-        """Tests whether a persistable class saves data to
-        the database correctly
-        """
+        """Tests whether a persistable class saves data to the database correctly"""
         # start db
         DB.create_in_mem()
 
@@ -49,3 +47,22 @@ class TestPersistable(TestCase):
         self.assertEqual(str(gbk_file_path), gbk_row_path)
 
         DB.close_db()
+
+    def test_load_one(self):
+        """Tests whether a persistable class can be loaded from a database correctly"""
+
+        DB.create_in_mem()
+
+        gbk_file_path = Path("test/test_data/valid_gbk_folder/valid_input.gbk")
+
+        gbk_table = DB.metadata.tables["gbk"]
+
+        insert_query = gbk_table.insert().values(path=str(gbk_file_path)).compile()
+
+        DB.connection.execute(insert_query)
+
+        mock_gbk = MockPersistableBGC.load_one()
+
+        actual_path = mock_gbk.path
+
+        self.assertEqual(gbk_file_path, actual_path)
