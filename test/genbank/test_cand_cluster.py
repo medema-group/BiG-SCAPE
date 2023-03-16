@@ -4,8 +4,8 @@ from unittest import TestCase
 
 from Bio.SeqFeature import SeqFeature
 
-from src.genbank.cand_cluster import CandidateCluster
-from src.genbank.proto_cluster import Protocluster
+from src.genbank.candidate_cluster import CandidateCluster
+from src.genbank.proto_cluster import ProtoCluster
 from src.errors.genbank import InvalidGBKError
 
 
@@ -95,6 +95,6 @@ class TestCandidateCluster(TestCase):
             "category": ["NRPS"],
         }
 
-        proto_cluster = Protocluster.parse(proto_cluster_feature)
+        proto_cluster = ProtoCluster.parse(proto_cluster_feature)
 
         candidate_cluster.add_proto_cluster(proto_cluster)

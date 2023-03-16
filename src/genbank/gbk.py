@@ -9,10 +9,7 @@ from Bio.SeqRecord import SeqRecord
 from Bio.SeqFeature import SeqFeature
 
 from src.errors.genbank import InvalidGBKError
-from src.genbank.region import Region
-from src.genbank.cand_cluster import CandidateCluster
-from src.genbank.proto_cluster import Protocluster
-from src.genbank.proto_core import Protocore
+from src.genbank import Region, CandidateCluster, ProtoCluster, ProtoCore
 
 
 class GBK:
@@ -63,11 +60,11 @@ class GBK:
                 tmp_cand_clusters[cand_cluster.number] = cand_cluster
 
             if feature.type == "protocluster":
-                proto_cluster = Protocluster.parse(feature)
+                proto_cluster = ProtoCluster.parse(feature)
                 tmp_proto_clusters[proto_cluster.number] = proto_cluster
 
             if feature.type == "proto_core":
-                proto_core = Protocore.parse(feature)
+                proto_core = ProtoCore.parse(feature)
                 tmp_proto_cores[proto_core.number] = proto_core
 
         # add features to parent objects

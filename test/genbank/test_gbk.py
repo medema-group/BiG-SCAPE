@@ -6,7 +6,7 @@ from Bio.Seq import Seq
 
 from src.genbank.gbk import GBK
 from src.genbank.region import Region
-from src.genbank.proto_core import Protocore
+from src.genbank.proto_core import ProtoCore
 from src.errors.genbank import InvalidGBKError
 
 
@@ -51,7 +51,7 @@ class TestGBK(TestCase):
 
         proto_core = gbk.region.cand_clusters[1].proto_clusters[1].proto_core[1]
 
-        self.assertIsInstance(proto_core, Protocore)
+        self.assertIsInstance(proto_core, ProtoCore)
 
     def test_parse_gbk_has_dna_seq(self):
         """Tests whether parsing a GBK correclty has DNA sequence"""

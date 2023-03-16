@@ -4,7 +4,7 @@ from unittest import TestCase
 from Bio.SeqFeature import SeqFeature
 
 from src.genbank.region import Region
-from src.genbank.cand_cluster import CandidateCluster
+from src.genbank.candidate_cluster import CandidateCluster
 from src.errors.genbank import InvalidGBKError
 
 

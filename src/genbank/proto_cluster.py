@@ -6,10 +6,10 @@ from typing import Dict, Optional
 from Bio.SeqFeature import SeqFeature
 
 from src.errors.genbank import InvalidGBKError, InvalidGBKRegionChildError
-from src.genbank.proto_core import Protocore
+from src.genbank.proto_core import ProtoCore
 
 
-class Protocluster:
+class ProtoCluster:
     """
     Class to describe a protocore within an Antismash GBK
 
@@ -22,9 +22,9 @@ class Protocluster:
     def __init__(self, number: int):
         self.number = number
         self.category: str = ""
-        self.proto_core: Dict[int, Optional[Protocore]] = {}
+        self.proto_core: Dict[int, Optional[ProtoCore]] = {}
 
-    def add_proto_core(self, proto_core: Protocore):
+    def add_proto_core(self, proto_core: ProtoCore):
         """Add a proto_core object to this region"""
 
         if proto_core.number not in self.proto_core:

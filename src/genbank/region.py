@@ -6,7 +6,7 @@ from typing import Dict, Optional
 from Bio.SeqFeature import SeqFeature
 
 from src.errors.genbank import InvalidGBKError, InvalidGBKRegionChildError
-from src.genbank.cand_cluster import CandidateCluster
+from src.genbank.candidate_cluster import CandidateCluster
 
 
 class Region:

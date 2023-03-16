@@ -4,8 +4,8 @@ from unittest import TestCase
 
 from Bio.SeqFeature import SeqFeature
 
-from src.genbank.proto_cluster import Protocluster
-from src.genbank.proto_core import Protocore
+from src.genbank.proto_cluster import ProtoCluster
+from src.genbank.proto_core import ProtoCore
 from src.errors.genbank import InvalidGBKError
 
 
@@ -17,9 +17,9 @@ class TestProtocluster(TestCase):
 
         expected_number = 1
 
-        protocluster = Protocluster(expected_number)
+        protocluster = ProtoCluster(expected_number)
 
-        self.assertIsInstance(protocluster, Protocluster)
+        self.assertIsInstance(protocluster, ProtoCluster)
 
     def test_parse_number(self):
         """Tests whether a Protocluster number is correctly parsed from a feature"""
@@ -32,7 +32,7 @@ class TestProtocluster(TestCase):
             "category": ["NRPS"],
         }
 
-        protocluster = Protocluster.parse(protocluster_feature)
+        protocluster = ProtoCluster.parse(protocluster_feature)
 
         self.assertEqual(expected_number, protocluster.number)
 
@@ -47,7 +47,7 @@ class TestProtocluster(TestCase):
             "category": ["NRPS"],
         }
 
-        protocluster = Protocluster.parse(protocluster_feature)
+        protocluster = ProtoCluster.parse(protocluster_feature)
 
         self.assertEqual(expected_category, protocluster.category)
 
@@ -59,7 +59,7 @@ class TestProtocluster(TestCase):
         expected_category = "NRPS"
         feature.qualifiers["category"] = [expected_category]
 
-        self.assertRaises(InvalidGBKError, Protocluster.parse, feature)
+        self.assertRaises(InvalidGBKError, ProtoCluster.parse, feature)
 
     def test_parse_no_category(self):
         """Tests whether parse correctly throws an error when given a feature
@@ -69,7 +69,7 @@ class TestProtocluster(TestCase):
         expected_number = 1
         feature.qualifiers["protocluster_number"] = [str(expected_number)]
 
-        self.assertRaises(InvalidGBKError, Protocluster.parse, feature)
+        self.assertRaises(InvalidGBKError, ProtoCluster.parse, feature)
 
     def test_parse_wrong_type(self):
         """Tests whether parse correctly throws an error when given a feature of
@@ -78,7 +78,7 @@ class TestProtocluster(TestCase):
 
         feature = SeqFeature(type="CDS")
 
-        self.assertRaises(InvalidGBKError, Protocluster.parse, feature)
+        self.assertRaises(InvalidGBKError, ProtoCluster.parse, feature)
 
     def test_add_protocore(self):
         """Tests whether a protocore is correctly added to this protocluster"""
@@ -89,13 +89,13 @@ class TestProtocluster(TestCase):
             "category": ["NRPS"],
         }
 
-        protocluster = Protocluster.parse(protocluster_feature)
+        protocluster = ProtoCluster.parse(protocluster_feature)
 
         protocore_feature = SeqFeature(type="proto_core")
         protocore_feature.qualifiers = {
             "protocluster_number": ["1"],
         }
 
-        protocore = Protocore.parse(protocore_feature)
+        protocore = ProtoCore.parse(protocore_feature)
 
         protocluster.add_proto_core(protocore)

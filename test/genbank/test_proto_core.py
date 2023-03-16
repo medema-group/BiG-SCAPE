@@ -3,7 +3,7 @@ from unittest import TestCase
 
 from Bio.SeqFeature import SeqFeature
 
-from src.genbank.proto_core import Protocore
+from src.genbank.proto_core import ProtoCore
 from src.errors.genbank import InvalidGBKError
 
 
@@ -15,9 +15,9 @@ class TestProtocore(TestCase):
 
         expected_number = 1
 
-        proto_core = Protocore(expected_number)
+        proto_core = ProtoCore(expected_number)
 
-        self.assertIsInstance(proto_core, Protocore)
+        self.assertIsInstance(proto_core, ProtoCore)
 
     def test_parse_number(self):
         """Tests whether a protocluster/proto_core number is correctly parsed from a feature"""
@@ -27,7 +27,7 @@ class TestProtocore(TestCase):
 
         feature.qualifiers["protocluster_number"] = [str(expected_number)]
 
-        proto_core = Protocore.parse(feature)
+        proto_core = ProtoCore.parse(feature)
 
         self.assertEqual(expected_number, proto_core.number)
 
@@ -37,7 +37,7 @@ class TestProtocore(TestCase):
         """
         feature = SeqFeature(type="proto_core")
 
-        self.assertRaises(InvalidGBKError, Protocore.parse, feature)
+        self.assertRaises(InvalidGBKError, ProtoCore.parse, feature)
 
     def test_parse_wrong_type(self):
         """Tests whether parse correctly throws an error when given a feature of
@@ -46,4 +46,4 @@ class TestProtocore(TestCase):
 
         feature = SeqFeature(type="CDS")
 
-        self.assertRaises(InvalidGBKError, Protocore.parse, feature)
+        self.assertRaises(InvalidGBKError, ProtoCore.parse, feature)

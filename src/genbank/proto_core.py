@@ -7,7 +7,7 @@ from Bio.SeqFeature import SeqFeature
 from src.errors.genbank import InvalidGBKError
 
 
-class Protocore:
+class ProtoCore:
     """
     Class to describe a protocore within an Antismash GBK
 

@@ -6,7 +6,7 @@ from typing import Dict, Optional
 from Bio.SeqFeature import SeqFeature
 
 from src.errors.genbank import InvalidGBKError, InvalidGBKRegionChildError
-from src.genbank.proto_cluster import Protocluster
+from src.genbank.proto_cluster import ProtoCluster
 
 
 class CandidateCluster:
@@ -22,9 +22,9 @@ class CandidateCluster:
     def __init__(self, number: int):
         self.number = number
         self.kind: str = ""
-        self.proto_clusters: Dict[int, Optional[Protocluster]] = {}
+        self.proto_clusters: Dict[int, Optional[ProtoCluster]] = {}
 
-    def add_proto_cluster(self, proto_cluster: Protocluster):
+    def add_proto_cluster(self, proto_cluster: ProtoCluster):
         """Add a protocluster object to this region"""
 
         if proto_cluster.number not in self.proto_clusters:
