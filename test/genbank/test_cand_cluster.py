@@ -1,12 +1,14 @@
 """Contains tests for the Cand_cluster class and functions"""
 
+# from python
 from unittest import TestCase
 
+# from dependencies
 from Bio.SeqFeature import SeqFeature
 
-from src.genbank.candidate_cluster import CandidateCluster
-from src.genbank.proto_cluster import ProtoCluster
-from src.errors.genbank import InvalidGBKError
+# from other modules
+from src.genbank import CandidateCluster, ProtoCluster
+from src.errors import InvalidGBKError
 
 
 class TestCandidateCluster(TestCase):

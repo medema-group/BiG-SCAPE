@@ -1,11 +1,16 @@
 """Module containing code to load and store AntiSMASH regions"""
 
+# from python
 import logging
 from typing import Dict, Optional
 
+# from dependencies
 from Bio.SeqFeature import SeqFeature
 
-from src.errors.genbank import InvalidGBKError, InvalidGBKRegionChildError
+# from other modules
+from src.errors import InvalidGBKError, InvalidGBKRegionChildError
+
+# from this module
 from src.genbank.candidate_cluster import CandidateCluster
 
 

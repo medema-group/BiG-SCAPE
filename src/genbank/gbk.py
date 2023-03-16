@@ -1,15 +1,23 @@
 """Module containing code to load and store GBK files"""
 
+# from python
 import logging
 from pathlib import Path
 from typing import Dict, Optional
 
+# from dependencies
 from Bio import SeqIO
 from Bio.SeqRecord import SeqRecord
 from Bio.SeqFeature import SeqFeature
 
-from src.errors.genbank import InvalidGBKError
-from src.genbank import Region, CandidateCluster, ProtoCluster, ProtoCore
+# from other modules
+from src.errors import InvalidGBKError
+
+# from this module
+from src.genbank.region import Region
+from src.genbank.candidate_cluster import CandidateCluster
+from src.genbank.proto_cluster import ProtoCluster
+from src.genbank.proto_core import ProtoCore
 
 
 class GBK:

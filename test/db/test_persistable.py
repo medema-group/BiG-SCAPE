@@ -1,12 +1,15 @@
 """Contains tests for the persistable metaclass"""
 
-
+# from python
 from pathlib import Path
 from unittest import TestCase
 
-from .mock_persistable import MockPersistableBGC
+# from other modules
 from src.data import Persistable, DB
-from src.errors.data import DBClosedError
+from src.errors import DBClosedError
+
+# from this module
+from .mock_persistable import MockPersistableBGC
 
 
 class TestPersistable(TestCase):

@@ -1,10 +1,13 @@
 """Module containing code to load and store AntiSMASH protoclusters"""
 
+# from python
 import logging
 
+# from dependencies
 from Bio.SeqFeature import SeqFeature
 
-from src.errors.genbank import InvalidGBKError
+# from other modules
+from src.errors import InvalidGBKError
 
 
 class ProtoCore:

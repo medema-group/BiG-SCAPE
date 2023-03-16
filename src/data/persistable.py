@@ -1,8 +1,10 @@
 """Contains an interface class for classes which are committed to the SQLite database"""
 
+# from other modules
+from src.errors import DBClosedError
 
+# from this module
 from src.data.sqlite import DB
-from src.errors.data import DBClosedError
 
 
 class Persistable:

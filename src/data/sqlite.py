@@ -1,4 +1,7 @@
+# from python
 from pathlib import Path
+
+# from dependencies
 from sqlalchemy import (
     Engine,
     Connection,
@@ -9,8 +12,9 @@ from sqlalchemy import (
     text,
 )
 
+# from other modules
 from src.parameters.constants import DB_SCHEMA_PATH
-from src.errors.data import DBClosedError, DBAlreadyOpenError
+from src.errors import DBClosedError, DBAlreadyOpenError
 
 
 class DB:

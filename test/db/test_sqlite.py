@@ -1,12 +1,15 @@
 """Contains tests to test sqlite database reading and writing functions"""
 
+# from python
 from pathlib import Path
 from unittest import TestCase
 
+# from dependencies
 from sqlalchemy import text
 
-from src.data.sqlite import DB
-from src.errors.data import DBAlreadyOpenError
+# from other modules
+from src.data import DB
+from src.errors import DBAlreadyOpenError
 
 
 class TestSQLite(TestCase):

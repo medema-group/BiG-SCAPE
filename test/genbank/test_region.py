@@ -1,11 +1,13 @@
 """Contains tests for the GBK class and functions"""
+# from python
 from unittest import TestCase
 
+# from dependencies
 from Bio.SeqFeature import SeqFeature
 
-from src.genbank.region import Region
-from src.genbank.candidate_cluster import CandidateCluster
-from src.errors.genbank import InvalidGBKError
+# from other modules
+from src.genbank import Region, CandidateCluster
+from src.errors import InvalidGBKError
 
 
 class TestRegion(TestCase):

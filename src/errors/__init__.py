@@ -1,6 +1,6 @@
 """Contains custom error classes"""
-from data import DBAlreadyOpenError, DBClosedError, TableNotFoundError
-from genbank import InvalidGBKError, InvalidGBKRegionChildError
+from src.errors.data import DBAlreadyOpenError, DBClosedError, TableNotFoundError
+from src.errors.genbank import InvalidGBKError, InvalidGBKRegionChildError
 
 __all__ = [
     "DBAlreadyOpenError",

@@ -1,10 +1,14 @@
 """Contains tests for the GBK class and functions"""
+
+# from python
 from unittest import TestCase
 
+# from dependencies
 from Bio.SeqFeature import SeqFeature
 
-from src.genbank.proto_core import ProtoCore
-from src.errors.genbank import InvalidGBKError
+# from other modules
+from src.genbank import ProtoCore
+from src.errors import InvalidGBKError
 
 
 class TestProtocore(TestCase):
