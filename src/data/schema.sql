@@ -13,10 +13,11 @@ CREATE TABLE IF NOT EXISTS gbk (
 
 CREATE TABLE IF NOT EXISTS bgc_record (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
-    parent_id INTEGER NOT NULL,
+    parent_id INTEGER,
     record_number INTEGER,
-    gbk_id INTEGER NOT NULL,
-    on_contig_edge BOOLEAN,
+    gbk_id INTEGER,
+    contig_edge BOOLEAN,
+    type TEXT,
     nt_start INTEGER,
     nt_stop INTEGER,
     UNIQUE(id),
@@ -24,14 +25,6 @@ CREATE TABLE IF NOT EXISTS bgc_record (
     FOREIGN KEY(parent_id) REFERENCES bgc_record(id),
     FOREIGN KEY(gbk_id) REFERENCES gbk(id)
 );
-
-CREATE TABLE IF NOT EXISTS bgc_record_type (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    record_id INTEGER NOT NULL,
-    type TEXT NOT NULL,
-    UNIQUE(record_id, type),
-    FOREIGN KEY (record_id) REFERENCES bgc_record(id)
-)
 
 CREATE TABLE IF NOT EXISTS cds (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
