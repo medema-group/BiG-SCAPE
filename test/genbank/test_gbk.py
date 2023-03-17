@@ -8,7 +8,7 @@ from unittest import TestCase
 from Bio.Seq import Seq
 
 # from other modules
-from src.genbank import GBK, Region, ProtoCore
+from src.genbank import GBK, Region, ProtoCore, CDS
 from src.errors import InvalidGBKError
 from src.data import DB
 
@@ -43,6 +43,16 @@ class TestGBK(TestCase):
         gbk = GBK.parse(gbk_file_path)
 
         self.assertIsInstance(gbk.region, Region)
+
+    def test_populate_cds(self):
+        """Tests whether parsing a GBK correctly populates the underlying CDSs"""
+
+        # GBK has one region
+        gbk_file_path = Path("test/test_data/valid_gbk_folder/valid_input.gbk")
+
+        gbk = GBK.parse(gbk_file_path)
+
+        self.assertIsInstance(gbk.genes[0], CDS)
 
     def test_populate_hierarchical_objects(self):
         """Tests whether parsing a GBK correclty generates parent-child feature relations
