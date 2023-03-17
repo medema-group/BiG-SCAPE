@@ -12,6 +12,7 @@ from Bio.SeqFeature import SeqFeature
 
 # from other modules
 from src.errors import InvalidGBKError
+from src.data import DB, Persistable
 
 # from this module
 from src.genbank.region import Region
@@ -20,7 +21,7 @@ from src.genbank.proto_cluster import ProtoCluster
 from src.genbank.proto_core import ProtoCore
 
 
-class GBK:
+class GBK(Persistable):
     """
     Class to describe a given GBK file
 
@@ -36,6 +37,29 @@ class GBK:
         self.metadata: Dict[str, str] = {}
         self.region: Optional[Region] = None
         self.nt_seq: SeqRecord.seq = None
+
+    def save(self, commit=True):
+        """Stires this GBK in the database
+
+        Arguments:
+            commit: commit immediately after executing the insert query"""
+        gbk_table = DB.metadata.tables["gbk"]
+        insert_query = (
+            gbk_table.insert()
+            .values(path=str(self.path), nt_seq=str(self.nt_seq))
+            .compile()
+        )
+
+        DB.execute(insert_query)
+
+        if commit:
+            DB.commit()
+
+    def save_all(self):
+        """Stores this GBK and its children in the database. Does not commit immediately"""
+        self.save(False)
+        self.region.save_all(False)
+        DB.commit()
 
     @classmethod
     def parse(cls, path: Path):

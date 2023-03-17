@@ -10,6 +10,7 @@ from Bio.Seq import Seq
 # from other modules
 from src.genbank import GBK, Region, ProtoCore
 from src.errors import InvalidGBKError
+from src.data import DB
 
 
 class TestGBK(TestCase):
@@ -65,3 +66,24 @@ class TestGBK(TestCase):
         dna_sequence = gbk.nt_seq
 
         self.assertIsInstance(dna_sequence, Seq)
+
+    def test_save(self):
+        """Tests whether a GBK object is correctly stored in the SQLite database"""
+
+        DB.create_in_mem()
+
+        gbk_file_path = Path("test/test_data/valid_gbk_folder/valid_input.gbk")
+
+        gbk = GBK.parse(gbk_file_path)
+
+        gbk.save()
+
+        cursor_result = DB.execute_raw_query("SELECT * FROM gbk;")
+
+        expected_row_count = 1
+        actual_row_count = len(cursor_result.fetchall())
+
+        self.assertEqual(expected_row_count, actual_row_count)
+
+    def test_save_all(self):
+        pass
