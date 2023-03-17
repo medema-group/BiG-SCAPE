@@ -11,31 +11,31 @@ CREATE TABLE IF NOT EXISTS gbk (
     UNIQUE(id)
 );
 
-CREATE TABLE IF NOT EXISTS bgc_region (
+CREATE TABLE IF NOT EXISTS bgc_record (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     parent_id INTEGER NOT NULL,
-    region_number INTEGER,
+    record_number INTEGER,
     gbk_id INTEGER NOT NULL,
     on_contig_edge BOOLEAN,
     nt_start INTEGER,
     nt_stop INTEGER,
     UNIQUE(id),
-    UNIQUE(parent_id, region_number)
-    FOREIGN KEY(parent_id) REFERENCES bgc_region(id),
+    UNIQUE(parent_id, record_number)
+    FOREIGN KEY(parent_id) REFERENCES bgc_record(id),
     FOREIGN KEY(gbk_id) REFERENCES gbk(id)
 );
 
-CREATE TABLE IF NOT EXISTS bgc_region_type (
+CREATE TABLE IF NOT EXISTS bgc_record_type (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
-    region_id INTEGER NOT NULL,
+    record_id INTEGER NOT NULL,
     type TEXT NOT NULL,
-    UNIQUE(region_id, type),
-    FORIEGN KEY (region_id) REFERENCES bgc_region(id)
+    UNIQUE(record_id, type),
+    FOREIGN KEY (record_id) REFERENCES bgc_record(id)
 )
 
 CREATE TABLE IF NOT EXISTS cds (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
-    region_id INTEGER NOT NULL,
+    record_id INTEGER NOT NULL,
     nt_start INTEGER NOT NULL,
     nt_stop INTEGER NOT NULL,
     strand INTEGER NOT NULL,
@@ -43,8 +43,8 @@ CREATE TABLE IF NOT EXISTS cds (
     protein_id TEXT,
     product TEXT,
     aa_seq TEXT NOT NULL,
-    UNIQUE(id, region_id),
-    FOREIGN KEY(region_id) REFERENCES bgc_region(id)
+    UNIQUE(id, record_id),
+    FOREIGN KEY(record_id) REFERENCES bgc_record(id)
 )
 
 CREATE TABLE IF NOT EXISTS hsp (
