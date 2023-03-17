@@ -45,7 +45,7 @@ class DB:
     @staticmethod
     def create_tables():
         """Populates the database with tables"""
-        if not DB.opened:
+        if not DB.opened():
             raise DBClosedError()
 
         creation_queries = read_schema(DB_SCHEMA_PATH)
@@ -56,14 +56,17 @@ class DB:
         DB.connection.commit()
 
     @staticmethod
-    def create_in_mem():
-        """Create a new database in-memory"""
-
+    def open_memory_connection():
         if DB.opened():
             raise DBAlreadyOpenError()
 
         DB.engine = create_engine("sqlite:///:memory:")
         DB.connection = DB.engine.connect()
+
+    @staticmethod
+    def create_in_mem():
+        """Create a new database in-memory"""
+        DB.open_memory_connection()
 
         DB.create_tables()
 
@@ -99,9 +102,30 @@ class DB:
         return DB.connection.execute(text(query))
 
     @staticmethod
-    def execute(query: Compiled) -> CursorResult:
-        """Wrapper for SQLAlchemy.connection.execute expecting a Compiled query"""
-        return DB.connection.execute(query)
+    def execute(query: Compiled, commit=True) -> CursorResult:
+        """Wrapper for SQLAlchemy.connection.execute expecting a Compiled query
+
+        Arguments:
+            commit: whether or not to immediately commit after executing the query
+
+        This function is meant for single queries.
+        """
+
+        cursor_result = DB.connection.execute(query)
+
+        if commit:
+            DB.connection.commit()
+
+        return cursor_result
+
+    @staticmethod
+    def commit():
+        """Performs a commit to the database, saving any alterations to rows and tables
+        that have been executed prior
+
+        NOTE: may be redundant if we turn off journaling
+        """
+        DB.connection.commit()
 
 
 def read_schema(path: Path) -> list[str]:
