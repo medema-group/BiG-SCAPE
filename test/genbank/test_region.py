@@ -77,8 +77,8 @@ class TestRegion(TestCase):
         self.assertEqual(expected_cand_clusters, region.cand_clusters)
 
     def test_parse_wrong_type(self):
-        """Tests whether create_region correctly throws an error when given a feature of
-        a wrong type
+        """Tests whether create_region correctly throws an error when given a
+        feature of a wrong type
         """
 
         feature = SeqFeature(FeatureLocation(0, 100), type="CDS")

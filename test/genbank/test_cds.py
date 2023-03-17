@@ -36,7 +36,7 @@ class TestCDS(TestCase):
     def test_parse_aa_seq(self):
         """Tests whether an aa sequence is correclty parsed from a feature"""
 
-        feature = SeqFeature(FeatureLocation(5, 10), strand=1, type="CDS")
+        feature = SeqFeature(FeatureLocation(5, 10, strand=1), type="CDS")
         feature.qualifiers["gene_kind"] = "biosynthetic"
 
         expected_aa_seq = "MDRAAGMSVRLK"
@@ -52,7 +52,7 @@ class TestCDS(TestCase):
         lacking a translation qualifier
         """
 
-        feature = SeqFeature(FeatureLocation(5, 10), strand=1, type="CDS")
+        feature = SeqFeature(FeatureLocation(5, 10, strand=1), type="CDS")
         feature.qualifiers["gene_kind"] = ["biosynthetic"]
 
         self.assertRaises(InvalidGBKError, CDS.parse, feature)
@@ -60,7 +60,7 @@ class TestCDS(TestCase):
     def test_parse_gene_kind(self):
         """Tests whether a gene_kind is correclty parsed from a feature"""
 
-        feature = SeqFeature(FeatureLocation(5, 10), strand=1, type="CDS")
+        feature = SeqFeature(FeatureLocation(5, 10, strand=1), type="CDS")
         feature.qualifiers["translation"] = ["MDRAAGMSVRLK"]
 
         expected_gene_kind = "biosynthetic"

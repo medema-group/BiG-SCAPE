@@ -48,7 +48,7 @@ class CDS:
 
         nt_start = int(feature.location.start)
         nt_stop = int(feature.location.end)
-        strand = int(feature.strand)
+        strand = int(feature.location.strand)
 
         cds = cls(nt_start, nt_stop)
         cds.strand = strand

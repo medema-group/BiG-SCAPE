@@ -1,5 +1,6 @@
 # from python
 from pathlib import Path
+from typing import List
 
 # from dependencies
 from sqlalchemy import (
@@ -128,12 +129,12 @@ class DB:
         DB.connection.commit()
 
 
-def read_schema(path: Path) -> list[str]:
+def read_schema(path: Path) -> List[str]:
     with open(path, encoding="utf-8") as schema_file:
         return text_to_queries(schema_file.readlines())
 
 
-def text_to_queries(schema_lines: list[str]):
+def text_to_queries(schema_lines: List[str]):
     create_queries = []
     query_lines = []
     for line in schema_lines:
