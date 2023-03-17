@@ -46,6 +46,14 @@ class ProtoCluster(BGCRecord):
             commit: commit immediately after executing the insert query"""
         return super().save("protocluster", commit)
 
+    def save_all(self):
+        """Stores this protocluster and its children in the database. Does not
+        commit immediately
+        """
+        self.save(False)
+        for protocore in self.proto_core.values():
+            protocore.save(False)
+
     @classmethod
     def parse(cls, feature: SeqFeature):
         """Creates a Protocluster object from a region feature in a GBK file"""

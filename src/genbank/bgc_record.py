@@ -36,6 +36,7 @@ class BGCRecord:
 
         insert_query = (
             bgc_record_table.insert()
+            .prefix_with("OR REPLACE")
             .values(
                 contig_edge=contig_edge,
                 nt_start=self.nt_start,
@@ -54,7 +55,7 @@ class BGCRecord:
         """Parses a BGC record locale info"""
 
         if "contig_edge" in feature.qualifiers:
-            contig_edge_qualifier = feature.qualifiers["contig_edge"]
+            contig_edge_qualifier = feature.qualifiers["contig_edge"][0]
 
             if contig_edge_qualifier == "True":
                 self.contig_edge = True

@@ -143,6 +143,3 @@ class TestCandidateCluster(TestCase):
         actual_row_count = len(cursor_result.fetchall())
 
         self.assertEqual(expected_row_count, actual_row_count)
-
-    def test_save_all(self):
-        pass
