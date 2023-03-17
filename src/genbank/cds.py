@@ -47,10 +47,10 @@ class CDS:
             raise InvalidGBKError()
 
         nt_start = int(feature.location.start)
-        nt_end = int(feature.location.end)
+        nt_stop = int(feature.location.end)
         strand = int(feature.strand)
 
-        cds = cls(nt_start, nt_end)
+        cds = cls(nt_start, nt_stop)
         cds.strand = strand
 
         if "translation" not in feature.qualifiers:
