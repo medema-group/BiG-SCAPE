@@ -9,8 +9,11 @@ from Bio.SeqFeature import SeqFeature
 # from other modules
 from src.errors import InvalidGBKError
 
+# from this module
+from src.genbank.bgc_record import BGCRecord
 
-class ProtoCore:
+
+class ProtoCore(BGCRecord):
     """
     Class to describe a protocore within an Antismash GBK
 
@@ -19,7 +22,15 @@ class ProtoCore:
     """
 
     def __init__(self, number: int):
+        super().__init__()
         self.number = number
+
+    def save(self, commit=True):
+        """Stores this protocore in the database
+
+        Arguments:
+            commit: commit immediately after executing the insert query"""
+        return super().save("proto_core", commit)
 
     @classmethod
     def parse(cls, feature: SeqFeature):

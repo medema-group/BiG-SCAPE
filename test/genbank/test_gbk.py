@@ -16,6 +16,14 @@ from src.data import DB
 class TestGBK(TestCase):
     """Test class for base GBK parsing tests"""
 
+    def clean_db(self):
+        if DB.opened():
+            DB.close_db()
+
+    def __init__(self, methodName: str = "runTest") -> None:
+        super().__init__(methodName)
+        self.addCleanup(self.clean_db)
+
     def test_parse_gbk(self):
         """Tests whether a GBK is instantiated correctly"""
 

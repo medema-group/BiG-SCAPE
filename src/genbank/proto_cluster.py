@@ -11,10 +11,11 @@ from Bio.SeqFeature import SeqFeature
 from src.errors import InvalidGBKError, InvalidGBKRegionChildError
 
 # from this module
+from src.genbank.bgc_record import BGCRecord
 from src.genbank.proto_core import ProtoCore
 
 
-class ProtoCluster:
+class ProtoCluster(BGCRecord):
     """
     Class to describe a protocore within an Antismash GBK
 
@@ -25,6 +26,7 @@ class ProtoCluster:
     """
 
     def __init__(self, number: int):
+        super().__init__()
         self.number = number
         self.category: str = ""
         self.proto_core: Dict[int, Optional[ProtoCore]] = {}
@@ -36,6 +38,13 @@ class ProtoCluster:
             raise InvalidGBKRegionChildError()
 
         self.proto_core[proto_core.number] = proto_core
+
+    def save(self, commit=True):
+        """Stores this protocluster in the database
+
+        Arguments:
+            commit: commit immediately after executing the insert query"""
+        return super().save("protocluster", commit)
 
     @classmethod
     def parse(cls, feature: SeqFeature):
@@ -56,6 +65,7 @@ class ProtoCluster:
         proto_cluster_number = int(feature.qualifiers["protocluster_number"][0])
 
         proto_cluster = cls(proto_cluster_number)
+        proto_cluster.parse_location(feature)
         proto_cluster.proto_core[proto_cluster_number] = None
 
         if "category" not in feature.qualifiers:

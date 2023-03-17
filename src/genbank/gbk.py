@@ -12,7 +12,7 @@ from Bio.SeqFeature import SeqFeature
 
 # from other modules
 from src.errors import InvalidGBKError
-from src.data import DB, Persistable
+from src.data import DB
 
 # from this module
 from src.genbank.region import Region
@@ -22,7 +22,7 @@ from src.genbank.proto_core import ProtoCore
 from src.genbank.cds import CDS
 
 
-class GBK(Persistable):
+class GBK:
     """
     Class to describe a given GBK file
 

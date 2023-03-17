@@ -9,10 +9,19 @@ from Bio.SeqFeature import SeqFeature, FeatureLocation
 # from other modules
 from src.genbank import CDS
 from src.errors import InvalidGBKError
+from src.data import DB
 
 
 class TestCDS(TestCase):
     """Test class for base GBK parsing tests"""
+
+    def clean_db(self):
+        if DB.opened():
+            DB.close_db()
+
+    def __init__(self, methodName: str = "runTest") -> None:
+        super().__init__(methodName)
+        self.addCleanup(self.clean_db)
 
     def test_create_cds(self):
         """Tests whether a cds is instatiated correclty"""

@@ -3,15 +3,24 @@
 from unittest import TestCase
 
 # from dependencies
-from Bio.SeqFeature import SeqFeature
+from Bio.SeqFeature import SeqFeature, FeatureLocation
 
 # from other modules
 from src.genbank import Region, CandidateCluster
 from src.errors import InvalidGBKError
+from src.data import DB
 
 
 class TestRegion(TestCase):
     """Test class for base GBK parsing tests"""
+
+    def clean_db(self):
+        if DB.opened():
+            DB.close_db()
+
+    def __init__(self, methodName: str = "runTest") -> None:
+        super().__init__(methodName)
+        self.addCleanup(self.clean_db)
 
     def test_create_region(self):
         """Tests whether a region is instantiated correctly"""
@@ -24,7 +33,7 @@ class TestRegion(TestCase):
 
     def test_parse_number(self):
         """Tests whether a region number is correctly parsed from a feature"""
-        feature = SeqFeature(type="region")
+        feature = SeqFeature(FeatureLocation(0, 100), type="region")
 
         expected_number = 1
 
@@ -39,7 +48,7 @@ class TestRegion(TestCase):
         """Tests whether parse correctly throws an error when given a feature
         lacking a region_number qualifier
         """
-        feature = SeqFeature(type="region")
+        feature = SeqFeature(FeatureLocation(0, 100), type="region")
         feature.qualifiers["candidate_cluster_numbers"] = ["1"]
 
         self.assertRaises(InvalidGBKError, Region.parse, feature)
@@ -48,14 +57,14 @@ class TestRegion(TestCase):
         """Tests whether parse correctly throws an error when given a feature
         lacking a candidate_cluster_numbers qualifier
         """
-        feature = SeqFeature(type="region")
+        feature = SeqFeature(FeatureLocation(0, 100), type="region")
         feature.qualifiers["region_number"] = ["1"]
 
         self.assertRaises(InvalidGBKError, Region.parse, feature)
 
     def test_parse_candidate_cluster_numbers(self):
         """Tests whether a region cand_clusters is correctly parsed from a feature"""
-        feature = SeqFeature(type="region")
+        feature = SeqFeature(FeatureLocation(0, 100), type="region")
 
         expected_number = 1
         expected_cand_clusters = {1: None}
@@ -72,13 +81,13 @@ class TestRegion(TestCase):
         a wrong type
         """
 
-        feature = SeqFeature(type="CDS")
+        feature = SeqFeature(FeatureLocation(0, 100), type="CDS")
 
         self.assertRaises(InvalidGBKError, Region.parse, feature)
 
     def test_add_candidate_cluster(self):
         """Tests whether a candidate cluster is correctly added to this region"""
-        region_feature = SeqFeature(type="region")
+        region_feature = SeqFeature(FeatureLocation(0, 100), type="region")
         region_feature.qualifiers = {
             "region_number": ["1"],
             "candidate_cluster_numbers": ["1"],
@@ -86,7 +95,9 @@ class TestRegion(TestCase):
 
         region = Region.parse(region_feature)
 
-        candidate_cluster_feature = SeqFeature(type="cand_cluster")
+        candidate_cluster_feature = SeqFeature(
+            FeatureLocation(0, 100), type="cand_cluster"
+        )
         candidate_cluster_feature.qualifiers = {
             "candidate_cluster_number": ["1"],
             "kind": ["neighbouring"],
@@ -96,3 +107,28 @@ class TestRegion(TestCase):
         candidate_cluster = CandidateCluster.parse(candidate_cluster_feature)
 
         region.add_cand_cluster(candidate_cluster)
+
+    def test_save(self):
+        """Tests whether a Region object is correctly stored in the SQLite database"""
+
+        DB.create_in_mem()
+
+        region_feature = SeqFeature(FeatureLocation(0, 100), type="region")
+        region_feature.qualifiers = {
+            "region_number": ["1"],
+            "candidate_cluster_numbers": ["1"],
+        }
+
+        region = Region.parse(region_feature)
+
+        region.save()
+
+        cursor_result = DB.execute_raw_query("SELECT * FROM bgc_record;")
+
+        expected_row_count = 1
+        actual_row_count = len(cursor_result.fetchall())
+
+        self.assertEqual(expected_row_count, actual_row_count)
+
+    def test_save_all(self):
+        pass
