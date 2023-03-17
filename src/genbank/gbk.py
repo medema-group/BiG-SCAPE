@@ -3,7 +3,7 @@
 # from python
 import logging
 from pathlib import Path
-from typing import Dict, Optional
+from typing import Dict, Optional, List
 
 # from dependencies
 from Bio import SeqIO
@@ -18,6 +18,7 @@ from src.genbank.region import Region
 from src.genbank.candidate_cluster import CandidateCluster
 from src.genbank.proto_cluster import ProtoCluster
 from src.genbank.proto_core import ProtoCore
+from src.genbank.cds import CDS
 
 
 class GBK:
@@ -29,6 +30,7 @@ class GBK:
         metadata: Dict[str, str]
         region: Region
         nt_seq: SeqRecord.seq
+        genes: list[CDS]
     """
 
     def __init__(self, path) -> None:
@@ -36,6 +38,7 @@ class GBK:
         self.metadata: Dict[str, str] = {}
         self.region: Optional[Region] = None
         self.nt_seq: SeqRecord.seq = None
+        self.genes: List[Optional[CDS]] = []
 
     @classmethod
     def parse(cls, path: Path):
@@ -74,6 +77,10 @@ class GBK:
             if feature.type == "proto_core":
                 proto_core = ProtoCore.parse(feature)
                 tmp_proto_cores[proto_core.number] = proto_core
+
+            if feature.type == "CDS":
+                cds = CDS.parse(feature)
+                gbk.genes.append(cds)
 
         # add features to parent objects
         for proto_cluster_num, proto_cluster in tmp_proto_clusters.items():

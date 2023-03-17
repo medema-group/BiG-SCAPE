@@ -36,10 +36,20 @@ class TestRegion(TestCase):
         self.assertEqual(expected_number, region.number)
 
     def test_parse_no_number(self):
-        """Tests whether create_region correctly throws an error when given a feature
+        """Tests whether parse correctly throws an error when given a feature
         lacking a region_number qualifier
         """
         feature = SeqFeature(type="region")
+        feature.qualifiers["candidate_cluster_numbers"] = ["1"]
+
+        self.assertRaises(InvalidGBKError, Region.parse, feature)
+
+    def test_parse_no_cand_clusters(self):
+        """Tests whether parse correctly throws an error when given a feature
+        lacking a candidate_cluster_numbers qualifier
+        """
+        feature = SeqFeature(type="region")
+        feature.qualifiers["region_number"] = ["1"]
 
         self.assertRaises(InvalidGBKError, Region.parse, feature)
 
