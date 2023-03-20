@@ -32,9 +32,6 @@ class CDS:
         self.aa_seq: Optional[str] = None
         self.domains: list = []
 
-    # def add_domain(self, domain: Domain):
-    #     """Add a domain object to this CDS"""
-
     @classmethod
     def parse(cls, feature: SeqFeature):
         """Creates a cds object from a region feature in a GBK file"""
