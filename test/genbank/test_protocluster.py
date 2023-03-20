@@ -112,7 +112,7 @@ class TestProtocluster(TestCase):
         protocluster.add_proto_core(protocore)
 
     def test_save(self):
-        """Tests whether a GBK object is correctly stored in the SQLite database"""
+        """Tests whether a ProtoCluster object is correctly stored in the SQLite database"""
 
         DB.create_in_mem()
 
@@ -132,6 +132,3 @@ class TestProtocluster(TestCase):
         actual_row_count = len(cursor_result.fetchall())
 
         self.assertEqual(expected_row_count, actual_row_count)
-
-    def test_save_all(self):
-        pass

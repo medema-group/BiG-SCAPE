@@ -46,6 +46,14 @@ class CandidateCluster(BGCRecord):
             commit: commit immediately after executing the insert query"""
         return super().save("cand_cluster", commit)
 
+    def save_all(self):
+        """Stores this candidate cluster and its children in the database. Does not
+        commit immediately
+        """
+        self.save(False)
+        for proto_cluster in self.proto_clusters.values():
+            proto_cluster.save_all()
+
     @classmethod
     def parse(cls, feature: SeqFeature):
         """Creates a cand_cluster object from a region feature in a GBK file"""

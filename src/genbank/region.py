@@ -44,6 +44,12 @@ class Region(BGCRecord):
             commit: commit immediately after executing the insert query"""
         return super().save("region", commit)
 
+    def save_all(self):
+        """Stores this Region and its children in the database. Does not commit immediately"""
+        self.save(False)
+        for candidate_cluster in self.cand_clusters.values():
+            candidate_cluster.save_all()
+
     @classmethod
     def parse(cls, feature: SeqFeature):
         """Creates a region object from a region feature in a GBK file"""

@@ -13,7 +13,6 @@ CREATE TABLE IF NOT EXISTS gbk (
 
 CREATE TABLE IF NOT EXISTS bgc_record (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
-    parent_id INTEGER,
     record_number INTEGER,
     gbk_id INTEGER,
     contig_edge BOOLEAN,
@@ -21,8 +20,7 @@ CREATE TABLE IF NOT EXISTS bgc_record (
     nt_start INTEGER,
     nt_stop INTEGER,
     UNIQUE(id),
-    UNIQUE(parent_id, record_number)
-    FOREIGN KEY(parent_id) REFERENCES bgc_record(id),
+    UNIQUE(type, nt_start, nt_stop),
     FOREIGN KEY(gbk_id) REFERENCES gbk(id)
 );
 

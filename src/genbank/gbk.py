@@ -42,7 +42,7 @@ class GBK:
         self.genes: List[Optional[CDS]] = []
 
     def save(self, commit=True):
-        """Stires this GBK in the database
+        """Stores this GBK in the database
 
         Arguments:
             commit: commit immediately after executing the insert query"""
@@ -59,10 +59,11 @@ class GBK:
             DB.commit()
 
     def save_all(self):
-        """Stores this GBK and its children in the database. Does not commit immediately"""
+        """Stores this GBK and its children in the database. Does not commit immediately
+
+        this function never commits"""
         self.save(False)
-        self.region.save_all(False)
-        DB.commit()
+        self.region.save_all()
 
     @classmethod
     def parse(cls, path: Path):

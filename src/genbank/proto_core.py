@@ -51,5 +51,6 @@ class ProtoCore(BGCRecord):
         proto_core_number = int(feature.qualifiers["protocluster_number"][0])
 
         proto_core = cls(proto_core_number)
+        proto_core.parse_location(feature)
 
         return proto_core
