@@ -1,13 +1,19 @@
 """Module containing code to load and store AntiSMASH protoclusters"""
 
+# from python
 import logging
 
+# from dependencies
 from Bio.SeqFeature import SeqFeature
 
-from src.errors.genbank import InvalidGBKError
+# from other modules
+from src.errors import InvalidGBKError
+
+# from this module
+from src.genbank.bgc_record import BGCRecord
 
 
-class Protocore:
+class ProtoCore(BGCRecord):
     """
     Class to describe a protocore within an Antismash GBK
 
@@ -16,7 +22,15 @@ class Protocore:
     """
 
     def __init__(self, number: int):
+        super().__init__()
         self.number = number
+
+    def save(self, commit=True):
+        """Stores this protocore in the database
+
+        Arguments:
+            commit: commit immediately after executing the insert query"""
+        return super().save("proto_core", commit)
 
     @classmethod
     def parse(cls, feature: SeqFeature):

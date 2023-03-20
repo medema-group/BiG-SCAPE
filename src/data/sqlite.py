@@ -1,4 +1,8 @@
+# from python
 from pathlib import Path
+from typing import List
+
+# from dependencies
 from sqlalchemy import (
     Engine,
     Connection,
@@ -9,8 +13,9 @@ from sqlalchemy import (
     text,
 )
 
+# from other modules
 from src.parameters.constants import DB_SCHEMA_PATH
-from src.errors.data import DBClosedError, DBAlreadyOpenError
+from src.errors import DBClosedError, DBAlreadyOpenError
 
 
 class DB:
@@ -41,25 +46,28 @@ class DB:
     @staticmethod
     def create_tables():
         """Populates the database with tables"""
-        if not DB.opened:
+        if not DB.opened():
             raise DBClosedError()
 
-        create_queries = read_schema(DB_SCHEMA_PATH)
+        creation_queries = read_schema(DB_SCHEMA_PATH)
 
-        for create_query in create_queries:
-            DB.connection.execute(text(create_query))
+        for creation_query in creation_queries:
+            DB.connection.execute(text(creation_query))
 
         DB.connection.commit()
 
     @staticmethod
-    def create_in_mem():
-        """Create a new database in-memory"""
-
+    def open_memory_connection():
         if DB.opened():
             raise DBAlreadyOpenError()
 
         DB.engine = create_engine("sqlite:///:memory:")
         DB.connection = DB.engine.connect()
+
+    @staticmethod
+    def create_in_mem():
+        """Create a new database in-memory"""
+        DB.open_memory_connection()
 
         DB.create_tables()
 
@@ -81,6 +89,7 @@ class DB:
         # to
         raw_file_connection = file_engine.raw_connection().driver_connection
 
+        # TODO: check if this appends or overwrites
         raw_memory_connection.backup(raw_file_connection)
 
     @staticmethod
@@ -94,17 +103,38 @@ class DB:
         return DB.connection.execute(text(query))
 
     @staticmethod
-    def execute(query: Compiled) -> CursorResult:
-        """Wrapper for SQLAlchemy.connection.execute expecting a Compiled query"""
-        return DB.connection.execute(query)
+    def execute(query: Compiled, commit=True) -> CursorResult:
+        """Wrapper for SQLAlchemy.connection.execute expecting a Compiled query
+
+        Arguments:
+            commit: whether or not to immediately commit after executing the query
+
+        This function is meant for single queries.
+        """
+
+        cursor_result = DB.connection.execute(query)
+
+        if commit:
+            DB.connection.commit()
+
+        return cursor_result
+
+    @staticmethod
+    def commit():
+        """Performs a commit to the database, saving any alterations to rows and tables
+        that have been executed prior
+
+        NOTE: may be redundant if we turn off journaling
+        """
+        DB.connection.commit()
 
 
-def read_schema(path: Path) -> list[str]:
+def read_schema(path: Path) -> List[str]:
     with open(path, encoding="utf-8") as schema_file:
         return text_to_queries(schema_file.readlines())
 
 
-def text_to_queries(schema_lines: list[str]):
+def text_to_queries(schema_lines: List[str]):
     create_queries = []
     query_lines = []
     for line in schema_lines:

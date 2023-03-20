@@ -1,15 +1,21 @@
 """Module containing code to load and store AntiSMASH regions"""
 
+# from python
 import logging
 from typing import Dict, Optional
 
+# from dependencies
 from Bio.SeqFeature import SeqFeature
 
-from src.errors.genbank import InvalidGBKError, InvalidGBKRegionChildError
-from src.genbank.cand_cluster import CandidateCluster
+# from other modules
+from src.errors import InvalidGBKError, InvalidGBKRegionChildError
+
+# from this module
+from src.genbank.bgc_record import BGCRecord
+from src.genbank.candidate_cluster import CandidateCluster
 
 
-class Region:
+class Region(BGCRecord):
     """
     Class to describe a region within an Antismash GBK
 
@@ -19,6 +25,7 @@ class Region:
     """
 
     def __init__(self, number: int):
+        super().__init__()
         self.number = number
         self.cand_clusters: Dict[int, Optional[CandidateCluster]] = {}
 
@@ -29,6 +36,13 @@ class Region:
             raise InvalidGBKRegionChildError()
 
         self.cand_clusters[cand_cluster.number] = cand_cluster
+
+    def save(self, commit=True):
+        """Stores this region in the database
+
+        Arguments:
+            commit: commit immediately after executing the insert query"""
+        return super().save("region", commit)
 
     @classmethod
     def parse(cls, feature: SeqFeature):
@@ -47,6 +61,8 @@ class Region:
         region_number = int(feature.qualifiers["region_number"][0])
 
         region = cls(region_number)
+
+        region.parse_location(feature)
 
         if "candidate_cluster_numbers" not in feature.qualifiers:
             logging.error(
