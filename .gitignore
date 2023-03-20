@@ -14,3 +14,8 @@ coverage.svg
 # misc temp files
 tmp/
 test/test_data/tmp
+
+
+# test hmm files
+# pyhmmer output on valid hmm
+test/test_data/hmm/valid.hmm.h3*
