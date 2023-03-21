@@ -13,3 +13,10 @@ class WorkerSetupError(Exception):
 
     def __init__(self, *args: object) -> None:
         super().__init__(*args)
+
+
+class WorkerExecutionError(Exception):
+    """Thrown when an error happens in a worker"""
+
+    def __init__(self, *args: object) -> None:
+        super().__init__(*args)

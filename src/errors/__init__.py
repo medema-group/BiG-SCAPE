@@ -1,7 +1,11 @@
 """Contains custom error classes"""
 from src.errors.data import DBAlreadyOpenError, DBClosedError, TableNotFoundError
 from src.errors.genbank import InvalidGBKError, InvalidGBKRegionChildError
-from src.errors.multithreading import WorkerPoolSetupError, WorkerSetupError
+from src.errors.multithreading import (
+    WorkerPoolSetupError,
+    WorkerSetupError,
+    WorkerExecutionError,
+)
 
 __all__ = [
     "DBAlreadyOpenError",
@@ -11,4 +15,5 @@ __all__ = [
     "InvalidGBKRegionChildError",
     "WorkerPoolSetupError",
     "WorkerSetupError",
+    "WorkerExecutionError",
 ]
