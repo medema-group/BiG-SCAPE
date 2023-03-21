@@ -9,7 +9,7 @@ from multiprocessing.connection import Connection
 from typing import Optional, Callable
 
 # from other modules
-from src.errors import NoFunctionError, WorkerNotStartedError
+from src.errors import WorkerPoolSetupError, WorkerSetupError
 
 
 class WorkerPool:
@@ -56,7 +56,7 @@ class WorkerPool:
 
     def start(self) -> None:
         if self.worker_function is None:
-            raise NoFunctionError()
+            raise WorkerPoolSetupError()
 
         for worker in self.workers:
             logging.debug("Starting worker with id %d", worker.id)
@@ -123,7 +123,9 @@ class Worker:
             Defaults to None.
         """
         if self.process is None:
-            raise WorkerNotStartedError(self.id)
+            raise WorkerSetupError(
+                "Worker with id %d process was not started!", self.id
+            )
 
         self.process.join(timeout)
 
@@ -135,7 +137,9 @@ class Worker:
         """
 
         if self.connection is None:
-            raise WorkerNotStartedError(self.id)
+            raise WorkerSetupError(
+                "Worker with id %d process was not started!", self.id
+            )
 
         # convert input arguments to a tuple
         command_package = (command,) + tuple(argv.items())

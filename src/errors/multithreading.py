@@ -1,15 +1,15 @@
 """Contains errors for the multithreading part of BiG-SCAPE"""
 
 
-class NoFunctionError(Exception):
+class WorkerPoolSetupError(Exception):
     """Thrown when no function is assigned to a worker pool"""
 
-    def __init__(self) -> None:
-        super().__init__("No function assigned to worker pool!")
+    def __init__(self, *args: object) -> None:
+        super().__init__(*args)
 
 
-class WorkerNotStartedError(Exception):
+class WorkerSetupError(Exception):
     """Thrown when operations are performed on an unstarted worker"""
 
-    def __init__(self, id) -> None:
-        super().__init__("Worker with id %d process was not started!", id)
+    def __init__(self, *args: object) -> None:
+        super().__init__(*args)

@@ -10,7 +10,7 @@ from math import sqrt
 
 # from other modules
 from src.multithreading import WorkerPool, Worker
-from src.errors import NoFunctionError
+from src.errors import WorkerPoolSetupError
 
 TEST_INPUT_NUM = 1000
 
@@ -98,14 +98,14 @@ class TestWorkerPool(TestCase):
         self.assertEqual(expected_worker_count, actual_worker_count)
 
     def test_start_pool_no_function(self):
-        """Tests whether the test pool creation throws a NoFunctionError when it is
+        """Tests whether the test pool creation throws a WorkerPoolSetupError when it is
         started without being assigned a function
         """
 
         worker_pool = WorkerPool()
         self.worker_pools.append(worker_pool)
 
-        self.assertRaises(NoFunctionError, worker_pool.start)
+        self.assertRaises(WorkerPoolSetupError, worker_pool.start)
 
     def test_stop_pool(self):
         """Tests whether the pool is correctly cleaned up when stop() is called"""
@@ -136,6 +136,18 @@ class TestWorkerPool(TestCase):
         actual_worker_count = len(list(alive_processes))
 
         self.assertEqual(expected_worker_count, actual_worker_count)
+
+    def test_queue_task(self):
+        """Tests whether a task can be successfully queued on a worker pool"""
+        pass
+
+    def test_set_callback(self):
+        """Tests whether a callback can be successfully set on a worker pool"""
+
+    def test_set_callback_already_set(self):
+        """Tests whether set_callback raises a WorkerPoolSetupError when a callback is
+        already set and a user tries to set another one
+        """
 
 
 class TestWorker(TestCase):
