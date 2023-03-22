@@ -3,40 +3,43 @@ tasks
 """
 
 # from python
+from __future__ import annotations
 import logging
-from multiprocessing import Pipe, Process, cpu_count, Queue
-from multiprocessing.connection import Connection
-from typing import Optional, Callable
+from multiprocessing import Pipe, Process, cpu_count
+from multiprocessing.connection import Connection, wait
+from typing import Any, Optional, Callable, cast
+from random import choice
 
 # from other modules
 from src.errors import WorkerPoolSetupError, WorkerSetupError
 
 
 class WorkerPool:
-    """Helper class to contain a pool of workers, used to queue tasks and handle large
-    workloads
+    """Helper class to contain a pool of workers, used handle large workloads
 
     The most important aspect of this class is the self.worker_function, which is the
     function that is passed to worker objects. This function only ever has one argument
     (a connection object created by the multiprocessing.pipe command).
 
-    This connection should only expect tuples to come in. Furthermore, this function
-    should at least expect these two commands to come in at any point through the
-    command:
+    This connection should only expect tuples to come in. the first element of a tuple
+    will be an int that specifies the command type:
 
-    ("_STOP") - stops the current thread
+    0. STOP - stop this tread please. no other elements in tuple
+    1. DEGUB - show a debug message. the second element will be the message
+    2. TASK - perform a task. what the rest of this tuple looks like is up to the
+    individual implementation
 
-    ("_ANNOUNCE", id) - logs "Process for worker {id} has started" to debug
+    Connections can also receive data back from the worker. Possible responses are:
 
-    ("_TASK", **argv) - an actual task for the worker function to execute
+    3. RESULT - Receive a result from a task. Again the rest of the elements in this
+    tuple are up to individual implementation
+    4. STOP - This process is stopping
+    5. ERROR - An error has occured in this process. second element should have some
+    message
     """
 
-    def __init__(self, num_workers=cpu_count()):
+    def __init__(self, num_workers=cpu_count()) -> None:
         self.workers = [Worker(worker_id, self) for worker_id in range(num_workers)]
-
-        # queues for tasks
-        self.input_queue = Queue()
-        self.output_queue = Queue()
 
         # list of connections, which we will monitor for traffic from the workers
         self.connections: list[Connection] = []
@@ -44,41 +47,56 @@ class WorkerPool:
         # the function we will pass to the worker when it is created
         self.worker_function: Optional[Callable] = None
 
-    def queue_task(self, arguments: tuple):
-        """Adds a task to the queue for this pool of workers. Queues work on a FIFO
-        basis
-
-        Args:
-            arguments (tuple): A tuple of arguments to pass to worker_function. The
-            formatting of the tuple needs to be able to be processed by the worker
-        """
-        self.input_queue.put(arguments)
-
     def start(self) -> None:
         if self.worker_function is None:
-            raise WorkerPoolSetupError()
+            raise WorkerPoolSetupError(
+                "Tried to start worker pool without a worker function"
+            )
 
         for worker in self.workers:
             logging.debug("Starting worker with id %d", worker.id)
-            worker.start()
+            pool_connection, worker_connection = Pipe(duplex=True)
+            self.connections.append(pool_connection)
+            worker.start(pool_connection, worker_connection)
+
+            task_data = (worker.id,)
+            worker.send_task(Worker.START, task_data)
 
     def stop(self) -> None:
-        """Stop the worker pool, sending a kill signal to all workers"""
+        """Stop the worker pool, sending a stop signal to all workers"""
         for worker in self.workers:
             worker.stop()
+
+    def kill(self) -> None:
+        """Force-stops the workers. used in clean up if an error occurs"""
+        for worker in self.workers:
+            worker.stop(True)
 
     def join(self, timeout: Optional[float] = None) -> None:
         """calls .join() on all child workers, waiting for the processes to close"""
         for worker in self.workers:
             worker.join(timeout)
 
+    def send_task_one(self, data: tuple[Any]):
+        """Sends a task to a random worker"""
+        connection = choice(self.connections)
+        request = (Worker.TASK,) + data
+        connection.send(request)
+
+    def read_one(self, timeout: Optional[float] = None):
+        available_connections = cast(list[Connection], wait(self.connections, timeout))
+        connection = choice(available_connections)
+        return connection.recv()
+
 
 class Worker:
     """Class that takes a function and takes data from a pool to execute on the function"""
 
-    COMM_STOP = "_STOP"  # command to stop the process
-    COMM_DEBUG = "_DEBUG"  # command to ask the function to print a debug
-    COMM_DEBUG = "_TASK"  # command to perform a task
+    STOP = 0  # command to stop the process, or a notification that a worker stopped
+    START = 1  # command to ask the function to print a debug
+    TASK = 2  # command to perform a task
+    RESULT = 3  # response with a result
+    ERROR = 5  # response announcing an error occurred
 
     def __init__(self, id: int, pool: WorkerPool):
         self.id = id
@@ -88,38 +106,41 @@ class Worker:
 
         self.connection: Optional[Connection] = None
 
-    def start(self):
-        """Starts the worker, creating a process and starting the listening for input"""
-        # create a new pipe. this consists of two connections: one for the pool and one
-        # for the worker. either side can send and receive stuff through its connection
+    def start(self, pool_connection: Connection, worker_connection: Connection):
+        """Starts the worker, creating a process and starting the listening for input
+
+        Args:
+            connection (Connection): Connection for the worker created by the pool
+        """
         logging.debug("Starting process for worker with id %d", self.id)
-        pool_connection, worker_connection = Pipe(duplex=True)
 
         self.process = Process(
-            target=self.pool.worker_function, args=(worker_connection,)
+            target=self.pool.worker_function,
+            args=(
+                self.id,
+                worker_connection,
+            ),
         )
-
-        self.process.start()
         self.connection = pool_connection
 
-        # as described in the worker_pool class, we expect the function worker to be
+        self.process.start()
 
     def stop(self, force=False):
         """Stops the process in this worker. if force=True, kills the process without
-        sending a nice kill message
+        sending a nice stop message
         """
         if force:
-            logging.debug("Force-closing process for worker %d", self.id)
+            logging.warning("Force-closing process for worker %d", self.id)
             self.process.kill()
 
         logging.debug("Sending stop signal to worker %d", self.id)
-        self.send(Worker.COMM_STOP)
+        self.connection.send((Worker.STOP, self.id))
 
     def join(self, timeout: Optional[float] = None):
         """Wrapper to call .join on this worker process
 
         Args:
-            timeout (float, optional): Time in seconds to wait for prceoss to close.
+            timeout (float, optional): Time in seconds to wait for process to close.
             Defaults to None.
         """
         if self.process is None:
@@ -129,11 +150,11 @@ class Worker:
 
         self.process.join(timeout)
 
-    def send(self, command: str, **argv):
+    def send_task(self, command: int, data: tuple[Any]):
         """Sends a command to the worker process
 
         Args:
-            command (str): The command to send. E.g. Worker.COMM_STOP
+            command (int): The command to send. E.g. Worker.TASK
         """
 
         if self.connection is None:
@@ -141,7 +162,9 @@ class Worker:
                 "Worker with id %d process was not started!", self.id
             )
 
+        logging.debug("Sending message to worker %d", self.id)
+
         # convert input arguments to a tuple
-        command_package = (command,) + tuple(argv.items())
+        command_package = (command,) + data
 
         self.connection.send(command_package)

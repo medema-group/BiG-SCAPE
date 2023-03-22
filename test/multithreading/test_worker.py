@@ -1,22 +1,30 @@
 """Contains tests to test the worker/multithreading implementation in BiG-SCAPE"""
 
 # from python
-from multiprocessing.connection import Connection
-from typing import Callable
+from multiprocessing.connection import Connection, Pipe
 from unittest import TestCase
 from multiprocessing import cpu_count
-from random import randint
-from math import sqrt
 
 # from other modules
 from src.multithreading import WorkerPool, Worker
 from src.errors import WorkerPoolSetupError
 
-TEST_INPUT_NUM = 1000
-
 
 class TestWorkerPool(TestCase):
     """Contains tests to cover worker pool functionality"""
+
+    @staticmethod
+    def worker_stop_method(id: int, connection: Connection):
+        """Worker function that immediately stops after receiving any command"""
+        while True:
+            command = connection.recv()
+            if command[0] == Worker.STOP:
+                return
+
+    def worker_echo(id, connection: Connection):
+        """Proper implementation of a worker function which echos any task sent
+        to it back as a result
+        """
 
     @staticmethod
     def kill_processes(workers: list[Worker]):
@@ -32,22 +40,7 @@ class TestWorkerPool(TestCase):
     def cleanUp(self):
         """Ensures that all processes are killed at the end of testing"""
         for worker_pool in self.worker_pools:
-            if len(worker_pool.workers) == 0:
-                continue
-
             TestWorkerPool.kill_processes(worker_pool.workers)
-
-    def setUp(self) -> None:
-        """Contains setup necessary for testing"""
-        # generate a set of test inputs to use later as an expected and actual output
-        for i in range(TEST_INPUT_NUM):
-            number = randint(0, 100)
-            answer = self.test_function(number)
-
-            self.test_inputs.append((i, number))
-            self.test_outputs.append((i, answer))
-
-        return super().setUp()
 
     def __init__(self, methodName: str = "runTest") -> None:
         super().__init__(methodName)
@@ -55,19 +48,20 @@ class TestWorkerPool(TestCase):
         # add clean up method
         self.addCleanup(self.cleanUp)
 
-        # the method we will pass to our workers later on
-        def test_function(number):
-            return sqrt(number)
-
-        self.test_function: Callable = test_function
-
-        # the expected inputs/outputs
-        self.test_inputs: list[tuple] = []
-        self.test_outputs: list[tuple] = []
-
         # we will collect the worker pools here so that we can make sure all processes
         # are closed off
         self.worker_pools: list[WorkerPool] = []
+
+    def test_worker_stop_method(self):
+        """Tests the simple worker method built into this test class"""
+        test_connection, process_connection = Pipe(True)
+
+        command = (Worker.STOP, 0)
+        test_connection.send(command)
+
+        TestWorkerPool.worker_stop_method(0, process_connection)
+
+        self.assertTrue(test_connection.writable)
 
     def test_start_pool(self):
         """Tests creation and start of a worker pool"""
@@ -75,13 +69,7 @@ class TestWorkerPool(TestCase):
         worker_pool = WorkerPool()
         self.worker_pools.append(worker_pool)
 
-        def worker_function(connection: Connection):
-            while True:
-                command = connection.recv()
-                if command[0] == Worker.COMM_STOP:
-                    return
-
-        worker_pool.worker_function = worker_function
+        worker_pool.worker_function = TestWorkerPool.worker_stop_method
 
         worker_pool.start()
 
@@ -112,13 +100,7 @@ class TestWorkerPool(TestCase):
         worker_pool = WorkerPool()
         self.worker_pools.append(worker_pool)
 
-        def worker_function(connection: Connection):
-            while True:
-                command = connection.recv()
-                if command[0] == Worker.COMM_STOP:
-                    return
-
-        worker_pool.worker_function = worker_function
+        worker_pool.worker_function = TestWorkerPool.worker_stop_method
 
         worker_pool.start()
 
@@ -137,18 +119,6 @@ class TestWorkerPool(TestCase):
 
         self.assertEqual(expected_worker_count, actual_worker_count)
 
-    def test_queue_task(self):
-        """Tests whether a task can be successfully queued on a worker pool"""
-        pass
-
-    def test_set_callback(self):
-        """Tests whether a callback can be successfully set on a worker pool"""
-
-    def test_set_callback_already_set(self):
-        """Tests whether set_callback raises a WorkerPoolSetupError when a callback is
-        already set and a user tries to set another one
-        """
-
 
 class TestWorker(TestCase):
     """Contains tests to cover worker functionality"""
@@ -156,10 +126,7 @@ class TestWorker(TestCase):
     @staticmethod
     def kill_processes(workers: list[Worker]):
         for worker in workers:
-            if worker.process is None:
-                continue
-
-            if not worker.process.is_alive():
+            if worker.process is None or not worker.process.is_alive():
                 continue
 
             worker.process.kill()
@@ -182,18 +149,13 @@ class TestWorker(TestCase):
         # we are not using the worker pool here beyond supplying a function
         worker_pool = WorkerPool(0)
 
-        def worker_function(connection: Connection):
-            while True:
-                command = connection.recv()
-                if command[0] == Worker.COMM_STOP:
-                    return
-
-        worker_pool.worker_function = worker_function
+        worker_pool.worker_function = TestWorkerPool.worker_stop_method
 
         worker = Worker(0, worker_pool)
         self.workers.append(worker)
 
-        worker.start()
+        pool_connection, worker_connection = Pipe(True)
+        worker.start(pool_connection, worker_connection)
 
         self.assertTrue(worker.process.is_alive())
 
@@ -203,20 +165,37 @@ class TestWorker(TestCase):
         # we are not using the worker pool here beyond supplying a function
         worker_pool = WorkerPool(0)
 
-        def worker_function(connection: Connection):
-            while True:
-                command = connection.recv()
-                if command[0] == Worker.COMM_STOP:
-                    return
-
-        worker_pool.worker_function = worker_function
+        worker_pool.worker_function = TestWorkerPool.worker_stop_method
 
         worker = Worker(0, worker_pool)
         self.workers.append(worker)
 
-        worker.start()
+        # workers need connections
+        pool_connection, worker_connection = Pipe(True)
+        worker.start(pool_connection, worker_connection)
 
         worker.stop()
+
+        worker.join()
+
+        self.assertFalse(worker.process.is_alive())
+
+    def test_kill_worker(self):
+        """Tests whether calling stop on worker actually stops the worker"""
+
+        # we are not using the worker pool here beyond supplying a function
+        worker_pool = WorkerPool(0)
+
+        worker_pool.worker_function = TestWorkerPool.worker_stop_method
+
+        worker = Worker(0, worker_pool)
+        self.workers.append(worker)
+
+        # workers need connections
+        pool_connection, worker_connection = Pipe(True)
+        worker.start(pool_connection, worker_connection)
+
+        worker.stop(True)
 
         worker.join()
 
