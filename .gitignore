@@ -10,6 +10,7 @@ site/
 # test coverage report and svg
 .coverage
 coverage.svg
+coverage.xml
 
 # misc temp files
 tmp/
