@@ -1,4 +1,4 @@
 """Contains code to execute hmmpress, hmmscan and hmmalign"""
-from .press import hmm_press
+from .hmm import HMMer
 
-__all__ = ["hmm_press"]
+__all__ = ["HMMer"]

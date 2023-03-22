@@ -18,5 +18,5 @@ test/test_data/tmp
 
 
 # test hmm files
-# pyhmmer output on valid hmm
+# pressed test hmms
 test/test_data/hmm/valid.hmm.h3*
