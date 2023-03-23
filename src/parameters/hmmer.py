@@ -2,10 +2,14 @@
 hmmer parameters/arguments"""
 
 # from python
-from typing import Optional, List
+import logging
+from typing import Optional
+from pathlib import Path
 
 # from dependencies
 # from other modules
+from src.errors import InvalidInputArgError
+
 # from this module
 
 
@@ -24,4 +28,30 @@ class Hmmer:
         self.domain_overlap_cutoff: Optional[float] = None
         self.force_hmmscan: Optional[bool] = None
         self.skip_aligmnent: Optional[bool] = None
-        self.domain_includelist: Optional[List[str]] = None
+        self.domain_includelist: Optional[Path] = None
+
+    def parse(
+        self,
+        domain_overlap_cutoff: float,
+        force_hmmscan: bool,
+        skip_alignment: bool,
+        domain_includelist_path: Path,
+    ):
+        """Load hmmer arguments from commandline ArgParser object
+
+        Args:
+            domain_overlap_cutoff (float): overlap percentage at which domains are
+            considered to overlap
+            force_hmmscan (bool): Force domain prediction
+            skip_alignment (bool): Skip multiple alignment
+            domain_includelist_path (Path): Path to txt file with Pfam accessions
+        """
+
+        self.domain_overlap_cutoff = domain_overlap_cutoff
+        self.force_hmmscan = force_hmmscan
+        self.skip_aligmnent = skip_alignment
+
+        if not domain_includelist_path.exists():
+            logging.error("Path to domain_includelist file is not valid")
+            raise InvalidInputArgError()
+        self.domain_includelist_path = domain_includelist_path

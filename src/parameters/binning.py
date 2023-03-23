@@ -20,3 +20,12 @@ class Binning:
 
     def __init__(self) -> None:
         self.mix: Optional[bool] = None
+
+    def parse(self, mix: bool):
+        """Load networking arguments from commandline ArgParser object
+
+        Args:
+            mix (bool): Run an all-vs-all analysis
+        """
+
+        self.mix = mix
