@@ -19,7 +19,7 @@ class Input:
 
     Attributes:
         gbk_path: Path
-        mode: str
+        input_mode: str
         dataset_path: Path
         metadata_path: Path
         pfam_path: Path
@@ -34,8 +34,7 @@ class Input:
 
     def __init__(self) -> None:
         self.gbk_path: Optional[Path] = None
-        # self.mode: Optional[str] = None
-        # TODO: define mode
+        self.input_mode: Optional[str] = None
         self.dataset_path: Optional[Path] = None
         self.metadata_path: Optional[Path] = None
         self.pfam_path: Optional[Path] = None
@@ -50,6 +49,7 @@ class Input:
     def parse(
         self,
         gbk_path: Path,
+        input_mode: str,
         dataset_path: Path,
         metadata_path: Path,
         pfam_path: Path,
@@ -65,7 +65,7 @@ class Input:
 
         Args:
             gbk_path (Path): Path to input gbk folder
-            mode (str): #TODO: define
+            readin_mode (str): where to look for input gbk files
             dataset_path (Path): Path to dataset description tsv
             metadata_path (Path): Path to metadata tsv
             pfam_path (Path): Path to pressed Pfam files
@@ -108,6 +108,12 @@ class Input:
             logging.error("Path to query BGC GBK file is not valid")
             raise InvalidInputArgError()
         self.query_bgc_path = query_bgc_path
+
+        choices = ["flat", "recursive"]
+        if input_mode not in choices:
+            logging.error("input mode provided is not valid")
+            raise InvalidInputArgError()
+        self.input_mode = input_mode
 
         self.download_pfam = download_pfam
         self.mibig_version = mibig_version

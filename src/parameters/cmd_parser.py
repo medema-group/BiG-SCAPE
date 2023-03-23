@@ -50,6 +50,15 @@ def cmd_parser():
     )
 
     parser.add_argument(
+        "--input_mode",
+        dest="readin_mode",
+        type=str,
+        choices=["flat", "recursive"],
+        default="recursive",
+        help="Where to look for input GBK files. Default: recursive",
+    )
+
+    parser.add_argument(
         "-o",
         "--outputdir",
         dest="outputdir",

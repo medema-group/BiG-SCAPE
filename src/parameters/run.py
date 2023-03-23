@@ -57,6 +57,7 @@ class Run:
             raise ValueError()
         self.input.parse(
             args.inputdir,
+            args.readin_mode,
             args.dataset_path,
             args.metadata_path,
             args.pfam_dir,
