@@ -2,18 +2,21 @@
 """
 
 # from python
-from multiprocessing.connection import Connection
 from pathlib import Path
 import logging
+from typing import Iterator
 
 # from dependencies
-from pyhmmer.plan7 import HMMFile, Pipeline, Profile
-from pyhmmer.hmmer import hmmpress
+from pyhmmer.plan7 import HMMFile, Pipeline, Profile, TopHits
+from pyhmmer.hmmer import hmmpress, hmmsearch
 from pyhmmer.easel import Alphabet, TextSequence, TextSequenceBlock
+
 
 # from other modules
 from src.genbank import CDS
-from src.multithreading import Worker
+
+# from this module
+from src.hmm.hsp import HSP
 
 
 class HMMer:
@@ -51,70 +54,43 @@ class HMMer:
         )
 
     @staticmethod
-    def scan_worker_method(id: int, connection: Connection) -> None:
-        """Worker method for workers performing HMMScan on a sequence
+    def scan(genes: list[CDS]) -> Iterator[HSP]:
+        """Performs hmmscan on all CDS in the database using pyhmmer"""
 
-        Args:
-            id (int): the id of this worker
-            connection (Connection): the connection through which to send and receive
-            data
-        """
-        try:
-            # we will need this many times later on
-            alphabet = Alphabet.amino()
-            while True:
-                message = connection.recv()
-                command_type = message[0]
+        # callback function for progress reporting
+        def callback(query, profiles_done):
+            """Callback function for progress reporting
 
-                logging.debug("W%d: %d", id, message[0])
+            Args:
+                query (pyhmmer.plan7.OptimizedProfile): The profile that was just searched
+                profiles_done (int): the number of profiles searched through so far
+            """
+            percentage = int(profiles_done / len(HMMer.profiles))
+            report = (
+                len(HMMer.profiles) < 100
+                or profiles_done % int(len(HMMer.profiles) / 100) == 0
+            )
+            if report:
+                logging.info(
+                    "%d/%d (%d%%)", profiles_done, len(HMMer.profiles), percentage
+                )
 
-                if command_type == Worker.START:
-                    connection.send(message)
-                    continue
+        text_sequences = []
+        for idx, gene in enumerate(genes):
+            text_sequences.append(
+                TextSequence(name=str(idx).encode(), sequence=gene.aa_seq)
+            )
 
-                if command_type == Worker.STOP:
-                    connection.send(message)
-                    break
+        alphabet = Alphabet.amino()
+        sequence_block = TextSequenceBlock(text_sequences).digitize(alphabet)
 
-                if command_type == Worker.TASK:
-                    # we need the relevant data to do a scan: the id of the CDS and
-                    # the protein sequence. this is what is passed into the task data
-                    task_data = message[1:]
-                    cds_id, aa_seq = task_data
-                    # now we need to convert the sequence into something pyhmmer expects
-                    text_sequence = TextSequence(sequence=aa_seq)
-                    sequence_block = TextSequenceBlock([text_sequence]).digitize(
-                        alphabet
-                    )
+        hmmsearch_iter = hmmsearch(HMMer.profiles, sequence_block, callback=callback)
 
-                    for profile in HMMer.profiles:
-                        search_result = HMMer.pipeline.search_hmm(
-                            profile, sequence_block
-                        )
-
-                        for hit in search_result:
-                            if not hit.reported:
-                                continue
-
-                            for domain in hit.domains.reported:
-                                response = (
-                                    Worker.RESULT,
-                                    cds_id,
-                                    domain.alignment.hmm_name,
-                                    domain.score,
-                                )
-                                connection.send(response)
-
-        except Exception:
-            connection.send((Worker.ERROR, id))
-
-    @staticmethod
-    def scan(sequences: list[CDS]) -> None:
-        """Performs hmmscan on all CDS in the database using the provided pyhmmer
-        pipeline. This uses a workerpool to divide work over the CPU cores
-
-        Args:
-            pipeline (pyhmmer.plan7.pipeline): pyhmmer pipeline object created in
-            init_pipeline
-        """
-        return
+        top_hits: TopHits
+        for top_hits in hmmsearch_iter:
+            for reported_hit in top_hits.reported:
+                for domain in reported_hit.domains:
+                    cds_idx = int(reported_hit.name.decode())
+                    accession = domain.alignment.hmm_accession.decode()
+                    score = domain.score
+                    yield HSP(genes[cds_idx], accession, score)
