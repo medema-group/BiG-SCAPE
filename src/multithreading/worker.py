@@ -88,6 +88,9 @@ class WorkerPool:
         connection = choice(available_connections)
         return connection.recv()
 
+    def wait(self) -> list[Connection]:
+        return cast(list[Connection], wait(self.connections))
+
 
 class Worker:
     """Class that takes a function and takes data from a pool to execute on the function"""
