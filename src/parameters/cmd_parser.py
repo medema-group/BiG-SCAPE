@@ -51,7 +51,7 @@ def cmd_parser():
 
     parser.add_argument(
         "--input_mode",
-        dest="readin_mode",
+        dest="input_mode",
         type=str,
         choices=["flat", "recursive"],
         default="recursive",
