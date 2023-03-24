@@ -51,7 +51,31 @@ class TestLoadGBK(TestCase):
         nb: this does not test the contents of the GBK file, just the existence and reading of it
         """
 
-        gbk_file_path = Path("test/test_data/valid_gbk_folder/valid_input.gbk")
+        gbk_file_path = Path("test/test_data/valid_gbk_folder/valid_input_region.gbk")
         gbk = load_gbk(gbk_file_path)
 
         self.assertIsNot(gbk, None)
+
+    def test_include_exclude_str(self):
+        """Tests whether include and exclude gbk strings filter correclty"""
+
+        gbk_folder_path = Path("test/test_data/alt_valid_gbk_input/")
+
+        load_result = load_datset_folder(gbk_folder_path)
+
+        expected_count = 1
+        actual_count = len(load_result)
+
+        self.assertEqual(expected_count, actual_count)
+
+    def test_include_all_override_exclude(self):
+        """Tests whether include_gbk * correclty includes all files in dir"""
+
+        gbk_folder_path = Path("test/test_data/alt_valid_gbk_input/")
+
+        load_result = load_datset_folder(gbk_folder_path, include_gbk=["*"])
+
+        expected_count = 3
+        actual_count = len(load_result)
+
+        self.assertEqual(expected_count, actual_count)
