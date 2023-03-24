@@ -198,6 +198,7 @@ def cmd_parser():
     parser.add_argument(
         "--domain_includelist_path",
         dest="domain_includelist_path",
+        type=Path,
         help="Path to txt file with Pfam accessions. Only BGCs containing the \
             listed accessions will be analysed.",
     )

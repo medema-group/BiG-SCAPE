@@ -3,7 +3,7 @@ hmmer parameters/arguments"""
 
 # from python
 import logging
-from typing import Optional
+from typing import Optional, List
 from pathlib import Path
 
 # from dependencies
@@ -28,7 +28,7 @@ class Hmmer:
         self.domain_overlap_cutoff: Optional[float] = None
         self.force_hmmscan: Optional[bool] = None
         self.skip_aligmnent: Optional[bool] = None
-        self.domain_includelist: Optional[Path] = None
+        self.domain_includelist: Optional[List[str]] = None
 
     def parse(
         self,
@@ -54,4 +54,29 @@ class Hmmer:
         if domain_includelist_path and not domain_includelist_path.exists():
             logging.error("Path to domain_includelist file is not valid")
             raise InvalidInputArgError()
-        self.domain_includelist_path = domain_includelist_path
+
+        elif not domain_includelist_path:
+            pass
+
+        else:
+            with domain_includelist_path.open(
+                encoding="utf-8"
+            ) as domain_includelist_file:
+                lines = domain_includelist_file.readlines()
+
+                lines = [line.strip() for line in lines]
+
+                # expect Pfam accessions, i.e. PF00001 or PF00001.10
+                lines_valid = map(
+                    lambda string: string.startswith("PF")
+                    and len(string) in range(7, 11),
+                    lines,
+                )
+
+                if not all(lines_valid):
+                    logging.error("Invalid Pfam accession(s)")
+                    raise InvalidInputArgError
+
+                self.domain_includelist = lines
+
+                # TODO: test this

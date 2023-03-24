@@ -118,3 +118,53 @@ class TestRun(TestCase):
         expected_includes = ["1", "b"]
 
         self.assertEqual(expected_includes, run.input.include_gbk)
+
+    def test_parse_domain_includelist(self):
+        """Tests whether domain include list is parsed correclty"""
+
+        domain_includelist_path = (
+            "test/test_data/domain_includelist/valid_domain_includelist.txt"
+        )
+
+        parsed = self.parser.parse_args(
+            [
+                "--inputdir",
+                ".",
+                "--outputdir",
+                ".",
+                "--pfam_dir",
+                ".",
+                "--domain_includelist_path",
+                domain_includelist_path,
+            ]
+        )
+
+        run = Run()
+        run.parse(parsed)
+        expected_domain_includelist = ["PF00014", "PF00020.18"]
+
+        self.assertEqual(expected_domain_includelist, run.hmmer.domain_includelist)
+
+    def test_invalid_pfam_accession(self):
+        """Tests whether an error is thrown with an invalid pfam accession"""
+
+        domain_includelist_path = (
+            "test/test_data/domain_includelist/invalid_domain_includelist.txt"
+        )
+
+        parsed = self.parser.parse_args(
+            [
+                "--inputdir",
+                ".",
+                "--outputdir",
+                ".",
+                "--pfam_dir",
+                ".",
+                "--domain_includelist_path",
+                domain_includelist_path,
+            ]
+        )
+
+        run = Run()
+
+        self.assertRaises(InvalidInputArgError, run.parse, parsed)
