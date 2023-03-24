@@ -7,6 +7,8 @@ from typing import Optional, List
 
 # from dependencies
 # from other modules
+from src.errors import InvalidInputArgError
+
 # from this module
 
 
@@ -40,4 +42,4 @@ class Networking:
             self.gcf_cutoffs = gcf_cutoffs_list_float
         except ValueError:
             logging.error("value given for gcf_cutoffs invalid")
-            raise ValueError("value given for gcf_cutoffs invalid")
+            raise InvalidInputArgError()

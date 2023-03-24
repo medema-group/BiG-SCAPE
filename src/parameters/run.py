@@ -43,7 +43,7 @@ class Run:
         self.binning: Optional[Binning] = Binning()
         self.comparison: Optional[Comparison] = Comparison()
 
-    def parse_args(self, args: Any):
+    def parse(self, args: Any):
         """Load input arguments from commandline ArgParser object
 
         Args:
@@ -83,7 +83,7 @@ class Run:
         self.hmmer.parse(
             args.domain_overlap_cutoff,
             args.force_hmmscan,
-            args.skip_alignment,
+            args.skip_hmmalign,
             args.domain_includelist_path,
         )
 

@@ -111,7 +111,6 @@ def cmd_parser():
         dest="download_pfam",
         default=False,
         action="store_true",
-        type=bool,
         help="Download and press latest pfam database.",
     )
 
@@ -230,8 +229,7 @@ def cmd_parser():
     parser.add_argument(
         "--gcf_cutoffs",
         dest="gcf_cutoffs",
-        nargs="+",
-        default=0.30,
+        default="0.30",
         type=str,
         help="Generate networks using multiple raw distance cutoff values. \
             Values should be in the range [0.0, 1.0]. Example: --cutoffs 0.1,\
@@ -243,7 +241,6 @@ def cmd_parser():
         dest="include_singletons",
         default=False,
         action="store_true",
-        type=bool,
         help="Include nodes that have no edges to other nodes from the network.",
     )
 
@@ -252,7 +249,6 @@ def cmd_parser():
         dest="verbose",
         default=False,
         action="store_true",
-        type=bool,
         help="output all kinds of logs, including debugging log info, and write\
             to logfile.",
     )
@@ -262,7 +258,6 @@ def cmd_parser():
         dest="quiet",
         default=False,
         action="store_true",
-        type=bool,
         help="Don't print any log info to output, only write to logfile.",
     )
 
@@ -271,6 +266,7 @@ def cmd_parser():
         dest="log_level",
         default=1,
         type=int,
+        choices=[1, 2, 3],
         help="Level of verbose intensity: 1,2,3"
         # TODO: define levels
     )
@@ -280,7 +276,6 @@ def cmd_parser():
         dest="profiling",
         default=False,
         action="store_true",
-        type=bool,
         help="Run profiler and output profile report",
     )
 
@@ -294,4 +289,7 @@ def cmd_parser():
         # TODO: update with release
     )
 
-    return parser.parse_args()
+    return parser
+
+
+# parser.parse_args()

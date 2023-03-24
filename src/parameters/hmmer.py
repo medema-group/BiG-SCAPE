@@ -51,7 +51,7 @@ class Hmmer:
         self.force_hmmscan = force_hmmscan
         self.skip_aligmnent = skip_alignment
 
-        if not domain_includelist_path.exists():
+        if domain_includelist_path and not domain_includelist_path.exists():
             logging.error("Path to domain_includelist file is not valid")
             raise InvalidInputArgError()
         self.domain_includelist_path = domain_includelist_path

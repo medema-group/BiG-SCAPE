@@ -109,12 +109,7 @@ class Input:
             raise InvalidInputArgError()
         self.query_bgc_path = query_bgc_path
 
-        choices = ["flat", "recursive"]
-        if input_mode not in choices:
-            logging.error("input mode provided is not valid")
-            raise InvalidInputArgError()
         self.input_mode = input_mode
-
         self.download_pfam = download_pfam
         self.mibig_version = mibig_version
         self.include_gbk = include_gbk
