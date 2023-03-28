@@ -40,6 +40,7 @@ class GBK:
         self.region: Optional[Region] = None
         self.nt_seq: SeqRecord.seq = None
         self.genes: List[Optional[CDS]] = []
+        self.as_version: Optional[float] = None
 
     def save(self, commit=True):
         """Stires this GBK in the database
@@ -72,6 +73,9 @@ class GBK:
         # get record. should only ever be one for Antismash GBK
         record: SeqRecord = next(SeqIO.parse(path, "genbank"))
         gbk.nt_seq = record.seq
+        gbk.as_version = record.annotations["structured_comment"]["antiSMASH-Data"][
+            "Version"
+        ]
 
         tmp_cand_clusters = {}
         tmp_proto_clusters = {}
