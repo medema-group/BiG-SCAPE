@@ -4,19 +4,17 @@ run parameters/arguments"""
 # from python
 from typing import Optional, Any
 
-# from dependencies
-# from other modules
 # from this module
-from src.parameters.input import Input
-from src.parameters.output import Output
-from src.parameters.comparison import Comparison
-from src.parameters.diagnostics import Diagnostics
-from src.parameters.hmmer import Hmmer
-from src.parameters.binning import Binning
-from src.parameters.networking import Networking
+from src.parameters.input import InputParameters
+from src.parameters.output import OutputParameters
+from src.parameters.comparison import ComparisonParameters
+from src.parameters.diagnostics import DiagnosticsParameters
+from src.parameters.hmmer import HmmerParameters
+from src.parameters.binning import BinningParameters
+from src.parameters.networking import NetworkingParameters
 
 
-class Run:
+class RunParameters:
     """
     Class to store all run parameters
 
@@ -33,15 +31,15 @@ class Run:
     """
 
     def __init__(self) -> None:
-        self.input: Optional[Input] = Input()
-        self.output: Optional[Output] = Output()
+        self.input: Optional[InputParameters] = InputParameters()
+        self.output: Optional[OutputParameters] = OutputParameters()
         self.label: Optional[str] = None
         self.cores: Optional[int] = None
-        self.diagnostics: Optional[Diagnostics] = Diagnostics()
-        self.hmmer: Optional[Hmmer] = Hmmer()
-        self.networking: Optional[Networking] = Networking()
-        self.binning: Optional[Binning] = Binning()
-        self.comparison: Optional[Comparison] = Comparison()
+        self.diagnostics: Optional[DiagnosticsParameters] = DiagnosticsParameters()
+        self.hmmer: Optional[HmmerParameters] = HmmerParameters()
+        self.networking: Optional[NetworkingParameters] = NetworkingParameters()
+        self.binning: Optional[BinningParameters] = BinningParameters()
+        self.comparison: Optional[ComparisonParameters] = ComparisonParameters()
 
     def parse(self, args: Any):
         """Load input arguments from commandline ArgParser object
@@ -76,14 +74,14 @@ class Run:
 
         if self.diagnostics is None:
             raise ValueError()
-        self.diagnostics.parse(args.verbose, args.quiet, args.profiling, args.log_level)
+        self.diagnostics.parse(args.verbose, args.quiet, args.profiling)
 
         if self.hmmer is None:
             raise ValueError()
         self.hmmer.parse(
             args.domain_overlap_cutoff,
             args.force_hmmscan,
-            args.skip_hmmalign,
+            args.force_hmmalign,
             args.domain_includelist_path,
         )
 

@@ -6,14 +6,11 @@ import logging
 from typing import Optional
 from pathlib import Path
 
-# from dependencies
 # from other modules
 from src.errors import InvalidInputArgError
 
-# from this module
 
-
-class Output:
+class OutputParameters:
     """
     Class to store all run output parameters
 

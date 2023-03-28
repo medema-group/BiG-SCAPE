@@ -7,6 +7,5 @@ class InvalidInputArgError(Exception):
 
     def __init__(self):
         super().__init__(
-            "Validation error occurred when parsing a command\
-                         line input argument"
+            "Validation error occurred when parsing a command" "line input argument"
         )

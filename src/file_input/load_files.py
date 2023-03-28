@@ -3,7 +3,7 @@
 # from python
 import logging
 from pathlib import Path
-from typing import List
+from typing import List, Optional
 
 # from other modules
 from src.genbank.gbk import GBK
@@ -12,13 +12,20 @@ from src.genbank.gbk import GBK
 def load_datset_folder(
     path: Path,
     mode: str = "recursive",
-    include_gbk: List[str] = ["cluster", "region"],
-    exclude_gbk: List[str] = ["final"],
+    include_gbk: Optional[List[str]] = None,
+    exclude_gbk: Optional[List[str]] = None,
 ) -> List[GBK]:
     """Loads all gbk files in a given folder
 
     Returns empty list if path does not point to a folder or if folder does not contain gbk files
     """
+
+    if not include_gbk:
+        include_gbk = ["cluster", "region"]
+
+    if not exclude_gbk:
+        exclude_gbk = ["final"]
+
     if not path.is_dir():
         logging.error("Dataset folder does not point to a directory!")
         raise NotADirectoryError()

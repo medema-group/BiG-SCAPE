@@ -5,7 +5,7 @@ from unittest import TestCase
 
 # from dependencies
 # from other modules
-from src.parameters import Run, cmd_parser, Output
+from src.parameters import RunParameters, cmd_parser, OutputParameters
 from src.errors import InvalidInputArgError
 
 
@@ -40,10 +40,10 @@ class TestRun(TestCase):
             ["--inputdir", ".", "--outputdir", ".", "--pfam_dir", "."]
         )
 
-        run = Run()
+        run = RunParameters()
         run.parse(parsed)
 
-        self.assertIsInstance(run, Run)
+        self.assertIsInstance(run, RunParameters)
 
     def test_build_a_run_child(self):
         """Tests wether a run obj child is instatiated correctly"""
@@ -51,11 +51,11 @@ class TestRun(TestCase):
         parsed = self.parser.parse_args(
             ["--inputdir", ".", "--outputdir", ".", "--pfam_dir", "."]
         )
-        run = Run()
+        run = RunParameters()
         run.parse(parsed)
         output = run.output
 
-        self.assertIsInstance(output, Output)
+        self.assertIsInstance(output, OutputParameters)
 
     def test_get_gcf_cutoffs(self):
         """Tests whether gcf cutoffs are extracted correclty"""
@@ -72,7 +72,7 @@ class TestRun(TestCase):
                 "0.1,0.2",
             ]
         )
-        run = Run()
+        run = RunParameters()
         run.parse(parsed)
         expected_cutoffs = [0.1, 0.2]
 
@@ -93,7 +93,7 @@ class TestRun(TestCase):
                 "a,0.2",
             ]
         )
-        run = Run()
+        run = RunParameters()
 
         self.assertRaises(InvalidInputArgError, run.parse, parsed)
 
@@ -113,7 +113,7 @@ class TestRun(TestCase):
                 "b",
             ]
         )
-        run = Run()
+        run = RunParameters()
         run.parse(parsed)
         expected_includes = ["1", "b"]
 
@@ -139,7 +139,7 @@ class TestRun(TestCase):
             ]
         )
 
-        run = Run()
+        run = RunParameters()
         run.parse(parsed)
         expected_domain_includelist = ["PF00014", "PF00020.18"]
 
@@ -165,6 +165,6 @@ class TestRun(TestCase):
             ]
         )
 
-        run = Run()
+        run = RunParameters()
 
         self.assertRaises(InvalidInputArgError, run.parse, parsed)

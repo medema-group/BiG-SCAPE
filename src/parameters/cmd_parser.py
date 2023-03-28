@@ -34,8 +34,8 @@ def cmd_parser():
         "-c",
         "--cores",
         dest="cores",
-        type=int,
         default=cpu_count(),
+        type=int,
         help="Set the max number of cores available (default: use all available\
         cores).",
     )
@@ -44,17 +44,17 @@ def cmd_parser():
         "-i",
         "--inputdir",
         dest="inputdir",
-        required=True,
         type=Path,
+        required=True,
         help="Input directory containing gbk files to be used by BiG-SCAPE.",
     )
 
     parser.add_argument(
         "--input_mode",
         dest="input_mode",
+        default="recursive",
         type=str,
         choices=["flat", "recursive"],
-        default="recursive",
         help="Where to look for input GBK files. Default: recursive",
     )
 
@@ -62,8 +62,8 @@ def cmd_parser():
         "-o",
         "--outputdir",
         dest="outputdir",
-        required=True,
         type=Path,
+        required=True,
         help="Output directory for all BiG-SCAPE results files.",
     )
 
@@ -100,8 +100,8 @@ def cmd_parser():
         "-p",
         "--pfam_dir",
         dest="pfam_dir",
-        required=True,
         type=Path,
+        required=True,
         help="Path to hmmpress-processed Pfam database files."
         # TODO: check this when implementing automated pressing
     )
@@ -134,8 +134,8 @@ def cmd_parser():
         "--include_gbk",
         dest="include_gbk",
         default=["cluster", "region"],
-        nargs="+",
         type=str,
+        nargs="+",
         help="Only gbk files with this string(s) will be used for the analysis \
             (default: 'cluster', 'region'). Use an asterisk to accept every file \
             (overrides '--exclude_gbk_str').",
@@ -145,8 +145,8 @@ def cmd_parser():
         "--exclude_gbk",
         dest="exclude_gbk",
         default=["final"],
-        nargs="+",
         type=str,
+        nargs="+",
         help="If any string in this list occurs in the gbk filename, this \
             file will not be used for the analysis (default: final).",
     )
@@ -162,8 +162,8 @@ def cmd_parser():
     parser.add_argument(
         "--min_bgc_length",
         dest="min_bgc_length",
-        type=int,
         default=0,
+        type=int,
         help="Provide the minimum size of a BGC to be included in the analysis.\
               Default is 0 base pairs.",
     )
@@ -187,11 +187,11 @@ def cmd_parser():
     )
 
     parser.add_argument(
-        "--skip_hmmalign",
-        dest="skip_hmmalign",
+        "--force_hmmalign",
+        dest="force_hmmalign",
         default=False,
         action="store_true",
-        help="Skip multiple alignment of domains' sequences. Use if alignments \
+        help="Force multiple alignment of domains' sequences, even if alignments \
             have been generated in a previous run.",
     )
 
@@ -263,16 +263,6 @@ def cmd_parser():
     )
 
     parser.add_argument(
-        "--log_level",
-        dest="log_level",
-        default=1,
-        type=int,
-        choices=[1, 2, 3],
-        help="Level of verbose intensity: 1,2,3"
-        # TODO: define levels
-    )
-
-    parser.add_argument(
         "--profiling",
         dest="profiling",
         default=False,
@@ -291,6 +281,3 @@ def cmd_parser():
     )
 
     return parser
-
-
-# parser.parse_args()

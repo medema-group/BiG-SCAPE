@@ -6,35 +6,32 @@ import logging
 from typing import Optional, List
 from pathlib import Path
 
-# from dependencies
 # from other modules
 from src.errors import InvalidInputArgError
 
-# from this module
 
-
-class Hmmer:
+class HmmerParameters:
     """
     Class to store all run hmmer parameters
 
     Attributes:
         domain_overlap_cutoff: float
         force_hmmscan: Bool
-        skip_alignment: Bool
+        force_hmmalign: Bool
         domain_includelist: List[str]
     """
 
     def __init__(self) -> None:
         self.domain_overlap_cutoff: Optional[float] = None
         self.force_hmmscan: Optional[bool] = None
-        self.skip_aligmnent: Optional[bool] = None
+        self.force_hmmalign: Optional[bool] = None
         self.domain_includelist: Optional[List[str]] = None
 
     def parse(
         self,
         domain_overlap_cutoff: float,
         force_hmmscan: bool,
-        skip_alignment: bool,
+        force_hmmalign: bool,
         domain_includelist_path: Path,
     ):
         """Load hmmer arguments from commandline ArgParser object
@@ -49,7 +46,7 @@ class Hmmer:
 
         self.domain_overlap_cutoff = domain_overlap_cutoff
         self.force_hmmscan = force_hmmscan
-        self.skip_aligmnent = skip_alignment
+        self.force_hmmalign = force_hmmalign
 
         if domain_includelist_path and not domain_includelist_path.exists():
             logging.error("Path to domain_includelist file is not valid")
@@ -78,5 +75,3 @@ class Hmmer:
                     raise InvalidInputArgError
 
                 self.domain_includelist = lines
-
-                # TODO: test this

@@ -4,12 +4,8 @@ comparison parameters/arguments"""
 # from python
 from typing import Optional
 
-# from dependencies
-# from other modules
-# from this module
 
-
-class Comparison:
+class ComparisonParameters:
     """
     Class to store all run comparison parameters
 

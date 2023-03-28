@@ -5,14 +5,11 @@ networking parameters/arguments"""
 import logging
 from typing import Optional, List
 
-# from dependencies
 # from other modules
 from src.errors import InvalidInputArgError
 
-# from this module
 
-
-class Networking:
+class NetworkingParameters:
     """
     Class to store all run networking parameters
 
@@ -26,7 +23,7 @@ class Networking:
         self.gcf_cutoffs: Optional[List[float]] = None
         self.include_ingletons: Optional[bool] = None
 
-    def parse(self, gcf_cutoffs: str, include_ingletons: bool):
+    def parse(self, gcf_cutoffs: str, include_singletons: bool):
         """Load networking arguments from commandline ArgParser object
 
         Args:
@@ -34,7 +31,7 @@ class Networking:
             include_ingletons (bool): Include nodes that have no edges
         """
 
-        self.include_ingletons = include_ingletons
+        self.include_ingletons = include_singletons
 
         gcf_cutoffs_list = gcf_cutoffs.split(",")
         try:

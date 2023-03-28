@@ -4,12 +4,8 @@ binning parameters/arguments"""
 # from python
 from typing import Optional
 
-# from dependencies
-# from other modules
-# from this module
 
-
-class Binning:
+class BinningParameters:
     """
     Class to store all run binning parameters
 
