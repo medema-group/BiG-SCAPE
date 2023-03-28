@@ -32,6 +32,7 @@ class GBK:
         region: Region
         nt_seq: SeqRecord.seq
         genes: list[CDS]
+        as_version: str
     """
 
     def __init__(self, path) -> None:
@@ -40,7 +41,7 @@ class GBK:
         self.region: Optional[Region] = None
         self.nt_seq: SeqRecord.seq = None
         self.genes: List[Optional[CDS]] = []
-        self.as_version: Optional[float] = None
+        self.as_version: Optional[str] = None
 
     def save(self, commit=True):
         """Stires this GBK in the database
