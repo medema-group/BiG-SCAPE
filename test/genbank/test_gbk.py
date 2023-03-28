@@ -119,7 +119,7 @@ class TestGBK(TestCase):
 
         DB.create_in_mem()
 
-        gbk_file_path = Path("test/test_data/valid_gbk_folder/valid_input.gbk")
+        gbk_file_path = Path("test/test_data/valid_gbk_folder/valid_input_region.gbk")
 
         gbk = GBK.parse(gbk_file_path)
 
