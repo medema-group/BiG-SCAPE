@@ -115,4 +115,30 @@ class TestGBK(TestCase):
         self.assertEqual(expected_row_count, actual_row_count)
 
     def test_save_all(self):
-        pass
+        """Tests whether this gbk and its children can all be saved to a database"""
+
+        DB.create_in_mem()
+
+        gbk_file_path = Path("test/test_data/valid_gbk_folder/valid_input.gbk")
+
+        gbk = GBK.parse(gbk_file_path)
+
+        gbk.save_all()
+
+        DB.commit()
+
+        DB.save_to_disk(Path("tmp/db.db"))
+
+        # 1 gbk, 11 bgc records
+        expected_row_count = 12
+
+        actual_row_count = 0
+
+        # get gbk rows
+        cursor_result = DB.execute_raw_query("SELECT * FROM gbk;")
+        actual_row_count += len(cursor_result.fetchall())
+
+        cursor_result = DB.execute_raw_query("SELECT * FROM bgc_record;")
+        actual_row_count += len(cursor_result.fetchall())
+
+        self.assertEqual(expected_row_count, actual_row_count)
