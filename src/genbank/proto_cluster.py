@@ -68,12 +68,7 @@ class ProtoCluster(BGCRecord):
         proto_cluster.parse_location(feature)
         proto_cluster.proto_core[proto_cluster_number] = None
 
-        if "category" not in feature.qualifiers:
-            logging.error("category qualifier not found in protocluster feature!")
-            raise InvalidGBKError()
-
-        protocluster_category = feature.qualifiers["category"][0]
-
-        proto_cluster.category = protocluster_category
+        if "category" in feature.qualifiers:
+            proto_cluster.category = feature.qualifiers["category"][0]
 
         return proto_cluster

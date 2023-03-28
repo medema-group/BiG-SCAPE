@@ -72,16 +72,6 @@ class TestProtocluster(TestCase):
 
         self.assertRaises(InvalidGBKError, ProtoCluster.parse, feature)
 
-    def test_parse_no_category(self):
-        """Tests whether parse correctly throws an error when given a feature
-        lacking a category qualifier
-        """
-        feature = SeqFeature(FeatureLocation(0, 100), type="protocluster")
-        expected_number = 1
-        feature.qualifiers["protocluster_number"] = [str(expected_number)]
-
-        self.assertRaises(InvalidGBKError, ProtoCluster.parse, feature)
-
     def test_parse_wrong_type(self):
         """Tests whether parse correctly throws an error when given a feature of
         a wrong type

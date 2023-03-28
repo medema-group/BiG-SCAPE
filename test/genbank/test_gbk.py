@@ -33,6 +33,17 @@ class TestGBK(TestCase):
 
         self.assertIsInstance(gbk, GBK)
 
+    def test_parse_metagenome_gbk(self):
+        """Tests whether a metagenome GBK is instantiated correclty"""
+
+        gbk_file_path = Path(
+            "test/test_data/metagenome_valid_gbk_input/metagenome_random...region001.gbk"
+        )
+
+        gbk = GBK.parse(gbk_file_path)
+
+        self.assertIsInstance(gbk, GBK)
+
     def test_parse_gbk_multiple_regions(self):
         """Tests whether a GBK file has more than one region"""
 
