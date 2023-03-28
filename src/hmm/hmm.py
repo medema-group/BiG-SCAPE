@@ -228,7 +228,7 @@ class HMMer:
         return outputs
 
     @staticmethod
-    def hmmscan_process(process_id, connection: Connection):
+    def hmmscan_process(process_id, connection: Connection):  # pragma: no cover
         """Process for hmmscan workers
 
         Args:
