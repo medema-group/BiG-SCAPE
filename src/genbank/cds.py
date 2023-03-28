@@ -21,7 +21,7 @@ class CDS:
         nt_start: int
         nt_sop: int
         aa_seq: SeqRecord.seq
-        domains: list[str]
+        domains: list[HSP]
     """
 
     def __init__(self, nt_start: int, nt_stop: int):
