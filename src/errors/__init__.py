@@ -6,6 +6,7 @@ from src.errors.multithreading import (
     WorkerSetupError,
     WorkerExecutionError,
 )
+from src.errors.input_args import InvalidInputArgError
 
 __all__ = [
     "DBAlreadyOpenError",
@@ -16,4 +17,5 @@ __all__ = [
     "WorkerPoolSetupError",
     "WorkerSetupError",
     "WorkerExecutionError",
+    "InvalidInputArgError",
 ]

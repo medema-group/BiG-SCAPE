@@ -27,7 +27,18 @@ class TestGBK(TestCase):
     def test_parse_gbk(self):
         """Tests whether a GBK is instantiated correctly"""
 
-        gbk_file_path = Path("test/test_data/valid_gbk_folder/valid_input.gbk")
+        gbk_file_path = Path("test/test_data/valid_gbk_folder/valid_input_region.gbk")
+
+        gbk = GBK.parse(gbk_file_path)
+
+        self.assertIsInstance(gbk, GBK)
+
+    def test_parse_metagenome_gbk(self):
+        """Tests whether a metagenome GBK is instantiated correclty"""
+
+        gbk_file_path = Path(
+            "test/test_data/metagenome_valid_gbk_input/metagenome_random...region001.gbk"
+        )
 
         gbk = GBK.parse(gbk_file_path)
 
@@ -46,7 +57,7 @@ class TestGBK(TestCase):
         """Tests whether parsing a GBK correctly populates the underlying region"""
 
         # GBK has one region
-        gbk_file_path = Path("test/test_data/valid_gbk_folder/valid_input.gbk")
+        gbk_file_path = Path("test/test_data/valid_gbk_folder/valid_input_region.gbk")
 
         gbk = GBK.parse(gbk_file_path)
 
@@ -56,7 +67,7 @@ class TestGBK(TestCase):
         """Tests whether parsing a GBK correctly populates the underlying CDSs"""
 
         # GBK has one region
-        gbk_file_path = Path("test/test_data/valid_gbk_folder/valid_input.gbk")
+        gbk_file_path = Path("test/test_data/valid_gbk_folder/valid_input_region.gbk")
 
         gbk = GBK.parse(gbk_file_path)
 
@@ -66,7 +77,7 @@ class TestGBK(TestCase):
         """Tests whether parsing a GBK correclty generates parent-child feature relations
         via checking for presence of the lowest level child - proto_core"""
 
-        gbk_file_path = Path("test/test_data/valid_gbk_folder/valid_input.gbk")
+        gbk_file_path = Path("test/test_data/valid_gbk_folder/valid_input_region.gbk")
 
         gbk = GBK.parse(gbk_file_path)
 
@@ -77,7 +88,7 @@ class TestGBK(TestCase):
     def test_parse_gbk_has_dna_seq(self):
         """Tests whether parsing a GBK correclty has DNA sequence"""
 
-        gbk_file_path = Path("test/test_data/valid_gbk_folder/valid_input.gbk")
+        gbk_file_path = Path("test/test_data/valid_gbk_folder/valid_input_region.gbk")
 
         gbk = GBK.parse(gbk_file_path)
 
@@ -90,7 +101,7 @@ class TestGBK(TestCase):
 
         DB.create_in_mem()
 
-        gbk_file_path = Path("test/test_data/valid_gbk_folder/valid_input.gbk")
+        gbk_file_path = Path("test/test_data/valid_gbk_folder/valid_input_region.gbk")
 
         gbk = GBK.parse(gbk_file_path)
 
@@ -108,7 +119,7 @@ class TestGBK(TestCase):
 
         DB.create_in_mem()
 
-        gbk_file_path = Path("test/test_data/valid_gbk_folder/valid_input.gbk")
+        gbk_file_path = Path("test/test_data/valid_gbk_folder/valid_input_region.gbk")
 
         gbk = GBK.parse(gbk_file_path)
 
