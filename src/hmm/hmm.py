@@ -2,12 +2,12 @@
 """
 
 # from python
-from math import ceil
-from multiprocessing import Pipe, Process, cpu_count
-from multiprocessing.connection import Connection, wait
-from pathlib import Path
 import logging
 from typing import Iterator, cast
+from math import ceil
+from pathlib import Path
+from multiprocessing import Pipe, Process, cpu_count
+from multiprocessing.connection import Connection, wait
 
 # from dependencies
 from pyhmmer.plan7 import (
