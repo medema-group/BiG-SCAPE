@@ -170,8 +170,8 @@ class HMMer:
             this method
         """
 
-        processes = []
-        connections = []
+        processes: list[Process] = []
+        connections: list[Connection] = []
 
         if batch_size is None:
             batch_size = ceil(len(genes) / cpu_count())
@@ -181,8 +181,12 @@ class HMMer:
 
         task_iter = task_generator(genes, batch_size)
 
+        # it doesn't make sense to spawn more processes than there are AA sequences to
+        # scan, so only spawn between 0 and cpu_count() processes
+        process_count = min(len(genes), cpu_count())
+
         # first we need to create the processes and the connections
-        for process_id in range(cpu_count()):
+        for process_id in range(process_count):
             # connection first. this is the communication between the main process
             # and the worker process
             main_connection, worker_connection = Pipe(True)
@@ -253,6 +257,10 @@ class HMMer:
                     tasks_done += src_task_count
                     if callback is not None:
                         callback(tasks_done)
+
+        # just to make sure, kill any remaining processes
+        for process in processes:
+            process.kill()
 
     @staticmethod
     def profile_hmmsearch(
