@@ -73,7 +73,7 @@ class ProtoCluster(BGCRecord):
         proto_cluster_number = int(feature.qualifiers["protocluster_number"][0])
 
         proto_cluster = cls(proto_cluster_number)
-        proto_cluster.parse_location(feature)
+        proto_cluster.parse_bgc_record(feature)
         proto_cluster.proto_core[proto_cluster_number] = None
 
         if "category" in feature.qualifiers:

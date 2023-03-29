@@ -24,7 +24,7 @@ class TestLoadGBK(TestCase):
 
         load_result = load_datset_folder(gbk_file_path)
 
-        expected_count = 1
+        expected_count = 2
         actual_count = len(load_result)
 
         self.assertEqual(expected_count, actual_count)

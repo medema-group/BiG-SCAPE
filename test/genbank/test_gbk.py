@@ -33,11 +33,22 @@ class TestGBK(TestCase):
 
         self.assertIsInstance(gbk, GBK)
 
+    def test_parse_as4gbk(self):
+        """Tests whether an as4 GBK is instantiated correctly"""
+
+        gbk_file_path = Path(
+            "test/test_data/valid_gbk_folder/CM001015.1.cluster001.gbk"
+        )
+
+        gbk = GBK.parse(gbk_file_path)
+
+        self.assertIsInstance(gbk, GBK)
+
     def test_parse_metagenome_gbk(self):
         """Tests whether a metagenome GBK is instantiated correclty"""
 
         gbk_file_path = Path(
-            "test/test_data/metagenome_valid_gbk_input/metagenome_random...region001.gbk"
+            "test/test_data/metagenome_valid_gbk_input/as5_metagenome_valid...region001.gbk"
         )
 
         gbk = GBK.parse(gbk_file_path)

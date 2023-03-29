@@ -30,7 +30,14 @@ class Region(BGCRecord):
         self.cand_clusters: Dict[int, Optional[CandidateCluster]] = {}
 
     def add_cand_cluster(self, cand_cluster: CandidateCluster):
-        """Add a candidate cluster object to this region"""
+        """Add a candidate cluster object to this region
+
+        Args:
+            cand_cluster (CandidateCluster): candidate cluster object
+
+        Raises:
+            InvalidGBKRegionChildError: Invalid gbk region child
+        """
 
         if cand_cluster.number not in self.cand_clusters:
             raise InvalidGBKRegionChildError()
@@ -40,7 +47,7 @@ class Region(BGCRecord):
     def save(self, commit=True):
         """Stores this region in the database
 
-        Arguments:
+        Args:
             commit: commit immediately after executing the insert query"""
         return super().save("region", commit)
 
@@ -53,30 +60,44 @@ class Region(BGCRecord):
     @classmethod
     def parse(cls, feature: SeqFeature):
         """Creates a region object from a region feature in a GBK file"""
-        if feature.type != "region":
+        if feature.type != "region" and feature.type != "cluster":
             logging.error(
-                "Feature is not of correct type! (expected: region, was: %s)",
+                "Feature is not of correct type! (expected: region or cluster, was: %s)",
                 feature.type,
             )
             raise InvalidGBKError()
 
-        if "region_number" not in feature.qualifiers:
-            logging.error("region_number qualifier not found in region feature!")
-            raise InvalidGBKError()
+        if feature.type == "region":
+            if "region_number" not in feature.qualifiers:
+                logging.error("region number qualifier not found in region feature!")
+                raise InvalidGBKError()
 
-        region_number = int(feature.qualifiers["region_number"][0])
+            region_number = int(feature.qualifiers["region_number"][0])
 
-        region = cls(region_number)
+            region = cls(region_number)
 
-        region.parse_location(feature)
+            region.parse_bgc_record(feature)
 
-        if "candidate_cluster_numbers" not in feature.qualifiers:
-            logging.error(
-                "candidate_cluster_numbers qualifier not found in region feature!"
-            )
-            raise InvalidGBKError()
+            if "candidate_cluster_numbers" not in feature.qualifiers:
+                logging.error(
+                    "candidate_cluster_numbers qualifier not found in region feature!"
+                )
+                raise InvalidGBKError()
 
-        for cand_cluster_number in feature.qualifiers["candidate_cluster_numbers"]:
-            region.cand_clusters[int(cand_cluster_number)] = None
+            for cand_cluster_number in feature.qualifiers["candidate_cluster_numbers"]:
+                region.cand_clusters[int(cand_cluster_number)] = None
 
-        return region
+            return region
+
+        if feature.type == "cluster":
+            if (
+                "note" not in feature.qualifiers
+                or "Cluster number" not in feature.qualifiers["note"][0]
+            ):
+                logging.error("cluster number qualifier not found in cluster feature!")
+                raise InvalidGBKError()
+
+            cluster_note_number = feature.qualifiers["note"][0]
+            cluster_number = int(cluster_note_number.split(": ")[1])
+            region = cls(cluster_number)
+            return region

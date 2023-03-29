@@ -1,0 +1,103 @@
+LOCUS       c42737_NODE_42..        2125 bp    DNA     linear   UNK 01-JAN-1980
+DEFINITION  NODE_42737_length_2125_cov_4.884058.
+ACCESSION   c42737_NODE_42..
+VERSION     c42737_NODE_42..
+KEYWORDS    .
+SOURCE
+  ORGANISM
+            .
+COMMENT     ##antiSMASH-Data-START##
+            Version      :: 6.1.1
+            Run date     :: 2022-08-18 07:21:58
+            Original ID  :: NODE_42737_length_2125_cov_4.884058
+            NOTE: This is a single cluster extracted from a larger record!
+            Orig. start  :: 0
+            Orig. end    :: 2125
+            ##antiSMASH-Data-END##
+FEATURES             Location/Qualifiers
+     protocluster    1..2125
+                     /aStool="rule-based-clusters"
+                     /category="other"
+                     /contig_edge="True"
+                     /core_location="[68:623](-)"
+                     /cutoff="5000"
+                     /detection_rule="Trp_halogenase"
+                     /neighbourhood="10000"
+                     /product="halogenated"
+                     /protocluster_number="1"
+                     /tool="antismash"
+     proto_core      complement(69..623)
+                     /aStool="rule-based-clusters"
+                     /tool="antismash"
+                     /cutoff="5000"
+                     /detection_rule="Trp_halogenase"
+                     /neighbourhood="10000"
+                     /product="halogenated"
+                     /protocluster_number="1"
+     cand_cluster    1..2125
+                     /candidate_cluster_number="1"
+                     /contig_edge="True"
+                     /detection_rules="Trp_halogenase"
+                     /kind="single"
+                     /product="halogenated"
+                     /protoclusters="1"
+                     /tool="antismash"
+     region          1..2125
+                     /candidate_cluster_numbers="1"
+                     /contig_edge="True"
+                     /product="halogenated"
+                     /region_number="1"
+                     /rules="Trp_halogenase"
+                     /tool="antismash"
+     CDS             complement(69..623)
+                     /gene_functions="biosynthetic (rule-based-clusters)
+                     halogenated: Trp_halogenase"
+                     /gene_kind="biosynthetic"
+                     /locus_tag="ctg42737_1"
+                     /sec_met_domain="Trp_halogenase (E-value: 2.1e-05,
+                     bitscore: 10.5, seeds: 23, tool: rule-based-clusters)"
+                     /transl_table=11
+                     /translation="MQTYMSKNKCHCPNEVTIVSLSCHRTRTWWWVWEIPLNEDLVVGV
+                     VARSLYSPLLLCICQNPCEAVRVVGMREGWGYRCLGEGEESNTQMGGRGKVIH"
+     CDS             810..1373
+                     /locus_tag="ctg42737_2"
+                     /transl_table=11
+                     /translation="MLTCHKLPSEWLSCSFLIADHRDMGEGMSFFIAAILKISLGHLS"
+ORIGIN
+        1 atcacttaga ctgagtatta tgatcgtcat ttccttcttg ttaactcacg aaggcggacc
+       61 ctgtcatttt agtagatcag tcaaacgtat gaagttaggc gggtcatgtc attgtagtag
+      121 atcagtcaag cgtatgaagt taggcgggtc ctgtcattgt agtagatcag tcaagtgtat
+      181 gaagttgttc agctcctcag gaatgctcct ctatgggaga aaatcacaca cacaatgact
+      241 actatgatcc cctcctcctt aaaactccca ccaccacacc actccaccca tctactacaa
+      301 ctgtatttgt ttactactac cccccatcaa tgtattactt tacccctccc acccatctgt
+      361 gtattactct cctccccctc ccccaaacat ctataccccc acccttccct cattcccacc
+      421 acccttacag cctcacaagg attttgacaa atacagagaa gcaacgggct atacaaggat
+      481 cgggcgacca cacccaccac caggtcctcg tttaaaggga tctcccacac ccaccaccag
+      541 gtcctggtcc gatgacaaga caaactgaca atagtgactt cattgggaca gtgacatttg
+      601 tttttactca tgtatgtttg catatttgaa tgtacattga atgtatggta gcaaaaactg
+      661 aaaaaagaaa agattttatg ctccacagaa gggtccggga gcagatgggg gtggggctga
+      721 ttaggctagc aaggaactct gcagcacagg gtatggtaac agtacagtga atacctatct
+      781 ttctctgaaa cattagctaa ctaaactcta tgctcacttg ccacaaatta ccctcagagt
+      841 ggctctcctg ctccttcctc attgctgatc acagagatat gggtgaggga atgtccttct
+      901 tcatcgccgc catcttgaag atcagtcttg gccatctcag ttgacaaagc agtccaaaaa
+      961 attatcaagg taggcagcac tgcatctctc ctccatcgaa acagctgtct tcttcagaaa
+     1021 cagcaatatt gccttgagca ggctatagaa agagaccgct aaccactttc ctcaatcgat
+     1081 caatggcaag tttcaatgcg atgaagctca tagcaatgtg actcctagag cttttctgtg
+     1141 atggtcatat gatagagcaa cattttgggc atgcacagct ctttctacaa ggtggtaagt
+     1201 tcaaactccg atcttataaa aaaaattttt gagaggacag ttcaccaggt cgccatatgg
+     1261 caaccttgac gtggaaaggg ttaaatcttg cctacttgat gttgataaaa acatgtcacc
+     1321 ttggagtgca ataccttgac agatgctctg aatgccccca actagattcc taacatagct
+     1381 ctggagaggt tgccccaatc cgccagctct atcaaaagac aaaaacaggg gtcttcaaaa
+     1441 aacttggaag aatgaaagaa agtacatacc tacacctaat gctagcgcct ggttccaatc
+     1501 tactgaaaca gttttaaatc agtgttagca atggaaaatc acacccacta ctgccagtta
+     1561 attgcattca agcgtgcttt tatacatagg ctttgcaacc tgttccaacc tcctctgacc
+     1621 gcatggctat gtaaatcaag atggcggcac acaggtggta ggtaaataga acaagcgagg
+     1681 tacatacgta ggatgtgaca cactaaaatc agtggagaaa ttgtgcaaaa cagtgaccag
+     1741 gcaggtaaat aaagataatt caggtttcaa atatggctcc acgtaagaga tggttactct
+     1801 ttaaaggatg ctatgtacag tggaaacccc gccccaacag agaaccctcc aagaaaggaa
+     1861 tagcttcttt acaaagtact agactcattc caaaggacac attttctgcc tctttcacac
+     1921 tttgacttcc aggatgacaa aatctcccta caaaggacga aagtgtctac atccagccat
+     1981 cagccattca ataaacttca gtggtgggcc agtttctcct ttgatcactc acagcaacct
+     2041 tccactcttt tttttttttt tttttttttc tttcgtaagt gaattgttgt gtgtcatggg
+     2101 gggaatcttt gtttttcata cccgt
+//
