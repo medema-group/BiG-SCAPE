@@ -67,6 +67,8 @@ class Region(BGCRecord):
             )
             raise InvalidGBKError()
 
+        # AS5 and up gbks have region features, as well as candidate clusters and
+        # children classes (protocluster, protocore)
         if feature.type == "region":
             if "region_number" not in feature.qualifiers:
                 logging.error("region number qualifier not found in region feature!")
@@ -89,6 +91,8 @@ class Region(BGCRecord):
 
             return region
 
+        # AS4 gbks have cluster features instead of region, and no children features
+        # we artifically input the info in the cluster feature into the Region object
         if feature.type == "cluster":
             if (
                 "note" not in feature.qualifiers
