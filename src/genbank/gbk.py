@@ -36,14 +36,14 @@ class GBK:
         source_type: str
     """
 
-    def __init__(self, path) -> None:
-        self.path = path
+    def __init__(self, path, source_type) -> None:
+        self.path: Path = path
         self.metadata: Dict[str, str] = {}
         self.region: Optional[Region] = None
         self.nt_seq: SeqRecord.seq = None
         self.genes: List[Optional[CDS]] = []
         self.as_version: Optional[str] = None
-        self.source_type: Optional[str] = None
+        self.source_type: str = source_type
 
     def save(self, commit=True):
         """Stores this GBK in the database
@@ -91,7 +91,7 @@ class GBK:
         return as_version
 
     @classmethod
-    def parse(cls, path: Path, source_type: Optional[str]):
+    def parse(cls, path: Path, source_type: str):
         """Parses a GBK file and returns a GBK object with all necessary information
 
         Args:
@@ -101,8 +101,7 @@ class GBK:
             GBK: GBK object
         """
 
-        gbk = cls(path)
-        gbk.source_type = source_type
+        gbk = cls(path, source_type)
 
         # get record. should only ever be one for Antismash GBK
         record: SeqRecord = next(SeqIO.parse(path, "genbank"))
