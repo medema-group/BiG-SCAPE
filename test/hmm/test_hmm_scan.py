@@ -8,8 +8,7 @@ from unittest import TestCase
 from pyhmmer.easel import TextSequence
 
 # from other modules
-from src.hmm import HMMer
-from src.hmm.hmm import cds_to_input_task
+from src.hmm.hmmer import HMMer, cds_to_input_task
 from src.genbank import CDS
 from src.hmm import HSP
 
