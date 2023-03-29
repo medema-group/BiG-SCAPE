@@ -111,7 +111,7 @@ class HMMer:
         return HMMer.profiles[profile_idx]
 
     @staticmethod
-    def search(genes: list[CDS]) -> Iterator[HSP]:
+    def hmmsearch_simple(genes: list[CDS]) -> Iterator[HSP]:
         """Performs hmmsearch on a list of CDS.
 
         This is the fastest method of getting scan results. Use this if you know you
@@ -148,7 +148,7 @@ class HMMer:
                     yield HSP(genes[cds_idx], accession, score)
 
     @staticmethod
-    def scan(
+    def hmmsearch_multiprocess(
         genes: list[CDS],
         callback: Optional[Callable] = None,
         batch_size: Optional[int] = None,
@@ -193,7 +193,7 @@ class HMMer:
             # we need to tell it what method to execute, and give it some parameters
             # one of the arguments is the other end of the connection we made before
             worker_process = Process(
-                target=HMMer.hmmscan_process, args=(process_id, worker_connection)
+                target=HMMer.hmmsearch_process, args=(process_id, worker_connection)
             )
             processes.append(worker_process)
 
@@ -284,7 +284,7 @@ class HMMer:
         return outputs
 
     @staticmethod
-    def hmmscan_process(process_id, connection: Connection):  # pragma: no cover
+    def hmmsearch_process(process_id, connection: Connection):  # pragma: no cover
         """Process for hmmscan workers
 
         Args:
@@ -293,6 +293,7 @@ class HMMer:
                 pipe connecting to the main process
         """
         # start by waiting for the main thread to be ready for us
+        logging.debug("hmmsearch process with id %d started", process_id)
         connection.send(None)
         while True:
             # now we can get down to business
@@ -300,6 +301,7 @@ class HMMer:
             tasks = connection.recv()
 
             if tasks is None:
+                logging.debug("hmmsearch process with id %d stopping", process_id)
                 break
 
             num_tasks = len(tasks)
@@ -368,6 +370,8 @@ class HMMer:
 def gen_profile_index(profiles: list[OptimizedProfile]) -> dict[str, int]:
     """Generates a profile index where keys are accessions and values are list indexes
 
+    Used in quick lookup of profiles during hmmalign
+
     Args:
         profiles (list[OptimizedProfile]): a list of optimized profiles
 
@@ -397,8 +401,16 @@ def cds_to_input_task(cds_list: list[CDS]) -> Iterator[tuple[int, str]]:
         yield (idx, cds.aa_seq or "")
 
 
-def task_output_to_hsp(task_output: tuple, cds_list: list[CDS]):
-    """Returns an HSP for a given output task"""
+def task_output_to_hsp(task_output: tuple, cds_list: list[CDS]) -> HSP:
+    """Returns an HSP for a given output task
+
+    Args:
+        task_output (tuple): an output task as given by HMMer.hmmsearch_process
+        cds_list (list[CDS]): _description_
+
+    Returns:
+        HSP: _description_
+    """
     cds_id, domain, score = task_output
     return HSP(cds_list[cds_id], domain, score)
 
