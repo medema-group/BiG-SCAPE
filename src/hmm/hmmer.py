@@ -3,7 +3,8 @@
 
 # from python
 import logging
-from typing import Iterator, cast
+import string
+from typing import Callable, Iterator, Optional, cast
 from math import ceil
 from pathlib import Path
 from multiprocessing import Pipe, Process, cpu_count
@@ -15,7 +16,7 @@ from pyhmmer.plan7 import (
     Pipeline,
     OptimizedProfile,
 )
-from pyhmmer.hmmer import hmmpress, hmmsearch
+from pyhmmer.hmmer import hmmpress, hmmsearch, hmmalign
 from pyhmmer.easel import Alphabet, TextSequence, TextSequenceBlock
 
 
@@ -23,12 +24,13 @@ from pyhmmer.easel import Alphabet, TextSequence, TextSequenceBlock
 from src.genbank import CDS
 
 # from this module
-from src.hmm.hsp import HSP
+from src.hmm.hsp import HSP, HSPAlignment
 
 
 class HMMer:
     pipeline: Pipeline = None
     profiles: list[OptimizedProfile]
+    profile_index: dict[str, int]
     alphabet = Alphabet.amino()
 
     @staticmethod
@@ -50,17 +52,63 @@ class HMMer:
             hmmpress(hmm_file, hmm_path)
 
     @staticmethod
-    def init(hmm_path: Path) -> None:
+    def init(hmm_path: Path, optimized=True) -> None:
+        """Load the HMMer profiles and create an index for the profiles for easy lookup
+        later. Also creates a pipeline for usage in certain workflows
+
+        Args:
+            hmm_path (Path): Path to the hmm profile. Should contain hmm[f,i,m,p] if
+            optimized is set to True
+            optimized (bool, optional): Whether to use the optimized profiles if they
+            exist. Defaults to True.
+        """
         logging.info("Reading HMM Profiles")
         HMMer.profiles = list()
         with HMMFile(hmm_path) as hmm_file:
-            HMMer.profiles.extend(list(hmm_file.optimized_profiles()))
+            if optimized:
+                logging.debug("Loading optimized profiles")
+                profile_list = list(hmm_file.optimized_profiles())
+            else:
+                logging.debug("Loading unoptimized profiles")
+                profile_list = list(hmm_file)
+
+            HMMer.profiles.extend(profile_list)
             logging.info("Found %d HMM profiles", len(HMMer.profiles))
 
-        # this pipeline is used to perform
+        # create an index so we can quickly get profiles by accession
+        HMMer.profile_index = gen_profile_index(HMMer.profiles)
+
+        # this pipeline is used to perform hmmscan and hmmalign in more memory efficient
+        # use cases
         HMMer.pipeline = Pipeline(
             Alphabet.amino(), Z=len(HMMer.profiles), bit_cutoffs="trusted"
         )
+
+    @staticmethod
+    def unload():
+        """Unload the variables that were set up during init(). Do this before running
+        init() again for hmmalign
+        """
+        logging.info("Unloading profiles")
+        HMMer.profiles = list()
+        HMMer.profile_index = {}
+        HMMer.pipeline = None
+
+    @staticmethod
+    def get_profile(accession: str) -> OptimizedProfile:
+        """Returns the optimized profile with the specified accession
+
+        Args:
+            accession (str): the accession identifying the profile of interest
+
+        Returns:
+            OptimizedProfile: An optimized HMM profile
+        """
+        if accession not in HMMer.profile_index:
+            raise KeyError()
+
+        profile_idx = HMMer.profile_index[accession]
+        return HMMer.profiles[profile_idx]
 
     @staticmethod
     def search(genes: list[CDS]) -> Iterator[HSP]:
@@ -100,12 +148,18 @@ class HMMer:
                     yield HSP(genes[cds_idx], accession, score)
 
     @staticmethod
-    def scan(genes: list[CDS], batch_size=None) -> Iterator[HSP]:
+    def scan(
+        genes: list[CDS],
+        callback: Optional[Callable] = None,
+        batch_size: Optional[int] = None,
+    ) -> Iterator[HSP]:
         """Runs hmmscan using pyhmmer in several subprocesses. Passes batches of input
         genes to the subprocesses in an attempt to optimize memory usage
 
         Args:
             genes (list[CDS]): a list of CDS objects to generate HSPs for
+            callback (Callable, optional): A callback function with a num_tasks argument
+            that is called whenever a set of tasks is done
             batch_size (int, optional): The size of the data batch lists which is passed
             to the worker processes. Defaults to None.
 
@@ -195,6 +249,8 @@ class HMMer:
                         yield task_output_to_hsp(task_output, genes)
 
                     tasks_done += src_task_count
+                    if callback is not None:
+                        callback(tasks_done)
 
     @staticmethod
     def profile_hmmsearch(
@@ -260,6 +316,70 @@ class HMMer:
 
             connection.send([num_tasks] + task_output)
 
+    @staticmethod
+    def align_simple(hsps: list[HSP]) -> Iterator[list[HSPAlignment]]:
+        """Aligns a list of HSPs per domain.
+
+        The iterator that is returned will yield a list of alignments per domain
+
+        Args:
+            hsps (list[HSP]): List of HSPs to align
+
+        Yields:
+            Iterator[list[HSPAlignment]]: A generator of HSPAlignment lists per domain
+        """
+        profile_hsps: dict[str, list[HSP]] = {}
+
+        for hsp in hsps:
+            if hsp.domain not in profile_hsps:
+                profile_hsps[hsp.domain] = []
+
+            profile_hsps[hsp.domain].append(hsp)
+
+        for domain_accession, hsp_list in profile_hsps.items():
+            profile = HMMer.get_profile(domain_accession)
+            sequences = []
+            domain_hsp: HSP
+            for hsp_idx, domain_hsp in enumerate(hsp_list):
+                sequences.append(
+                    TextSequence(
+                        name=str(hsp_idx).encode(), sequence=domain_hsp.cds.aa_seq
+                    )
+                )
+            ds_block = TextSequenceBlock(sequences).digitize(HMMer.alphabet)
+
+            msa = hmmalign(profile, ds_block)
+
+            alignments = []
+            for idx, alignment in enumerate(msa.alignment):
+                name = msa.sequences[idx].name.decode()
+                source_hsp_idx = int(name)
+
+                algn_string = process_algn_string(alignment)
+                alignments.append(
+                    HSPAlignment(
+                        hsp_list[source_hsp_idx], domain_accession, algn_string
+                    )
+                )
+            yield alignments
+
+
+# general methods
+def gen_profile_index(profiles: list[OptimizedProfile]) -> dict[str, int]:
+    """Generates a profile index where keys are accessions and values are list indexes
+
+    Args:
+        profiles (list[OptimizedProfile]): a list of optimized profiles
+
+    Returns:
+        dict[str, int]: An index dictionary allowing for lookup in list by accession
+    """
+    index = {}
+    for idx, profile in enumerate(profiles):
+        index[profile.accession.decode()] = idx
+
+    return index
+
 
 def cds_to_input_task(cds_list: list[CDS]) -> Iterator[tuple[int, str]]:
     """Returns an iterator which yields input tasks for each cds in the given list
@@ -306,84 +426,8 @@ def task_generator(genes: list[CDS], batch_size) -> Iterator[list]:
         yield tasks
 
 
-def hsp_overlap_filter(hsp_list: list[HSP], overlap_cutoff=0.1) -> list[HSP]:
-    """Filters overlapping HSP
-
-    Args:
-        hsp_list (list[HSP]): a list of high scoring protein hits
-        overlap_cutoff: The maximum percentage sequence length domains can overlap
-            without being discarded
-
-    Returns:
-        list[HSP]: a filtered list of high scoring protein hits
+def process_algn_string(algn_string: str):
+    """removes any model gaps from the alignment string and returns a string with only
+    cds gaps
     """
-    # for this the hsps have to be sorted by any of the start coordinates
-    # this is for the rare case where two hsps have the same bit score.
-    # to replicate BiG-SCAPE output, the hsp with a lower start coordinate
-    # will end up being chosen
-    sorted_hsps = sorted(hsp_list, key=lambda hsp: hsp.cds.nt_start)
-
-    new_list = []
-    for i in range(len(sorted_hsps) - 1):
-        for j in range(i + 1, len(sorted_hsps)):
-            hsp_a: HSP = sorted_hsps[i]
-            hsp_b: HSP = sorted_hsps[j]
-
-            # check if we are the same CDS
-            if hsp_a == hsp_b:
-                # check if there is overlap between the domains
-                if not has_overlap(hsp_a, hsp_b):
-                    continue
-
-                overlapping_aminoacids = len_overlap(hsp_a, hsp_b)
-                overlap_perc_loc1 = overlapping_aminoacids / (
-                    hsp_a.cds.nt_stop - hsp_a.cds.nt_start
-                )
-                overlap_perc_loc2 = overlapping_aminoacids / (
-                    hsp_b.cds.nt_stop - hsp_b.cds.nt_start
-                )
-                # check if the amount of overlap is significant
-                if (
-                    overlap_perc_loc1 <= overlap_cutoff
-                    and overlap_perc_loc2 <= overlap_cutoff
-                ):
-                    continue
-                # rounding with 1 decimal to mirror domtable files
-                hsp_a_score = round(float(hsp_a.score), 1)
-                hsp_b_score = round(float(hsp_b.score), 1)
-                if hsp_a_score >= hsp_b_score:  # see which has a better score
-                    new_list.append(hsp_a)
-                elif hsp_a_score < hsp_b_score:
-                    new_list.append(hsp_b)
-
-    return new_list
-
-
-def has_overlap(hsp_a: HSP, hsp_b: HSP):
-    """Return True if there is overlap between two regions"""
-    # a left of b
-    if hsp_a.cds.nt_stop < hsp_b.cds.nt_start:
-        return False
-    # b left of a
-    if hsp_b.cds.nt_stop < hsp_a.cds.nt_start:
-        return False
-
-    # all other cases should have overlap
-    return True
-
-
-def len_overlap(hsp_a: HSP, hsp_b: HSP):
-    """Returns the length of an overlapping sequence"""
-
-    if hsp_a.cds.nt_start < hsp_b.cds.nt_start:
-        left = hsp_b.cds.nt_start
-    else:
-        left = hsp_a.cds.nt_start
-
-    if hsp_a.cds.nt_stop > hsp_b.cds.nt_stop:
-        right = hsp_b.cds.nt_stop
-    else:
-        right = hsp_a.cds.nt_stop
-
-    # limit to > 0
-    return max(0, right - left)
+    return algn_string.translate(str.maketrans("", "", string.ascii_lowercase + "."))

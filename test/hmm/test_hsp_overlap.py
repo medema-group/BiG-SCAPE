@@ -6,10 +6,9 @@ from unittest import TestCase
 # from other modules
 from src.genbank import CDS
 from src.hmm import HSP
-from src.hmm.hmm import has_overlap, len_overlap
 
 
-class TestHMMUtil(TestCase):
+class TestHSPOverlap(TestCase):
     """Contains tests to cover any utility functions in the hmm module"""
 
     def test_no_overlap_left(self):
@@ -22,7 +21,7 @@ class TestHMMUtil(TestCase):
 
         expected_result = False
 
-        actual_result = has_overlap(hsp_a, hsp_b)
+        actual_result = hsp_a.has_overlap(hsp_b)
 
         self.assertEqual(expected_result, actual_result)
 
@@ -36,7 +35,7 @@ class TestHMMUtil(TestCase):
 
         expected_result = False
 
-        actual_result = has_overlap(hsp_a, hsp_b)
+        actual_result = hsp_a.has_overlap(hsp_b)
 
         self.assertEqual(expected_result, actual_result)
 
@@ -52,7 +51,7 @@ class TestHMMUtil(TestCase):
 
         expected_result = True
 
-        actual_result = has_overlap(hsp_a, hsp_b)
+        actual_result = hsp_a.has_overlap(hsp_b)
 
         self.assertEqual(expected_result, actual_result)
 
@@ -68,7 +67,7 @@ class TestHMMUtil(TestCase):
 
         expected_result = True
 
-        actual_result = has_overlap(hsp_a, hsp_b)
+        actual_result = hsp_a.has_overlap(hsp_b)
 
         self.assertEqual(expected_result, actual_result)
 
@@ -84,7 +83,7 @@ class TestHMMUtil(TestCase):
 
         expected_result = True
 
-        actual_result = has_overlap(hsp_a, hsp_b)
+        actual_result = hsp_a.has_overlap(hsp_b)
 
         self.assertEqual(expected_result, actual_result)
 
@@ -98,7 +97,7 @@ class TestHMMUtil(TestCase):
 
         expected_result = 100
 
-        actual_result = len_overlap(hsp_a, hsp_b)
+        actual_result = hsp_a.len_overlap(hsp_b)
 
         self.assertEqual(expected_result, actual_result)
 
@@ -114,7 +113,7 @@ class TestHMMUtil(TestCase):
 
         expected_result = 50
 
-        actual_result = len_overlap(hsp_a, hsp_b)
+        actual_result = hsp_a.len_overlap(hsp_b)
 
         self.assertEqual(expected_result, actual_result)
 
@@ -130,7 +129,7 @@ class TestHMMUtil(TestCase):
 
         expected_result = 50
 
-        actual_result = len_overlap(hsp_a, hsp_b)
+        actual_result = hsp_a.len_overlap(hsp_b)
 
         self.assertEqual(expected_result, actual_result)
 
@@ -146,7 +145,7 @@ class TestHMMUtil(TestCase):
 
         expected_result = 0
 
-        actual_result = len_overlap(hsp_a, hsp_b)
+        actual_result = hsp_a.len_overlap(hsp_b)
 
         self.assertEqual(expected_result, actual_result)
 
@@ -162,6 +161,6 @@ class TestHMMUtil(TestCase):
 
         expected_result = 0
 
-        actual_result = len_overlap(hsp_a, hsp_b)
+        actual_result = hsp_a.len_overlap(hsp_b)
 
         self.assertEqual(expected_result, actual_result)
