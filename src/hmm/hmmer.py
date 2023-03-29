@@ -128,6 +128,7 @@ class HMMer:
 
         sequences = []
         for idx, gene in enumerate(genes):
+            # name is actually the list index of the original CDS
             sequences.append(TextSequence(name=str(idx).encode(), sequence=gene.aa_seq))
 
         ds = TextSequenceBlock(sequences).digitize(HMMer.alphabet)
@@ -142,6 +143,7 @@ class HMMer:
                     if domain.score < 0:
                         continue
 
+                    # name is actually the list index of the original CDS
                     cds_idx = int(hit.name.decode())
                     accession = domain.alignment.hmm_accession.decode()
                     score = domain.score
@@ -276,6 +278,7 @@ class HMMer:
                     if not domain.reported:
                         continue
 
+                    # name is actually the list index of the original CDS
                     cds_idx = int(top_hit.name.decode())
                     accession = domain.alignment.hmm_accession.decode()
                     score = domain.score
@@ -300,22 +303,27 @@ class HMMer:
             # get a batch of tasks
             tasks = connection.recv()
 
+            # we established that receiving None means we should stop the process
             if tasks is None:
                 logging.debug("hmmsearch process with id %d stopping", process_id)
                 break
 
+            # we will want to return the number of tasks that were processed later
             num_tasks = len(tasks)
 
-            # get sequences
+            # pymmer requires sequences to be in a certain format:
             sequences = []
             for task in tasks:
                 cds_id, aa_seq = task
+                # name is actually the list index of the original CDS
                 sequences.append(
                     TextSequence(name=str(cds_id).encode(), sequence=aa_seq)
                 )
 
             task_output = HMMer.profile_hmmsearch(sequences)
 
+            # send this batch of task results back as a list
+            # first element is the number of tasks that were processed in this batch
             connection.send([num_tasks] + task_output)
 
     @staticmethod
@@ -324,12 +332,18 @@ class HMMer:
 
         The iterator that is returned will yield a list of alignments per domain
 
+        This performs no multiprocessing, but align is usually pretty fast already
+
         Args:
             hsps (list[HSP]): List of HSPs to align
 
         Yields:
             Iterator[list[HSPAlignment]]: A generator of HSPAlignment lists per domain
         """
+
+        # there are going to be cases where certain domains are not present in HSPs at
+        # all. we can assemble a dictionary which contains only those domains that are
+        # present and the HSPs associated with those domains
         profile_hsps: dict[str, list[HSP]] = {}
 
         for hsp in hsps:
@@ -338,9 +352,12 @@ class HMMer:
 
             profile_hsps[hsp.domain].append(hsp)
 
+        # now all we have to do is go through the list of domains which we know need to
+        # be aligned with only the relevant aa sequences
         for domain_accession, hsp_list in profile_hsps.items():
             profile = HMMer.get_profile(domain_accession)
             sequences = []
+
             domain_hsp: HSP
             for hsp_idx, domain_hsp in enumerate(hsp_list):
                 sequences.append(
@@ -354,8 +371,9 @@ class HMMer:
 
             alignments = []
             for idx, alignment in enumerate(msa.alignment):
-                name = msa.sequences[idx].name.decode()
-                source_hsp_idx = int(name)
+                # name is actually the list index of the original HSP
+                sequence_name = msa.sequences[idx].name.decode()
+                source_hsp_idx = int(sequence_name)
 
                 algn_string = process_algn_string(alignment)
                 alignments.append(
@@ -386,7 +404,7 @@ def gen_profile_index(profiles: list[OptimizedProfile]) -> dict[str, int]:
 
 
 def cds_to_input_task(cds_list: list[CDS]) -> Iterator[tuple[int, str]]:
-    """Returns an iterator which yields input tasks for each cds in the given list
+    """Returns an iterator which yields input tasks for each CDS in the given list
 
     A CDS without an amino acid sequence will be passed as an empty sequence string
 
