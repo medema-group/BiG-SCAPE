@@ -33,15 +33,17 @@ class GBK:
         nt_seq: SeqRecord.seq
         genes: list[CDS]
         as_version: str
+        source_type: str
     """
 
-    def __init__(self, path) -> None:
-        self.path = path
+    def __init__(self, path, source_type) -> None:
+        self.path: Path = path
         self.metadata: Dict[str, str] = {}
         self.region: Optional[Region] = None
         self.nt_seq: SeqRecord.seq = None
         self.genes: List[Optional[CDS]] = []
         self.as_version: Optional[str] = None
+        self.source_type: str = source_type
 
     def save(self, commit=True):
         """Stores this GBK in the database
@@ -67,17 +69,90 @@ class GBK:
         self.save(False)
         self.region.save_all()
 
+    @staticmethod
+    def get_as_version(gbk_seq_record: SeqRecord):
+        """Get AS version from GBK record
+
+        Args:
+            gbk_seq_record (SeqRecord): gbk seqrecord
+
+        Returns:
+            str: antismash version
+        """
+
+        try:
+            as_version = gbk_seq_record.annotations["structured_comment"][
+                "antiSMASH-Data"
+            ]["Version"]
+        except KeyError:
+            # assume AS version 4
+            as_version = "4"
+
+        return as_version
+
     @classmethod
-    def parse(cls, path: Path):
-        """Parses a GBK file and returns a GBK object with all necessary information"""
-        gbk = cls(path)
+    def parse(cls, path: Path, source_type: str):
+        """Parses a GBK file and returns a GBK object with all necessary information
+
+        Args:
+            path (Path): path to gbk file
+
+        Returns:
+            GBK: GBK object
+        """
+
+        gbk = cls(path, source_type)
 
         # get record. should only ever be one for Antismash GBK
         record: SeqRecord = next(SeqIO.parse(path, "genbank"))
         gbk.nt_seq = record.seq
-        gbk.as_version = record.annotations["structured_comment"]["antiSMASH-Data"][
-            "Version"
-        ]
+
+        as_version = GBK.get_as_version(record)
+        gbk.as_version = as_version
+
+        if int(as_version[0]) >= 5:
+            gbk.parse_as5up(record)
+        if int(as_version[0]) == 4:
+            gbk.parse_as4(record)
+
+        return gbk
+
+    def parse_as4(self, record: SeqRecord):
+        """Parses a GBK record of AS version 4 and returns a GBK object with all necessary information
+
+        Args:
+            record (SeqRecord): gbk file record
+
+        Raises:
+            InvalidGBKError: Invalid or missing fields in gbk record
+        """
+
+        # go through features, load into tmp dicts indexed by feature number
+        feature: SeqFeature
+        for feature in record.features:
+            if feature.type == "cluster":
+                if self.region is not None:
+                    # this should not happen, but just in case
+                    # since we only have one region on an object
+                    logging.error("GBK file provided contains more than one region")
+                    raise InvalidGBKError()
+
+                region = Region.parse(feature)
+                self.region = region
+
+            if feature.type == "CDS":
+                cds = CDS.parse(feature)
+                self.genes.append(cds)
+
+    def parse_as5up(self, record: SeqRecord):
+        """Parses a GBK record of AS versions 5 and up and returns a GBK object with all necessary information
+
+        Args:
+            record (SeqRecord): gbk file record
+
+        Raises:
+            InvalidGBKError: Invalid or missing fields in gbk record
+        """
 
         tmp_cand_clusters = {}
         tmp_proto_clusters = {}
@@ -87,14 +162,14 @@ class GBK:
         feature: SeqFeature
         for feature in record.features:
             if feature.type == "region":
-                if gbk.region is not None:
+                if self.region is not None:
                     # this should not happen, but just in case
                     # since we only have one region on an object
                     logging.error("GBK file provided contains more than one region")
                     raise InvalidGBKError()
 
                 region = Region.parse(feature)
-                gbk.region = region
+                self.region = region
 
             if feature.type == "cand_cluster":
                 cand_cluster = CandidateCluster.parse(feature)
@@ -110,7 +185,7 @@ class GBK:
 
             if feature.type == "CDS":
                 cds = CDS.parse(feature)
-                gbk.genes.append(cds)
+                self.genes.append(cds)
 
         # add features to parent objects
         for proto_cluster_num, proto_cluster in tmp_proto_clusters.items():
@@ -123,8 +198,6 @@ class GBK:
             region.add_cand_cluster(cand_cluster)
 
         del tmp_proto_clusters, tmp_proto_cores, tmp_cand_clusters
-
-        return gbk
 
     def __repr__(self) -> str:
         return f"GBK from {self.path} with {len(self.genes)} genes"

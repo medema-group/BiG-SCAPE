@@ -5,5 +5,14 @@ from src.genbank.candidate_cluster import CandidateCluster
 from src.genbank.proto_cluster import ProtoCluster
 from src.genbank.proto_core import ProtoCore
 from src.genbank.cds import CDS
+from src.genbank.bgc_record import BGCRecord
 
-__all__ = ["GBK", "Region", "CandidateCluster", "ProtoCluster", "ProtoCore", "CDS"]
+__all__ = [
+    "GBK",
+    "Region",
+    "CandidateCluster",
+    "ProtoCluster",
+    "ProtoCore",
+    "CDS",
+    "BGCRecord",
+]

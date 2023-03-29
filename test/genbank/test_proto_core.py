@@ -39,6 +39,7 @@ class TestProtocore(TestCase):
         expected_number = 1
 
         feature.qualifiers["protocluster_number"] = [str(expected_number)]
+        feature.qualifiers["product"] = ["NRPS"]
 
         proto_core = ProtoCore.parse(feature)
 
@@ -71,6 +72,7 @@ class TestProtocore(TestCase):
         expected_number = 1
 
         feature.qualifiers["protocluster_number"] = [str(expected_number)]
+        feature.qualifiers["product"] = ["NRPS"]
 
         proto_core = ProtoCore.parse(feature)
 

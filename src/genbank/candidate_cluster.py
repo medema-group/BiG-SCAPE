@@ -79,7 +79,7 @@ class CandidateCluster(BGCRecord):
         cand_cluster_kind = feature.qualifiers["kind"][0]
 
         cand_cluster = cls(cand_cluster_number)
-        cand_cluster.parse_location(feature)
+        cand_cluster.parse_bgc_record(feature)
         cand_cluster.kind = cand_cluster_kind
 
         if "protoclusters" not in feature.qualifiers:

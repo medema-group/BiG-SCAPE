@@ -28,6 +28,7 @@ class TestCandidateCluster(TestCase):
         """Tests whether a CandidateCluster is instatiated correclty"""
 
         expected_number = 1
+
         cand_cluster = CandidateCluster(expected_number)
 
         self.assertIsInstance(cand_cluster, CandidateCluster)
@@ -43,6 +44,7 @@ class TestCandidateCluster(TestCase):
             "candidate_cluster_number": ["1"],
             "kind": ["single"],
             "protoclusters": ["1"],
+            "product": ["NRPS"],
         }
 
         cand_cluster = CandidateCluster.parse(candidate_cluster_feature)
@@ -60,6 +62,7 @@ class TestCandidateCluster(TestCase):
             "candidate_cluster_number": ["1"],
             "kind": ["single"],
             "protoclusters": ["1"],
+            "product": ["NRPS"],
         }
 
         cand_cluster = CandidateCluster.parse(candidate_cluster_feature)
@@ -103,6 +106,7 @@ class TestCandidateCluster(TestCase):
             "candidate_cluster_number": ["1"],
             "kind": ["single"],
             "protoclusters": ["1"],
+            "product": ["NRPS"],
         }
 
         candidate_cluster = CandidateCluster.parse(candidate_cluster_feature)
@@ -111,6 +115,7 @@ class TestCandidateCluster(TestCase):
         proto_cluster_feature.qualifiers = {
             "protocluster_number": ["1"],
             "category": ["NRPS"],
+            "product": ["NRPS"],
         }
 
         proto_cluster = ProtoCluster.parse(proto_cluster_feature)
@@ -131,6 +136,7 @@ class TestCandidateCluster(TestCase):
             "candidate_cluster_number": ["1"],
             "kind": ["single"],
             "protoclusters": ["1"],
+            "product": ["NRPS"],
         }
 
         candidate_cluster = CandidateCluster.parse(candidate_cluster_feature)
