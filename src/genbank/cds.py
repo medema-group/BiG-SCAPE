@@ -29,7 +29,7 @@ class CDS:
         self.nt_stop = nt_stop
         self.gene_kind: Optional[str] = None
         self.strand: Optional[int] = None
-        self.aa_seq: Optional[str] = None
+        self.aa_seq: str = ""
         self.domains: list = []
 
     @classmethod
