@@ -11,6 +11,7 @@ from src.genbank.gbk import GBK
 
 def load_datset_folder(
     path: Path,
+    source_type: str,
     mode: str = "recursive",
     include_gbk: Optional[List[str]] = None,
     exclude_gbk: Optional[List[str]] = None,
@@ -45,7 +46,7 @@ def load_datset_folder(
 
     gbk_list = []
     for file in filtered_files:
-        gbk = load_gbk(file)
+        gbk = load_gbk(file, source_type)
         gbk_list.append(gbk)
 
     return gbk_list
@@ -89,10 +90,10 @@ def is_included(path: Path, include_list: List[str]):
     return False
 
 
-def load_gbk(path: Path) -> GBK:
+def load_gbk(path: Path, source_type: str) -> GBK:
     """Loads a GBK file. Returns a GBK object"""
     if not path.is_file():
         logging.error("GBK path does not point to a file!")
         raise IsADirectoryError()
 
-    return GBK.parse(path)
+    return GBK.parse(path, source_type)

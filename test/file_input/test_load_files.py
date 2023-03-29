@@ -15,16 +15,16 @@ class TestLoadGBK(TestCase):
         gbk_file_path = Path("test/test_data/valid_gbk_folder/valid_input.gbk")
 
         with self.assertRaises(NotADirectoryError):
-            load_datset_folder(gbk_file_path)
+            load_datset_folder(gbk_file_path, "query")
 
     def test_gbk_path_valid(self):
         """Tests whether loading a given path returns none"""
         # path pointing to a folder containing a valid gbk file
         gbk_file_path = Path("test/test_data/valid_gbk_folder/")
 
-        load_result = load_datset_folder(gbk_file_path)
+        load_result = load_datset_folder(gbk_file_path, "query")
 
-        expected_count = 1
+        expected_count = 2
         actual_count = len(load_result)
 
         self.assertEqual(expected_count, actual_count)
@@ -35,7 +35,7 @@ class TestLoadGBK(TestCase):
         gbk_file_path = Path("test/test_data/empty_gbk_folder/")
 
         with self.assertRaises(FileNotFoundError):
-            load_datset_folder(gbk_file_path)
+            load_datset_folder(gbk_file_path, "query")
 
     def test_load_gbk_not_a_file(self):
         """Tests whether the load_gbk function correctly returns none when input is not a file"""
@@ -43,7 +43,7 @@ class TestLoadGBK(TestCase):
         gbk_file_path = Path("test/test_data/valid_gbk_folder/")
 
         with self.assertRaises(IsADirectoryError):
-            load_gbk(gbk_file_path)
+            load_gbk(gbk_file_path, "query")
 
     def test_load_gbk_valid(self):
         """Tests whether the load_gbk function correctly loads a valid file
@@ -52,7 +52,7 @@ class TestLoadGBK(TestCase):
         """
 
         gbk_file_path = Path("test/test_data/valid_gbk_folder/valid_input_region.gbk")
-        gbk = load_gbk(gbk_file_path)
+        gbk = load_gbk(gbk_file_path, "query")
 
         self.assertIsNot(gbk, None)
 
@@ -61,7 +61,7 @@ class TestLoadGBK(TestCase):
 
         gbk_folder_path = Path("test/test_data/alt_valid_gbk_input/")
 
-        load_result = load_datset_folder(gbk_folder_path)
+        load_result = load_datset_folder(gbk_folder_path, "query")
 
         expected_count = 1
         actual_count = len(load_result)
@@ -73,7 +73,7 @@ class TestLoadGBK(TestCase):
 
         gbk_folder_path = Path("test/test_data/alt_valid_gbk_input/")
 
-        load_result = load_datset_folder(gbk_folder_path, include_gbk=["*"])
+        load_result = load_datset_folder(gbk_folder_path, "query", include_gbk=["*"])
 
         expected_count = 3
         actual_count = len(load_result)

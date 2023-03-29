@@ -41,6 +41,7 @@ class TestProtocluster(TestCase):
         protocluster_feature.qualifiers = {
             "protocluster_number": ["1"],
             "category": ["NRPS"],
+            "product": ["NRPS"],
         }
 
         protocluster = ProtoCluster.parse(protocluster_feature)
@@ -56,6 +57,7 @@ class TestProtocluster(TestCase):
         protocluster_feature.qualifiers = {
             "protocluster_number": ["1"],
             "category": ["NRPS"],
+            "product": ["NRPS"],
         }
 
         protocluster = ProtoCluster.parse(protocluster_feature)
@@ -88,6 +90,7 @@ class TestProtocluster(TestCase):
         protocluster_feature.qualifiers = {
             "protocluster_number": ["1"],
             "category": ["NRPS"],
+            "product": ["NRPS"],
         }
 
         protocluster = ProtoCluster.parse(protocluster_feature)
@@ -95,6 +98,7 @@ class TestProtocluster(TestCase):
         protocore_feature = SeqFeature(FeatureLocation(0, 100), type="proto_core")
         protocore_feature.qualifiers = {
             "protocluster_number": ["1"],
+            "product": ["NRPS"],
         }
 
         protocore = ProtoCore.parse(protocore_feature)
@@ -110,6 +114,7 @@ class TestProtocluster(TestCase):
         proto_cluster_feature.qualifiers = {
             "protocluster_number": ["1"],
             "category": ["NRPS"],
+            "product": ["NRPS"],
         }
 
         proto_cluster = ProtoCluster.parse(proto_cluster_feature)

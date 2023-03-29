@@ -5,12 +5,14 @@ genbank records
 # from python
 from __future__ import annotations
 from typing import Optional
+import logging
 
 # from dependencies
 from Bio.SeqFeature import SeqFeature
 
 # from other modules
 from src.data import DB
+from src.errors import InvalidGBKError
 
 # from this module
 
@@ -22,6 +24,7 @@ class BGCRecord:
         self.contig_edge: Optional[bool] = None
         self.nt_start: Optional[int] = None
         self.nt_stop: Optional[int] = None
+        self.product: Optional[str] = None
 
     def save(self, type: str, commit=True):
         """Stores this BGCRecord in the database
@@ -51,7 +54,7 @@ class BGCRecord:
         if commit:
             DB.commit()
 
-    def parse_location(self, feature: SeqFeature):
+    def parse_bgc_record(self, feature: SeqFeature):
         """Parses a BGC record locale info"""
 
         if "contig_edge" in feature.qualifiers:
@@ -64,3 +67,9 @@ class BGCRecord:
 
         self.nt_start = feature.location.start
         self.nt_stop = feature.location.end
+
+        if "product" not in feature.qualifiers:
+            logging.error("product qualifier not found in feature!")
+            raise InvalidGBKError()
+
+        self.product = feature.qualifiers["product"][0]

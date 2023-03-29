@@ -34,6 +34,7 @@ class TestRegion(TestCase):
     def test_parse_number(self):
         """Tests whether a region number is correctly parsed from a feature"""
         feature = SeqFeature(FeatureLocation(0, 100), type="region")
+        feature.qualifiers["product"] = ["NRPS"]
 
         expected_number = 1
 
@@ -44,12 +45,33 @@ class TestRegion(TestCase):
 
         self.assertEqual(expected_number, region.number)
 
+    def test_parse_cluster_number(self):
+        """Tests wether an as4 cluster number is correclty parsed from a feature"""
+        feature = SeqFeature(FeatureLocation(0, 100), type="cluster")
+        feature.qualifiers["product"] = ["NRPS"]
+
+        feature.qualifiers["note"] = ["Cluster number: 1"]
+        expected_number = 1
+
+        region = Region.parse(feature)
+
+        self.assertEqual(expected_number, region.number)
+
+    def test_parse_cluster_no_number(self):
+        """Tests whether parse correclty throwns an error when given a feature lacking a cluster number"""
+        feature = SeqFeature(FeatureLocation(0, 100), type="cluster")
+        feature.qualifiers["product"] = ["NRPS"]
+        feature.qualifiers["note"] = ["Another note"]
+
+        self.assertRaises(InvalidGBKError, Region.parse, feature)
+
     def test_parse_no_number(self):
         """Tests whether parse correctly throws an error when given a feature
         lacking a region_number qualifier
         """
         feature = SeqFeature(FeatureLocation(0, 100), type="region")
         feature.qualifiers["candidate_cluster_numbers"] = ["1"]
+        feature.qualifiers["product"] = ["NRPS"]
 
         self.assertRaises(InvalidGBKError, Region.parse, feature)
 
@@ -57,6 +79,15 @@ class TestRegion(TestCase):
         """Tests whether parse correctly throws an error when given a feature
         lacking a candidate_cluster_numbers qualifier
         """
+        feature = SeqFeature(FeatureLocation(0, 100), type="region")
+        feature.qualifiers["region_number"] = ["1"]
+        feature.qualifiers["product"] = ["NRPS"]
+
+        self.assertRaises(InvalidGBKError, Region.parse, feature)
+
+    def test_parse_no_product(self):
+        """Tests whether parse correctly throws an error when given a feature lacking a product qualifier"""
+
         feature = SeqFeature(FeatureLocation(0, 100), type="region")
         feature.qualifiers["region_number"] = ["1"]
 
@@ -71,6 +102,7 @@ class TestRegion(TestCase):
 
         feature.qualifiers["region_number"] = [str(expected_number)]
         feature.qualifiers["candidate_cluster_numbers"] = ["1"]
+        feature.qualifiers["product"] = ["NRPS"]
 
         region = Region.parse(feature)
 
@@ -91,6 +123,7 @@ class TestRegion(TestCase):
         region_feature.qualifiers = {
             "region_number": ["1"],
             "candidate_cluster_numbers": ["1"],
+            "product": ["NRPS"],
         }
 
         region = Region.parse(region_feature)
@@ -102,6 +135,7 @@ class TestRegion(TestCase):
             "candidate_cluster_number": ["1"],
             "kind": ["neighbouring"],
             "protoclusters": ["1"],
+            "product": ["NRPS"],
         }
 
         candidate_cluster = CandidateCluster.parse(candidate_cluster_feature)
@@ -117,6 +151,7 @@ class TestRegion(TestCase):
         region_feature.qualifiers = {
             "region_number": ["1"],
             "candidate_cluster_numbers": ["1"],
+            "product": ["NRPS"],
         }
 
         region = Region.parse(region_feature)

@@ -29,7 +29,18 @@ class TestGBK(TestCase):
 
         gbk_file_path = Path("test/test_data/valid_gbk_folder/valid_input_region.gbk")
 
-        gbk = GBK.parse(gbk_file_path)
+        gbk = GBK.parse(gbk_file_path, "query")
+
+        self.assertIsInstance(gbk, GBK)
+
+    def test_parse_as4gbk(self):
+        """Tests whether an as4 GBK is instantiated correctly"""
+
+        gbk_file_path = Path(
+            "test/test_data/valid_gbk_folder/CM001015.1.cluster001.gbk"
+        )
+
+        gbk = GBK.parse(gbk_file_path, "query")
 
         self.assertIsInstance(gbk, GBK)
 
@@ -37,10 +48,10 @@ class TestGBK(TestCase):
         """Tests whether a metagenome GBK is instantiated correclty"""
 
         gbk_file_path = Path(
-            "test/test_data/metagenome_valid_gbk_input/metagenome_random...region001.gbk"
+            "test/test_data/metagenome_valid_gbk_input/as5_metagenome_valid...region001.gbk"
         )
 
-        gbk = GBK.parse(gbk_file_path)
+        gbk = GBK.parse(gbk_file_path, "query")
 
         self.assertIsInstance(gbk, GBK)
 
@@ -51,7 +62,7 @@ class TestGBK(TestCase):
             "test/test_data/valid_gbk_multiple_regions_folder/valid_input_multiple_regions.gbk"
         )
 
-        self.assertRaises(InvalidGBKError, GBK.parse, gbk_file_path)
+        self.assertRaises(InvalidGBKError, GBK.parse, gbk_file_path, "query")
 
     def test_populate_regions(self):
         """Tests whether parsing a GBK correctly populates the underlying region"""
@@ -59,7 +70,7 @@ class TestGBK(TestCase):
         # GBK has one region
         gbk_file_path = Path("test/test_data/valid_gbk_folder/valid_input_region.gbk")
 
-        gbk = GBK.parse(gbk_file_path)
+        gbk = GBK.parse(gbk_file_path, "query")
 
         self.assertIsInstance(gbk.region, Region)
 
@@ -69,7 +80,7 @@ class TestGBK(TestCase):
         # GBK has one region
         gbk_file_path = Path("test/test_data/valid_gbk_folder/valid_input_region.gbk")
 
-        gbk = GBK.parse(gbk_file_path)
+        gbk = GBK.parse(gbk_file_path, "query")
 
         self.assertIsInstance(gbk.genes[0], CDS)
 
@@ -79,7 +90,7 @@ class TestGBK(TestCase):
 
         gbk_file_path = Path("test/test_data/valid_gbk_folder/valid_input_region.gbk")
 
-        gbk = GBK.parse(gbk_file_path)
+        gbk = GBK.parse(gbk_file_path, "query")
 
         proto_core = gbk.region.cand_clusters[1].proto_clusters[1].proto_core[1]
 
@@ -90,7 +101,7 @@ class TestGBK(TestCase):
 
         gbk_file_path = Path("test/test_data/valid_gbk_folder/valid_input_region.gbk")
 
-        gbk = GBK.parse(gbk_file_path)
+        gbk = GBK.parse(gbk_file_path, "query")
 
         dna_sequence = gbk.nt_seq
 
@@ -103,7 +114,7 @@ class TestGBK(TestCase):
 
         gbk_file_path = Path("test/test_data/valid_gbk_folder/valid_input_region.gbk")
 
-        gbk = GBK.parse(gbk_file_path)
+        gbk = GBK.parse(gbk_file_path, "query")
 
         gbk.save()
 
@@ -121,7 +132,7 @@ class TestGBK(TestCase):
 
         gbk_file_path = Path("test/test_data/valid_gbk_folder/valid_input_region.gbk")
 
-        gbk = GBK.parse(gbk_file_path)
+        gbk = GBK.parse(gbk_file_path, "query")
 
         gbk.save_all()
 
