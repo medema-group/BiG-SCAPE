@@ -438,11 +438,17 @@ def task_output_to_hsp(task_output: tuple, cds_list: list[CDS]) -> HSP:
 
 
 def task_generator(genes: list[CDS], batch_size) -> Iterator[list]:
-    """Returns an iterator which yields subsets of a given list, split by batch size
+    """Returns an iterator which yields subsets of the given gene list in task format
+    for subprocesses
+
+    tasks are in the format (cds_id, aa_seq)
 
     Args:
         full_list (list): a larger list
         batch_size (int): the maximum size of a list chunk
+
+    Yields:
+        Iterator[list[tuple[int, str]]]: Iterator of lists of task tuples
     """
     batches, remainder = divmod(len(genes), batch_size)
     for i in range(batches + 1):
