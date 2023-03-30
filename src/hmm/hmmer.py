@@ -147,7 +147,9 @@ class HMMer:
                     cds_idx = int(hit.name.decode())
                     accession = domain.alignment.hmm_accession.decode()
                     score = domain.score
-                    yield HSP(genes[cds_idx], accession, score)
+                    env_start = domain.env_from
+                    env_stop = domain.env_to
+                    yield HSP(genes[cds_idx], accession, score, env_start, env_stop)
 
     @staticmethod
     def hmmsearch_multiprocess(
@@ -265,7 +267,7 @@ class HMMer:
     @staticmethod
     def profile_hmmsearch(
         sequences: list[TextSequence],
-    ) -> list[tuple[int, str, float]]:
+    ) -> list[tuple[int, str, float, int, int]]:
         """Performs search_hmm on the given list of sequences for each profile in
         HMMer.profiles
 
@@ -290,7 +292,9 @@ class HMMer:
                     cds_idx = int(top_hit.name.decode())
                     accession = domain.alignment.hmm_accession.decode()
                     score = domain.score
-                    outputs.append((cds_idx, accession, score))
+                    env_start = domain.env_from
+                    env_stop = domain.env_to
+                    outputs.append((cds_idx, accession, score, env_start, env_stop))
 
         return outputs
 
@@ -433,8 +437,8 @@ def task_output_to_hsp(task_output: tuple, cds_list: list[CDS]) -> HSP:
     Returns:
         HSP: _description_
     """
-    cds_id, domain, score = task_output
-    return HSP(cds_list[cds_id], domain, score)
+    cds_id, domain, score, env_start, env_stop = task_output
+    return HSP(cds_list[cds_id], domain, score, env_start, env_stop)
 
 
 def task_generator(genes: list[CDS], batch_size) -> Iterator[list]:

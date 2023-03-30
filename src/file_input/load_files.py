@@ -2,7 +2,6 @@
 
 # from python
 import logging
-from itertools import combinations
 from pathlib import Path
 from typing import List, Optional
 
@@ -49,7 +48,7 @@ def load_dataset_folder(
     for file in filtered_files:
         gbk = load_gbk(file, source_type)
 
-        filter_cds_overlap(gbk)
+        gbk_filter_cds_overlap(gbk)
 
         gbk_list.append(gbk)
 
@@ -104,7 +103,7 @@ def load_gbk(path: Path, source_type: SOURCE_TYPE) -> GBK:
     return GBK.parse(path, source_type)
 
 
-def filter_cds_overlap(gbk: GBK):
+def gbk_filter_cds_overlap(gbk: GBK):
     # TODO: document
     # TODO: remove this once the optional problems are gone
     valid_genes = []
@@ -113,51 +112,4 @@ def filter_cds_overlap(gbk: GBK):
             raise ValueError()
         valid_genes.append(gene)
 
-    del_list = set()
-    # find all combinations of cds to check for overlap
-    cds_a: CDS
-    cds_b: CDS
-    for cds_a, cds_b in combinations(valid_genes, 2):
-        a_start = int(cds_a.nt_start)
-        b_start = int(cds_b.nt_start)
-
-        a_stop = int(cds_a.nt_stop)
-        b_stop = int(cds_b.nt_stop)
-
-        # these are different from calculating end - start / 3
-        # or something similar.
-        # the number that results from this is what is used in the
-        # original implementation of this functionality, so the same is
-        # done here
-        a_len = len(cds_a.aa_seq)
-        b_len = len(cds_b.aa_seq)
-
-        # copy from original
-        if b_stop <= a_start or b_start >= a_stop:
-            pass
-        else:
-            # calculate overlap
-            if a_start > b_start:
-                overlap_start = a_start
-            else:
-                overlap_start = b_start
-
-            if a_stop < b_stop:
-                overlap_end = a_stop
-            else:
-                overlap_end = b_stop
-
-            overlap_length = overlap_end - overlap_start
-
-            # allow the overlap to be as large as 10% of the
-            # shortest CDS. Overlap length is in nucleotides
-            # here, whereas a_len, b_len are protein
-            # sequence lengths
-            if overlap_length / 3 > 0.1 * min(a_len, b_len):
-                if a_len > b_len:
-                    del_list.add(cds_b)
-                else:
-                    del_list.add(cds_a)
-    # remove any entries that need to be removed
-    for cds in del_list:
-        gbk.genes.remove(cds)
+    CDS.filter_overlap(valid_genes)

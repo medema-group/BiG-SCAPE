@@ -55,7 +55,7 @@ class TestHMMScan(TestCase):
 
         results = HMMer.profile_hmmsearch(sequences)
 
-        expected_result = (0, "PF00457.19", 249.32315063476562)
+        expected_result = (0, "PF00457.19", 249.32315063476562, 60, 238)
 
         actual_result = results[0]
 
@@ -77,7 +77,7 @@ class TestHMMScan(TestCase):
         # by it
         hmm_path = Path("test/test_data/hmm/PF00457.19.hmm")
 
-        expected_result = HSP(cds, "PF00457.19", 249.32315063476562)
+        expected_result = HSP(cds, "PF00457.19", 249.32315063476562, 0, 0)
 
         HMMer.init(hmm_path)
 
@@ -103,7 +103,7 @@ class TestHMMScan(TestCase):
 
         HMMer.init(hmm_path)
 
-        expected_result = HSP(cds, "PF00457.19", 249.32315063476562)
+        expected_result = HSP(cds, "PF00457.19", 249.32315063476562, 0, 0)
 
         actual_result = list(HMMer.hmmsearch_multiprocess([cds]))[0]
 

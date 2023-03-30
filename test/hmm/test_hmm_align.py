@@ -28,7 +28,7 @@ class TestHMMAlign(TestCase):
         # by it
         hmm_path = Path("test/test_data/hmm/PF00457.19.hmm")
 
-        hsp = HSP(cds, "PF00457.19", 249.32315063476562)
+        hsp = HSP(cds, "PF00457.19", 249.32315063476562, 0, 0)
 
         HMMer.init(hmm_path, False)
 

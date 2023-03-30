@@ -16,12 +16,12 @@ class TestHSPOverlap(TestCase):
         cds_a = CDS(0, 50)
         cds_b = CDS(100, 150)
 
-        hsp_a = HSP(cds_a, "", 0)
-        hsp_b = HSP(cds_b, "", 0)
+        hsp_a = HSP(cds_a, "", 0, 0, 50)
+        hsp_b = HSP(cds_b, "", 0, 100, 150)
 
         expected_result = False
 
-        actual_result = hsp_a.has_overlap(hsp_b)
+        actual_result = HSP.has_overlap(hsp_a, hsp_b)
 
         self.assertEqual(expected_result, actual_result)
 
@@ -30,12 +30,12 @@ class TestHSPOverlap(TestCase):
         cds_a = CDS(100, 150)
         cds_b = CDS(0, 50)
 
-        hsp_a = HSP(cds_a, "", 0)
-        hsp_b = HSP(cds_b, "", 0)
+        hsp_a = HSP(cds_a, "", 0, 100, 150)
+        hsp_b = HSP(cds_b, "", 0, 0, 50)
 
         expected_result = False
 
-        actual_result = hsp_a.has_overlap(hsp_b)
+        actual_result = HSP.has_overlap(hsp_a, hsp_b)
 
         self.assertEqual(expected_result, actual_result)
 
@@ -46,12 +46,12 @@ class TestHSPOverlap(TestCase):
         cds_a = CDS(100, 150)
         cds_b = CDS(100, 150)
 
-        hsp_a = HSP(cds_a, "", 0)
-        hsp_b = HSP(cds_b, "", 0)
+        hsp_a = HSP(cds_a, "", 0, 100, 150)
+        hsp_b = HSP(cds_b, "", 0, 100, 150)
 
         expected_result = True
 
-        actual_result = hsp_a.has_overlap(hsp_b)
+        actual_result = HSP.has_overlap(hsp_a, hsp_b)
 
         self.assertEqual(expected_result, actual_result)
 
@@ -62,12 +62,12 @@ class TestHSPOverlap(TestCase):
         cds_a = CDS(0, 120)
         cds_b = CDS(100, 150)
 
-        hsp_a = HSP(cds_a, "", 0)
-        hsp_b = HSP(cds_b, "", 0)
+        hsp_a = HSP(cds_a, "", 0, 0, 120)
+        hsp_b = HSP(cds_b, "", 0, 100, 150)
 
         expected_result = True
 
-        actual_result = hsp_a.has_overlap(hsp_b)
+        actual_result = HSP.has_overlap(hsp_a, hsp_b)
 
         self.assertEqual(expected_result, actual_result)
 
@@ -78,12 +78,12 @@ class TestHSPOverlap(TestCase):
         cds_a = CDS(130, 250)
         cds_b = CDS(100, 150)
 
-        hsp_a = HSP(cds_a, "", 0)
-        hsp_b = HSP(cds_b, "", 0)
+        hsp_a = HSP(cds_a, "", 0, 130, 250)
+        hsp_b = HSP(cds_b, "", 0, 100, 150)
 
         expected_result = True
 
-        actual_result = hsp_a.has_overlap(hsp_b)
+        actual_result = HSP.has_overlap(hsp_a, hsp_b)
 
         self.assertEqual(expected_result, actual_result)
 
@@ -92,12 +92,12 @@ class TestHSPOverlap(TestCase):
         cds_a = CDS(0, 100)
         cds_b = CDS(0, 100)
 
-        hsp_a = HSP(cds_a, "", 0)
-        hsp_b = HSP(cds_b, "", 0)
+        hsp_a = HSP(cds_a, "", 0, 0, 100)
+        hsp_b = HSP(cds_b, "", 0, 0, 100)
 
         expected_result = 100
 
-        actual_result = hsp_a.len_overlap(hsp_b)
+        actual_result = HSP.len_overlap(hsp_a, hsp_b)
 
         self.assertEqual(expected_result, actual_result)
 
@@ -108,12 +108,12 @@ class TestHSPOverlap(TestCase):
         cds_a = CDS(0, 100)
         cds_b = CDS(50, 150)
 
-        hsp_a = HSP(cds_a, "", 0)
-        hsp_b = HSP(cds_b, "", 0)
+        hsp_a = HSP(cds_a, "", 0, 0, 100)
+        hsp_b = HSP(cds_b, "", 0, 50, 150)
 
         expected_result = 50
 
-        actual_result = hsp_a.len_overlap(hsp_b)
+        actual_result = HSP.len_overlap(hsp_a, hsp_b)
 
         self.assertEqual(expected_result, actual_result)
 
@@ -124,12 +124,12 @@ class TestHSPOverlap(TestCase):
         cds_a = CDS(100, 200)
         cds_b = CDS(50, 150)
 
-        hsp_a = HSP(cds_a, "", 0)
-        hsp_b = HSP(cds_b, "", 0)
+        hsp_a = HSP(cds_a, "", 0, 100, 200)
+        hsp_b = HSP(cds_b, "", 0, 50, 150)
 
         expected_result = 50
 
-        actual_result = hsp_a.len_overlap(hsp_b)
+        actual_result = HSP.len_overlap(hsp_a, hsp_b)
 
         self.assertEqual(expected_result, actual_result)
 
@@ -140,12 +140,12 @@ class TestHSPOverlap(TestCase):
         cds_a = CDS(0, 100)
         cds_b = CDS(100, 200)
 
-        hsp_a = HSP(cds_a, "", 0)
-        hsp_b = HSP(cds_b, "", 0)
+        hsp_a = HSP(cds_a, "", 0, 0, 100)
+        hsp_b = HSP(cds_b, "", 0, 100, 200)
 
         expected_result = 0
 
-        actual_result = hsp_a.len_overlap(hsp_b)
+        actual_result = HSP.len_overlap(hsp_a, hsp_b)
 
         self.assertEqual(expected_result, actual_result)
 
@@ -156,11 +156,11 @@ class TestHSPOverlap(TestCase):
         cds_a = CDS(200, 300)
         cds_b = CDS(100, 200)
 
-        hsp_a = HSP(cds_a, "", 0)
-        hsp_b = HSP(cds_b, "", 0)
+        hsp_a = HSP(cds_a, "", 0, 200, 300)
+        hsp_b = HSP(cds_b, "", 0, 100, 200)
 
         expected_result = 0
 
-        actual_result = hsp_a.len_overlap(hsp_b)
+        actual_result = HSP.len_overlap(hsp_a, hsp_b)
 
         self.assertEqual(expected_result, actual_result)
