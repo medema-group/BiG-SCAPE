@@ -384,11 +384,7 @@ class HMMer:
                 source_hsp_idx = int(sequence_name)
 
                 algn_string = process_algn_string(alignment)
-                alignments.append(
-                    HSPAlignment(
-                        hsp_list[source_hsp_idx], domain_accession, algn_string
-                    )
-                )
+                alignments.append(HSPAlignment(hsp_list[source_hsp_idx], algn_string))
             yield alignments
 
 

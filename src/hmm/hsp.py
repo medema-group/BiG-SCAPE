@@ -22,7 +22,7 @@ class HSP:
         """Saves this object to a database"""
         pass
 
-    def has_overlap(self, hsp_b: HSP):
+    def has_overlap(self, hsp_b: HSP) -> bool:
         """Return True if there is overlap between two regions"""
         # a left of b
         if self.cds.nt_stop < hsp_b.cds.nt_start:
@@ -34,7 +34,7 @@ class HSP:
         # all other cases should have overlap
         return True
 
-    def len_overlap(self, hsp_b: HSP):
+    def len_overlap(self, hsp_b: HSP) -> int:
         """Returns the length of an overlapping sequence"""
 
         if self.cds.nt_start < hsp_b.cds.nt_start:
@@ -144,9 +144,8 @@ def hsp_overlap_filter(hsp_list: list[HSP], overlap_cutoff=0.1) -> list[HSP]:
 class HSPAlignment:
     """Describes a HSP - Domain alignment"""
 
-    def __init__(self, hsp: HSP, domain: str, alignment: str) -> None:
+    def __init__(self, hsp: HSP, alignment: str) -> None:
         self.hsp = hsp
-        self.domain = domain
         self.alignment = alignment
 
     def save(self):
@@ -154,7 +153,10 @@ class HSPAlignment:
         pass
 
     def __repr__(self) -> str:
-        return f"Alignment of hsp {str(self.hsp)} and domain {self.domain}: {self.alignment}"
+        return (
+            f"Alignment of hsp {str(self.hsp)} and domain {self.hsp.domain}: "
+            "{self.alignment}"
+        )
 
     def __eq__(self, __o: object) -> bool:
         """Return whether this HSP alignment and another object are equal
@@ -173,7 +175,6 @@ class HSPAlignment:
 
         conditions = [
             self.hsp == __o.hsp,
-            self.domain == __o.domain,
             self.alignment == __o.alignment,
         ]
         return all(conditions)

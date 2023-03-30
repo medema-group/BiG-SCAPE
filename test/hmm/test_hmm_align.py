@@ -33,16 +33,13 @@ class TestHMMAlign(TestCase):
         HMMer.init(hmm_path, False)
 
         expected_hsp = hsp
-        expected_domain = "PF00457.19"
         expected_alignment = (
             "-DGMYYSFWTDGGGSVSMTLNGGGSYSTQWTNCGNFVAGKGWSTGGRRTVRYNGYFNPSGNGYGCLYGWTSNPL"
             "VEYYIVDNWGSYRP--TGTYKGTVSSDGGTYDIYQTTRYNAPSVEGTKTFQQYWSVRQSKVTSGTITTGNHFDA"
             "WARAGMNMGQFRYMIMATEGYQSSGSSNIT"
         )
 
-        expected_result = HSPAlignment(
-            expected_hsp, expected_domain, expected_alignment
-        )
+        expected_result = HSPAlignment(expected_hsp, expected_alignment)
 
         actual_result = next(HMMer.align_simple([hsp]))[0]
 
