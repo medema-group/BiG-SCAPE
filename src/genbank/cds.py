@@ -21,7 +21,7 @@ class CDS:
         nt_start: int
         nt_sop: int
         aa_seq: SeqRecord.seq
-        domains: list[HSP]
+        hsps: list[HSP]
     """
 
     def __init__(self, nt_start: int, nt_stop: int):
@@ -30,7 +30,7 @@ class CDS:
         self.gene_kind: Optional[str] = None
         self.strand: Optional[int] = None
         self.aa_seq: str = ""
-        self.domains: list = []
+        self.hsps: list = []
 
     @classmethod
     def parse(cls, feature: SeqFeature):
