@@ -5,7 +5,6 @@
 import logging
 import string
 from typing import Callable, Iterator, Optional, cast
-from math import ceil
 from pathlib import Path
 from multiprocessing import Pipe, Process, cpu_count
 from multiprocessing.connection import Connection, wait
@@ -163,8 +162,8 @@ class HMMer:
     @staticmethod
     def hmmsearch_multiprocess(
         cds_list: list[CDS],
+        batch_size: Optional[int],
         callback: Optional[Callable] = None,
-        batch_size: Optional[int] = None,
     ) -> Iterator[HSP]:
         """Runs hmmscan using pyhmmer in several subprocesses. Passes batches of input
         cds list to the subprocesses in an attempt to optimize memory usage
@@ -183,13 +182,6 @@ class HMMer:
         logging.info("Performing distributed hmmsearch on %d genes", len(cds_list))
         processes: list[Process] = []
         connections: list[Connection] = []
-
-        if batch_size is None:
-            # calculate batch size by splitting total tasks/genes between available CPUs
-            batch_size = ceil(len(cds_list) / cpu_count())
-            logging.info("Using automatic batch size %d", batch_size)
-        else:
-            logging.info("Using manual batch size %d", batch_size)
 
         task_iter = task_generator(cds_list, batch_size)
 
