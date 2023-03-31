@@ -2,7 +2,7 @@
 
 # from python
 import logging
-from typing import Dict, Optional
+from typing import Dict
 
 # from dependencies
 from Bio.SeqFeature import SeqFeature
@@ -24,10 +24,17 @@ class Region(BGCRecord):
         cand_clusters: Dict[int, CandidateCluster]
     """
 
-    def __init__(self, number: int):
-        super().__init__()
+    def __init__(
+        self,
+        contig_edge: bool,
+        nt_start: int,
+        nt_stop: int,
+        product: str,
+        number: int,
+    ):
+        super().__init__(contig_edge, nt_start, nt_stop, product)
         self.number = number
-        self.cand_clusters: Dict[int, Optional[CandidateCluster]] = {}
+        self.cand_clusters: Dict[int, CandidateCluster] = {}
 
     def add_cand_cluster(self, cand_cluster: CandidateCluster):
         """Add a candidate cluster object to this region
@@ -76,9 +83,20 @@ class Region(BGCRecord):
 
             region_number = int(feature.qualifiers["region_number"][0])
 
-            region = cls(region_number)
+            (
+                region_contig_edge,
+                region_nt_start,
+                region_nt_stop,
+                region_product,
+            ) = BGCRecord.parse_bgc_record(feature)
 
-            region.parse_bgc_record(feature)
+            region = cls(
+                region_number,
+                region_contig_edge,
+                region_nt_start,
+                region_nt_stop,
+                region_product,
+            )
 
             if "candidate_cluster_numbers" not in feature.qualifiers:
                 logging.error(
@@ -103,5 +121,20 @@ class Region(BGCRecord):
 
             cluster_note_number = feature.qualifiers["note"][0]
             cluster_number = int(cluster_note_number.split(": ")[1])
-            region = cls(cluster_number)
+
+            (
+                cluster_contig_edge,
+                cluster_nt_start,
+                cluster_nt_stop,
+                cluster_product,
+            ) = BGCRecord.parse_bgc_record(feature)
+
+            region = cls(
+                cluster_number,
+                cluster_contig_edge,
+                cluster_nt_start,
+                cluster_nt_stop,
+                cluster_product,
+            )
+
             return region

@@ -25,11 +25,18 @@ class ProtoCluster(BGCRecord):
         protocore: Protocore
     """
 
-    def __init__(self, number: int):
-        super().__init__()
+    def __init__(
+        self,
+        contig_edge: bool,
+        nt_start: int,
+        nt_stop: int,
+        product: str,
+        number: int,
+    ):
+        super().__init__(contig_edge, nt_start, nt_stop, product)
         self.number = number
-        self.category: str = ""
-        self.proto_core: Dict[int, Optional[ProtoCore]] = {}
+        self.category: Optional[str] = None
+        self.proto_core: Dict[int, ProtoCore] = {}
 
     def add_proto_core(self, proto_core: ProtoCore):
         """Add a proto_core object to this region"""
@@ -72,8 +79,21 @@ class ProtoCluster(BGCRecord):
 
         proto_cluster_number = int(feature.qualifiers["protocluster_number"][0])
 
-        proto_cluster = cls(proto_cluster_number)
-        proto_cluster.parse_bgc_record(feature)
+        (
+            proto_cluster_contig_edge,
+            proto_cluster_nt_start,
+            proto_cluster_nt_stop,
+            proto_cluster_product,
+        ) = BGCRecord.parse_bgc_record(feature)
+
+        proto_cluster = cls(
+            proto_cluster_contig_edge,
+            proto_cluster_nt_start,
+            proto_cluster_nt_stop,
+            proto_cluster_product,
+            proto_cluster_number,
+        )
+
         proto_cluster.proto_core[proto_cluster_number] = None
 
         if "category" in feature.qualifiers:

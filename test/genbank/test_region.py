@@ -25,53 +25,109 @@ class TestRegion(TestCase):
     def test_create_region(self):
         """Tests whether a region is instantiated correctly"""
 
-        expected_number = 1
+        nt_start = 0
+        nt_stop = 100
+        contig_edge = False
+        product = "test"
+        number = 1
 
-        region = Region(expected_number)
+        region = Region(contig_edge, nt_start, nt_stop, product, number)
 
         self.assertIsInstance(region, Region)
 
     def test_parse_number(self):
         """Tests whether a region number is correctly parsed from a feature"""
-        feature = SeqFeature(FeatureLocation(0, 100), type="region")
+        feature = SeqFeature(type="region")
         feature.qualifiers["product"] = ["NRPS"]
 
+        expected_nt_start = 0
+        expected_nt_stop = 100
+        expected_contig_edge = False
+        expected_product = "test"
         expected_number = 1
 
-        feature.qualifiers["region_number"] = [str(expected_number)]
-        feature.qualifiers["candidate_cluster_numbers"] = ["1"]
+        feature.qualifiers = {
+            "region_number": str(expected_number),
+            "product": str(expected_product),
+            "candidate_cluster_numbers": [str(expected_number)],
+            "contig_edge": "True" if expected_contig_edge else "False",
+        }
+
+        feature.location = FeatureLocation(expected_nt_start, expected_nt_stop)
 
         region = Region.parse(feature)
 
         self.assertEqual(expected_number, region.number)
 
-    def test_parse_cluster_number(self):
+    def test_as4_parse_cluster_number(self):
         """Tests wether an as4 cluster number is correclty parsed from a feature"""
-        feature = SeqFeature(FeatureLocation(0, 100), type="cluster")
-        feature.qualifiers["product"] = ["NRPS"]
+        feature = SeqFeature(type="cluster")
 
-        feature.qualifiers["note"] = ["Cluster number: 1"]
+        expected_nt_start = 0
+        expected_nt_stop = 100
+        expected_contig_edge = False
+        expected_product = "test"
         expected_number = 1
+        expected_candidate_cluster_num = 1
+
+        feature.qualifiers = {
+            "region_number": str(expected_number),
+            "product": str(expected_product),
+            "candidate_cluster_numbers": [str(expected_candidate_cluster_num)],
+            "contig_edge": "True" if expected_contig_edge else "False",
+        }
+        feature.qualifiers["note"] = [
+            f"Cluster number: {expected_candidate_cluster_num}"
+        ]
+
+        feature.location = FeatureLocation(expected_nt_start, expected_nt_stop)
 
         region = Region.parse(feature)
 
         self.assertEqual(expected_number, region.number)
 
-    def test_parse_cluster_no_number(self):
-        """Tests whether parse correclty throwns an error when given a feature lacking a cluster number"""
+    def test_as4_parse_cluster_no_number(self):
+        """Tests whether parse correclty throwns an error when given an AS4 feature
+        lacking a cluster number
+        """
         feature = SeqFeature(FeatureLocation(0, 100), type="cluster")
-        feature.qualifiers["product"] = ["NRPS"]
-        feature.qualifiers["note"] = ["Another note"]
+
+        expected_nt_start = 0
+        expected_nt_stop = 100
+        expected_contig_edge = False
+        expected_product = "test"
+        expected_candidate_cluster_num = 1
+
+        feature.qualifiers = {
+            "product": str(expected_product),
+            "candidate_cluster_numbers": [str(expected_candidate_cluster_num)],
+            "contig_edge": "True" if expected_contig_edge else "False",
+        }
+
+        feature.location = FeatureLocation(expected_nt_start, expected_nt_stop)
 
         self.assertRaises(InvalidGBKError, Region.parse, feature)
 
-    def test_parse_no_number(self):
-        """Tests whether parse correctly throws an error when given a feature
+    def test_as4_parse_no_number(self):
+        """Tests whether parse correctly throws an error when given a AS4 feature
         lacking a region_number qualifier
         """
-        feature = SeqFeature(FeatureLocation(0, 100), type="region")
-        feature.qualifiers["candidate_cluster_numbers"] = ["1"]
+        feature = SeqFeature(type="region")
         feature.qualifiers["product"] = ["NRPS"]
+
+        expected_nt_start = 0
+        expected_nt_stop = 100
+        expected_contig_edge = False
+        expected_product = "test"
+        expected_number = 1
+
+        feature.qualifiers = {
+            "region_number": str(expected_number),
+            "product": str(expected_product),
+            "contig_edge": "True" if expected_contig_edge else "False",
+        }
+
+        feature.location = FeatureLocation(expected_nt_start, expected_nt_stop)
 
         self.assertRaises(InvalidGBKError, Region.parse, feature)
 

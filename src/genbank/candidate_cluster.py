@@ -2,7 +2,7 @@
 
 # from python
 import logging
-from typing import Dict, Optional
+from typing import Dict
 
 # from dependencies
 from Bio.SeqFeature import SeqFeature
@@ -25,11 +25,19 @@ class CandidateCluster(BGCRecord):
         proto_clusters: Dict[int, Protocluster]
     """
 
-    def __init__(self, number: int):
-        super().__init__()
+    def __init__(
+        self,
+        contig_edge: bool,
+        nt_start: int,
+        nt_stop: int,
+        product: str,
+        number: int,
+        kind: str,
+    ):
+        super().__init__(contig_edge, nt_start, nt_stop, product)
         self.number = number
-        self.kind: str = ""
-        self.proto_clusters: Dict[int, Optional[ProtoCluster]] = {}
+        self.kind = kind
+        self.proto_clusters: Dict[int, ProtoCluster] = {}
 
     def add_proto_cluster(self, proto_cluster: ProtoCluster):
         """Add a protocluster object to this region"""
@@ -76,11 +84,23 @@ class CandidateCluster(BGCRecord):
             logging.error("kind qualifier not found in cand_cluster feature!")
             raise InvalidGBKError()
 
+        (
+            cand_cluster_contig_edge,
+            cand_cluster_nt_start,
+            cand_cluster_nt_stop,
+            cand_cluster_product,
+        ) = BGCRecord.parse_bgc_record(feature)
+
         cand_cluster_kind = feature.qualifiers["kind"][0]
 
-        cand_cluster = cls(cand_cluster_number)
-        cand_cluster.parse_bgc_record(feature)
-        cand_cluster.kind = cand_cluster_kind
+        cand_cluster = cls(
+            cand_cluster_contig_edge,
+            cand_cluster_nt_start,
+            cand_cluster_nt_stop,
+            cand_cluster_product,
+            cand_cluster_number,
+            cand_cluster_kind,
+        )
 
         if "protoclusters" not in feature.qualifiers:
             logging.error("protoclusters qualifier not found in region feature!")

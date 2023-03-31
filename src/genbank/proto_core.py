@@ -21,8 +21,15 @@ class ProtoCore(BGCRecord):
         number: int
     """
 
-    def __init__(self, number: int):
-        super().__init__()
+    def __init__(
+        self,
+        contig_edge: bool,
+        nt_start: int,
+        nt_stop: int,
+        product: str,
+        number: int,
+    ):
+        super().__init__(contig_edge, nt_start, nt_stop, product)
         self.number = number
 
     def save(self, commit=True):
@@ -50,7 +57,19 @@ class ProtoCore(BGCRecord):
 
         proto_core_number = int(feature.qualifiers["protocluster_number"][0])
 
-        proto_core = cls(proto_core_number)
-        proto_core.parse_bgc_record(feature)
+        (
+            proto_core_contig_edge,
+            proto_core_nt_start,
+            proto_core_nt_stop,
+            proto_core_product,
+        ) = BGCRecord.parse_bgc_record(feature)
+
+        proto_core = cls(
+            proto_core_contig_edge,
+            proto_core_nt_start,
+            proto_core_nt_stop,
+            proto_core_product,
+            proto_core_number,
+        )
 
         return proto_core

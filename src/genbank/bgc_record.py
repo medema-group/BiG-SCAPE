@@ -4,7 +4,6 @@ genbank records
 
 # from python
 from __future__ import annotations
-from typing import Optional
 import logging
 
 # from dependencies
@@ -20,11 +19,11 @@ from src.errors import InvalidGBKError
 class BGCRecord:
     """Describes a common set of qualifiers/attributes amongst all AntiSMASH genbank records"""
 
-    def __init__(self):
-        self.contig_edge: Optional[bool] = None
-        self.nt_start: Optional[int] = None
-        self.nt_stop: Optional[int] = None
-        self.product: Optional[str] = None
+    def __init__(self, contig_edge: bool, nt_start: int, nt_stop: int, product: str):
+        self.contig_edge = contig_edge
+        self.nt_start = nt_start
+        self.nt_stop = nt_stop
+        self.product = product
 
     def save(self, type: str, commit=True):
         """Stores this BGCRecord in the database
@@ -54,22 +53,25 @@ class BGCRecord:
         if commit:
             DB.commit()
 
-    def parse_bgc_record(self, feature: SeqFeature):
+    @staticmethod
+    def parse_bgc_record(feature: SeqFeature):
         """Parses a BGC record locale info"""
 
         if "contig_edge" in feature.qualifiers:
             contig_edge_qualifier = feature.qualifiers["contig_edge"][0]
 
             if contig_edge_qualifier == "True":
-                self.contig_edge = True
+                contig_edge = True
             else:
-                self.contig_edge = False
+                contig_edge = False
 
-        self.nt_start = feature.location.start
-        self.nt_stop = feature.location.end
+        nt_start = feature.location.start
+        nt_stop = feature.location.end
 
         if "product" not in feature.qualifiers:
             logging.error("product qualifier not found in feature!")
             raise InvalidGBKError()
 
-        self.product = feature.qualifiers["product"][0]
+        product = feature.qualifiers["product"][0]
+
+        return (contig_edge, nt_start, nt_stop, product)
