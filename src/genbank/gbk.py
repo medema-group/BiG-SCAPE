@@ -2,8 +2,10 @@
 
 # from python
 import logging
+from enum import Enum
 from pathlib import Path
 from typing import Dict, Optional, List
+
 
 # from dependencies
 from Bio import SeqIO
@@ -22,6 +24,12 @@ from src.genbank.proto_core import ProtoCore
 from src.genbank.cds import CDS
 
 
+class SOURCE_TYPE(Enum):
+    QUERY = "query"
+    MIBIG = "mibig"
+    REFERENCE = "reference"
+
+
 class GBK:
     """
     Class to describe a given GBK file
@@ -33,7 +41,7 @@ class GBK:
         nt_seq: SeqRecord.seq
         genes: list[CDS]
         as_version: str
-        source_type: str
+        source_type: SOURCE_TYPE
     """
 
     def __init__(self, path, source_type) -> None:
@@ -43,7 +51,7 @@ class GBK:
         self.nt_seq: SeqRecord.seq = None
         self.genes: List[Optional[CDS]] = []
         self.as_version: Optional[str] = None
-        self.source_type: str = source_type
+        self.source_type: SOURCE_TYPE = source_type
 
     def save(self, commit=True):
         """Stores this GBK in the database
@@ -91,7 +99,7 @@ class GBK:
         return as_version
 
     @classmethod
-    def parse(cls, path: Path, source_type: str):
+    def parse(cls, path: Path, source_type: SOURCE_TYPE):
         """Parses a GBK file and returns a GBK object with all necessary information
 
         Args:

@@ -98,8 +98,8 @@ def cmd_parser():
 
     parser.add_argument(
         "-p",
-        "--pfam_dir",
-        dest="pfam_dir",
+        "--pfam_path",
+        dest="pfam_path",
         type=Path,
         required=True,
         help="Path to hmmpress-processed Pfam database files."

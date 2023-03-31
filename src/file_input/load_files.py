@@ -6,12 +6,12 @@ from pathlib import Path
 from typing import List, Optional
 
 # from other modules
-from src.genbank.gbk import GBK
+from src.genbank.gbk import GBK, CDS, SOURCE_TYPE
 
 
-def load_datset_folder(
+def load_dataset_folder(
     path: Path,
-    source_type: str,
+    source_type: SOURCE_TYPE,
     mode: str = "recursive",
     include_gbk: Optional[List[str]] = None,
     exclude_gbk: Optional[List[str]] = None,
@@ -47,6 +47,15 @@ def load_datset_folder(
     gbk_list = []
     for file in filtered_files:
         gbk = load_gbk(file, source_type)
+
+        # Filter out CDS for this gbk where CDS coordinates overlap by a certain amount.
+        # The longest CDS will be chosen and other CDS will be discarded. This is done
+        # in order to remove isoforms of the same gene in organisms that perform
+        # alternative splicing
+        # TODO: expose percentage to user
+        # TODO: do not filter same strand
+        gbk_filter_cds_overlap(gbk)
+
         gbk_list.append(gbk)
 
     return gbk_list
@@ -90,10 +99,23 @@ def is_included(path: Path, include_list: List[str]):
     return False
 
 
-def load_gbk(path: Path, source_type: str) -> GBK:
+def load_gbk(path: Path, source_type: SOURCE_TYPE) -> GBK:
     """Loads a GBK file. Returns a GBK object"""
+    # TODO: fix documentation
     if not path.is_file():
         logging.error("GBK path does not point to a file!")
         raise IsADirectoryError()
 
     return GBK.parse(path, source_type)
+
+
+def gbk_filter_cds_overlap(gbk: GBK):
+    # TODO: document
+    # TODO: remove this once the optional problems are gone
+    valid_genes = []
+    for gene in gbk.genes:
+        if gene is None:
+            raise ValueError()
+        valid_genes.append(gene)
+
+    CDS.filter_overlap(valid_genes)

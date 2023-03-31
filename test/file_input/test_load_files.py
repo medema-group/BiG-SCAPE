@@ -1,13 +1,17 @@
 """module containing a test for loading files"""
+# from python
 from unittest import TestCase
-
 from pathlib import Path
 
-from src.file_input.load_files import load_datset_folder, load_gbk
+# from other modules
+from src.genbank import SOURCE_TYPE
+
+# from this module
+from src.file_input.load_files import load_dataset_folder, load_gbk
 
 
 class TestLoadGBK(TestCase):
-    """Test class for... tests..."""
+    """Test class for loading of genbank files"""
 
     def test_gbk_path_invalid(self):
         """Tests whether loading a given path returns none"""
@@ -15,14 +19,14 @@ class TestLoadGBK(TestCase):
         gbk_file_path = Path("test/test_data/valid_gbk_folder/valid_input.gbk")
 
         with self.assertRaises(NotADirectoryError):
-            load_datset_folder(gbk_file_path, "query")
+            load_dataset_folder(gbk_file_path, SOURCE_TYPE.QUERY)
 
     def test_gbk_path_valid(self):
         """Tests whether loading a given path returns none"""
         # path pointing to a folder containing a valid gbk file
         gbk_file_path = Path("test/test_data/valid_gbk_folder/")
 
-        load_result = load_datset_folder(gbk_file_path, "query")
+        load_result = load_dataset_folder(gbk_file_path, SOURCE_TYPE.QUERY)
 
         expected_count = 2
         actual_count = len(load_result)
@@ -35,7 +39,7 @@ class TestLoadGBK(TestCase):
         gbk_file_path = Path("test/test_data/empty_gbk_folder/")
 
         with self.assertRaises(FileNotFoundError):
-            load_datset_folder(gbk_file_path, "query")
+            load_dataset_folder(gbk_file_path, SOURCE_TYPE.QUERY)
 
     def test_load_gbk_not_a_file(self):
         """Tests whether the load_gbk function correctly returns none when input is not a file"""
@@ -43,7 +47,7 @@ class TestLoadGBK(TestCase):
         gbk_file_path = Path("test/test_data/valid_gbk_folder/")
 
         with self.assertRaises(IsADirectoryError):
-            load_gbk(gbk_file_path, "query")
+            load_gbk(gbk_file_path, SOURCE_TYPE.QUERY)
 
     def test_load_gbk_valid(self):
         """Tests whether the load_gbk function correctly loads a valid file
@@ -52,7 +56,7 @@ class TestLoadGBK(TestCase):
         """
 
         gbk_file_path = Path("test/test_data/valid_gbk_folder/valid_input_region.gbk")
-        gbk = load_gbk(gbk_file_path, "query")
+        gbk = load_gbk(gbk_file_path, SOURCE_TYPE.QUERY)
 
         self.assertIsNot(gbk, None)
 
@@ -61,7 +65,7 @@ class TestLoadGBK(TestCase):
 
         gbk_folder_path = Path("test/test_data/alt_valid_gbk_input/")
 
-        load_result = load_datset_folder(gbk_folder_path, "query")
+        load_result = load_dataset_folder(gbk_folder_path, SOURCE_TYPE.QUERY)
 
         expected_count = 1
         actual_count = len(load_result)
@@ -73,7 +77,9 @@ class TestLoadGBK(TestCase):
 
         gbk_folder_path = Path("test/test_data/alt_valid_gbk_input/")
 
-        load_result = load_datset_folder(gbk_folder_path, "query", include_gbk=["*"])
+        load_result = load_dataset_folder(
+            gbk_folder_path, SOURCE_TYPE.QUERY, include_gbk=["*"]
+        )
 
         expected_count = 3
         actual_count = len(load_result)

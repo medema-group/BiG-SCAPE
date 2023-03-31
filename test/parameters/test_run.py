@@ -13,7 +13,7 @@ class TestRun(TestCase):
     """Test class for Run parameters parsing tests"""
 
     def setUp(self) -> None:
-        self.parser = cmd_parser.cmd_parser()
+        self.parser = cmd_parser()
 
     def test_parser(self):
         """Tests whether the parser object is built correctly"""
@@ -26,7 +26,7 @@ class TestRun(TestCase):
                 "/test/in",
                 "--outputdir",
                 "/test/out",
-                "--pfam_dir",
+                "--pfam_path",
                 "test/pfam",
             ]
         )
@@ -37,7 +37,7 @@ class TestRun(TestCase):
         """Tests whether the BiG-SCAPE run object is instatiated correclty"""
 
         parsed = self.parser.parse_args(
-            ["--inputdir", ".", "--outputdir", ".", "--pfam_dir", "."]
+            ["--inputdir", ".", "--outputdir", ".", "--pfam_path", "."]
         )
 
         run = RunParameters()
@@ -49,7 +49,7 @@ class TestRun(TestCase):
         """Tests wether a run obj child is instatiated correctly"""
 
         parsed = self.parser.parse_args(
-            ["--inputdir", ".", "--outputdir", ".", "--pfam_dir", "."]
+            ["--inputdir", ".", "--outputdir", ".", "--pfam_path", "."]
         )
         run = RunParameters()
         run.parse(parsed)
@@ -66,7 +66,7 @@ class TestRun(TestCase):
                 ".",
                 "--outputdir",
                 ".",
-                "--pfam_dir",
+                "--pfam_path",
                 ".",
                 "--gcf_cutoffs",
                 "0.1,0.2",
@@ -87,7 +87,7 @@ class TestRun(TestCase):
                 ".",
                 "--outputdir",
                 ".",
-                "--pfam_dir",
+                "--pfam_path",
                 ".",
                 "--gcf_cutoffs",
                 "a,0.2",
@@ -106,7 +106,7 @@ class TestRun(TestCase):
                 ".",
                 "--outputdir",
                 ".",
-                "--pfam_dir",
+                "--pfam_path",
                 ".",
                 "--include_gbk",
                 "1",
@@ -132,7 +132,7 @@ class TestRun(TestCase):
                 ".",
                 "--outputdir",
                 ".",
-                "--pfam_dir",
+                "--pfam_path",
                 ".",
                 "--domain_includelist_path",
                 domain_includelist_path,
@@ -158,7 +158,7 @@ class TestRun(TestCase):
                 ".",
                 "--outputdir",
                 ".",
-                "--pfam_dir",
+                "--pfam_path",
                 ".",
                 "--domain_includelist_path",
                 domain_includelist_path,

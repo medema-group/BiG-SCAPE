@@ -58,7 +58,7 @@ class RunParameters:
             args.input_mode,
             args.dataset_path,
             args.metadata_path,
-            args.pfam_dir,
+            args.pfam_path,
             args.download_pfam,
             args.mibig_version,
             args.reference_dir,
