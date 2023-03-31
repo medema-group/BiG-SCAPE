@@ -19,6 +19,7 @@ class TestSQLite(TestCase):
     def clean_db(self):
         if DB.opened():
             DB.close_db()
+        DB.metadata = None
 
     def __init__(self, methodName: str = "runTest") -> None:
         super().__init__(methodName)
@@ -91,6 +92,18 @@ class TestSQLite(TestCase):
         DB.save_to_disk(db_save_location)
 
         self.assertTrue(db_save_location.parent.exists())
+
+    def test_save_load_from_disk(self):
+        """Tests whether the sqlite database can be correctly loaded from disk"""
+        db_load_location = Path("test/test_data/database/valid_empty.db")
+
+        DB.load_from_disk(db_load_location)
+
+        expected_tables = ["gbk", "bgc_record"]
+
+        contains_tables = [table in DB.metadata.tables for table in expected_tables]
+
+        self.assertTrue(all(contains_tables))
 
     def test_text_to_queries(self):
         """Tests the text_to_queries function, which reads a chunk of text and

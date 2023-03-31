@@ -1,6 +1,7 @@
 # from python
 from pathlib import Path
 from typing import List
+from sqlite3 import Connection as Sqlite3Connection
 
 # from dependencies
 from sqlalchemy import (
@@ -85,12 +86,51 @@ class DB:
         file_engine.connect()
 
         # from
-        raw_memory_connection = DB.engine.raw_connection().driver_connection
+        raw_memory_connection: Sqlite3Connection = (
+            DB.engine.raw_connection().driver_connection
+        )
         # to
-        raw_file_connection = file_engine.raw_connection().driver_connection
+        raw_file_connection: Sqlite3Connection = (
+            file_engine.raw_connection().driver_connection
+        )
 
         # TODO: check if this appends or overwrites
         raw_memory_connection.backup(raw_file_connection)
+
+    @staticmethod
+    def load_from_disk(db_path: Path):
+        """Loads the database from a database file to memory
+
+        Args:
+            db_path (Path): Path to the database file to load
+        """
+        if DB.opened():
+            raise DBAlreadyOpenError()
+
+        if not db_path.exists():
+            raise FileNotFoundError()
+
+        file_engine = create_engine("sqlite:///" + str(db_path))
+        file_engine.connect()
+
+        DB.open_memory_connection()
+
+        # from
+        raw_file_connection: Sqlite3Connection = (
+            file_engine.raw_connection().driver_connection
+        )
+        # to
+        raw_memory_connection: Sqlite3Connection = (
+            DB.engine.raw_connection().driver_connection
+        )
+
+        # backup only writes those tables that have data, it seems
+        DB.create_tables()
+
+        DB.reflect()
+
+        # TODO: check if this appends or overwrites
+        raw_file_connection.backup(raw_memory_connection)
 
     @staticmethod
     def close_db():
