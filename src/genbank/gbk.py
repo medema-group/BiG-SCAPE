@@ -44,21 +44,14 @@ class GBK:
         source_type: SOURCE_TYPE
     """
 
-    def __init__(
-        self,
-        path: Path,
-        source_type: SOURCE_TYPE,
-        nt_seq: str,
-        as_version: str,
-    ) -> None:
-        self.path = path
-        self.source_type = source_type
-        self.nt_seq = nt_seq
-        self.as_version = as_version
-
-        self.region: Optional[Region] = None
+    def __init__(self, path, source_type) -> None:
+        self.path: Path = path
         self.metadata: Dict[str, str] = {}
-        self.genes: List[CDS] = []
+        self.region: Optional[Region] = None
+        self.nt_seq: SeqRecord.seq = None
+        self.genes: List[Optional[CDS]] = []
+        self.as_version: Optional[str] = None
+        self.source_type: SOURCE_TYPE = source_type
 
     def save(self, commit=True):
         """Stores this GBK in the database
@@ -115,13 +108,15 @@ class GBK:
         Returns:
             GBK: GBK object
         """
+
+        gbk = cls(path, source_type)
+
         # get record. should only ever be one for Antismash GBK
         record: SeqRecord = next(SeqIO.parse(path, "genbank"))
+        gbk.nt_seq = record.seq
 
-        nt_seq = record.seq
         as_version = GBK.get_as_version(record)
-
-        gbk = cls(path, source_type, nt_seq, as_version)
+        gbk.as_version = as_version
 
         if int(as_version[0]) >= 5:
             gbk.parse_as5up(record)

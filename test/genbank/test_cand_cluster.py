@@ -28,9 +28,8 @@ class TestCandidateCluster(TestCase):
         """Tests whether a CandidateCluster is instatiated correclty"""
 
         expected_number = 1
-        expected_kind = "single"
 
-        cand_cluster = CandidateCluster(expected_number, expected_kind)
+        cand_cluster = CandidateCluster(expected_number)
 
         self.assertIsInstance(cand_cluster, CandidateCluster)
 
