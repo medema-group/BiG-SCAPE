@@ -20,6 +20,10 @@ class ProtoCluster(BGCRecord):
     Class to describe a protocore within an Antismash GBK
 
     Attributes:
+        contig_edge: Bool
+        nt_start: int
+        nt_stop: int
+        product: str
         number: int
         categoty: str
         protocore: Protocore
@@ -32,7 +36,14 @@ class ProtoCluster(BGCRecord):
         self.proto_core: Dict[int, Optional[ProtoCore]] = {}
 
     def add_proto_core(self, proto_core: ProtoCore):
-        """Add a proto_core object to this region"""
+        """Add a proto_core object to this region
+
+        Args:
+            proto_core (ProtoCore): protocore object
+
+        Raises:
+            InvalidGBKRegionChildError: invalid child-parent relationship
+        """
 
         if proto_core.number not in self.proto_core:
             raise InvalidGBKRegionChildError()
@@ -56,7 +67,17 @@ class ProtoCluster(BGCRecord):
 
     @classmethod
     def parse(cls, feature: SeqFeature):
-        """Creates a Protocluster object from a region feature in a GBK file"""
+        """Creates a Protocluster object from a region feature in a GBK file
+
+        Args:
+            feature (SeqFeature): protocluster genbank feature
+
+        Raises:
+            InvalidGBKError: invalid or missing fields
+
+        Returns:
+            ProtoCluster: protocluster object
+        """
         if feature.type != "protocluster":
             logging.error(
                 "Feature is not of correct type! (expected: protocluster, was: %s)",

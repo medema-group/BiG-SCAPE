@@ -18,9 +18,17 @@ from src.errors import InvalidGBKError
 
 
 class BGCRecord:
-    """Describes a common set of qualifiers/attributes amongst all AntiSMASH genbank records"""
+    """Describes a common set of qualifiers/attributes amongst all AntiSMASH genbank records
+
+    Attributes:
+        contig_edge: Bool
+        nt_start: int
+        nt_stop: int
+        product: str
+    """
 
     def __init__(self):
+        # contig edge is optional, proto_core does not have it
         self.contig_edge: Optional[bool] = None
         self.nt_start: Optional[int] = None
         self.nt_stop: Optional[int] = None
@@ -29,8 +37,11 @@ class BGCRecord:
     def save(self, type: str, commit=True):
         """Stores this BGCRecord in the database
 
-        Arguments:
-            commit: commit immediately after executing the insert query"""
+        Args:
+            type (str):  type of antiSMASH record
+            commit (bool, optional): commit immediately after executing the insert query. Defaults to True.
+        """
+
         bgc_record_table = DB.metadata.tables["bgc_record"]
 
         contig_edge = None
@@ -55,7 +66,14 @@ class BGCRecord:
             DB.commit()
 
     def parse_bgc_record(self, feature: SeqFeature):
-        """Parses a BGC record locale info"""
+        """Parses a BGC record locale info
+
+        Args:
+            feature (SeqFeature): SeqFeature, any type BGC record
+
+        Raises:
+            InvalidGBKError: Invalid or missing fields in SeqFeature
+        """
 
         if "contig_edge" in feature.qualifiers:
             contig_edge_qualifier = feature.qualifiers["contig_edge"][0]

@@ -20,9 +20,13 @@ class CandidateCluster(BGCRecord):
     Class to describe a candidate cluster within an Antismash GBK
 
     Attributes:
+        contig_edge: Bool
+        nt_start: int
+        nt_stop: int
+        product: str
         number: int
         kind: str
-        proto_clusters: Dict[int, Protocluster]
+        proto_clusters: Dict{number: int, ProtoCluster}
     """
 
     def __init__(self, number: int):
@@ -32,7 +36,14 @@ class CandidateCluster(BGCRecord):
         self.proto_clusters: Dict[int, Optional[ProtoCluster]] = {}
 
     def add_proto_cluster(self, proto_cluster: ProtoCluster):
-        """Add a protocluster object to this region"""
+        """Add a protocluster object to this region
+
+        Args:
+            proto_cluster (ProtoCluster): antiSMASH protocluster
+
+        Raises:
+            InvalidGBKRegionChildError: invalid child-parent relationship
+        """
 
         if proto_cluster.number not in self.proto_clusters:
             raise InvalidGBKRegionChildError()
@@ -56,7 +67,17 @@ class CandidateCluster(BGCRecord):
 
     @classmethod
     def parse(cls, feature: SeqFeature):
-        """Creates a cand_cluster object from a region feature in a GBK file"""
+        """_summary_Creates a cand_cluster object from a region feature in a GBK file
+
+        Args:
+            feature (SeqFeature): cand_cluster GBK feature
+
+        Raises:
+            InvalidGBKError: invalid or missing fields
+
+        Returns:
+            CandidateCluster: Candidate cluster object
+        """
         if feature.type != "cand_cluster":
             logging.error(
                 "Feature is not of correct type! (expected: cand_cluster, was: %s)",

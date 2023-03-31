@@ -18,6 +18,9 @@ class ProtoCore(BGCRecord):
     Class to describe a protocore within an Antismash GBK
 
     Attributes:
+        nt_start: int
+        nt_stop: int
+        product: str
         number: int
     """
 
@@ -34,7 +37,17 @@ class ProtoCore(BGCRecord):
 
     @classmethod
     def parse(cls, feature: SeqFeature):
-        """Creates a Protocore object from a region feature in a GBK file"""
+        """Creates a Protocore object from a region feature in a GBK file
+
+        Args:
+            feature (SeqFeature): proto_core antiSMASH genbank feature
+
+        Raises:
+            InvalidGBKError: invalid or missing field
+
+        Returns:
+            ProtoCore: protocore object
+        """
         if feature.type != "proto_core":
             logging.error(
                 "Feature is not of correct type! (expected: proto_core, was: %s)",

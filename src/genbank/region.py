@@ -20,8 +20,12 @@ class Region(BGCRecord):
     Class to describe a region within an Antismash GBK
 
     Attributes:
+        contig_edge: Bool
+        nt_start: int
+        nt_stop: int
+        product: str
         number: int
-        cand_clusters: Dict[int, CandidateCluster]
+        cand_clusters: Dict{number: int, CandidateCluster}
     """
 
     def __init__(self, number: int):
@@ -59,7 +63,17 @@ class Region(BGCRecord):
 
     @classmethod
     def parse(cls, feature: SeqFeature):
-        """Creates a region object from a region feature in a GBK file"""
+        """Creates a region object from a region feature in a GBK file
+
+        Args:
+            feature (SeqFeature): region(as5+) or cluster (as4) GBK feature
+
+        Raises:
+            InvalidGBKError: Invalid or missing fields
+
+        Returns:
+            Region: region object
+        """
         if feature.type != "region" and feature.type != "cluster":
             logging.error(
                 "Feature is not of correct type! (expected: region or cluster, was: %s)",
@@ -104,4 +118,5 @@ class Region(BGCRecord):
             cluster_note_number = feature.qualifiers["note"][0]
             cluster_number = int(cluster_note_number.split(": ")[1])
             region = cls(cluster_number)
+            region.parse_bgc_record(feature)
             return region

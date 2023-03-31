@@ -100,8 +100,19 @@ def is_included(path: Path, include_list: List[str]):
 
 
 def load_gbk(path: Path, source_type: SOURCE_TYPE) -> GBK:
-    """Loads a GBK file. Returns a GBK object"""
-    # TODO: fix documentation
+    """Loads a GBK file. Returns a GBK object
+
+    Args:
+        path (Path): path to gbk file
+        source_type (SOURCE_TYPE): str, type of gbk file (query, mibig, reference)
+
+    Raises:
+        IsADirectoryError: expected file path, got directory instead
+
+    Returns:
+        GBK: gbk object
+    """
+
     if not path.is_file():
         logging.error("GBK path does not point to a file!")
         raise IsADirectoryError()
@@ -110,7 +121,13 @@ def load_gbk(path: Path, source_type: SOURCE_TYPE) -> GBK:
 
 
 def gbk_filter_cds_overlap(gbk: GBK):
-    # TODO: document
+    """Remove CDS based on overlap filter
+
+    Args:
+        gbk (GBK): gbk object
+
+    """
+
     # TODO: remove this once the optional problems are gone
     valid_genes = []
     for gene in gbk.genes:

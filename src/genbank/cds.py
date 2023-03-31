@@ -21,7 +21,7 @@ class CDS:
         gene_kind: str
         strand: Bool
         nt_start: int
-        nt_sop: int
+        nt_stop: int
         aa_seq: SeqRecord.seq
         hsps: list[HSP]
     """
