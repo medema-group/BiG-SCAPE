@@ -246,6 +246,7 @@ def cmd_parser():
     )
 
     parser.add_argument(
+        "-v",
         "--verbose",
         dest="verbose",
         default=False,
@@ -271,7 +272,6 @@ def cmd_parser():
     )
 
     parser.add_argument(
-        "-v",
         "--version",
         dest="version",
         action="version",
