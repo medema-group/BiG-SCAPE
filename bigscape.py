@@ -13,11 +13,10 @@ if __name__ == "__main__":
     parser = cmd_parser()
     parsed_args = parser.parse_args(sys.argv[1:])
 
-    # run object
+    # parse args from commandline and instantiate run object
     run = RunParameters()
     run.parse(parsed_args)
 
-    # quick timing stuff
     start_time = datetime.now()
 
     # logger
@@ -66,10 +65,10 @@ if __name__ == "__main__":
     all_genes = []
     for gbk in gbks:
         # TODO: related to the above. this inner loop is not really necessary
-        for gene in gbk.genes:
-            if gene is None:
+        for cds in gbk.genes:
+            if cds is None:
                 continue
-            all_genes.append(gene)
+            all_genes.append(cds)
 
     def callback(tasks_done):
         percentage = int(tasks_done / len(all_genes) * 100)

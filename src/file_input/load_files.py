@@ -48,6 +48,12 @@ def load_dataset_folder(
     for file in filtered_files:
         gbk = load_gbk(file, source_type)
 
+        # Filter out CDS for this gbk where CDS coordinates overlap by a certain amount.
+        # The longest CDS will be chosen and other CDS will be discarded. This is done
+        # in order to remove isoforms of the same gene in organisms that perform
+        # alternative splicing
+        # TODO: expose percentage to user
+        # TODO: do not filter same strand
         gbk_filter_cds_overlap(gbk)
 
         gbk_list.append(gbk)

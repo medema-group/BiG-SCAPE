@@ -14,7 +14,7 @@ from src.hmm import HMMer
 class TestHMMSetup(TestCase):
     """Contains tests for setting up and breaking down the HMMer class variables"""
 
-    def class_cleanup(sefl):
+    def class_cleanup(self):
         HMMer.profiles = []
         HMMer.profile_index = {}
         HMMer.pipeline = None

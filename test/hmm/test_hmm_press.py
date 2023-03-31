@@ -4,7 +4,6 @@
 from pathlib import Path
 from unittest import TestCase
 
-# from dependencies
 
 # from other modules
 from src.hmm import HMMer
@@ -25,7 +24,7 @@ class TestHMMPress(TestCase):
         self.addCleanup(self.remove_pressed_files)
 
     def test_press_input(self):
-        """Tests whether the pressing process completes successfully"""
+        """Tests whether the pressing process correctly generates pressed hmm files"""
         input_hmm_path = Path("test/test_data/hmm/valid.hmm")
 
         HMMer.press(input_hmm_path)

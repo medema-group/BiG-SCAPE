@@ -118,7 +118,7 @@ class HSP:
         # will end up being chosen
         sorted_hsps = sorted(hsp_list, key=lambda hsp: hsp.cds.nt_start)
 
-        new_list = []
+        filtered_list = []
         for i in range(len(sorted_hsps) - 1):
             for j in range(i + 1, len(sorted_hsps)):
                 hsp_a: HSP = sorted_hsps[i]
@@ -132,27 +132,29 @@ class HSP:
 
                     len_aa_overlap = HSP.len_overlap(hsp_a, hsp_b)
 
-                    overlap_perc_loc1 = len_aa_overlap / (
+                    # calculate percentage of total hsp length is the aa overlap between
+                    # two hsp
+                    overlap_perc_a = len_aa_overlap / (
                         hsp_a.cds.nt_stop - hsp_a.cds.nt_start
                     )
-                    overlap_perc_loc2 = len_aa_overlap / (
+                    overlap_perc_b = len_aa_overlap / (
                         hsp_b.cds.nt_stop - hsp_b.cds.nt_start
                     )
                     # check if the amount of overlap is significant
                     if (
-                        overlap_perc_loc1 <= overlap_cutoff
-                        and overlap_perc_loc2 <= overlap_cutoff
+                        overlap_perc_a < overlap_cutoff
+                        and overlap_perc_b < overlap_cutoff
                     ):
                         continue
                     # rounding with 1 decimal to mirror domtable files
                     hsp_a_score = round(float(hsp_a.score), 1)
                     hsp_b_score = round(float(hsp_b.score), 1)
                     if hsp_a_score >= hsp_b_score:  # see which has a better score
-                        new_list.append(hsp_a)
+                        filtered_list.append(hsp_a)
                     elif hsp_a_score < hsp_b_score:
-                        new_list.append(hsp_b)
+                        filtered_list.append(hsp_b)
 
-        return new_list
+        return filtered_list
 
 
 class HSPAlignment:
