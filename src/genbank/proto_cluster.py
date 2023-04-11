@@ -29,8 +29,8 @@ class ProtoCluster(BGCRecord):
         protocore: Protocore
     """
 
-    def __init__(self, number: int):
-        super().__init__()
+    def __init__(self, parent_gbk, number: int):
+        super().__init__(parent_gbk)
         self.number = number
         self.category: str = ""
         self.proto_core: Dict[int, Optional[ProtoCore]] = {}
@@ -66,7 +66,7 @@ class ProtoCluster(BGCRecord):
             protocore.save(False)
 
     @classmethod
-    def parse(cls, feature: SeqFeature):
+    def parse(cls, parent_gbk, feature: SeqFeature):
         """Creates a Protocluster object from a region feature in a GBK file
 
         Args:
@@ -93,7 +93,7 @@ class ProtoCluster(BGCRecord):
 
         proto_cluster_number = int(feature.qualifiers["protocluster_number"][0])
 
-        proto_cluster = cls(proto_cluster_number)
+        proto_cluster = cls(parent_gbk, proto_cluster_number)
         proto_cluster.parse_bgc_record(feature)
         proto_cluster.proto_core[proto_cluster_number] = None
 

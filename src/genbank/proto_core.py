@@ -24,8 +24,8 @@ class ProtoCore(BGCRecord):
         number: int
     """
 
-    def __init__(self, number: int):
-        super().__init__()
+    def __init__(self, parent_gbk, number: int):
+        super().__init__(parent_gbk)
         self.number = number
 
     def save(self, commit=True):
@@ -36,7 +36,7 @@ class ProtoCore(BGCRecord):
         return super().save("proto_core", commit)
 
     @classmethod
-    def parse(cls, feature: SeqFeature):
+    def parse(cls, parent_gbk, feature: SeqFeature):
         """Creates a Protocore object from a region feature in a GBK file
 
         Args:
@@ -63,7 +63,7 @@ class ProtoCore(BGCRecord):
 
         proto_core_number = int(feature.qualifiers["protocluster_number"][0])
 
-        proto_core = cls(proto_core_number)
+        proto_core = cls(parent_gbk, proto_core_number)
         proto_core.parse_bgc_record(feature)
 
         return proto_core

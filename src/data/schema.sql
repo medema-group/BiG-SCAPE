@@ -20,7 +20,7 @@ CREATE TABLE IF NOT EXISTS bgc_record (
     nt_start INTEGER,
     nt_stop INTEGER,
     UNIQUE(id),
-    UNIQUE(type, nt_start, nt_stop),
+    UNIQUE(gbk_id, type, nt_start, nt_stop),
     FOREIGN KEY(gbk_id) REFERENCES gbk(id)
 );
 

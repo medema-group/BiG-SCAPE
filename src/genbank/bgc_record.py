@@ -4,7 +4,7 @@ genbank records
 
 # from python
 from __future__ import annotations
-from typing import Optional
+from typing import Any, Optional
 import logging
 
 # from dependencies
@@ -27,7 +27,9 @@ class BGCRecord:
         product: str
     """
 
-    def __init__(self):
+    # TODO: replace any with GBK after restructuring
+    def __init__(self, parent_gbk: Optional[Any]):
+        self.parent_gbk = parent_gbk
         # contig edge is optional, proto_core does not have it
         self.contig_edge: Optional[bool] = None
         self.nt_start: Optional[int] = None
@@ -48,10 +50,15 @@ class BGCRecord:
         if self.contig_edge is not None:
             contig_edge = self.contig_edge
 
+        parent_gbk_id = None
+        if self.parent_gbk is not None and self.parent_gbk._db_id is not None:
+            parent_gbk_id = self.parent_gbk._db_id
+
         insert_query = (
             bgc_record_table.insert()
             .prefix_with("OR REPLACE")
             .values(
+                gbk_id=parent_gbk_id,
                 contig_edge=contig_edge,
                 nt_start=self.nt_start,
                 nt_stop=self.nt_stop,

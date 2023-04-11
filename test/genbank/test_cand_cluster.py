@@ -29,7 +29,7 @@ class TestCandidateCluster(TestCase):
 
         expected_number = 1
 
-        cand_cluster = CandidateCluster(expected_number)
+        cand_cluster = CandidateCluster(None, expected_number)
 
         self.assertIsInstance(cand_cluster, CandidateCluster)
 
@@ -47,7 +47,7 @@ class TestCandidateCluster(TestCase):
             "product": ["NRPS"],
         }
 
-        cand_cluster = CandidateCluster.parse(candidate_cluster_feature)
+        cand_cluster = CandidateCluster.parse(None, candidate_cluster_feature)
 
         self.assertEqual(expected_number, cand_cluster.number)
 
@@ -65,7 +65,7 @@ class TestCandidateCluster(TestCase):
             "product": ["NRPS"],
         }
 
-        cand_cluster = CandidateCluster.parse(candidate_cluster_feature)
+        cand_cluster = CandidateCluster.parse(None, candidate_cluster_feature)
 
         self.assertEqual(expected_kind, cand_cluster.kind)
 
@@ -75,7 +75,7 @@ class TestCandidateCluster(TestCase):
         """
         feature = SeqFeature(FeatureLocation(0, 100), type="cand_cluster")
 
-        self.assertRaises(InvalidGBKError, CandidateCluster.parse, feature)
+        self.assertRaises(InvalidGBKError, CandidateCluster.parse, None, feature)
 
     def test_parse_no_kind(self):
         """Tests whether parse correctly throws an error when given a feature
@@ -85,7 +85,7 @@ class TestCandidateCluster(TestCase):
         expected_number = 1
         feature.qualifiers["candidate_cluster_number"] = [str(expected_number)]
 
-        self.assertRaises(InvalidGBKError, CandidateCluster.parse, feature)
+        self.assertRaises(InvalidGBKError, CandidateCluster.parse, None, feature)
 
     def test_parse_wrong_type(self):
         """Tests whether parse correctly throws an error when given a feature of
@@ -94,7 +94,7 @@ class TestCandidateCluster(TestCase):
 
         feature = SeqFeature(type="CDS")
 
-        self.assertRaises(InvalidGBKError, CandidateCluster.parse, feature)
+        self.assertRaises(InvalidGBKError, CandidateCluster.parse, None, feature)
 
     def test_add_protocluster(self):
         """Tests whether a protocluster is correctly added to this candidate cluster"""
@@ -109,7 +109,7 @@ class TestCandidateCluster(TestCase):
             "product": ["NRPS"],
         }
 
-        candidate_cluster = CandidateCluster.parse(candidate_cluster_feature)
+        candidate_cluster = CandidateCluster.parse(None, candidate_cluster_feature)
 
         proto_cluster_feature = SeqFeature(FeatureLocation(0, 100), type="protocluster")
         proto_cluster_feature.qualifiers = {
@@ -118,7 +118,7 @@ class TestCandidateCluster(TestCase):
             "product": ["NRPS"],
         }
 
-        proto_cluster = ProtoCluster.parse(proto_cluster_feature)
+        proto_cluster = ProtoCluster.parse(None, proto_cluster_feature)
 
         candidate_cluster.add_proto_cluster(proto_cluster)
 
@@ -139,7 +139,7 @@ class TestCandidateCluster(TestCase):
             "product": ["NRPS"],
         }
 
-        candidate_cluster = CandidateCluster.parse(candidate_cluster_feature)
+        candidate_cluster = CandidateCluster.parse(None, candidate_cluster_feature)
 
         candidate_cluster.save()
 

@@ -28,8 +28,8 @@ class Region(BGCRecord):
         cand_clusters: Dict{number: int, CandidateCluster}
     """
 
-    def __init__(self, number: int):
-        super().__init__()
+    def __init__(self, parent_gbk, number: int):
+        super().__init__(parent_gbk)
         self.number = number
         self.cand_clusters: Dict[int, Optional[CandidateCluster]] = {}
 
@@ -62,7 +62,7 @@ class Region(BGCRecord):
             candidate_cluster.save_all()
 
     @classmethod
-    def parse(cls, feature: SeqFeature):
+    def parse(cls, parent_gbk, feature: SeqFeature):
         """Creates a region object from a region feature in a GBK file
 
         Args:
@@ -90,7 +90,7 @@ class Region(BGCRecord):
 
             region_number = int(feature.qualifiers["region_number"][0])
 
-            region = cls(region_number)
+            region = cls(parent_gbk, region_number)
 
             region.parse_bgc_record(feature)
 
@@ -117,6 +117,6 @@ class Region(BGCRecord):
 
             cluster_note_number = feature.qualifiers["note"][0]
             cluster_number = int(cluster_note_number.split(": ")[1])
-            region = cls(cluster_number)
+            region = cls(parent_gbk, cluster_number)
             region.parse_bgc_record(feature)
             return region

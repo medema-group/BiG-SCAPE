@@ -28,7 +28,7 @@ class TestProtocore(TestCase):
 
         expected_number = 1
 
-        proto_core = ProtoCore(expected_number)
+        proto_core = ProtoCore(None, expected_number)
 
         self.assertIsInstance(proto_core, ProtoCore)
 
@@ -41,7 +41,7 @@ class TestProtocore(TestCase):
         feature.qualifiers["protocluster_number"] = [str(expected_number)]
         feature.qualifiers["product"] = ["NRPS"]
 
-        proto_core = ProtoCore.parse(feature)
+        proto_core = ProtoCore.parse(None, feature)
 
         self.assertEqual(expected_number, proto_core.number)
 
@@ -51,7 +51,7 @@ class TestProtocore(TestCase):
         """
         feature = SeqFeature(FeatureLocation(0, 100), type="proto_core")
 
-        self.assertRaises(InvalidGBKError, ProtoCore.parse, feature)
+        self.assertRaises(InvalidGBKError, ProtoCore.parse, None, feature)
 
     def test_parse_wrong_type(self):
         """Tests whether parse correctly throws an error when given a feature of
@@ -60,7 +60,7 @@ class TestProtocore(TestCase):
 
         feature = SeqFeature(type="CDS")
 
-        self.assertRaises(InvalidGBKError, ProtoCore.parse, feature)
+        self.assertRaises(InvalidGBKError, ProtoCore.parse, None, feature)
 
     def test_save(self):
         """Tests whether a GBK object is correctly stored in the SQLite database"""
@@ -74,7 +74,7 @@ class TestProtocore(TestCase):
         feature.qualifiers["protocluster_number"] = [str(expected_number)]
         feature.qualifiers["product"] = ["NRPS"]
 
-        proto_core = ProtoCore.parse(feature)
+        proto_core = ProtoCore.parse(None, feature)
 
         proto_core.save()
 

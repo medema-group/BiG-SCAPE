@@ -29,8 +29,8 @@ class CandidateCluster(BGCRecord):
         proto_clusters: Dict{number: int, ProtoCluster}
     """
 
-    def __init__(self, number: int):
-        super().__init__()
+    def __init__(self, parent_gbk, number: int):
+        super().__init__(parent_gbk)
         self.number = number
         self.kind: str = ""
         self.proto_clusters: Dict[int, Optional[ProtoCluster]] = {}
@@ -66,7 +66,7 @@ class CandidateCluster(BGCRecord):
             proto_cluster.save_all()
 
     @classmethod
-    def parse(cls, feature: SeqFeature):
+    def parse(cls, parent_gbk, feature: SeqFeature):
         """_summary_Creates a cand_cluster object from a region feature in a GBK file
 
         Args:
@@ -99,7 +99,7 @@ class CandidateCluster(BGCRecord):
 
         cand_cluster_kind = feature.qualifiers["kind"][0]
 
-        cand_cluster = cls(cand_cluster_number)
+        cand_cluster = cls(parent_gbk, cand_cluster_number)
         cand_cluster.parse_bgc_record(feature)
         cand_cluster.kind = cand_cluster_kind
 
