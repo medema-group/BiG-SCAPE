@@ -164,7 +164,7 @@ class GBK:
                 self.region = region
 
             if feature.type == "CDS":
-                cds = CDS.parse(feature)
+                cds = CDS.parse(feature, parent_gbk=self)
                 self.genes.append(cds)
 
     def parse_as5up(self, record: SeqRecord):
@@ -207,7 +207,7 @@ class GBK:
                 tmp_proto_cores[proto_core.number] = proto_core
 
             if feature.type == "CDS":
-                cds = CDS.parse(feature)
+                cds = CDS.parse(feature, parent_gbk=self)
                 self.genes.append(cds)
 
         # add features to parent objects

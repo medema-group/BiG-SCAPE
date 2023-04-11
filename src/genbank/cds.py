@@ -4,7 +4,7 @@
 from __future__ import annotations
 from itertools import combinations
 import logging
-from typing import Optional
+from typing import Any, Optional
 
 # from dependencies
 from Bio.SeqFeature import SeqFeature
@@ -29,13 +29,19 @@ class CDS:
     def __init__(self, nt_start: int, nt_stop: int):
         self.nt_start = nt_start
         self.nt_stop = nt_stop
+        # TODO: replace any with object
+        self.parent_gbk: Optional[Any] = None
         self.gene_kind: Optional[str] = None
         self.strand: Optional[int] = None
         self.aa_seq: str = ""
         self.hsps: list = []
 
+        # db specific fields
+        self._db_id: Optional[int] = None
+
+    # TODO: replace any with object typing
     @classmethod
-    def parse(cls, feature: SeqFeature):
+    def parse(cls, feature: SeqFeature, parent_gbk: Optional[Any] = None):
         """Creates a cds object from a region feature in a GBK file"""
 
         if feature.type != "CDS":
@@ -51,6 +57,10 @@ class CDS:
 
         cds = cls(nt_start, nt_stop)
         cds.strand = strand
+
+        # add parent if it exists
+        if parent_gbk is not None:
+            cds.parent_gbk = parent_gbk
 
         if "translation" not in feature.qualifiers:
             logging.error("translation qualifier not found in cds feature!")
