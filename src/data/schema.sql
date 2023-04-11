@@ -26,7 +26,7 @@ CREATE TABLE IF NOT EXISTS bgc_record (
 
 CREATE TABLE IF NOT EXISTS cds (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
-    record_id INTEGER NOT NULL,
+    gbk_id INTEGER NOT NULL,
     nt_start INTEGER NOT NULL,
     nt_stop INTEGER NOT NULL,
     strand INTEGER NOT NULL,
@@ -34,8 +34,9 @@ CREATE TABLE IF NOT EXISTS cds (
     protein_id TEXT,
     product TEXT,
     aa_seq TEXT NOT NULL,
-    UNIQUE(id, record_id),
-    FOREIGN KEY(record_id) REFERENCES bgc_record(id)
+    UNIQUE(id),
+    UNIQUE(gbk_id, nt_start, nt_stop, strand)
+    FOREIGN KEY(gbk_id) REFERENCES gbk(id)
 )
 
 CREATE TABLE IF NOT EXISTS hsp (
