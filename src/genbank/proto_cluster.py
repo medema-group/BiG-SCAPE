@@ -2,7 +2,7 @@
 
 # from python
 import logging
-from typing import Dict, Optional
+from typing import Any, Dict, Optional
 
 # from dependencies
 from Bio.SeqFeature import SeqFeature
@@ -29,8 +29,8 @@ class ProtoCluster(BGCRecord):
         protocore: Protocore
     """
 
-    def __init__(self, parent_gbk, number: int):
-        super().__init__(parent_gbk)
+    def __init__(self, number: int):
+        super().__init__()
         self.number = number
         self.category: str = ""
         self.proto_core: Dict[int, Optional[ProtoCore]] = {}
@@ -65,8 +65,9 @@ class ProtoCluster(BGCRecord):
         for protocore in self.proto_core.values():
             protocore.save(False)
 
+    # TODO: change any to object typing
     @classmethod
-    def parse(cls, parent_gbk, feature: SeqFeature):
+    def parse(cls, feature: SeqFeature, parent_gbk: Optional[Any] = None):
         """Creates a Protocluster object from a region feature in a GBK file
 
         Args:
@@ -93,8 +94,8 @@ class ProtoCluster(BGCRecord):
 
         proto_cluster_number = int(feature.qualifiers["protocluster_number"][0])
 
-        proto_cluster = cls(parent_gbk, proto_cluster_number)
-        proto_cluster.parse_bgc_record(feature)
+        proto_cluster = cls(proto_cluster_number)
+        proto_cluster.parse_bgc_record(feature, parent_gbk=parent_gbk)
         proto_cluster.proto_core[proto_cluster_number] = None
 
         if "category" in feature.qualifiers:

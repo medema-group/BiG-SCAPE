@@ -160,7 +160,7 @@ class GBK:
                     logging.error("GBK file provided contains more than one region")
                     raise InvalidGBKError()
 
-                region = Region.parse(self, feature)
+                region = Region.parse(feature, parent_gbk=self)
                 self.region = region
 
             if feature.type == "CDS":
@@ -191,19 +191,19 @@ class GBK:
                     logging.error("GBK file provided contains more than one region")
                     raise InvalidGBKError()
 
-                region = Region.parse(self, feature)
+                region = Region.parse(feature, parent_gbk=self)
                 self.region = region
 
             if feature.type == "cand_cluster":
-                cand_cluster = CandidateCluster.parse(self, feature)
+                cand_cluster = CandidateCluster.parse(feature, parent_gbk=self)
                 tmp_cand_clusters[cand_cluster.number] = cand_cluster
 
             if feature.type == "protocluster":
-                proto_cluster = ProtoCluster.parse(self, feature)
+                proto_cluster = ProtoCluster.parse(feature, parent_gbk=self)
                 tmp_proto_clusters[proto_cluster.number] = proto_cluster
 
             if feature.type == "proto_core":
-                proto_core = ProtoCore.parse(self, feature)
+                proto_core = ProtoCore.parse(feature, parent_gbk=self)
                 tmp_proto_cores[proto_core.number] = proto_core
 
             if feature.type == "CDS":

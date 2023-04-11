@@ -2,7 +2,7 @@
 
 # from python
 import logging
-from typing import Dict, Optional
+from typing import Any, Dict, Optional
 
 # from dependencies
 from Bio.SeqFeature import SeqFeature
@@ -29,8 +29,8 @@ class CandidateCluster(BGCRecord):
         proto_clusters: Dict{number: int, ProtoCluster}
     """
 
-    def __init__(self, parent_gbk, number: int):
-        super().__init__(parent_gbk)
+    def __init__(self, number: int):
+        super().__init__()
         self.number = number
         self.kind: str = ""
         self.proto_clusters: Dict[int, Optional[ProtoCluster]] = {}
@@ -65,8 +65,9 @@ class CandidateCluster(BGCRecord):
         for proto_cluster in self.proto_clusters.values():
             proto_cluster.save_all()
 
+    # TODO: change any to object typing
     @classmethod
-    def parse(cls, parent_gbk, feature: SeqFeature):
+    def parse(cls, feature: SeqFeature, parent_gbk: Optional[Any] = None):
         """_summary_Creates a cand_cluster object from a region feature in a GBK file
 
         Args:
@@ -99,8 +100,8 @@ class CandidateCluster(BGCRecord):
 
         cand_cluster_kind = feature.qualifiers["kind"][0]
 
-        cand_cluster = cls(parent_gbk, cand_cluster_number)
-        cand_cluster.parse_bgc_record(feature)
+        cand_cluster = cls(cand_cluster_number)
+        cand_cluster.parse_bgc_record(feature, parent_gbk=parent_gbk)
         cand_cluster.kind = cand_cluster_kind
 
         if "protoclusters" not in feature.qualifiers:

@@ -28,7 +28,7 @@ class TestProtocluster(TestCase):
 
         expected_number = 1
 
-        protocluster = ProtoCluster(None, expected_number)
+        protocluster = ProtoCluster(expected_number)
 
         self.assertIsInstance(protocluster, ProtoCluster)
 
@@ -44,7 +44,7 @@ class TestProtocluster(TestCase):
             "product": ["NRPS"],
         }
 
-        protocluster = ProtoCluster.parse(None, protocluster_feature)
+        protocluster = ProtoCluster.parse(protocluster_feature)
 
         self.assertEqual(expected_number, protocluster.number)
 
@@ -60,7 +60,7 @@ class TestProtocluster(TestCase):
             "product": ["NRPS"],
         }
 
-        protocluster = ProtoCluster.parse(None, protocluster_feature)
+        protocluster = ProtoCluster.parse(protocluster_feature)
 
         self.assertEqual(expected_category, protocluster.category)
 
@@ -72,7 +72,7 @@ class TestProtocluster(TestCase):
         expected_category = "NRPS"
         feature.qualifiers["category"] = [expected_category]
 
-        self.assertRaises(InvalidGBKError, ProtoCluster.parse, None, feature)
+        self.assertRaises(InvalidGBKError, ProtoCluster.parse, feature)
 
     def test_parse_wrong_type(self):
         """Tests whether parse correctly throws an error when given a feature of
@@ -81,7 +81,7 @@ class TestProtocluster(TestCase):
 
         feature = SeqFeature(FeatureLocation(0, 100), type="CDS")
 
-        self.assertRaises(InvalidGBKError, ProtoCluster.parse, None, feature)
+        self.assertRaises(InvalidGBKError, ProtoCluster.parse, feature)
 
     def test_add_protocore(self):
         """Tests whether a protocore is correctly added to this protocluster"""
@@ -93,7 +93,7 @@ class TestProtocluster(TestCase):
             "product": ["NRPS"],
         }
 
-        protocluster = ProtoCluster.parse(None, protocluster_feature)
+        protocluster = ProtoCluster.parse(protocluster_feature)
 
         protocore_feature = SeqFeature(FeatureLocation(0, 100), type="proto_core")
         protocore_feature.qualifiers = {
@@ -101,7 +101,7 @@ class TestProtocluster(TestCase):
             "product": ["NRPS"],
         }
 
-        protocore = ProtoCore.parse(None, protocore_feature)
+        protocore = ProtoCore.parse(protocore_feature)
 
         protocluster.add_proto_core(protocore)
 
@@ -117,7 +117,7 @@ class TestProtocluster(TestCase):
             "product": ["NRPS"],
         }
 
-        proto_cluster = ProtoCluster.parse(None, proto_cluster_feature)
+        proto_cluster = ProtoCluster.parse(proto_cluster_feature)
 
         proto_cluster.save()
 

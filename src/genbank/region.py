@@ -2,7 +2,7 @@
 
 # from python
 import logging
-from typing import Dict, Optional
+from typing import Any, Dict, Optional
 
 # from dependencies
 from Bio.SeqFeature import SeqFeature
@@ -28,8 +28,8 @@ class Region(BGCRecord):
         cand_clusters: Dict{number: int, CandidateCluster}
     """
 
-    def __init__(self, parent_gbk, number: int):
-        super().__init__(parent_gbk)
+    def __init__(self, number: int):
+        super().__init__()
         self.number = number
         self.cand_clusters: Dict[int, Optional[CandidateCluster]] = {}
 
@@ -61,8 +61,9 @@ class Region(BGCRecord):
         for candidate_cluster in self.cand_clusters.values():
             candidate_cluster.save_all()
 
+    # TODO: change any to object typing
     @classmethod
-    def parse(cls, parent_gbk, feature: SeqFeature):
+    def parse(cls, feature: SeqFeature, parent_gbk: Optional[Any] = None):
         """Creates a region object from a region feature in a GBK file
 
         Args:
@@ -90,9 +91,9 @@ class Region(BGCRecord):
 
             region_number = int(feature.qualifiers["region_number"][0])
 
-            region = cls(parent_gbk, region_number)
+            region = cls(region_number)
 
-            region.parse_bgc_record(feature)
+            region.parse_bgc_record(feature, parent_gbk=parent_gbk)
 
             if "candidate_cluster_numbers" not in feature.qualifiers:
                 logging.error(
@@ -117,6 +118,7 @@ class Region(BGCRecord):
 
             cluster_note_number = feature.qualifiers["note"][0]
             cluster_number = int(cluster_note_number.split(": ")[1])
-            region = cls(parent_gbk, cluster_number)
-            region.parse_bgc_record(feature)
+            region = cls(cluster_number)
+
+            region.parse_bgc_record(feature, parent_gbk=parent_gbk)
             return region

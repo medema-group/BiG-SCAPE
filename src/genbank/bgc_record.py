@@ -28,8 +28,8 @@ class BGCRecord:
     """
 
     # TODO: replace any with GBK after restructuring
-    def __init__(self, parent_gbk: Optional[Any]):
-        self.parent_gbk = parent_gbk
+    def __init__(self):
+        self.parent_gbk: Optional[Any] = None
         # contig edge is optional, proto_core does not have it
         self.contig_edge: Optional[bool] = None
         self.nt_start: Optional[int] = None
@@ -72,7 +72,7 @@ class BGCRecord:
         if commit:
             DB.commit()
 
-    def parse_bgc_record(self, feature: SeqFeature):
+    def parse_bgc_record(self, feature: SeqFeature, parent_gbk: Optional[Any]):
         """Parses a BGC record locale info
 
         Args:
@@ -98,3 +98,7 @@ class BGCRecord:
             raise InvalidGBKError()
 
         self.product = feature.qualifiers["product"][0]
+
+        # add parent gbk if available
+        if parent_gbk is not None:
+            self.parent_gbk = parent_gbk
