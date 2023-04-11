@@ -11,6 +11,7 @@ from Bio.SeqFeature import SeqFeature
 
 # from other modules
 from src.errors import InvalidGBKError
+from src.data import DB
 
 
 class CDS:
@@ -38,6 +39,35 @@ class CDS:
 
         # db specific fields
         self._db_id: Optional[int] = None
+
+    def save(self, commit=True):
+        """Saves this CDS to the database and optionally executes a commit
+
+        Args:
+            commit (bool, optional): Whether to commit immediately after inserting this
+            CDS. Defaults to True.
+        """
+
+        # get parent gbk id if available
+        parent_gbk_id = None
+        if self.parent_gbk is not None and self.parent_gbk._db_id is not None:
+            parent_gbk_id = self.parent_gbk._db_id
+
+        cds_table = DB.metadata.tables["cds"]
+        insert_query = (
+            cds_table.insert()
+            .values(
+                gbk_id=parent_gbk_id,
+                nt_start=self.nt_start,
+                nt_stop=self.nt_stop,
+                strand=self.strand,
+                gene_kind=self.gene_kind,
+                aa_seq=self.aa_seq,
+            )
+            .compile()
+        )
+
+        DB.execute(insert_query, commit)
 
     # TODO: replace any with object typing
     @classmethod

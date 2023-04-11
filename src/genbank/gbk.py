@@ -92,6 +92,9 @@ class GBK:
         self.save(False)
         self.region.save_all()
 
+        for cds in self.genes:
+            cds.save(False)
+
     @staticmethod
     def get_as_version(gbk_seq_record: SeqRecord):
         """Get AS version from GBK record

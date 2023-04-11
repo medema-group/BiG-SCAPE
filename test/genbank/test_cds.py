@@ -1,13 +1,14 @@
 """Contains tests for the CDS class and functions"""
 
 # from python
+from pathlib import Path
 from unittest import TestCase
 
 # from dependencies
 from Bio.SeqFeature import SeqFeature, FeatureLocation
 
 # from other modules
-from src.genbank import CDS
+from src.genbank import GBK, CDS
 from src.errors import InvalidGBKError
 from src.data import DB
 
@@ -79,3 +80,28 @@ class TestCDS(TestCase):
         feature = SeqFeature(type="region")
 
         self.assertRaises(InvalidGBKError, CDS.parse, feature)
+
+    def test_save_cds(self):
+        """Tests whether a CDS can be correctly saved to the database"""
+
+        DB.create_in_mem()
+
+        gbk_file_path = Path("test/test_data/valid_gbk_folder/valid_input_region.gbk")
+
+        gbk = GBK.parse(gbk_file_path, "query")
+
+        gbk.save_all()
+
+        DB.commit()
+
+        DB.save_to_disk(Path("tmp/db.db"))
+
+        # 1 gbk, 11 bgc records
+        expected_row_count = 37
+
+        actual_row_count = 0
+
+        cursor_result = DB.execute_raw_query("SELECT * FROM cds;")
+        actual_row_count += len(cursor_result.fetchall())
+
+        self.assertEqual(expected_row_count, actual_row_count)
