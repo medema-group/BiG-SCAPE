@@ -6,6 +6,7 @@ from multiprocessing import cpu_count
 from datetime import datetime
 
 # from other modules
+from src.data import DB
 from src.file_input import load_dataset_folder
 from src.genbank import SOURCE_TYPE
 from src.hmm import HMMer
@@ -46,6 +47,9 @@ if __name__ == "__main__":
     console_handler.setFormatter(log_formatter)
     root_logger.addHandler(console_handler)
 
+    # start DB
+    DB.create_in_mem()
+
     # TODO: add a check to run parse to make sure the optional stuff goes away
     if run.input is None:
         exit()
@@ -66,6 +70,7 @@ if __name__ == "__main__":
     # loop so that mypy knows for sure there are no Nones in this list
     all_genes = []
     for gbk in gbks:
+        gbk.save_all()
         # TODO: related to the above. this inner loop is not really necessary
         for cds in gbk.genes:
             if cds is None:
@@ -90,6 +95,13 @@ if __name__ == "__main__":
 
     HMMer.unload()
 
+    # save hsps to database
+    for hsp in all_hsps:
+        hsp.save(False)
+        DB.commit()
+    exec_time = datetime.now() - start_time
+    logging.info("DB: HSP save done at %f seconds", exec_time.total_seconds())
+
     HMMer.init(run.input.pfam_path, False)
 
     all_alignments = list(HMMer.align_simple(all_hsps))
@@ -98,3 +110,13 @@ if __name__ == "__main__":
 
     exec_time = datetime.now() - start_time
     logging.info("align done at %f seconds", exec_time.total_seconds())
+
+    for hsp_alignment in all_alignments:
+        hsp_alignment.save(False)
+        DB.commit()
+
+    exec_time = datetime.now() - start_time
+    logging.info("DB: HSP alignment save done at %f seconds", exec_time.total_seconds())
+
+    if run.output is not None and run.output.db_path is not None:
+        DB.save_to_disk(run.output.db_path)
