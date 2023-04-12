@@ -56,6 +56,7 @@ class CDS:
         cds_table = DB.metadata.tables["cds"]
         insert_query = (
             cds_table.insert()
+            .returning(cds_table.c.id)
             .values(
                 gbk_id=parent_gbk_id,
                 nt_start=self.nt_start,
@@ -67,7 +68,19 @@ class CDS:
             .compile()
         )
 
-        DB.execute(insert_query, commit)
+        # in the above query we add a returning statement. This makes it so that the
+        # sqlite engine will be in the middle of a transaction (trying to give us the
+        # returned value) and means we cannot commit. We will do this after digesting
+        # the reutrn statement further on
+        cursor_result = DB.execute(insert_query, False)
+
+        # get return value
+        return_row = cursor_result.fetchone()
+        self._db_id = return_row[0]
+
+        # only now that we have handled the return we can commit
+        if commit:
+            DB.commit()
 
     # TODO: replace any with object typing
     @classmethod

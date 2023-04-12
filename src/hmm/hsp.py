@@ -2,11 +2,13 @@
 
 # from python
 from __future__ import annotations
+from typing import Optional
 
 # from dependencies
 from pyhmmer.plan7 import Domain
 
 # from other modules
+from src.data import DB
 from src.genbank import CDS
 
 
@@ -22,9 +24,40 @@ class HSP:
         self.env_start = env_start
         self.env_stop = env_stop
 
-    def save(self):
-        """Saves this object to a database"""
-        pass
+        # db specific fields
+        self._db_id = Optional[int]
+
+    def save(self, commit=True):
+        """Saves this hsp object to a database and optionally executes a commit
+
+        Args:
+            commit (bool, optional): Whether to commit immediately after inserting this
+            CDS. Defaults to True."""
+
+        parent_cds_id = None
+        if self.cds is not None and self.cds._db_id is not None:
+            parent_cds_id = self.cds._db_id
+
+        hsp_table = DB.metadata.tables["hsp"]
+        insert_query = (
+            hsp_table.insert()
+            .returning(hsp_table.c.id)
+            .values(cds_id=parent_cds_id, hmm_id=self.domain, bitscore=self.score)
+        )
+
+        # in the above query we add a returning statement. This makes it so that the
+        # sqlite engine will be in the middle of a transaction (trying to give us the
+        # returned value) and means we cannot commit. We will do this after digesting
+        # the reutrn statement further on
+        cursor_result = DB.execute(insert_query, False)
+
+        # get return value
+        return_row = cursor_result.fetchone()
+        self._db_id = return_row[0]
+
+        # only now that we have handled the return we can commit
+        if commit:
+            DB.commit()
 
     def __repr__(self) -> str:
         return ",".join(

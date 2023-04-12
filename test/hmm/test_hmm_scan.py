@@ -8,8 +8,9 @@ from unittest import TestCase
 from pyhmmer.easel import TextSequence
 
 # from other modules
+from src.data import DB
 from src.hmm.hmmer import HMMer, cds_to_input_task
-from src.genbank import CDS
+from src.genbank import GBK, CDS
 from src.hmm import HSP
 
 
@@ -108,3 +109,35 @@ class TestHMMScan(TestCase):
         actual_result = list(HMMer.hmmsearch_multiprocess([cds], 1))[0]
 
         self.assertEqual(expected_result, actual_result)
+
+    def test_save_hsp(self):
+        """Tests whether an HSP can be correctly saved to the database"""
+        DB.create_in_mem()
+
+        aa_seq = (
+            "MQQDGTQQDRIKQSPAPLNGMSRRGFLGGAGTLALATASGLLLPGTAHAATTITTNQTGTDGMYYSFWTDGGGS"
+            "VSMTLNGGGSYSTQWTNCGNFVAGKGWSTGGRRTVRYNGYFNPSGNGYGCLYGWTSNPLVEYYIVDNWGSYRPT"
+            "GTYKGTVSSDGGTYDIYQTTRYNAPSVEGTKTFQQYWSVRQSKVTSGSGTITTGNHFDAWARAGMNMGQFRYYM"
+            "IMATEGYQSSGSSNITVSG"
+        )
+
+        gbk = GBK("", "")
+        gbk.save()
+
+        cds = CDS(0, len(aa_seq) * 3)
+        cds.strand = 1
+        cds.aa_seq = aa_seq
+        cds.parent_gbk = gbk
+        cds.save()
+
+        hsp = HSP(cds, "PF00457.19", 249.32315063476562, 0, 0)
+        hsp.save()
+
+        expected_row_count = 1
+
+        actual_row_count = 0
+
+        cursor_result = DB.execute_raw_query("SELECT * FROM cds;")
+        actual_row_count += len(cursor_result.fetchall())
+
+        self.assertEqual(expected_row_count, actual_row_count)
