@@ -25,7 +25,7 @@ class HSP:
         self.env_stop = env_stop
 
         # db specific fields
-        self._db_id = Optional[int]
+        self._db_id: Optional[int] = None
 
     def save(self, commit=True):
         """Saves this hsp object to a database and optionally executes a commit
@@ -42,7 +42,11 @@ class HSP:
         insert_query = (
             hsp_table.insert()
             .returning(hsp_table.c.id)
-            .values(cds_id=parent_cds_id, hmm_id=self.domain, bitscore=self.score)
+            .values(
+                cds_id=parent_cds_id,
+                hmm_id=self.domain,
+                bitscore=self.score,
+            )
         )
 
         # in the above query we add a returning statement. This makes it so that the
@@ -197,9 +201,28 @@ class HSPAlignment:
         self.hsp = hsp
         self.alignment = alignment
 
-    def save(self):
-        """Saves this object to a database"""
-        pass
+        # database specific fields
+        self._db_id: Optional[int] = None
+
+    def save(self, commit=True):
+        """Saves this hsp alignment object to a database and optionally executes a
+        commit
+
+        Args:
+            commit (bool, optional): Whether to commit immediately after inserting this
+            CDS. Defaults to True."""
+
+        parent_hsp_id = None
+        if self.hsp is not None and self.hsp._db_id is not None:
+            parent_hsp_id = self.hsp._db_id
+
+        hsp_align_table = DB.metadata.tables["hsp_alignment"]
+        insert_query = hsp_align_table.insert().values(
+            hsp_id=parent_hsp_id,
+            alignment=self.alignment,
+        )
+
+        DB.execute(insert_query, commit)
 
     def __repr__(self) -> str:
         return (

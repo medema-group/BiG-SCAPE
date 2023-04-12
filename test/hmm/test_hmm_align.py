@@ -5,12 +5,21 @@ from unittest import TestCase
 from pathlib import Path
 
 # from other modules
-from src.genbank import CDS
+from src.data import DB
+from src.genbank import GBK, CDS
 from src.hmm import HMMer, HSP, HSPAlignment
 
 
 class TestHMMAlign(TestCase):
     """Contains test methods of hmm alignment"""
+
+    def clean_db(self):
+        if DB.opened():
+            DB.close_db()
+
+    def __init__(self, methodName: str = "runTest") -> None:
+        super().__init__(methodName)
+        self.addCleanup(self.clean_db)
 
     def test_align(self):
         """Tests whether a single alignment is correctly performed on a hsp"""
@@ -41,6 +50,41 @@ class TestHMMAlign(TestCase):
 
         expected_result = HSPAlignment(expected_hsp, expected_alignment)
 
-        actual_result = next(HMMer.align_simple([hsp]))[0]
+        actual_result = next(HMMer.align_simple([hsp]))
 
         self.assertEqual(expected_result, actual_result)
+
+    def test_save_hmmalignment(self):
+        """Tests whether an HSP Alignment can be correctly saved to the database"""
+        DB.create_in_mem()
+
+        aa_seq = (
+            "MQQDGTQQDRIKQSPAPLNGMSRRGFLGGAGTLALATASGLLLPGTAHAATTITTNQTGTDGMYYSFWTDGGGS"
+            "VSMTLNGGGSYSTQWTNCGNFVAGKGWSTGGRRTVRYNGYFNPSGNGYGCLYGWTSNPLVEYYIVDNWGSYRPT"
+            "GTYKGTVSSDGGTYDIYQTTRYNAPSVEGTKTFQQYWSVRQSKVTSGSGTITTGNHFDAWARAGMNMGQFRYYM"
+            "IMATEGYQSSGSSNITVSG"
+        )
+
+        gbk = GBK("", "")
+        gbk.save()
+
+        cds = CDS(0, len(aa_seq) * 3)
+        cds.strand = 1
+        cds.aa_seq = aa_seq
+        cds.parent_gbk = gbk
+        cds.save()
+
+        hsp = HSP(cds, "PF00457.19", 249.32315063476562, 0, 0)
+        hsp.save()
+
+        hsp_alignment = HSPAlignment(hsp, "")
+        hsp_alignment.save()
+
+        expected_row_count = 1
+
+        actual_row_count = 0
+
+        cursor_result = DB.execute_raw_query("SELECT * FROM hsp_alignment;")
+        actual_row_count += len(cursor_result.fetchall())
+
+        self.assertEqual(expected_row_count, actual_row_count)
