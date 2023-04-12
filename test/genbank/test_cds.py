@@ -96,7 +96,7 @@ class TestCDS(TestCase):
 
         DB.save_to_disk(Path("tmp/db.db"))
 
-        # 1 gbk, 11 bgc records
+        # 1 gbk, 37 bgc records
         expected_row_count = 37
 
         actual_row_count = 0
