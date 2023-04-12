@@ -46,12 +46,7 @@ CREATE TABLE IF NOT EXISTS hsp (
 
 CREATE TABLE IF NOT EXISTS hsp_alignment (
     hsp_id INTEGER PRIMARY KEY NOT NULL,
-    model_start INTEGER NOT NULL,
-    model_stop INTEGER NOT NULL,
-    model_gaps TEXT NOT NULL,
-    cds_start INTEGER NOT NULL,
-    cds_stop INTEGER NOT NULL,
-    cds_gaps TEXT NOT NULL
+    alignment TEXT NOT NULL
 );
 
 CREATE TABLE IF NOT EXISTS hmm (
