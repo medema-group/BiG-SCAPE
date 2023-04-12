@@ -17,6 +17,14 @@ from src.hmm import HSP
 class TestHMMScan(TestCase):
     """Contains tests to check the hmmscan functionality"""
 
+    def clean_db(self):
+        if DB.opened():
+            DB.close_db()
+
+    def __init__(self, methodName: str = "runTest") -> None:
+        super().__init__(methodName)
+        self.addCleanup(self.clean_db)
+
     def test_cds_to_input_task(self):
         """Tests the cds_to_input_task function, which generates input tasks for workers
         from cds objects"""
@@ -137,7 +145,7 @@ class TestHMMScan(TestCase):
 
         actual_row_count = 0
 
-        cursor_result = DB.execute_raw_query("SELECT * FROM cds;")
+        cursor_result = DB.execute_raw_query("SELECT * FROM hsp;")
         actual_row_count += len(cursor_result.fetchall())
 
         self.assertEqual(expected_row_count, actual_row_count)
