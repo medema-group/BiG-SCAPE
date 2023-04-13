@@ -1,4 +1,5 @@
 # from python
+import logging
 from pathlib import Path
 from typing import List
 from sqlite3 import Connection as Sqlite3Connection
@@ -79,6 +80,8 @@ class DB:
         """Saves the in-memory database to a .db file"""
         if not DB.opened():
             raise DBClosedError()
+
+        logging.info("Saving database to %s", db_path)
 
         db_path.parent.mkdir(parents=True, exist_ok=True)
 

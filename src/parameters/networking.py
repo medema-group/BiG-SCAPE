@@ -1,12 +1,9 @@
 """Module containing a class for a BiG-SCAPE run networking object, which has all the
 networking parameters/arguments"""
 
-# from python
-import logging
-from typing import Optional, List
-
 # from other modules
-from src.errors import InvalidInputArgError
+import logging
+from src.errors import InvalidArgumentError
 
 
 class NetworkingParameters:
@@ -19,24 +16,18 @@ class NetworkingParameters:
         #TODO: modes
     """
 
-    def __init__(self) -> None:
-        self.gcf_cutoffs: Optional[List[float]] = None
-        self.include_ingletons: Optional[bool] = None
+    def __init__(self):
+        self.gcf_cutoffs: list[float] = []
+        self.include_singletons: bool = False
 
-    def parse(self, gcf_cutoffs: str, include_singletons: bool):
-        """Load networking arguments from commandline ArgParser object
+    def validate(self):
+        """Validate the arguments contained in this object and set default values"""
+        pass
 
-        Args:
-            gcf_cutoffs (string): Distance cutoff values
-            include_ingletons (bool): Include nodes that have no edges
-        """
 
-        self.include_ingletons = include_singletons
-
-        gcf_cutoffs_list = gcf_cutoffs.split(",")
-        try:
-            gcf_cutoffs_list_float = [float(cutoff) for cutoff in gcf_cutoffs_list]
-            self.gcf_cutoffs = gcf_cutoffs_list_float
-        except ValueError:
-            logging.error("value given for gcf_cutoffs invalid")
-            raise InvalidInputArgError()
+def validate_gcf_cutoffs(gcf_cutoffs):
+    """Raises an InvalidArgumentError if any cutoff is lower than 0"""
+    for cutoff in gcf_cutoffs:
+        if cutoff < 0:
+            logging.error("One of the GCF cutoff values is invalid: %f < 0.00", cutoff)
+            raise InvalidArgumentError("--gcf_cutoffs", gcf_cutoffs)

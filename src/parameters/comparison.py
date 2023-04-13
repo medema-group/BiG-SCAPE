@@ -2,7 +2,16 @@
 comparison parameters/arguments"""
 
 # from python
-from typing import Optional
+from enum import Enum
+
+# from other modules
+from src.errors import InvalidArgumentError
+
+
+class ALIGNMENT_MODE(Enum):
+    GLOBAL = "global"
+    GLOCAL = "glocal"
+    AUTO = "auto"
 
 
 class ComparisonParameters:
@@ -10,19 +19,19 @@ class ComparisonParameters:
     Class to store all run comparison parameters
 
     Attributes:
-        alignment_mode: str
-        #TODO: proto/refion, similarity filters, distance calc modes, weigths
+        alignment_mode: ALIGNMENT_MODE
+        #TODO: proto/refion, similarity filters, distance calc modes, weights
     """
 
-    def __init__(self) -> None:
-        self.alignment_mode: Optional[str] = None
+    def __init__(self):
+        self.alignment_mode: ALIGNMENT_MODE = ALIGNMENT_MODE.AUTO
 
-    def parse(self, alignment_mode: str):
-        """Load comparison arguments from commandline ArgParser object
+    def validate(self):
+        """Validate the arguments contained in this object and set default values"""
+        validate_alignment_mode(self.alignment_mode)
 
-        Args:
-            alignment_mode (str): Alignment mode for each pair of gene clusters,
-            choices=["global", "glocal", "auto"]
-        """
 
-        self.alignment_mode = alignment_mode
+def validate_alignment_mode(alignment_mode):
+    valid_modes = [mode.value for mode in ALIGNMENT_MODE]
+    if alignment_mode not in valid_modes:
+        raise InvalidArgumentError("--align_mode", alignment_mode)

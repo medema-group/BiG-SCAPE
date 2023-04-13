@@ -7,16 +7,16 @@ from src.parameters.diagnostics import DiagnosticsParameters
 from src.parameters.hmmer import HmmerParameters
 from src.parameters.binning import BinningParameters
 from src.parameters.networking import NetworkingParameters
-from src.parameters.cmd_parser import cmd_parser
+from src.parameters.cmd_parser import parse_cmd
 
 __all__ = [
+    "RunParameters",
     "InputParameters",
-    "OutputParameters",
-    "ComparisonParameters",
-    "DiagnosticsParameters",
     "HmmerParameters",
     "BinningParameters",
+    "ComparisonParameters",
     "NetworkingParameters",
-    "RunParameters",
-    "cmd_parser",
+    "DiagnosticsParameters",
+    "OutputParameters",
+    "parse_cmd",
 ]

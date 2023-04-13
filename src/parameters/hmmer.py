@@ -3,75 +3,82 @@ hmmer parameters/arguments"""
 
 # from python
 import logging
-from typing import Optional, List
 from pathlib import Path
+from typing import Optional
 
 # from other modules
-from src.errors import InvalidInputArgError
+from src.errors import InvalidArgumentError, ArgumentParseError
 
 
 class HmmerParameters:
-    """
-    Class to store all run hmmer parameters
+    """Class to store all HMMer parameters
 
     Attributes:
+        force_hmmscan: bool
+        force_hmmalign: bool
         domain_overlap_cutoff: float
-        force_hmmscan: Bool
-        force_hmmalign: Bool
-        domain_includelist: List[str]
+        domain_includelist_path: Optional[Path]
     """
 
-    def __init__(self) -> None:
-        self.domain_overlap_cutoff: Optional[float] = None
-        self.force_hmmscan: Optional[bool] = None
-        self.force_hmmalign: Optional[bool] = None
-        self.domain_includelist: Optional[List[str]] = None
+    def __init__(self):
+        self.force_hmmscan: bool = False
+        self.force_hmmalign: bool = False
+        self.domain_overlap_cutoff: float = 1.0
+        self.domain_includelist_path: Optional[Path] = None
 
-    def parse(
-        self,
-        domain_overlap_cutoff: float,
-        force_hmmscan: bool,
-        force_hmmalign: bool,
-        domain_includelist_path: Path,
-    ):
-        """Load hmmer arguments from commandline ArgParser object
+        # not from arguments:
+        self.domain_includelist = []
 
-        Args:
-            domain_overlap_cutoff (float): overlap percentage at which domains are
-            considered to overlap
-            force_hmmscan (bool): Force domain prediction
-            skip_alignment (bool): Skip multiple alignment
-            domain_includelist_path (Path): Path to txt file with Pfam accessions
-        """
+    def validate(self):
+        """Performs validation on this class parameters"""
+        validate_overlap_cutoff(self.domain_overlap_cutoff)
 
-        self.domain_overlap_cutoff = domain_overlap_cutoff
-        self.force_hmmscan = force_hmmscan
-        self.force_hmmalign = force_hmmalign
+        self.domain_includelist = validate_includelist(self.domain_includelist_path)
 
-        if domain_includelist_path and not domain_includelist_path.exists():
-            logging.error("Path to domain_includelist file is not valid")
-            raise InvalidInputArgError()
 
-        elif not domain_includelist_path:
-            pass
+def validate_includelist(
+    domain_includelist_path: Optional[Path],
+):
+    """Validate the path to the domain include list and return a list of domain
+    accession strings contained within this file
 
-        else:
-            with domain_includelist_path.open(
-                encoding="utf-8"
-            ) as domain_includelist_file:
-                lines = domain_includelist_file.readlines()
+    Returns:
+        list[str]: A list of domain accessions to include
+    """
 
-                lines = [line.strip() for line in lines]
+    # only validate if set
+    if domain_includelist_path is None:
+        return None
 
-                # expect Pfam accessions, i.e. PF00001 or PF00001.10
-                lines_valid = map(
-                    lambda string: string.startswith("PF")
-                    and len(string) in range(7, 11),
-                    lines,
-                )
+    if not domain_includelist_path.exists():
+        logging.error("domain_includelist file does not exist!")
+        raise InvalidArgumentError("--domain_includelist", domain_includelist_path)
 
-                if not all(lines_valid):
-                    logging.error("Invalid Pfam accession(s)")
-                    raise InvalidInputArgError
+    with domain_includelist_path.open(encoding="utf-8") as domain_includelist_file:
+        lines = domain_includelist_file.readlines()
 
-                self.domain_includelist = lines
+        lines = [line.strip() for line in lines]
+
+        # expect Pfam accessions, i.e. PF00001 or PF00001.10
+        lines_valid = map(
+            lambda string: string.startswith("PF") and len(string) in range(7, 11),
+            lines,
+        )
+
+        if not all(lines_valid):
+            logging.error(
+                "Invalid Pfam accession(s) found in file %s", domain_includelist_path
+            )
+            raise ArgumentParseError(
+                "--domain_includelist_path", domain_includelist_path, ""
+            )
+
+        return lines
+
+
+def validate_overlap_cutoff(cutoff: float):
+    """Raises an InvalidArgumentError if cutoff is not between 0.0 and 1.0"""
+
+    if cutoff < 0.0 or cutoff > 1.0:
+        logging.error("Invalid cutoff (%f)! Must be between 0.0 and 1.0!", cutoff)
+        raise InvalidArgumentError("--overlap_cutoff", cutoff)

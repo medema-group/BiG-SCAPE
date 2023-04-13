@@ -10,15 +10,12 @@ from src.data import DB
 from src.file_input import load_dataset_folder
 from src.genbank import SOURCE_TYPE
 from src.hmm import HMMer
-from src.parameters import cmd_parser, RunParameters
+from src.parameters import parse_cmd
 
 if __name__ == "__main__":
-    parser = cmd_parser()
-    parsed_args = parser.parse_args(sys.argv[1:])
+    run = parse_cmd(sys.argv[1:])
 
-    # parse args from commandline and instantiate run object
-    run = RunParameters()
-    run.parse(parsed_args)
+    run.validate()
 
     start_time = datetime.now()
 
@@ -50,17 +47,7 @@ if __name__ == "__main__":
     # start DB
     DB.create_in_mem()
 
-    # TODO: add a check to run parse to make sure the optional stuff goes away
-    if run.input is None:
-        exit()
-
-    if run.input.gbk_path is None:
-        exit()
-
-    if run.input.pfam_path is None:
-        exit()
-
-    gbks = load_dataset_folder(run.input.gbk_path, SOURCE_TYPE.QUERY)
+    gbks = load_dataset_folder(run.input.input_dir, SOURCE_TYPE.QUERY)
 
     HMMer.init(run.input.pfam_path)
 
@@ -118,5 +105,4 @@ if __name__ == "__main__":
     exec_time = datetime.now() - start_time
     logging.info("DB: HSP alignment save done at %f seconds", exec_time.total_seconds())
 
-    if run.output is not None and run.output.db_path is not None:
-        DB.save_to_disk(run.output.db_path)
+    DB.save_to_disk(run.output.db_path)

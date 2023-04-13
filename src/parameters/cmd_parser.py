@@ -6,8 +6,11 @@ from argparse import ArgumentParser
 from multiprocessing import cpu_count
 from pathlib import Path
 
+# from this module
+from .run import RunParameters
 
-def cmd_parser():
+
+def parse_cmd(args):
     """
     Parse arguments from the command line
 
@@ -15,19 +18,22 @@ def cmd_parser():
         ArgumentParser: object storing input arguments
     """
 
+    run_parameters = RunParameters()
+
     parser = ArgumentParser(
         prog="BiG-SCAPE",
         description="Biosynthetic Gene Similarity Clustering and Prospecting Engine",
         epilog="For a more comprehensive help menu and tutorials see GitHub Wiki",
     )
 
+    # run parameters
+
     parser.add_argument(
         "--label",
         dest="label",
         default=None,
         type=str,
-        help="a run label to be added to the output results folder name."
-        # TODO: check this when refactoring method
+        help="a run label to be added to the output results folder name.",
     )
 
     parser.add_argument(
@@ -40,10 +46,13 @@ def cmd_parser():
         cores).",
     )
 
+    # input parameters
+
     parser.add_argument(
         "-i",
-        "--inputdir",
-        dest="inputdir",
+        "--input_dir",
+        "--gbk_dir",
+        dest="input.input_dir",
         type=Path,
         required=True,
         help="Input directory containing gbk files to be used by BiG-SCAPE.",
@@ -51,7 +60,7 @@ def cmd_parser():
 
     parser.add_argument(
         "--input_mode",
-        dest="input_mode",
+        dest="input.input_mode",
         default="recursive",
         type=str,
         choices=["flat", "recursive"],
@@ -59,47 +68,9 @@ def cmd_parser():
     )
 
     parser.add_argument(
-        "-o",
-        "--outputdir",
-        dest="outputdir",
-        type=Path,
-        required=True,
-        help="Output directory for all BiG-SCAPE results files.",
-    )
-
-    parser.add_argument(
-        "--db_path",
-        dest="db_path",
-        type=Path,
-        help="Path to sqlite db output directory. Default: outputdir.",
-    )
-
-    parser.add_argument(
-        "--log_path",
-        dest="log_path",
-        type=Path,
-        help="Path to output log file directory. Default: outputdir.",
-    )
-
-    parser.add_argument(
-        "--metadata_path",
-        dest="metadata_path",
-        type=Path,
-        help="Path to location of input metadata file.",
-    )
-
-    parser.add_argument(
-        "--dataset_path",
-        dest="dataset_path",
-        type=Path,
-        help="Path to location of input dataset mapping file."
-        # TODO: check this when implementing method
-    )
-
-    parser.add_argument(
         "-p",
         "--pfam_path",
-        dest="pfam_path",
+        dest="input.pfam_path",
         type=Path,
         required=True,
         help="Path to hmmpress-processed Pfam database files."
@@ -108,7 +79,7 @@ def cmd_parser():
 
     parser.add_argument(
         "--download_pfam",
-        dest="download_pfam",
+        dest="input.download_pfam",
         default=False,
         action="store_true",
         help="Download and press latest pfam database.",
@@ -116,23 +87,46 @@ def cmd_parser():
 
     parser.add_argument(
         "--mibig_version",
-        dest="mibig_version",
+        dest="input.mibig_version",
         type=str,
         help="Version of MiBIG database. If not provided, MiBIG will not be included\
              in the analysis.",
     )
 
     parser.add_argument(
+        "--metadata_path",
+        dest="input.metadata_path",
+        type=Path,
+        help="Path to location of input metadata file.",
+    )
+
+    parser.add_argument(
+        "--dataset_path",
+        dest="input.dataset_path",
+        type=Path,
+        help="Path to location of input dataset mapping file."
+        # TODO: check this when implementing method
+    )
+
+    parser.add_argument(
         "--reference_dir",
-        dest="reference_dir",
+        dest="input.reference_dir",
         type=Path,
         help="Directory containing user provided reference BGC antiSMASH-processed \
             genbank files.",
     )
 
     parser.add_argument(
+        "--query_bgc_path",
+        dest="input.query_bgc_path",
+        type=Path,
+        help="Path to location of query BGC gbk file. When provided, BiG-SCAPE\
+            will compare, all input BGCs to the query in a one-vs-all mode.",
+    )
+
+    parser.add_argument(
         "--include_gbk",
-        dest="include_gbk",
+        dest="input.include_gbk",
         default=["cluster", "region"],
         type=str,
         nargs="+",
@@ -143,7 +137,7 @@ def cmd_parser():
 
     parser.add_argument(
         "--exclude_gbk",
-        dest="exclude_gbk",
+        dest="input.exclude_gbk",
         default=["final"],
         type=str,
         nargs="+",
@@ -152,25 +146,19 @@ def cmd_parser():
     )
 
     parser.add_argument(
-        "--query_bgc_path",
-        dest="query_bgc_path",
-        type=Path,
-        help="Path to location of query BGC gbk file. When provided, BiG-SCAPE\
-            will compare, all input BGCs to the query in a one-vs-all mode.",
-    )
-
-    parser.add_argument(
         "--min_bgc_length",
-        dest="min_bgc_length",
+        dest="input.min_bgc_length",
         default=0,
         type=int,
         help="Provide the minimum size of a BGC to be included in the analysis.\
               Default is 0 base pairs.",
     )
 
+    # hmmer parameters
+
     parser.add_argument(
         "--domain_overlap_cutoff",
-        dest="domain_overlap_cutoff",
+        dest="hmmer.domain_overlap_cutoff",
         default=0.1,
         type=float,
         help="Specify at which overlap percentage domains are considered to \
@@ -179,7 +167,7 @@ def cmd_parser():
 
     parser.add_argument(
         "--force_hmmscan",
-        dest="force_hmmscan",
+        dest="hmmer.force_hmmscan",
         default=False,
         action="store_true",
         help="Force domain prediction using hmmscan even if BiG-SCAPE finds \
@@ -188,7 +176,7 @@ def cmd_parser():
 
     parser.add_argument(
         "--force_hmmalign",
-        dest="force_hmmalign",
+        dest="hmmer.force_hmmalign",
         default=False,
         action="store_true",
         help="Force multiple alignment of domains' sequences, even if alignments \
@@ -197,24 +185,28 @@ def cmd_parser():
 
     parser.add_argument(
         "--domain_includelist_path",
-        dest="domain_includelist_path",
+        dest="hmmer.domain_includelist_path",
         type=Path,
         help="Path to txt file with Pfam accessions. Only BGCs containing the \
             listed accessions will be analysed.",
     )
+
+    # binning parameters
 
     parser.add_argument(
         "--mix",
         dest="mix",
         default=False,
         action="store_true",
-        help="Run an all-vs-all analysis"
+        help="Run an all-vs-all analysis",
         # TODO: update with binning modes
     )
 
+    # comparison parameters
+
     parser.add_argument(
         "--alignment_mode",
-        dest="alignment_mode",
+        dest="comparison.alignment_mode",
         default="glocal",
         choices=["global", "glocal", "auto"],
         help="Alignment mode for each pair of gene clusters. 'global': the whole \
@@ -223,32 +215,37 @@ def cmd_parser():
             distance by trying to find the longest slice of common domain content \
             per gene in both BGCs, then expand each slice. 'auto': use glocal when \
             at least one of the BGCs in each pair has the 'contig_edge' annotation \
-            from antiSMASH v4+, otherwise use global mode on that pair"
+            from antiSMASH v4+, otherwise use global mode on that pair",
         # TODO: update with implementation
     )
 
+    # networking parameters
+
     parser.add_argument(
         "--gcf_cutoffs",
-        dest="gcf_cutoffs",
-        default="0.30",
-        type=str,
+        dest="networking.gcf_cutoffs",
+        default=0.30,
+        type=float,
+        nargs="+",
         help="Generate networks using multiple raw distance cutoff values. \
-            Values should be in the range [0.0, 1.0]. Example: --cutoffs 0.1,\
-            0.25,0.5,1.0. Default: 0.3.",
+            Values should be in the range [0.0, 1.0]. Example: --cutoffs 0.1 \
+            0.25 0.5 1.0. Default: 0.3",
     )
 
     parser.add_argument(
         "--include_singletons",
-        dest="include_singletons",
+        dest="networking.include_singletons",
         default=False,
         action="store_true",
         help="Include nodes that have no edges to other nodes from the network.",
     )
 
+    # diagnostic parameters
+
     parser.add_argument(
         "-v",
         "--verbose",
-        dest="verbose",
+        dest="diagnostics.verbose",
         default=False,
         action="store_true",
         help="output all kinds of logs, including debugging log info, and write\
@@ -257,7 +254,7 @@ def cmd_parser():
 
     parser.add_argument(
         "--quiet",
-        dest="quiet",
+        dest="diagnostics.quiet",
         default=False,
         action="store_true",
         help="Don't print any log info to output, only write to logfile.",
@@ -265,11 +262,38 @@ def cmd_parser():
 
     parser.add_argument(
         "--profiling",
-        dest="profiling",
+        dest="diagnostics.profiling",
         default=False,
         action="store_true",
         help="Run profiler and output profile report",
     )
+
+    # output parameters
+
+    parser.add_argument(
+        "-o",
+        "--outputdir",
+        dest="output.output_dir",
+        type=Path,
+        required=True,
+        help="Output directory for all BiG-SCAPE results files.",
+    )
+
+    parser.add_argument(
+        "--db_path",
+        dest="output.db_path",
+        type=Path,
+        help="Path to sqlite db output directory. Default: outputdir.",
+    )
+
+    parser.add_argument(
+        "--log_path",
+        dest="output.log_path",
+        type=Path,
+        help="Path to output log file directory. Default: outputdir.",
+    )
+
+    # meta
 
     parser.add_argument(
         "--version",
@@ -280,4 +304,4 @@ def cmd_parser():
         # TODO: update with release
     )
 
-    return parser
+    return parser.parse_args(args, namespace=run_parameters)
