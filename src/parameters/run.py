@@ -24,6 +24,7 @@ class RunParameters(Namespace):
     Attributes:
         label: str
         cores: int
+        TODO: fix these descriptions
         input: Input, object storing all
         output: Output
         diagnostics: Diagnostics
