@@ -105,3 +105,129 @@ class TestCDS(TestCase):
         actual_row_count += len(cursor_result.fetchall())
 
         self.assertEqual(expected_row_count, actual_row_count)
+
+    def test_cds_has_overlap_false(self):
+        """Tests the has_overlap function where a is left of b"""
+
+        cds_a = CDS(0, 50)
+        cds_b = CDS(100, 150)
+
+        expected_result = False
+
+        actual_result = CDS.has_overlap(cds_a, cds_b)
+
+        self.assertEqual(expected_result, actual_result)
+
+    def test_cds_has_overlap_true(self):
+        """Tests the has_overlap function where a is left of b"""
+
+        cds_a = CDS(0, 50)
+        cds_b = CDS(10, 80)
+
+        expected_result = True
+
+        actual_result = CDS.has_overlap(cds_a, cds_b)
+
+        self.assertEqual(expected_result, actual_result)
+
+    def test_cds_has_overlap_diff_strands(self):
+        """Tests the has_overlap function where a and b are in different strands"""
+
+        cds_a = CDS(0, 50)
+        cds_a.strand = 1
+        cds_b = CDS(10, 80)
+        cds_b.strand = -1
+
+        expected_result = False
+
+        actual_result = CDS.has_overlap(cds_a, cds_b)
+
+        self.assertEqual(expected_result, actual_result)
+
+    def test_len_overlap(self):
+        """Tests whether the len_overlap function returns a correct overlap len"""
+
+        cds_a = CDS(0, 50)
+        cds_b = CDS(10, 80)
+
+        expected_len = 40
+
+        actual_len = CDS.len_nt_overlap(cds_a, cds_b)
+
+        self.assertEqual(expected_len, actual_len)
+
+    def test_len_overlap_diff_strands(self):
+        """Tests whether the len_overlap function returns len = 0 if cds in different strans"""
+
+        cds_a = CDS(0, 50)
+        cds_a.strand = 1
+        cds_b = CDS(10, 80)
+        cds_b.strand = -1
+
+        expected_result = 0
+
+        actual_result = CDS.len_nt_overlap(cds_a, cds_b)
+
+        self.assertEqual(expected_result, actual_result)
+
+    def test_filter_overlap_over_threshold(self):
+        """Test whether filter_overlap correclty throws out a cds"""
+
+        cds_a = CDS(0, 18)
+        cds_a.aa_seq = "M" * 6
+        cds_b = CDS(0, 9)
+        cds_b.aa_seq = "M" * 3
+        # nt_overlap_len_a_b = 9
+        # aa_overlap = 9/3 = 3
+        # 10% cds_b aa len = 0.1 * 3 = 0.3
+        # aa_overlap > 10% shortest cds: 3 > 0.3
+
+        expected_cds_list = [cds_a]
+
+        cds_list = [cds_a, cds_b]
+
+        CDS.filter_overlap(cds_list, 0.1)
+
+        self.assertEqual(expected_cds_list, cds_list)
+
+    def test_filter_overlap_under_threshold(self):
+        """Test whether filter_overlap correclty throws out a cds"""
+
+        cds_a = CDS(0, 18)
+        cds_a.aa_seq = "M" * 6
+        cds_b = CDS(18, 36)
+        cds_b.aa_seq = "M" * 4
+        # nt_overlap_len_a_b = 1
+        # aa_overlap = 1/3 = 0.33
+        # 10% cds_b aa len = 0.1*4 = 0.4
+        # aa_overlap < 10% shortest cds: 0.33 < 0.4
+
+        expected_cds_list = [cds_a, cds_b]
+
+        cds_list = [cds_a, cds_b]
+
+        CDS.filter_overlap(cds_list, 0.1)
+
+        self.assertEqual(expected_cds_list, cds_list)
+
+    def test_filter_overlap_over_threshold_diff_strands(self):
+        """Test whether filter_overlap correclty throws out a cds"""
+
+        cds_a = CDS(0, 18)
+        cds_a.aa_seq = "M" * 6
+        cds_a.strand = 1
+        cds_b = CDS(0, 9)
+        cds_b.aa_seq = "M" * 3
+        cds_b.strand = -1
+        # nt_overlap_len_a_b = 9
+        # aa_overlap = 9/3 = 3
+        # 10% cds_b aa len = 0.1 * 3 = 0.3
+        # aa_overlap > 10% shortest cds: 3 > 0.3
+
+        expected_cds_list = [cds_a, cds_b]
+
+        cds_list = [cds_a, cds_b]
+
+        CDS.filter_overlap(cds_list, 0.1)
+
+        self.assertEqual(expected_cds_list, cds_list)

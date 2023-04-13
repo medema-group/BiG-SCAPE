@@ -128,19 +128,21 @@ class CDS:
         Returns:
             bool: whether there is overlap between this cds and another
         """
-        has_overlap = CDS.len_overlap(cds_a, cds_b) > 0
+        has_overlap = CDS.len_nt_overlap(cds_a, cds_b) > 0
         return has_overlap
 
     @staticmethod
-    def len_overlap(cds_a: CDS, cds_b: CDS) -> int:
-        """Return the length of the overlap between this CDS and another
+    def len_nt_overlap(cds_a: CDS, cds_b: CDS) -> int:
+        """Return the length of the nucleotide seq overlap between two CDSs
 
         Args:
-            cds_b (CDS): CDS to compare
+            cds_a,b (CDS): CDSs to compare
 
         Returns:
             int: length of the overlap between this CDS and another
         """
+        if cds_a.strand != cds_b.strand:
+            return 0
 
         if cds_a.nt_start < cds_b.nt_start:
             left = cds_b.nt_start
@@ -156,8 +158,17 @@ class CDS:
         return max(0, right - left)
 
     @staticmethod
-    def filter_overlap(cds_list: list[CDS]):
-        # TODO: document
+    def filter_overlap(cds_list: list[CDS], perc_overlap: float):
+        """From a list of CDSs, filter out overlapping CDSs if overlap len exceeds
+        a percentage of the shortest total CDS len
+
+        Args:
+            cds_list (list[CDS]): list of CDS
+            perc_overlap (float): threshold to filter
+
+        Returns:
+            _type_: list[CDS]
+        """
 
         # working with lists here is kind of iffy. in this case we are keeping track of\
         # which CDS we want to remove from the original list later on
@@ -166,21 +177,21 @@ class CDS:
         cds_a: CDS
         cds_b: CDS
         for cds_a, cds_b in combinations(cds_list, 2):
-            a_len = len(cds_a.aa_seq)
-            b_len = len(cds_b.aa_seq)
-            shortest_len = min(a_len, b_len)
+            a_aa_len = len(cds_a.aa_seq)
+            b_aa_len = len(cds_b.aa_seq)
+            shortest_aa_len = min(a_aa_len, b_aa_len)
 
             # do not add to remove list if there is no overlap at all
             if not CDS.has_overlap(cds_a, cds_b):
                 continue
 
-            # calculate overlap
-            nt_overlap = CDS.len_overlap(cds_a, cds_b)
+            # calculate overlap in nt and convert to aa
+            nt_overlap = CDS.len_nt_overlap(cds_a, cds_b)
             aa_overlap = nt_overlap / 3
 
-            # allow the overlap to be as large as 10% of the shortest CDS.
-            if aa_overlap > 0.1 * shortest_len:
-                if a_len > b_len:
+            # allow the aa overlap to be as large as X% of the shortest CDS.
+            if aa_overlap > perc_overlap * shortest_aa_len:
+                if a_aa_len > b_aa_len:
                     del_list.add(cds_b)
                 else:
                     del_list.add(cds_a)
