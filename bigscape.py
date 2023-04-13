@@ -13,11 +13,8 @@ from src.hmm import HMMer
 from src.parameters import parse_cmd
 
 if __name__ == "__main__":
+    # parsing needs to come first because we need it in setting up the logging
     run = parse_cmd(sys.argv[1:])
-
-    run.validate()
-
-    start_time = datetime.now()
 
     # logger
     # this tells the logger what the messages should look like
@@ -43,6 +40,11 @@ if __name__ == "__main__":
     console_handler = logging.StreamHandler()
     console_handler.setFormatter(log_formatter)
     root_logger.addHandler(console_handler)
+
+    # only now we can use logging.info etc to log stuff otherwise things get weird
+    run.validate()
+
+    start_time = datetime.now()
 
     # start DB
     DB.create_in_mem()

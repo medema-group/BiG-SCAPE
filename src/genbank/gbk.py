@@ -4,7 +4,7 @@
 import logging
 from enum import Enum
 from pathlib import Path
-from typing import Dict, Optional, List
+from typing import Dict, Optional
 
 
 # from dependencies
@@ -49,7 +49,7 @@ class GBK:
         self.metadata: Dict[str, str] = {}
         self.region: Optional[Region] = None
         self.nt_seq: SeqRecord.seq = None
-        self.genes: List[Optional[CDS]] = []
+        self.genes: list[CDS] = []
         self.as_version: Optional[str] = None
         self.source_type: SOURCE_TYPE = source_type
 

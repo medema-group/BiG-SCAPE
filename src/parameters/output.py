@@ -35,11 +35,11 @@ class OutputParameters:
         validate_output_dir(self.output_dir)
 
         # further paths are set to a default path if none are specified
-        self.log_path = validate_log_path(self.log_path, self.output_dir)
         self.db_path = validate_db_path(self.log_path, self.output_dir)
+        self.log_path = validate_log_path(self.log_path, self.output_dir)
 
 
-def validate_output_dir(output_dir: Path):
+def validate_output_dir(output_dir: Path) -> None:
     """Parse the result path parameter and check for errors"""
 
     # parent must exist
@@ -48,10 +48,15 @@ def validate_output_dir(output_dir: Path):
         raise InvalidArgumentError("--output_dir", output_dir)
 
     # create output directory
-    output_dir.mkdir(exist_ok=True)
+    if output_dir.exists():
+        logging.info("Reusing output directory: %s", output_dir)
+        return
+
+    logging.info("Creating output directory: %s", output_dir)
+    output_dir.mkdir()
 
 
-def validate_db_path(db_path: Path, default_path: Path):
+def validate_db_path(db_path: Path, default_path: Path) -> Path:
     """Parse the DB path parameter and check for errors
 
     if no db_path is specified, will set the db_path to a file called data.db
@@ -73,23 +78,23 @@ def validate_db_path(db_path: Path, default_path: Path):
             logging.error("Default path is not set!")
             raise InvalidArgumentError("--db_path", db_path)
 
-        return default_path / Path("data.db")
+        return default_path / Path("data_sqlite.db")
 
     # check if parent to a specified path exists
-    if db_path and not db_path.parent.exists():
+    if not db_path.parent.exists():
         logging.error("Path to output sqlite db dir is not valid")
         raise InvalidArgumentError("--db_path", db_path)
 
     # db_path should point to an existing or empty file. if a folder exists at the
     # path instead we throw an error
-    if db_path and db_path.is_dir():
+    if db_path.is_dir():
         logging.error("Path to output sqlite db dir points to an existing folder")
         raise InvalidArgumentError("--db_path", db_path)
 
     return db_path
 
 
-def validate_log_path(log_path: Path, default_path: Path):
+def validate_log_path(log_path: Path, default_path: Path) -> Path:
     """Validate the log_path parameter
 
     If no log_path is specified, will return a path with a filename consisting of a
