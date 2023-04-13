@@ -184,11 +184,11 @@ class TestOutputValidation(TestCase):
         # make sure tmp dir exists
         Path("test/test_data/tmp").mkdir(exist_ok=True)
 
-        db_path = Path("test/test_data/tmp/data.db")
+        db_path = Path("test/test_data/tmp/data_sqlite.db")
 
         default_path = Path("test/test_data/tmp/default_db_path")
 
-        expected_result = Path("test/test_data/tmp/data.db")
+        expected_result = Path("test/test_data/tmp/data_sqlite.db")
 
         actual_result = validate_db_path(db_path, default_path)
 
@@ -205,7 +205,7 @@ class TestOutputValidation(TestCase):
 
         default_path = Path("test/test_data/tmp/default_db_path")
 
-        expected_result = Path("test/test_data/tmp/default_db_path/data.db")
+        expected_result = Path("test/test_data/tmp/default_db_path/data_sqlite.db")
 
         actual_result = validate_db_path(db_path, default_path)
 
@@ -215,7 +215,7 @@ class TestOutputValidation(TestCase):
         """Tests whether validate_db_path raises an InvalidArgumentError if a path is
         specified that points to a location without a parent directory
         """
-        db_path = Path("test/test_data/nonexistent_path/data.db")
+        db_path = Path("test/test_data/nonexistent_path/data_sqlite.db")
 
         default_path = Path("test/test_data/tmp/default_db_path")
 
