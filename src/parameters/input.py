@@ -57,6 +57,7 @@ class InputParameters:
         self.include_gbk: list[str] = []
         self.exclude_gbk: list[str] = []
         self.min_bgc_length: int = 0
+        # TODO: this one has a test
         self.cds_overlap_cutoff: Optional[float] = None
 
     def validate(self):
