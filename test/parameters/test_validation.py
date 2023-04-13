@@ -7,8 +7,12 @@ from random import randint
 
 # from other modules
 from src.errors import InvalidArgumentError, ArgumentParseError
-from src.parameters.input import validate_input_dir, validate_input_mode
-from src.parameters.hmmer import validate_includelist, validate_overlap_cutoff
+from src.parameters.input import (
+    validate_input_dir,
+    validate_input_mode,
+    validate_cds_overlap_cutoff,
+)
+from src.parameters.hmmer import validate_includelist, validate_hsp_overlap_cutoff
 from src.parameters.binning import validate_mix
 from src.parameters.comparison import validate_alignment_mode
 from src.parameters.networking import validate_gcf_cutoffs
@@ -53,6 +57,18 @@ class TestInputValidation(TestCase):
 
         self.assertRaises(InvalidArgumentError, validate_input_mode, wrong_mode)
 
+    def test_validate_cds_overlap_cutoff_low(self):
+        """Tests whether validate_overlap_cutoff raises an exception if the cutoff is
+        too low
+        """
+        self.assertRaises(InvalidArgumentError, validate_cds_overlap_cutoff, -1.0)
+
+    def test_validate_cds_overlap_cutoff_high(self):
+        """Tests whether validate_overlap_cutoff raises an exception if the cutoff is
+        too low
+        """
+        self.assertRaises(InvalidArgumentError, validate_cds_overlap_cutoff, 2.0)
+
 
 class TestHMMerValidation(TestCase):
     """Contains tests on the HMMer validation functions"""
@@ -84,17 +100,17 @@ class TestHMMerValidation(TestCase):
 
         self.assertRaises(ArgumentParseError, validate_includelist, invalid_file_path)
 
-    def test_validate_overlap_cutoff_low(self):
+    def test_validate_hsp_overlap_cutoff_low(self):
         """Tests whether validate_overlap_cutoff raises an exception if the cutoff is
         too low
         """
-        self.assertRaises(InvalidArgumentError, validate_overlap_cutoff, -1.0)
+        self.assertRaises(InvalidArgumentError, validate_hsp_overlap_cutoff, -1.0)
 
-    def test_validate_overlap_cutoff_high(self):
+    def test_validate_hsp_overlap_cutoff_high(self):
         """Tests whether validate_overlap_cutoff raises an exception if the cutoff is
         too low
         """
-        self.assertRaises(InvalidArgumentError, validate_overlap_cutoff, 2.0)
+        self.assertRaises(InvalidArgumentError, validate_hsp_overlap_cutoff, 2.0)
 
 
 class TestBinningValidation(TestCase):

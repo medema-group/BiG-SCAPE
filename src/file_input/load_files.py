@@ -15,6 +15,7 @@ def load_dataset_folder(
     mode: str = "recursive",
     include_gbk: Optional[List[str]] = None,
     exclude_gbk: Optional[List[str]] = None,
+    cds_overlap_cutoff: Optional[float] = None,
 ) -> List[GBK]:
     """Loads all gbk files in a given folder
 
@@ -52,9 +53,9 @@ def load_dataset_folder(
         # The longest CDS will be chosen and other CDS will be discarded. This is done
         # in order to remove isoforms of the same gene in organisms that perform
         # alternative splicing
-        # TODO: expose percentage to user
         # TODO: do not filter same strand
-        gbk_filter_cds_overlap(gbk)
+        if cds_overlap_cutoff is not None:
+            gbk_filter_cds_overlap(gbk, cds_overlap_cutoff)
 
         gbk_list.append(gbk)
 
@@ -120,7 +121,7 @@ def load_gbk(path: Path, source_type: SOURCE_TYPE) -> GBK:
     return GBK.parse(path, source_type)
 
 
-def gbk_filter_cds_overlap(gbk: GBK):
+def gbk_filter_cds_overlap(gbk: GBK, cds_overlap_cutoff):
     """Remove CDS based on overlap filter
 
     Args:
@@ -135,4 +136,4 @@ def gbk_filter_cds_overlap(gbk: GBK):
             raise ValueError()
         valid_genes.append(gene)
 
-    CDS.filter_overlap(valid_genes)
+    CDS.filter_overlap(valid_genes, cds_overlap_cutoff)

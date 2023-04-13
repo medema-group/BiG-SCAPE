@@ -154,6 +154,15 @@ def parse_cmd(args):
               Default is 0 base pairs.",
     )
 
+    parser.add_argument(
+        "--cds_overlap_cutoff",
+        dest="input.cds_overlap_cutoff",
+        default=0.1,
+        type=float,
+        help="Specify at which overlap percentage (as a decimal) two CDS in a gbk are \
+            considered to overlap. This preserves the longes overlapping CDS.",
+    )
+
     # hmmer parameters
 
     parser.add_argument(

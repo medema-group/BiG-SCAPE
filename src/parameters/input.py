@@ -57,6 +57,7 @@ class InputParameters:
         self.include_gbk: list[str] = []
         self.exclude_gbk: list[str] = []
         self.min_bgc_length: int = 0
+        self.cds_overlap_cutoff: Optional[float] = None
 
     def validate(self):
         """Validate the arguments contained in this object and set default values"""
@@ -89,3 +90,11 @@ def validate_input_mode(input_mode):
     if not matches:
         logging.error("Invalid input mode. Must be of type: %s", ", ".join(valid_modes))
         raise InvalidArgumentError("--input_mode", input_mode)
+
+
+def validate_cds_overlap_cutoff(cutoff: float):
+    """Raises an InvalidArgumentError if cutoff is not between 0.0 and 1.0"""
+
+    if cutoff < 0.0 or cutoff > 1.0:
+        logging.error("Invalid cutoff (%f)! Must be between 0.0 and 1.0!", cutoff)
+        raise InvalidArgumentError("--overlap_cutoff", cutoff)

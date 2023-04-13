@@ -31,7 +31,7 @@ class HmmerParameters:
 
     def validate(self):
         """Performs validation on this class parameters"""
-        validate_overlap_cutoff(self.domain_overlap_cutoff)
+        validate_hsp_overlap_cutoff(self.domain_overlap_cutoff)
 
         self.domain_includelist = validate_includelist(self.domain_includelist_path)
 
@@ -76,7 +76,7 @@ def validate_includelist(
         return lines
 
 
-def validate_overlap_cutoff(cutoff: float):
+def validate_hsp_overlap_cutoff(cutoff: float):
     """Raises an InvalidArgumentError if cutoff is not between 0.0 and 1.0"""
 
     if cutoff < 0.0 or cutoff > 1.0:

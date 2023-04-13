@@ -47,7 +47,14 @@ if __name__ == "__main__":
     # start DB
     DB.create_in_mem()
 
-    gbks = load_dataset_folder(run.input.input_dir, SOURCE_TYPE.QUERY)
+    gbks = load_dataset_folder(
+        run.input.input_dir,
+        SOURCE_TYPE.QUERY,
+        run.input.input_mode,
+        run.input.include_gbk,
+        run.input.exclude_gbk,
+        run.input.cds_overlap_cutoff,
+    )
 
     HMMer.init(run.input.pfam_path)
 
