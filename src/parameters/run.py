@@ -24,14 +24,13 @@ class RunParameters(Namespace):
     Attributes:
         label: str
         cores: int
-        TODO: fix these descriptions
-        input: Input, object storing all
-        output: Output
-        diagnostics: Diagnostics
-        hmmer: Hmmer
-        networking: Networking
-        binning: Binning
-        comparison: Comparison
+        input: src.parameters.InputParameters
+        hmmer: src.parameters.HmmerParameters
+        binning: src.parameters.BinningParameters
+        comparison: src.parameters.ComparisonParameters
+        networking: src.parameters.NetworkingParameters
+        diagnostics: src.parameters.DiagnosticsParameters
+        output: src.parameters.OutputParameters
     """
 
     def __init__(self):
