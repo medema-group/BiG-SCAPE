@@ -157,7 +157,8 @@ class TestCDS(TestCase):
         self.assertEqual(expected_len, actual_len)
 
     def test_len_overlap_diff_strands(self):
-        """Tests whether the len_overlap function returns len = 0 if cds in different strans"""
+        """Tests whether the len_overlap function returns len = 0 if cds in different
+        strands"""
 
         cds_a = CDS(0, 50)
         cds_a.strand = 1
@@ -175,7 +176,10 @@ class TestCDS(TestCase):
 
         cds_a = CDS(0, 18)
         cds_a.aa_seq = "M" * 6
+        cds_a.strand = 1
+
         cds_b = CDS(0, 9)
+        cds_b.strand = 1
         cds_b.aa_seq = "M" * 3
         # nt_overlap_len_a_b = 9
         # aa_overlap = 9/3 = 3

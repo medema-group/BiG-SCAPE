@@ -53,7 +53,6 @@ def load_dataset_folder(
         # The longest CDS will be chosen and other CDS will be discarded. This is done
         # in order to remove isoforms of the same gene in organisms that perform
         # alternative splicing
-        # TODO: do not filter same strand
         if cds_overlap_cutoff is not None:
             CDS.filter_overlap(gbk.genes, cds_overlap_cutoff)
 

@@ -181,6 +181,10 @@ class CDS:
             b_aa_len = len(cds_b.aa_seq)
             shortest_aa_len = min(a_aa_len, b_aa_len)
 
+            # do not add to remove list if cds are on a different strand
+            if cds_a.strand != cds_b.strand:
+                continue
+
             # do not add to remove list if there is no overlap at all
             if not CDS.has_overlap(cds_a, cds_b):
                 continue
