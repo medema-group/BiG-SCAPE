@@ -225,7 +225,7 @@ class TestOutputValidation(TestCase):
         """Tests whether validate_db_path raises an InvalidArgumentError if a path is
         specified that points to a location without a parent directory
         """
-        db_path = Path("test/test_data/db")
+        db_path = Path("test/test_data/database")
 
         default_path = Path("test/test_data/tmp/default_db_path")
 
@@ -283,7 +283,7 @@ class TestOutputValidation(TestCase):
         """Tests whether validate_db_path raises an InvalidArgumentError if a path is
         specified that points to a location without a parent directory
         """
-        db_path = Path("test/test_data/db")
+        db_path = Path("test/test_data/database")
 
         default_path = Path("test/test_data/tmp/default_log_path")
 
