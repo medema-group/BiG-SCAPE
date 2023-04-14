@@ -3,6 +3,7 @@
 
 # from python
 import logging
+from math import ceil
 import string
 from typing import Callable, Iterator, Optional, cast
 from pathlib import Path
@@ -160,9 +161,21 @@ class HMMer:
                     yield HSP(cds_list[cds_idx], accession, score, env_start, env_stop)
 
     @staticmethod
+    def calc_batch_size(num_genes: int) -> int:
+        """calculate batch size by splitting total tasks/genes between available CPUs
+
+        Args:
+            num_genes (int): number of genes that are to be processed
+
+        Returns:
+            int: the gene batch size for worker processes
+        """
+        return ceil(num_genes / cpu_count())
+
+    @staticmethod
     def hmmsearch_multiprocess(
         cds_list: list[CDS],
-        batch_size: Optional[int],
+        batch_size: Optional[int] = None,
         callback: Optional[Callable] = None,
     ) -> Iterator[HSP]:
         """Runs hmmscan using pyhmmer in several subprocesses. Passes batches of input
@@ -184,6 +197,11 @@ class HMMer:
         logging.info("Performing distributed hmmsearch on %d genes", len(cds_list))
         processes: list[Process] = []
         connections: list[Connection] = []
+
+        # check for set batch size
+        if batch_size is None:
+            batch_size = HMMer.calc_batch_size(len(cds_list))
+            logging.info("Using automatic batch size %d", batch_size)
 
         task_iter = task_generator(cds_list, batch_size)
 

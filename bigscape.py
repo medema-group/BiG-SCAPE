@@ -1,8 +1,6 @@
 # from python
 import sys
 import logging
-from math import ceil
-from multiprocessing import cpu_count
 from datetime import datetime
 
 # from other modules
@@ -62,11 +60,6 @@ if __name__ == "__main__":
     def callback(tasks_done):
         percentage = int(tasks_done / len(all_genes) * 100)
         logging.info("%d/%d (%d%%)", tasks_done, len(all_genes), percentage)
-
-    # calculate batch size by splitting total tasks/genes between available CPUs
-    # TODO: move into function
-    batch_size = ceil(len(all_genes) / cpu_count())
-    logging.info("Using automatic batch size %d", batch_size)
 
     all_hsps = list(HMMer.hmmsearch_simple(all_genes))
 
