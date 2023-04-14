@@ -77,7 +77,9 @@ class DB:
 
     @staticmethod
     def save_to_disk(db_path: Path):
-        """Saves the in-memory database to a .db file"""
+        """Saves the in-memory database to a .db file. This overwrites any last database
+        file in the same location
+        """
         if not DB.opened():
             raise DBClosedError()
 
@@ -97,7 +99,6 @@ class DB:
             file_engine.raw_connection().driver_connection
         )
 
-        # TODO: check if this appends or overwrites
         raw_memory_connection.backup(raw_file_connection)
 
     @staticmethod
@@ -132,7 +133,6 @@ class DB:
 
         DB.reflect()
 
-        # TODO: check if this appends or overwrites
         raw_file_connection.backup(raw_memory_connection)
 
     @staticmethod
