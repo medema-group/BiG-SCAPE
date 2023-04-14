@@ -61,7 +61,7 @@ if __name__ == "__main__":
         percentage = int(tasks_done / len(all_genes) * 100)
         logging.info("%d/%d (%d%%)", tasks_done, len(all_genes), percentage)
 
-    all_hsps = list(HMMer.hmmsearch_simple(all_genes))
+    all_hsps = list(HMMer.hmmsearch_multiprocess(all_genes))
 
     logging.info("%d hsps", len(all_hsps))
 

@@ -409,10 +409,13 @@ class HMMer:
 
             domain_hsp: HSP
             for hsp_idx, domain_hsp in enumerate(hsp_list):
+                # we can cut the alignment down to only the range of the domain as found
+                # in hmmscan to speed up the process
+                start = domain_hsp.env_start
+                stop = domain_hsp.env_stop
+                seq_to_align = domain_hsp.cds.aa_seq[start:stop]
                 sequences.append(
-                    TextSequence(
-                        name=str(hsp_idx).encode(), sequence=domain_hsp.cds.aa_seq
-                    )
+                    TextSequence(name=str(hsp_idx).encode(), sequence=seq_to_align)
                 )
             ds_block = TextSequenceBlock(sequences).digitize(HMMer.alphabet)
 
@@ -473,7 +476,8 @@ def task_output_to_hsp(task_output: tuple, cds_list: list[CDS]) -> HSP:
         HSP: _description_
     """
     cds_id, domain, score, env_start, env_stop = task_output
-    return HSP(cds_list[cds_id], domain, score, env_start, env_stop)
+    relevant_cds = cds_list[cds_id]
+    return HSP(relevant_cds, domain, score, env_start, env_stop)
 
 
 def task_generator(cds_list: list[CDS], batch_size) -> Iterator[list]:
@@ -499,7 +503,8 @@ def task_generator(cds_list: list[CDS], batch_size) -> Iterator[list]:
         cds_batch = cds_list[start:stop]
 
         tasks = []
-        for cds_idx, cds in enumerate(cds_batch):
+        for batch_idx, cds in enumerate(cds_batch):
+            cds_idx = start + batch_idx
             tasks.append((cds_idx, cds.aa_seq))
 
         yield tasks
