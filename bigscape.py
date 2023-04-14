@@ -82,7 +82,7 @@ if __name__ == "__main__":
     batch_size = ceil(len(all_genes) / cpu_count())
     logging.info("Using automatic batch size %d", batch_size)
 
-    all_hsps = list(HMMer.hmmsearch_multiprocess(all_genes, batch_size, callback))
+    all_hsps = list(HMMer.hmmsearch_simple(all_genes))
 
     logging.info("%d hsps", len(all_hsps))
 

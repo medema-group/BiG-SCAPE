@@ -178,6 +178,8 @@ class HMMer:
         Yields:
             Iterator[HSP]: An iterator generating hsps from the list of CDS passed into
             this method
+
+        TODO: this method fails to properly map hsps to results!
         """
         logging.info("Performing distributed hmmsearch on %d genes", len(cds_list))
         processes: list[Process] = []
