@@ -73,7 +73,8 @@ if __name__ == "__main__":
     # save hsps to database
     for hsp in all_hsps:
         hsp.save(False)
-        DB.commit()
+    DB.commit()
+
     exec_time = datetime.now() - start_time
     logging.info("DB: HSP save done at %f seconds", exec_time.total_seconds())
 
@@ -88,7 +89,7 @@ if __name__ == "__main__":
 
     for hsp_alignment in all_alignments:
         hsp_alignment.save(False)
-        DB.commit()
+    DB.commit()
 
     exec_time = datetime.now() - start_time
     logging.info("DB: HSP alignment save done at %f seconds", exec_time.total_seconds())
