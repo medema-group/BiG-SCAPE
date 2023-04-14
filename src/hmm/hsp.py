@@ -45,6 +45,8 @@ class HSP:
             .values(
                 cds_id=parent_cds_id,
                 hmm_id=self.domain,
+                env_start=self.env_start,
+                env_stop=self.env_stop,
                 bitscore=self.score,
             )
         )

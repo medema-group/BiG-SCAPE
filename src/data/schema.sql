@@ -41,6 +41,8 @@ CREATE TABLE IF NOT EXISTS hsp (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     cds_id INTEGER NOT NULL,
     hmm_id INTEGER NOT NULL,
+    env_start INTEGER NOT NULL,
+    env_stop INTEGER NOT NULL,
     bitscore REAL NOT NULL
 );
 
