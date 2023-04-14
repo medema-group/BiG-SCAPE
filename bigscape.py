@@ -26,12 +26,6 @@ if __name__ == "__main__":
     # get the built in logger
     root_logger = logging.getLogger()
 
-    # TODO: add a check to run parse to make sure the optional stuff goes away
-    if run.diagnostics is None:
-        exit()
-    if run.diagnostics.verbose is None:
-        exit()
-
     if run.diagnostics.verbose:
         root_logger.level = logging.DEBUG
     else:
@@ -60,18 +54,10 @@ if __name__ == "__main__":
 
     HMMer.init(run.input.pfam_path)
 
-    # TODO: mypy thinks the following list of genes may contain none values (because
-    # its of type list[Optional[CDS]])
-    # it's right. needs refactoring. but for now we can throw in an is none in the next
-    # loop so that mypy knows for sure there are no Nones in this list
     all_genes = []
     for gbk in gbks:
         gbk.save_all()
-        # TODO: related to the above. this inner loop is not really necessary
-        for cds in gbk.genes:
-            if cds is None:
-                continue
-            all_genes.append(cds)
+        all_genes.extend(gbk.genes)
 
     def callback(tasks_done):
         percentage = int(tasks_done / len(all_genes) * 100)

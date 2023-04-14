@@ -55,7 +55,7 @@ def load_dataset_folder(
         # alternative splicing
         # TODO: do not filter same strand
         if cds_overlap_cutoff is not None:
-            gbk_filter_cds_overlap(gbk, cds_overlap_cutoff)
+            CDS.filter_overlap(gbk.genes, cds_overlap_cutoff)
 
         gbk_list.append(gbk)
 
@@ -119,21 +119,3 @@ def load_gbk(path: Path, source_type: SOURCE_TYPE) -> GBK:
         raise IsADirectoryError()
 
     return GBK.parse(path, source_type)
-
-
-def gbk_filter_cds_overlap(gbk: GBK, cds_overlap_cutoff):
-    """Remove CDS based on overlap filter
-
-    Args:
-        gbk (GBK): gbk object
-
-    """
-
-    # TODO: remove this once the optional problems are gone
-    valid_genes = []
-    for gene in gbk.genes:
-        if gene is None:
-            raise ValueError()
-        valid_genes.append(gene)
-
-    CDS.filter_overlap(valid_genes, cds_overlap_cutoff)
