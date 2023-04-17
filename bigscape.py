@@ -9,29 +9,14 @@ from src.file_input import load_dataset_folder
 from src.genbank import SOURCE_TYPE
 from src.hmm import HMMer
 from src.parameters import parse_cmd
+from src.diagnostics import init_logger
 
 if __name__ == "__main__":
     # parsing needs to come first because we need it in setting up the logging
     run = parse_cmd(sys.argv[1:])
 
-    # logger
-    # this tells the logger what the messages should look like
-    # asctime = YYYY-MM-DD HH:MM:SS,fff
-    # levelname = DEBUG/INFO/WARN/ERROR
-    # message = whatever we pass, eg logging.debug("message")
-    log_formatter = logging.Formatter("%(asctime)s %(levelname)-7.7s %(message)s")
-
-    # get the built in logger
-    root_logger = logging.getLogger()
-
-    if run.diagnostics.verbose:
-        root_logger.level = logging.DEBUG
-    else:
-        root_logger.level = logging.INFO
-
-    console_handler = logging.StreamHandler()
-    console_handler.setFormatter(log_formatter)
-    root_logger.addHandler(console_handler)
+    # initialize the logger
+    init_logger(run)
 
     # only now we can use logging.info etc to log stuff otherwise things get weird
     run.validate()
