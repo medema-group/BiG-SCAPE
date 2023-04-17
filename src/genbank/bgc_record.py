@@ -13,6 +13,7 @@ from Bio.SeqFeature import SeqFeature
 # from other modules
 from src.data import DB
 from src.errors import InvalidGBKError
+from src.genbank.cds import CDS
 
 # from this module
 
@@ -37,6 +38,38 @@ class BGCRecord:
         self.nt_start: Optional[int] = None
         self.nt_stop: Optional[int] = None
         self.product: Optional[str] = None
+
+    def get_cds(self) -> list[CDS]:
+        """Get a list of CDS that lie within the coordinates specified in this region
+        from the parent GBK class
+
+        Raises:
+            ValueError: Raised if this class contains no position information or if this
+            record does not have a parent
+
+        Returns:
+            list[CDS]: A list of CDS that lie only within the coordinates specified by
+            nt_start and nt_stop
+        """
+        if self.parent_gbk is None:
+            raise ValueError("BGCRegion does not have a parent")
+
+        parent_gbk_cds: list[CDS] = self.parent_gbk.genes
+
+        if self.nt_start is None or self.nt_stop is None:
+            raise ValueError("Cannot CDS from region with no position information")
+
+        record_cds = []
+        for cds in parent_gbk_cds:
+            if cds.nt_start < self.nt_start:
+                continue
+
+            if cds.nt_stop > self.nt_stop:
+                continue
+
+            record_cds.append(cds)
+
+        return record_cds
 
     def save(self, type: str, commit=True):
         """Stores this BGCRecord in the database
