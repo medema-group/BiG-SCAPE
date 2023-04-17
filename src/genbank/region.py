@@ -20,10 +20,6 @@ class Region(BGCRecord):
     Class to describe a region within an Antismash GBK
 
     Attributes:
-        contig_edge: Bool
-        nt_start: int
-        nt_stop: int
-        product: str
         number: int
         cand_clusters: Dict{number: int, CandidateCluster}
     """

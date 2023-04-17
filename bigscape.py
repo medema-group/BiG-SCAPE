@@ -6,9 +6,10 @@ from datetime import datetime
 # from other modules
 from src.data import DB
 from src.file_input import load_dataset_folder
-from src.genbank import SOURCE_TYPE
+from src.genbank import SOURCE_TYPE, BGCRecord
 from src.hmm import HMMer
 from src.parameters import parse_cmd
+from src.comparison import generate_mix
 
 if __name__ == "__main__":
     # parsing needs to come first because we need it in setting up the logging
@@ -95,3 +96,12 @@ if __name__ == "__main__":
     logging.info("DB: HSP alignment save done at %f seconds", exec_time.total_seconds())
 
     DB.save_to_disk(run.output.db_path)
+
+    all_regions: list[BGCRecord] = []
+    for gbk in gbks:
+        if gbk.region is not None:
+            all_regions.append(gbk.region)
+
+    mix_bin = generate_mix(all_regions)
+
+    logging.info("Generated mix bin: %s", mix_bin)
