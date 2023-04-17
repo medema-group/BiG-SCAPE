@@ -35,7 +35,7 @@ class CDS:
         self.gene_kind: Optional[str] = None
         self.strand: Optional[int] = None
         self.aa_seq: str = ""
-        self.hsps: list = []
+        self.hsps: list[Any] = []
 
         # db specific fields
         self._db_id: Optional[int] = None
