@@ -1,5 +1,5 @@
-"""Contains a class for a BGC record, a common set of qualifiers/attributes amongst the AntiSMASH
-genbank records
+"""Contains a class for a BGC record, a common set of qualifiers/attributes amongst the
+AntiSMASh genbank records
 """
 
 # from python
@@ -18,9 +18,11 @@ from src.errors import InvalidGBKError
 
 
 class BGCRecord:
-    """Describes a common set of qualifiers/attributes amongst all AntiSMASH genbank records
+    """Describes a common set of qualifiers/attributes among all ඞ AntiSMASH genbank
+    records
 
     Attributes:
+        parent_gbk: GBK
         contig_edge: Bool
         nt_start: int
         nt_stop: int
@@ -41,7 +43,8 @@ class BGCRecord:
 
         Args:
             type (str):  type of antiSMASH record
-            commit (bool, optional): commit immediately after executing the insert query. Defaults to True.
+            commit (bool, optional): commit immediately after executing the insert
+            query. Defaults to True.
         """
 
         bgc_record_table = DB.metadata.tables["bgc_record"]
