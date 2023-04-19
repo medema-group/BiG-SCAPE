@@ -4,6 +4,7 @@
 from pathlib import Path
 from unittest import TestCase
 from random import randint
+import time
 
 # from other modules
 from src.errors import InvalidArgumentError, ArgumentParseError
@@ -238,13 +239,15 @@ class TestOutputValidation(TestCase):
         # make sure tmp dir exists
         Path("test/test_data/tmp").mkdir(exist_ok=True)
 
+        timestamp = time.strftime("%Y-%m-%d_%H-%M-%S", time.localtime())
+
         log_path = Path("test/test_data/tmp/test.log")
 
         default_path = Path("test/test_data/tmp/default_log_path")
 
         expected_result = Path("test/test_data/tmp/test.log")
 
-        actual_result = validate_log_path(log_path, default_path)
+        actual_result = validate_log_path(log_path, default_path, timestamp)
 
         self.assertEqual(expected_result, actual_result)
 
@@ -255,11 +258,13 @@ class TestOutputValidation(TestCase):
         # make sure tmp dir exists
         Path("test/test_data/tmp").mkdir(exist_ok=True)
 
+        timestamp = time.strftime("%Y-%m-%d_%H-%M-%S", time.localtime())
+
         log_path = None
 
         default_path = Path("test/test_data/tmp/default_log_path")
 
-        default_log = validate_log_path(log_path, default_path)
+        default_log = validate_log_path(log_path, default_path, timestamp)
 
         # this regular expression matches the default log path + a timestamp in the
         # format: YYYY-MM-DD-HH-MM-SS + ".log"
@@ -271,22 +276,27 @@ class TestOutputValidation(TestCase):
         """Tests whether validate_db_path raises an InvalidArgumentError if a path is
         specified that points to a location without a parent directory
         """
+
+        timestamp = time.strftime("%Y-%m-%d_%H-%M-%S", time.localtime())
+
         log_path = Path("test/test_data/nonexistent_path/test.log")
 
         default_path = Path("test/test_data/tmp/default_log_path")
 
         self.assertRaises(
-            InvalidArgumentError, validate_log_path, log_path, default_path
+            InvalidArgumentError, validate_log_path, log_path, default_path, timestamp
         )
 
     def test_validate_log_path_is_folder(self):
         """Tests whether validate_db_path raises an InvalidArgumentError if a path is
         specified that points to a location without a parent directory
         """
+        timestamp = time.strftime("%Y-%m-%d_%H-%M-%S", time.localtime())
+
         db_path = Path("test/test_data/database")
 
         default_path = Path("test/test_data/tmp/default_log_path")
 
         self.assertRaises(
-            InvalidArgumentError, validate_log_path, db_path, default_path
+            InvalidArgumentError, validate_log_path, db_path, default_path, timestamp
         )
