@@ -44,7 +44,8 @@ if __name__ == "__main__":
         percentage = int(tasks_done / len(all_genes) * 100)
         logging.info("%d/%d (%d%%)", tasks_done, len(all_genes), percentage)
 
-    if platform.system == "Darwin":
+    if platform.system() == "Darwin":
+        logging.info("Running on mac-OS: hmmsearch runs single threaded")
         all_hsps = list(HMMer.hmmsearch_simple(all_genes, 1))
     else:
         all_hsps = list(HMMer.hmmsearch_multiprocess(all_genes, run.cores))
