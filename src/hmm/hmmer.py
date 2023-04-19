@@ -477,7 +477,9 @@ def task_output_to_hsp(task_output: tuple, cds_list: list[CDS]) -> HSP:
     """
     cds_id, domain, score, env_start, env_stop = task_output
     relevant_cds = cds_list[cds_id]
-    return HSP(relevant_cds, domain, score, env_start, env_stop)
+    hsp = HSP(relevant_cds, domain, score, env_start, env_stop)
+    relevant_cds.hsps.append(hsp)
+    return hsp
 
 
 def task_generator(cds_list: list[CDS], batch_size) -> Iterator[list]:
