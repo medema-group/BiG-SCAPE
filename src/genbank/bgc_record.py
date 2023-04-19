@@ -138,3 +138,17 @@ class BGCRecord:
         # add parent gbk if available
         if parent_gbk is not None:
             self.parent_gbk = parent_gbk
+
+    def __repr__(self) -> str:
+        return f"{self.parent_gbk} Record (superclass) {self.nt_start}-{self.nt_stop} "
+
+    def __hash__(self, record_type="BGCRecord") -> int:
+        # return a hash of a tuple containing identifying properties
+        return hash(
+            (
+                self.parent_gbk,
+                record_type,
+                self.nt_start,
+                self.nt_stop,
+            )
+        )

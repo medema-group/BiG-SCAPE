@@ -226,4 +226,7 @@ class GBK:
         del tmp_proto_clusters, tmp_proto_cores, tmp_cand_clusters
 
     def __repr__(self) -> str:
-        return f"GBK from {self.path} with {len(self.genes)} genes"
+        return f"GBK {self.path.name}, {len(self.genes)} genes"
+
+    def __hash__(self) -> int:
+        return hash(self.path)

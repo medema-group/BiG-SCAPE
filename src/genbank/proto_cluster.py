@@ -102,3 +102,6 @@ class ProtoCluster(BGCRecord):
             proto_cluster.category = feature.qualifiers["category"][0]
 
         return proto_cluster
+
+    def __repr__(self) -> str:
+        return f"{self.parent_gbk} ProtoCluster {self.number} {self.nt_start}-{self.nt_stop} "

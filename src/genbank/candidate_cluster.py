@@ -112,3 +112,6 @@ class CandidateCluster(BGCRecord):
             cand_cluster.proto_clusters[int(proto_cluster_number)] = None
 
         return cand_cluster
+
+    def __repr__(self) -> str:
+        return f"{self.parent_gbk} Candidate cluster {self.number} {self.nt_start}-{self.nt_stop} "

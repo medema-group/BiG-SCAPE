@@ -118,3 +118,6 @@ class Region(BGCRecord):
 
             region.parse_bgc_record(feature, parent_gbk=parent_gbk)
             return region
+
+    def __repr__(self):
+        return f"{self.parent_gbk} Region {self.number} {self.nt_start}-{self.nt_stop} "

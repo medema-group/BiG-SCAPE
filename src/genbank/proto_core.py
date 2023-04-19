@@ -68,3 +68,8 @@ class ProtoCore(BGCRecord):
         proto_core.parse_bgc_record(feature, parent_gbk=parent_gbk)
 
         return proto_core
+
+    def __repr__(self) -> str:
+        return (
+            f"{self.parent_gbk} ProtoCore {self.number} {self.nt_start}-{self.nt_stop} "
+        )
