@@ -3,11 +3,8 @@
 # from python
 import logging
 
-# from other modules
-from src.parameters import RunParameters
 
-
-def init_logger(run: RunParameters) -> None:
+def init_logger(run) -> None:
     """Initializes the logger"""
 
     # logger
@@ -31,7 +28,7 @@ def init_logger(run: RunParameters) -> None:
         root_logger.addHandler(console_handler)
 
 
-def init_logger_file(run: RunParameters) -> None:
+def init_logger_file(run) -> None:
     """Initializes the logger file"""
 
     log_formatter = logging.Formatter("%(asctime)s %(levelname)-7.7s %(message)s")
