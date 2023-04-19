@@ -2,6 +2,7 @@
 import sys
 import logging
 from datetime import datetime
+import platform
 
 # from other modules
 from src.data import DB
@@ -43,7 +44,10 @@ if __name__ == "__main__":
         percentage = int(tasks_done / len(all_genes) * 100)
         logging.info("%d/%d (%d%%)", tasks_done, len(all_genes), percentage)
 
-    all_hsps = list(HMMer.hmmsearch_multiprocess(all_genes, run.cores))
+    if platform.system == "Darwin":
+        all_hsps = list(HMMer.hmmsearch_simple(all_genes, 1))
+    else:
+        all_hsps = list(HMMer.hmmsearch_multiprocess(all_genes, run.cores))
 
     logging.info("%d hsps", len(all_hsps))
 
