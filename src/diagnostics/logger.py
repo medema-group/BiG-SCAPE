@@ -25,6 +25,17 @@ def init_logger(run: RunParameters) -> None:
     else:
         root_logger.level = logging.INFO
 
-    console_handler = logging.StreamHandler()
-    console_handler.setFormatter(log_formatter)
-    root_logger.addHandler(console_handler)
+    if not run.diagnostics.quiet:
+        console_handler = logging.StreamHandler()
+        console_handler.setFormatter(log_formatter)
+        root_logger.addHandler(console_handler)
+
+
+def init_logger_file(run: RunParameters) -> None:
+    """Initializes the logger file"""
+
+    log_formatter = logging.Formatter("%(asctime)s %(levelname)-7.7s %(message)s")
+    root_logger = logging.getLogger()
+    file_handler = logging.FileHandler(run.output.log_path)
+    file_handler.setFormatter(log_formatter)
+    root_logger.addHandler(file_handler)
