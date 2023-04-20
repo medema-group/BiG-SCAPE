@@ -4,7 +4,7 @@ AntiSMASh genbank records
 
 # from python
 from __future__ import annotations
-from typing import Any, Optional
+from typing import Optional, TYPE_CHECKING
 import logging
 
 # from dependencies
@@ -16,6 +16,11 @@ from src.errors import InvalidGBKError
 from src.genbank.cds import CDS
 
 # from this module
+
+
+# from circular imports
+if TYPE_CHECKING:
+    from src.genbank import GBK  # imported earlier in src.file_input.load_files
 
 
 class BGCRecord:
@@ -30,9 +35,8 @@ class BGCRecord:
         product: str
     """
 
-    # TODO: replace any with GBK after restructuring
     def __init__(self):
-        self.parent_gbk: Optional[Any] = None
+        self.parent_gbk: Optional[GBK] = None
         # contig edge is optional, proto_core does not have it
         self.contig_edge: Optional[bool] = None
         self.nt_start: Optional[int] = None
@@ -108,7 +112,7 @@ class BGCRecord:
         if commit:
             DB.commit()
 
-    def parse_bgc_record(self, feature: SeqFeature, parent_gbk: Optional[Any]):
+    def parse_bgc_record(self, feature: SeqFeature, parent_gbk: Optional[GBK]):
         """Parses a BGC record locale info
 
         Args:

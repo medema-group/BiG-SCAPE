@@ -1,8 +1,9 @@
 """Module containing code to load and store AntiSMASH candidate clusters"""
 
 # from python
+from __future__ import annotations
 import logging
-from typing import Any, Dict, Optional
+from typing import Dict, Optional, TYPE_CHECKING
 
 # from dependencies
 from Bio.SeqFeature import SeqFeature
@@ -13,6 +14,11 @@ from src.errors import InvalidGBKError, InvalidGBKRegionChildError
 # from this module
 from src.genbank.bgc_record import BGCRecord
 from src.genbank.proto_cluster import ProtoCluster
+
+
+# from circular imports
+if TYPE_CHECKING:
+    from src.genbank import GBK  # imported earlier in src.file_input.load_files
 
 
 class CandidateCluster(BGCRecord):
@@ -65,9 +71,8 @@ class CandidateCluster(BGCRecord):
         for proto_cluster in self.proto_clusters.values():
             proto_cluster.save_all()
 
-    # TODO: change any to object typing
     @classmethod
-    def parse(cls, feature: SeqFeature, parent_gbk: Optional[Any] = None):
+    def parse(cls, feature: SeqFeature, parent_gbk: Optional[GBK] = None):
         """_summary_Creates a cand_cluster object from a region feature in a GBK file
 
         Args:

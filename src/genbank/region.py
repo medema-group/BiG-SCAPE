@@ -1,8 +1,9 @@
 """Module containing code to load and store AntiSMASH regions"""
 
 # from python
+from __future__ import annotations
 import logging
-from typing import Any, Dict, Optional
+from typing import Dict, Optional, TYPE_CHECKING
 
 # from dependencies
 from Bio.SeqFeature import SeqFeature
@@ -13,6 +14,11 @@ from src.errors import InvalidGBKError, InvalidGBKRegionChildError
 # from this module
 from src.genbank.bgc_record import BGCRecord
 from src.genbank.candidate_cluster import CandidateCluster
+
+
+# from circular imports
+if TYPE_CHECKING:
+    from src.genbank import GBK  # imported earlier in src.file_input.load_files
 
 
 class Region(BGCRecord):
@@ -57,9 +63,8 @@ class Region(BGCRecord):
         for candidate_cluster in self.cand_clusters.values():
             candidate_cluster.save_all()
 
-    # TODO: change any to object typing
     @classmethod
-    def parse(cls, feature: SeqFeature, parent_gbk: Optional[Any] = None):
+    def parse(cls, feature: SeqFeature, parent_gbk: Optional[GBK] = None):
         """Creates a region object from a region feature in a GBK file
 
         Args:
