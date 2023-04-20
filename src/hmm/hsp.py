@@ -2,14 +2,18 @@
 
 # from python
 from __future__ import annotations
-from typing import Optional
+from typing import Optional, TYPE_CHECKING
 
 # from dependencies
 from pyhmmer.plan7 import Domain
 
 # from other modules
 from src.data import DB
-from src.genbank import CDS
+
+
+# circular imports
+if TYPE_CHECKING:
+    from src.genbank import CDS  # imported in genbank.gbk
 
 
 class HSP:
