@@ -2,10 +2,11 @@
 """
 
 # from python
+from __future__ import annotations
 import logging
-from math import ceil
 import string
-from typing import Callable, Iterator, Optional, cast
+from math import ceil
+from typing import Callable, Iterator, Optional, cast, TYPE_CHECKING
 from pathlib import Path
 from multiprocessing import Pipe, Process, cpu_count
 from multiprocessing.connection import Connection, wait
@@ -20,11 +21,12 @@ from pyhmmer.hmmer import hmmpress, hmmsearch, hmmalign
 from pyhmmer.easel import Alphabet, TextSequence, TextSequenceBlock
 
 
-# from other modules
-from src.genbank import CDS
-
 # from this module
 from src.hmm.hsp import HSP, HSPAlignment
+
+# circular dependencies
+if TYPE_CHECKING:
+    from src.genbank import CDS  # imported in genbank.GBK
 
 
 class HMMer:
@@ -476,7 +478,7 @@ def task_output_to_hsp(task_output: tuple, cds_list: list[CDS]) -> HSP:
         HSP: _description_
     """
     cds_id, domain, score, env_start, env_stop = task_output
-    relevant_cds = cds_list[cds_id]
+    relevant_cds: CDS = cds_list[cds_id]
     hsp = HSP(relevant_cds, domain, score, env_start, env_stop)
     relevant_cds.hsps.append(hsp)
     return hsp
