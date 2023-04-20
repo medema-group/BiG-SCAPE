@@ -12,6 +12,7 @@ from Bio.SeqFeature import SeqFeature
 # from other modules
 from src.errors import InvalidGBKError
 from src.data import DB
+from src.hmm import HSP
 
 
 # from circular imports
@@ -39,7 +40,7 @@ class CDS:
         self.gene_kind: Optional[str] = None
         self.strand: Optional[int] = None
         self.aa_seq: str = ""
-        self.hsps: list[Any] = []
+        self.hsps: list[HSP] = []
 
         # db specific fields
         self._db_id: Optional[int] = None
