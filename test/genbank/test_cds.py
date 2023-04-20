@@ -9,6 +9,7 @@ from Bio.SeqFeature import SeqFeature, FeatureLocation
 
 # from other modules
 from src.genbank import GBK, CDS
+from src.hmm import HSP
 from src.errors import InvalidGBKError
 from src.data import DB
 
@@ -235,3 +236,87 @@ class TestCDS(TestCase):
         CDS.filter_overlap(cds_list, 0.1)
 
         self.assertEqual(expected_cds_list, cds_list)
+
+    def test_add_hsp_overlap_filter(self):
+        """Tests whether a new hsp can be added on a new CDS using the add with overlap
+        filter function
+        """
+        cds = CDS(0, 100)
+        cds.aa_seq = "M" * 100
+        cds.strand = 1
+
+        new_hsp = HSP(cds, "test_domain", 100.0, 0, 100)
+
+        cds.add_hsp_overlap_filter(new_hsp)
+
+        expected_result = [new_hsp]
+
+        actual_result = cds.hsps
+
+        self.assertEqual(expected_result, actual_result)
+
+    def test_add_hsp_overlap_filter_keep_old(self):
+        """Tests whether a newly added HSP is discarded because it overlaps with a
+        better scoring existing HSP
+        """
+        cds = CDS(0, 100)
+        cds.aa_seq = "M" * 100
+        cds.strand = 1
+
+        old_hsp = HSP(cds, "test_domain_1", 100.0, 0, 100)
+
+        cds.add_hsp_overlap_filter(old_hsp)
+
+        new_hsp = HSP(cds, "test_domain_2", 50.0, 0, 100)
+
+        cds.add_hsp_overlap_filter(new_hsp)
+
+        expected_result = [old_hsp]
+
+        actual_result = cds.hsps
+
+        self.assertEqual(expected_result, actual_result)
+
+    def test_add_hsp_overlap_filter_keep_new(self):
+        """Tests whether an old HSP is replaced because it overlaps with a better
+        scoring new HSP
+        """
+        cds = CDS(0, 100)
+        cds.aa_seq = "M" * 100
+        cds.strand = 1
+
+        old_hsp = HSP(cds, "test_domain_1", 50.0, 0, 100)
+
+        cds.add_hsp_overlap_filter(old_hsp)
+
+        new_hsp = HSP(cds, "test_domain_2", 100.0, 0, 100)
+
+        cds.add_hsp_overlap_filter(new_hsp)
+
+        expected_result = [new_hsp]
+
+        actual_result = cds.hsps
+
+        self.assertEqual(expected_result, actual_result)
+
+    def test_add_hsp_overlap_filter_keep_new_same_bitscore(self):
+        """Tests whether an old HSP is replaced because it has a higher env_start than
+        a newly added HSP with the same bitscore
+        """
+        cds = CDS(0, 100)
+        cds.aa_seq = "M" * 100
+        cds.strand = 1
+
+        old_hsp = HSP(cds, "test_domain_1", 100.0, 20, 100)
+
+        cds.add_hsp_overlap_filter(old_hsp)
+
+        new_hsp = HSP(cds, "test_domain_2", 100.0, 0, 100)
+
+        cds.add_hsp_overlap_filter(new_hsp)
+
+        expected_result = [new_hsp]
+
+        actual_result = cds.hsps
+
+        self.assertEqual(expected_result, actual_result)

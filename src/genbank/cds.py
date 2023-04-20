@@ -45,6 +45,66 @@ class CDS:
         # db specific fields
         self._db_id: Optional[int] = None
 
+    def add_hsp_overlap_filter(self, new_hsp: HSP, domain_overlap_cutoff=0.1) -> None:
+        """Adds a HSP to this CDS. Performs overlap cutoff filtering by calculating the
+        percentage overlap of the incoming HSP with other HSPs in this CDS.
+
+        If the percentage overlap is greater than the cutoff, this keeps whichever HSP
+        has the higher score. If scores are equal, this keeps the HSP with the earliest
+        start position. Bitscores are rounded to 1 decimal position when compared.
+
+        The above behavior should mirror BiG-SCAPE 1.0 behavior
+
+        Args:
+            hsp (src.hmmer.hsp): The HSP to be added to this CDS
+            overlap_cutoff (float, optional): cutoff threshold for overlap. Defaults to
+            0.1
+
+        """
+        # if no hsps added yet, just add and continue
+        if len(self.hsps) == 0:
+            self.hsps.append(new_hsp)
+            return
+
+        for hsp_idx, old_hsp in enumerate(self.hsps):
+            # just add it if there is no overlap at all
+            if not HSP.has_overlap(old_hsp, new_hsp):
+                continue
+
+            # there is some overlap. calculate how much
+            overlap_aa = HSP.len_overlap(old_hsp, new_hsp)
+
+            overlap_perc_old = overlap_aa / (old_hsp.env_stop - old_hsp.env_start)
+            overlap_perc_new = overlap_aa / (new_hsp.env_stop - new_hsp.env_start)
+
+            # neither over cutoff?
+            if (
+                overlap_perc_old < domain_overlap_cutoff
+                and overlap_perc_new < domain_overlap_cutoff
+            ):
+                continue
+
+            score_old = round(old_hsp.score, 1)
+            score_new = round(new_hsp.score, 1)
+
+            # keep old if it has a better score
+            if score_old > score_new:
+                return
+
+            # replace old if new is better
+            if score_new > score_old:
+                self.hsps[hsp_idx] = new_hsp
+                return
+
+            # if scores are equal, keep the one with the lower nt_start
+            if new_hsp.env_start < old_hsp.env_start:
+                self.hsps[hsp_idx] = new_hsp
+                return
+
+        # if we got through all of that without the function, we never replaced an HSP
+        # so add a new one here
+        self.hsps.append(new_hsp)
+
     def save(self, commit=True):
         """Saves this CDS to the database and optionally executes a commit
 

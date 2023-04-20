@@ -90,7 +90,9 @@ class TestHMMScan(TestCase):
 
         HMMer.init(hmm_path)
 
-        actual_result = next(HMMer.hmmsearch_simple([cds]))
+        HMMer.hmmsearch_simple([cds])
+
+        actual_result = cds.hsps[0]
 
         self.assertEqual(expected_result, actual_result)
 
@@ -114,7 +116,9 @@ class TestHMMScan(TestCase):
 
         expected_result = HSP(cds, "PF00457.19", 249.32315063476562, 0, 0)
 
-        actual_result = list(HMMer.hmmsearch_multiprocess([cds], 1))[0]
+        HMMer.hmmsearch_multiprocess([cds], batch_size=1)
+
+        actual_result = cds.hsps[0]
 
         self.assertEqual(expected_result, actual_result)
 

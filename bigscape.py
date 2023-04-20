@@ -6,8 +6,8 @@ from datetime import datetime
 # from other modules
 from src.data import DB
 from src.file_input import load_dataset_folder
-from src.genbank import SOURCE_TYPE, BGCRecord
-from src.hmm import HMMer
+from src.genbank import SOURCE_TYPE, BGCRecord, CDS
+from src.hmm import HMMer, HSP
 from src.parameters import parse_cmd
 from src.comparison import generate_mix
 
@@ -53,16 +53,20 @@ if __name__ == "__main__":
 
     HMMer.init(run.input.pfam_path)
 
-    all_genes = []
+    all_cds: list[CDS] = []
     for gbk in gbks:
         gbk.save_all()
-        all_genes.extend(gbk.genes)
+        all_cds.extend(gbk.genes)
 
     def callback(tasks_done):
-        percentage = int(tasks_done / len(all_genes) * 100)
-        logging.info("%d/%d (%d%%)", tasks_done, len(all_genes), percentage)
+        percentage = int(tasks_done / len(all_cds) * 100)
+        logging.info("%d/%d (%d%%)", tasks_done, len(all_cds), percentage)
 
-    all_hsps = list(HMMer.hmmsearch_multiprocess(all_genes))
+    HMMer.hmmsearch_multiprocess(all_cds)
+
+    all_hsps: list[HSP] = []
+    for cds in all_cds:
+        all_hsps.extend(cds.hsps)
 
     logging.info("%d hsps", len(all_hsps))
 
@@ -72,8 +76,8 @@ if __name__ == "__main__":
     HMMer.unload()
 
     # save hsps to database
-    for hsp in all_hsps:
-        hsp.save(False)
+    for new_hsp in all_hsps:
+        new_hsp.save(False)
     DB.commit()
 
     exec_time = datetime.now() - start_time
