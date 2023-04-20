@@ -4,7 +4,7 @@
 from __future__ import annotations
 from itertools import combinations
 import logging
-from typing import Any, Optional
+from typing import Optional, TYPE_CHECKING
 
 # from dependencies
 from Bio.SeqFeature import SeqFeature
@@ -12,6 +12,11 @@ from Bio.SeqFeature import SeqFeature
 # from other modules
 from src.errors import InvalidGBKError
 from src.data import DB
+
+
+# from circular imports
+if TYPE_CHECKING:
+    from src.genbank import GBK  # imported earlier in src.file_input.load_files
 
 
 class CDS:
@@ -30,8 +35,7 @@ class CDS:
     def __init__(self, nt_start: int, nt_stop: int):
         self.nt_start = nt_start
         self.nt_stop = nt_stop
-        # TODO: replace any with object
-        self.parent_gbk: Optional[Any] = None
+        self.parent_gbk: Optional[GBK] = None
         self.gene_kind: Optional[str] = None
         self.strand: Optional[int] = None
         self.aa_seq: str = ""
@@ -82,9 +86,8 @@ class CDS:
         if commit:
             DB.commit()
 
-    # TODO: replace any with object typing
     @classmethod
-    def parse(cls, feature: SeqFeature, parent_gbk: Optional[Any] = None):
+    def parse(cls, feature: SeqFeature, parent_gbk: Optional[GBK] = None):
         """Creates a cds object from a region feature in a GBK file"""
 
         if feature.type != "CDS":
