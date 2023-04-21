@@ -10,6 +10,7 @@ from src.file_input import load_dataset_folder
 from src.genbank import SOURCE_TYPE
 from src.hmm import HMMer
 from src.parameters import parse_cmd
+from src.diagnostics import Profiler
 
 if __name__ == "__main__":
     # parsing needs to come first because we need it in setting up the logging
@@ -20,6 +21,10 @@ if __name__ == "__main__":
     run.validate()
 
     start_time = datetime.now()
+
+    # start profiler
+    profiler = Profiler(run.output.profile_path)
+    profiler.start()
 
     # start DB
     DB.create_in_mem()
@@ -87,3 +92,5 @@ if __name__ == "__main__":
     logging.info("DB: HSP alignment save done at %f seconds", exec_time.total_seconds())
 
     DB.save_to_disk(run.output.db_path)
+
+    profiler.stop()
