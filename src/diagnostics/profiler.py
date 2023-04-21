@@ -201,7 +201,7 @@ def collect_consumption(
             cpu_dict[elapsed_time]["MAIN"] = m_cpu_percent
 
             # print 'MAIN' line to profile report
-            main_line = f"{prefix_time},MAIN,{m_cpu_percent},1,{m_mem_mb:.2f},{m_mem_percent:.2f}\n"
+            main_line = f"{prefix_time},MAIN,{m_cpu_percent:.2f},1,{m_mem_mb:.2f},{m_mem_percent:.2f}\n"
             profile_log.write(main_line)
 
             # start multi/cumulative stats
@@ -229,7 +229,7 @@ def collect_consumption(
 
                     # write CHILD line to profile report
                     child_line = (
-                        f"{prefix_time},{c_pid},{c_cpu_percent},1,{c_mem_mb:.2f},"
+                        f"{prefix_time},{c_pid},{c_cpu_percent:.2f},1,{c_mem_mb:.2f},"
                         f"{c_mem_percent:.2f}\n"
                     )
                     profile_log.write(child_line)
@@ -244,7 +244,7 @@ def collect_consumption(
 
             # write MULTI line to profile report
             multi_line = (
-                f"{prefix_time},MULTI,{total_cpu_percent},{child_process_count},"
+                f"{prefix_time},MULTI,{total_cpu_percent:.2f},{child_process_count},"
                 f"{total_mem_mb:.2f},{m_mem_percent:.2f}\n"
             )
             profile_log.write(multi_line)

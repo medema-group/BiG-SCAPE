@@ -23,8 +23,9 @@ if __name__ == "__main__":
     start_time = datetime.now()
 
     # start profiler
-    profiler = Profiler(run.output.profile_path)
-    profiler.start()
+    if run.diagnostics.profiling:
+        profiler = Profiler(run.output.profile_path)
+        profiler.start()
 
     # start DB
     DB.create_in_mem()
@@ -93,4 +94,7 @@ if __name__ == "__main__":
 
     DB.save_to_disk(run.output.db_path)
 
-    profiler.stop()
+    try:
+        profiler.stop()
+    except NameError:
+        pass
