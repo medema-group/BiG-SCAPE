@@ -21,6 +21,7 @@ from src.genbank.cds import CDS
 # from circular imports
 if TYPE_CHECKING:
     from src.genbank import GBK  # imported earlier in src.file_input.load_files
+    from src.hmm import HSP  # imported earlier in src.genbank.CDS
 
 
 class BGCRecord:
@@ -74,6 +75,17 @@ class BGCRecord:
             record_cds.append(cds)
 
         return record_cds
+
+    def get_hsps(self) -> list[HSP]:
+        """Get a list of all hsps in this region
+
+        Returns:
+            list[HSP]: List of all hsps in this region
+        """
+        domains = []
+        for cds in self.get_cds():
+            domains.extend(cds.hsps)
+        return domains
 
     def save(self, type: str, commit=True):
         """Stores this BGCRecord in the database

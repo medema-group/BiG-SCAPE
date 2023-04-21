@@ -6,7 +6,8 @@ clasess inherit
 from unittest import TestCase
 
 # from other modules
-from src.genbank import GBK, BGCRecord, CDS
+from src.genbank import GBK, BGCRecord, CDS, Region
+from src.hmm import HSP
 
 
 class TestBGCRecord(TestCase):
@@ -43,3 +44,29 @@ class TestBGCRecord(TestCase):
         actual_cds_count = len(record.get_cds())
 
         self.assertEqual(expected_cds_count, actual_cds_count)
+
+    def test_get_hsps(self):
+        """Tests whether the get_hsps method on this BGCRecord class correctly retreives
+        the HPS objects that are in range of all CDSes that belong to this record in a
+        GBK
+        """
+        domains = ["PF00001", "PF00002", "PF00003", "PF00004", "PF00005"]
+
+        gbk = GBK("", "")
+        gbk.region = Region(1)
+        gbk.region.parent_gbk = gbk
+        gbk.region.nt_start = 0
+        gbk.region.nt_stop = 100
+        cds = CDS(10, 90)
+        gbk.genes.append(cds)
+
+        for domain in domains:
+            cds.hsps.append(HSP(cds, domain, 100, 0, 30))
+
+        expected_domains = domains
+
+        hsps = gbk.region.get_hsps()
+
+        actual_domains = [hsp.domain for hsp in hsps]
+
+        self.assertEqual(expected_domains, actual_domains)
