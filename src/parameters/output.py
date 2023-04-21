@@ -163,7 +163,7 @@ def validate_profile_path(
             raise InvalidArgumentError("--log_path", profile_path)
 
         # return new path for log
-        profile_filename = timestamp + ".log"
+        profile_filename = timestamp + ".profile"
         return default_path / Path(profile_filename)
 
     # check if parent to a specified path exists
