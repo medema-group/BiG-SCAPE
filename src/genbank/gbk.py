@@ -56,6 +56,81 @@ class GBK:
         # db specific fields
         self._db_id: Optional[int] = None
 
+    def add_cds_overlap_filter(self, new_cds: CDS, cds_overlap_cutoff=0.1) -> None:
+        """Adds a CDS to this GBK. Performs overlap cutoff filtering by calculating the
+        percentage overlap of the incoming CDS with other CDS in this GBK.
+
+        If the percentage overlap is greater than the cutoff, this keeps whichever CDS
+        is longer. If scores are equal, this keeps the HSP with the earliest
+        start position. Bitscores are rounded to 1 decimal position when compared.
+
+        The above behavior should mirror BiG-SCAPE 1.0 behavior
+
+        Args:
+            hsp (src.hmmer.hsp): The HSP to be added to this CDS
+            overlap_cutoff (float, optional): cutoff threshold for overlap. Defaults to
+            0.1
+
+        """
+        # Filter out CDS for this gbk where CDS coordinates overlap by a certain amount.
+        # The longest CDS will be chosen and other CDS will be discarded. This is done
+        # in order to remove isoforms of the same gene in organisms that perform
+        # alternative splicing
+
+        # if no cds added yet, just add and continue
+        if len(self.genes) == 0:
+            self.genes.append(new_cds)
+            return
+
+        for cds_idx, old_cds in enumerate(self.genes):
+            # ignore if these cds are on a different strand
+            if old_cds.strand != new_cds.strand:
+                continue
+
+            overlap_nt = CDS.len_nt_overlap(old_cds, new_cds)
+
+            # ignore these cds if there is no overlap at all
+            if overlap_nt == 0:
+                continue
+
+            overlap_aa = overlap_nt / 3
+
+            # we determine overlap as a percentage of shortest cds, so get that
+            old_cds_aa_len = len(old_cds.aa_seq)
+            new_cds_aa_len = len(new_cds.aa_seq)
+            shortest_aa_len = min(old_cds_aa_len, new_cds_aa_len)
+
+            logging.debug(
+                "%s, %d, %d-%d : %d-%d",
+                self.path,
+                overlap_nt,
+                old_cds.nt_start,
+                old_cds.nt_stop,
+                new_cds.nt_start,
+                new_cds.nt_stop,
+            )
+
+            # not over cutoff? skip
+            if overlap_aa <= cds_overlap_cutoff * shortest_aa_len:
+                continue
+
+            # new cds is shorter? skip
+            if new_cds_aa_len < old_cds_aa_len:
+                logging.debug(
+                    "Removing %s because it overlaps with another CDS", new_cds
+                )
+                return
+
+            # overwrite if equal or larger, same as BiG-SCAPE 1.0
+            logging.debug(
+                "Removing %s because it overlaps with another CDS", self.genes[cds_idx]
+            )
+            self.genes[cds_idx] = new_cds
+
+        # if we got through all of that without exiting the function, we never replaced
+        # a CDS so add a new one here
+        self.genes.append(new_cds)
+
     def save(self, commit=True):
         """Stores this GBK in the database
 
@@ -117,11 +192,19 @@ class GBK:
         return as_version
 
     @classmethod
-    def parse(cls, path: Path, source_type: SOURCE_TYPE):
+    def parse(
+        cls,
+        path: Path,
+        source_type: SOURCE_TYPE,
+        cds_overlap_cutoff: Optional[float] = None,
+    ):
         """Parses a GBK file and returns a GBK object with all necessary information
 
         Args:
             path (Path): path to gbk file
+            source_type (SOURCE_TYPE): A string describing the source of the GBK
+            cds_overlap_cutoff (Optional[float]): cds region overlap cutoff to use.
+            Defaults to None
 
         Returns:
             GBK: GBK object
@@ -137,17 +220,19 @@ class GBK:
         gbk.as_version = as_version
 
         if int(as_version[0]) >= 5:
-            gbk.parse_as5up(record)
+            gbk.parse_as5up(record, cds_overlap_cutoff)
         if int(as_version[0]) == 4:
-            gbk.parse_as4(record)
+            gbk.parse_as4(record, cds_overlap_cutoff)
 
         return gbk
 
-    def parse_as4(self, record: SeqRecord):
+    def parse_as4(self, record: SeqRecord, cds_overlap_cutoff: Optional[float] = None):
         """Parses a GBK record of AS version 4 and returns a GBK object with all necessary information
 
         Args:
             record (SeqRecord): gbk file record
+            cds_overlap_cutoff (Optional[float]): cds region overlap cutoff to use.
+            Defaults to None
 
         Raises:
             InvalidGBKError: Invalid or missing fields in gbk record
@@ -168,13 +253,22 @@ class GBK:
 
             if feature.type == "CDS":
                 cds = CDS.parse(feature, parent_gbk=self)
+
+                if cds_overlap_cutoff is not None:
+                    self.add_cds_overlap_filter(cds, cds_overlap_cutoff)
+                    continue
+
                 self.genes.append(cds)
 
-    def parse_as5up(self, record: SeqRecord):
+    def parse_as5up(
+        self, record: SeqRecord, cds_overlap_cutoff: Optional[float] = None
+    ):
         """Parses a GBK record of AS versions 5 and up and returns a GBK object with all necessary information
 
         Args:
             record (SeqRecord): gbk file record
+            cds_overlap_cutoff (Optional[float]): cds region overlap cutoff to use.
+            Defaults to None
 
         Raises:
             InvalidGBKError: Invalid or missing fields in gbk record
@@ -211,6 +305,11 @@ class GBK:
 
             if feature.type == "CDS":
                 cds = CDS.parse(feature, parent_gbk=self)
+
+                if cds_overlap_cutoff is not None:
+                    self.add_cds_overlap_filter(cds, cds_overlap_cutoff)
+                    continue
+
                 self.genes.append(cds)
 
         # add features to parent objects
