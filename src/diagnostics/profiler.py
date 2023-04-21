@@ -8,6 +8,14 @@ from datetime import datetime
 from pathlib import Path
 from multiprocessing import Process, Queue
 import psutil
+import warnings
+
+# from dependencies
+import pandas as pd
+import matplotlib.pyplot as plt
+
+# to stop numpy from spitting out warnings to sys.stdout
+warnings.filterwarnings("ignore")
 
 
 class Profiler:
@@ -97,6 +105,48 @@ def child_start_cpu_time(main_process: psutil.Process):
         set_child_cpu_time_dict[c_pid] = child_process.cpu_times().user
 
     return set_child_cpu_time_dict
+
+
+def make_plots(stats_dict: dict, profile_path: Path, stat_type: str) -> None:
+    """A method to plot the collected values for memory and cpu usage
+
+    Args:
+        stats_dict (dict): {timestamp: {process_name: stat_value}}
+        profile_path (Path): path to profile log file
+        stat_type (str): CPU or Memory
+    """
+
+    stat_types = ["CPU", "Memory"]
+    if stat_type not in stat_types:
+        raise ValueError("Invalid stat type. Expected one of: %s" % stat_types)
+
+    stats_df = pd.DataFrame.from_dict(stats_dict, orient="index")
+    stats_df = stats_df.fillna(0.0)
+    main_df = stats_df.pop("MAIN")
+
+    if stat_type == "mem":
+        ylabel = "Memory (Mb)"
+    else:
+        ylabel = "CPU Percent"
+
+    main_df.plot.line(
+        xlabel="time (sec)",
+        ylabel=ylabel,
+        title=f"BiG-SCAPE Main Process {stat_type} Usage",
+    )
+
+    plt.savefig(f"{profile_path}.{stat_type}_main_test.png")
+    plt.clf()
+
+    stats_df.plot.line(
+        xlabel="time (sec)",
+        ylabel=ylabel,
+        title=f"BiG-SCAPE Child Processes {stat_type} Usage",
+        legend=False,
+    )
+
+    plt.savefig(f"{profile_path}.{stat_type}_child_test.png")
+    plt.clf()
 
 
 def collect_consumption(
@@ -199,3 +249,7 @@ def collect_consumption(
             )
             profile_log.write(multi_line)
             profile_log.flush()
+
+    # write output image
+    make_plots(mem_dict, profile_path, "Memory")
+    make_plots(cpu_dict, profile_path, "CPU")
