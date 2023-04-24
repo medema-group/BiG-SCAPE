@@ -39,11 +39,23 @@ class LCS:
             tuple[list[str], bool]: List of strings that represents the LCS of domains and
             a boolean indicating whether the LCS is was found in the reverse sequence
         """
-        a_hsps = pair.region_a.get_hsps()
-        b_hsps = pair.region_b.get_hsps()
+        # the idea here is that each cds has a list of domains that are matched against
+        # so first get cds for each region
+        a_cds_list = pair.region_a.get_cds()
+        b_cds_list = pair.region_b.get_cds()
 
-        a_domains = [a_hsp.domain for a_hsp in a_hsps]
-        b_domains = [b_hsp.domain for b_hsp in b_hsps]
+        # then the sequences we compare to are lists of concatenated domain accessions
+        a_domains = []
+        for a_cds in a_cds_list:
+            # make the accessions into a comma separated list without the PF prefix
+            a_domain_string = ",".join([hsp.domain[2:] for hsp in a_cds.hsps])
+            a_domains.append(a_domain_string)
+
+        b_domains = []
+        for b_cds in b_cds_list:
+            # make the accessions into a comma separated list without the PF prefix
+            b_domain_string = ",".join([hsp.domain[2:] for hsp in b_cds.hsps])
+            b_domains.append(b_domain_string)
 
         # forward
         seqmatch = SequenceMatcher(None, a_domains, b_domains)
