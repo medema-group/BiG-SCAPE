@@ -12,7 +12,16 @@ from .binning import BGCPair
 
 
 class LCS:
-    def __init__(self, a_start, b_start, match_len, reverse):
+    """Class describing the longest common subsequence of domains between a pair of BGCs
+
+    Properties:
+        a_start: int
+        b_start: int
+        match_len: int
+        reverse: bool
+    """
+
+    def __init__(self, a_start: int, b_start: int, match_len: int, reverse: bool):
         self.a_start = a_start
         self.b_start = b_start
         self.match_len = match_len
