@@ -168,7 +168,8 @@ class GBK:
 
             if feature.type == "CDS":
                 cds = CDS.parse(feature, parent_gbk=self)
-                self.genes.append(cds)
+                if cds:
+                    self.genes.append(cds)
 
     def parse_as5up(self, record: SeqRecord):
         """Parses a GBK record of AS versions 5 and up and returns a GBK object with all necessary information
@@ -211,7 +212,8 @@ class GBK:
 
             if feature.type == "CDS":
                 cds = CDS.parse(feature, parent_gbk=self)
-                self.genes.append(cds)
+                if cds:
+                    self.genes.append(cds)
 
         # add features to parent objects
         for proto_cluster_num, proto_cluster in tmp_proto_clusters.items():

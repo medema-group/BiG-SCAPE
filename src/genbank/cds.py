@@ -7,7 +7,9 @@ import logging
 from typing import Optional, TYPE_CHECKING
 
 # from dependencies
+from Bio.Data.CodonTable import TranslationError
 from Bio.SeqFeature import SeqFeature
+from Bio.Seq import Seq
 
 # from other modules
 from src.errors import InvalidGBKError
@@ -87,7 +89,7 @@ class CDS:
             DB.commit()
 
     @classmethod
-    def parse(cls, feature: SeqFeature, parent_gbk: Optional[GBK] = None):
+    def parse(cls, feature: SeqFeature, parent_gbk: GBK):
         """Creates a cds object from a region feature in a GBK file"""
 
         if feature.type != "CDS":
@@ -97,6 +99,8 @@ class CDS:
             )
             raise InvalidGBKError()
 
+        # if fuzzy positions present follows behaviour described
+        # here: https://biopython.org/docs/1.81/api/Bio.SeqFeature.html
         nt_start = int(feature.location.start)
         nt_stop = int(feature.location.end)
         strand = int(feature.location.strand)
@@ -104,20 +108,48 @@ class CDS:
         cds = cls(nt_start, nt_stop)
         cds.strand = strand
 
-        # add parent if it exists
-        if parent_gbk is not None:
-            cds.parent_gbk = parent_gbk
+        nt_seq = feature.location.extract(parent_gbk.nt_seq)
 
-        if "translation" not in feature.qualifiers:
-            logging.error("translation qualifier not found in cds feature!")
-            raise InvalidGBKError()
+        # if translation exists -> check if there is a match with biopython translation
+        # if no match, pick AS version and issue warning
 
-        aa_seq = str(feature.qualifiers["translation"][0])
-        cds.aa_seq = aa_seq
+        if "translation" in feature.qualifiers:
+            aa_seq = str(feature.qualifiers["translation"][0])
+
+            # translate own
+            transl_nt_seq = translate(feature, nt_seq)
+
+            # TODO make better warnings
+            if not transl_nt_seq:
+                logging.warning("could not translate CDS nucleotide sequence")
+
+            # check if both translations match
+            if transl_nt_seq and not str(nt_seq) == str(transl_nt_seq):
+                logging.warning(
+                    "translation of CDS sequence from antiSMASH"
+                    " and biopython do not match"
+                )
+
+            cds.aa_seq = aa_seq
+
+        else:
+            # if nt_seq is not divisible by 3, we discard this CDS
+            transl_nt_seq = translate(feature, nt_seq)
+            if not transl_nt_seq:
+                logging.warning(
+                    "translation qualifier not found in cds feature"
+                    " and could not be computed, therefore this CDS"
+                    " feature is being discarded"
+                )
+                return None
 
         if "gene_kind" in feature.qualifiers:
             gene_kind = str(feature.qualifiers["gene_kind"][0])
             cds.gene_kind = gene_kind
+
+        # add parent if it exists
+        if parent_gbk is not None:
+            cds.parent_gbk = parent_gbk
 
         return cds
 
@@ -208,3 +240,35 @@ class CDS:
             cds_list.remove(cds)
 
         return cds_list
+
+
+def translate(feature: SeqFeature, nt_seq: Seq):
+    """Translate a CDS sequence if CDS is valid
+
+    cds = True: checks the sequence starts with a valid alternative start codon
+    (which will be translated as methionine, M), that the sequence length is a
+    multiple of three, and that there is a single in frame stop codon at the end
+    (this will be excluded from the protein sequence, regardless of the to_stop option).
+    If these tests fail, an exception is raised.
+    (https://biopython.org/docs/1.81/api/Bio.Seq.html)
+
+
+    Args:
+        feature (SeqFeature): CDS SeqFeature
+        nt_seq (Seq): CDS nucleotide sequence
+
+    Returns:
+        _type_: Seq or None
+    """
+
+    transl_table = None
+
+    if "transl_table" in feature.qualifiers.keys():
+        transl_table = feature.qualifiers["transl_table"][0]
+
+    try:
+        transl_nt_seq = nt_seq.translate(table=transl_table, cds=True)
+    except TranslationError:
+        transl_nt_seq = None
+
+    return transl_nt_seq
