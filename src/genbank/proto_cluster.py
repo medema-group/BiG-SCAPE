@@ -1,8 +1,9 @@
 """Module containing code to load and store AntiSMASH protoclusters"""
 
 # from python
+from __future__ import annotations
 import logging
-from typing import Any, Dict, Optional
+from typing import Dict, Optional, TYPE_CHECKING
 
 # from dependencies
 from Bio.SeqFeature import SeqFeature
@@ -13,6 +14,11 @@ from src.errors import InvalidGBKError, InvalidGBKRegionChildError
 # from this module
 from src.genbank.bgc_record import BGCRecord
 from src.genbank.proto_core import ProtoCore
+
+
+# from circular imports
+if TYPE_CHECKING:
+    from src.genbank import GBK  # imported earlier in src.file_input.load_files
 
 
 class ProtoCluster(BGCRecord):
@@ -65,9 +71,8 @@ class ProtoCluster(BGCRecord):
         for protocore in self.proto_core.values():
             protocore.save(False)
 
-    # TODO: change any to object typing
     @classmethod
-    def parse(cls, feature: SeqFeature, parent_gbk: Optional[Any] = None):
+    def parse(cls, feature: SeqFeature, parent_gbk: Optional[GBK] = None):
         """Creates a Protocluster object from a region feature in a GBK file
 
         Args:
