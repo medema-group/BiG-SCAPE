@@ -94,7 +94,5 @@ if __name__ == "__main__":
 
     DB.save_to_disk(run.output.db_path)
 
-    try:
+    if run.diagnostics.profiling:
         profiler.stop()
-    except NameError:
-        pass

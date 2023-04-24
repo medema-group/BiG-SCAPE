@@ -14,7 +14,11 @@ import warnings
 import pandas as pd
 import matplotlib.pyplot as plt
 
+# from other modules
+from parameters.constants import PROFILER_UPDATE_INTERVAL
+
 # to stop numpy from spitting out warnings to sys.stdout
+# TODO: remove this and resolve underlying issue
 warnings.filterwarnings("ignore")
 
 
@@ -30,7 +34,8 @@ class Profiler:
     def __init__(self, profile_path: Path) -> None:
         self.command_queue: Queue = Queue()
         self.worker = Process(
-            target=collect_consumption, args=(profile_path, self.command_queue, 0.5)
+            target=collect_consumption,
+            args=(profile_path, self.command_queue, PROFILER_UPDATE_INTERVAL),
         )
 
     def start(self) -> None:
@@ -68,6 +73,7 @@ def calc_cpu_percent(
 
 
 def get_stats(process: psutil.Process, start_time: float, update_interval: float):
+    # pragma: no cover
     """Return a set of usage stats for a given process
 
     Args:
@@ -89,6 +95,7 @@ def get_stats(process: psutil.Process, start_time: float, update_interval: float
 
 
 def child_start_cpu_time(main_process: psutil.Process):
+    # pragma: no cover
     """Generate dictionary CPU times of the child processes
         at the start of each interval
 
@@ -108,6 +115,8 @@ def child_start_cpu_time(main_process: psutil.Process):
 
 
 def make_plots(stats_dict: dict, profile_path: Path, stat_type: str) -> None:
+    # pragma: no cover
+    # TODO: if time test for whether it makes a file
     """A method to plot the collected values for memory and cpu usage
 
     Args:
@@ -152,6 +161,7 @@ def make_plots(stats_dict: dict, profile_path: Path, stat_type: str) -> None:
 def collect_consumption(
     profile_path: Path, command_queue: Queue, update_interval: int
 ) -> None:
+    # pragma: no cover
     """Worker thread to periodically report cpu and memory usage"""
     mem_dict: dict = {}
     cpu_dict: dict = {}
