@@ -2,6 +2,7 @@
 import sys
 import logging
 from datetime import datetime
+import platform
 
 # from other modules
 from src.data import DB
@@ -9,34 +10,22 @@ from src.file_input import load_dataset_folder
 from src.genbank import SOURCE_TYPE
 from src.hmm import HMMer
 from src.parameters import parse_cmd
+from src.diagnostics import Profiler
 
 if __name__ == "__main__":
     # parsing needs to come first because we need it in setting up the logging
     run = parse_cmd(sys.argv[1:])
 
-    # logger
-    # this tells the logger what the messages should look like
-    # asctime = YYYY-MM-DD HH:MM:SS,fff
-    # levelname = DEBUG/INFO/WARN/ERROR
-    # message = whatever we pass, eg logging.debug("message")
-    log_formatter = logging.Formatter("%(asctime)s %(levelname)-7.7s %(message)s")
-
-    # get the built in logger
-    root_logger = logging.getLogger()
-
-    if run.diagnostics.verbose:
-        root_logger.level = logging.DEBUG
-    else:
-        root_logger.level = logging.INFO
-
-    console_handler = logging.StreamHandler()
-    console_handler.setFormatter(log_formatter)
-    root_logger.addHandler(console_handler)
-
     # only now we can use logging.info etc to log stuff otherwise things get weird
+    # initializing the logger and logger file also happens here
     run.validate()
 
     start_time = datetime.now()
+
+    # start profiler
+    if run.diagnostics.profiling:
+        profiler = Profiler(run.output.profile_path)
+        profiler.start()
 
     # start DB
     DB.create_in_mem()
@@ -61,7 +50,16 @@ if __name__ == "__main__":
         percentage = int(tasks_done / len(all_genes) * 100)
         logging.info("%d/%d (%d%%)", tasks_done, len(all_genes), percentage)
 
-    all_hsps = list(HMMer.hmmsearch_multiprocess(all_genes))
+    if platform.system() == "Darwin":
+        logging.debug("Running on mac-OS: hmmsearch_simple single threaded")
+        all_hsps = list(HMMer.hmmsearch_simple(all_genes, 1))
+    else:
+        logging.debug(
+            "Running on %s: hmmsearch_multiprocess with %d cores",
+            platform.system(),
+            run.cores,
+        )
+        all_hsps = list(HMMer.hmmsearch_multiprocess(all_genes, run.cores))
 
     logging.info("%d hsps", len(all_hsps))
 
@@ -95,3 +93,6 @@ if __name__ == "__main__":
     logging.info("DB: HSP alignment save done at %f seconds", exec_time.total_seconds())
 
     DB.save_to_disk(run.output.db_path)
+
+    if run.diagnostics.profiling:
+        profiler.stop()

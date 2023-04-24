@@ -7,6 +7,9 @@ cmd_parser
 from argparse import Namespace
 from multiprocessing import cpu_count
 
+# from other modules
+from src.diagnostics import init_logger, init_logger_file
+
 # from this module
 from src.parameters.input import InputParameters
 from src.parameters.hmmer import HmmerParameters
@@ -47,10 +50,20 @@ class RunParameters(Namespace):
     def validate(self):
         """Executes validation on everything, setting default values and returning
         errors if anything is wrong
+        Also initializes the logger
         """
-        self.input.validate()
+        # diagnostics validate must not use logger
+        self.diagnostics.validate()
 
+        # initializes the logger, needed for the validations below
+        init_logger(self)
+
+        self.input.validate()
         self.output.validate()
+
+        # initializes the logger file, can only happen once output is validated
+        # and the log file path is created
+        init_logger_file(self)
 
     # from https://stackoverflow.com/questions/18668227
     # this method is called when a new attribute is set on this class. specifically,

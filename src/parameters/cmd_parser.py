@@ -302,6 +302,13 @@ def parse_cmd(args):
         help="Path to output log file directory. Default: outputdir.",
     )
 
+    parser.add_argument(
+        "--profile_path",
+        dest="output.profile_path",
+        type=Path,
+        help="Path to output profile file directory. Default: outputdir.",
+    )
+
     # meta
 
     parser.add_argument(

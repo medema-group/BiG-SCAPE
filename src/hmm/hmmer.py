@@ -116,7 +116,7 @@ class HMMer:
         return HMMer.profiles[profile_idx]
 
     @staticmethod
-    def hmmsearch_simple(cds_list: list[CDS]) -> Iterator[HSP]:
+    def hmmsearch_simple(cds_list: list[CDS], cores=cpu_count()) -> Iterator[HSP]:
         """Performs hmmsearch on a list of CDS.
 
         This is the fastest method of getting search results. Use this if you know you
@@ -142,7 +142,9 @@ class HMMer:
 
         ds = TextSequenceBlock(sequences).digitize(HMMer.alphabet)
 
-        for top_hits in hmmsearch(HMMer.profiles, ds, bit_cutoffs="trusted"):
+        for top_hits in hmmsearch(
+            HMMer.profiles, ds, bit_cutoffs="trusted", cpus=cores
+        ):
             for hit in top_hits:
                 if not hit.included:
                     continue
@@ -161,7 +163,7 @@ class HMMer:
                     yield HSP(cds_list[cds_idx], accession, score, env_start, env_stop)
 
     @staticmethod
-    def calc_batch_size(num_genes: int) -> int:
+    def calc_batch_size(num_genes: int, cores=cpu_count()) -> int:
         """calculate batch size by splitting total tasks/genes between available CPUs
 
         Args:
@@ -170,11 +172,12 @@ class HMMer:
         Returns:
             int: the gene batch size for worker processes
         """
-        return ceil(num_genes / cpu_count())
+        return ceil(num_genes / cores)
 
     @staticmethod
     def hmmsearch_multiprocess(
         cds_list: list[CDS],
+        cores=cpu_count(),
         batch_size: Optional[int] = None,
         callback: Optional[Callable] = None,
     ) -> Iterator[HSP]:
@@ -192,7 +195,6 @@ class HMMer:
             Iterator[HSP]: An iterator generating hsps from the list of CDS passed into
             this method
 
-        TODO: this method fails to properly map hsps to results!
         """
         logging.info("Performing distributed hmmsearch on %d genes", len(cds_list))
         processes: list[Process] = []
@@ -200,14 +202,14 @@ class HMMer:
 
         # check for set batch size
         if batch_size is None:
-            batch_size = HMMer.calc_batch_size(len(cds_list))
+            batch_size = HMMer.calc_batch_size(len(cds_list), cores)
             logging.info("Using automatic batch size %d", batch_size)
 
         task_iter = task_generator(cds_list, batch_size)
 
         # it doesn't make sense to spawn more processes than there are AA sequences to
-        # search, so only spawn between 0 and cpu_count() processes
-        process_count = min(len(cds_list), cpu_count())
+        # search, so only spawn between 0 and cpu count processes
+        process_count = min(len(cds_list), cores)
 
         # first we need to create the worker processes and the connections
         for process_id in range(process_count):
