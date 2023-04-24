@@ -2,7 +2,9 @@
 
 # from python
 from pathlib import Path
+import unittest
 from unittest import TestCase
+import platform
 
 # from dependencies
 from pyhmmer.easel import TextSequence
@@ -70,8 +72,10 @@ class TestHMMScan(TestCase):
 
         self.assertEqual(expected_result, actual_result)
 
+    @unittest.skipIf(platform.system() == "Darwin", "Unsupported OS")
     def test_search(self):
         """Tests scanning of a single sequence on a set of domain HMMs"""
+
         aa_seq = (
             "MQQDGTQQDRIKQSPAPLNGMSRRGFLGGAGTLALATASGLLLPGTAHAATTITTNQTGTDGMYYSFWTDGGGS"
             "VSMTLNGGGSYSTQWTNCGNFVAGKGWSTGGRRTVRYNGYFNPSGNGYGCLYGWTSNPLVEYYIVDNWGSYRPT"
@@ -94,8 +98,10 @@ class TestHMMScan(TestCase):
 
         self.assertEqual(expected_result, actual_result)
 
+    @unittest.skipIf(platform.system() == "Darwin", "Unsupported OS")
     def test_scan(self):
         """Tests scanning of a single sequence on a set of domain HMMs"""
+
         aa_seq = (
             "MQQDGTQQDRIKQSPAPLNGMSRRGFLGGAGTLALATASGLLLPGTAHAATTITTNQTGTDGMYYSFWTDGGGS"
             "VSMTLNGGGSYSTQWTNCGNFVAGKGWSTGGRRTVRYNGYFNPSGNGYGCLYGWTSNPLVEYYIVDNWGSYRPT"
