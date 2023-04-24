@@ -6,7 +6,7 @@ from unittest import TestCase
 # from other modules
 from src.genbank import GBK, Region, CDS
 from src.hmm import HSP
-from src.comparison import BGCPair, get_pair_domain_lcs
+from src.comparison import BGCPair, LCS
 
 
 class TestComparibleRegions(TestCase):
@@ -58,9 +58,9 @@ class TestComparibleRegions(TestCase):
 
         pair = BGCPair(gbk_a.region, gbk_b.region)
 
-        expected_lcs = shared_domains
+        expected_lcs = LCS(1, 1, 3, False)
 
-        actual_lcs = get_pair_domain_lcs(pair)[0]
+        actual_lcs = LCS.get_pair_domain_lcs(pair)
 
         self.assertEqual(expected_lcs, actual_lcs)
 
@@ -110,8 +110,8 @@ class TestComparibleRegions(TestCase):
 
         pair = BGCPair(gbk_a.region, gbk_b.region)
 
-        expected_lcs = shared_domains
+        expected_lcs = LCS(1, 1, 3, True)
 
-        actual_lcs = get_pair_domain_lcs(pair)[0]
+        actual_lcs = LCS.get_pair_domain_lcs(pair)
 
         self.assertEqual(expected_lcs, actual_lcs)
