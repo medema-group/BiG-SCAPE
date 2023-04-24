@@ -2,42 +2,31 @@
 import sys
 import logging
 from datetime import datetime
+import platform
 
 # from other modules
 from src.data import DB
 from src.file_input import load_dataset_folder
 from src.genbank import SOURCE_TYPE, BGCRecord, CDS
-from src.hmm import HMMer, HSP
+from src.hmm import HMMer
 from src.parameters import parse_cmd
 from src.comparison import generate_mix
+from src.diagnostics import Profiler
 
 if __name__ == "__main__":
     # parsing needs to come first because we need it in setting up the logging
     run = parse_cmd(sys.argv[1:])
 
-    # logger
-    # this tells the logger what the messages should look like
-    # asctime = YYYY-MM-DD HH:MM:SS,fff
-    # levelname = DEBUG/INFO/WARN/ERROR
-    # message = whatever we pass, eg logging.debug("message")
-    log_formatter = logging.Formatter("%(asctime)s %(levelname)-7.7s %(message)s")
-
-    # get the built in logger
-    root_logger = logging.getLogger()
-
-    if run.diagnostics.verbose:
-        root_logger.level = logging.DEBUG
-    else:
-        root_logger.level = logging.INFO
-
-    console_handler = logging.StreamHandler()
-    console_handler.setFormatter(log_formatter)
-    root_logger.addHandler(console_handler)
-
     # only now we can use logging.info etc to log stuff otherwise things get weird
+    # initializing the logger and logger file also happens here
     run.validate()
 
     start_time = datetime.now()
+
+    # start profiler
+    if run.diagnostics.profiling:
+        profiler = Profiler(run.output.profile_path)
+        profiler.start()
 
     # start DB
     DB.create_in_mem()
@@ -62,9 +51,18 @@ if __name__ == "__main__":
         percentage = int(tasks_done / len(all_cds) * 100)
         logging.info("%d/%d (%d%%)", tasks_done, len(all_cds), percentage)
 
-    HMMer.hmmsearch_multiprocess(all_cds)
+    if platform.system() == "Darwin":
+        logging.debug("Running on mac-OS: hmmsearch_simple single threaded")
+        all_hsps = list(HMMer.hmmsearch_simple(all_cds, 1))
+    else:
+        logging.debug(
+            "Running on %s: hmmsearch_multiprocess with %d cores",
+            platform.system(),
+            run.cores,
+        )
+        HMMer.hmmsearch_multiprocess(all_cds, run.cores)
 
-    all_hsps: list[HSP] = []
+    all_hsps = []
     for cds in all_cds:
         all_hsps.extend(cds.hsps)
 
@@ -109,3 +107,5 @@ if __name__ == "__main__":
     mix_bin = generate_mix(all_regions)
 
     logging.info("Generated mix bin: %s", mix_bin)
+    if run.diagnostics.profiling:
+        profiler.stop()
