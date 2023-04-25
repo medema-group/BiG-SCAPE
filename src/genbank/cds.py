@@ -254,7 +254,7 @@ def translate(feature: SeqFeature, nt_seq: Seq):
         _type_: Seq
     """
 
-    transl_table = None
+    transl_table = "Standard"
 
     if "transl_table" in feature.qualifiers.keys():
         transl_table = feature.qualifiers["transl_table"][0]
@@ -282,6 +282,11 @@ def trim_fuzzy(
     Returns:
         _type_: Seq or None
     """
+
+    if fuzzy_start == fuzzy_end:
+        raise ValueError(
+            "Trimming not possible if fuzzy start and end have the same value"
+        )
 
     if fuzzy_start:
         if remainder == 1:
@@ -315,7 +320,7 @@ def check_translation(aa_seq: Seq, nt_seq: Seq, feature: SeqFeature):
 
     transl_nt_seq = translate(feature, nt_seq)
 
-    if not str(nt_seq) == str(transl_nt_seq):
+    if not str(aa_seq) == str(transl_nt_seq):
         match = False
 
     return match
@@ -350,10 +355,10 @@ def get_translation(feature: SeqFeature, nt_seq: Seq):
     # if len nt_seq not divisible by 3, we try to trim
     fuzzy_start = False
     fuzzy_end = False
-    if "<>" in feature.location.start:
+    if str(feature.location.start)[0] in "<>":
         fuzzy_start = True
 
-    if "<>" in feature.location.end:
+    if str(feature.location.end)[0] in "<>":
         fuzzy_end = True
 
     if fuzzy_start and fuzzy_end:
