@@ -98,6 +98,7 @@ def parse_cmd(args):  # pragma: no cover
         "--mibig_version",
         dest="input.mibig_version",
         type=str,
+        choices=["1.0", "1.1", "1.2", "1.3", "1.4", "2.0", "3.0", "3.1"],
         help="Version of MiBIG database. If not provided, MiBIG will not be included\
              in the analysis.",
     )

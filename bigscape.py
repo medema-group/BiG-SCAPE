@@ -7,12 +7,11 @@ from pathlib import Path
 
 # from other modules
 from src.data import DB
-from src.file_input import load_dataset_folder
 from src.genbank import SOURCE_TYPE, BGCRecord, CDS, GBK
 from src.hmm import HMMer, legacy_filter_overlap, HSP
 from src.parameters import RunParameters, parse_cmd
-from src.comparison import generate_mix, legacy_bin_generator
-from src.comparison import create_bin_network_edges_alt as create_bin_network_edges
+from src.comparison import generate_mix, legacy_bin_generator, create_bin_network_edges_alt as create_bin_network_edges
+from src.file_input import load_dataset_folder, download_mibig
 from src.diagnostics import Profiler
 from src.network import BSNetwork
 from src.output import (
@@ -75,6 +74,11 @@ if __name__ == "__main__":
     else:
         # start DB
         DB.create_in_mem()
+
+    if run.input.mibig_version:
+        # TODO: give user possibility to give mibig folder?
+        mibig_dir = download_mibig(run.input.mibig_version, run.output.output_dir)
+        mibig_gbks = load_dataset_folder(mibig_dir, SOURCE_TYPE.MIBIG)
 
         # Load datasets
         gbks = load_dataset_folder(
