@@ -23,7 +23,8 @@ class InputParameters:
         input_dir: Path
         input_mode: INPUT_MODE
         pfam_path: Optional[Path]
-        download_pfam: bool
+        pfam_version: bool
+        mibig_dir: Optional[Path]
         mibig_version: str
         metadata_path: Optional[Path]
         dataset_path: Optional[Path]
@@ -42,8 +43,8 @@ class InputParameters:
         # other db
         # TODO: test
         self.pfam_path: Optional[Path] = None
-        self.download_pfam: bool = False
-        self.mibig_version: str = ""
+        self.pfam_version: str = ""
+        self.mibig_version: Optional[str] = None
 
         # other user supplied stuff
         # TODO: test
@@ -64,6 +65,34 @@ class InputParameters:
         """Validate the arguments contained in this object and set default values"""
         validate_input_dir(self.input_dir)
         validate_input_mode(self.input_mode)
+        validate_pfam(self.pfam_version, self.pfam_path)
+        validate_reference(self.mibig_version, self.reference_dir)
+
+
+def validate_pfam(pfam_version, pfam_path):
+    """Validates the pfam related properties"""
+
+    if pfam_version and pfam_path.exists():
+        logging.info(
+            "Pfam file already exists, if you wish to re-download,"
+            " delete or move this file. In the meantime, BiG_SCAPE"
+            " will use the existing file."
+        )
+
+
+def validate_reference(mibig_version, reference_dir):
+    """Validates the reference/MIBiG related properties"""
+
+    if not mibig_version and not reference_dir.exists():
+        logging.error("GBK reference directory does not exist!")
+        raise InvalidArgumentError("--reference_dir", reference_dir)
+
+    if mibig_version and reference_dir.exists():
+        logging.info(
+            "GBK reference directory already exists, if you wish to "
+            "re-download, delete or move this directory. In the "
+            "meantime, BiG-SCAPE will use the existing directory."
+        )
 
 
 def validate_input_dir(input_dir):

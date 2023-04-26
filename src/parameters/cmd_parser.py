@@ -81,17 +81,22 @@ def parse_cmd(args):  # pragma: no cover
         "--pfam_path",
         dest="input.pfam_path",
         type=Path,
-        required=True,
-        help="Path to hmmpress-processed Pfam database files."
+        required=False,
+        help="Path to (hmmpress-processed) Pfam database file(s). If file does \
+            not exist and  pfam_version parameter is also passed, pfam file \
+            will be downloaded and hmmpressed to this location."
         # TODO: check this when implementing automated pressing
     )
 
     parser.add_argument(
-        "--download_pfam",
-        dest="input.download_pfam",
-        default=False,
-        action="store_true",
-        help="Download and press latest pfam database.",
+        "--pfam_version",
+        dest="input.pfam_version",
+        default="current_release",
+        type=str,
+        required=False,
+        help="Pfam release number. Download and press given pfam database.\
+            Default: current release. If no pfam_path provide, Pfam file will \
+            be downloaded in the BiG-SCAPE folder.",
     )
 
     parser.add_argument(
@@ -99,8 +104,10 @@ def parse_cmd(args):  # pragma: no cover
         dest="input.mibig_version",
         type=str,
         choices=["1.0", "1.1", "1.2", "1.3", "1.4", "2.0", "3.0", "3.1"],
-        help="Version of MiBIG database. If not provided, MiBIG will not be included\
-             in the analysis.",
+        help="MIBiG relase number. Download and use this version of MiBIG database. \
+            If not provided, MiBIG will not be included in the analysis. \
+            If no reference-directory path is provided, MIBiG files will be downloaded \
+            in the BiG-SCAPE folder.",
     )
 
     parser.add_argument(
@@ -122,8 +129,10 @@ def parse_cmd(args):  # pragma: no cover
         "--reference_dir",
         dest="input.reference_dir",
         type=Path,
-        help="Directory containing user provided reference BGC antiSMASH-processed \
-            genbank files.",
+        help="Directory containing reference BGC antiSMASH-processed \
+            genbank files. If directory does not exist and MIBiG version \
+            parameter is also passed, MiBIG files will be downloaded \
+            to this directory",
     )
 
     parser.add_argument(
