@@ -44,9 +44,13 @@ class BGCRecord:
         self.nt_stop: Optional[int] = None
         self.product: Optional[str] = None
 
-    def get_cds(self) -> list[CDS]:
+    def get_cds(self, return_all=False) -> list[CDS]:
         """Get a list of CDS that lie within the coordinates specified in this region
         from the parent GBK class
+
+        Args:
+            return_all (bool): If set to true, returns all CDS regardless of coordinate
+            information. Defaults to False
 
         Raises:
             ValueError: Raised if this class contains no position information or if this
@@ -60,6 +64,9 @@ class BGCRecord:
             raise ValueError("BGCRegion does not have a parent")
 
         parent_gbk_cds: list[CDS] = self.parent_gbk.genes
+
+        if return_all:
+            return self.parent_gbk.genes
 
         if self.nt_start is None or self.nt_stop is None:
             raise ValueError("Cannot CDS from region with no position information")
