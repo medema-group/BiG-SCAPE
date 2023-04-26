@@ -14,7 +14,7 @@ from src.errors import InvalidGBKError, InvalidGBKRegionChildError
 # from this module
 from src.genbank.bgc_record import BGCRecord
 from src.genbank.candidate_cluster import CandidateCluster
-
+from src.genbank.cds import CDS
 
 # from circular imports
 if TYPE_CHECKING:
@@ -123,6 +123,9 @@ class Region(BGCRecord):
 
             region.parse_bgc_record(feature, parent_gbk=parent_gbk)
             return region
+
+    def get_cds(self, return_all=True) -> list[CDS]:
+        return super().get_cds(return_all)
 
     def __repr__(self):
         return f"{self.parent_gbk} Region {self.number} {self.nt_start}-{self.nt_stop} "
