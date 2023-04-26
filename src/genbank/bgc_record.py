@@ -91,7 +91,8 @@ class BGCRecord:
         """
         domains = []
         for cds in self.get_cds():
-            domains.extend(cds.hsps)
+            if len(cds.hsps) > 0:
+                domains.extend(cds.hsps)
         return domains
 
     def save(self, type: str, commit=True):
