@@ -5,44 +5,50 @@ import logging
 from pathlib import Path
 from typing import List, Optional
 from math import floor
-import requests
 import os
 import tarfile
+
+# from dependencies
+import requests  # type: ignore
 
 # from other modules
 from src.genbank.gbk import GBK, SOURCE_TYPE
 
 
-def download_mibig(mibig_version: str, output_dir: Path):
+def download_mibig(mibig_version: str, reference_dir: Path):
     """download mibig"""
 
     # TODO: update to proper link once Kai makes it available
-
     mibig_url = (
         f"https://dl.secondarymetabolites.org/mibig/mibig_json_{mibig_version}.tar.gz"
     )
-    mibig_path_compressed = Path(output_dir, f"mibig_gbk_{mibig_version}.tar.gz")
-    mibig_dir = Path(output_dir, f"mibig_gbk_{mibig_version}")
 
-    # check if mibig already exists in output folder
-    # TODO put pfam and mibig in bigscape folder (path to root where script is being run from)
-    # check there before downloading
-    if os.path.exists(mibig_dir):
-        return mibig_dir
+    if reference_dir is None:
+        parent_dir = Path(os.path.dirname(os.path.abspath(__file__)), "reference")
+        if not parent_dir.exists:
+            os.makedirs(parent_dir)
+        reference_dir = Path(parent_dir, f"mibig_antismash_{mibig_version}")
+
+    reference_dir_compressed = Path(str(reference_dir) + ".tar.gz")
+
+    # check if the folder already exists, and if so use it
+    if os.path.exists(reference_dir):
+        return reference_dir
 
     # if not, try to download
-    response = requests.get(mibig_url)
+    response = requests.get(mibig_url, stream=True)
     if response.status_code != 200:
         raise ValueError("Could not download MIBiG file")
-    with open(mibig_path_compressed, "wb") as f:
+    with open(reference_dir_compressed, "wb") as f:
         f.write(response.raw.read())
 
     # extract contents
-    file = tarfile.open(mibig_path_compressed)
-    file.extractall(mibig_dir)
+    file = tarfile.open(reference_dir_compressed)
+    file.extractall(reference_dir)
     file.close()
+    os.remove(reference_dir_compressed)
 
-    return mibig_dir
+    return reference_dir
 
 
 def load_dataset_folder(
