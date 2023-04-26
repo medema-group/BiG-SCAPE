@@ -83,9 +83,8 @@ def validate_pfam(pfam_version, pfam_path):
 def validate_reference(mibig_version, reference_dir):
     """Validates the reference/MIBiG related properties"""
 
-    if not mibig_version and not reference_dir.exists():
+    if reference_dir and not reference_dir.exists():
         logging.error("GBK reference directory does not exist!")
-        raise InvalidArgumentError("--reference_dir", reference_dir)
 
     if mibig_version and reference_dir.exists():
         logging.info(

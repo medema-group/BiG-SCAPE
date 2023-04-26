@@ -5,6 +5,7 @@ line arguments"""
 from argparse import ArgumentParser
 from multiprocessing import cpu_count
 from pathlib import Path
+import os
 
 # from this module
 from .run import RunParameters
@@ -80,6 +81,7 @@ def parse_cmd(args):  # pragma: no cover
         "-p",
         "--pfam_path",
         dest="input.pfam_path",
+        default=Path(os.path.dirname(os.path.abspath(__file__)), "pfam", "Pfam-A.hmm"),
         type=Path,
         required=False,
         help="Path to (hmmpress-processed) Pfam database file(s). If file does \
@@ -91,7 +93,7 @@ def parse_cmd(args):  # pragma: no cover
     parser.add_argument(
         "--pfam_version",
         dest="input.pfam_version",
-        default="current_release",
+        default="Current release",
         type=str,
         required=False,
         help="Pfam release number. Download and press given pfam database.\
@@ -128,6 +130,7 @@ def parse_cmd(args):  # pragma: no cover
     parser.add_argument(
         "--reference_dir",
         dest="input.reference_dir",
+        # TODO: can a default be provided here that includes the mibig version param ?
         type=Path,
         help="Directory containing reference BGC antiSMASH-processed \
             genbank files. If directory does not exist and MIBiG version \
