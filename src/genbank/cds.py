@@ -92,12 +92,14 @@ class CDS:
 
             # replace old if new is better
             if score_new > score_old:
-                self.hsps[hsp_idx] = new_hsp
+                del self.hsps[hsp_idx]
+                self.hsps.append(new_hsp)
                 return
 
             # if scores are equal, keep the one with the lower nt_start
             if new_hsp.env_start < old_hsp.env_start:
-                self.hsps[hsp_idx] = new_hsp
+                del self.hsps[hsp_idx]
+                self.hsps.append(new_hsp)
                 return
 
         # if we got through all of that without the function, we never replaced an HSP
@@ -159,12 +161,15 @@ class CDS:
 
         return (
             f"{parent_gbk_str}_CDS{orf}, {self.nt_start}-{self.nt_stop}:"
-            f"{self.strand}"
+            f"{self.strand} {self.gene_kind}"
         )
 
     @classmethod
     def parse(cls, feature: SeqFeature, parent_gbk: Optional[GBK] = None):
-        """Creates a cds object from a region feature in a GBK file"""
+        """Creates a cds object from a region feature in a GBK file
+
+        Note that this will not add biosynthetic information if no parent gbk is passed
+        """
 
         if feature.type != "CDS":
             logging.error(
@@ -180,10 +185,6 @@ class CDS:
         cds = cls(nt_start, nt_stop)
         cds.strand = strand
 
-        # add parent if it exists
-        if parent_gbk is not None:
-            cds.parent_gbk = parent_gbk
-
         if "translation" not in feature.qualifiers:
             logging.error("translation qualifier not found in cds feature!")
             raise InvalidGBKError()
@@ -191,9 +192,23 @@ class CDS:
         aa_seq = str(feature.qualifiers["translation"][0])
         cds.aa_seq = aa_seq
 
+        # add parent if it exists
+        if parent_gbk is None:
+            return cds
+
+        cds.parent_gbk = parent_gbk
+        if parent_gbk.as_version == "4":
+            if "sec_met" not in feature.qualifiers:
+                cds.gene_kind = ""
+                return cds
+
+            for sec_met_value in feature.qualifiers["sec_met"]:
+                if "Kind" in sec_met_value:
+                    cds.gene_kind = sec_met_value[6:]  # trim "Kind: "
+                    return cds
+
         if "gene_kind" in feature.qualifiers:
-            gene_kind = str(feature.qualifiers["gene_kind"][0])
-            cds.gene_kind = gene_kind
+            cds.gene_kind = str(feature.qualifiers["gene_kind"][0])
 
         return cds
 

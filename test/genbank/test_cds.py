@@ -69,7 +69,10 @@ class TestCDS(TestCase):
 
         feature.qualifiers["gene_kind"] = [expected_gene_kind]
 
-        cds = CDS.parse(feature)
+        parent_gbk = GBK("", "")
+        parent_gbk.as_version = "5"
+
+        cds = CDS.parse(feature, parent_gbk)
 
         self.assertEqual(expected_gene_kind, cds.gene_kind)
 
