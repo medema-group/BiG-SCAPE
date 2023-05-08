@@ -1,3 +1,9 @@
 """Contains constant values"""
 DB_SCHEMA_PATH = "src/data/schema.sql"
 PROFILER_UPDATE_INTERVAL = 0.5
+
+EXPAND_MIN_LCS_LEN = 3
+
+EXPAND_MATCH_SCORE = 5
+EXPAND_MISMATCH_SCORE = -3
+EXPAND_GAP_SCORE = -2
