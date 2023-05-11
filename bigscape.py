@@ -11,7 +11,9 @@ from src.genbank import SOURCE_TYPE, BGCRecord, CDS
 from src.hmm import HMMer
 from src.parameters import parse_cmd
 from src.comparison import generate_mix
+from src.comparison.legacy_extend import expand_glocal
 from src.diagnostics import Profiler
+from src.distances import calc_jaccard_pair, calc_ai_pair
 
 if __name__ == "__main__":
     # parsing needs to come first because we need it in setting up the logging
@@ -60,7 +62,7 @@ if __name__ == "__main__":
             platform.system(),
             run.cores,
         )
-        HMMer.hmmsearch_multiprocess(all_cds, run.cores)
+        HMMer.hmmsearch_multiprocess(all_cds, cores=run.cores)
 
     all_hsps = []
     for cds in all_cds:
@@ -107,5 +109,27 @@ if __name__ == "__main__":
     mix_bin = generate_mix(all_regions)
 
     logging.info("Generated mix bin: %s", mix_bin)
+
+    for pair in mix_bin.pairs():
+        jaccard = calc_jaccard_pair(pair)
+        adjacency = calc_ai_pair(pair)
+
+        logging.debug("JC: %f, AI: %f, DSS: %f", jaccard, adjacency, 0.0)
+
+        pair.find_lcs()
+
+        pair.comparable_region.log_comparable_region("LCS")
+
+        expand_glocal(pair.comparable_region)
+
+        pair.comparable_region.log_comparable_region("GLOCAL")
+
+        jaccard = calc_jaccard_pair(pair)
+        adjacency = calc_ai_pair(pair)
+
+        logging.debug("JC: %f, AI: %f, DSS: %f", jaccard, adjacency, 0.0)
+
+    logging.debug(pair.comparable_region)
+
     if run.diagnostics.profiling:
         profiler.stop()
