@@ -41,7 +41,7 @@ class TestLegacyComparableRegion(TestCase):
         expected_results = (3, 1)
 
         actual_results = expand_score(
-            target_cds_list[expand_start:], query_cds_list[expand_start:], 1, 2, 3
+            target_cds_list[expand_start:], query_cds_list[expand_start:]
         )
 
         self.assertEqual(expected_results, actual_results)
