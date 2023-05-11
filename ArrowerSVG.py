@@ -10,6 +10,7 @@
 
 import os
 import sys
+import shutil
 from Bio import SeqIO
 from random import uniform
 from colorsys import hsv_to_rgb
@@ -27,27 +28,34 @@ domain_contour_thickness = 1
 gene_contour_thickness = 2 # thickness grows outwards
 stripe_thickness = 3
 
-domains_color_file = os.path.join(os.path.dirname(os.path.realpath(__file__)), "domains_color_file.tsv")
+source_domains_color_file = os.path.join(os.path.dirname(os.path.realpath(__file__)), "domains_color_file.tsv")
 
-
+def copy_color_domains_file_from_source(source_file):
+    home_dir = os.path.expanduser("~")
+    # Create the path to the .bigscape directory
+    bigscape_dir = os.path.join(home_dir, ".bigscape")
+    # Create the .bigscape directory if it doesn't exist
+    if not os.path.exists(bigscape_dir):
+        os.makedirs(bigscape_dir)
+    # Create the path to the file inside the .bigscape directory
+    domains_color_file = os.path.join(bigscape_dir, "domains_color_file.tsv")
+    if not os.path.isfile(domains_color_file):
+        shutil.copyfile(source_file, domains_color_file)
+    return domains_color_file
+    
 def read_color_domains_file():
     # Try to read colors for domains
     color_domains = {}
-    
-    if os.path.isfile(domains_color_file):
-        print("  Found file with domains colors")
-        with open(domains_color_file, "r") as color_domains_handle:
-            for line in color_domains_handle:
-                # handle comments and empty lines
-                if line[0] != "#" and line.strip():
-                    row = line.strip().split("\t")
-                    name = row[0]
-                    rgb = row[1].split(",")
-                    color_domains[name] = [int(rgb[x]) for x in range(3)]
-    else:
-        print("  Domains colors file was not found. An empty file will be created")
-        color_domains_handle = open(domains_color_file, "a+")
-        
+    domains_color_file = copy_color_domains_file_from_source(source_domains_color_file)
+    print("  Found file with domains colors")
+    with open(domains_color_file, "r") as color_domains_handle:
+        for line in color_domains_handle:
+            # handle comments and empty lines
+            if line[0] != "#" and line.strip():
+                row = line.strip().split("\t")
+                name = row[0]
+                rgb = row[1].split(",")
+                color_domains[name] = [int(rgb[x]) for x in range(3)]        
     return color_domains
    
 
@@ -608,7 +616,7 @@ def SVG(write_html, outputfile, GenBankFile, BGCname, pfdFile, use_pfd, color_ge
             #print("   Saving new color names for domains " + ", ".join(new_color_domains.keys()))
         #else:
             #print("   Saving new color names for 10+ domains")
-            
+        domains_color_file = copy_color_domains_file_from_source(source_domains_color_file)
         with open(domains_color_file, "a") as color_domains_handle:
             for new_names in new_color_domains:
                 color_domains_handle.write(new_names + "\t" + ",".join([str(ncdom) for ncdom in new_color_domains[new_names]]) + "\n")
