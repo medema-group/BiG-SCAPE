@@ -9,7 +9,7 @@ from unittest import TestCase
 from src.genbank import GBK, Region, CDS
 from src.hmm import HSP
 from src.comparison import BGCPair
-from src.distances import calculate_jaccard_sets, calculate_jaccard_pair
+from src.distances import calc_jaccard_sets, calc_jaccard_pair
 
 
 class TestJaccard(TestCase):
@@ -22,7 +22,7 @@ class TestJaccard(TestCase):
 
         expected_jaccard = 1.0
 
-        actual_jaccard = calculate_jaccard_sets(set_a, set_b)
+        actual_jaccard = calc_jaccard_sets(set_a, set_b)
 
         self.assertEqual(expected_jaccard, actual_jaccard)
 
@@ -33,7 +33,7 @@ class TestJaccard(TestCase):
 
         expected_jaccard = 0.6
 
-        actual_jaccard = calculate_jaccard_sets(set_a, set_b)
+        actual_jaccard = calc_jaccard_sets(set_a, set_b)
 
         self.assertAlmostEqual(expected_jaccard, actual_jaccard, 2)
 
@@ -44,7 +44,7 @@ class TestJaccard(TestCase):
 
         expected_jaccard = 0
 
-        actual_jaccard = calculate_jaccard_sets(set_a, set_b)
+        actual_jaccard = calc_jaccard_sets(set_a, set_b)
 
         self.assertEqual(expected_jaccard, actual_jaccard)
 
@@ -92,7 +92,7 @@ class TestJaccard(TestCase):
 
         expected_jaccard = 1
 
-        actual_jaccard = calculate_jaccard_pair(pair)
+        actual_jaccard = calc_jaccard_pair(pair)
 
         self.assertEqual(expected_jaccard, actual_jaccard)
 
@@ -148,7 +148,7 @@ class TestJaccard(TestCase):
 
         expected_jaccard = 0.6
 
-        actual_jaccard = calculate_jaccard_pair(pair)
+        actual_jaccard = calc_jaccard_pair(pair)
 
         self.assertAlmostEqual(expected_jaccard, actual_jaccard, 2)
 
@@ -203,7 +203,7 @@ class TestJaccard(TestCase):
 
         expected_jaccard = 0
 
-        actual_jaccard = calculate_jaccard_pair(pair)
+        actual_jaccard = calc_jaccard_pair(pair)
 
         self.assertEqual(expected_jaccard, actual_jaccard, 2)
 

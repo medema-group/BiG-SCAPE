@@ -1,6 +1,6 @@
-from .jaccard import calculate_jaccard_pair, calculate_jaccard_sets
+from .jaccard import calc_jaccard_pair, calc_jaccard_sets
 
 __all__ = [
-    "calculate_jaccard_pair",
-    "calculate_jaccard_sets",
+    "calc_jaccard_pair",
+    "calc_jaccard_sets",
 ]
