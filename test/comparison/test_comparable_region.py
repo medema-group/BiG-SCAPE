@@ -6,7 +6,7 @@ from unittest import TestCase
 # from other modules
 from src.genbank import GBK, Region, CDS
 from src.hmm import HSP
-from src.comparison import BGCPair, LCS
+from src.comparison import BGCPair, ComparableRegion
 
 
 class TestComparibleRegions(TestCase):
@@ -38,8 +38,8 @@ class TestComparibleRegions(TestCase):
 
         for a_domain in a_domains:
             cds_a = CDS(10, 90)
-            gbk_a.genes.append(cds_a)
-            cds_a.hsps.append(HSP(cds_a, a_domain, 100, 0, 30))
+            gbk_a.genes.add(cds_a)
+            cds_a.hsps.add(HSP(cds_a, a_domain, 100, 0, 30))
 
         gbk_b = GBK("", "")
         gbk_b.region = Region(1)
@@ -49,39 +49,39 @@ class TestComparibleRegions(TestCase):
 
         for b_domain in b_domains:
             cds_b = CDS(10, 90)
-            gbk_b.genes.append(cds_b)
-            cds_b.hsps.append(HSP(cds_b, b_domain, 100, 0, 30))
+            gbk_b.genes.add(cds_b)
+            cds_b.hsps.add(HSP(cds_b, b_domain, 100, 0, 30))
 
         for shared_domain in shared_domains:
             cds_a = CDS(10, 90)
-            gbk_a.genes.append(cds_a)
-            cds_a.hsps.append(HSP(cds_a, shared_domain, 100, 0, 30))
+            gbk_a.genes.add(cds_a)
+            cds_a.hsps.add(HSP(cds_a, shared_domain, 100, 0, 30))
 
             cds_b = CDS(10, 90)
-            gbk_b.genes.append(cds_b)
-            cds_b.hsps.append(HSP(cds_b, shared_domain, 100, 0, 30))
+            gbk_b.genes.add(cds_b)
+            cds_b.hsps.add(HSP(cds_b, shared_domain, 100, 0, 30))
 
         pair = BGCPair(gbk_a.region, gbk_b.region)
 
-        expected_lcs = LCS(1, 1, 3, False)
+        expected_lcs = ComparableRegion(pair, 1, 4, 1, 4, False)
 
-        actual_lcs = LCS.get_pair_domain_lcs(pair)
+        actual_lcs = ComparableRegion.create_domain_lcs(pair)
 
         self.assertEqual(expected_lcs, actual_lcs)
 
     def test_get_dom_list_lcs_reverse(self):
         """Tests whether get_dom_list_lcs can find the longest common substring of
         domains between a pair of BGCs where one side has a reversed domain string"""
-        shared_domains = [
-            "PF00002",
-            "PF00003",
-            "PF00004",
-        ]
         a_domains = [
             "PF00001",
         ]
         b_domains = [
             "PF00005",
+        ]
+        shared_domains = [
+            "PF00002",
+            "PF00003",
+            "PF00004",
         ]
 
         gbk_a = GBK("", "")
@@ -92,8 +92,8 @@ class TestComparibleRegions(TestCase):
 
         for a_domain in a_domains:
             cds_a = CDS(10, 90)
-            gbk_a.genes.append(cds_a)
-            cds_a.hsps.append(HSP(cds_a, a_domain, 100, 0, 30))
+            gbk_a.genes.add(cds_a)
+            cds_a.hsps.add(HSP(cds_a, a_domain, 100, 0, 30))
 
         gbk_b = GBK("", "")
         gbk_b.region = Region(1)
@@ -103,25 +103,25 @@ class TestComparibleRegions(TestCase):
 
         for b_domain in b_domains:
             cds_b = CDS(10, 90)
-            gbk_b.genes.append(cds_b)
-            cds_b.hsps.append(HSP(cds_b, b_domain, 100, 0, 30))
+            gbk_b.genes.add(cds_b)
+            cds_b.hsps.add(HSP(cds_b, b_domain, 100, 0, 30))
 
         for shared_domain in shared_domains:
             cds_a = CDS(10, 90)
-            gbk_a.genes.append(cds_a)
-            cds_a.hsps.append(HSP(cds_a, shared_domain, 100, 0, 30))
+            gbk_a.genes.add(cds_a)
+            cds_a.hsps.add(HSP(cds_a, shared_domain, 100, 0, 30))
 
             cds_b = CDS(10, 90)
-            gbk_b.genes.append(cds_b)
-            cds_b.hsps.append(HSP(cds_b, shared_domain, 100, 0, 30))
+            gbk_b.genes.add(cds_b)
+            cds_b.hsps.add(HSP(cds_b, shared_domain, 100, 0, 30))
 
         # reverse the b genes
         gbk_b.genes = gbk_b.genes[::-1]
 
         pair = BGCPair(gbk_a.region, gbk_b.region)
 
-        expected_lcs = LCS(1, 1, 3, True)
+        expected_lcs = ComparableRegion(pair, 1, 4, 3, 0, True)
 
-        actual_lcs = LCS.get_pair_domain_lcs(pair)
+        actual_lcs = ComparableRegion.create_domain_lcs(pair)
 
         self.assertEqual(expected_lcs, actual_lcs)

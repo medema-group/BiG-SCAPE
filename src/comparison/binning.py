@@ -12,6 +12,7 @@ from typing import Iterator
 from src.genbank import BGCRecord
 
 # from this module
+from .comparable_region import ComparableRegion
 
 
 class BGCBin:
@@ -58,11 +59,36 @@ class BGCBin:
 
 
 class BGCPair:
-    """Contains a pair of BGCs, which can be any type of BGCRecord"""
+    """Contains a pair of BGCs, which can be any type of BGCRecord
+
+    This will also contain any other necessary information specific to this pair needed
+    to generate the scores
+    """
 
     def __init__(self, region_a: BGCRecord, region_b: BGCRecord):
         self.region_a = region_a
         self.region_b = region_b
+
+        if region_a.parent_gbk is None:
+            raise ValueError("Region in pair contains no genes!")
+
+        if region_b.parent_gbk is None:
+            raise ValueError("Region in pair contains no genes!")
+
+        # comparable regions start at the full ranges
+        a_len = len(region_a.parent_gbk.genes)
+        b_len = len(region_b.parent_gbk.genes)
+
+        self.comparable_region: ComparableRegion = ComparableRegion(
+            self, 0, 0, a_len, b_len, False
+        )
+
+    def find_lcs(self) -> None:
+        """Generate the comparable region for this BGC pair"""
+        self.comparable_region = ComparableRegion.create_domain_lcs(self)
+
+    def __repr__(self) -> str:
+        return f"Pair {self.region_a} - {self.region_b}"
 
 
 def generate_mix(bgc_list: list[BGCRecord]) -> BGCBin:

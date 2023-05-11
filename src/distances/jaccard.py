@@ -31,18 +31,5 @@ def calculate_jaccard_pair(bgc_pair: BGCPair) -> float:
     Returns:
         float: Jaccard index
     """
-    a_genes = bgc_pair.region_a.get_cds()
-    b_genes = bgc_pair.region_b.get_cds()
-
-    a_domains: set[str] = set()
-    b_domains: set[str] = set()
-
-    for a_gene in a_genes:
-        for a_hsp in a_gene.hsps:
-            a_domains.add(a_hsp.domain)
-
-    for b_gene in b_genes:
-        for b_hsp in b_gene.hsps:
-            b_domains.add(b_hsp.domain)
-
-    return calculate_jaccard_sets(a_domains, b_domains)
+    a_cds, b_cds = bgc_pair.comparable_region.get_domain_sets()
+    return calculate_jaccard_sets(a_cds, b_cds)
