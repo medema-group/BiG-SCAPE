@@ -98,20 +98,14 @@ class ComparableRegion:
             a_start = self.a_start
             a_stop = self.a_stop
 
-            if self.reverse:
-                b_cds_len = len(self.pair.region_b.get_cds())
-                b_start = b_cds_len - self.b_start - 1
-                b_stop: Optional[int] = b_cds_len - self.b_stop
-                if b_stop is not None and b_stop < 0:
-                    b_stop = None
-                b_step = -1
-            else:
-                b_start = self.b_start
-                b_stop = self.b_stop
-                b_step = 1
+            b_start = self.b_start
+            b_stop = self.b_stop
 
             a_cds_list = self.pair.region_a.get_cds()[a_start:a_stop]
-            b_cds_list = self.pair.region_b.get_cds()[b_start:b_stop:b_step]
+            b_cds_list = self.pair.region_b.get_cds()[b_start:b_stop]
+
+            if self.reverse:
+                b_cds_list = b_cds_list[::-1]
 
             a_domain_list = []
             for a_cds in a_cds_list:
@@ -174,8 +168,8 @@ class ComparableRegion:
             # previously we flipped the entire B array in order to find the LCS
             # now we want to go back to a start and stop position for the unflipped
             # array
-            b_start = len(b_cds) - b_start_rev
-            b_stop = b_start - rev_match_len
+            b_start = b_start_rev
+            b_stop = b_start + rev_match_len
 
         return cls(pair, a_start, a_stop, b_start, b_stop, reverse)
 
@@ -189,15 +183,13 @@ class ComparableRegion:
             return
 
         a_cds_list = self.pair.region_a.get_cds()
+        b_cds_list = self.pair.region_b.get_cds()
 
         if self.reverse:
-            b_cds_list = self.pair.region_b.get_cds()[::-1]
-            b_start = len(b_cds_list) - self.b_start
-            b_stop = len(b_cds_list) - self.b_stop
-        else:
-            b_cds_list = self.pair.region_b.get_cds()
-            b_start = self.b_start
-            b_stop = self.b_stop
+            b_cds_list = b_cds_list[::-1]
+
+        b_start = self.b_start
+        b_stop = self.b_stop
 
         for i in range(max(len(a_cds_list), len(b_cds_list))):
             a_domains = ""
@@ -213,20 +205,25 @@ class ComparableRegion:
                 )
 
             a_region_str = ""
-
-            a_in_region = i >= self.a_start and i < self.a_stop
-
-            if a_in_region:
-                a_region_str = label
-
             b_region_str = ""
 
-            b_in_region = i >= b_start and i < b_stop
+            a_in_region = i > self.a_start and i < self.a_stop
+            if a_in_region:
+                a_region_str = label
+            if i == self.a_start:
+                a_region_str = "START"
+            if i == self.a_stop:
+                a_region_str = "STOP"
 
+            b_in_region = i > b_start and i < b_stop
             if b_in_region:
                 b_region_str = label
+            if i == b_start:
+                b_region_str = "START"
+            if i == b_stop:
+                b_region_str = "STOP"
 
-            log_line = f"{i:<3} {a_domains:<25} {a_region_str:^10} {b_domains:<25} {b_region_str:^10}"
+            log_line = f"{i:<3} {a_domains:<25} {a_region_str:<10} {b_domains:<25} {b_region_str:<10}"
             logging.debug(log_line)
 
     def __eq__(self, __o: object) -> bool:
@@ -258,13 +255,10 @@ class ComparableRegion:
         """
         if self.reverse:
             reverse_string = "B is reversed"
-            b_len = len(self.pair.region_b.get_cds())
-            b_start = b_len - self.b_start
-            b_stop = b_len - self.b_stop
         else:
             reverse_string = "B is not reversed"
-            b_start = self.b_start
-            b_stop = self.b_stop
+        b_start = self.b_start
+        b_stop = self.b_stop
 
         return (
             f"Comparable region: A {self.a_start}-{self.a_stop}, "

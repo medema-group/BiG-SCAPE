@@ -2,7 +2,6 @@
 
 # from python
 import logging
-from typing import Optional
 
 # from other modules
 from src.parameters.constants import (
@@ -85,11 +84,6 @@ def set_expansion_left(
         b_expansion (int): the length to expand B
     """
     comparable_region.a_start -= a_expansion
-
-    if comparable_region.reverse:
-        comparable_region.b_start += b_expansion
-        return
-
     comparable_region.b_start -= b_expansion
 
 
@@ -108,19 +102,16 @@ def expand_glocal_left(comparable_region: ComparableRegion) -> None:
 
     cds_list_a = comparable_region.pair.region_a.get_cds()
 
-    a_start = comparable_region.a_start - 1
-    left_cds_a = cds_list_a[a_start::-1]
+    a_left_stop = comparable_region.a_start - 1
+    left_cds_a = cds_list_a[a_left_stop::-1]
 
     cds_list_b = comparable_region.pair.region_b.get_cds()
 
-    # if b is reversed. the section we want is to the right of the start instead of to
-    # the left
     if comparable_region.reverse:
-        b_start = comparable_region.b_start
-        left_cds_b = cds_list_b[b_start:]
-    else:
-        b_start = comparable_region.b_start - 1
-        left_cds_b = cds_list_b[b_start::-1]
+        cds_list_b = cds_list_b[::-1]
+
+    b_left_stop = comparable_region.b_start - 1
+    left_cds_b = cds_list_b[b_left_stop::-1]
 
     # first check we do is to see which of the regions has more genes to the left
 
@@ -201,12 +192,7 @@ def set_expansion_right(
         b_expansion (int): the length to expand B
     """
     comparable_region.a_stop += a_expansion
-
-    if comparable_region.reverse:
-        comparable_region.b_stop -= b_expansion
-        return
-
-    comparable_region.a_stop += b_expansion
+    comparable_region.b_stop += b_expansion
 
 
 def expand_glocal_right(comparable_region: ComparableRegion) -> None:
@@ -221,22 +207,16 @@ def expand_glocal_right(comparable_region: ComparableRegion) -> None:
 
     cds_list_a = comparable_region.pair.region_a.get_cds()
 
-    a_start = comparable_region.a_start + comparable_region.a_stop
-    right_cds_a = cds_list_a[a_start:]
+    a_right_start = comparable_region.a_stop
+    right_cds_a = cds_list_a[a_right_start:]
 
     cds_list_b = comparable_region.pair.region_b.get_cds()
 
-    # if b is reversed. the section we want is to the left of the stop instead of to
-    # the right of the stop
     if comparable_region.reverse:
-        b_start: Optional[int] = len(cds_list_b) - (comparable_region.b_stop + 1)
-        # don't ask
-        if b_start is not None and b_start == -1:
-            b_start = None
-        right_cds_b = cds_list_b[b_start::-1]
-    else:
-        b_stop = comparable_region.b_stop
-        right_cds_b = cds_list_b[b_stop:]
+        cds_list_b = cds_list_b[::-1]
+
+    b_right_start = comparable_region.b_stop
+    right_cds_b = cds_list_b[b_right_start:]
 
     # first check we do is to see which of the regions has more genes to the left
 

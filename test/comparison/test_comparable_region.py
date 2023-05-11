@@ -120,7 +120,7 @@ class TestComparibleRegions(TestCase):
 
         pair = BGCPair(gbk_a.region, gbk_b.region)
 
-        expected_lcs = ComparableRegion(pair, 1, 4, 3, 0, True)
+        expected_lcs = ComparableRegion(pair, 1, 4, 1, 4, True)
 
         actual_lcs = ComparableRegion.create_domain_lcs(pair)
 
