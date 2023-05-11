@@ -5,6 +5,7 @@ channels:
 dependencies:
   - python=3.9
   - biopython
+  - sortedcontainers
   - fasttree
   - networkx
   - numpy
