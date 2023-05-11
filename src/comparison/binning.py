@@ -80,7 +80,7 @@ class BGCPair:
         b_len = len(region_b.parent_gbk.genes)
 
         self.comparable_region: ComparableRegion = ComparableRegion(
-            self, 0, 0, a_len, b_len, False
+            self, 0, a_len, 0, b_len, False
         )
 
     def find_lcs(self) -> None:
