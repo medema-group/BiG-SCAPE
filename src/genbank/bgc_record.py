@@ -9,6 +9,7 @@ import logging
 
 # from dependencies
 from Bio.SeqFeature import SeqFeature
+from sortedcontainers import SortedList
 
 # from other modules
 from src.data import DB
@@ -44,7 +45,7 @@ class BGCRecord:
         self.nt_stop: Optional[int] = None
         self.product: Optional[str] = None
 
-    def get_cds(self, return_all=False) -> list[CDS]:
+    def get_cds(self, return_all=False) -> SortedList[CDS]:
         """Get a list of CDS that lie within the coordinates specified in this region
         from the parent GBK class
 
@@ -58,12 +59,12 @@ class BGCRecord:
 
         Returns:
             list[CDS]: A list of CDS that lie only within the coordinates specified by
-            nt_start and nt_stop
+            nt_start and nt_stop or all CDS if return_all is true
         """
         if self.parent_gbk is None:
             raise ValueError("BGCRegion does not have a parent")
 
-        parent_gbk_cds: list[CDS] = self.parent_gbk.genes
+        parent_gbk_cds: SortedList[CDS] = self.parent_gbk.genes
 
         if return_all:
             return self.parent_gbk.genes
@@ -71,7 +72,7 @@ class BGCRecord:
         if self.nt_start is None or self.nt_stop is None:
             raise ValueError("Cannot CDS from region with no position information")
 
-        record_cds = []
+        record_cds = SortedList()
         for cds in parent_gbk_cds:
             if cds.nt_start < self.nt_start:
                 continue
@@ -79,7 +80,7 @@ class BGCRecord:
             if cds.nt_stop > self.nt_stop:
                 continue
 
-            record_cds.append(cds)
+            record_cds.add(cds)
 
         return record_cds
 

@@ -6,6 +6,7 @@ from unittest import TestCase
 
 # from dependencies
 from Bio.SeqFeature import SeqFeature, FeatureLocation
+from sortedcontainers import SortedSet
 
 # from other modules
 from src.genbank import GBK, CDS
@@ -158,7 +159,7 @@ class TestCDS(TestCase):
 
         cds.add_hsp_overlap_filter(new_hsp)
 
-        expected_result = [new_hsp]
+        expected_result = SortedSet([new_hsp])
 
         actual_result = cds.hsps
 
@@ -180,7 +181,7 @@ class TestCDS(TestCase):
 
         cds.add_hsp_overlap_filter(new_hsp)
 
-        expected_result = [old_hsp]
+        expected_result = SortedSet([old_hsp])
 
         actual_result = cds.hsps
 
@@ -202,7 +203,7 @@ class TestCDS(TestCase):
 
         cds.add_hsp_overlap_filter(new_hsp)
 
-        expected_result = [new_hsp]
+        expected_result = SortedSet([new_hsp])
 
         actual_result = cds.hsps
 
@@ -224,7 +225,7 @@ class TestCDS(TestCase):
 
         cds.add_hsp_overlap_filter(new_hsp)
 
-        expected_result = [new_hsp]
+        expected_result = SortedSet([new_hsp])
 
         actual_result = cds.hsps
 

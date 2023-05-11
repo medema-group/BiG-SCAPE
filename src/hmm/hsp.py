@@ -70,17 +70,18 @@ class HSP:
             DB.commit()
 
     def __repr__(self) -> str:
-        return ",".join(
-            map(
-                str,
-                [
-                    self.cds.nt_start,
-                    self.cds.nt_stop,
-                    self.cds.strand,
-                    self.domain,
-                    self.score,
-                ],
-            )
+        return f"{self.domain} ({self.score:.2f})"
+
+    def __gt__(self, __o: object) -> bool:
+        if not isinstance(__o, HSP):
+            raise NotImplementedError()
+
+        return all(
+            [
+                self.cds.nt_start > __o.cds.nt_start,
+                self.score > __o.score,
+                self.env_start > __o.env_start,
+            ]
         )
 
     def __eq__(self, __o: object) -> bool:
@@ -95,16 +96,12 @@ class HSP:
             bool: True if __o and self are equal
         """
         if not isinstance(__o, HSP):
-            return False
+            raise NotImplementedError()
 
-        return all(
-            [
-                __o.cds.nt_start == self.cds.nt_start,
-                __o.cds.nt_stop == self.cds.nt_stop,
-                __o.domain == self.domain,
-                __o.score == self.score,
-            ]
-        )
+        return __o.domain == self.domain
+
+    def __hash__(self) -> int:
+        return hash((self.domain))
 
     @staticmethod
     def has_overlap(hsp_a: HSP, hsp_b: HSP) -> bool:

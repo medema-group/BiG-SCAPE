@@ -7,6 +7,7 @@ from typing import Optional, TYPE_CHECKING
 
 # from dependencies
 from Bio.SeqFeature import SeqFeature
+from sortedcontainers import SortedList
 
 # from other modules
 from src.errors import InvalidGBKError
@@ -29,7 +30,7 @@ class CDS:
         nt_start: int
         nt_stop: int
         aa_seq: SeqRecord.seq
-        hsps: list[HSP]
+        hsps: SortedList[HSP]
     """
 
     def __init__(self, nt_start: int, nt_stop: int):
@@ -39,7 +40,7 @@ class CDS:
         self.gene_kind: Optional[str] = None
         self.strand: Optional[int] = None
         self.aa_seq: str = ""
-        self.hsps: list[HSP] = []
+        self.hsps: SortedList[HSP] = SortedList()
 
         # db specific fields
         self._db_id: Optional[int] = None
@@ -62,7 +63,7 @@ class CDS:
         """
         # if no hsps added yet, just add and continue
         if len(self.hsps) == 0:
-            self.hsps.append(new_hsp)
+            self.hsps.add(new_hsp)
             return
 
         for hsp_idx, old_hsp in enumerate(self.hsps):
@@ -93,18 +94,18 @@ class CDS:
             # replace old if new is better
             if score_new > score_old:
                 del self.hsps[hsp_idx]
-                self.hsps.append(new_hsp)
+                self.hsps.add(new_hsp)
                 return
 
             # if scores are equal, keep the one with the lower nt_start
             if new_hsp.env_start < old_hsp.env_start:
                 del self.hsps[hsp_idx]
-                self.hsps.append(new_hsp)
+                self.hsps.add(new_hsp)
                 return
 
         # if we got through all of that without the function, we never replaced an HSP
         # so add a new one here
-        self.hsps.append(new_hsp)
+        self.hsps.add(new_hsp)
 
     def save(self, commit=True):
         """Saves this CDS to the database and optionally executes a commit
@@ -147,6 +148,21 @@ class CDS:
         # only now that we have handled the return we can commit
         if commit:
             DB.commit()
+
+    def __eq__(self, __o) -> bool:
+        if not isinstance(__o, CDS):
+            raise NotImplementedError()
+
+        return self.hsps == __o.hsps
+
+    def __gt__(self, __o) -> bool:
+        if not isinstance(__o, CDS):
+            raise NotImplementedError()
+
+        return self.nt_start > __o.nt_start
+
+    def __hash__(self) -> int:
+        return hash(tuple(self.hsps))
 
     def __repr__(self) -> str:
         if self.parent_gbk is None:

@@ -11,6 +11,7 @@ from typing import Dict, Optional
 from Bio import SeqIO
 from Bio.SeqRecord import SeqRecord
 from Bio.SeqFeature import SeqFeature
+from sortedcontainers import SortedList
 
 # from other modules
 from src.errors import InvalidGBKError
@@ -39,7 +40,7 @@ class GBK:
         metadata: Dict[str, str]
         region: Region
         nt_seq: SeqRecord.seq
-        genes: list[CDS]
+        genes: SortedList[CDS]
         as_version: str
         source_type: SOURCE_TYPE
     """
@@ -49,7 +50,7 @@ class GBK:
         self.metadata: Dict[str, str] = {}
         self.region: Optional[Region] = None
         self.nt_seq: SeqRecord.seq = None
-        self.genes: list[CDS] = []
+        self.genes: SortedList[CDS] = SortedList()
         self.as_version: Optional[str] = None
         self.source_type: SOURCE_TYPE = source_type
 
@@ -79,7 +80,7 @@ class GBK:
 
         # if no cds added yet, just add and continue
         if len(self.genes) == 0:
-            self.genes.append(new_cds)
+            self.genes.add(new_cds)
             return
 
         for cds_idx, old_cds in enumerate(self.genes):
@@ -129,7 +130,7 @@ class GBK:
 
         # if we got through all of that without exiting the function, we never replaced
         # a CDS so add a new one here
-        self.genes.append(new_cds)
+        self.genes.add(new_cds)
 
     def save(self, commit=True):
         """Stores this GBK in the database
@@ -258,7 +259,7 @@ class GBK:
                     self.add_cds_overlap_filter(cds, cds_overlap_cutoff)
                     continue
 
-                self.genes.append(cds)
+                self.genes.add(cds)
 
     def parse_as5up(
         self, record: SeqRecord, cds_overlap_cutoff: Optional[float] = None
@@ -310,7 +311,7 @@ class GBK:
                     self.add_cds_overlap_filter(cds, cds_overlap_cutoff)
                     continue
 
-                self.genes.append(cds)
+                self.genes.add(cds)
 
         # add features to parent objects
         for proto_cluster_num, proto_cluster in tmp_proto_clusters.items():
