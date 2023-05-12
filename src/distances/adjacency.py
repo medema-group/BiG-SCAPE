@@ -55,6 +55,9 @@ def calc_ai_pair(bgc_pair: BGCPair) -> float:
     Returns:
         float: adjacency index
     """
-    a_cds, b_cds = bgc_pair.comparable_region.get_domain_lists()
+    a_domains, b_domains = bgc_pair.comparable_region.get_domain_lists()
 
-    return calc_ai_lists(a_cds, b_cds)
+    a_domain_names = [hsp.domain for hsp in a_domains]
+    b_domain_names = [hsp.domain for hsp in b_domains]
+
+    return calc_ai_lists(a_domain_names, b_domain_names)
