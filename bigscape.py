@@ -112,9 +112,8 @@ if __name__ == "__main__":
 
     for pair in mix_bin.pairs():
         jaccard = calc_jaccard_pair(pair)
-        adjacency = calc_ai_pair(pair)
 
-        logging.debug("JC: %f, AI: %f, DSS: %f", jaccard, adjacency, 0.0)
+        logging.debug("JC: %f", jaccard)
 
         pair.find_lcs()
 
