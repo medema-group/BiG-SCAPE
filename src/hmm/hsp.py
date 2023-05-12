@@ -76,13 +76,18 @@ class HSP:
         if not isinstance(__o, HSP):
             raise NotImplementedError()
 
-        return all(
-            [
-                self.cds.nt_start > __o.cds.nt_start,
-                self.score > __o.score,
-                self.env_start > __o.env_start,
-            ]
-        )
+        if self.cds.nt_start < __o.cds.nt_start:
+            return False
+
+        # TODO: sorting is possibly based on e-value, not on score
+        # not that it should matter that much, but domain order affects AI
+        if self.score < __o.score:
+            return True
+
+        if self.env_start < __o.env_start:
+            return True
+
+        return False
 
     def __eq__(self, __o: object) -> bool:
         """Return whether this HSP object and another object are equal
