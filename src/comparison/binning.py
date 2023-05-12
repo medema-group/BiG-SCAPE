@@ -69,11 +69,8 @@ class BGCPair:
         self.region_a = region_a
         self.region_b = region_b
 
-        if region_a.parent_gbk is None:
-            raise ValueError("Region in pair contains no genes!")
-
-        if region_b.parent_gbk is None:
-            raise ValueError("Region in pair contains no genes!")
+        if region_a.parent_gbk is None or region_b.parent_gbk is None:
+            raise ValueError("Region in pair has no parent GBK!")
 
         # comparable regions start at the full ranges
         a_len = len(region_a.parent_gbk.genes)

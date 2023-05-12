@@ -16,11 +16,37 @@ class TestLegacyComparableRegion(TestCase):
         """Tests whether expand_score correctly returns a length and score for a given
         sequence of strings
         """
-        # LCS is CDE, valid expansion is ACDE
-        target_domains = ["A", "C", "D", "E"]
-        query_domains = ["A", "B", "C", "D", "E"]
+        # LCS is CDE, valid expansion is CDEGH
+        query_expand_start = 5
+        query_domains = [
+            "A",
+            "B",
+            "C",  # LCS
+            "D",  # LCS
+            "E",  # LCS
+            "F",
+            "H",
+            "I",
+            "J",
+        ]
 
-        expand_start = 3
+        target_expand_start = 4
+        target_domains = [
+            "A",  # before LCS
+            # gap, before LCS
+            "C",  # LCS
+            "D",  # LCS
+            "E",  # LCS
+            # gap -2
+            "G",  # mismatch -3
+            "H",  # match +5
+            # gap -2
+            "J",  # match +5
+        ]
+
+        # 0 - 3 + 5 - 2 + 5 - 2 = 3
+        # expands 3 positions
+        expected_results = (3, 3)
 
         target_cds_list = []
         for target_domain in target_domains:
@@ -34,14 +60,8 @@ class TestLegacyComparableRegion(TestCase):
             query_cds.hsps.add(HSP(query_cds, query_domain, 100, 0, 10))
             query_cds_list.append(query_cds)
 
-        # gap = 1 * -2 = -2
-        # match = 1 * 5 = 5
-        # score = 5 - 2 = 3
-        # expansion = 1
-        expected_results = (3, 1)
-
         actual_results = expand_score(
-            target_cds_list[expand_start:], query_cds_list[expand_start:]
+            target_cds_list[target_expand_start:], query_cds_list[query_expand_start:]
         )
 
         self.assertEqual(expected_results, actual_results)

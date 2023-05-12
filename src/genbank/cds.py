@@ -175,9 +175,11 @@ class CDS:
             except ValueError:
                 orf = "#"
 
+        domain_list = " ".join([hsp.domain for hsp in self.hsps])
+
         return (
             f"{parent_gbk_str}_CDS{orf}, {self.nt_start}-{self.nt_stop}:"
-            f"{self.strand} {self.gene_kind}"
+            f"{self.strand} {self.gene_kind} - {domain_list}"
         )
 
     @classmethod

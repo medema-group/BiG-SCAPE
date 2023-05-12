@@ -161,7 +161,6 @@ class TestJaccard(TestCase):
         """Tests calculation of the jaccard index on on a BGCPair object.
         This object contains two regions of which the CDS domains do not overlap
         """
-        shared_domains = []
         a_domains = [
             "PF00001",
             "PF00002",
@@ -193,16 +192,6 @@ class TestJaccard(TestCase):
             cds_b = CDS(10, 90)
             gbk_b.genes.add(cds_b)
             cds_b.hsps.add(HSP(cds_b, b_domain, 100, 0, 30))
-
-        for shared_domain in shared_domains:
-            cds_a = CDS(10, 90)
-            cds_b = CDS(10, 90)
-
-            gbk_a.genes.add(cds_a)
-            gbk_b.genes.add(cds_b)
-
-            cds_a.hsps.add(HSP(cds_a, shared_domain, 100, 0, 30))
-            cds_b.hsps.add(HSP(cds_b, shared_domain, 100, 0, 30))
 
         pair = BGCPair(gbk_a.region, gbk_b.region)
 
@@ -280,8 +269,6 @@ class TestAdjacency(TestCase):
             "PF00002",
             "PF00003",
         ]
-        a_domains = []
-        b_domains = []
 
         gbk_a = GBK("", "")
         gbk_a.region = Region(1)
@@ -289,21 +276,11 @@ class TestAdjacency(TestCase):
         gbk_a.region.nt_start = 0
         gbk_a.region.nt_stop = 100
 
-        for a_domain in a_domains:
-            cds_a = CDS(10, 90)
-            gbk_a.genes.add(cds_a)
-            cds_a.hsps.add(HSP(cds_a, a_domain, 100, 0, 30))
-
         gbk_b = GBK("", "")
         gbk_b.region = Region(1)
         gbk_b.region.parent_gbk = gbk_b
         gbk_b.region.nt_start = 0
         gbk_b.region.nt_stop = 100
-
-        for b_domain in b_domains:
-            cds_b = CDS(10, 90)
-            gbk_b.genes.add(cds_b)
-            cds_b.hsps.add(HSP(cds_b, b_domain, 100, 0, 30))
 
         for shared_domain in shared_domains:
             cds_a = CDS(10, 90)

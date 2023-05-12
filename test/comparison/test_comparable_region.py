@@ -4,16 +4,13 @@
 from unittest import TestCase
 
 # from other modules
-from src.genbank import GBK, Region, CDS
+from src.genbank import GBK, Region, BGCRecord, CDS
 from src.hmm import HSP
 from src.comparison import BGCPair, ComparableRegion
 
 
 class TestComparibleRegions(TestCase):
     """Contains tests for calulation of comparable regions between two BGCs"""
-
-    def test_find_dom_list_orientation(self):
-        """Tests whether find_dom_list_orientation can find the correct"""
 
     def test_get_dom_list_lcs(self):
         """Tests whether get_dom_list_lcs can find the longest common substring of
@@ -125,3 +122,97 @@ class TestComparibleRegions(TestCase):
         actual_lcs = ComparableRegion.create_domain_lcs(pair)
 
         self.assertEqual(expected_lcs, actual_lcs)
+
+    def test_repr_fwd(self):
+        """Tests the comparable region object string representation when B is not
+        reversed
+        """
+        comparable_region = ComparableRegion(None, 0, 5, 3, 8, False)
+
+        expected_repr = "Comparable region: A 0-5, B 3-8, B is not reversed"
+
+        actual_repr = str(comparable_region)
+
+        self.assertEqual(expected_repr, actual_repr)
+
+    def test_repr_rev(self):
+        """Tests the comparable region object string representation when B is not
+        reversed
+        """
+        comparable_region = ComparableRegion(None, 0, 5, 3, 8, True)
+
+        expected_repr = "Comparable region: A 0-5, B 3-8, B is reversed"
+
+        actual_repr = str(comparable_region)
+
+        self.assertEqual(expected_repr, actual_repr)
+
+    def test_cds_range_contains_biosyntetic_true(self):
+        """tests whether the cds_range_contains_biosyntetic function returns true for a
+        record in which a region contains a biosynthetic gene
+        """
+
+        record = BGCRecord()
+        record.nt_start = 0
+        record.nt_stop = 0
+
+        gbk = GBK(None, "test")
+
+        non_bio_cds_1 = CDS(0, 25)
+        non_bio_cds_1.gene_kind = ""
+        gbk.genes.add(non_bio_cds_1)
+
+        non_bio_cds_2 = CDS(25, 50)
+        non_bio_cds_2.gene_kind = ""
+        gbk.genes.add(non_bio_cds_2)
+
+        non_bio_cds_3 = CDS(50, 75)
+        non_bio_cds_3.gene_kind = ""
+        gbk.genes.add(non_bio_cds_3)
+
+        bio_cds_1 = CDS(75, 100)
+        bio_cds_1.gene_kind = "biosynthetic"
+        gbk.genes.add(bio_cds_1)
+
+        record.parent_gbk = gbk
+
+        has_biosynthetic = ComparableRegion.cds_range_contains_biosynthetic(
+            record, 0, 4
+        )
+
+        self.assertTrue(has_biosynthetic)
+
+    def test_cds_range_contains_biosyntetic_false(self):
+        """tests whether the cds_range_contains_biosyntetic function returns true for a
+        record in which a region contains a biosynthetic gene
+        """
+
+        record = BGCRecord()
+        record.nt_start = 0
+        record.nt_stop = 0
+
+        gbk = GBK(None, "test")
+
+        non_bio_cds_1 = CDS(0, 25)
+        non_bio_cds_1.gene_kind = ""
+        gbk.genes.add(non_bio_cds_1)
+
+        non_bio_cds_2 = CDS(25, 50)
+        non_bio_cds_2.gene_kind = ""
+        gbk.genes.add(non_bio_cds_2)
+
+        non_bio_cds_3 = CDS(50, 75)
+        non_bio_cds_3.gene_kind = ""
+        gbk.genes.add(non_bio_cds_3)
+
+        non_bio_cds_4 = CDS(75, 100)
+        non_bio_cds_4.gene_kind = ""
+        gbk.genes.add(non_bio_cds_4)
+
+        record.parent_gbk = gbk
+
+        has_biosynthetic = ComparableRegion.cds_range_contains_biosynthetic(
+            record, 0, 4
+        )
+
+        self.assertFalse(has_biosynthetic)
