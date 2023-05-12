@@ -21,7 +21,7 @@ from src.hmm import HSP
 
 
 # from circular imports
-if TYPE_CHECKING:
+if TYPE_CHECKING:  # pragma: no cover
     from .binning import BGCPair  # not sure why this one throws a circular import error
 
 
@@ -173,7 +173,7 @@ class ComparableRegion:
 
         return cls(pair, a_start, a_stop, b_start, b_stop, reverse)
 
-    def log_comparable_region(self, label="<") -> None:
+    def log_comparable_region(self, label="<") -> None:  # pragma: no cover
         """Prints a debug level log of the comparable region
 
         Args:

@@ -17,7 +17,7 @@ from src.genbank.proto_cluster import ProtoCluster
 
 
 # from circular imports
-if TYPE_CHECKING:
+if TYPE_CHECKING:  # pragma: no cover
     from src.genbank import GBK  # imported earlier in src.file_input.load_files
 
 

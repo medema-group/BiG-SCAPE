@@ -25,7 +25,7 @@ from pyhmmer.easel import Alphabet, TextSequence, TextSequenceBlock
 from src.hmm.hsp import HSP, HSPAlignment
 
 # circular dependencies
-if TYPE_CHECKING:
+if TYPE_CHECKING:  # pragma: no cover
     from src.genbank import CDS  # imported in genbank.GBK
 
 

@@ -20,7 +20,7 @@ from src.genbank.cds import CDS
 
 
 # from circular imports
-if TYPE_CHECKING:
+if TYPE_CHECKING:  # pragma: no cover
     from src.genbank import GBK  # imported earlier in src.file_input.load_files
     from src.hmm import HSP  # imported earlier in src.genbank.CDS
 

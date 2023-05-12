@@ -10,7 +10,7 @@ from pathlib import Path
 from .run import RunParameters
 
 
-def parse_cmd(args):
+def parse_cmd(args):  # pragma: no cover
     """
     Parse arguments from the command line
 

@@ -16,7 +16,7 @@ from src.genbank.bgc_record import BGCRecord
 
 
 # from circular imports
-if TYPE_CHECKING:
+if TYPE_CHECKING:  # pragma: no cover
     from src.genbank import GBK  # imported earlier in src.file_input.load_files
 
 

@@ -12,7 +12,7 @@ from src.data import DB
 
 
 # circular imports
-if TYPE_CHECKING:
+if TYPE_CHECKING:  # pragma: no cover
     from src.genbank import CDS  # imported in genbank.gbk
 
 
