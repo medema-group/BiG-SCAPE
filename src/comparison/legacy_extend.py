@@ -297,6 +297,7 @@ def expand_score(
         # CDS with no domains
         if len(target_string.hsps) == 0:
             skips += 1
+            continue
 
         # mismatch
         if target_string not in query[query_idx:]:
