@@ -16,6 +16,9 @@ from src.comparison import BGCPair
 # from this module
 
 
+# TODO: module lacks tests
+
+
 def get_distance_from_unshared(
     bgc_pair: BGCPair, anchor_domains: set[str]
 ) -> tuple[float, float]:
