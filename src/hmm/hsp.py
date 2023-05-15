@@ -92,7 +92,9 @@ class HSP:
     def __eq__(self, __o: object) -> bool:
         """Return whether this HSP object and another object are equal
 
-        Will always return false if the object compared is not an instance of HSP
+        Will always return false if the object compared is not an instance of HSP or str
+
+        If compared to a string, checks if this HSP accession is equal to that string
 
         Args:
             __o (object): Target object to compare to
@@ -100,6 +102,10 @@ class HSP:
         Returns:
             bool: True if __o and self are equal
         """
+        # special case if we are comparing this to a string
+        if isinstance(__o, str):
+            return self.domain == __o
+
         if not isinstance(__o, HSP):
             raise NotImplementedError()
 
