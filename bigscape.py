@@ -85,7 +85,12 @@ if __name__ == "__main__":
 
     HMMer.init(run.input.pfam_path, False)
 
-    all_alignments = list(HMMer.align_simple(all_hsps))
+    HMMer.align_simple(all_hsps)
+
+    all_alignments = list()
+    for cds in all_cds:
+        for hsp in cds.hsps:
+            all_alignments.append(hsp.alignment)
 
     logging.info("%d alignments", len(all_alignments))
 

@@ -380,18 +380,14 @@ class HMMer:
             worker_connection.send([num_tasks] + task_output)
 
     @staticmethod
-    def align_simple(hsps: list[HSP]) -> Iterator[HSPAlignment]:
-        """Aligns a list of HSPs per domain.
+    def align_simple(hsps: list[HSP]) -> None:
+        """Aligns a list of HSPs per domain. This alters the HSP objects to include
+        alignments
 
-        The iterator that is returned will yield a list of alignments per domain
-
-        This performs no multiprocessing, but align is usually pretty fast already
+        This performs no advanced multiprocessing.
 
         Args:
             hsps (list[HSP]): List of HSPs to align
-
-        Yields:
-            Iterator[HSPAlignment]: A generator of HSPAlignments
         """
 
         # there are going to be cases where certain domains are not present in HSPs at
@@ -432,7 +428,10 @@ class HMMer:
                 source_hsp_idx = int(sequence_name)
 
                 algn_string = process_algn_string(alignment)
-                yield HSPAlignment(hsp_list[source_hsp_idx], algn_string)
+
+                source_hsp = hsp_list[source_hsp_idx]
+                hsp_alignment = HSPAlignment(source_hsp, algn_string)
+                source_hsp.alignment = hsp_alignment
 
 
 # general methods

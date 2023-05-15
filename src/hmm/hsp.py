@@ -28,6 +28,8 @@ class HSP:
         self.env_start = env_start
         self.env_stop = env_stop
 
+        self.alignment: Optional[HSPAlignment] = None
+
         # db specific fields
         self._db_id: Optional[int] = None
 
@@ -211,9 +213,9 @@ class HSP:
 class HSPAlignment:
     """Describes a HSP - Domain alignment"""
 
-    def __init__(self, hsp: HSP, alignment: str) -> None:
+    def __init__(self, hsp: HSP, align_string: str) -> None:
         self.hsp = hsp
-        self.alignment = alignment
+        self.align_string = align_string
 
         # database specific fields
         self._db_id: Optional[int] = None
@@ -233,7 +235,7 @@ class HSPAlignment:
         hsp_align_table = DB.metadata.tables["hsp_alignment"]
         insert_query = hsp_align_table.insert().values(
             hsp_id=parent_hsp_id,
-            alignment=self.alignment,
+            alignment=self.align_string,
         )
 
         DB.execute(insert_query, commit)
@@ -261,6 +263,6 @@ class HSPAlignment:
 
         conditions = [
             self.hsp == __o.hsp,
-            self.alignment == __o.alignment,
+            self.align_string == __o.align_string,
         ]
         return all(conditions)
