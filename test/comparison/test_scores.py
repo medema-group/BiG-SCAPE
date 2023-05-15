@@ -15,6 +15,7 @@ from src.distances import (
     calc_ai_lists,
     calc_ai_pair,
 )
+from src.distances.dss import get_aligned_string_dist
 
 
 class TestJaccard(TestCase):
@@ -302,4 +303,56 @@ class TestAdjacency(TestCase):
 
 
 class TestDSS(TestCase):
-    """Contains tests for the Domain similarity index"""
+    """Contains tests for the Domain sequence similarity index"""
+
+    def test_get_aligned_string_dist_full(self):
+        """Tests whether get_aligned_string_dist returns a distance of 0 if strings
+        match exactly
+        """
+        string_a = "---RIVVGV--GEVSASVLRLAFMEARLRQVPVAAVRAWRCPAHETIDHPLPAGEPARRYEERAARE"
+        string_b = "---RIVVGV--GEVSASVLRLAFMEARLRQVPVAAVRAWRCPAHETIDHPLPAGEPARRYEERAARE"
+
+        expected_result = 0.0
+
+        actual_result = get_aligned_string_dist(string_a, string_b)
+
+        self.assertAlmostEqual(expected_result, actual_result, 2)
+
+    def test_get_aligned_string_dist_partial(self):
+        """Tests whether get_aligned_string_dist returns a correct distance if there is
+        a partial match
+        """
+        # len - gaps = 64
+        # matches = 16
+        # dist = 1 - 16 / 64 = 0.75
+        string_a = "---RIVVGV--GEVSASVLRLAFMEARLRQVPVAAVRAWRCPAHETIDHPLPAGEPARRYEERAARE"
+        string_b = "----LVVGVDGSEPSLRAVDWAADEAALHAVPLWVVFGDLWERYEGAALAREPGKPSTDMQADDILA"
+
+        expected_result = 0.75
+
+        actual_result = get_aligned_string_dist(string_a, string_b)
+
+        self.assertAlmostEqual(expected_result, actual_result, 2)
+
+    def test_get_aligned_string_dist_none(self):
+        """Tests whether get_aligned_string_dist returns a distance of 1 if strings
+        do not match at all
+        """
+
+        string_a = "---RIVVGV--GEVSASVLRLAFMEARLRQVPVAAVRAWRCPAHETIDHPLPAGEPARRYEERAARE"
+        string_b = "--RPVGGVLDIVSPDDGGRSFKMDVVQRGGTAGHVGSGRPPYPYYPSLTAGGVPDQGVARRKARDLT"
+
+        expected_result = 1.0
+
+        actual_result = get_aligned_string_dist(string_a, string_b)
+
+        self.assertAlmostEqual(expected_result, actual_result, 2)
+
+    def test_get_aligned_string_dist_uneven_len(self):
+        """Tests whether get_aligned_string_dist raises an exception if uneven length
+        strings are passed as arguments
+        """
+        string_a = "---RIVVGV--GEVSASVLRLAFMEARLRQVPVAAVRAWRCPAHETIDHPLPAGEPARRYEERAARE"
+        string_b = "--RPVGGGLDIVSPDDGGRSFKFDVVQRGGTAGHVG"
+
+        self.assertRaises(ValueError, get_aligned_string_dist, string_a, string_b)
