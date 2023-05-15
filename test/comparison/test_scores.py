@@ -15,7 +15,7 @@ from src.distances import (
     calc_ai_lists,
     calc_ai_pair,
 )
-from src.distances.dss import get_aligned_string_dist
+from src.distances.dss import get_aligned_string_dist, get_distance_from_unshared
 
 
 class TestJaccard(TestCase):
@@ -304,6 +304,120 @@ class TestAdjacency(TestCase):
 
 class TestDSS(TestCase):
     """Contains tests for the Domain sequence similarity index"""
+
+    def test_get_distance_from_unshared_none(self):
+        """Tests whether get_distance_from_unshared returns 0 on both distances if no
+        domains are unshared. this is a rare case, if it ever occurs at all
+        """
+        a_domains = ["A", "B", "C"]
+        b_domains = ["A", "B", "C"]
+
+        gbk_a = GBK("", "")
+        gbk_a.region = Region(1)
+        gbk_a.region.parent_gbk = gbk_a
+        gbk_a.region.nt_start = 0
+        gbk_a.region.nt_stop = 100
+
+        gbk_b = GBK("", "")
+        gbk_b.region = Region(1)
+        gbk_b.region.parent_gbk = gbk_b
+        gbk_b.region.nt_start = 0
+        gbk_b.region.nt_stop = 100
+
+        for a_domain in a_domains:
+            cds_a = CDS(10, 90)
+            gbk_a.genes.add(cds_a)
+            cds_a.hsps.add(HSP(cds_a, a_domain, 100, 0, 30))
+
+        for b_domain in b_domains:
+            cds_b = CDS(10, 90)
+            gbk_b.genes.add(cds_b)
+            cds_b.hsps.add(HSP(cds_b, b_domain, 100, 0, 30))
+
+        pair = BGCPair(gbk_a.region, gbk_b.region)
+
+        expected_distances = (0, 0)
+
+        actual_distances = get_distance_from_unshared(pair, [])
+
+        self.assertEqual(expected_distances, actual_distances)
+
+    def test_get_distance_from_unshared_no_anchor(self):
+        """Tests whether get_distance_from_unshared returns a correct distance for the
+        non_anchor distance alone
+        """
+        # 4 domains unshared
+        a_domains = ["A", "B", "C"]
+        b_domains = ["C", "D", "E"]
+
+        gbk_a = GBK("", "")
+        gbk_a.region = Region(1)
+        gbk_a.region.parent_gbk = gbk_a
+        gbk_a.region.nt_start = 0
+        gbk_a.region.nt_stop = 100
+
+        gbk_b = GBK("", "")
+        gbk_b.region = Region(1)
+        gbk_b.region.parent_gbk = gbk_b
+        gbk_b.region.nt_start = 0
+        gbk_b.region.nt_stop = 100
+
+        for a_domain in a_domains:
+            cds_a = CDS(10, 90)
+            gbk_a.genes.add(cds_a)
+            cds_a.hsps.add(HSP(cds_a, a_domain, 100, 0, 30))
+
+        for b_domain in b_domains:
+            cds_b = CDS(10, 90)
+            gbk_b.genes.add(cds_b)
+            cds_b.hsps.add(HSP(cds_b, b_domain, 100, 0, 30))
+
+        pair = BGCPair(gbk_a.region, gbk_b.region)
+
+        expected_distances = (4, 0)
+
+        actual_distances = get_distance_from_unshared(pair, [])
+
+        self.assertEqual(expected_distances, actual_distances)
+
+    def test_get_distance_from_unshared_full(self):
+        """Tests whether get_distance_from_unshared returns a correct distance for a set
+        of unshared domains that are both anchor and non-anchor
+        """
+        a_domains = ["A", "B", "C"]
+        b_domains = ["C", "D", "E"]
+
+        anchor_domains_set = set(["A", "E"])
+
+        gbk_a = GBK("", "")
+        gbk_a.region = Region(1)
+        gbk_a.region.parent_gbk = gbk_a
+        gbk_a.region.nt_start = 0
+        gbk_a.region.nt_stop = 100
+
+        gbk_b = GBK("", "")
+        gbk_b.region = Region(1)
+        gbk_b.region.parent_gbk = gbk_b
+        gbk_b.region.nt_start = 0
+        gbk_b.region.nt_stop = 100
+
+        for a_domain in a_domains:
+            cds_a = CDS(10, 90)
+            gbk_a.genes.add(cds_a)
+            cds_a.hsps.add(HSP(cds_a, a_domain, 100, 0, 30))
+
+        for b_domain in b_domains:
+            cds_b = CDS(10, 90)
+            gbk_b.genes.add(cds_b)
+            cds_b.hsps.add(HSP(cds_b, b_domain, 100, 0, 30))
+
+        pair = BGCPair(gbk_a.region, gbk_b.region)
+
+        expected_distances = (2, 2)
+
+        actual_distances = get_distance_from_unshared(pair, anchor_domains_set)
+
+        self.assertEqual(expected_distances, actual_distances)
 
     def test_get_aligned_string_dist_full(self):
         """Tests whether get_aligned_string_dist returns a distance of 0 if strings
