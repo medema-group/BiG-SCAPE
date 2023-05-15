@@ -126,7 +126,8 @@ class GBK:
             logging.debug(
                 "Removing %s because it overlaps with another CDS", self.genes[cds_idx]
             )
-            self.genes[cds_idx] = new_cds
+            del self.genes[cds_idx]
+            self.genes.add(new_cds)
 
         # if we got through all of that without exiting the function, we never replaced
         # a CDS so add a new one here
