@@ -50,7 +50,9 @@ class TestHMMAlign(TestCase):
 
         expected_result = HSPAlignment(expected_hsp, expected_alignment)
 
-        actual_result = next(HMMer.align_simple([hsp]))
+        HMMer.align_simple([hsp])
+
+        actual_result = hsp.alignment
 
         self.assertEqual(expected_result, actual_result)
 
