@@ -72,7 +72,7 @@ class BGCRecord:
         if self.nt_start is None or self.nt_stop is None:
             raise ValueError("Cannot CDS from region with no position information")
 
-        record_cds = SortedList()
+        record_cds: SortedList[CDS] = SortedList()
         for cds in parent_gbk_cds:
             if cds.nt_start < self.nt_start:
                 continue

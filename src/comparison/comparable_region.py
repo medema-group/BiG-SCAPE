@@ -9,6 +9,7 @@ from typing import Type, TYPE_CHECKING, Optional
 from difflib import SequenceMatcher
 
 # from dependencies
+from sortedcontainers import SortedList
 
 # from other modules
 from src.genbank import BGCRecord
@@ -79,7 +80,9 @@ class ComparableRegion:
 
         return self.domain_sets
 
-    def get_domain_lists(self, regenerate=False) -> tuple[list[HSP], list[HSP]]:
+    def get_domain_lists(
+        self, regenerate=False
+    ) -> tuple[SortedList[HSP], SortedList[HSP]]:
         """Returns a tuple corresponding (ordered) lists of CDS domains within the
         comparable region of two BGCs
 
@@ -91,7 +94,7 @@ class ComparableRegion:
             generated one
 
         Returns:
-            tuple[list[HSP], list[HSP]]
+            tuple[SortedList[HSP], SortedList[HSP]]
         """
 
         if regenerate or self.domain_lists is None:
@@ -107,13 +110,13 @@ class ComparableRegion:
             if self.reverse:
                 b_cds_list = b_cds_list[::-1]
 
-            a_domain_list = []
+            a_domain_list: SortedList[HSP] = SortedList()
             for a_cds in a_cds_list:
-                a_domain_list.extend(a_cds.hsps)
+                a_domain_list.update(a_cds.hsps)
 
-            b_domain_list = []
+            b_domain_list: SortedList[HSP] = SortedList()
             for b_cds in b_cds_list:
-                b_domain_list.extend(b_cds.hsps)
+                b_domain_list.update(b_cds.hsps)
 
             self.domain_lists = (a_domain_list, b_domain_list)
 
