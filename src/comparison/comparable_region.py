@@ -58,6 +58,9 @@ class ComparableRegion:
 
         self.domain_lists: Optional[tuple[list[HSP], list[HSP]]] = None
         self.domain_sets: Optional[tuple[set[HSP], set[HSP]]] = None
+        self.domain_dicts: Optional[
+            tuple[dict[HSP, list[int]], dict[HSP, list[int]]]
+        ] = None
 
     def get_domain_sets(self, regenerate=False) -> tuple[set[HSP], set[HSP]]:
         """Returns a tuple containing sets of domains within the comparable region of
@@ -121,6 +124,48 @@ class ComparableRegion:
             self.domain_lists = (a_domain_list, b_domain_list)
 
         return self.domain_lists
+
+    def get_domain_dicts(
+        self, regenerate=False
+    ) -> tuple[dict[HSP, list[int]], dict[HSP, list[int]]]:
+        """Returns a dictionary of domains for each BGC in this comaprable region.
+        Dictionary keys are domains and ints are the index of that domain in the domain
+        list from which the dictionary was generated. This will always be the list
+        returned by self.get_domain_list at the moment this method is called
+
+        This method caches the result and re-uses the result on further calls unless
+        regenerate is set to True
+
+        Args:
+            regenerate (bool): whether to replace the cached result set with a newly
+            generated one
+
+        Returns:
+            tuple[dict[HSP, list[int]], dict[HSP, list[int]]]: dictionary of domain
+            accessions to list indexes
+        """
+
+        if regenerate or self.domain_dicts is None:
+            domain_dict_a: dict[HSP, list[int]] = {}
+            domain_dict_b: dict[HSP, list[int]] = {}
+
+            domain_list_a, domain_list_b = self.get_domain_lists()
+
+            for idx_a, domain_a in enumerate(domain_list_a):
+                if domain_a not in domain_dict_a:
+                    domain_dict_a[domain_a] = []
+
+                domain_dict_a[domain_a].append(idx_a)
+
+            for idx_b, domain_b in enumerate(domain_list_b):
+                if domain_b not in domain_dict_b:
+                    domain_dict_b[domain_b] = []
+
+                domain_dict_b[domain_b].append(idx_b)
+
+            self.domain_dicts = (domain_dict_a, domain_dict_b)
+
+        return self.domain_dicts
 
     @classmethod
     def create_domain_lcs(
