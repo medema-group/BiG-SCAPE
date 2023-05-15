@@ -21,6 +21,12 @@ def calc_ai_lists(list_a: list, list_b: list):
     union: [ab, bc, ce] (3)
     jaccard: 1/3
     """
+    if len(list_a) < 2:
+        return 0.0
+
+    if len(list_b) < 2:
+        return 0.0
+
     set_a = set()
     set_b = set()
 

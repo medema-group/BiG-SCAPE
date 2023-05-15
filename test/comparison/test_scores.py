@@ -206,6 +206,17 @@ class TestJaccard(TestCase):
 class TestAdjacency(TestCase):
     """Contains tests for the Adjacency index"""
 
+    def test_ai_lists_too_short(self):
+        """Tests whether calculating AI returns 0.0 if one of the lists is too short"""
+        list_a = ["a", "b", "c", "d", "e"]
+        list_b = ["a"]
+
+        expected_adjacency = 0.0
+
+        actual_adjacency = calc_ai_lists(list_a, list_b)
+
+        self.assertAlmostEqual(expected_adjacency, actual_adjacency, 2)
+
     def test_full_adjacent_lists(self):
         """Tests the calculation of the Adjacency index on two lists with the same
         adjacent items
