@@ -82,7 +82,7 @@ class BGCPair:
 
     def find_lcs(self) -> None:
         """Generate the comparable region for this BGC pair"""
-        self.comparable_region = ComparableRegion.create_domain_lcs(self)
+        self.comparable_region.find_lcs()
 
     def __repr__(self) -> str:
         return f"Pair {self.region_a} - {self.region_b}"

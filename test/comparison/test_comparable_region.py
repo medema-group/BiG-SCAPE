@@ -62,7 +62,9 @@ class TestComparibleRegions(TestCase):
 
         expected_lcs = ComparableRegion(pair, 1, 4, 1, 4, False)
 
-        actual_lcs = ComparableRegion.create_domain_lcs(pair)
+        pair.comparable_region.find_lcs()
+
+        actual_lcs = pair.comparable_region
 
         self.assertEqual(expected_lcs, actual_lcs)
 
@@ -119,7 +121,9 @@ class TestComparibleRegions(TestCase):
 
         expected_lcs = ComparableRegion(pair, 1, 4, 1, 4, True)
 
-        actual_lcs = ComparableRegion.create_domain_lcs(pair)
+        pair.comparable_region.find_lcs()
+
+        actual_lcs = pair.comparable_region
 
         self.assertEqual(expected_lcs, actual_lcs)
 

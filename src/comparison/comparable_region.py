@@ -5,7 +5,7 @@ determine the region between two BGCs for which to calculate AI and DSS
 # from python
 from __future__ import annotations
 import logging
-from typing import Type, TYPE_CHECKING, Optional
+from typing import TYPE_CHECKING, Optional
 from difflib import SequenceMatcher
 
 # from dependencies
@@ -167,10 +167,7 @@ class ComparableRegion:
 
         return self.domain_dicts
 
-    @classmethod
-    def create_domain_lcs(
-        cls: Type[ComparableRegion], pair: BGCPair
-    ) -> ComparableRegion:
+    def find_lcs(self) -> None:
         """Retrieve the longest common subsequence of domains for a pair of BGC records
         Also returns whether the sequence is reversed
 
@@ -184,8 +181,8 @@ class ComparableRegion:
         # the idea here is that each cds has a list of domains that are matched against
         # we concatenate the domains within a CDS, and the list of concatenated domains
         # for all cds is called the domain string
-        a_cds = pair.region_a.get_cds()
-        b_cds = pair.region_b.get_cds()
+        a_cds = self.pair.region_a.get_cds()
+        b_cds = self.pair.region_b.get_cds()
 
         # forward
         seqmatch = SequenceMatcher(None, a_cds, b_cds)
@@ -219,7 +216,11 @@ class ComparableRegion:
             b_start = b_start_rev
             b_stop = b_start + rev_match_len
 
-        return cls(pair, a_start, a_stop, b_start, b_stop, reverse)
+        self.a_start = a_start
+        self.a_stop = a_stop
+        self.b_start = b_start
+        self.b_stop = b_stop
+        self.reverse = reverse
 
     def log_comparable_region(self, label="<") -> None:  # pragma: no cover
         """Prints a debug level log of the comparable region
