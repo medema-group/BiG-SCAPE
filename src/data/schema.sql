@@ -29,11 +29,12 @@ CREATE TABLE IF NOT EXISTS cds (
     gbk_id INTEGER NOT NULL,
     nt_start INTEGER NOT NULL,
     nt_stop INTEGER NOT NULL,
+    orf_num INTEGER NOT NULL,
     strand INTEGER NOT NULL,
     gene_kind TEXT,
     aa_seq TEXT NOT NULL,
     UNIQUE(id),
-    UNIQUE(gbk_id, nt_start, nt_stop, strand)
+    UNIQUE(gbk_id, nt_start, nt_stop, orf_num, strand)
     FOREIGN KEY(gbk_id) REFERENCES gbk(id)
 );
 

@@ -25,10 +25,12 @@ class CDS:
     Class to describe a CDS within an antiSMASH GBK
 
     Attributes:
-        gene_kind: str
-        strand: Bool
         nt_start: int
         nt_stop: int
+        orf_num: int
+        parent_gbk: GBK
+        gene_kind: str
+        strand: Bool
         aa_seq: SeqRecord.seq
         hsps: SortedList[HSP]
     """
@@ -36,6 +38,7 @@ class CDS:
     def __init__(self, nt_start: int, nt_stop: int):
         self.nt_start = nt_start
         self.nt_stop = nt_stop
+        self.orf_num: Optional[int] = None
         self.parent_gbk: Optional[GBK] = None
         self.gene_kind: Optional[str] = None
         self.strand: Optional[int] = None
@@ -128,6 +131,7 @@ class CDS:
                 gbk_id=parent_gbk_id,
                 nt_start=self.nt_start,
                 nt_stop=self.nt_stop,
+                orf_num=self.orf_num,
                 strand=self.strand,
                 gene_kind=self.gene_kind,
                 aa_seq=self.aa_seq,
@@ -166,19 +170,14 @@ class CDS:
 
     def __repr__(self) -> str:
         if self.parent_gbk is None:
-            parent_gbk_str = "NEW"
-            orf = "#"
+            parent_gbk_str = "ORPHAN"
         else:
             parent_gbk_str = str(self.parent_gbk.path.name)
-            try:
-                orf = str(self.parent_gbk.genes.index(self))
-            except ValueError:
-                orf = "#"
 
         domain_list = " ".join([hsp.domain for hsp in self.hsps])
 
         return (
-            f"{parent_gbk_str}_CDS{orf}, {self.nt_start}-{self.nt_stop}:"
+            f"{parent_gbk_str}_CDS{self.orf_num}, {self.nt_start}-{self.nt_stop}:"
             f"{self.strand} {self.gene_kind} - {domain_list}"
         )
 

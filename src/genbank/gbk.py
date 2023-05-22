@@ -242,6 +242,7 @@ class GBK:
         """
 
         # go through features, load into tmp dicts indexed by feature number
+        orf_num = 1
         feature: SeqFeature
         for feature in record.features:
             if feature.type == "cluster":
@@ -256,6 +257,9 @@ class GBK:
 
             if feature.type == "CDS":
                 cds = CDS.parse(feature, parent_gbk=self)
+
+                cds.orf_num = orf_num
+                orf_num += 1
 
                 if cds_overlap_cutoff is not None:
                     self.add_cds_overlap_filter(cds, cds_overlap_cutoff)
@@ -282,6 +286,7 @@ class GBK:
         tmp_proto_cores = {}
 
         # go through features, load into tmp dicts indexed by feature number
+        orf_num = 1
         feature: SeqFeature
         for feature in record.features:
             if feature.type == "region":
@@ -308,6 +313,9 @@ class GBK:
 
             if feature.type == "CDS":
                 cds = CDS.parse(feature, parent_gbk=self)
+
+                cds.orf_num = orf_num
+                orf_num += 1
 
                 if cds_overlap_cutoff is not None:
                     self.add_cds_overlap_filter(cds, cds_overlap_cutoff)
