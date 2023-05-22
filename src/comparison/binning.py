@@ -4,7 +4,6 @@
 # from python
 from __future__ import annotations
 from itertools import combinations
-from math import factorial
 from typing import Iterator
 
 # from dependencies
@@ -47,9 +46,9 @@ class BGCBin:
         """
         if len(self.source_records) < 2:
             return 0
-        # n! / 2 / (n - 2)!
+        # (n*(n-1)) / 2
         n = len(self.source_records)
-        return int(factorial(n) / 2 / factorial(n - 2))
+        return int((n * (n - 1)) / 2)
 
     def __repr__(self) -> str:
         return (
