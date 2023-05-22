@@ -39,6 +39,7 @@ class TestHMMScan(TestCase):
 
         cds = CDS(0, len(aa_seq) * 3)
         cds.aa_seq = aa_seq
+        cds.orf_num = 1
 
         expected_result = (0, cds.aa_seq)
         actual_result = next(cds_to_input_task([cds]))
@@ -144,6 +145,7 @@ class TestHMMScan(TestCase):
 
         cds = CDS(0, len(aa_seq) * 3)
         cds.strand = 1
+        cds.orf_num = 1
         cds.aa_seq = aa_seq
         cds.parent_gbk = gbk
         cds.save()

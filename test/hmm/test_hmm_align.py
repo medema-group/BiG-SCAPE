@@ -32,6 +32,7 @@ class TestHMMAlign(TestCase):
 
         cds = CDS(0, len(aa_seq) * 3)
         cds.aa_seq = aa_seq
+        cds.orf_num = 1
 
         # loading this specific hmm because we know the above sequences will be matched
         # by it
@@ -72,6 +73,7 @@ class TestHMMAlign(TestCase):
 
         cds = CDS(0, len(aa_seq) * 3)
         cds.strand = 1
+        cds.orf_num = 1
         cds.aa_seq = aa_seq
         cds.parent_gbk = gbk
         cds.save()
