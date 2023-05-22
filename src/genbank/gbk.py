@@ -128,6 +128,7 @@ class GBK:
             )
             del self.genes[cds_idx]
             self.genes.add(new_cds)
+            return
 
         # if we got through all of that without exiting the function, we never replaced
         # a CDS so add a new one here
