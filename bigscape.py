@@ -42,12 +42,17 @@ if __name__ == "__main__":
         run.input.cds_overlap_cutoff,
     )
 
-    HMMer.init(run.input.pfam_path)
+    exec_time = datetime.now() - start_time
+    logging.info("loaded %d gbks at %f seconds", len(gbks), exec_time.total_seconds())
 
     all_cds: list[CDS] = []
     for gbk in gbks:
         gbk.save_all()
         all_cds.extend(gbk.genes)
+
+    logging.info("loaded %d cds total", len(all_cds))
+
+    HMMer.init(run.input.pfam_path)
 
     def callback(tasks_done):
         percentage = int(tasks_done / len(all_cds) * 100)
