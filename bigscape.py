@@ -3,6 +3,7 @@ import sys
 import logging
 from datetime import datetime
 import platform
+from pathlib import Path
 
 # from other modules
 from src.data import DB
@@ -14,6 +15,7 @@ from src.comparison import generate_mix
 from src.comparison.legacy_extend import expand_glocal
 from src.diagnostics import Profiler
 from src.distances import calc_jaccard_pair, calc_ai_pair, calc_dss_pair
+from src.network import BSNetwork
 
 if __name__ == "__main__":
     # parsing needs to come first because we need it in setting up the logging
@@ -111,10 +113,12 @@ if __name__ == "__main__":
 
     DB.save_to_disk(run.output.db_path)
 
+    network = BSNetwork()
     all_regions: list[BGCRecord] = []
     for gbk in gbks:
         if gbk.region is not None:
             all_regions.append(gbk.region)
+            network.add_node(gbk.region)
 
     mix_bin = generate_mix(all_regions)
 
@@ -144,9 +148,18 @@ if __name__ == "__main__":
         adjacency = calc_ai_pair(pair)
         dss = calc_dss_pair(pair)
 
-        logging.debug("JC: %f, AI: %f, DSS: %f", jaccard, adjacency, dss)
+        # mix
+        distance = 1 - (0.2 * jaccard) - (0.75 * adjacency) - (0.05 * dss)
 
-    logging.debug(pair.comparable_region)
+        logging.debug(
+            "JC: %f, AI: %f, DSS: %f, SCORE: %f", jaccard, adjacency, dss, distance
+        )
+
+        network.add_edge(
+            pair, jaccard=jaccard, adjacency=adjacency, dss=dss, distance=distance
+        )
+
+    network.write_graphml(run.output.output_dir / Path("network_30.graphml"))
 
     if run.diagnostics.profiling:
         profiler.stop()
