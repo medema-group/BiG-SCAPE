@@ -45,7 +45,7 @@ class TestBSNetwork(TestCase):
         network.add_node(region_a)
         network.add_node(region_b)
 
-        network.add_edge(pair, 0, 0, 0)
+        network.add_edge(pair)
 
         self.assertEqual(network.graph.number_of_edges(), 1)
 
@@ -70,4 +70,4 @@ class TestBSNetwork(TestCase):
         # only add a
         network.add_node(region_a)
 
-        self.assertRaises(KeyError, network.add_edge, pair, 0, 0, 0)
+        self.assertRaises(KeyError, network.add_edge, pair)
