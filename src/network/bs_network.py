@@ -23,15 +23,11 @@ class BSNetwork:
         self.graph = Graph()
 
     def add_node(self, node: BGCRecord):
-        self.graph.add_node(node)
+        # the ** before the get_att_dict call converts the dict returned in the
+        # method into a keyword argument set
+        self.graph.add_node(node, **node.get_attr_dict())
 
-    def add_edge(
-        self,
-        pair: BGCPair,
-        j_score: float,
-        ai_score: float,
-        dss_score: float,
-    ):
+    def add_edge(self, pair: BGCPair, **attr):
         # we want to ensure all edges are accounted for
         if pair.region_a not in self.graph:
             logging.error(
@@ -51,13 +47,7 @@ class BSNetwork:
                 "Tried to add an edge to the network with a node that does not exist"
             )
 
-        self.graph.add_edge(
-            u_of_edge=pair.region_a,
-            v_of_edge=pair.region_b,
-            j_score=j_score,
-            ai_score=ai_score,
-            dss_score=dss_score,
-        )
+        self.graph.add_edge(u_of_edge=pair.region_a, v_of_edge=pair.region_b, **attr)
 
     def write_graphml(self, graph_path: Path):
         """Writes this network graph as a graphml file to the specified output file"""

@@ -164,6 +164,13 @@ class BGCRecord:
         if parent_gbk is not None:
             self.parent_gbk = parent_gbk
 
+    def get_attr_dict(self) -> dict[str, object]:
+        """Gets a dictionary of attributes, useful for adding to network nodes later"""
+        return {
+            "product": self.product,
+            "contig_edge": self.contig_edge,
+        }
+
     def __repr__(self) -> str:
         return f"{self.parent_gbk} Record (superclass) {self.nt_start}-{self.nt_stop}"
 

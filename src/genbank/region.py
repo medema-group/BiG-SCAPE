@@ -127,5 +127,9 @@ class Region(BGCRecord):
     def get_cds(self, return_all=True) -> list[CDS]:
         return super().get_cds(return_all)
 
+    def get_attr_dict(self) -> dict[str, object]:
+        """Gets a dictionary of attributes, useful for adding to network nodes later"""
+        return super().get_attr_dict()
+
     def __repr__(self):
         return f"{self.parent_gbk} Region {self.number} {self.nt_start}-{self.nt_stop} "
