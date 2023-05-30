@@ -61,7 +61,7 @@ if __name__ == "__main__":
         logging.info("%d/%d (%d%%)", tasks_done, len(all_cds), percentage)
 
     if platform.system() == "Darwin":
-        logging.debug("Running on mac-OS: hmmsearch_simple single threaded")
+        logging.warning("Running on mac-OS: hmmsearch_simple single threaded")
         all_hsps = list(HMMer.hmmsearch_simple(all_cds, 1))
     else:
         logging.debug(
@@ -69,7 +69,7 @@ if __name__ == "__main__":
             platform.system(),
             run.cores,
         )
-        HMMer.hmmsearch_multiprocess(all_cds, cores=run.cores)
+        HMMer.hmmsearch_multiprocess(all_cds, cores=run.cores, callback=callback)
 
     all_hsps = []
     for cds in all_cds:
@@ -103,6 +103,8 @@ if __name__ == "__main__":
 
     exec_time = datetime.now() - start_time
     logging.info("align done at %f seconds", exec_time.total_seconds())
+
+    HMMer.unload()
 
     for hsp_alignment in all_alignments:
         hsp_alignment.save(False)
