@@ -3,6 +3,7 @@
 # from python
 from pathlib import Path
 from unittest import TestCase
+from itertools import combinations
 
 # from other modules
 from src.genbank import GBK, Region
@@ -135,3 +136,49 @@ class TestBSNetwork(TestCase):
         network.write_edgelist_tsv(test_out_path)
 
         self.assertTrue(test_out_path.exists())
+
+    def test_gen_cutoff_subgraphs(self):
+        """Tests whether the correct connected component subgraphs are created when
+        a graph is given a cutoff"""
+
+        network = BSNetwork()
+
+        # 6 regions
+        regions = [Region(i) for i in range(6)]
+        for region in regions:
+            region.nt_start = 0
+            region.nt_stop = 100
+            region.product = ""
+            region.contig_edge = False
+            region.parent_gbk = GBK(Path("test1.gbk"), "test")
+            network.add_node(region)
+
+        edges = list(combinations(regions, 2))
+
+        test_cutoff = 0.3
+
+        # subgraphs will look like this:
+        #    0     3
+        #   / \   / \
+        #  1---2 4---5
+        subgraph_a = [regions[i] for i in [0, 1, 2]]
+        subgraph_b = [regions[i] for i in [3, 4, 5]]
+        for idx, edge in enumerate(edges):
+            bgc_a, bgc_b = edge
+            pair = BGCPair(bgc_a, bgc_b)
+
+            if bgc_a in subgraph_a and bgc_b in subgraph_a:
+                distance = 0.2
+            elif bgc_a in subgraph_b and bgc_b in subgraph_b:
+                distance = 0.2
+            else:
+                distance = 0.5
+
+            network.add_edge(pair, dist=distance)
+
+        subgraphs = network.generate_cutoff_subgraphs("dist", test_cutoff)
+
+        expected_subgraph_sizes = [3, 3]
+        actual_subgraph_sizes = [len(subgraph) for subgraph in subgraphs]
+
+        self.assertEqual(expected_subgraph_sizes, actual_subgraph_sizes)

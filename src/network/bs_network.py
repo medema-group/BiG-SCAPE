@@ -6,7 +6,7 @@ manipulate this network
 # from dependencies
 import logging
 from pathlib import Path
-from networkx import Graph
+from networkx import Graph, connected_components
 from networkx.readwrite import graphml
 from networkx.readwrite import edgelist
 
@@ -49,6 +49,25 @@ class BSNetwork:
             )
 
         self.graph.add_edge(u_of_edge=pair.region_a, v_of_edge=pair.region_b, **attr)
+
+    def generate_cutoff_subgraphs(self, property_key: str, cutoff: float) -> Graph:
+        """Returns an iterator that returns new graphs for each connected component in
+        a subgraph created by applying a cutoff for a property on the main graph
+
+        Args:
+            property_key (str): the property key to use for the cutoff
+            cutoff (float): cutoff value to generate a new subraph for
+        """
+        # graph.edges is only edge list. no data. use self.graph.adj to get the property
+        edge_iter = filter(
+            lambda edge: self.graph.adj[edge[0]][edge[1]][property_key] < cutoff,
+            self.graph.edges,
+        )
+
+        cutoff_subgraph = self.graph.edge_subgraph(edge_iter)
+
+        for connected_component in connected_components(cutoff_subgraph):
+            yield self.graph.subgraph(connected_component)
 
     def write_graphml(self, graph_path: Path):
         """Writes this network graph as a graphml file to the specified output file
