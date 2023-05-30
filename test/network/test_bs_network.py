@@ -71,3 +71,67 @@ class TestBSNetwork(TestCase):
         network.add_node(region_a)
 
         self.assertRaises(KeyError, network.add_edge, pair)
+
+    def test_write_graphml(self):
+        """Tests whether the graph can be written to an output grpahm file"""
+
+        region_a = Region(1)
+        region_a.nt_start = 0
+        region_a.nt_stop = 100
+        region_a.product = ""
+        region_a.contig_edge = False
+        region_a.parent_gbk = GBK(Path("test1.gbk"), "test")
+
+        region_b = Region(1)
+        region_b.nt_start = 0
+        region_b.nt_stop = 100
+        region_b.product = ""
+        region_b.contig_edge = False
+        region_b.parent_gbk = GBK(Path("test2.gbk"), "test")
+
+        pair = BGCPair(region_a, region_b)
+
+        network = BSNetwork()
+
+        network.add_node(region_a)
+        network.add_node(region_b)
+
+        network.add_edge(pair)
+
+        test_out_path = Path("test/test_data/tmp/test.graphml")
+
+        network.write_graphml(test_out_path)
+
+        self.assertTrue(test_out_path.exists())
+
+    def test_write_tsv(self):
+        """Tests whether the graph can be written to an output grpahm file"""
+
+        region_a = Region(1)
+        region_a.nt_start = 0
+        region_a.nt_stop = 100
+        region_a.product = ""
+        region_a.contig_edge = False
+        region_a.parent_gbk = GBK(Path("test1.gbk"), "test")
+
+        region_b = Region(1)
+        region_b.nt_start = 0
+        region_b.nt_stop = 100
+        region_b.product = ""
+        region_b.contig_edge = False
+        region_b.parent_gbk = GBK(Path("test2.gbk"), "test")
+
+        pair = BGCPair(region_a, region_b)
+
+        network = BSNetwork()
+
+        network.add_node(region_a)
+        network.add_node(region_b)
+
+        network.add_edge(pair)
+
+        test_out_path = Path("test/test_data/tmp/test.tsv")
+
+        network.write_edgelist_tsv(test_out_path)
+
+        self.assertTrue(test_out_path.exists())

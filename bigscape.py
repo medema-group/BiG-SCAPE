@@ -155,11 +155,9 @@ if __name__ == "__main__":
             "JC: %f, AI: %f, DSS: %f, SCORE: %f", jaccard, adjacency, dss, distance
         )
 
-        network.add_edge(
-            pair, jaccard=jaccard, adjacency=adjacency, dss=dss, distance=distance
-        )
+        network.add_edge(pair, jc=jaccard, ai=adjacency, dss=dss, dist=distance)
 
-    network.write_graphml(run.output.output_dir / Path("network_30.graphml"))
+    network.write_edgelist_tsv(run.output.output_dir / Path("network.tsv"))
 
     if run.diagnostics.profiling:
         profiler.stop()

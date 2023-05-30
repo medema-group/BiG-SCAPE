@@ -8,6 +8,7 @@ import logging
 from pathlib import Path
 from networkx import Graph
 from networkx.readwrite import graphml
+from networkx.readwrite import edgelist
 
 # from other modules
 from src.genbank import BGCRecord
@@ -50,5 +51,28 @@ class BSNetwork:
         self.graph.add_edge(u_of_edge=pair.region_a, v_of_edge=pair.region_b, **attr)
 
     def write_graphml(self, graph_path: Path):
-        """Writes this network graph as a graphml file to the specified output file"""
+        """Writes this network graph as a graphml file to the specified output file
+
+        graphml is easier to read in most graph software, but is a lot larger than e.g.
+        a TSV file. This makes reading and writing the file more time consuming, and the
+        resulting file will occupy more space on your hard drive. Use with care.
+
+        Args:
+            graph_path (Path): path to write graphml output to (file)
+        """
         graphml.write_graphml_xml(self.graph, graph_path)
+
+    def write_edgelist_tsv(self, graph_path: Path):
+        """Writes this network graph as an edge list tsv file to the specified output
+        file
+
+        Args:
+            graph_path (Path): path to write tsv output to (file)
+        """
+        fields = ["dist", "jc", "dss", "ai"]
+        with open(graph_path, "wb") as tsv_file:
+            header = bytes(
+                "source\ttarget\t" + "\t".join(fields) + "\n", encoding="utf-8"
+            )
+            tsv_file.write(header)
+            edgelist.write_edgelist(self.graph, tsv_file, data=fields, delimiter="\t")
