@@ -45,6 +45,8 @@ class BGCRecord:
         self.nt_stop: Optional[int] = None
         self.product: Optional[str] = None
 
+        self._families: dict[str, int] = {}
+
     def get_cds(self, return_all=False) -> SortedList[CDS]:
         """Get a list of CDS that lie within the coordinates specified in this region
         from the parent GBK class
@@ -166,10 +168,15 @@ class BGCRecord:
 
     def get_attr_dict(self) -> dict[str, object]:
         """Gets a dictionary of attributes, useful for adding to network nodes later"""
-        return {
+        attr_dict: dict[str, object] = {
             "product": self.product,
             "contig_edge": self.contig_edge,
         }
+
+        for cutoff, label in self._families.items():
+            attr_dict[cutoff] = label
+
+        return attr_dict
 
     def __repr__(self) -> str:
         return f"{self.parent_gbk} Record (superclass) {self.nt_start}-{self.nt_stop}"

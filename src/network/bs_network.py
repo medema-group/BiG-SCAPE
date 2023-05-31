@@ -6,6 +6,7 @@ manipulate this network
 # from dependencies
 import logging
 from pathlib import Path
+from typing import Iterator
 from networkx import Graph, connected_components
 from networkx.readwrite import graphml
 from networkx.readwrite import edgelist
@@ -13,6 +14,9 @@ from networkx.readwrite import edgelist
 # from other modules
 from src.genbank import BGCRecord
 from src.comparison import BGCPair
+
+# from this module
+from .affinity_propagation import sim_matrix_from_graph, aff_sim_matrix
 
 
 class BSNetwork:
@@ -50,7 +54,22 @@ class BSNetwork:
 
         self.graph.add_edge(u_of_edge=pair.region_a, v_of_edge=pair.region_b, **attr)
 
-    def generate_cutoff_subgraphs(self, property_key: str, cutoff: float) -> Graph:
+    def generate_families_cutoff(self, edge_property: str, cutoff: float):
+        subgraphs = self.generate_cutoff_subgraphs(edge_property, cutoff)
+
+        family_key = f"family_{cutoff}"
+
+        for subgraph in subgraphs:
+            subgraph_dist_matrix = sim_matrix_from_graph(subgraph, edge_property)
+
+            labels, centers = aff_sim_matrix(subgraph_dist_matrix)
+
+            for idx, node in enumerate(subgraph.nodes):
+                node._families[family_key] = labels[idx]
+
+    def generate_cutoff_subgraphs(
+        self, property_key: str, cutoff: float
+    ) -> Iterator[Graph]:
         """Returns an iterator that returns new graphs for each connected component in
         a subgraph created by applying a cutoff for a property on the main graph
 

@@ -159,7 +159,9 @@ if __name__ == "__main__":
 
         network.add_edge(pair, jc=jaccard, ai=adjacency, dss=dss, dist=distance)
 
-    network.write_edgelist_tsv(run.output.output_dir / Path("network.tsv"))
+    network.generate_families_cutoff("dist", 0.3)
+
+    network.write_graphml(run.output.output_dir / Path("network.graphml"))
 
     if run.diagnostics.profiling:
         profiler.stop()
