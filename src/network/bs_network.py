@@ -65,7 +65,7 @@ class BSNetwork:
             labels, centers = aff_sim_matrix(subgraph_dist_matrix)
 
             for idx, node in enumerate(subgraph.nodes):
-                node._families[family_key] = labels[idx]
+                self.graph.nodes.get(node)[family_key] = labels[idx]
 
     def generate_cutoff_subgraphs(
         self, property_key: str, cutoff: float
