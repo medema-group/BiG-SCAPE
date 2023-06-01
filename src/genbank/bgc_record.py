@@ -45,7 +45,7 @@ class BGCRecord:
         self.nt_stop: Optional[int] = None
         self.product: Optional[str] = None
 
-        self._families: dict[str, int] = {}
+        self._families: dict[float, int] = {}
 
     def get_cds(self, return_all=False) -> SortedList[CDS]:
         """Get a list of CDS that lie within the coordinates specified in this region
@@ -174,7 +174,7 @@ class BGCRecord:
         }
 
         for cutoff, label in self._families.items():
-            attr_dict[cutoff] = label
+            attr_dict[str(cutoff)] = label
 
         return attr_dict
 

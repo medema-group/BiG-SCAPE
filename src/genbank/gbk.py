@@ -219,6 +219,9 @@ class GBK:
         record: SeqRecord = next(SeqIO.parse(path, "genbank"))
         gbk.nt_seq = record.seq
 
+        if "organism" in record.annotations:
+            gbk.metadata["organism"] = record.annotations["organism"]
+
         as_version = GBK.get_as_version(record)
         gbk.as_version = as_version
 
