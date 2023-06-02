@@ -16,7 +16,7 @@ from src.comparison.legacy_extend import expand_glocal
 from src.diagnostics import Profiler
 from src.distances import calc_jaccard_pair, calc_ai_pair, calc_dss_pair
 from src.network import BSNetwork
-from src.output import generate_run_data, copy_output_templates
+from src.output import generate_legacy_output
 
 
 if __name__ == "__main__":
@@ -165,9 +165,14 @@ if __name__ == "__main__":
 
     network.write_graphml(run.output.output_dir / Path("network.graphml"))
 
-    copy_output_templates(run.output.output_dir, "test", [0.3])
-
-    generate_run_data(run.output.output_dir, network, gbks, 0.3, "test")
+    generate_legacy_output(
+        run.output.output_dir,
+        "test",
+        [0.3],
+        ["mix"],
+        network,
+        gbks,
+    )
 
     if run.diagnostics.profiling:
         profiler.stop()

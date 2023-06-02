@@ -1,3 +1,3 @@
-from .legacy_output import copy_output_templates, generate_run_data
+from .legacy_output import generate_legacy_output
 
-__all__ = ["copy_output_templates", "generate_run_data"]
+__all__ = ["generate_legacy_output"]
