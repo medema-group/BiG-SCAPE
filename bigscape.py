@@ -129,7 +129,7 @@ if __name__ == "__main__":
     logging.info("Generated mix bin: %s", mix_bin)
 
     for pair in mix_bin.pairs():
-        jaccard = calc_jaccard_pair(pair)
+        jaccard = calc_jaccard_pair(pair, cache=False)
 
         if jaccard == 0.0:
             continue
@@ -164,6 +164,7 @@ if __name__ == "__main__":
     network.generate_families_cutoff("dist", 0.3)
 
     network.write_graphml(run.output.output_dir / Path("network.graphml"))
+    network.write_edgelist_tsv(run.output.output_dir / Path("network.tsv"))
 
     generate_legacy_output(
         run.output.output_dir,

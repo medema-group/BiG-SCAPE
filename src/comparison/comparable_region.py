@@ -62,7 +62,9 @@ class ComparableRegion:
             tuple[dict[HSP, list[int]], dict[HSP, list[int]]]
         ] = None
 
-    def get_domain_sets(self, regenerate=False) -> tuple[set[HSP], set[HSP]]:
+    def get_domain_sets(
+        self, regenerate=False, cache=True
+    ) -> tuple[set[HSP], set[HSP]]:
         """Returns a tuple containing sets of domains within the comparable region of
         two BGCs
 
@@ -76,8 +78,12 @@ class ComparableRegion:
         Returns:
             tuple[set[HSP], set[HSP]]
         """
+
         if regenerate or self.domain_sets is None:
             a_domain_list, b_domain_list = self.get_domain_lists()
+
+            if not cache:
+                return (set(a_domain_list), set(b_domain_list))
 
             self.domain_sets = (set(a_domain_list), set(b_domain_list))
 
