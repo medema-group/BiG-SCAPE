@@ -5,43 +5,58 @@ import json
 import shutil
 from distutils import dir_util
 from pathlib import Path
-from typing import Any, Optional
+from typing import Any
 
 # from other modules
-from src.genbank import GBK
+from src.genbank import GBK, CDS
 from src.network import BSNetwork
 
 
 def copy_output_templates(
-    output_dir: Path, label: str, cutoffs: Optional[list[float]] = None
+    output_dir: Path,
+    label: str,
+    cutoffs: list[float],
+    bins: list[str],
 ):
     """Copy the necessary output html/javascript templates to a relevant output
     directory
+
+    Args:
+        output_dir (Path): main output directory
+        label (str): label for the run
+        cutoffs (list[float]): list of cutoffs used in the analysis
+        bins (list[str]): list of bins used in the analyis
     """
 
-    if cutoffs is None:
-        cutoffs = []
-
     template_root = Path("src/output/html_template")
-    template_dir = template_root / Path("output")
-    overview_template = template_root / Path("overview_html")
+    template_dir = template_root / "output"
+    overview_template = template_root / "overview_html"
+    bin_template = template_root / "index_html"
 
     # copy html content
     dir_util.copy_tree(str(template_dir), str(output_dir))
 
     # networks subfolders
-    output_network_root = output_dir / Path("html_content/networks")
+    output_network_root = output_dir / "html_content/networks"
 
     if not output_network_root.exists():
         output_network_root.mkdir(exist_ok=True)
 
     for cutoff in cutoffs:
-        cutoff_path = output_network_root / Path(f"{label}_c{cutoff}")
+        cutoff_path = output_network_root / f"{label}_c{cutoff}"
 
         cutoff_path.mkdir(exist_ok=True)
 
         # copy overview html
-        shutil.copy(str(overview_template), str(cutoff_path))
+        shutil.copy(str(overview_template), str(cutoff_path / "overview.html"))
+
+        # copy bin html
+        for bin in bins:
+            bin_path = cutoff_path / bin
+
+            bin_path.mkdir(exist_ok=True)
+
+            shutil.copy(str(bin_template), str(bin_path / "index.html"))
 
 
 # one of the few direct copy-and-pastes!
@@ -188,8 +203,11 @@ def get_class(product):
         return "Others"
 
 
-def generate_run_data(
-    output_dir: Path, network: BSNetwork, gbks: list[GBK], cutoff: float, label: str
+def generate_run_data_js(
+    output_dir: Path,
+    label: str,
+    gbks: list[GBK],
+    cutoff: float,
 ):
     """Generate the run_data.js file needed for the html output
 
@@ -226,6 +244,12 @@ def generate_run_data(
             "families_similarity": [[[]]], (some sort of similarity matrix),
         }
     ]
+
+    Args:
+        output_dir (Path): main output path
+        label (str): label of the run
+        gbks (list[GBK]): full list of GBKs used in the analysis
+        cutoff (float): cutoff to generate the run_data.js for
     """
 
     run_data: dict[str, Any] = {
@@ -338,7 +362,15 @@ def generate_run_data(
 
 
 def read_bigscape_results_js(bigscape_results_js_path: Path) -> list[Any]:
-    """Reads an existing bigscape_results_js into a dictionary"""
+    """Reads an existing bigscape_results_js into a dictionary by stripping the
+    JavaScript parts and decoding the JSON content
+
+    Args:
+        bigscape_results_js_path (Path): path to the existing bigscape_results.js
+
+    Returns:
+        list[Any]: the bigscape_results.js content as an object
+    """
 
     lines = []
     with open(bigscape_results_js_path, mode="r", encoding="utf-8") as bigscape_results:
@@ -357,7 +389,7 @@ def read_bigscape_results_js(bigscape_results_js_path: Path) -> list[Any]:
 
 
 def generate_bigscape_results_js(
-    output_dir: Path, label: str, cutoff: float, networks: list[str]
+    output_dir: Path, label: str, cutoff: float, bins: list[str]
 ) -> None:
     """Generates the bigscape_results.js found under output/html_content/js
 
@@ -375,6 +407,12 @@ def generate_bigscape_results_js(
             }
         ]
     }
+
+    Args:
+        output_dir (Path): main output directory
+        label (str): label of the run
+        cutoff (float): cutoff to generate bigscape_results for
+        bins (list[str]): bins to generate bigscape_results for
     """
 
     bigscape_results_js_path = output_dir / "html_content/js/bigscape_results.js"
@@ -393,7 +431,7 @@ def generate_bigscape_results_js(
             return
 
     result_networks = []
-    for network in networks:
+    for network in bins:
         if network == "mix":
             result_networks.append(
                 {
@@ -424,6 +462,207 @@ def generate_bigscape_results_js(
         )
 
 
+def generate_bs_data_js_orfs_domains(cds: CDS) -> Any:
+    domains = []
+    for hsp in cds.hsps:
+        domains.append(
+            {
+                "bitscore": hsp.score,
+                "code": hsp.domain,
+                "start": hsp.env_start,
+                "end": hsp.env_stop,
+            }
+        )
+    return domains
+
+
+def generate_bs_data_js_orfs(gbk: GBK) -> Any:
+    orfs = []
+    for idx, cds in enumerate(gbk.genes):
+        orfs.append(
+            {
+                "id": f"{gbk.path.name[:-4]}_ORF{idx+1}",
+                "start": cds.nt_start,
+                "end": cds.nt_stop,
+                "strand": 1 if cds.strand else -1,
+                "domains": generate_bs_data_js_orfs_domains(cds),
+            }
+        )
+    return orfs
+
+
+def generate_bs_data_js(
+    output_dir: Path,
+    label: str,
+    gbks: list[GBK],
+    cutoff: float,
+    bin: str,
+):
+    """Generates the bs_data.js file located at
+    output/html_content/networks/[label]/[bin]
+
+    structure:
+    [
+        {
+            "desc": str, (e.g. Streptomyces coelicolor A3(2) complete genome)
+            "start: int,
+            "end": int,
+            "id": str, (e.g. AL645882.2.cluster010),
+            "mibig": bool,
+            "orfs": [
+                {
+                    "domains": [
+                        {
+                            "bitscore": float,
+                            "code": str, (e.g. PF08241.14),
+                            "start": int, (env start I am guessing)
+                            "end": int
+                        }
+                    ],
+                    "id": str, (e.g. AL645882.2.cluster010_ORF1),
+                    "start": int,
+                    "end": int,
+                    "strand": int (1 or -1)
+                }
+            ]
+        }
+    ]
+
+    Args:
+        output_dir (Path): main output directory
+        label (str): _description_
+        gbks (list[GBK]): Full list of GBKs used in the analysis
+        cutoff (float): cutoff to generate results for
+        bin (str): bin to generate results for
+    """
+    output_network_root = output_dir / Path("html_content/networks")
+    cutoff_path = output_network_root / Path(f"{label}_c{cutoff}")
+    bin_path = cutoff_path / bin
+
+    bs_data = []
+
+    # go through all gbks. no need to go through the network
+    for gbk in gbks:
+        organism = "Unknown"
+        if "organism" in gbk.metadata:
+            organism = gbk.metadata["organism"]
+
+        bs_data.append(
+            {
+                "desc": organism,
+                "start": 1,
+                "end": len(gbk.nt_seq),
+                "id": gbk.path.name,
+                "mibig": False,
+                "orfs": generate_bs_data_js_orfs(gbk),
+            }
+        )
+
+    bs_data_path = bin_path / "bs_data.js"
+
+    with open(bs_data_path, "w", encoding="utf-8") as bs_data_js:
+        bs_data_js.write(
+            "var bs_data={};\ndataLoaded('bs_data');\n".format(
+                json.dumps(
+                    bs_data,
+                    indent=4,
+                    separators=(",", ":"),
+                    sort_keys=True,
+                )
+            )
+        )
+
+
+def generate_bs_networks_js(
+    output_dir: Path,
+    label: str,
+    network: BSNetwork,
+    gbks: list[GBK],
+    cutoff: float,
+    bin: str,
+):
+    """Generates the bs_networks.js file located at
+    output/html_content/networks/[label]/[bin]
+
+    There are four components to this file:
+    bs_similarity
+    bs_families
+    bs_families_alignment
+    bs_similarity_families
+
+    each have their own function to generate the objects, and are written to a file here
+
+    Since this is annoying to do, we're not going to attempt re-reading and appending
+    to an existing file. we just overwrite.
+
+    Args:
+        output_dir (Path): main output directory
+        label (str): label of the run
+        network (BSNetwork): BiG-SCAPE network object of nodes (bgcs/regions) and edges
+        gbks (list[GBK]): Full list of GBK files TODO: may not be needed. remove?
+        cutoff (float): cutoff to generate results for
+        bin (str): bin to generate results for
+    """
+    output_network_root = output_dir / Path("html_content/networks")
+    cutoff_path = output_network_root / Path(f"{label}_c{cutoff}")
+    bin_path = cutoff_path / bin
+
+    bs_networks_js_path = bin_path / "bs_networks.js"
+
+    # TODO: replace with functions to generate objects
+    bs_similarity: list[Any] = []
+    bs_families: list[Any] = []
+    bs_families_alignment: list[Any] = []
+    bs_similarity_families: list[Any] = []
+
+    with open(bs_networks_js_path, "w") as bs_networks_js:
+        bs_networks_js.write(
+            "var bs_similarity={};\n".format(
+                json.dumps(
+                    bs_similarity,
+                    indent=4,
+                    separators=(",", ":"),
+                    sort_keys=True,
+                )
+            )
+        )
+
+        bs_networks_js.write(
+            "var bs_families={};\n".format(
+                json.dumps(
+                    bs_families,
+                    indent=4,
+                    separators=(",", ":"),
+                    sort_keys=True,
+                )
+            )
+        )
+
+        bs_networks_js.write(
+            "var bs_families_alignment={};\n".format(
+                json.dumps(
+                    bs_families_alignment,
+                    indent=4,
+                    separators=(",", ":"),
+                    sort_keys=True,
+                )
+            )
+        )
+
+        bs_networks_js.write(
+            "var bs_similarity_families={};\n".format(
+                json.dumps(
+                    bs_similarity_families,
+                    indent=4,
+                    separators=(",", ":"),
+                    sort_keys=True,
+                )
+            )
+        )
+
+        bs_networks_js.write("dataLoaded('bs_networks');\n")
+
+
 def generate_legacy_output(
     output_dir: Path,
     label: str,
@@ -432,8 +671,12 @@ def generate_legacy_output(
     network: BSNetwork,
     gbks: list[GBK],
 ) -> None:
-    copy_output_templates(output_dir, label, cutoffs)
+    copy_output_templates(output_dir, label, cutoffs, bins)
 
     for cutoff in cutoffs:
         generate_bigscape_results_js(output_dir, label, cutoff, bins)
-        generate_run_data(output_dir, network, gbks, cutoff, label)
+        generate_run_data_js(output_dir, label, gbks, cutoff)
+
+        for bin in bins:
+            generate_bs_data_js(output_dir, label, gbks, cutoff, bin)
+            generate_bs_networks_js(output_dir, label, network, gbks, cutoff, bin)
