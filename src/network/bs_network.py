@@ -59,13 +59,21 @@ class BSNetwork:
 
         family_key = f"family_{cutoff}"
 
+        family_idx = 0
         for subgraph in subgraphs:
             subgraph_dist_matrix = sim_matrix_from_graph(subgraph, edge_property)
 
             labels, centers = aff_sim_matrix(subgraph_dist_matrix)
 
+            subgraph_family_labels = {}
+
             for idx, node in enumerate(subgraph.nodes):
-                node._families[cutoff] = labels[idx]
+                node_family_label = labels[idx]
+                if node_family_label not in subgraph_family_labels:
+                    subgraph_family_labels[node_family_label] = family_idx
+                    family_idx += 1
+
+                node._families[cutoff] = subgraph_family_labels[node_family_label]
                 # also add to graph node attributes
                 self.graph.nodes.get(node)[family_key] = labels[idx]
 
