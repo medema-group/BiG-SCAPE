@@ -69,6 +69,8 @@ class CDS:
             self.hsps.add(new_hsp)
             return
 
+        delete_list = []
+
         for hsp_idx, old_hsp in enumerate(self.hsps):
             # just add it if there is no overlap at all
             if not HSP.has_overlap(old_hsp, new_hsp):
@@ -96,15 +98,17 @@ class CDS:
 
             # replace old if new is better
             if score_new > score_old:
-                del self.hsps[hsp_idx]
-                self.hsps.add(new_hsp)
-                return
+                delete_list.append(hsp_idx)
+                continue
 
             # if scores are equal, keep the one with the lower nt_start
             if new_hsp.env_start < old_hsp.env_start:
-                del self.hsps[hsp_idx]
-                self.hsps.add(new_hsp)
-                return
+                delete_list.append(hsp_idx)
+                continue
+
+        # go through this in reverse order otherwise we mess everything up
+        for deleted_idx in delete_list[::-1]:
+            del self.hsps[deleted_idx]
 
         # if we got through all of that without the function, we never replaced an HSP
         # so add a new one here
