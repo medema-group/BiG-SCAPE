@@ -60,7 +60,7 @@ class TestComparibleRegions(TestCase):
 
         pair = BGCPair(gbk_a.region, gbk_b.region)
 
-        expected_lcs = ComparableRegion(pair, 1, 4, 1, 4, False)
+        expected_lcs = ComparableRegion(pair, 1, 5, 1, 5, False)
 
         pair.comparable_region.find_lcs()
 
@@ -119,7 +119,7 @@ class TestComparibleRegions(TestCase):
 
         pair = BGCPair(gbk_a.region, gbk_b.region)
 
-        expected_lcs = ComparableRegion(pair, 1, 4, 1, 4, True)
+        expected_lcs = ComparableRegion(pair, 1, 5, 1, 5, True)
 
         pair.comparable_region.find_lcs()
 
@@ -278,10 +278,10 @@ class TestComparibleRegions(TestCase):
                 "PF00004": [4],
             },
             {
-                "PF00005": [0],
-                "PF00004": [1, 4],
+                "PF00004": [0, 3],
+                "PF00003": [1],
                 "PF00002": [2],
-                "PF00003": [3],
+                "PF00005": [4],
             },
         )
 
