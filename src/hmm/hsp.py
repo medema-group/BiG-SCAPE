@@ -106,7 +106,8 @@ class HSP:
         """
         # special case if we are comparing this to a string
         if isinstance(__o, str):
-            return self.domain == __o
+            # we do not care about version numbers in this comparison, so strip it
+            return self.domain[:7] == __o[:7]
 
         if not isinstance(__o, HSP):
             raise NotImplementedError()
