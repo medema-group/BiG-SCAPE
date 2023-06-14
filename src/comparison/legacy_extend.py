@@ -26,6 +26,7 @@ def expand_glocal(
     # exit early if the pair does not contain a core overlap of at least
     # EXPAND_MIN_LCS_LEN (3 in BiG-SCAPE 1.0) elements and no biosynthetic gene is found
     # in the LCS
+    # TODO: are all relevant checks here?
     if comparable_region.a_stop < min_match_len:
         cds_stop = comparable_region.a_start + comparable_region.a_stop
         if not ComparableRegion.cds_range_contains_biosynthetic(
@@ -105,10 +106,9 @@ def expand_glocal_left(comparable_region: ComparableRegion) -> None:
     a_left_stop = comparable_region.a_start - 1
     left_cds_a = cds_list_a[a_left_stop::-1]
 
-    cds_list_b = comparable_region.pair.region_b.get_cds()
-
-    if comparable_region.reverse:
-        cds_list_b = cds_list_b[::-1]
+    cds_list_b = comparable_region.pair.region_b.get_cds(
+        reverse=comparable_region.reverse
+    )
 
     b_left_stop = comparable_region.b_start - 1
     left_cds_b = cds_list_b[b_left_stop::-1]
@@ -210,10 +210,9 @@ def expand_glocal_right(comparable_region: ComparableRegion) -> None:
     a_right_start = comparable_region.a_stop
     right_cds_a = cds_list_a[a_right_start:]
 
-    cds_list_b = comparable_region.pair.region_b.get_cds()
-
-    if comparable_region.reverse:
-        cds_list_b = cds_list_b[::-1]
+    cds_list_b = comparable_region.pair.region_b.get_cds(
+        reverse=comparable_region.reverse
+    )
 
     b_right_start = comparable_region.b_stop
     right_cds_b = cds_list_b[b_right_start:]

@@ -8,9 +8,6 @@ import logging
 from typing import TYPE_CHECKING, Optional
 from difflib import SequenceMatcher
 
-# from dependencies
-from sortedcontainers import SortedList
-
 # from other modules
 from src.genbank import BGCRecord
 
@@ -62,7 +59,9 @@ class ComparableRegion:
             tuple[dict[HSP, list[int]], dict[HSP, list[int]]]
         ] = None
 
-    def get_domain_sets(self, regenerate=False) -> tuple[set[HSP], set[HSP]]:
+    def get_domain_sets(
+        self, regenerate=False, cache=True
+    ) -> tuple[set[HSP], set[HSP]]:
         """Returns a tuple containing sets of domains within the comparable region of
         two BGCs
 
@@ -77,15 +76,20 @@ class ComparableRegion:
             tuple[set[HSP], set[HSP]]
         """
         if regenerate or self.domain_sets is None:
-            a_domain_list, b_domain_list = self.get_domain_lists()
+            a_domain_list, b_domain_list = self.get_domain_lists(cache=cache)
+
+            if not cache:
+                return (set(a_domain_list), set(b_domain_list))
 
             self.domain_sets = (set(a_domain_list), set(b_domain_list))
 
         return self.domain_sets
 
     def get_domain_lists(
-        self, regenerate=False
-    ) -> tuple[SortedList[HSP], SortedList[HSP]]:
+        self,
+        regenerate=False,
+        cache=True,
+    ) -> tuple[list[HSP], list[HSP]]:
         """Returns a tuple corresponding (ordered) lists of CDS domains within the
         comparable region of two BGCs
 
@@ -108,18 +112,18 @@ class ComparableRegion:
             b_stop = self.b_stop
 
             a_cds_list = self.pair.region_a.get_cds()[a_start:a_stop]
-            b_cds_list = self.pair.region_b.get_cds()[b_start:b_stop]
+            b_cds_list = self.pair.region_b.get_cds(reverse=True)[b_start:b_stop]
 
-            if self.reverse:
-                b_cds_list = b_cds_list[::-1]
-
-            a_domain_list: SortedList[HSP] = SortedList()
+            a_domain_list: list[HSP] = []
             for a_cds in a_cds_list:
-                a_domain_list.update(a_cds.hsps)
+                a_domain_list.extend(a_cds.hsps)
 
-            b_domain_list: SortedList[HSP] = SortedList()
+            b_domain_list: list[HSP] = []
             for b_cds in b_cds_list:
-                b_domain_list.update(b_cds.hsps)
+                b_domain_list.extend(b_cds.hsps)
+
+            if not cache:
+                return (a_domain_list, b_domain_list)
 
             self.domain_lists = (a_domain_list, b_domain_list)
 
@@ -201,20 +205,20 @@ class ComparableRegion:
         if fwd_match_len >= rev_match_len:
             reverse = False
             a_start = a_start_fwd
-            a_stop = a_start_fwd + fwd_match_len
+            a_stop = a_start_fwd + fwd_match_len + 1
 
             b_start = b_start_fwd
-            b_stop = b_start_fwd + fwd_match_len
+            b_stop = b_start_fwd + fwd_match_len + 1
         else:
             reverse = True
             a_start = a_start_rev
-            a_stop = a_start_rev + rev_match_len
+            a_stop = a_start_rev + rev_match_len + 1
 
             # previously we flipped the entire B array in order to find the LCS
             # now we want to go back to a start and stop position for the unflipped
             # array
             b_start = b_start_rev
-            b_stop = b_start + rev_match_len
+            b_stop = b_start + rev_match_len + 1
 
         self.a_start = a_start
         self.a_stop = a_stop
@@ -232,10 +236,7 @@ class ComparableRegion:
             return
 
         a_cds_list = self.pair.region_a.get_cds()
-        b_cds_list = self.pair.region_b.get_cds()
-
-        if self.reverse:
-            b_cds_list = b_cds_list[::-1]
+        b_cds_list = self.pair.region_b.get_cds(reverse=self.reverse)
 
         b_start = self.b_start
         b_stop = self.b_stop
@@ -316,13 +317,20 @@ class ComparableRegion:
 
     @staticmethod
     def cds_range_contains_biosynthetic(
-        record: BGCRecord, cds_start: int, cds_stop: int, end_inclusive=False
+        record: BGCRecord,
+        cds_start: int,
+        cds_stop: int,
+        end_inclusive=False,
+        reverse=False,
     ) -> bool:
         stop = cds_stop
         if end_inclusive:
             stop += 1
 
-        for cds in record.get_cds(True)[cds_start:stop]:
+        for cds in record.get_cds(True, reverse=reverse)[cds_start:stop]:
+            if cds.gene_kind is None:
+                continue
+
             if "biosynthetic" in cds.gene_kind:
                 return True
 

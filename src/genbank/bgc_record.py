@@ -45,9 +45,7 @@ class BGCRecord:
         self.nt_stop: Optional[int] = None
         self.product: Optional[str] = None
 
-        self._families: dict[str, int] = {}
-
-    def get_cds(self, return_all=False) -> SortedList[CDS]:
+    def get_cds(self, return_all=False, reverse=False) -> list[CDS]:
         """Get a list of CDS that lie within the coordinates specified in this region
         from the parent GBK class
 
@@ -69,20 +67,31 @@ class BGCRecord:
         parent_gbk_cds: SortedList[CDS] = self.parent_gbk.genes
 
         if return_all:
-            return self.parent_gbk.genes
+            # TODO: I don't like this solution. maybe go back to the more difficult one
+            if reverse:
+                step = -1
+            else:
+                step = 1
+            return list(self.parent_gbk.genes)[::step]
 
         if self.nt_start is None or self.nt_stop is None:
             raise ValueError("Cannot CDS from region with no position information")
 
-        record_cds: SortedList[CDS] = SortedList()
-        for cds in parent_gbk_cds:
+        record_cds: list[CDS] = []
+
+        if reverse:
+            step = -1
+        else:
+            step = 1
+
+        for cds in parent_gbk_cds[::step]:
             if cds.nt_start < self.nt_start:
                 continue
 
             if cds.nt_stop > self.nt_stop:
                 continue
 
-            record_cds.add(cds)
+            record_cds.append(cds)
 
         return record_cds
 

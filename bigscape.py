@@ -127,7 +127,9 @@ if __name__ == "__main__":
     logging.info("Generated mix bin: %s", mix_bin)
 
     for pair in mix_bin.pairs():
-        jaccard = calc_jaccard_pair(pair)
+        # calculate jaccard for the full sets. if this is 0, there are no shared domains
+        # important not to cache here otherwise we are using the full range again later
+        jaccard = calc_jaccard_pair(pair, cache=False)
 
         if jaccard == 0.0:
             continue
