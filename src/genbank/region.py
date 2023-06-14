@@ -124,8 +124,8 @@ class Region(BGCRecord):
             region.parse_bgc_record(feature, parent_gbk=parent_gbk)
             return region
 
-    def get_cds(self, return_all=True) -> list[CDS]:
-        return super().get_cds(return_all)
+    def get_cds(self, return_all=True, reverse=False) -> list[CDS]:
+        return super().get_cds(return_all, reverse)
 
     def get_attr_dict(self) -> dict[str, object]:
         """Gets a dictionary of attributes, useful for adding to network nodes later"""

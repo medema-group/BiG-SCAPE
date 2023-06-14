@@ -22,7 +22,7 @@ def calc_jaccard_sets(set_a: set[Any], set_b: set[Any]) -> float:
     return len(set_a & set_b) / len(set_a | set_b)
 
 
-def calc_jaccard_pair(bgc_pair: BGCPair) -> float:
+def calc_jaccard_pair(bgc_pair: BGCPair, cache=True) -> float:
     """Generates the Jaccard index between a pair of BGCs
 
     Args:
@@ -31,5 +31,5 @@ def calc_jaccard_pair(bgc_pair: BGCPair) -> float:
     Returns:
         float: Jaccard index
     """
-    a_cds, b_cds = bgc_pair.comparable_region.get_domain_sets()
+    a_cds, b_cds = bgc_pair.comparable_region.get_domain_sets(cache=cache)
     return calc_jaccard_sets(a_cds, b_cds)
