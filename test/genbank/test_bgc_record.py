@@ -46,6 +46,7 @@ class TestBGCRecord(TestCase):
         # coordinates are exclusive. first and last in above list should not be included
         expected_cds_count = 8
 
+        # TODO: use __len__
         actual_cds_count = len(record.get_cds())
 
         self.assertEqual(expected_cds_count, actual_cds_count)
@@ -80,6 +81,7 @@ class TestBGCRecord(TestCase):
         # coordinates are exclusive. first and last in above list should not be included
         expected_cds_count = 10
 
+        # TODO: use __len__
         actual_cds_count = len(record.get_cds(True))
 
         self.assertEqual(expected_cds_count, actual_cds_count)
