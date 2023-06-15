@@ -117,7 +117,7 @@ def get_distance_from_unshared(
 
         distance_non_anchor += num_unshared
 
-    return distance_non_anchor, distance_anchor
+    return distance_anchor, distance_non_anchor
 
 
 def get_aligned_string_dist(string_a: str, string_b: str) -> float:
@@ -196,12 +196,12 @@ def get_distance_from_shared(bgc_pair: BGCPair, anchor_domains: set[str]):
     domains_anchor = 0
     domains_non_anchor = 0
 
-    for shared_domain in intersect:
+    for shared_domain in sorted([hsp.domain for hsp in intersect]):
         sum_seq_dist, normalization_element = get_sum_seq_dist(
             a_domain_list, b_domain_list, a_domain_dict, b_domain_dict, shared_domain
         )
 
-        if shared_domain in anchor_domains:
+        if shared_domain[:7] in anchor_domains:
             distance_anchor += sum_seq_dist
             domains_anchor += normalization_element
         else:
@@ -212,7 +212,7 @@ def get_distance_from_shared(bgc_pair: BGCPair, anchor_domains: set[str]):
 
 
 def calc_dss_pair_legacy(
-    bgc_pair: BGCPair, anchor_domains: Optional[set[str]] = None
+    bgc_pair: BGCPair, anchor_domains: Optional[set[str]] = None, anchor_boost=1.0
 ) -> float:
     # intialize an empty set of anchor domains if it is set to None
     if anchor_domains is None:
@@ -258,12 +258,14 @@ def calc_dss_pair_legacy(
     dss_non_anchor = distance_non_anchor / domains_non_anchor
 
     # Calculate proper, proportional weight to each kind of domain
-    anchor_percent = domains_anchor / (domains_non_anchor + domains_anchor)
-    non_anchor_percent = domains_non_anchor / (domains_anchor + domains_anchor)
+    total_domains = domains_anchor + domains_non_anchor
+    anchor_percent = domains_anchor / total_domains * anchor_boost
+    non_anchor_percent = domains_non_anchor / total_domains
 
     # boost anchor subcomponent and re-normalize
-    non_anchor_weight = non_anchor_percent / (anchor_percent + non_anchor_percent)
-    anchor_weight = anchor_percent / (anchor_percent + non_anchor_percent)
+    total_percent = anchor_percent + non_anchor_percent
+    anchor_weight = anchor_percent / total_percent
+    non_anchor_weight = non_anchor_percent / total_percent
 
     # Use anchorboost parameter to boost percieved rDSS_anchor
     dss = (non_anchor_weight * dss_non_anchor) + (anchor_weight * dss_anchor)

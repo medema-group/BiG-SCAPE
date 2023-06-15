@@ -148,7 +148,8 @@ if __name__ == "__main__":
             continue
 
         adjacency = calc_ai_pair(pair)
-        dss = calc_dss_pair_legacy(pair)
+        # mix anchor boost = 2.0
+        dss = calc_dss_pair_legacy(pair, anchor_boost=2.0)
 
         # mix
         distance = 1 - (0.2 * jaccard) - (0.75 * adjacency) - (0.05 * dss)
