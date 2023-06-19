@@ -45,6 +45,8 @@ class BGCRecord:
         self.nt_stop: Optional[int] = None
         self.product: Optional[str] = None
 
+        self._families: dict[str, int] = {}
+
     def get_cds(self, return_all=False, reverse=False) -> list[CDS]:
         """Get a list of CDS that lie within the coordinates specified in this region
         from the parent GBK class

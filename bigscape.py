@@ -14,7 +14,7 @@ from src.parameters import parse_cmd
 from src.comparison import generate_mix
 from src.comparison.legacy_extend import expand_glocal
 from src.diagnostics import Profiler
-from src.distances import calc_jaccard_pair, calc_ai_pair, calc_dss_pair
+from src.distances import calc_jaccard_pair, calc_ai_pair, calc_dss_pair_legacy
 from src.network import BSNetwork
 from src.output import generate_legacy_output
 
@@ -152,7 +152,8 @@ if __name__ == "__main__":
             continue
 
         adjacency = calc_ai_pair(pair)
-        dss = calc_dss_pair(pair)
+        # mix anchor boost = 2.0
+        dss = calc_dss_pair_legacy(pair, anchor_boost=2.0)
 
         # mix
         distance = 1 - (0.2 * jaccard) - (0.75 * adjacency) - (0.05 * dss)
