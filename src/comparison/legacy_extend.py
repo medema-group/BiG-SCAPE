@@ -5,17 +5,34 @@ import logging
 
 # from other modules
 from src.parameters.constants import (
-    EXPAND_MIN_LCS_LEN,
+    MIN_LCS_LEN,
+    MIN_EXPAND_LEN,
     EXPAND_GAP_SCORE,
     EXPAND_MATCH_SCORE,
     EXPAND_MISMATCH_SCORE,
 )
 from src.genbank import CDS
-from src.comparison import ComparableRegion
+from src.comparison import ComparableRegion, BGCPair
+
+
+def reset_expansion(comparable_region: ComparableRegion) -> None:
+    """Resets the expansion to the initial, full lengths of the BGCs"""
+    a_gbk = comparable_region.pair.region_a.parent_gbk
+    b_gbk = comparable_region.pair.region_b.parent_gbk
+
+    if a_gbk is None or b_gbk is None:
+        return
+
+    comparable_region.a_start = 0
+    comparable_region.b_start = 0
+    comparable_region.a_stop = len(a_gbk.genes)
+    comparable_region.b_stop = len(b_gbk.genes)
 
 
 def expand_glocal(
-    comparable_region: ComparableRegion, min_match_len=EXPAND_MIN_LCS_LEN
+    comparable_region: ComparableRegion,
+    min_lcs_len=MIN_LCS_LEN,
+    min_expand_len=MIN_EXPAND_LEN,
 ) -> None:
     """Expand the comparable region on both sides using a simple scoring algorithm
 
@@ -27,18 +44,21 @@ def expand_glocal(
     # EXPAND_MIN_LCS_LEN (3 in BiG-SCAPE 1.0) elements and no biosynthetic gene is found
     # in the LCS
     # TODO: are all relevant checks here?
-    if comparable_region.a_stop < min_match_len:
-        cds_stop = comparable_region.a_start + comparable_region.a_stop
+    match_len = comparable_region.a_stop - comparable_region.a_start
+    if match_len < min_lcs_len:
         if not ComparableRegion.cds_range_contains_biosynthetic(
-            comparable_region.pair.region_a, comparable_region.a_start, cds_stop, True
+            comparable_region.pair.region_a,
+            comparable_region.a_start,
+            comparable_region.a_stop,
+            True,
         ):
             logging.debug(
                 (
-                    "Skipping pair %s expansion - LCS len < %d and no core "
+                    "Skipping pair %s left expansion - LCS len < %d and no core "
                     "biosynthetic genes found in LCS"
                 ),
                 comparable_region.pair,
-                min_match_len,
+                min_lcs_len,
             )
             return
 
@@ -49,6 +69,32 @@ def expand_glocal(
     expand_glocal_right(comparable_region)
 
     logging.debug("cr after expand: %s", str(comparable_region))
+
+    # final checks: did we expand enough?
+    expansion_len_a = comparable_region.a_stop - comparable_region.a_start
+    expansion_len_b = comparable_region.b_stop - comparable_region.b_start
+    if min(expansion_len_a, expansion_len_b) < min_expand_len:
+        reset_expansion(comparable_region)
+        return
+
+    # do both slices contain a biosynthetic gene?
+    if not ComparableRegion.cds_range_contains_biosynthetic(
+        comparable_region.pair.region_a,
+        comparable_region.a_start,
+        comparable_region.a_stop,
+        True,
+    ):
+        reset_expansion(comparable_region)
+        return
+
+    if not ComparableRegion.cds_range_contains_biosynthetic(
+        comparable_region.pair.region_b,
+        comparable_region.b_start,
+        comparable_region.b_stop,
+        True,
+    ):
+        reset_expansion(comparable_region)
+        return
 
 
 def set_expansion_left(
@@ -319,3 +365,21 @@ def expand_score(
             extension = target_idx + 1 + skips
 
     return max_score, extension
+
+
+def legacy_needs_extend(pair: BGCPair, alignment_mode: str):
+    """Returns true if:
+
+    alignment_mode is glocal
+    alignment mode is auto, and:
+        pair.region_a is on a contig edge, or:
+        pair.region_b is on a contig edge
+    """
+
+    if alignment_mode == "glocal":
+        return True
+
+    if alignment_mode == "auto":
+        return pair.region_a.contig_edge or pair.region_b.contig_edge
+
+    return False

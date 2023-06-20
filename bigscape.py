@@ -12,7 +12,7 @@ from src.genbank import SOURCE_TYPE, BGCRecord, CDS
 from src.hmm import HMMer
 from src.parameters import parse_cmd
 from src.comparison import generate_mix
-from src.comparison.legacy_extend import expand_glocal
+from src.comparison.legacy_extend import expand_glocal, legacy_needs_extend
 from src.diagnostics import Profiler
 from src.distances import calc_jaccard_pair, calc_ai_pair, calc_dss_pair_legacy
 from src.network import BSNetwork
@@ -130,22 +130,24 @@ if __name__ == "__main__":
         jaccard = calc_jaccard_pair(pair, cache=False)
 
         if jaccard == 0.0:
+            network.add_edge(pair, jaccard=0.0, adjacency=0.0, dss=0.0, distance=0.0)
             continue
 
         logging.debug("JC: %f", jaccard)
 
         pair.find_lcs()
 
-        pair.comparable_region.log_comparable_region("LCS")
+        if legacy_needs_extend(pair, run.comparison.alignment_mode):
+            pair.comparable_region.log_comparable_region("LCS")
 
-        expand_glocal(pair.comparable_region)
+            expand_glocal(pair.comparable_region)
 
-        pair.comparable_region.log_comparable_region("GLOCAL")
+            pair.comparable_region.log_comparable_region("GLOCAL")
 
-        jaccard = calc_jaccard_pair(pair)
+            jaccard = calc_jaccard_pair(pair)
 
-        if jaccard == 0.0:
-            continue
+            if jaccard == 0.0:
+                continue
 
         adjacency = calc_ai_pair(pair)
         # mix anchor boost = 2.0
