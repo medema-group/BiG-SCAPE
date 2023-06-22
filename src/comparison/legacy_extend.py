@@ -60,6 +60,7 @@ def expand_glocal(
                 comparable_region.pair,
                 min_lcs_len,
             )
+            reset_expansion(comparable_region)
             return
 
     logging.debug("cr before expand: %s", str(comparable_region))
