@@ -162,8 +162,9 @@ class CDS:
             raise NotImplementedError()
 
         # exception: no hsps in both
+        # TODO: time to stop abusing dunder methods. use custom sorted lists
         if len(self.hsps) + len(__o.hsps) == 0:
-            return False
+            return self.parent_gbk == __o.parent_gbk and self.orf_num == __o.orf_num
 
         return self.hsps == __o.hsps
 
