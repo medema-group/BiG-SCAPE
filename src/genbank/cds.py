@@ -161,6 +161,10 @@ class CDS:
         if not isinstance(__o, CDS):
             raise NotImplementedError()
 
+        # exception: no hsps in both
+        if len(self.hsps) + len(__o.hsps) == 0:
+            return False
+
         return self.hsps == __o.hsps
 
     def __gt__(self, __o) -> bool:
