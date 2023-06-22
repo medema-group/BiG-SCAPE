@@ -147,6 +147,9 @@ if __name__ == "__main__":
             jaccard = calc_jaccard_pair(pair)
 
             if jaccard == 0.0:
+                network.add_edge(
+                    pair, jaccard=0.0, adjacency=0.0, dss=0.0, distance=0.0
+                )
                 continue
 
         adjacency = calc_ai_pair(pair)
@@ -154,7 +157,7 @@ if __name__ == "__main__":
         dss = calc_dss_pair_legacy(pair, anchor_boost=2.0)
 
         # mix
-        distance = 1 - (0.2 * jaccard) - (0.75 * adjacency) - (0.05 * dss)
+        distance = 1 - (0.2 * jaccard) - (0.05 * adjacency) - (0.75 * dss)
 
         logging.debug(
             "JC: %f, AI: %f, DSS: %f, SCORE: %f", jaccard, adjacency, dss, distance
