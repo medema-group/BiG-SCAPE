@@ -81,12 +81,14 @@ class HSP:
         if self.cds.nt_start < __o.cds.nt_start:
             return False
 
+        if self.env_start < __o.env_start:
+            return False
+        if self.env_start > __o.env_start:
+            return True
+
         # TODO: sorting is possibly based on e-value, not on score
         # not that it should matter that much, but domain order affects AI
         if self.score < __o.score:
-            return True
-
-        if self.env_start < __o.env_start:
             return True
 
         return False
