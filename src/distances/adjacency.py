@@ -3,6 +3,7 @@
 
 # from other modules
 from src.comparison import BGCPair
+from src.hmm import HSP
 
 
 def calc_ai_lists(list_a: list, list_b: list):
@@ -61,7 +62,22 @@ def calc_ai_pair(bgc_pair: BGCPair) -> float:
     Returns:
         float: adjacency index
     """
-    a_domains, b_domains = bgc_pair.comparable_region.get_domain_lists()
+    # for some reason, we are not reversing the list here.
+    a_domains, b_domains = bgc_pair.comparable_region.get_domain_lists(reverse=False)
+
+    # sort domains by absolute position. that is, the orf position + env position.
+    def sort_domain_key(k: HSP):
+        # if on positive strand, this is simple
+        if k.cds.strand == 1:
+            return 3 * k.env_start + k.cds.nt_start
+
+        # negative strand, calculate from the other side
+        # TODO: does this make sense? this is 1.0 behavior
+        width = 3 * (k.env_stop - k.env_start)
+        return k.cds.nt_stop - 3 * k.env_start - width
+
+    a_domains = sorted(a_domains, key=sort_domain_key)
+    b_domains = sorted(b_domains, key=sort_domain_key)
 
     a_domain_names = [hsp.domain for hsp in a_domains]
     b_domain_names = [hsp.domain for hsp in b_domains]

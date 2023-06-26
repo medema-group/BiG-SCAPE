@@ -111,7 +111,7 @@ def get_distance_from_unshared(
         except KeyError:
             num_unshared = b_domains_top[domain] - b_domains_bot[domain]
 
-        if domain in anchor_domains:
+        if domain[:7] in anchor_domains:
             distance_anchor += num_unshared
             continue
 

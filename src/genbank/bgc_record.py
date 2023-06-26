@@ -71,10 +71,9 @@ class BGCRecord:
         if return_all:
             # TODO: I don't like this solution. maybe go back to the more difficult one
             if reverse:
-                step = -1
-            else:
-                step = 1
-            return list(self.parent_gbk.genes)[::step]
+                return list(reversed(self.parent_gbk.genes))
+
+            return list(self.parent_gbk.genes)
 
         if self.nt_start is None or self.nt_stop is None:
             raise ValueError("Cannot CDS from region with no position information")

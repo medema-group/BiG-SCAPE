@@ -90,22 +90,26 @@ class ComparableRegion:
         return self.domain_sets
 
     def get_domain_lists(
-        self,
-        regenerate=False,
-        cache=True,
+        self, regenerate=False, cache=True, reverse=None
     ) -> tuple[list[HSP], list[HSP]]:
         """Returns a tuple corresponding (ordered) lists of CDS domains within the
         comparable region of two BGCs
 
         This method caches the result and re-uses the result on further calls unless
-        regenerate is set to True
+        regenerate is set to True or Cache is set to false.
+
+        If reverse is set to none, uses the reverse propoerty on comparable region
 
         Args:
             regenerate (bool): whether to replace the cached result set with a newly
-            generated one
+            generated one,
+            cache (bool): whether to cache the result for faster retrieval
+            reverse (bool, optional): Whether to return a reversed list for region B. Defaults to
+            None.
 
         Returns:
             tuple[SortedList[HSP], SortedList[HSP]]
+
         """
 
         if regenerate or self.domain_lists is None:
@@ -116,7 +120,9 @@ class ComparableRegion:
             b_stop = self.b_stop
 
             a_cds_list = self.pair.region_a.get_cds()[a_start:a_stop]
-            b_cds_list = self.pair.region_b.get_cds(reverse=True)[b_start:b_stop]
+            b_cds_list = self.pair.region_b.get_cds(reverse=self.reverse)[
+                b_start:b_stop
+            ]
 
             a_domain_list: list[HSP] = []
             for a_cds in a_cds_list:
@@ -175,16 +181,15 @@ class ComparableRegion:
 
         return self.domain_dicts
 
-    def find_lcs(self) -> None:
+    def find_lcs(self) -> tuple[int, int, int, int]:
         """Retrieve the longest common subsequence of domains for a pair of BGC records
-        Also returns whether the sequence is reversed
 
         Args:
             pair (BGCPair): Pair of BGCs to retrieve the LCS for
 
         Returns:
-            tuple[list[str], bool]: List of strings that represents the LCS of domains and
-            a boolean indicating whether the LCS is was found in the reverse sequence
+            tuple[int]: tuple of integers corresponding to:
+            [a_lcs_start, a_lcs_stop, b_lcs_start, b_lcs_stop]
         """
         # the idea here is that each cds has a list of domains that are matched against
         # we concatenate the domains within a CDS, and the list of concatenated domains
@@ -200,20 +205,21 @@ class ComparableRegion:
         fwd_match_len = match[2]
 
         # reverse
-        seqmatch = SequenceMatcher(None, a_cds, b_cds[::-1])
-        match = seqmatch.find_longest_match(0, len(a_cds), 0, len(b_cds))
+        rev_seqmatch = SequenceMatcher(None, a_cds, b_cds[::-1])
+        match = rev_seqmatch.find_longest_match(0, len(a_cds), 0, len(b_cds))
         a_start_rev = match[0]
         b_start_rev = match[1]
         rev_match_len = match[2]
 
-        if fwd_match_len >= rev_match_len:
+        if fwd_match_len > rev_match_len:
             reverse = False
             a_start = a_start_fwd
-            a_stop = a_start_fwd + fwd_match_len + 1
+            a_stop = a_start_fwd + fwd_match_len
 
             b_start = b_start_fwd
-            b_stop = b_start_fwd + fwd_match_len + 1
-        else:
+            b_stop = b_start_fwd + fwd_match_len
+
+        elif fwd_match_len < rev_match_len:
             reverse = True
             a_start = a_start_rev
             a_stop = a_start_rev + rev_match_len + 1
@@ -224,11 +230,45 @@ class ComparableRegion:
             b_start = b_start_rev
             b_stop = b_start + rev_match_len + 1
 
+        # case where slice length is 1. use the one with the most domains from the seq matc
+        elif fwd_match_len == 1:
+            max_domains = 0
+            for a_idx, b_idx, match_len in seqmatch.get_matching_blocks():
+                if match_len == 0:
+                    break
+
+                a_domain_count = len(a_cds[a_idx].hsps)
+                if a_domain_count <= max_domains:
+                    continue
+
+                max_domains = a_domain_count
+                a_start = a_idx
+                a_stop = a_start + 1
+
+                if a_cds[a_idx].strand == b_cds[b_idx].strand:
+                    b_start = b_idx
+                    b_stop = b_start + 1
+                    reverse = False
+                else:
+                    b_start = len(b_cds) - b_idx - 1
+                    b_stop = b_start + 1
+                    reverse = True
+
+        # default to taking forward lcs
+        else:
+            a_start = a_start_fwd
+            a_stop = a_start_fwd + fwd_match_len + 1
+            b_start = b_start_fwd
+            b_stop = b_start + fwd_match_len + 1
+            reverse = False
+
         self.a_start = a_start
         self.a_stop = a_stop
         self.b_start = b_start
         self.b_stop = b_stop
         self.reverse = reverse
+
+        return (a_start, a_stop, b_start, b_stop)
 
     def log_comparable_region(self, label="<") -> None:  # pragma: no cover
         """Prints a debug level log of the comparable region
