@@ -15,18 +15,33 @@ from src.genbank import CDS
 from src.comparison import ComparableRegion, BGCPair
 
 
-def reset_expansion(comparable_region: ComparableRegion) -> None:
-    """Resets the expansion to the initial, full lengths of the BGCs"""
+def reset_expansion(
+    comparable_region: ComparableRegion, a_start=0, a_stop=None, b_start=0, b_stop=None
+) -> None:
+    """Resets the comparable region starts and stops
+
+    If no arguments beyond comparable region are given, resets to the full range
+    """
     a_gbk = comparable_region.pair.region_a.parent_gbk
     b_gbk = comparable_region.pair.region_b.parent_gbk
 
     if a_gbk is None or b_gbk is None:
         return
 
-    comparable_region.a_start = 0
-    comparable_region.b_start = 0
-    comparable_region.a_stop = len(a_gbk.genes)
-    comparable_region.b_stop = len(b_gbk.genes)
+    if a_stop is None:
+        a_stop = len(a_gbk.genes) + 1
+
+    if b_stop is None:
+        b_stop = len(b_gbk.genes) + 1
+
+    comparable_region.a_start = a_start
+    comparable_region.b_start = b_start
+
+    comparable_region.a_stop = a_stop
+    comparable_region.b_stop = b_stop
+
+    comparable_region.domain_lists = None
+    comparable_region.domain_sets = None
 
 
 def expand_glocal(
@@ -71,12 +86,17 @@ def expand_glocal(
 
     logging.debug("cr after expand: %s", str(comparable_region))
 
+
+def check_expand(
+    comparable_region: ComparableRegion, min_expand_len=MIN_EXPAND_LEN
+) -> bool:
+    """Returns True if the expansion is valid. Returns False if the expansion should be reset"""
+
     # final checks: did we expand enough?
     expansion_len_a = comparable_region.a_stop - comparable_region.a_start
     expansion_len_b = comparable_region.b_stop - comparable_region.b_start
     if min(expansion_len_a, expansion_len_b) < min_expand_len:
-        reset_expansion(comparable_region)
-        return
+        return False
 
     # do both slices contain a biosynthetic gene?
     if not ComparableRegion.cds_range_contains_biosynthetic(
@@ -85,8 +105,7 @@ def expand_glocal(
         comparable_region.a_stop,
         True,
     ):
-        reset_expansion(comparable_region)
-        return
+        return False
 
     if not ComparableRegion.cds_range_contains_biosynthetic(
         comparable_region.pair.region_b,
@@ -94,8 +113,9 @@ def expand_glocal(
         comparable_region.b_stop,
         True,
     ):
-        reset_expansion(comparable_region)
-        return
+        return False
+
+    return True
 
 
 def set_expansion_left(
@@ -152,6 +172,7 @@ def expand_glocal_left(comparable_region: ComparableRegion) -> None:
 
     a_left_stop = comparable_region.a_start - 1
     left_cds_a = cds_list_a[a_left_stop::-1]
+    left_domain_cds_a = len([cds for cds in left_cds_a if len(cds.hsps) > 0])
 
     cds_list_b = comparable_region.pair.region_b.get_cds(
         reverse=comparable_region.reverse
@@ -159,11 +180,12 @@ def expand_glocal_left(comparable_region: ComparableRegion) -> None:
 
     b_left_stop = comparable_region.b_start - 1
     left_cds_b = cds_list_b[b_left_stop::-1]
+    left_domain_cds_b = len([cds for cds in left_cds_b if len(cds.hsps) > 0])
 
     # first check we do is to see which of the regions has more genes to the left
 
     # case 1: A has more genes to the left of LCS than B
-    if len(left_cds_a) > len(left_cds_b):
+    if left_domain_cds_a > left_domain_cds_b:
         # in this case, we expand A based on B
         a_score, a_expansion = expand_score(left_cds_b, left_cds_a)
         # B is extended as far as it can be
@@ -172,7 +194,7 @@ def expand_glocal_left(comparable_region: ComparableRegion) -> None:
         return
 
     # case 2: B has more genes to the left of LCS than A
-    if len(left_cds_b) > len(left_cds_a):
+    if left_domain_cds_b > left_domain_cds_a:
         # in this case, we expand B based on A
         b_score, b_expansion = expand_score(left_cds_a, left_cds_b)
         # A is extended as far as it can be
@@ -189,19 +211,23 @@ def expand_glocal_left(comparable_region: ComparableRegion) -> None:
     if a_score == b_score:
         # use A if it has a longer extension
         if a_expansion > b_expansion:
+            b_expansion = len(left_cds_b)
             set_expansion_left(comparable_region, a_expansion, a_expansion)
             return
         # otherwise just use B
+        a_expansion = len(left_cds_a)
         set_expansion_left(comparable_region, b_expansion, b_expansion)
         return
 
     # A has higher score
     if a_score > b_score:
         # ... use A
+        b_expansion = len(left_cds_b)
         set_expansion_left(comparable_region, a_expansion, a_expansion)
         return
 
     # only remaining case is B has higher score
+    a_expansion = len(left_cds_a)
     set_expansion_left(comparable_region, b_expansion, b_expansion)
 
 
@@ -256,6 +282,7 @@ def expand_glocal_right(comparable_region: ComparableRegion) -> None:
 
     a_right_start = comparable_region.a_stop
     right_cds_a = cds_list_a[a_right_start:]
+    right_domain_cds_a = len([cds for cds in right_cds_a if len(cds.hsps) > 0])
 
     cds_list_b = comparable_region.pair.region_b.get_cds(
         reverse=comparable_region.reverse
@@ -263,11 +290,12 @@ def expand_glocal_right(comparable_region: ComparableRegion) -> None:
 
     b_right_start = comparable_region.b_stop
     right_cds_b = cds_list_b[b_right_start:]
+    right_domain_cds_b = len([cds for cds in right_cds_b if len(cds.hsps) > 0])
 
     # first check we do is to see which of the regions has more genes to the left
 
     # case 1: A has more genes to the left of LCS than B
-    if len(right_cds_a) > len(right_cds_b):
+    if right_domain_cds_a > right_domain_cds_b:
         # in this case, we expand A based on B
         a_score, a_expansion = expand_score(right_cds_a, right_cds_b)
         # B is extended as far as it can be
@@ -276,7 +304,7 @@ def expand_glocal_right(comparable_region: ComparableRegion) -> None:
         return
 
     # case 2: B has more genes to the left of LCS than A
-    if len(right_cds_b) > len(right_cds_a):
+    if right_domain_cds_b > right_domain_cds_a:
         # in this case, we expand B based on A
         b_score, b_expansion = expand_score(right_cds_a, right_cds_b)
         # A is extended as far as it can be
@@ -293,19 +321,23 @@ def expand_glocal_right(comparable_region: ComparableRegion) -> None:
     if a_score == b_score:
         # use A if it has a longer extension
         if a_expansion > b_expansion:
+            b_expansion = len(right_cds_b)
             set_expansion_right(comparable_region, a_expansion, a_expansion)
             return
         # otherwise just use B
+        a_expansion = len(right_cds_a)
         set_expansion_right(comparable_region, b_expansion, b_expansion)
         return
 
     # A has higher score
     if a_score > b_score:
         # ... use A
+        b_expansion = len(right_cds_b)
         set_expansion_right(comparable_region, a_expansion, a_expansion)
         return
 
     # only remaining case is B has higher score
+    a_expansion = len(right_cds_a)
     set_expansion_right(comparable_region, b_expansion, b_expansion)
 
 
@@ -368,19 +400,38 @@ def expand_score(
     return max_score, extension
 
 
-def legacy_needs_extend(pair: BGCPair, alignment_mode: str):
-    """Returns true if:
+def legacy_needs_extend(
+    pair: BGCPair, alignment_mode: str, extend_slice_cutoff=MIN_LCS_LEN
+):
+    """Returns False if:
 
-    alignment_mode is glocal
-    alignment mode is auto, and:
-        pair.region_a is on a contig edge, or:
-        pair.region_b is on a contig edge
+    - alignment_mode is global
+    - alignment mode is auto, and:
+        pair.region_a and pair_region_b are both not on a contig edge
+    - region_a does not contain a biosynthetic gene and:
+        comparable region length of a is less than extend_slice_cutoff
+        (at this point, this should be the LCS length)
+
     """
 
-    if alignment_mode == "glocal":
-        return True
+    if alignment_mode == "global":
+        return False
 
-    if alignment_mode == "auto":
-        return pair.region_a.contig_edge or pair.region_b.contig_edge
+    if alignment_mode == "auto" and not (
+        pair.region_a.contig_edge and pair.region_b.contig_edge
+    ):
+        return False
 
-    return False
+    lcs_extend_len = pair.comparable_region.a_stop - 1 - pair.comparable_region.a_start
+    if (
+        lcs_extend_len < extend_slice_cutoff
+        and not ComparableRegion.cds_range_contains_biosynthetic(
+            pair.region_a,
+            pair.comparable_region.a_start,
+            pair.comparable_region.a_stop,
+            reverse=pair.comparable_region.reverse,
+        )
+    ):
+        return False
+
+    return True

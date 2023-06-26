@@ -21,13 +21,22 @@ class BGCBin:
         self.label = label
         self.source_records: list[BGCRecord] = []
 
-    def pairs(self) -> Iterator[BGCPair]:
+    def pairs(self, legacy_sorting=False) -> Iterator[BGCPair]:
         """Returns an iterator for BGC pairs in this bin
+
+        Args:
+            legacy_sorting (bool, optional): Whether to sort the
 
         Yields:
             Iterator[BGCPair]: Iterator for BGC pairs in this bin
         """
         for bgc_a, bgc_b in combinations(self.source_records, 2):
+            if legacy_sorting:
+                sorted_a, sorted_b = sorted(
+                    (bgc_a, bgc_b), key=lambda bgc: bgc.parent_gbk.path.name[:-4]
+                )
+                yield BGCPair(sorted_a, sorted_b)
+                continue
             yield BGCPair(bgc_a, bgc_b)
 
     def add_bgcs(self, bgc_list: list[BGCRecord]):
@@ -79,9 +88,13 @@ class BGCPair:
             self, 0, a_len, 0, b_len, False
         )
 
-    def find_lcs(self) -> None:
-        """Generate the comparable region for this BGC pair"""
-        self.comparable_region.find_lcs()
+    def find_lcs(self) -> tuple[int]:
+        """Generate the comparable region for this BGC pair
+
+        Returns:
+            tuple[int]: A tuple in the form (a_start, a_stop, b_start, b_stop)
+        """
+        return self.comparable_region.find_lcs()
 
     def __repr__(self) -> str:
         return f"Pair {self.region_a} - {self.region_b}"
