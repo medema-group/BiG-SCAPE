@@ -30,13 +30,20 @@ class BGCBin:
         Yields:
             Iterator[BGCPair]: Iterator for BGC pairs in this bin
         """
+        # TODO: refactor into something flatter and more readable
         for bgc_a, bgc_b in combinations(self.source_records, 2):
             if legacy_sorting:
-                sorted_a, sorted_b = sorted(
-                    (bgc_a, bgc_b), key=lambda bgc: bgc.parent_gbk.path.name[:-4]
-                )
+
+                def sort_name_key(record: BGCRecord):
+                    if record.parent_gbk is None:
+                        return None
+
+                    return record.parent_gbk.path.name[:-4]
+
+                sorted_a, sorted_b = sorted((bgc_a, bgc_b), key=sort_name_key)
                 yield BGCPair(sorted_a, sorted_b)
                 continue
+
             yield BGCPair(bgc_a, bgc_b)
 
     def add_bgcs(self, bgc_list: list[BGCRecord]):
@@ -88,7 +95,7 @@ class BGCPair:
             self, 0, a_len, 0, b_len, False
         )
 
-    def find_lcs(self) -> tuple[int]:
+    def find_lcs(self) -> tuple[int, int, int, int]:
         """Generate the comparable region for this BGC pair
 
         Returns:

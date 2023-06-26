@@ -177,16 +177,15 @@ class ComparableRegion:
 
         return self.domain_dicts
 
-    def find_lcs(self) -> None:
+    def find_lcs(self) -> tuple[int, int, int, int]:
         """Retrieve the longest common subsequence of domains for a pair of BGC records
-        Also returns whether the sequence is reversed
 
         Args:
             pair (BGCPair): Pair of BGCs to retrieve the LCS for
 
         Returns:
-            tuple[list[str], bool]: List of strings that represents the LCS of domains and
-            a boolean indicating whether the LCS is was found in the reverse sequence
+            tuple[int]: tuple of integers corresponding to:
+            [a_lcs_start, a_lcs_stop, b_lcs_start, b_lcs_stop]
         """
         # the idea here is that each cds has a list of domains that are matched against
         # we concatenate the domains within a CDS, and the list of concatenated domains
