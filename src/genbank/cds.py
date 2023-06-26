@@ -183,11 +183,11 @@ class CDS:
         else:
             parent_gbk_str = str(self.parent_gbk.path.name)
 
-        domain_list = " ".join([hsp.domain for hsp in self.hsps])
+        domain_list = " ".join([f"{hsp.domain[2:]: <8}" for hsp in self.hsps])
 
         return (
             f"{parent_gbk_str}_CDS{self.orf_num}, {self.nt_start}-{self.nt_stop}:"
-            f"{self.strand} {self.gene_kind} - {domain_list}"
+            f"{'+' if self.strand == 1 else '-'} {self.gene_kind: <12} - {domain_list}"
         )
 
     @classmethod
