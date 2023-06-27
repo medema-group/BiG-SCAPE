@@ -207,7 +207,10 @@ class ComparableRegion:
         b_start_rev = match[1]
         rev_match_len = match[2]
 
-        if fwd_match_len > rev_match_len:
+        fwd_larger = fwd_match_len > rev_match_len
+        rev_larger = fwd_match_len < rev_match_len
+
+        if fwd_larger:
             reverse = False
             a_start = a_start_fwd
             a_stop = a_start_fwd + fwd_match_len
@@ -215,7 +218,7 @@ class ComparableRegion:
             b_start = b_start_fwd
             b_stop = b_start_fwd + fwd_match_len
 
-        elif fwd_match_len < rev_match_len:
+        elif rev_larger:
             reverse = True
             a_start = a_start_rev
             a_stop = a_start_rev + rev_match_len + 1
@@ -225,6 +228,18 @@ class ComparableRegion:
             # array
             b_start = b_start_rev
             b_stop = b_start + rev_match_len + 1
+
+        # from here on they're the same length
+        elif (
+            self.pair.region_a.get_cds()[a_start_fwd].strand
+            == self.pair.region_b.get_cds()[b_start_fwd].strand
+        ):
+            reverse = False
+            a_start = a_start_fwd
+            a_stop = a_start_fwd + fwd_match_len
+
+            b_start = b_start_fwd
+            b_stop = b_start_fwd + fwd_match_len
 
         # case where slice length is 1. use the one with the most domains from the seq matc
         elif fwd_match_len == 1:
@@ -239,11 +254,12 @@ class ComparableRegion:
 
                 max_domains = a_domain_count
                 a_start = a_idx
-                a_stop = a_start + 1
+                a_stop = a_start
 
+                # TODO: only the else should trigger at this point
                 if a_cds[a_idx].strand == b_cds[b_idx].strand:
                     b_start = b_idx
-                    b_stop = b_start + 1
+                    b_stop = b_start
                     reverse = False
                 else:
                     b_start = len(b_cds) - b_idx - 1
@@ -253,9 +269,9 @@ class ComparableRegion:
         # default to taking forward lcs
         else:
             a_start = a_start_fwd
-            a_stop = a_start_fwd + fwd_match_len + 1
+            a_stop = a_start_fwd + fwd_match_len
             b_start = b_start_fwd
-            b_stop = b_start + fwd_match_len + 1
+            b_stop = b_start + fwd_match_len
             reverse = False
 
         self.a_start = a_start

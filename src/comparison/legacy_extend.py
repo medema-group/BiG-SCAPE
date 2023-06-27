@@ -93,8 +93,16 @@ def check_expand(
     """Returns True if the expansion is valid. Returns False if the expansion should be reset"""
 
     # final checks: did we expand enough?
-    expansion_len_a = comparable_region.a_stop - comparable_region.a_start
-    expansion_len_b = comparable_region.b_stop - comparable_region.b_start
+    a_start = comparable_region.a_start
+    a_stop = comparable_region.a_stop
+    cds_list_a = comparable_region.pair.region_a.get_cds()[a_start:a_stop]
+    expansion_len_a = len([cds for cds in cds_list_a if len(cds.hsps) > 0])
+
+    b_start = comparable_region.b_start
+    b_stop = comparable_region.b_stop
+    cds_list_b = comparable_region.pair.region_b.get_cds()[b_start:b_stop]
+    expansion_len_b = len([cds for cds in cds_list_b if len(cds.hsps) > 0])
+
     if min(expansion_len_a, expansion_len_b) < min_expand_len:
         return False
 

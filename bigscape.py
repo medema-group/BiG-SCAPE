@@ -138,7 +138,7 @@ if __name__ == "__main__":
         jaccard = calc_jaccard_pair(pair, cache=False)
 
         if jaccard == 0.0:
-            network.add_edge(pair, jaccard=0.0, adjacency=0.0, dss=0.0, distance=1.0)
+            network.add_edge(pair, jc=0.0, ai=0.0, dss=0.0, dist=1.0)
             pair_list.append((pair, 0, 0, 0))
             continue
 
