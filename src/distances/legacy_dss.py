@@ -60,7 +60,7 @@ def get_distance_from_unshared(
         b_domains_top[hsp.domain] += 1
 
     # increase bot slices with the counts of domains found in before the comparable region
-    a_cds_list = bgc_pair.region_a.get_cds()
+    a_cds_list = bgc_pair.region_a.get_cds_with_domains()
     region_a_start = bgc_pair.comparable_region.a_start
     region_a_stop = bgc_pair.comparable_region.a_stop
     for cds in a_cds_list[:region_a_start]:
@@ -68,7 +68,7 @@ def get_distance_from_unshared(
             a_domains_bot[hsp.domain] += 1
 
     # we have to flip the orientation here
-    b_cds_list = bgc_pair.region_b.get_cds()
+    b_cds_list = bgc_pair.region_b.get_cds_with_domains()
     num_cds = len(b_cds_list)
     region_b_start = num_cds - bgc_pair.comparable_region.b_stop
     region_b_stop = num_cds - bgc_pair.comparable_region.b_start

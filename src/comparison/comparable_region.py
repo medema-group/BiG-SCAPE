@@ -115,8 +115,8 @@ class ComparableRegion:
             b_start = self.b_start
             b_stop = self.b_stop
 
-            a_cds_list = self.pair.region_a.get_cds()[a_start:a_stop]
-            b_cds_list = self.pair.region_b.get_cds(reverse=self.reverse)[
+            a_cds_list = self.pair.region_a.get_cds_with_domains()[a_start:a_stop]
+            b_cds_list = self.pair.region_b.get_cds_with_domains(reverse=self.reverse)[
                 b_start:b_stop
             ]
 
@@ -187,11 +187,8 @@ class ComparableRegion:
             tuple[int]: tuple of integers corresponding to:
             [a_lcs_start, a_lcs_stop, b_lcs_start, b_lcs_stop]
         """
-        # the idea here is that each cds has a list of domains that are matched against
-        # we concatenate the domains within a CDS, and the list of concatenated domains
-        # for all cds is called the domain string
-        a_cds = self.pair.region_a.get_cds()
-        b_cds = self.pair.region_b.get_cds()
+        a_cds = self.pair.region_a.get_cds_with_domains()
+        b_cds = self.pair.region_b.get_cds_with_domains()
 
         # forward
         seqmatch = SequenceMatcher(None, a_cds, b_cds)
@@ -231,8 +228,8 @@ class ComparableRegion:
 
         # from here on they're the same length
         elif (
-            self.pair.region_a.get_cds()[a_start_fwd].strand
-            == self.pair.region_b.get_cds()[b_start_fwd].strand
+            self.pair.region_a.get_cds_with_domains()[a_start_fwd].strand
+            == self.pair.region_b.get_cds_with_domains()[b_start_fwd].strand
         ):
             reverse = False
             a_start = a_start_fwd
@@ -291,8 +288,8 @@ class ComparableRegion:
         if logging.getLogger().level > logging.DEBUG:
             return
 
-        a_cds_list = self.pair.region_a.get_cds()
-        b_cds_list = self.pair.region_b.get_cds(reverse=self.reverse)
+        a_cds_list = self.pair.region_a.get_cds_with_domains()
+        b_cds_list = self.pair.region_b.get_cds_with_domains(reverse=self.reverse)
 
         b_start = self.b_start
         b_stop = self.b_stop
@@ -383,7 +380,7 @@ class ComparableRegion:
         if end_inclusive:
             stop += 1
 
-        for cds in record.get_cds(True, reverse=reverse)[cds_start:stop]:
+        for cds in record.get_cds_with_domains(True, reverse=reverse)[cds_start:stop]:
             if cds.gene_kind is None:
                 continue
 

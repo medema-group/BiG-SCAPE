@@ -95,12 +95,12 @@ def check_expand(
     # final checks: did we expand enough?
     a_start = comparable_region.a_start
     a_stop = comparable_region.a_stop
-    cds_list_a = comparable_region.pair.region_a.get_cds()[a_start:a_stop]
+    cds_list_a = comparable_region.pair.region_a.get_cds_with_domains()[a_start:a_stop]
     expansion_len_a = len([cds for cds in cds_list_a if len(cds.hsps) > 0])
 
     b_start = comparable_region.b_start
     b_stop = comparable_region.b_stop
-    cds_list_b = comparable_region.pair.region_b.get_cds()[b_start:b_stop]
+    cds_list_b = comparable_region.pair.region_b.get_cds_with_domains()[b_start:b_stop]
     expansion_len_b = len([cds for cds in cds_list_b if len(cds.hsps) > 0])
 
     if min(expansion_len_a, expansion_len_b) < min_expand_len:
@@ -176,18 +176,18 @@ def expand_glocal_left(comparable_region: ComparableRegion) -> None:
     # the legacy implementation of comparable region expansion first checks the number
     # of genes that are left of the current comparable region
 
-    cds_list_a = comparable_region.pair.region_a.get_cds()
+    cds_list_a = comparable_region.pair.region_a.get_cds_with_domains()
 
-    a_left_stop = comparable_region.a_start - 1
-    left_cds_a = cds_list_a[a_left_stop::-1]
+    a_left_stop = comparable_region.a_start
+    left_cds_a = list(reversed(cds_list_a[:a_left_stop]))
     left_domain_cds_a = len([cds for cds in left_cds_a if len(cds.hsps) > 0])
 
-    cds_list_b = comparable_region.pair.region_b.get_cds(
+    cds_list_b = comparable_region.pair.region_b.get_cds_with_domains(
         reverse=comparable_region.reverse
     )
 
-    b_left_stop = comparable_region.b_start - 1
-    left_cds_b = cds_list_b[b_left_stop::-1]
+    b_left_stop = comparable_region.b_start
+    left_cds_b = list(reversed(cds_list_b[:b_left_stop]))
     left_domain_cds_b = len([cds for cds in left_cds_b if len(cds.hsps) > 0])
 
     # first check we do is to see which of the regions has more genes to the left
@@ -195,7 +195,7 @@ def expand_glocal_left(comparable_region: ComparableRegion) -> None:
     # case 1: A has more genes to the left of LCS than B
     if left_domain_cds_a > left_domain_cds_b:
         # in this case, we expand A based on B
-        a_score, a_expansion = expand_score(left_cds_b, left_cds_a)
+        a_score, a_expansion = expand_score(left_cds_a, left_cds_b)
         # B is extended as far as it can be
         b_expansion = len(left_cds_b)
         set_expansion_left(comparable_region, a_expansion, b_expansion)
@@ -204,7 +204,7 @@ def expand_glocal_left(comparable_region: ComparableRegion) -> None:
     # case 2: B has more genes to the left of LCS than A
     if left_domain_cds_b > left_domain_cds_a:
         # in this case, we expand B based on A
-        b_score, b_expansion = expand_score(left_cds_a, left_cds_b)
+        b_score, b_expansion = expand_score(left_cds_b, left_cds_a)
         # A is extended as far as it can be
         a_expansion = len(left_cds_a)
         set_expansion_left(comparable_region, a_expansion, b_expansion)
@@ -212,8 +212,8 @@ def expand_glocal_left(comparable_region: ComparableRegion) -> None:
 
     # case 3: A and B have same number of genes left of LCS
     # first off, expand both
-    a_score, a_expansion = expand_score(left_cds_b, left_cds_a)
-    b_score, b_expansion = expand_score(left_cds_a, left_cds_b)
+    a_score, a_expansion = expand_score(left_cds_a, left_cds_b)
+    b_score, b_expansion = expand_score(left_cds_b, left_cds_a)
 
     # same score
     if a_score == b_score:
@@ -286,13 +286,13 @@ def expand_glocal_right(comparable_region: ComparableRegion) -> None:
     # the legacy implementation of comparable region expansion first checks the number
     # of genes that are right of the current comparable region
 
-    cds_list_a = comparable_region.pair.region_a.get_cds()
+    cds_list_a = comparable_region.pair.region_a.get_cds_with_domains()
 
     a_right_start = comparable_region.a_stop
     right_cds_a = cds_list_a[a_right_start:]
     right_domain_cds_a = len([cds for cds in right_cds_a if len(cds.hsps) > 0])
 
-    cds_list_b = comparable_region.pair.region_b.get_cds(
+    cds_list_b = comparable_region.pair.region_b.get_cds_with_domains(
         reverse=comparable_region.reverse
     )
 
@@ -314,7 +314,7 @@ def expand_glocal_right(comparable_region: ComparableRegion) -> None:
     # case 2: B has more genes to the left of LCS than A
     if right_domain_cds_b > right_domain_cds_a:
         # in this case, we expand B based on A
-        b_score, b_expansion = expand_score(right_cds_a, right_cds_b)
+        b_score, b_expansion = expand_score(right_cds_b, right_cds_a)
         # A is extended as far as it can be
         a_expansion = len(right_cds_a)
         set_expansion_right(comparable_region, a_expansion, b_expansion)
@@ -322,8 +322,8 @@ def expand_glocal_right(comparable_region: ComparableRegion) -> None:
 
     # case 3: A and B have same number of genes left of LCS
     # first off, expand both
-    a_score, a_expansion = expand_score(right_cds_b, right_cds_a)
-    b_score, b_expansion = expand_score(right_cds_a, right_cds_b)
+    a_score, a_expansion = expand_score(right_cds_a, right_cds_b)
+    b_score, b_expansion = expand_score(right_cds_b, right_cds_a)
 
     # same score
     if a_score == b_score:
@@ -350,8 +350,8 @@ def expand_glocal_right(comparable_region: ComparableRegion) -> None:
 
 
 def expand_score(
-    target: list[CDS],
     query: list[CDS],
+    target: list[CDS],
     match_score: int = EXPAND_MATCH_SCORE,
     mismatch_score: int = EXPAND_MISMATCH_SCORE,
     gap_score: int = EXPAND_GAP_SCORE,
@@ -370,40 +370,34 @@ def expand_score(
     """
 
     max_score = 0
+    score = 0
     extension = 0
 
     # TODO: exit loops early if there is no chance to recover to a good max score
 
-    score = 0
-    query_idx = 0
-    skips = 0
+    target_idx = 0
 
     # expand right side.
-    for target_idx, target_string in enumerate(target):
-        # CDS with no domains
-        if len(target_string.hsps) == 0:
-            skips += 1
-            continue
-
+    for query_idx, query_string in enumerate(query):
         # mismatch
-        if target_string not in query[query_idx:]:
+        if query_string not in target[target_idx:]:
             score += mismatch_score
             continue
 
         # get the index of the match based upon where we left off last iteration
-        match_pos = query[query_idx:].index(target_string)
+        match_pos = target[target_idx:].index(query_string)
 
         # because we are working from a slice of the query list, match_pos will tell us
         # how many elements we skip (gaps)
         score += match_score + match_pos * gap_score
 
         # update where we are at in the query
-        query_idx += match_pos + 1
+        target_idx += match_pos + 1
 
         # update max score
         if score >= max_score:
             max_score = score
-            extension = target_idx + 1 + skips
+            extension = query_idx + 1
 
     return max_score, extension
 
