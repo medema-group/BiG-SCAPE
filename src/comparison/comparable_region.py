@@ -218,7 +218,7 @@ class ComparableRegion:
         elif rev_larger:
             reverse = True
             a_start = a_start_rev
-            a_stop = a_start_rev + rev_match_len + 1
+            a_stop = a_start_rev + rev_match_len
 
             # previously we flipped the entire B array in order to find the LCS
             # now we want to go back to a start and stop position for the unflipped
