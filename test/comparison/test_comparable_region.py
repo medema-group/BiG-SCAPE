@@ -167,18 +167,22 @@ class TestComparibleRegions(TestCase):
         gbk = GBK(None, "test")
 
         non_bio_cds_1 = CDS(0, 25)
+        non_bio_cds_1.hsps.add(HSP(non_bio_cds_1, "test", 100.0, 0, 25))
         non_bio_cds_1.gene_kind = ""
         gbk.genes.add(non_bio_cds_1)
 
         non_bio_cds_2 = CDS(25, 50)
+        non_bio_cds_2.hsps.add(HSP(non_bio_cds_2, "test", 100.0, 0, 25))
         non_bio_cds_2.gene_kind = ""
         gbk.genes.add(non_bio_cds_2)
 
         non_bio_cds_3 = CDS(50, 75)
+        non_bio_cds_3.hsps.add(HSP(non_bio_cds_3, "test", 100.0, 0, 25))
         non_bio_cds_3.gene_kind = ""
         gbk.genes.add(non_bio_cds_3)
 
         bio_cds_1 = CDS(75, 100)
+        bio_cds_1.hsps.add(HSP(bio_cds_1, "test", 100.0, 0, 25))
         bio_cds_1.gene_kind = "biosynthetic"
         gbk.genes.add(bio_cds_1)
 
