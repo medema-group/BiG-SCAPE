@@ -71,7 +71,7 @@ class BGCRecord:
         if return_all:
             # TODO: I don't like this solution. maybe go back to the more difficult one
             if reverse:
-                return list(reversed(self.parent_gbk.genes))
+                return list(reverse(self.parent_gbk.genes))
 
             return list(self.parent_gbk.genes)
 
@@ -96,6 +96,60 @@ class BGCRecord:
 
         return record_cds
 
+    def get_cds_with_domains(self, return_all=False, reverse=False) -> list[CDS]:
+        """Get a list of CDS that lie within the coordinates specified in this region
+        from the parent GBK class
+
+        Args:
+            return_all (bool): If set to true, returns all CDS regardless of coordinate
+            information. Defaults to False
+
+        Raises:
+            ValueError: Raised if this class contains no position information or if this
+            record does not have a parent
+
+        Returns:
+            list[CDS]: A list of CDS that lie only within the coordinates specified by
+            nt_start and nt_stop or all CDS if return_all is true
+        """
+        if self.parent_gbk is None:
+            raise ValueError("BGCRegion does not have a parent")
+
+        parent_gbk_cds: SortedList[CDS] = self.parent_gbk.genes
+
+        if return_all:
+            # TODO: I don't like this solution. maybe go back to the more difficult one
+            if reverse:
+                return [
+                    cds for cds in reversed(self.parent_gbk.genes) if len(cds.hsps) > 0
+                ]
+
+            return [cds for cds in self.parent_gbk.genes if len(cds.hsps) > 0]
+
+        if self.nt_start is None or self.nt_stop is None:
+            raise ValueError("Cannot CDS from region with no position information")
+
+        record_cds: list[CDS] = []
+
+        if reverse:
+            step = -1
+        else:
+            step = 1
+
+        for cds in parent_gbk_cds[::step]:
+            if len(cds.hsps) == 0:
+                continue
+
+            if cds.nt_start < self.nt_start:
+                continue
+
+            if cds.nt_stop > self.nt_stop:
+                continue
+
+            record_cds.append(cds)
+
+        return record_cds
+
     def get_hsps(self) -> list[HSP]:
         """Get a list of all hsps in this region
 
@@ -103,7 +157,7 @@ class BGCRecord:
             list[HSP]: List of all hsps in this region
         """
         domains = []
-        for cds in self.get_cds():
+        for cds in self.get_cds_with_domains():
             if len(cds.hsps) > 0:
                 domains.extend(cds.hsps)
         return domains
