@@ -251,7 +251,7 @@ class ComparableRegion:
 
                 max_domains = a_domain_count
                 a_start = a_idx
-                a_stop = a_start
+                a_stop = a_start + 1
 
                 # TODO: only the else should trigger at this point
                 if a_cds[a_idx].strand == b_cds[b_idx].strand:
