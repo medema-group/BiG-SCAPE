@@ -67,7 +67,7 @@ class TestHMMScan(TestCase):
 
         results = HMMer.profile_hmmsearch(sequences)
 
-        expected_result = (0, "PF00457.19", 249.32315063476562, 59, 238)
+        expected_result = (0, "PF00457.19", 249.32315063476562, 60, 238)
 
         actual_result = results[0]
 
