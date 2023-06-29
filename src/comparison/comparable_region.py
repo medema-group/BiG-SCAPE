@@ -224,7 +224,7 @@ class ComparableRegion:
             # now we want to go back to a start and stop position for the unflipped
             # array
             b_start = b_start_rev
-            b_stop = b_start + rev_match_len + 1
+            b_stop = b_start + rev_match_len
 
         # from here on they're the same length
         elif (
