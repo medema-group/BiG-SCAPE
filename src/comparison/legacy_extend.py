@@ -111,7 +111,7 @@ def check_expand(
         comparable_region.pair.region_a,
         comparable_region.a_start,
         comparable_region.a_stop,
-        True,
+        end_inclusive=True,
     ):
         return False
 
@@ -119,7 +119,8 @@ def check_expand(
         comparable_region.pair.region_b,
         comparable_region.b_start,
         comparable_region.b_stop,
-        True,
+        end_inclusive=True,
+        reverse=comparable_region.reverse,
     ):
         return False
 
@@ -431,7 +432,8 @@ def legacy_needs_extend(
             pair.region_a,
             pair.comparable_region.a_start,
             pair.comparable_region.a_stop,
-            reverse=pair.comparable_region.reverse,
+            end_inclusive=True,  # technically wrong, but 1.0 behavior
+            reverse=False,
         )
     ):
         return False
