@@ -162,9 +162,7 @@ if __name__ == "__main__":
                 jaccard = calc_jaccard_pair(pair)
 
                 if jaccard == 0.0:
-                    network.add_edge(
-                        pair, jaccard=0.0, adjacency=0.0, dss=0.0, distance=1.0
-                    )
+                    network.add_edge(pair, jc=0.0, ai=0.0, dss=0.0, dist=1.0)
                     pair_list.append(
                         (pair, lcs_a_start, lcs_b_start, lcs_a_stop - lcs_a_start)
                     )
@@ -185,9 +183,7 @@ if __name__ == "__main__":
             "JC: %f, AI: %f, DSS: %f, SCORE: %f", jaccard, adjacency, dss, distance
         )
 
-        network.add_edge(
-            pair, jaccard=jaccard, adjacency=adjacency, dss=dss, distance=distance
-        )
+        network.add_edge(pair, jc=jaccard, ai=adjacency, dss=dss, dist=distance)
 
         pair_list.append((pair, lcs_a_start, lcs_b_start, lcs_a_stop - lcs_a_start))
 
