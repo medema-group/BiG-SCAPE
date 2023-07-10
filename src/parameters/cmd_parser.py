@@ -46,6 +46,15 @@ def parse_cmd(args):  # pragma: no cover
         cores).",
     )
 
+    parser.add_argument(
+        "--legacy",
+        dest="legacy",
+        default=False,
+        type=bool,
+        help="Whether to use the logic and workflow of BiG-SCAPE 1.0. For use in\
+            validation and benchmarking",
+    )
+
     # input parameters
 
     parser.add_argument(

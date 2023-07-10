@@ -27,6 +27,7 @@ class RunParameters(Namespace):
     Attributes:
         label: str
         cores: int
+        legacy: bool
         input: src.parameters.InputParameters
         hmmer: src.parameters.HmmerParameters
         binning: src.parameters.BinningParameters
@@ -39,6 +40,7 @@ class RunParameters(Namespace):
     def __init__(self):
         self.label: str = ""
         self.cores: int = cpu_count()
+        self.legacy: bool = False
         self.input = InputParameters()
         self.hmmer = HmmerParameters()
         self.binning = BinningParameters()
