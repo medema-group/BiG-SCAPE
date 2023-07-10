@@ -5,6 +5,7 @@ manipulate this network
 
 # from dependencies
 import logging
+from typing import Any
 from pathlib import Path
 from networkx import Graph
 from networkx.readwrite import graphml
@@ -52,3 +53,11 @@ class BSNetwork:
     def write_graphml(self, graph_path: Path):
         """Writes this network graph as a graphml file to the specified output file"""
         graphml.write_graphml_xml(self.graph, graph_path)
+
+    def __contains__(self, __o: Any):
+        if not isinstance(__o, BGCPair):
+            raise NotImplementedError(
+                "Contains check on BSNetwork must be using type BGCPair"
+            )
+
+        return self.graph.has_edge(__o.region_a, __o.region_b)
