@@ -9,7 +9,7 @@ from pathlib import Path
 from src.data import DB
 from src.file_input import load_dataset_folder
 from src.genbank import SOURCE_TYPE, BGCRecord, CDS
-from src.hmm import HMMer
+from src.hmm import HMMer, legacy_filter_overlap
 from src.parameters import parse_cmd
 from src.comparison import generate_mix, create_bin_network_edges
 from src.diagnostics import Profiler
@@ -67,7 +67,13 @@ if __name__ == "__main__":
             platform.system(),
             run.cores,
         )
-        HMMer.hmmsearch_multiprocess(all_cds, cores=run.cores)
+        HMMer.hmmsearch_multiprocess(
+            all_cds, domain_overlap_cutoff=1.1, cores=run.cores
+        )
+
+    # TODO: move
+    for cds in all_cds:
+        cds.hsps = legacy_filter_overlap(cds.hsps, 0.1)
 
     all_hsps = []
     for cds in all_cds:
