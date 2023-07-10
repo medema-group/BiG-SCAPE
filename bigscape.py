@@ -10,7 +10,7 @@ from src.data import DB
 from src.file_input import load_dataset_folder
 from src.genbank import SOURCE_TYPE, BGCRecord, CDS
 from src.hmm import HMMer, legacy_filter_overlap
-from src.parameters import parse_cmd
+from src.parameters import RunParameters, parse_cmd
 from src.comparison import generate_mix, create_bin_network_edges
 from src.diagnostics import Profiler
 from src.network import BSNetwork
@@ -18,8 +18,10 @@ from src.output import generate_legacy_output
 
 
 if __name__ == "__main__":
+    # initialize run
+
     # parsing needs to come first because we need it in setting up the logging
-    run = parse_cmd(sys.argv[1:])
+    run: RunParameters = parse_cmd(sys.argv[1:])
 
     # only now we can use logging.info etc to log stuff otherwise things get weird
     # initializing the logger and logger file also happens here
@@ -35,6 +37,7 @@ if __name__ == "__main__":
     # start DB
     DB.create_in_mem()
 
+    # Load datasets
     gbks = load_dataset_folder(
         run.input.input_dir,
         SOURCE_TYPE.QUERY,
@@ -70,7 +73,9 @@ if __name__ == "__main__":
             run.cores,
         )
         HMMer.hmmsearch_multiprocess(
-            all_cds, domain_overlap_cutoff=1.1, cores=run.cores
+            all_cds,
+            domain_overlap_cutoff=run.hmmer.domain_overlap_cutoff,
+            cores=run.cores,
         )
 
     # TODO: move
