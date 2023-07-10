@@ -221,23 +221,23 @@ def expand_glocal_left(comparable_region: ComparableRegion) -> None:
         # use A if it has a longer extension
         if a_expansion > b_expansion:
             b_expansion = len(left_cds_b)
-            set_expansion_left(comparable_region, a_expansion, a_expansion)
+            set_expansion_left(comparable_region, a_expansion, b_expansion)
             return
         # otherwise just use B
         a_expansion = len(left_cds_a)
-        set_expansion_left(comparable_region, b_expansion, b_expansion)
+        set_expansion_left(comparable_region, a_expansion, b_expansion)
         return
 
     # A has higher score
     if a_score > b_score:
         # ... use A
         b_expansion = len(left_cds_b)
-        set_expansion_left(comparable_region, a_expansion, a_expansion)
+        set_expansion_left(comparable_region, a_expansion, b_expansion)
         return
 
     # only remaining case is B has higher score
     a_expansion = len(left_cds_a)
-    set_expansion_left(comparable_region, b_expansion, b_expansion)
+    set_expansion_left(comparable_region, a_expansion, b_expansion)
 
 
 def set_expansion_right(
@@ -331,23 +331,23 @@ def expand_glocal_right(comparable_region: ComparableRegion) -> None:
         # use A if it has a longer extension
         if a_expansion > b_expansion:
             b_expansion = len(right_cds_b)
-            set_expansion_right(comparable_region, a_expansion, a_expansion)
+            set_expansion_right(comparable_region, a_expansion, b_expansion)
             return
         # otherwise just use B
         a_expansion = len(right_cds_a)
-        set_expansion_right(comparable_region, b_expansion, b_expansion)
+        set_expansion_right(comparable_region, a_expansion, b_expansion)
         return
 
     # A has higher score
     if a_score > b_score:
         # ... use A
         b_expansion = len(right_cds_b)
-        set_expansion_right(comparable_region, a_expansion, a_expansion)
+        set_expansion_right(comparable_region, a_expansion, b_expansion)
         return
 
     # only remaining case is B has higher score
     a_expansion = len(right_cds_a)
-    set_expansion_right(comparable_region, b_expansion, b_expansion)
+    set_expansion_right(comparable_region, a_expansion, b_expansion)
 
 
 def expand_score(
