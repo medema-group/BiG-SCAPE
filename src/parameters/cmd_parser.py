@@ -50,7 +50,7 @@ def parse_cmd(args):  # pragma: no cover
         "--legacy",
         dest="legacy",
         default=False,
-        type=bool,
+        action="store_true",
         help="Whether to use the logic and workflow of BiG-SCAPE 1.0. For use in\
             validation and benchmarking",
     )
