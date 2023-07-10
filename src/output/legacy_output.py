@@ -316,7 +316,7 @@ def generate_run_data_js(
         if cutoff not in gbk.region._families:
             continue
 
-        family_id = gbk.region._families[cutoff]
+        family_id = gbk.region._families[str(cutoff)]
 
         if family_id not in families_members:
             families_members[family_id] = []

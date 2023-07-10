@@ -9,17 +9,10 @@ from pathlib import Path
 from src.data import DB
 from src.file_input import load_dataset_folder
 from src.genbank import SOURCE_TYPE, BGCRecord, CDS
-from src.hmm import HMMer
+from src.hmm import HMMer, legacy_filter_overlap
 from src.parameters import parse_cmd
-from src.comparison import generate_mix
-from src.comparison.legacy_extend import (
-    expand_glocal,
-    legacy_needs_extend,
-    check_expand,
-    reset_expansion,
-)
+from src.comparison import generate_mix, create_bin_network_edges
 from src.diagnostics import Profiler
-from src.distances import calc_jaccard_pair, calc_ai_pair, calc_dss_pair_legacy
 from src.network import BSNetwork
 from src.output import generate_legacy_output
 
@@ -76,7 +69,13 @@ if __name__ == "__main__":
             platform.system(),
             run.cores,
         )
-        HMMer.hmmsearch_multiprocess(all_cds, cores=run.cores, callback=callback)
+        HMMer.hmmsearch_multiprocess(
+            all_cds, domain_overlap_cutoff=1.1, cores=run.cores
+        )
+
+    # TODO: move
+    for cds in all_cds:
+        cds.hsps = legacy_filter_overlap(cds.hsps, 0.1)
 
     all_hsps = []
     for cds in all_cds:
@@ -133,63 +132,7 @@ if __name__ == "__main__":
 
     logging.info("Generated mix bin: %s", mix_bin)
 
-    pair_list = []
-
-    # TODO move into new function and parallelize
-    for pair in mix_bin.pairs(legacy_sorting=True):
-        # calculate jaccard for the full sets. if this is 0, there are no shared domains
-        # important not to cache here otherwise we are using the full range again later
-        jaccard = calc_jaccard_pair(pair, cache=False)
-
-        if jaccard == 0.0:
-            network.add_edge(pair, jc=0.0, ai=0.0, dss=0.0, dist=1.0)
-            pair_list.append((pair, 0, 0, 0))
-            continue
-
-        logging.debug("JC: %f", jaccard)
-
-        # we record the LCS starts and stops here in case we need to reset them later
-        (
-            lcs_a_start,
-            lcs_a_stop,
-            lcs_b_start,
-            lcs_b_stop,
-        ) = pair.comparable_region.find_lcs()
-        pair.comparable_region.log_comparable_region("LCS")
-
-        if legacy_needs_extend(pair, run.comparison.alignment_mode):
-            expand_glocal(pair.comparable_region)
-
-            if check_expand(pair.comparable_region):
-                pair.comparable_region.log_comparable_region("GLOCAL")
-
-                jaccard = calc_jaccard_pair(pair)
-
-                if jaccard == 0.0:
-                    network.add_edge(pair, jc=0.0, ai=0.0, dss=0.0, dist=1.0)
-                    pair_list.append(
-                        (pair, lcs_a_start, lcs_b_start, lcs_a_stop - lcs_a_start)
-                    )
-                    continue
-            else:
-                reset_expansion(pair.comparable_region)
-        else:
-            reset_expansion(pair.comparable_region)
-
-        adjacency = calc_ai_pair(pair)
-        # mix anchor boost = 2.0
-        dss = calc_dss_pair_legacy(pair, anchor_boost=2.0)
-
-        # mix
-        distance = 1 - (0.2 * jaccard) - (0.05 * adjacency) - (0.75 * dss)
-
-        logging.debug(
-            "JC: %f, AI: %f, DSS: %f, SCORE: %f", jaccard, adjacency, dss, distance
-        )
-
-        network.add_edge(pair, jc=jaccard, ai=adjacency, dss=dss, dist=distance)
-
-        pair_list.append((pair, lcs_a_start, lcs_b_start, lcs_a_stop - lcs_a_start))
+    create_bin_network_edges(mix_bin, network, run.comparison.alignment_mode)
 
     network.generate_families_cutoff("dist", 0.3)
 

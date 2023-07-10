@@ -15,10 +15,6 @@ class TestComparibleRegions(TestCase):
     def test_get_dom_list_lcs(self):
         """Tests whether get_dom_list_lcs can find the longest common substring of
         domains between a pair of BGCs"""
-        # TODO: fix this test
-        self.skipTest(
-            "Legacy implementation changes. The LCS coordinates don't make sense"
-        )
         shared_domains = [
             "PF00002",
             "PF00003",
@@ -64,7 +60,7 @@ class TestComparibleRegions(TestCase):
 
         pair = BGCPair(gbk_a.region, gbk_b.region)
 
-        expected_lcs = ComparableRegion(pair, 1, 5, 1, 5, False)
+        expected_lcs = ComparableRegion(pair, 1, 4, 1, 4, False)
 
         pair.comparable_region.find_lcs()
 
@@ -123,7 +119,7 @@ class TestComparibleRegions(TestCase):
 
         pair = BGCPair(gbk_a.region, gbk_b.region)
 
-        expected_lcs = ComparableRegion(pair, 1, 5, 1, 5, True)
+        expected_lcs = ComparableRegion(pair, 1, 4, 1, 4, True)
 
         pair.comparable_region.find_lcs()
 
@@ -231,8 +227,6 @@ class TestComparibleRegions(TestCase):
 
     def test_get_domain_dicts(self):
         """Tests whether get_dom_dict will return the correct dictionaries of domains"""
-        # TODO: fix this test
-        self.skipTest("Broken due to new HSP/CDS sorting behavior")
         shared_domains = [
             "PF00002",
             "PF00003",
@@ -256,7 +250,9 @@ class TestComparibleRegions(TestCase):
         for a_domain in a_domains:
             cds_a = CDS(10, 90)
             gbk_a.genes.add(cds_a)
-            cds_a.hsps.add(HSP(cds_a, a_domain, 100, 0, 30))
+            env_start = len(gbk_a.genes) * 10
+            env_stop = env_start + 10
+            cds_a.hsps.add(HSP(cds_a, a_domain, 100, env_start, env_stop))
 
         gbk_b = GBK("", "")
         gbk_b.region = Region(1)
@@ -267,16 +263,22 @@ class TestComparibleRegions(TestCase):
         for b_domain in b_domains:
             cds_b = CDS(10, 90)
             gbk_b.genes.add(cds_b)
-            cds_b.hsps.add(HSP(cds_b, b_domain, 100, 0, 30))
+            env_start = len(gbk_b.genes) * 10
+            env_stop = env_start + 10
+            cds_b.hsps.add(HSP(cds_b, b_domain, 100, env_start, env_stop))
 
         for shared_domain in shared_domains:
             cds_a = CDS(10, 90)
             gbk_a.genes.add(cds_a)
-            cds_a.hsps.add(HSP(cds_a, shared_domain, 100, 0, 30))
+            env_start = len(gbk_a.genes) * 10
+            env_stop = env_start + 10
+            cds_a.hsps.add(HSP(cds_a, shared_domain, 100, env_start, env_stop))
 
             cds_b = CDS(10, 90)
             gbk_b.genes.add(cds_b)
-            cds_b.hsps.add(HSP(cds_b, shared_domain, 100, 0, 30))
+            env_start = len(gbk_b.genes) * 10
+            env_stop = env_start + 10
+            cds_b.hsps.add(HSP(cds_b, shared_domain, 100, env_start, env_stop))
 
         pair = BGCPair(gbk_a.region, gbk_b.region)
 
@@ -288,10 +290,10 @@ class TestComparibleRegions(TestCase):
                 "PF00004": [4],
             },
             {
-                "PF00004": [0, 3],
-                "PF00003": [1],
+                "PF00004": [1, 4],
+                "PF00003": [3],
                 "PF00002": [2],
-                "PF00005": [4],
+                "PF00005": [0],
             },
         )
 
