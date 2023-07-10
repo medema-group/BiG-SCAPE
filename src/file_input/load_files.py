@@ -16,6 +16,7 @@ def load_dataset_folder(
     include_gbk: Optional[List[str]] = None,
     exclude_gbk: Optional[List[str]] = None,
     cds_overlap_cutoff: Optional[float] = None,
+    legacy_mode=False,
 ) -> List[GBK]:
     """Loads all gbk files in a given folder
 
@@ -47,7 +48,7 @@ def load_dataset_folder(
 
     gbk_list = []
     for file in filtered_files:
-        gbk = load_gbk(file, source_type, cds_overlap_cutoff)
+        gbk = load_gbk(file, source_type, cds_overlap_cutoff, legacy_mode)
 
         gbk_list.append(gbk)
 
@@ -93,7 +94,10 @@ def is_included(path: Path, include_list: List[str]):
 
 
 def load_gbk(
-    path: Path, source_type: SOURCE_TYPE, cds_overlap_cutoff: Optional[float] = None
+    path: Path,
+    source_type: SOURCE_TYPE,
+    cds_overlap_cutoff: Optional[float] = None,
+    legacy_mode=False,
 ) -> GBK:
     """Loads a GBK file. Returns a GBK object
 
@@ -114,4 +118,4 @@ def load_gbk(
         logging.error("GBK path does not point to a file!")
         raise IsADirectoryError()
 
-    return GBK.parse(path, source_type, cds_overlap_cutoff)
+    return GBK.parse(path, source_type, cds_overlap_cutoff, legacy_mode)

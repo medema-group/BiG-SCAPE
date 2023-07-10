@@ -57,7 +57,9 @@ class GBK:
         # db specific fields
         self._db_id: Optional[int] = None
 
-    def add_cds_overlap_filter(self, new_cds: CDS, cds_overlap_cutoff=0.1) -> None:
+    def add_cds_overlap_filter(
+        self, new_cds: CDS, cds_overlap_cutoff=0.1, legacy_mode=False
+    ) -> None:
         """Adds a CDS to this GBK. Performs overlap cutoff filtering by calculating the
         percentage overlap of the incoming CDS with other CDS in this GBK.
 
@@ -85,8 +87,10 @@ class GBK:
 
         for cds_idx, old_cds in enumerate(self.genes):
             # ignore if these cds are on a different strand
-            if old_cds.strand != new_cds.strand:
-                continue
+            # BiG-SCAPE 1.0 does not perform this check
+            if not legacy_mode:
+                if old_cds.strand != new_cds.strand:
+                    continue
 
             overlap_nt = CDS.len_nt_overlap(old_cds, new_cds)
 
@@ -200,6 +204,7 @@ class GBK:
         path: Path,
         source_type: SOURCE_TYPE,
         cds_overlap_cutoff: Optional[float] = None,
+        legacy_mode=False,
     ):
         """Parses a GBK file and returns a GBK object with all necessary information
 
@@ -226,13 +231,18 @@ class GBK:
         gbk.as_version = as_version
 
         if int(as_version[0]) >= 5:
-            gbk.parse_as5up(record, cds_overlap_cutoff)
+            gbk.parse_as5up(record, cds_overlap_cutoff, legacy_mode)
         if int(as_version[0]) == 4:
-            gbk.parse_as4(record, cds_overlap_cutoff)
+            gbk.parse_as4(record, cds_overlap_cutoff, legacy_mode)
 
         return gbk
 
-    def parse_as4(self, record: SeqRecord, cds_overlap_cutoff: Optional[float] = None):
+    def parse_as4(
+        self,
+        record: SeqRecord,
+        cds_overlap_cutoff: Optional[float] = None,
+        legacy_mode=False,
+    ):
         """Parses a GBK record of AS version 4 and returns a GBK object with all necessary information
 
         Args:
@@ -271,7 +281,10 @@ class GBK:
                 self.genes.add(cds)
 
     def parse_as5up(
-        self, record: SeqRecord, cds_overlap_cutoff: Optional[float] = None
+        self,
+        record: SeqRecord,
+        cds_overlap_cutoff: Optional[float] = None,
+        legacy_mode=False,
     ):
         """Parses a GBK record of AS versions 5 and up and returns a GBK object with all necessary information
 

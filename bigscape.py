@@ -27,6 +27,9 @@ if __name__ == "__main__":
     # initializing the logger and logger file also happens here
     run.validate()
 
+    if run.legacy:
+        logging.info("Using legacy mode")
+
     start_time = datetime.now()
 
     # start profiler
@@ -45,6 +48,7 @@ if __name__ == "__main__":
         run.input.include_gbk,
         run.input.exclude_gbk,
         run.input.cds_overlap_cutoff,
+        run.legacy,
     )
 
     exec_time = datetime.now() - start_time
@@ -72,15 +76,25 @@ if __name__ == "__main__":
             platform.system(),
             run.cores,
         )
+
+        # if legacy is true, set cutoff to 1.1 for the domain filtering so we can use
+        # legacy filtering later
+
+        if run.legacy:
+            domain_overlap_cutoff = 1.1
+        else:
+            domain_overlap_cutoff = run.hmmer.domain_overlap_cutoff
         HMMer.hmmsearch_multiprocess(
             all_cds,
-            domain_overlap_cutoff=run.hmmer.domain_overlap_cutoff,
+            domain_overlap_cutoff=domain_overlap_cutoff,
             cores=run.cores,
         )
 
-    # TODO: move
-    for cds in all_cds:
-        cds.hsps = legacy_filter_overlap(cds.hsps, 0.1)
+    # TODO: move, or remove after the add_hsp_overlap function is fixed (if it is broken
+    # in the first place)
+    if run.legacy:
+        for cds in all_cds:
+            cds.hsps = legacy_filter_overlap(cds.hsps, 0.1)
 
     all_hsps = []
     for cds in all_cds:
