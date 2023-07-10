@@ -118,7 +118,7 @@ class BSNetwork:
         Args:
             graph_path (Path): path to write tsv output to (file)
         """
-        fields = ["dist", "jc", "dss", "ai"]
+        fields = ["dist", "jc", "ai", "dss"]
         with open(graph_path, "wb") as tsv_file:
             header = bytes(
                 "source\ttarget\t" + "\t".join(fields) + "\n", encoding="utf-8"
