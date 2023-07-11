@@ -70,7 +70,7 @@ class TestJaccard(TestCase):
 
         for a_domain in a_domains:
             cds_a = CDS(10, 90)
-            gbk_a.genes.add(cds_a)
+            gbk_a.genes.append(cds_a)
             cds_a.hsps.add(HSP(cds_a, a_domain, 100, 0, 30))
 
         gbk_b = GBK("", "")
@@ -81,15 +81,15 @@ class TestJaccard(TestCase):
 
         for b_domain in b_domains:
             cds_b = CDS(10, 90)
-            gbk_b.genes.add(cds_b)
+            gbk_b.genes.append(cds_b)
             cds_b.hsps.add(HSP(cds_b, b_domain, 100, 0, 30))
 
         for shared_domain in shared_domains:
             cds_a = CDS(10, 90)
             cds_b = CDS(10, 90)
 
-            gbk_a.genes.add(cds_a)
-            gbk_b.genes.add(cds_b)
+            gbk_a.genes.append(cds_a)
+            gbk_b.genes.append(cds_b)
 
             cds_a.hsps.add(HSP(cds_a, shared_domain, 100, 0, 30))
             cds_b.hsps.add(HSP(cds_b, shared_domain, 100, 0, 30))
@@ -126,7 +126,7 @@ class TestJaccard(TestCase):
 
         for a_domain in a_domains:
             cds_a = CDS(10, 90)
-            gbk_a.genes.add(cds_a)
+            gbk_a.genes.append(cds_a)
             cds_a.hsps.add(HSP(cds_a, a_domain, 100, 0, 30))
 
         gbk_b = GBK("", "")
@@ -137,15 +137,15 @@ class TestJaccard(TestCase):
 
         for b_domain in b_domains:
             cds_b = CDS(10, 90)
-            gbk_b.genes.add(cds_b)
+            gbk_b.genes.append(cds_b)
             cds_b.hsps.add(HSP(cds_b, b_domain, 100, 0, 30))
 
         for shared_domain in shared_domains:
             cds_a = CDS(10, 90)
             cds_b = CDS(10, 90)
 
-            gbk_a.genes.add(cds_a)
-            gbk_b.genes.add(cds_b)
+            gbk_a.genes.append(cds_a)
+            gbk_b.genes.append(cds_b)
 
             cds_a.hsps.add(HSP(cds_a, shared_domain, 100, 0, 30))
             cds_b.hsps.add(HSP(cds_b, shared_domain, 100, 0, 30))
@@ -180,7 +180,7 @@ class TestJaccard(TestCase):
 
         for a_domain in a_domains:
             cds_a = CDS(10, 90)
-            gbk_a.genes.add(cds_a)
+            gbk_a.genes.append(cds_a)
             cds_a.hsps.add(HSP(cds_a, a_domain, 100, 0, 30))
 
         gbk_b = GBK("", "")
@@ -191,7 +191,7 @@ class TestJaccard(TestCase):
 
         for b_domain in b_domains:
             cds_b = CDS(10, 90)
-            gbk_b.genes.add(cds_b)
+            gbk_b.genes.append(cds_b)
             cds_b.hsps.add(HSP(cds_b, b_domain, 100, 0, 30))
 
         pair = BGCPair(gbk_a.region, gbk_b.region)
@@ -298,8 +298,8 @@ class TestAdjacency(TestCase):
             cds_a = CDS(10, 90)
             cds_b = CDS(10, 90)
 
-            gbk_a.genes.add(cds_a)
-            gbk_b.genes.add(cds_b)
+            gbk_a.genes.append(cds_a)
+            gbk_b.genes.append(cds_b)
 
             cds_a.hsps.add(HSP(cds_a, shared_domain, 100, 0, 30))
             cds_b.hsps.add(HSP(cds_b, shared_domain, 100, 0, 30))
@@ -337,12 +337,12 @@ class TestDSS(TestCase):
 
         for a_domain in a_domains:
             cds_a = CDS(10, 90)
-            gbk_a.genes.add(cds_a)
+            gbk_a.genes.append(cds_a)
             cds_a.hsps.add(HSP(cds_a, a_domain, 100, 0, 30))
 
         for b_domain in b_domains:
             cds_b = CDS(10, 90)
-            gbk_b.genes.add(cds_b)
+            gbk_b.genes.append(cds_b)
             cds_b.hsps.add(HSP(cds_b, b_domain, 100, 0, 30))
 
         pair = BGCPair(gbk_a.region, gbk_b.region)
@@ -375,12 +375,12 @@ class TestDSS(TestCase):
 
         for a_domain in a_domains:
             cds_a = CDS(10, 90)
-            gbk_a.genes.add(cds_a)
+            gbk_a.genes.append(cds_a)
             cds_a.hsps.add(HSP(cds_a, a_domain, 100, 0, 30))
 
         for b_domain in b_domains:
             cds_b = CDS(10, 90)
-            gbk_b.genes.add(cds_b)
+            gbk_b.genes.append(cds_b)
             cds_b.hsps.add(HSP(cds_b, b_domain, 100, 0, 30))
 
         pair = BGCPair(gbk_a.region, gbk_b.region)
@@ -414,12 +414,12 @@ class TestDSS(TestCase):
 
         for a_domain in a_domains:
             cds_a = CDS(10, 90)
-            gbk_a.genes.add(cds_a)
+            gbk_a.genes.append(cds_a)
             cds_a.hsps.add(HSP(cds_a, a_domain, 100, 0, 30))
 
         for b_domain in b_domains:
             cds_b = CDS(10, 90)
-            gbk_b.genes.add(cds_b)
+            gbk_b.genes.append(cds_b)
             cds_b.hsps.add(HSP(cds_b, b_domain, 100, 0, 30))
 
         pair = BGCPair(gbk_a.region, gbk_b.region)

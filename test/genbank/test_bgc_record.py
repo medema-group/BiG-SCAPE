@@ -99,7 +99,7 @@ class TestBGCRecord(TestCase):
         gbk.region.nt_start = 0
         gbk.region.nt_stop = 100
         cds = CDS(10, 90)
-        gbk.genes.add(cds)
+        gbk.genes.append(cds)
 
         for domain in domains:
             cds.hsps.add(HSP(cds, domain, 100, 0, 30))
