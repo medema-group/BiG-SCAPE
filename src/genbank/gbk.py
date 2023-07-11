@@ -275,7 +275,7 @@ class GBK:
                 orf_num += 1
 
                 if cds_overlap_cutoff is not None:
-                    self.add_cds_overlap_filter(cds, cds_overlap_cutoff)
+                    self.add_cds_overlap_filter(cds, cds_overlap_cutoff, legacy_mode)
                     continue
 
                 self.genes.add(cds)
@@ -334,7 +334,7 @@ class GBK:
                 orf_num += 1
 
                 if cds_overlap_cutoff is not None:
-                    self.add_cds_overlap_filter(cds, cds_overlap_cutoff)
+                    self.add_cds_overlap_filter(cds, cds_overlap_cutoff, legacy_mode)
                     continue
 
                 self.genes.add(cds)
