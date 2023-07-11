@@ -9,7 +9,6 @@ import logging
 
 # from dependencies
 from Bio.SeqFeature import SeqFeature
-from sortedcontainers import SortedList
 
 # from other modules
 from src.data import DB
@@ -66,7 +65,7 @@ class BGCRecord:
         if self.parent_gbk is None:
             raise ValueError("BGCRegion does not have a parent")
 
-        parent_gbk_cds: SortedList[CDS] = self.parent_gbk.genes
+        parent_gbk_cds: list[CDS] = self.parent_gbk.genes
 
         if return_all:
             # TODO: I don't like this solution. maybe go back to the more difficult one
@@ -115,7 +114,7 @@ class BGCRecord:
         if self.parent_gbk is None:
             raise ValueError("BGCRegion does not have a parent")
 
-        parent_gbk_cds: SortedList[CDS] = self.parent_gbk.genes
+        parent_gbk_cds: list[CDS] = self.parent_gbk.genes
 
         if return_all:
             # TODO: I don't like this solution. maybe go back to the more difficult one

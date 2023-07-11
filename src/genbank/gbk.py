@@ -39,7 +39,7 @@ class GBK:
         metadata: Dict[str, str]
         region: Region
         nt_seq: SeqRecord.seq
-        genes: SortedList[CDS]
+        genes: list[CDS]
         as_version: str
         source_type: SOURCE_TYPE
     """

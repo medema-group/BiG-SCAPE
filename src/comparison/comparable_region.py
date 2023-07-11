@@ -108,7 +108,7 @@ class ComparableRegion:
             None.
 
         Returns:
-            tuple[SortedList[HSP], SortedList[HSP]]
+            tuple[list[HSP], list[HSP]]
 
         """
 

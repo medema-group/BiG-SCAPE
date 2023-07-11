@@ -5,9 +5,6 @@ clasess inherit
 # from python
 from unittest import TestCase
 
-# from dependencies
-from sortedcontainers import SortedList
-
 # from other modules
 from src.genbank import GBK, BGCRecord, CDS, Region
 from src.hmm import HSP
@@ -28,20 +25,19 @@ class TestBGCRecord(TestCase):
         record.nt_start = 10
         record.nt_stop = 90
 
-        gbk.genes = SortedList(
-            [
-                CDS(0, 10),
-                CDS(10, 20),
-                CDS(20, 30),
-                CDS(30, 40),
-                CDS(40, 50),
-                CDS(50, 60),
-                CDS(60, 70),
-                CDS(70, 80),
-                CDS(80, 90),
-                CDS(90, 100),
-            ]
-        )  # 10 total
+        # 10 total
+        gbk.genes = [
+            CDS(0, 10),
+            CDS(10, 20),
+            CDS(20, 30),
+            CDS(30, 40),
+            CDS(40, 50),
+            CDS(50, 60),
+            CDS(60, 70),
+            CDS(70, 80),
+            CDS(80, 90),
+            CDS(90, 100),
+        ]
 
         # coordinates are exclusive. first and last in above list should not be included
         expected_cds_count = 8
@@ -63,20 +59,18 @@ class TestBGCRecord(TestCase):
         record.nt_start = 10
         record.nt_stop = 90
 
-        gbk.genes = SortedList(
-            [
-                CDS(0, 10),
-                CDS(10, 20),
-                CDS(20, 30),
-                CDS(30, 40),
-                CDS(40, 50),
-                CDS(50, 60),
-                CDS(60, 70),
-                CDS(70, 80),
-                CDS(80, 90),
-                CDS(90, 100),
-            ]
-        )  # 10 total
+        gbk.genes = [
+            CDS(0, 10),
+            CDS(10, 20),
+            CDS(20, 30),
+            CDS(30, 40),
+            CDS(40, 50),
+            CDS(50, 60),
+            CDS(60, 70),
+            CDS(70, 80),
+            CDS(80, 90),
+            CDS(90, 100),
+        ]
 
         # coordinates are exclusive. first and last in above list should not be included
         expected_cds_count = 10

@@ -6,7 +6,6 @@ from unittest import TestCase
 
 # from dependencies
 from Bio.Seq import Seq
-from sortedcontainers import SortedList
 
 # from other modules
 from src.genbank import GBK, Region, ProtoCore, CDS
@@ -129,7 +128,7 @@ class TestGBK(TestCase):
 
         gbk.add_cds_overlap_filter(cds_b, 0.1)
 
-        expected_cds_list = SortedList([cds_a])
+        expected_cds_list = [cds_a]
 
         self.assertEqual(expected_cds_list, gbk.genes)
 
@@ -152,7 +151,7 @@ class TestGBK(TestCase):
         gbk.add_cds_overlap_filter(cds_a, cds_overlap_cutoff=0.1)
         gbk.add_cds_overlap_filter(cds_b, cds_overlap_cutoff=0.1)
 
-        expected_cds_list = SortedList([cds_a, cds_b])
+        expected_cds_list = [cds_a, cds_b]
 
         self.assertEqual(expected_cds_list, gbk.genes)
 
@@ -177,7 +176,7 @@ class TestGBK(TestCase):
         gbk.add_cds_overlap_filter(cds_a, cds_overlap_cutoff=0.1)
         gbk.add_cds_overlap_filter(cds_b, cds_overlap_cutoff=0.1)
 
-        expected_cds_list = SortedList([cds_a, cds_b])
+        expected_cds_list = [cds_a, cds_b]
 
         self.assertEqual(expected_cds_list, gbk.genes)
 
