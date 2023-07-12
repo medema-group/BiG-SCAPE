@@ -43,7 +43,8 @@ class CDS:
         self.gene_kind: Optional[str] = None
         self.strand: Optional[int] = None
         self.aa_seq: str = ""
-        self.hsps: SortedList[HSP] = SortedList()
+        self.hsps: SortedList[HSP] | list[HSP] = SortedList()
+        self.__locked = False
 
         # db specific fields
         self._db_id: Optional[int] = None
@@ -64,6 +65,10 @@ class CDS:
             0.1
 
         """
+        # TODO: remove once sorted lists are gone entirely
+        if self.__locked or isinstance(self.hsps, list):
+            raise AttributeError("Cannot add HSPs to a locked CDS")
+
         # if no hsps added yet, just add and continue
         if len(self.hsps) == 0:
             self.hsps.add(new_hsp)
@@ -156,6 +161,11 @@ class CDS:
         # only now that we have handled the return we can commit
         if commit:
             DB.commit()
+
+    def lock(self):
+        """Locks this CDS, converting the sorted list of HSPs to a regular list to support pickling"""
+        self.__locked = True
+        self.hsps = list(self.hsps)
 
     def __eq__(self, __o) -> bool:
         if not isinstance(__o, CDS):

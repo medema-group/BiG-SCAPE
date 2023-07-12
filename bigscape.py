@@ -92,9 +92,15 @@ if __name__ == "__main__":
 
     # TODO: move, or remove after the add_hsp_overlap function is fixed (if it is broken
     # in the first place)
-    if run.legacy:
-        for cds in all_cds:
+    for cds in all_cds:
+        if run.legacy:
             cds.hsps = legacy_filter_overlap(cds.hsps, 0.1)
+
+        # TODO: remove when sortedlists are removed
+        # this converts the sortedlist used internally to regular lists.
+        # for some reason, doing this beforehand really messes things up for reasons I don't
+        # understand.
+        cds.lock()
 
     all_hsps = []
     for cds in all_cds:
