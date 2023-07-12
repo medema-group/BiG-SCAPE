@@ -8,7 +8,7 @@ from pathlib import Path
 from typing import Any
 
 # from other modules
-from src.genbank import GBK, CDS
+from src.genbank import GBK, CDS, SOURCE_TYPE
 from src.network import BSNetwork
 
 
@@ -553,7 +553,7 @@ def generate_bs_data_js(
                 "start": 1,
                 "end": len(gbk.nt_seq),
                 "id": gbk.path.name,
-                "mibig": False,
+                "mibig": gbk.source_type == SOURCE_TYPE.MIBIG,
                 "orfs": generate_bs_data_js_orfs(gbk),
             }
         )
@@ -571,6 +571,55 @@ def generate_bs_data_js(
                 )
             )
         )
+
+
+def generate_bs_networks_js_sim_matrix(
+    gbks: list[GBK], network: BSNetwork
+) -> list[list[float]]:
+    sim_matrix = []
+
+    for idx, gbk in enumerate(gbks):
+        region_sim = []
+        region_a = gbk.region
+        for other_idx in range(idx):
+            region_b = gbks[other_idx].region
+            dist = network.graph.adj[region_a][region_b]["dist"]
+            sim = round(1 - dist, 4)
+            region_sim.append(sim)
+        region_sim.append(1.0)  # for self similarity
+        sim_matrix.append(region_sim)
+
+    return sim_matrix
+
+
+def generate_bs_networks_families(
+    gbks: list[GBK], cutoff: float
+) -> list[dict[str, Any]]:
+    # TODO: repeated code can be merged
+    networks_families: list[dict[str, Any]] = []
+    families_members: dict[int, list[int]] = {}
+    for idx, gbk in enumerate(gbks):
+        if gbk.region is None:
+            raise ValueError("Missing region on GBK!")
+
+        if cutoff not in gbk.region._families:
+            continue
+
+        family_id = gbk.region._families[cutoff]
+
+        if family_id not in families_members:
+            families_members[family_id] = []
+
+        families_members[family_id].append(idx)
+
+    for family_idx, family_members in families_members.items():
+        networks_families.append(
+            {
+                "id": f"FAM_{family_idx:0>5}",
+                "members": family_members,
+            }
+        )
+    return networks_families
 
 
 def generate_bs_networks_js(
@@ -610,8 +659,8 @@ def generate_bs_networks_js(
     bs_networks_js_path = bin_path / "bs_networks.js"
 
     # TODO: replace with functions to generate objects
-    bs_similarity: list[Any] = []
-    bs_families: list[Any] = []
+    bs_similarity: list[Any] = generate_bs_networks_js_sim_matrix(gbks, network)
+    bs_families: list[Any] = generate_bs_networks_families(gbks, cutoff)
     bs_families_alignment: list[Any] = []
     bs_similarity_families: list[Any] = []
 
@@ -674,7 +723,12 @@ def generate_legacy_output(
     copy_output_templates(output_dir, label, cutoffs, bins)
 
     for cutoff in cutoffs:
-        generate_bigscape_results_js(output_dir, label, cutoff, bins)
+        generate_bigscape_results_js(
+            output_dir,
+            label,
+            cutoff,
+            bins,
+        )
         generate_run_data_js(output_dir, label, gbks, cutoff)
 
         for bin in bins:
