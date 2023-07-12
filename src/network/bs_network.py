@@ -60,23 +60,26 @@ class BSNetwork:
 
         family_key = f"family_{cutoff}"
 
+        # init family centers
+        for idx, node in enumerate(self.graph.nodes):
+            node._families[cutoff] = idx
+
         family_idx = 0
         for subgraph in subgraphs:
+            # do not cluster small subgraphs
+            if len(subgraph) < 3:
+                for node in subgraph.nodes:
+                    node._families[cutoff] = list(subgraph.nodes)[0]._families[cutoff]
+                continue
+
             subgraph_dist_matrix = sim_matrix_from_graph(subgraph, edge_property)
 
             labels, centers = aff_sim_matrix(subgraph_dist_matrix)
 
-            subgraph_family_labels = {}
-
             for idx, node in enumerate(subgraph.nodes):
-                node_family_label = labels[idx]
-                if node_family_label not in subgraph_family_labels:
-                    subgraph_family_labels[node_family_label] = family_idx
-                    family_idx += 1
-
-                node._families[cutoff] = subgraph_family_labels[node_family_label]
+                node._families[cutoff] = centers[labels[idx]]
                 # also add to graph node attributes
-                self.graph.nodes.get(node)[family_key] = labels[idx]
+                self.graph.nodes.get(node)[family_key] = centers[labels[idx]]
 
     def generate_cutoff_subgraphs(
         self, property_key: str, cutoff: float
@@ -94,7 +97,12 @@ class BSNetwork:
             self.graph.edges,
         )
 
-        cutoff_subgraph = self.graph.edge_subgraph(edge_iter)
+        cutoff_subgraph = Graph()
+        cutoff_subgraph.add_nodes_from(self.graph)
+
+        cutoff_subgraph.add_edges_from(edge_iter)
+
+        # cutoff_subgraph = self.graph.edge_subgraph(edge_iter)
 
         for connected_component in connected_components(cutoff_subgraph):
             yield self.graph.subgraph(connected_component)
