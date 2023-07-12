@@ -574,7 +574,7 @@ def generate_bs_data_js(
 
 
 def generate_bs_networks_js_sim_matrix(
-    gbks: list[GBK], network: BSNetwork
+    gbks: list[GBK], network: BSNetwork, cutoff: float
 ) -> list[list[float]]:
     sim_matrix = []
 
@@ -584,6 +584,8 @@ def generate_bs_networks_js_sim_matrix(
         for other_idx in range(idx):
             region_b = gbks[other_idx].region
             dist = network.graph.adj[region_a][region_b]["dist"]
+            if dist > cutoff:
+                dist = 1.0
             sim = round(1 - dist, 4)
             region_sim.append(sim)
         region_sim.append(1.0)  # for self similarity
@@ -659,7 +661,7 @@ def generate_bs_networks_js(
     bs_networks_js_path = bin_path / "bs_networks.js"
 
     # TODO: replace with functions to generate objects
-    bs_similarity: list[Any] = generate_bs_networks_js_sim_matrix(gbks, network)
+    bs_similarity: list[Any] = generate_bs_networks_js_sim_matrix(gbks, network, cutoff)
     bs_families: list[Any] = generate_bs_networks_families(gbks, cutoff)
     bs_families_alignment: list[Any] = []
     bs_similarity_families: list[Any] = []
