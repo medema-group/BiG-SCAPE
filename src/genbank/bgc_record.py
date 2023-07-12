@@ -223,7 +223,12 @@ class BGCRecord:
             logging.error("product qualifier not found in feature!")
             raise InvalidGBKError()
 
-        self.product = feature.qualifiers["product"][0]
+        # record may have multiple products. handle them here
+        products = set(feature.qualifiers["product"][0].split("-"))
+
+        product = parse_products(products)
+
+        self.product = product
 
         # add parent gbk if available
         if parent_gbk is not None:
@@ -254,3 +259,18 @@ class BGCRecord:
                 self.nt_stop,
             )
         )
+
+
+def parse_products(products: set[str]) -> str:
+    # single product? just return it
+    if len(products) == 1:
+        return products.pop()
+
+    # return easy hybrids
+    if "other" not in products:
+        return ".".join(products)
+
+    # in all other cases we have an 'other' classification. for the rest of the cases we can remove
+    # that and just parse the products again
+    products.remove("other")
+    return parse_products(products)
