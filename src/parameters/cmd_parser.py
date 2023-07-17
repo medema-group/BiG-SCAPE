@@ -213,11 +213,19 @@ def parse_cmd(args):  # pragma: no cover
 
     parser.add_argument(
         "--mix",
-        dest="mix",
+        dest="binning.mix",
         default=False,
         action="store_true",
         help="Run an all-vs-all analysis",
         # TODO: update with binning modes
+    )
+
+    parser.add_argument(
+        "--legacy_bins",
+        dest="binning.legacy_bins",
+        default=False,
+        action="store_true",
+        help="Run analyses on bins as in BiG-SCAPE 1.0",
     )
 
     # comparison parameters

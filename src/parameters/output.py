@@ -17,6 +17,8 @@ class OutputParameters:
         output_dir: Path
         db_path: Path
         log_path: Path
+        profile_path: Path
+
     """
 
     def __init__(self):
