@@ -155,7 +155,7 @@ class BGCRecord:
         Returns:
             list[HSP]: List of all hsps in this region
         """
-        domains = []
+        domains: list[HSP] = []
         for cds in self.get_cds_with_domains():
             if len(cds.hsps) > 0:
                 domains.extend(cds.hsps)
