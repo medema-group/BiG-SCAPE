@@ -67,7 +67,6 @@ class BSNetwork:
         for idx, node in enumerate(self.graph.nodes):
             node._families[cutoff] = idx
 
-        family_idx = 0
         for subgraph in subgraphs:
             # do not cluster small subgraphs
             if len(subgraph) < 3:
