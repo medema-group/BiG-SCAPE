@@ -33,27 +33,30 @@ class BSNetwork:
         # method into a keyword argument set
         self.graph.add_node(node, **node.get_attr_dict())
 
-    def add_edge(self, pair: BGCPair, **attr):
+    def add_edge_pair(self, pair: BGCPair, **attr):
+        self.add_edge(pair.region_a, pair.region_b, **attr)
+
+    def add_edge(self, region_a: BGCRecord, region_b: BGCRecord, **attr):
         # we want to ensure all edges are accounted for
-        if pair.region_a not in self.graph:
+        if region_a not in self.graph:
             logging.error(
                 "Tried to add an edge to the network with a node that does not exist!"
             )
-            logging.error("Missing node: %s", pair.region_a)
+            logging.error("Missing node: %s", region_a)
             raise KeyError(
                 "Tried to add an edge to the network with a node that does not exist"
             )
 
-        if pair.region_b not in self.graph:
+        if region_b not in self.graph:
             logging.error(
                 "Tried to add an edge to the network with a node that does not exist!"
             )
-            logging.error("Missing node: %s", pair.region_b)
+            logging.error("Missing node: %s", region_b)
             raise KeyError(
                 "Tried to add an edge to the network with a node that does not exist"
             )
 
-        self.graph.add_edge(u_of_edge=pair.region_a, v_of_edge=pair.region_b, **attr)
+        self.graph.add_edge(u_of_edge=region_a, v_of_edge=region_b, **attr)
 
     def generate_families_cutoff(self, edge_property: str, cutoff: float):
         subgraphs = self.generate_cutoff_subgraphs(edge_property, cutoff)

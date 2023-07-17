@@ -2,6 +2,9 @@
 
 # from python
 import logging
+from multiprocessing import Pipe, Process, cpu_count
+from multiprocessing.connection import Connection, wait
+from typing import cast
 
 # from other modules
 from src.distances import calc_jaccard_pair, calc_ai_pair, calc_dss_pair_legacy
@@ -14,7 +17,7 @@ from .legacy_extend import (
     check_expand,
     reset_expansion,
 )
-from .binning import BGCBin
+from .binning import BGCBin, BGCPair
 
 
 def create_bin_network_edges_old(bin: BGCBin, network: BSNetwork, alignment_mode: str):
@@ -24,7 +27,7 @@ def create_bin_network_edges_old(bin: BGCBin, network: BSNetwork, alignment_mode
         jaccard = calc_jaccard_pair(pair, cache=False)
 
         if jaccard == 0.0:
-            network.add_edge(pair, jc=0.0, ai=0.0, dss=0.0, dist=1.0)
+            network.add_edge_pair(pair, jc=0.0, ai=0.0, dss=0.0, dist=1.0)
             continue
 
         logging.debug("JC: %f", jaccard)
@@ -47,7 +50,7 @@ def create_bin_network_edges_old(bin: BGCBin, network: BSNetwork, alignment_mode
                 jaccard = calc_jaccard_pair(pair)
 
                 if jaccard == 0.0:
-                    network.add_edge(pair, jc=0.0, ai=0.0, dss=0.0, dist=1.0)
+                    network.add_edge_pair(pair, jc=0.0, ai=0.0, dss=0.0, dist=1.0)
                     continue
             else:
                 reset_expansion(pair.comparable_region)
@@ -65,7 +68,7 @@ def create_bin_network_edges_old(bin: BGCBin, network: BSNetwork, alignment_mode
             "JC: %f, AI: %f, DSS: %f, SCORE: %f", jaccard, adjacency, dss, distance
         )
 
-        network.add_edge(pair, jc=jaccard, ai=adjacency, dss=dss, dist=distance)
+        network.add_edge_pair(pair, jc=jaccard, ai=adjacency, dss=dss, dist=distance)
 
 
 def create_bin_network_edges(bin: BGCBin, network: BSNetwork, alignment_mode: str):
@@ -76,7 +79,7 @@ def create_bin_network_edges(bin: BGCBin, network: BSNetwork, alignment_mode: st
         jaccard = calc_jaccard_pair(pair, cache=False)
 
         if jaccard == 0.0:
-            network.add_edge(pair, jc=0.0, ai=0.0, dss=0.0, dist=1.0)
+            network.add_edge_pair(pair, jc=0.0, ai=0.0, dss=0.0, dist=1.0)
             continue
 
     logging.info(
@@ -115,7 +118,7 @@ def create_bin_network_edges(bin: BGCBin, network: BSNetwork, alignment_mode: st
         jaccard = calc_jaccard_pair(pair)
 
         if jaccard == 0.0:
-            network.add_edge(pair, jc=0.0, ai=0.0, dss=0.0, dist=1.0)
+            network.add_edge_pair(pair, jc=0.0, ai=0.0, dss=0.0, dist=1.0)
             continue
 
         expanded_pairs.append(pair)
@@ -124,38 +127,118 @@ def create_bin_network_edges(bin: BGCBin, network: BSNetwork, alignment_mode: st
         "Calculating score for %d pairs that were reset or did not need expansion",
         len(pairs_no_expand),
     )
-    for pair in pairs_no_expand:
-        jaccard = calc_jaccard_pair(pair)
-
-        adjacency = calc_ai_pair(pair)
-        # mix anchor boost = 2.0
-        dss = calc_dss_pair_legacy(pair, anchor_boost=2.0)
-
-        # mix
-        distance = 1 - (0.2 * jaccard) - (0.05 * adjacency) - (0.75 * dss)
-
-        logging.debug(
-            "JC: %f, AI: %f, DSS: %f, SCORE: %f", jaccard, adjacency, dss, distance
-        )
-
-        network.add_edge(pair, jc=jaccard, ai=adjacency, dss=dss, dist=distance)
+    calculate_scores_multiprocess(pairs_no_expand, network)
 
     logging.info(
         "Calculating score for %d pairs that were expanded",
         len(expanded_pairs),
     )
-    for pair in expanded_pairs:
-        jaccard = calc_jaccard_pair(pair)
+    calculate_scores_multiprocess(expanded_pairs, network)
 
-        adjacency = calc_ai_pair(pair)
-        # mix anchor boost = 2.0
-        dss = calc_dss_pair_legacy(pair, anchor_boost=2.0)
 
-        # mix
-        distance = 1 - (0.2 * jaccard) - (0.05 * adjacency) - (0.75 * dss)
+def calculate_scores_multiprocess(pairs: list[BGCPair], network: BSNetwork):
+    """Calculate the scores for a list of pairs by using subprocesses
 
-        logging.debug(
-            "JC: %f, AI: %f, DSS: %f, SCORE: %f", jaccard, adjacency, dss, distance
+    Args:
+        pairs (list[BGCPair]): list of pairs to perform score calution on
+        network (BSNetwork): BSnetwork objects to add new edges to
+    """
+
+    # prepare processes
+    processes = []
+    connections: list[Connection] = []
+    for process_id in range(cpu_count()):
+        main_connection, worker_connection = Pipe()
+        connections.append(main_connection)
+
+        process = Process(
+            target=calculate_pair_worker, args=(process_id, worker_connection, pairs)
         )
+        processes.append(process)
+        process.start()
 
-        network.add_edge(pair, jc=jaccard, ai=adjacency, dss=dss, dist=distance)
+    tasks_done = 0
+    pair_idx = 0
+
+    while len(connections) > 0:
+        available_connections = wait(connections)
+
+        for connection in available_connections:
+            connection = cast(Connection, connection)
+
+            output_data = connection.recv()
+
+            if pair_idx < len(pairs):
+                input_data = pair_idx
+                pair_idx += 1
+            else:
+                input_data = None
+
+            connection.send(input_data)
+
+            if input_data is None:
+                connection.close()
+                connections.remove(connection)
+
+            if output_data is not None:
+                done_pair_idx, dist, jc, ai, dss = output_data
+
+                tasks_done += 1
+
+                network.add_edge_pair(
+                    pairs[done_pair_idx], dist=dist, jc=jc, ai=ai, dss=dss
+                )
+
+    # just to make sure, kill any remaining processes
+    for process in processes:
+        process.kill()
+
+
+def calculate_pair_worker(
+    process_id: int, worker_connection: Connection, pairs: list[BGCPair]
+) -> None:
+    """Waits for tasks to arrive from the main process and returns pair distances through a
+    connection
+
+    Args:
+        process_id (int): ID of this process
+        worker_connection (Connection): Worker connection to connect to the main process
+        pairs (list[BGCPair]): List of pairs to refer to
+    """
+
+    worker_connection.send(None)
+
+    while True:
+        task = worker_connection.recv()
+
+        if task is None:
+            return
+
+        pair = pairs[task]
+
+        scores = calculate_pair_scores(pair)
+
+        output = (task,) + scores
+
+        worker_connection.send(output)
+
+
+def calculate_pair_scores(pair: BGCPair) -> tuple[float, float, float, float]:
+    """Calculate and return the scores and distance for a pair
+
+    Args:
+        pair (BGCPair): Pair of BGCs to calculate scores for
+
+    Returns:
+        tuple[float, float, float, float]: distance, jaccard, AI, DSS
+    """
+    jaccard = calc_jaccard_pair(pair)
+
+    adjacency = calc_ai_pair(pair)
+    # mix anchor boost = 2.0
+    dss = calc_dss_pair_legacy(pair, anchor_boost=2.0)
+
+    # mix
+    distance = 1 - (0.2 * jaccard) - (0.05 * adjacency) - (0.75 * dss)
+
+    return distance, jaccard, adjacency, dss

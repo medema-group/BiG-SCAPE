@@ -46,7 +46,7 @@ class TestBSNetwork(TestCase):
         network.add_node(region_a)
         network.add_node(region_b)
 
-        network.add_edge(pair)
+        network.add_edge_pair(pair)
 
         self.assertEqual(network.graph.number_of_edges(), 1)
 
@@ -71,7 +71,7 @@ class TestBSNetwork(TestCase):
         # only add a
         network.add_node(region_a)
 
-        self.assertRaises(KeyError, network.add_edge, pair)
+        self.assertRaises(KeyError, network.add_edge_pair, pair)
 
     def test_write_graphml(self):
         """Tests whether the graph can be written to an output grpahm file"""
@@ -97,7 +97,7 @@ class TestBSNetwork(TestCase):
         network.add_node(region_a)
         network.add_node(region_b)
 
-        network.add_edge(pair)
+        network.add_edge_pair(pair)
 
         test_out_path = Path("test/test_data/tmp/test.graphml")
 
@@ -129,7 +129,7 @@ class TestBSNetwork(TestCase):
         network.add_node(region_a)
         network.add_node(region_b)
 
-        network.add_edge(pair)
+        network.add_edge_pair(pair)
 
         test_out_path = Path("test/test_data/tmp/test.tsv")
 
@@ -174,7 +174,7 @@ class TestBSNetwork(TestCase):
             else:
                 distance = 0.5
 
-            network.add_edge(pair, dist=distance)
+            network.add_edge_pair(pair, dist=distance)
 
         subgraphs = network.generate_cutoff_subgraphs("dist", test_cutoff)
 
