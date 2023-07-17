@@ -181,7 +181,7 @@ class ComparableRegion:
 
         return self.domain_dicts
 
-    def find_lcs(self) -> tuple[int, int, int, int]:
+    def find_lcs(self):
         """Retrieve the longest common subsequence of domains for a pair of BGC records
 
         Args:
@@ -280,8 +280,6 @@ class ComparableRegion:
         self.b_start = b_start
         self.b_stop = b_stop
         self.reverse = reverse
-
-        return (a_start, a_stop, b_start, b_stop)
 
     def log_comparable_region(self, label="<") -> None:  # pragma: no cover
         """Prints a debug level log of the comparable region

@@ -33,12 +33,7 @@ def create_bin_network_edges_old(bin: BGCBin, network: BSNetwork, alignment_mode
         logging.debug("JC: %f", jaccard)
 
         # we record the LCS starts and stops here in case we need to reset them later
-        (
-            lcs_a_start,
-            lcs_a_stop,
-            lcs_b_start,
-            lcs_b_stop,
-        ) = pair.comparable_region.find_lcs()
+        pair.comparable_region.find_lcs()
         pair.comparable_region.log_comparable_region("LCS")
 
         if legacy_needs_extend(pair, alignment_mode):
