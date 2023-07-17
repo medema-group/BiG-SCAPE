@@ -34,7 +34,7 @@ def copy_output_templates(
     bin_template = template_root / "index_html"
 
     # copy html content
-    dir_util.copy_tree(str(template_dir), str(output_dir))
+    dir_util.copy_tree(str(template_dir), str(output_dir), verbose=False)
 
     # networks subfolders
     output_network_root = output_dir / "html_content/networks"
