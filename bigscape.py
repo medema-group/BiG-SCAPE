@@ -61,6 +61,8 @@ if __name__ == "__main__":
 
     logging.info("loaded %d cds total", len(all_cds))
 
+    # HMMER - Search
+
     HMMer.init(run.input.pfam_path)
 
     def callback(tasks_done):
@@ -121,6 +123,8 @@ if __name__ == "__main__":
     exec_time = datetime.now() - start_time
     logging.info("DB: HSP save done at %f seconds", exec_time.total_seconds())
 
+    # HMMER - Align
+
     HMMer.init(run.input.pfam_path, False)
 
     HMMer.align_simple(all_hsps)
@@ -146,32 +150,37 @@ if __name__ == "__main__":
 
     DB.save_to_disk(run.output.db_path)
 
-    network = BSNetwork()
-    all_regions: list[BGCRecord] = []
-    for gbk in gbks:
-        if gbk.region is not None:
-            all_regions.append(gbk.region)
-            network.add_node(gbk.region)
+    # networking - mix
 
-    mix_bin = generate_mix(all_regions)
+    if run.binning.mix:
+        mix_network = BSNetwork()
+        all_regions: list[BGCRecord] = []
+        for gbk in gbks:
+            if gbk.region is not None:
+                all_regions.append(gbk.region)
+                mix_network.add_node(gbk.region)
 
-    logging.info("Generated mix bin: %s", mix_bin)
+        mix_bin = generate_mix(all_regions)
 
-    create_bin_network_edges(mix_bin, network, run.comparison.alignment_mode)
+        logging.info("Generated mix bin: %s", mix_bin)
 
-    network.generate_families_cutoff("dist", 0.3)
+        create_bin_network_edges(mix_bin, mix_network, run.comparison.alignment_mode)
 
-    network.write_graphml(run.output.output_dir / Path("network.graphml"))
-    network.write_edgelist_tsv(run.output.output_dir / Path("network.tsv"))
+        mix_network.generate_families_cutoff("dist", 0.3)
 
-    generate_legacy_output(
-        run.output.output_dir,
-        "test",
-        [0.3],
-        ["mix"],
-        network,
-        gbks,
-    )
+        # Output
+
+        mix_network.write_graphml(run.output.output_dir / Path("network.graphml"))
+        mix_network.write_edgelist_tsv(run.output.output_dir / Path("network.tsv"))
+
+        generate_legacy_output(
+            run.output.output_dir,
+            "test",
+            [0.3],
+            ["mix"],
+            mix_network,
+            gbks,
+        )
 
     if run.diagnostics.profiling:
         profiler.stop()
