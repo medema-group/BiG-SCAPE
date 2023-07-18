@@ -6,13 +6,13 @@ determine the region between two BGCs for which to calculate AI and DSS
 from __future__ import annotations
 import logging
 from typing import TYPE_CHECKING, Optional
-from difflib import SequenceMatcher
 
 # from other modules
 from src.genbank import BGCRecord
 
 
 # from this module
+from .legacy_lcs import legacy_find_cds_lcs
 
 # from other modules
 from src.hmm import HSP
@@ -194,86 +194,7 @@ class ComparableRegion:
         a_cds = self.pair.region_a.get_cds_with_domains()
         b_cds = self.pair.region_b.get_cds_with_domains()
 
-        # forward
-        seqmatch = SequenceMatcher(None, a_cds, b_cds)
-        match = seqmatch.find_longest_match(0, len(a_cds), 0, len(b_cds))
-        a_start_fwd = match[0]
-        b_start_fwd = match[1]
-        fwd_match_len = match[2]
-
-        # reverse
-        rev_seqmatch = SequenceMatcher(None, a_cds, b_cds[::-1])
-        match = rev_seqmatch.find_longest_match(0, len(a_cds), 0, len(b_cds))
-        a_start_rev = match[0]
-        b_start_rev = match[1]
-        rev_match_len = match[2]
-
-        fwd_larger = fwd_match_len > rev_match_len
-        rev_larger = fwd_match_len < rev_match_len
-
-        if fwd_larger:
-            reverse = False
-            a_start = a_start_fwd
-            a_stop = a_start_fwd + fwd_match_len
-
-            b_start = b_start_fwd
-            b_stop = b_start_fwd + fwd_match_len
-
-        elif rev_larger:
-            reverse = True
-            a_start = a_start_rev
-            a_stop = a_start_rev + rev_match_len
-
-            # previously we flipped the entire B array in order to find the LCS
-            # now we want to go back to a start and stop position for the unflipped
-            # array
-            b_start = b_start_rev
-            b_stop = b_start + rev_match_len
-
-        # from here on they're the same length
-        elif (
-            self.pair.region_a.get_cds_with_domains()[a_start_fwd].strand
-            == self.pair.region_b.get_cds_with_domains()[b_start_fwd].strand
-        ):
-            reverse = False
-            a_start = a_start_fwd
-            a_stop = a_start_fwd + fwd_match_len
-
-            b_start = b_start_fwd
-            b_stop = b_start_fwd + fwd_match_len
-
-        # case where slice length is 1. use the one with the most domains from the seq matc
-        elif fwd_match_len == 1:
-            max_domains = 0
-            for a_idx, b_idx, match_len in seqmatch.get_matching_blocks():
-                if match_len == 0:
-                    break
-
-                a_domain_count = len(a_cds[a_idx].hsps)
-                if a_domain_count <= max_domains:
-                    continue
-
-                max_domains = a_domain_count
-                a_start = a_idx
-                a_stop = a_start + 1
-
-                # TODO: only the else should trigger at this point
-                if a_cds[a_idx].strand == b_cds[b_idx].strand:
-                    b_start = b_idx
-                    b_stop = b_start
-                    reverse = False
-                else:
-                    b_start = len(b_cds) - b_idx - 1
-                    b_stop = b_start + 1
-                    reverse = True
-
-        # default to taking forward lcs
-        else:
-            a_start = a_start_fwd
-            a_stop = a_start_fwd + fwd_match_len
-            b_start = b_start_fwd
-            b_stop = b_start + fwd_match_len
-            reverse = False
+        a_start, a_stop, b_start, b_stop, reverse = legacy_find_cds_lcs(a_cds, b_cds)
 
         self.a_start = a_start
         self.a_stop = a_stop
