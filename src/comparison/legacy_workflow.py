@@ -20,51 +20,6 @@ from .legacy_extend import (
 from .binning import BGCBin, BGCPair
 
 
-def create_bin_network_edges_old(bin: BGCBin, network: BSNetwork, alignment_mode: str):
-    for pair in bin.pairs(legacy_sorting=True):
-        # calculate jaccard for the full sets. if this is 0, there are no shared domains
-        # important not to cache here otherwise we are using the full range again later
-        jaccard = calc_jaccard_pair(pair, cache=False)
-
-        if jaccard == 0.0:
-            network.add_edge_pair(pair, jc=0.0, ai=0.0, dss=0.0, dist=1.0)
-            continue
-
-        logging.debug("JC: %f", jaccard)
-
-        # we record the LCS starts and stops here in case we need to reset them later
-        pair.comparable_region.find_lcs()
-        pair.comparable_region.log_comparable_region("LCS")
-
-        if legacy_needs_extend(pair, alignment_mode):
-            expand_glocal(pair.comparable_region)
-
-            if check_expand(pair.comparable_region):
-                pair.comparable_region.log_comparable_region("GLOCAL")
-
-                jaccard = calc_jaccard_pair(pair)
-
-                if jaccard == 0.0:
-                    network.add_edge_pair(pair, jc=0.0, ai=0.0, dss=0.0, dist=1.0)
-                    continue
-            else:
-                reset_expansion(pair.comparable_region)
-        else:
-            reset_expansion(pair.comparable_region)
-
-        adjacency = calc_ai_pair(pair)
-        # mix anchor boost = 2.0
-        dss = calc_dss_pair_legacy(pair, anchor_boost=2.0)
-
-        # mix
-        distance = 1 - (0.2 * jaccard) - (0.05 * adjacency) - (0.75 * dss)
-
-        logging.debug(
-            "JC: %f, AI: %f, DSS: %f, SCORE: %f", jaccard, adjacency, dss, distance
-        )
-
-        network.add_edge_pair(pair, jc=jaccard, ai=adjacency, dss=dss, dist=distance)
-
 
 def create_bin_network_edges(bin: BGCBin, network: BSNetwork, alignment_mode: str):
     logging.info("Calculating Jaccard for %d pairs", bin.num_pairs())
