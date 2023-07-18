@@ -61,6 +61,10 @@ class RunParameters(Namespace):
         init_logger(self)
 
         self.input.validate()
+        self.hmmer.validate()
+        self.binning.validate()
+        self.comparison.validate()
+        self.networking.validate()
         self.output.validate()
 
         # initializes the logger file, can only happen once output is validated

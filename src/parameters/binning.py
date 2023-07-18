@@ -36,7 +36,7 @@ class BinningParameters:
                     "comparisons"
                 )
             )
-            raise InvalidArgumentError()
+            raise InvalidArgumentError("--mix", self.mix)
 
 
 def validate_mix(mix: bool):
