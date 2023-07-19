@@ -98,6 +98,26 @@ class HMMer:
         HMMer.pipeline = None
 
     @staticmethod
+    def get_pfam_info() -> list[tuple[str]]:
+        """Generate a list of string tuples. Each tuple contains the accession, name and description
+        of a PFAM entry
+
+        Returns:
+            list[tuple[str]]: A list of tuples containing pfam entry information
+        """
+        pfam_info = []
+        for profile in HMMer.profiles:
+            pfam_info.append(
+                (
+                    profile.accession.decode(),
+                    profile.name.decode(),
+                    profile.description.decode(),
+                )
+            )
+
+        return pfam_info
+
+    @staticmethod
     def get_profile(accession: str) -> OptimizedProfile:
         """Returns the pressed/optimized profile with the specified accession
 
