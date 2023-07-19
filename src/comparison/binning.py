@@ -4,7 +4,7 @@
 # from python
 from __future__ import annotations
 from itertools import combinations
-from typing import Iterator
+from typing import TYPE_CHECKING, Iterator, Optional
 
 # from dependencies
 # from other modules
@@ -12,6 +12,10 @@ from src.genbank import BGCRecord
 
 # from this module
 from .comparable_region import ComparableRegion
+
+# from circular imports
+if TYPE_CHECKING:
+    from src.network import BSNetwork
 
 
 class BGCBin:
@@ -21,30 +25,32 @@ class BGCBin:
         self.label = label
         self.source_records: list[BGCRecord] = []
 
-    def pairs(self, legacy_sorting=False) -> Iterator[BGCPair]:
+    def pairs(
+        self, network: Optional[BSNetwork] = None, legacy_sorting=False
+    ) -> Iterator[BGCPair]:
         """Returns an iterator for BGC pairs in this bin
 
         Args:
-            legacy_sorting (bool, optional): Whether to sort the
+            network (BSNetwork, optional): A network object to use for filtering. If
+            this is set, the generator will not yield any pairs that already have an
+            edge in the network
+            legacy_sorting (bool, optional): Whether to sort the BGCs by GBK file name.
+            This is done in BiG-SCAPE 1.0 and can affect scoring depending on which of
+            the BGCs is region A in a pair.
 
         Yields:
             Iterator[BGCPair]: Iterator for BGC pairs in this bin
         """
-        # TODO: refactor into something flatter and more readable
         for bgc_a, bgc_b in combinations(self.source_records, 2):
             if legacy_sorting:
-
-                def sort_name_key(record: BGCRecord):
-                    if record.parent_gbk is None:
-                        return None
-
-                    return record.parent_gbk.path.name[:-4]
-
                 sorted_a, sorted_b = sorted((bgc_a, bgc_b), key=sort_name_key)
-                yield BGCPair(sorted_a, sorted_b)
-                continue
+                pair = BGCPair(sorted_a, sorted_b)
 
-            yield BGCPair(bgc_a, bgc_b)
+            else:
+                pair = BGCPair(bgc_a, bgc_b)
+
+            if network is None or pair not in network:
+                yield pair
 
     def add_bgcs(self, bgc_list: list[BGCRecord]):
         """Adds BGCs to this bin and creates a generator for the pairs
@@ -121,3 +127,10 @@ def generate_mix(bgc_list: list[BGCRecord]) -> BGCBin:
     mix_bin.add_bgcs(bgc_list)
 
     return mix_bin
+
+
+def sort_name_key(record: BGCRecord):
+    if record.parent_gbk is None:
+        return None
+
+    return record.parent_gbk.path.name[:-4]
