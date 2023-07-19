@@ -65,6 +65,9 @@ if __name__ == "__main__":
 
     HMMer.init(run.input.pfam_path)
 
+    # we will need this information for the output later
+    pfam_info = HMMer.get_pfam_info()
+
     def callback(tasks_done):
         percentage = int(tasks_done / len(all_cds) * 100)
         logging.info("%d/%d (%d%%)", tasks_done, len(all_cds), percentage)
@@ -174,12 +177,7 @@ if __name__ == "__main__":
         mix_network.write_edgelist_tsv(run.output.output_dir / Path("network.tsv"))
 
         generate_legacy_output(
-            run.output.output_dir,
-            "test",
-            [0.3],
-            ["mix"],
-            mix_network,
-            gbks,
+            run.output.output_dir, "test", [0.3], ["mix"], mix_network, gbks, pfam_info
         )
 
     if run.diagnostics.profiling:

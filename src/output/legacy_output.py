@@ -59,6 +59,54 @@ def copy_output_templates(
             shutil.copy(str(bin_template), str(bin_path / "index.html"))
 
 
+def generate_pfams_js(output_dir: Path, pfam_info: list[tuple[str]]) -> None:
+    """Generate the pfam.js file needed to show the correct PFAM domain colors
+
+    Args:
+        output_dir (Path): main output directory
+        pfam_info (list[tuple[str]]): A list of tuples containing pfam information. Each tuple
+        contains an accession, a name and a description
+    """
+
+    # gather color information
+    pfam_colors_file_path = Path("src/output/domain_colors.tsv")
+
+    # make accession to color dictionary
+    pfam_colors_dict = {}
+    with open(pfam_colors_file_path, mode="r", encoding="utf8") as pfam_colors_file:
+        for line in pfam_colors_file:
+            line_parts = line.rstrip().split("\t")
+            pfam_colors_dict[line_parts[0]] = line_parts[1]
+
+    pfams_data = {}
+
+    for info in pfam_info:
+        accession, name, description = info
+
+        # trim version number
+        accession = accession[:7]
+
+        # default to white
+        color = "255,255,255"
+        if accession in pfam_colors_dict:
+            color = pfam_colors_dict[accession]
+
+        pfams_data[accession] = {
+            "col": color,
+            "name": name,
+            "desc": description,
+        }
+
+    pfams_path = output_dir / Path("html_content/js/pfams.js")
+
+    with open(pfams_path, "w") as run_data_js:
+        run_data_js.write(
+            "var pfams={};\n".format(
+                json.dumps(pfams_data, indent=4, separators=(",", ":"), sort_keys=True)
+            )
+        )
+
+
 # one of the few direct copy-and-pastes!
 def get_class(product):
     """Sort BGC by its type. Uses AntiSMASH annotations
@@ -721,8 +769,11 @@ def generate_legacy_output(
     bins: list[str],
     network: BSNetwork,
     gbks: list[GBK],
+    pfam_info: list[tuple[str]],
 ) -> None:
     copy_output_templates(output_dir, label, cutoffs, bins)
+
+    generate_pfams_js(output_dir, pfam_info)
 
     for cutoff in cutoffs:
         generate_bigscape_results_js(
