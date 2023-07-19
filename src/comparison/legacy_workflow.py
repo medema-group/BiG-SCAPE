@@ -14,11 +14,12 @@ from src.utility import start_processes
 
 # from this module
 from .legacy_extend import (
-    legacy_needs_extend,
+    legacy_needs_expand_pair,
     expand_glocal,
     check_expand,
     reset_expansion,
 )
+from .legacy_lcs import legacy_find_cds_lcs
 from .binning import BGCBin, BGCPair
 
 
@@ -57,7 +58,7 @@ def create_bin_network_edges(bin: BGCBin, network: BSNetwork, alignment_mode: st
         pair.comparable_region.find_lcs()
         pair.comparable_region.log_comparable_region("LCS")
 
-        if legacy_needs_extend(pair, alignment_mode):
+        if legacy_needs_expand_pair(pair, alignment_mode):
             pairs_need_expand.append(pair)
             continue
 
@@ -105,6 +106,103 @@ def create_bin_network_edges(bin: BGCBin, network: BSNetwork, alignment_mode: st
         len(expanded_pairs),
     )
     calculate_scores_multiprocess(expanded_pairs, network)
+
+
+def get_lcs_worker_method(
+    pair: BGCPair, extra_data=None
+) -> tuple[int, int, int, int, bool]:
+    """Find LCS on pair and return the LCS coordinates
+
+    Args:
+        pair (BGCPair): Pair of BGC to find LCS on
+        extra_data (Any): Not used
+
+    Returns:
+        tuple[int, int, int, int, bool]: a_start, a_stop, b_start, b_stop, reverse
+    """
+    return legacy_find_cds_lcs(
+        pair.region_a.get_cds_with_domains(), pair.region_b.get_cds_with_domains()
+    )
+
+
+def get_lcs_multiprocess(
+    bin: BGCBin,
+    network: BSNetwork,
+    alignment_mode: str,
+    num_processes: int = cpu_count(),
+) -> tuple[list[BGCPair], list[BGCPair]]:
+    """Find the LCS using multiple processes and return two lists of pairs.
+
+    The first list returned by this function is a list of pairs which need expansion.
+    The second list returned by thris function is a list of pairs which do not need
+    expansion
+
+    Args:
+        bin (BGCBin): Bin to get pairs from
+        network: (BSNetwork): BiG-SCAPE network used to check if pair already has an
+        edge
+        num_processes (int): how many processes to use for this step. Defaults to the
+        number of cores on the machine
+
+    Returns:
+        tuple[list[BGCPair], list[BGCPair]]: List of pairs to be expanded and list of
+        pairs which does not need expansion
+    """
+    need_expansion = []
+    no_expansion = []
+
+    processes, connections = start_processes(
+        num_processes, get_lcs_worker_method, None, False
+    )
+
+    pair_generator = bin.pairs(network=network, legacy_sorting=True)
+
+    # TODO: I don't like this implementation at all. is there really no way to just use
+    # pickled pairs?
+    task_pair_source: dict[Connection, BGCPair] = {}
+
+    while len(connections) > 0:
+        available_connections = wait(connections)
+
+        for connection in available_connections:
+            connection = cast(Connection, connection)
+
+            output_data = connection.recv()
+
+            input_data = next(pair_generator, None)
+
+            connection.send(input_data)
+
+            if input_data is None:
+                connection.close()
+                connections.remove(connection)
+
+            if output_data is not None:
+                a_start, a_stop, b_start, b_stop, reverse = output_data
+
+                original_pair = task_pair_source[connection]
+                original_pair.comparable_region.a_start = a_start
+                original_pair.comparable_region.a_stop = a_stop
+                original_pair.comparable_region.b_start = b_start
+                original_pair.comparable_region.b_stop = b_stop
+                original_pair.comparable_region.reverse = reverse
+
+                if legacy_needs_expand_pair(original_pair, alignment_mode):
+                    need_expansion.append(original_pair)
+                    continue
+
+                # or it is not expanded at all and the entire region is used
+                reset_expansion(original_pair.comparable_region)
+                no_expansion.append(original_pair)
+
+            if input_data is not None:
+                task_pair_source[connection] = input_data
+
+    # just to make sure, kill any remaining processes
+    for process in processes:
+        process.kill()
+
+    return need_expansion, no_expansion
 
 
 def calculate_scores_worker_method(

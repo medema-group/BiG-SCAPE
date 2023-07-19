@@ -11,7 +11,7 @@ from src.parameters.constants import (
     EXPAND_MATCH_SCORE,
     EXPAND_MISMATCH_SCORE,
 )
-from src.genbank import CDS
+from src.genbank import CDS, BGCRecord
 from src.comparison import ComparableRegion, BGCPair
 
 
@@ -403,9 +403,9 @@ def expand_score(
     return max_score, extension
 
 
-def legacy_needs_extend(
+def legacy_needs_expand_pair(
     pair: BGCPair, alignment_mode: str, extend_slice_cutoff=MIN_LCS_LEN
-):
+) -> bool:
     """Returns False if:
 
     - alignment_mode is global
@@ -416,22 +416,37 @@ def legacy_needs_extend(
         (at this point, this should be the LCS length)
 
     """
+    return legacy_needs_extend(
+        pair.region_a,
+        pair.region_b,
+        alignment_mode,
+        pair.comparable_region.a_start,
+        pair.comparable_region.a_stop,
+        extend_slice_cutoff,
+    )
 
+
+def legacy_needs_extend(
+    region_a: BGCRecord,
+    region_b: BGCRecord,
+    alignment_mode: str,
+    a_start: int,
+    a_stop: int,
+    extend_slice_cutoff=MIN_LCS_LEN,
+) -> bool:
     if alignment_mode == "global":
         return False
 
-    if alignment_mode == "auto" and not (
-        pair.region_a.contig_edge and pair.region_b.contig_edge
-    ):
+    if alignment_mode == "auto" and not (region_a.contig_edge and region_b.contig_edge):
         return False
 
-    lcs_extend_len = pair.comparable_region.a_stop - 1 - pair.comparable_region.a_start
+    lcs_extend_len = a_stop - 1 - a_start
     if (
         lcs_extend_len < extend_slice_cutoff
         and not ComparableRegion.cds_range_contains_biosynthetic(
-            pair.region_a,
-            pair.comparable_region.a_start,
-            pair.comparable_region.a_stop,
+            region_a,
+            a_start,
+            a_stop,
             end_inclusive=True,  # technically wrong, but 1.0 behavior
             reverse=False,
         )
