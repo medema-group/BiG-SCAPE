@@ -5,7 +5,7 @@ import logging
 from math import ceil
 from multiprocessing import cpu_count
 from multiprocessing.connection import Connection, wait
-from typing import cast
+from typing import Callable, Optional, cast
 
 # from other modules
 from src.distances import calc_jaccard_pair, calc_ai_pair, calc_dss_pair_legacy
@@ -28,6 +28,8 @@ def create_bin_network_edges(bin: BGCBin, network: BSNetwork, alignment_mode: st
     # could be optimized by multiprocessing for very large bins
     logging.info("Calculating Jaccard for %d pairs", bin.num_pairs())
 
+    related_pairs = []
+
     for pair in bin.pairs(legacy_sorting=True):
         # calculate jaccard for the full sets. if this is 0, there are no shared domains
         # important not to cache here otherwise we are using the full range again later
@@ -37,34 +39,19 @@ def create_bin_network_edges(bin: BGCBin, network: BSNetwork, alignment_mode: st
             network.add_edge_pair(pair, jc=0.0, ai=0.0, dss=0.0, dist=1.0)
             continue
 
+        related_pairs.append(pair)
+
     # any pair that had a jaccard of 0 are put into the network and should not be
     # processed again
 
     # next step is to perform LCS. We need to multiprocess this and that is a bit of a
     # hassle
 
-    logging.info(
-        "Performing LCS for %d pairs", bin.num_pairs() - network.graph.number_of_edges()
+    logging.info("Performing LCS for %d pairs with Jaccard > 0", len(related_pairs))
+
+    pairs_need_expand, pairs_no_expand = get_lcs_multiprocess(
+        related_pairs, alignment_mode
     )
-
-    pairs_need_expand = []
-    pairs_no_expand = []
-    for pair in bin.pairs(legacy_sorting=True):
-        if pair in network:
-            continue
-
-        logging.debug("JC: %f", jaccard)
-
-        pair.comparable_region.find_lcs()
-        pair.comparable_region.log_comparable_region("LCS")
-
-        if legacy_needs_expand_pair(pair, alignment_mode):
-            pairs_need_expand.append(pair)
-            continue
-
-        # or it is not expanded at all and the entire region is used
-        reset_expansion(pair.comparable_region)
-        pairs_no_expand.append(pair)
 
     # those regions which need expansion are now expanded. Expansion is expensive and
     # is also done through multiprocessing
@@ -109,8 +96,8 @@ def create_bin_network_edges(bin: BGCBin, network: BSNetwork, alignment_mode: st
 
 
 def get_lcs_worker_method(
-    pair: BGCPair, extra_data=None
-) -> tuple[int, int, int, int, bool]:
+    task: tuple[int, BGCPair], extra_data=None
+) -> tuple[int, int, int, int, int, bool]:
     """Find LCS on pair and return the LCS coordinates
 
     Args:
@@ -118,18 +105,20 @@ def get_lcs_worker_method(
         extra_data (Any): Not used
 
     Returns:
-        tuple[int, int, int, int, bool]: a_start, a_stop, b_start, b_stop, reverse
+        tuple[int, int, int, int, bool]: pair_idx, a_start, a_stop, b_start, b_stop, reverse
     """
-    return legacy_find_cds_lcs(
+    pair_idx, pair = task
+    return (pair_idx,) + legacy_find_cds_lcs(
         pair.region_a.get_cds_with_domains(), pair.region_b.get_cds_with_domains()
     )
 
 
 def get_lcs_multiprocess(
-    bin: BGCBin,
-    network: BSNetwork,
+    pairs: list[BGCPair],
     alignment_mode: str,
     num_processes: int = cpu_count(),
+    batch_size=None,
+    callback: Optional[Callable] = None,
 ) -> tuple[list[BGCPair], list[BGCPair]]:
     """Find the LCS using multiple processes and return two lists of pairs.
 
@@ -143,60 +132,104 @@ def get_lcs_multiprocess(
         edge
         num_processes (int): how many processes to use for this step. Defaults to the
         number of cores on the machine
+        batch_size (int): size of the batches to send to the worker. IF set to none,
+        evenly divides the task set into number of batches equal to num_processes
+        callback (callable): A callback function that reports the number of pairs done
+        after a batch is returned from a worker
 
     Returns:
         tuple[list[BGCPair], list[BGCPair]]: List of pairs to be expanded and list of
         pairs which does not need expansion
     """
+    # lists to return
     need_expansion = []
     no_expansion = []
 
-    processes, connections = start_processes(
-        num_processes, get_lcs_worker_method, None, False
-    )
+    # get worker proceses
+    processes, connections = start_processes(num_processes, get_lcs_worker_method, None)
 
-    pair_generator = bin.pairs(network=network, legacy_sorting=True)
+    # get automatic batch size
+    if batch_size is None:
+        batch_size = ceil(len(pairs) / num_processes)
 
-    # TODO: I don't like this implementation at all. is there really no way to just use
-    # pickled pairs?
-    task_pair_source: dict[Connection, BGCPair] = {}
+    pair_idx = 0
+    tasks_done = 0
 
+    # main loop while connections are still alive
     while len(connections) > 0:
+        # worker connections that are sending something
         available_connections = wait(connections)
 
         for connection in available_connections:
             connection = cast(Connection, connection)
 
+            # get data. this is None on the first iteration
             output_data = connection.recv()
 
-            input_data = next(pair_generator, None)
+            # prepare to send data
+            if pair_idx < len(pairs):
+                # this is the batch of data to send
+                num_tasks_to_send = min(batch_size, len(pairs) - pair_idx)
 
+                input_data = []
+                for task_pair_idx in range(pair_idx, pair_idx + num_tasks_to_send):
+                    # the actual pair to send
+                    pair = pairs[task_pair_idx]
+                    input_data.append((task_pair_idx, pair))
+
+                # update the sent pair number
+                pair_idx += num_tasks_to_send
+            else:
+                input_data = None
+
+            # send the data. If there are no more tasks, this will be None
             connection.send(input_data)
 
+            # we can close the connection after sending None as the worker will termiante
             if input_data is None:
                 connection.close()
                 connections.remove(connection)
 
-            if output_data is not None:
-                a_start, a_stop, b_start, b_stop, reverse = output_data
+            # don't process any output if it is None (first iteration)
+            if output_data is None:
+                continue
 
-                original_pair = task_pair_source[connection]
+            num_tasks = len(output_data)
+            for output_result in output_data:
+                (
+                    result_pair_idx,
+                    a_start,
+                    a_stop,
+                    b_start,
+                    b_stop,
+                    reverse,
+                ) = output_result
+
+                # get the original pair
+                original_pair = pairs[result_pair_idx]
+
+                # set the comparable region
                 original_pair.comparable_region.a_start = a_start
                 original_pair.comparable_region.a_stop = a_stop
                 original_pair.comparable_region.b_start = b_start
                 original_pair.comparable_region.b_stop = b_stop
                 original_pair.comparable_region.reverse = reverse
 
+                # check if the comparable region needs expanding. This is relatively fast
+                # so it can be done in the main thread
                 if legacy_needs_expand_pair(original_pair, alignment_mode):
                     need_expansion.append(original_pair)
+
                     continue
 
-                # or it is not expanded at all and the entire region is used
                 reset_expansion(original_pair.comparable_region)
                 no_expansion.append(original_pair)
 
-            if input_data is not None:
-                task_pair_source[connection] = input_data
+            tasks_done += num_tasks
+
+            # report progress for those interested
+            if callback is not None:
+                callback(tasks_done)
 
     # just to make sure, kill any remaining processes
     for process in processes:
@@ -236,6 +269,7 @@ def calculate_scores_multiprocess(
     network: BSNetwork,
     num_processes: int = cpu_count(),
     batch_size=None,
+    callback: Optional[Callable] = None,
 ):
     """Calculate the scores for a list of pairs by using subprocesses
 
@@ -245,6 +279,8 @@ def calculate_scores_multiprocess(
         cpu_count (int): number of cores to use. Defaults to number of cpus available
         batch_size (int): size of the batches to send to the worker. IF set to none,
         evenly divides the task set into number of batches equal to num_processes
+        callback (callable): A callback function that reports the number of pairs done
+        after a batch is returned from a worker
     """
 
     # prepare processes
@@ -267,10 +303,9 @@ def calculate_scores_multiprocess(
             output_data = connection.recv()
 
             if pair_idx < len(pairs):
-                sent_task_num = min(batch_size, len(pairs) - pair_idx)
-                input_data = [sent_task_num]
-                input_data.extend(range(pair_idx, pair_idx + sent_task_num))
-                pair_idx += sent_task_num
+                num_tasks_to_send = min(batch_size, len(pairs) - pair_idx)
+                input_data = list(range(pair_idx, pair_idx + num_tasks_to_send))
+                pair_idx += num_tasks_to_send
             else:
                 input_data = None
 
@@ -280,16 +315,21 @@ def calculate_scores_multiprocess(
                 connection.close()
                 connections.remove(connection)
 
-            if output_data is not None:
-                recv_task_num = output_data[0]
-                for task_output in output_data[1:]:
-                    done_pair_idx, dist, jc, ai, dss = task_output
+            if output_data is None:
+                continue
 
-                    network.add_edge_pair(
-                        pairs[done_pair_idx], dist=dist, jc=jc, ai=ai, dss=dss
-                    )
+            num_received_tasks = len(output_data)
+            for task_output in output_data:
+                done_pair_idx, dist, jc, ai, dss = task_output
 
-                tasks_done += recv_task_num
+                network.add_edge_pair(
+                    pairs[done_pair_idx], dist=dist, jc=jc, ai=ai, dss=dss
+                )
+
+            tasks_done += num_received_tasks
+
+            if callback is not None:
+                callback(tasks_done)
 
     # just to make sure, kill any remaining processes
     for process in processes:

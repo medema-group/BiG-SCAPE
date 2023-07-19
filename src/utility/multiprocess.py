@@ -85,12 +85,7 @@ def worker_method(
             return
 
         if use_batches:
-            num_tasks = task_data[0]
-            output = [num_tasks]
-
-            for task in task_data[1:]:
-                task_output = worker_task_method(task, extra_data)
-                output.append(task_output)
+            output = [worker_task_method(task, extra_data) for task in task_data]
 
             worker_connection.send(output)
             continue
