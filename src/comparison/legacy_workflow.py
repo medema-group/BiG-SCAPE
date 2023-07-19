@@ -61,6 +61,8 @@ def create_bin_network_edges(bin: BGCBin, network: BSNetwork, alignment_mode: st
     for pair in pairs_need_expand:
         expand_glocal(pair.comparable_region)
 
+    logging.info("Checking expansion")
+    for pair in pairs_need_expand:
         # if after expansion the region is still too small or does not contain any
         # biosynthetic genes, we reset back to the full region and add this pair
         # to the list of pairs that were not expanded
