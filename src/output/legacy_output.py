@@ -8,7 +8,7 @@ from pathlib import Path
 from typing import Any
 
 # from other modules
-from src.comparison import legacy_get_class
+from src.comparison import BGCBin, legacy_get_class
 from src.genbank import GBK, CDS, SOURCE_TYPE
 from src.network import BSNetwork
 
@@ -52,13 +52,13 @@ def prepare_cutoff_folder(output_dir: Path, label: str, cutoff: float) -> None:
     shutil.copy(str(overview_template), str(cutoff_path / "overview.html"))
 
 
-def prepare_bin_folder(output_dir, label: str, cutoff: float, bin: str) -> None:
+def prepare_bin_folder(output_dir, label: str, cutoff: float, bin: BGCBin) -> None:
     # networks subfolders
     output_network_root = output_dir / "html_content/networks"
 
     cutoff_path = output_network_root / f"{label}_c{cutoff}"
 
-    bin_path = cutoff_path / bin
+    bin_path = cutoff_path / bin.label
 
     bin_path.mkdir(exist_ok=True)
 
@@ -119,8 +119,8 @@ def generate_pfams_js(output_dir: Path, pfam_info: list[tuple[str, str, str]]) -
 def generate_run_data_js(
     output_dir: Path,
     label: str,
-    gbks: list[GBK],
     cutoff: float,
+    gbks: list[GBK],
 ):
     """Generate the run_data.js file needed for the html output
 
@@ -182,7 +182,6 @@ def generate_run_data_js(
     members: dict[GBK, int] = {}
     genomes: dict[str, int] = {}
     class_idx: dict[str, int] = {}
-    families_members: dict[int, list[int]] = {}
 
     for idx, gbk in enumerate(gbks):
         if gbk.region is None:
@@ -221,20 +220,12 @@ def generate_run_data_js(
         region_id = str(gbk.path.name)
 
         # add to list of bgc
-        region_bgc_id = len(run_data["input"]["bgc"])
         run_data["input"]["bgc"].append(
             {"acc": region_acc_idx, "class": region_class_idx, "id": region_id}
         )
 
         if cutoff not in gbk.region._families:
             continue
-
-        family_id = gbk.region._families[cutoff]
-
-        if family_id not in families_members:
-            families_members[family_id] = []
-
-        families_members[family_id].append(region_bgc_id)
 
     # now we have accession list, bgc and families. we can ignore accession_newick for
     # now. construct the classes as the last run_data.input fields
@@ -243,27 +234,48 @@ def generate_run_data_js(
         {"label": classkey} for classkey in list(class_idx.keys())
     ]
 
-    # finally add families
-    # TODO: bins
+    output_network_root = output_dir / Path("html_content/networks")
+    cutoff_path = output_network_root / Path(f"{label}_c{cutoff}")
+    run_data_js_path = cutoff_path / Path("run_data.js")
+
+    with open(run_data_js_path, "w") as run_data_js:
+        run_data_js.write(
+            "var run_data={};\n".format(
+                json.dumps(run_data, indent=4, separators=(",", ":"), sort_keys=True)
+            )
+        )
+        run_data_js.write("dataLoaded();\n")
+
+
+def add_run_data_network(
+    output_dir: Path,
+    label: str,
+    cutoff: float,
+    bin: BGCBin,
+    families_members: dict[int, list[int]],
+) -> None:
+    output_network_root = output_dir / Path("html_content/networks")
+    cutoff_path = output_network_root / Path(f"{label}_c{cutoff}")
+    run_data_js_path = cutoff_path / Path("run_data.js")
+
+    run_data = read_run_data_js(run_data_js_path)
+
     run_data["networks"].append(
         {
-            "label": "mix",
+            "label": bin.label,
             "families": [],
             "families_similarity": [],
         }
     )
+
     for family_idx, family_members in families_members.items():
-        run_data["networks"][0]["families"].append(
+        run_data["networks"][-1]["families"].append(
             {
                 "label": f"FAM_{family_idx:0>5}",
                 "members": family_members,
                 "mibig": [],
             }
         )
-
-    output_network_root = output_dir / Path("html_content/networks")
-    cutoff_path = output_network_root / Path(f"{label}_c{cutoff}")
-    run_data_js_path = cutoff_path / Path("run_data.js")
 
     with open(run_data_js_path, "w") as run_data_js:
         run_data_js.write(
@@ -301,18 +313,48 @@ def read_bigscape_results_js(bigscape_results_js_path: Path) -> list[Any]:
     return json.loads("".join(lines))
 
 
-def generate_bigscape_results_js(
-    output_dir: Path, label: str, cutoff: float, bins: list[str]
-) -> None:
+def read_run_data_js(run_data_js_path: Path) -> dict[str, Any]:
+    """Reads an existing run_data.js into a dictionary by stripping the
+    JavaScript parts and decoding the JSON content
+
+    Args:
+        run_data_js_path (Path): path to the existing run_data.js
+
+    Returns:
+        dict[Any]: the run_data.js content as an object
+    """
+
+    lines = []
+    with open(run_data_js_path, mode="r", encoding="utf-8") as bigscape_results:
+        # first line has the "var bigscape_Results = " bit we want to get rid of
+        first_line = bigscape_results.readline()
+        bracket_idx = first_line.index("{")
+        remove_left = bracket_idx
+        lines.append(first_line[remove_left:])
+
+        lines.extend(bigscape_results.readlines())
+
+    # last line is the dataLoaded(); statement. remove it
+    lines.pop()
+
+    # last line after that has a semicolon at the end. remove the semicolon
+    lines[-1] = lines[-1][:1]
+
+    return json.loads("".join(lines))
+
+
+def generate_bigscape_results_js(output_dir: Path, label: str, cutoff: float) -> None:
     """Generates the bigscape_results.js found under output/html_content/js
 
     This function will open an existing file and append a new result, just like v1
+    If a result with a label already exists, the networks in that run are cleared.
+    Networks are appended to later when each bin is generated
 
     structure of bigscape_results.js:
 
 
     {
-        "networks": [
+        "networks": [ // per bin
             {
                 "css": string, (e.g. PKSother. mix uses 'Others'),
                 "label": string, (appears at the top of the overview as a tab),
@@ -325,7 +367,6 @@ def generate_bigscape_results_js(
         output_dir (Path): main output directory
         label (str): label of the run
         cutoff (float): cutoff to generate bigscape_results for
-        bins (list[str]): bins to generate bigscape_results for
     """
 
     bigscape_results_js_path = output_dir / "html_content/js/bigscape_results.js"
@@ -335,35 +376,66 @@ def generate_bigscape_results_js(
     else:
         bigscape_results = []
 
-    # check if run is already there. if so we can assume its the same run and we won't
-    # do anything. this is really only relevant for testing, as runs are usually
-    # generated with a timestamp as a label
+    # check if run is already there. if so we can re use it
     cutoff_label = f"{label}_c{cutoff:.1f}"
-    for bigscape_result in bigscape_results:
-        if bigscape_result["label"] == cutoff_label:
-            return
+    bigscape_result = None
+    for existing_result in bigscape_results:
+        if existing_result["label"] == cutoff_label:
+            bigscape_result = existing_result
+            # we will reset the networks list in case it has changed
+            bigscape_result["networks"] = []
+            break
 
-    result_networks = []
-    for network in bins:
-        if network == "mix":
-            result_networks.append(
-                {
-                    "css": "Others",
-                    "label": "Mixed",
-                    "name": "mix",
-                }
+    if bigscape_result is None:
+        bigscape_results.append({"label": cutoff_label, "networks": []})
+
+        bigscape_result = bigscape_results[-1]
+
+    with open(bigscape_results_js_path, "w") as run_data_js:
+        run_data_js.write(
+            "var bigscape_results={};\n".format(
+                json.dumps(
+                    bigscape_results, indent=4, separators=(",", ":"), sort_keys=True
+                )
             )
-            continue
-
-        result_networks.append(
-            {
-                "css": network,
-                "label": network,
-                "name": network,
-            }
         )
 
-    bigscape_results.append({"label": cutoff_label, "networks": result_networks})
+
+def add_bigscape_results_js_network(
+    output_dir: Path, label: str, cutoff: float, bin: BGCBin
+) -> None:
+    bigscape_results_js_path = output_dir / "html_content/js/bigscape_results.js"
+
+    if not bigscape_results_js_path.exists():
+        raise FileNotFoundError("bigscape_results.js not found when it should exist!")
+
+    bigscape_results = read_bigscape_results_js(bigscape_results_js_path)
+
+    # check if run is already there. if so we can re use it
+    cutoff_label = f"{label}_c{cutoff:.1f}"
+    bigscape_result: dict[str, Any] = {"label": cutoff_label, "networks": []}
+
+    for existing_result in bigscape_results:
+        if existing_result["label"] == cutoff_label:
+            bigscape_result = existing_result
+            break
+
+    # the following is a bit confusing because the mix class uses some different values
+    css = bin.label
+    label = bin.label
+
+    # one exception to the above values is the mix bin, which uses others as a CSS class
+    if bin.label == "mix":
+        css = "Others"
+        label = "Mixed"
+
+    bigscape_result["networks"].append(
+        {
+            "css": css,
+            "label": label,
+            "name": bin.label,
+        }
+    )
 
     with open(bigscape_results_js_path, "w") as run_data_js:
         run_data_js.write(
@@ -407,9 +479,8 @@ def generate_bs_data_js_orfs(gbk: GBK) -> Any:
 def generate_bs_data_js(
     output_dir: Path,
     label: str,
-    gbks: list[GBK],
     cutoff: float,
-    bin: str,
+    bin: BGCBin,
 ):
     """Generates the bs_data.js file located at
     output/html_content/networks/[label]/[bin]
@@ -450,12 +521,16 @@ def generate_bs_data_js(
     """
     output_network_root = output_dir / Path("html_content/networks")
     cutoff_path = output_network_root / Path(f"{label}_c{cutoff}")
-    bin_path = cutoff_path / bin
+    bin_path = cutoff_path / bin.label
 
     bs_data = []
 
     # go through all gbks. no need to go through the network
-    for gbk in gbks:
+    for record in bin.source_records:
+        if record.parent_gbk is None:
+            raise AttributeError("Record parent GBK is not set!")
+
+        gbk = record.parent_gbk
         organism = "Unknown"
         if "organism" in gbk.metadata:
             organism = gbk.metadata["organism"]
@@ -487,16 +562,16 @@ def generate_bs_data_js(
 
 
 def generate_bs_networks_js_sim_matrix(
-    gbks: list[GBK], network: BSNetwork, cutoff: float
+    cutoff: float,
+    bin: BGCBin,
+    network: BSNetwork,
 ) -> list[list[float]]:
     sim_matrix = []
 
-    for idx, gbk in enumerate(gbks):
+    for idx, record_a in enumerate(bin.source_records):
         region_sim = []
-        region_a = gbk.region
-        for other_idx in range(idx):
-            region_b = gbks[other_idx].region
-            dist = network.graph.adj[region_a][region_b]["dist"]
+        for record_b in bin.source_records[:idx]:
+            dist = network.graph.adj[record_a][record_b]["dist"]
             if dist > cutoff:
                 dist = 1.0
             sim = round(1 - dist, 4)
@@ -507,26 +582,30 @@ def generate_bs_networks_js_sim_matrix(
     return sim_matrix
 
 
-def generate_bs_networks_families(
-    gbks: list[GBK], cutoff: float
-) -> list[dict[str, Any]]:
+def generate_bs_families_members(
+    cutoff: float,
+    bin: BGCBin,
+) -> dict[int, list[int]]:
     # TODO: repeated code can be merged
-    networks_families: list[dict[str, Any]] = []
     families_members: dict[int, list[int]] = {}
-    for idx, gbk in enumerate(gbks):
-        if gbk.region is None:
-            raise ValueError("Missing region on GBK!")
-
-        if cutoff not in gbk.region._families:
+    for idx, record in enumerate(bin.source_records):
+        if cutoff not in record._families:
             continue
 
-        family_id = gbk.region._families[cutoff]
+        family_id = record._families[cutoff]
 
         if family_id not in families_members:
             families_members[family_id] = []
 
         families_members[family_id].append(idx)
 
+    return families_members
+
+
+def generate_bs_networks_families(
+    families_members: dict[int, list[int]]
+) -> list[dict[str, Any]]:
+    networks_families: list[dict[str, Any]] = []
     for family_idx, family_members in families_members.items():
         networks_families.append(
             {
@@ -540,10 +619,10 @@ def generate_bs_networks_families(
 def generate_bs_networks_js(
     output_dir: Path,
     label: str,
-    network: BSNetwork,
-    gbks: list[GBK],
     cutoff: float,
-    bin: str,
+    bin: BGCBin,
+    network: BSNetwork,
+    bs_families: list[dict[str, Any]],
 ):
     """Generates the bs_networks.js file located at
     output/html_content/networks/[label]/[bin]
@@ -569,13 +648,12 @@ def generate_bs_networks_js(
     """
     output_network_root = output_dir / Path("html_content/networks")
     cutoff_path = output_network_root / Path(f"{label}_c{cutoff}")
-    bin_path = cutoff_path / bin
+    bin_path = cutoff_path / bin.label
 
     bs_networks_js_path = bin_path / "bs_networks.js"
 
     # TODO: replace with functions to generate objects
-    bs_similarity: list[Any] = generate_bs_networks_js_sim_matrix(gbks, network, cutoff)
-    bs_families: list[Any] = generate_bs_networks_families(gbks, cutoff)
+    bs_similarity: list[Any] = generate_bs_networks_js_sim_matrix(cutoff, bin, network)
     bs_families_alignment: list[Any] = []
     bs_similarity_families: list[Any] = []
 
@@ -633,27 +711,33 @@ def legacy_prepare_output(output_dir: Path, pfam_info) -> None:
     generate_pfams_js(output_dir, pfam_info)
 
 
-def legacy_generate_output(
+def legacy_prepare_cutoff_output(
+    output_dir: Path, label: str, cutoff: float, gbks: list[GBK]
+) -> None:
+    prepare_cutoff_folder(output_dir, label, cutoff)
+
+    generate_bigscape_results_js(output_dir, label, cutoff)
+
+    generate_run_data_js(output_dir, label, cutoff, gbks)
+
+
+def legacy_prepare_bin_output(
+    output_dir: Path, label: str, cutoff: float, bin: BGCBin
+) -> None:
+    prepare_bin_folder(output_dir, label, cutoff, bin)
+    generate_bs_data_js(output_dir, label, cutoff, bin)
+    add_bigscape_results_js_network(output_dir, label, cutoff, bin)
+
+
+def legacy_generate_bin_output(
     output_dir: Path,
     label: str,
-    cutoffs: list[float],
-    bins: list[str],
+    cutoff: float,
+    bin: BGCBin,
     network: BSNetwork,
-    gbks: list[GBK],
 ) -> None:
-    for cutoff in cutoffs:
-        prepare_cutoff_folder(output_dir, label, cutoff)
+    families_members = generate_bs_families_members(cutoff, bin)
+    networks_families = generate_bs_networks_families(families_members)
 
-        generate_bigscape_results_js(
-            output_dir,
-            label,
-            cutoff,
-            bins,
-        )
-        generate_run_data_js(output_dir, label, gbks, cutoff)
-
-        for bin in bins:
-            prepare_bin_folder(output_dir, label, cutoff, bin)
-
-            generate_bs_data_js(output_dir, label, gbks, cutoff, bin)
-            generate_bs_networks_js(output_dir, label, network, gbks, cutoff, bin)
+    add_run_data_network(output_dir, label, cutoff, bin, families_members)
+    generate_bs_networks_js(output_dir, label, cutoff, bin, network, networks_families)

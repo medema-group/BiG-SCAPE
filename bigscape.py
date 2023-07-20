@@ -14,7 +14,12 @@ from src.parameters import RunParameters, parse_cmd
 from src.comparison import generate_mix, legacy_bin_generator, create_bin_network_edges
 from src.diagnostics import Profiler
 from src.network import BSNetwork
-from src.output import legacy_prepare_output, legacy_generate_output
+from src.output import (
+    legacy_prepare_output,
+    legacy_prepare_cutoff_output,
+    legacy_prepare_bin_output,
+    legacy_generate_bin_output,
+)
 
 
 if __name__ == "__main__":
@@ -154,12 +159,17 @@ if __name__ == "__main__":
     DB.save_to_disk(run.output.db_path)
 
     # prepare output files
-    legacy_prepare_output(run.output.output_dir, run.label)
+    legacy_prepare_output(run.output.output_dir, pfam_info)
+
+    # work per cutoff
+    # TODO: currently only 0.3
+    legacy_prepare_cutoff_output(run.output.output_dir, run.label, 0.3, gbks)
 
     # networking - mix
 
     if run.binning.mix:
         logging.info("Generating mix bin")
+
         mix_network = BSNetwork()
         all_regions: list[BGCRecord] = []
         for gbk in gbks:
@@ -169,6 +179,8 @@ if __name__ == "__main__":
 
         mix_bin = generate_mix(all_regions)
 
+        legacy_prepare_bin_output(run.output.output_dir, run.label, 0.3, mix_bin)
+
         logging.info(mix_bin)
 
         create_bin_network_edges(mix_bin, mix_network, run.comparison.alignment_mode)
@@ -177,12 +189,12 @@ if __name__ == "__main__":
 
         # Output
 
+        legacy_generate_bin_output(
+            run.output.output_dir, "test", 0.3, mix_bin, mix_network
+        )
+
         mix_network.write_graphml(run.output.output_dir / Path("network_mix.graphml"))
         mix_network.write_edgelist_tsv(run.output.output_dir / Path("network_mix.tsv"))
-
-        legacy_generate_output(
-            run.output.output_dir, "test", [0.3], ["mix"], mix_network, gbks
-        )
 
     # networking - bins
 
@@ -196,6 +208,8 @@ if __name__ == "__main__":
             for record in bin.source_records:
                 bin_network.add_node(record)
 
+            legacy_prepare_bin_output(run.output.output_dir, run.label, 0.3, bin)
+
             logging.info(bin)
 
             create_bin_network_edges(bin, bin_network, run.comparison.alignment_mode)
@@ -203,6 +217,10 @@ if __name__ == "__main__":
             bin_network.generate_families_cutoff("dist", 0.3)
 
             # Output
+
+            legacy_generate_bin_output(
+                run.output.output_dir, "test", 0.3, bin, bin_network
+            )
 
             bin_graphml_filename = f"network_{bin.label}.graphml"
             bin_network.write_graphml(
