@@ -28,14 +28,14 @@ if __name__ == "__main__":
     # parsing needs to come first because we need it in setting up the logging
     run: RunParameters = parse_cmd(sys.argv[1:])
 
+    start_time = run.start()
+
     # only now we can use logging.info etc to log stuff otherwise things get weird
     # initializing the logger and logger file also happens here
     run.validate()
 
     if run.legacy:
         logging.info("Using legacy mode")
-
-    start_time = datetime.now()
 
     # start profiler
     if run.diagnostics.profiling:

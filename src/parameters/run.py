@@ -4,6 +4,7 @@ cmd_parser
 
 
 # from python
+from datetime import datetime
 from argparse import Namespace
 from multiprocessing import cpu_count
 
@@ -38,7 +39,7 @@ class RunParameters(Namespace):
     """
 
     def __init__(self):
-        self.label: str = ""
+        self.label: str = "BiG-SCAPE"
         self.cores: int = cpu_count()
         self.legacy: bool = False
         self.input = InputParameters()
@@ -48,6 +49,19 @@ class RunParameters(Namespace):
         self.networking = NetworkingParameters()
         self.diagnostics = DiagnosticsParameters()
         self.output = OutputParameters()
+
+    def start(self) -> datetime:
+        """Start this run, set the label and return a datetime of the start time
+
+        Returns:
+            datetime: datetime object corresponding to the start of the run
+        """
+        start_time: datetime = datetime.now()
+
+        timestamp = start_time.strftime("%d-%m-%Y %H:%M:%S.%f")
+        self.label = f"{self.label}_{timestamp}"
+
+        return start_time
 
     def validate(self):
         """Executes validation on everything, setting default values and returning
