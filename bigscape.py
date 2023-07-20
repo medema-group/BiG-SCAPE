@@ -190,7 +190,7 @@ if __name__ == "__main__":
         # Output
 
         legacy_generate_bin_output(
-            run.output.output_dir, "test", 0.3, mix_bin, mix_network
+            run.output.output_dir, run.label, 0.3, mix_bin, mix_network
         )
 
         mix_network.write_graphml(run.output.output_dir / Path("network_mix.graphml"))
@@ -219,7 +219,7 @@ if __name__ == "__main__":
             # Output
 
             legacy_generate_bin_output(
-                run.output.output_dir, "test", 0.3, bin, bin_network
+                run.output.output_dir, run.label, 0.3, bin, bin_network
             )
 
             bin_graphml_filename = f"network_{bin.label}.graphml"
