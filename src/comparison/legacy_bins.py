@@ -25,6 +25,16 @@ LEGACY_BINS = {
 
 
 def legacy_bin_generator(gbks: list[GBK]) -> Iterator[BGCBin]:
+    """Generate bins for each class as they existed in the BiG-SCAPE 1.0 implementation
+
+    Args:
+        gbks (list[GBK]): List of GBKs to generate bins for
+
+    Yields:
+        Iterator[BGCBin]: Generator that yields bins. Order is not guarenteed to be
+        consistent
+        TODO: should it be consistent?
+    """
     # generate index
     class_idx: dict[str, list[BGCRecord]] = {
         class_name: [] for class_name in LEGACY_BINS.keys() if class_name != "mix"
@@ -50,7 +60,14 @@ def legacy_bin_generator(gbks: list[GBK]) -> Iterator[BGCBin]:
 # one of the few direct copy-and-pastes!
 def legacy_get_class(product):
     """Sort BGC by its type. Uses AntiSMASH annotations
-    (see https://docs.antismash.secondarymetabolites.org/glossary/#cluster-types)"""
+    (see https://docs.antismash.secondarymetabolites.org/glossary/#cluster-types)
+
+    Args:
+        product (str): product type
+
+    Returns:
+        str: product class
+    """
 
     # TODO: according with current (2021-05) antiSMASH rules:
     # prodigiosin and PpyS-KS -> PKS

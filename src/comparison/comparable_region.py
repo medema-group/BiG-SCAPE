@@ -304,6 +304,21 @@ class ComparableRegion:
         end_inclusive=False,
         reverse=False,
     ) -> bool:
+        """Return true if a range of cds within this record contains a gene that is
+        marked as biosynthetic
+
+        Args:
+            record (BGCRecord): BGC record object
+            cds_start (int): which cds index to start searching in
+            cds_stop (int): Which cds index to stop searching
+            end_inclusive (bool, optional): Whether to include the cds at cds_stop in
+            the search. Defaults to False.
+            reverse (bool, optional): Whether to reverse the list before applying
+            cds_start and cds_stop. Defaults to False.
+
+        Returns:
+            bool: True if the given range contains a biosynthetic gene
+        """
         stop = cds_stop
         if end_inclusive:
             stop += 1
