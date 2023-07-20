@@ -129,8 +129,17 @@ def generate_mix(bgc_list: list[BGCRecord]) -> BGCBin:
     return mix_bin
 
 
-def sort_name_key(record: BGCRecord):
+def sort_name_key(record: BGCRecord) -> str:
+    """Return the parent gbk file name without extension, or None if no parent gbk is
+    assigned
+
+    Args:
+        record (BGCRecord): A BGCrecord
+
+    Returns:
+        str: the parent gbk file name without extension
+    """
     if record.parent_gbk is None:
-        return None
+        return ""
 
     return record.parent_gbk.path.name[:-4]

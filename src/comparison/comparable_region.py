@@ -27,12 +27,15 @@ class ComparableRegion:
     """Class describing the comparable region between a pair of BGCs
 
     Properties:
+        pair: BGCPair
+        a_start: int
         a_start: int
         b_start: int
-        a_len: int
-        b_len: int
+        b_stop: int
         reverse: bool
-        domain_strings: list[str]
+        domain_lists: Optional[tuple[list[HSP], list[HSP]]]
+        domain_sets: Optional[tuple[set[HSP], set[HSP]]]
+        domain_dicts: Optional[tuple[dict[HSP, list[int]], dict[HSP, list[int]]]]
     """
 
     def __init__(
@@ -66,11 +69,13 @@ class ComparableRegion:
         two BGCs
 
         This method caches the result and re-uses the result on further calls unless
-        regenerate is set to True
+        regenerate is set to True. This is done to minimize the computational cost of
+        intializing a set from a list at the cost of memory.
 
         Args:
             regenerate (bool): whether to replace the cached result set with a newly
             generated one
+            cache (bool): whether to cache the result of this operation
 
         Returns:
             tuple[set[HSP], set[HSP]]
@@ -96,7 +101,8 @@ class ComparableRegion:
         comparable region of two BGCs
 
         This method caches the result and re-uses the result on further calls unless
-        regenerate is set to True or Cache is set to false.
+        regenerate is set to True. This is done to minimize the computational cost of
+        intializing a set from a list at the cost of memory.
 
         If reverse is set to none, uses the reverse propoerty on comparable region
 
@@ -104,12 +110,11 @@ class ComparableRegion:
             regenerate (bool): whether to replace the cached result set with a newly
             generated one,
             cache (bool): whether to cache the result for faster retrieval
-            reverse (bool, optional): Whether to return a reversed list for region B. Defaults to
-            None.
+            reverse (bool, optional): Whether to return a reversed list for region B.
+            Defaults to None.
 
         Returns:
             tuple[list[HSP], list[HSP]]
-
         """
 
         if regenerate or self.domain_lists is None:
