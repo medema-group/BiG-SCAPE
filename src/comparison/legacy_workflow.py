@@ -13,6 +13,8 @@ from src.network import BSNetwork
 from src.utility import start_processes
 
 # from this module
+from .binning import BGCBin, BGCPair
+from .legacy_bins import LEGACY_BINS
 from .legacy_extend import (
     legacy_needs_expand_pair,
     expand_glocal,
@@ -20,7 +22,6 @@ from .legacy_extend import (
     reset_expansion,
 )
 from .legacy_lcs import legacy_find_cds_lcs
-from .binning import BGCBin, BGCPair
 
 
 def create_bin_network_edges(bin: BGCBin, network: BSNetwork, alignment_mode: str):
@@ -42,59 +43,62 @@ def create_bin_network_edges(bin: BGCBin, network: BSNetwork, alignment_mode: st
         related_pairs.append(pair)
 
     # any pair that had a jaccard of 0 are put into the network and should not be
-    # processed again
+    # processed again. If there are no more pairs left, leave the workflow
+    if len(related_pairs) == 0:
+        return
 
     # next step is to perform LCS. We need to multiprocess this and that is a bit of a
     # hassle
 
     logging.info("Performing LCS for %d pairs with Jaccard > 0", len(related_pairs))
-
     pairs_need_expand, pairs_no_expand = get_lcs_multiprocess(
         related_pairs, alignment_mode
     )
 
-    # those regions which need expansion are now expanded. Expansion is expensive and
-    # is also done through multiprocessing
-    logging.info("Expanding regions for %d pairs", len(pairs_need_expand))
+    if len(pairs_need_expand) > 0:
+        # those regions which need expansion are now expanded. Expansion is expensive and
+        # is also done through multiprocessing
+        logging.info("Expanding regions for %d pairs", len(pairs_need_expand))
 
-    expanded_pairs = []
-    for pair in pairs_need_expand:
-        expand_glocal(pair.comparable_region)
+        expanded_pairs = []
+        for pair in pairs_need_expand:
+            expand_glocal(pair.comparable_region)
 
-    logging.info("Checking expansion")
-    for pair in pairs_need_expand:
-        # if after expansion the region is still too small or does not contain any
-        # biosynthetic genes, we reset back to the full region and add this pair
-        # to the list of pairs that were not expanded
-        if not check_expand(pair.comparable_region):
-            reset_expansion(pair.comparable_region)
-            pairs_no_expand.append(pair)
-            continue
+        logging.info("Checking expansion")
+        for pair in pairs_need_expand:
+            # if after expansion the region is still too small or does not contain any
+            # biosynthetic genes, we reset back to the full region and add this pair
+            # to the list of pairs that were not expanded
+            if not check_expand(pair.comparable_region):
+                reset_expansion(pair.comparable_region)
+                pairs_no_expand.append(pair)
+                continue
 
-        pair.comparable_region.log_comparable_region("GLOCAL")
+            pair.comparable_region.log_comparable_region("GLOCAL")
 
-        jaccard = calc_jaccard_pair(pair)
+            jaccard = calc_jaccard_pair(pair)
 
-        # any pair with a jaccard of 0 after expansion is also kicked out
-        if jaccard == 0.0:
-            network.add_edge_pair(pair, jc=0.0, ai=0.0, dss=0.0, dist=1.0)
-            continue
+            # any pair with a jaccard of 0 after expansion is also kicked out
+            if jaccard == 0.0:
+                network.add_edge_pair(pair, jc=0.0, ai=0.0, dss=0.0, dist=1.0)
+                continue
 
-        expanded_pairs.append(pair)
+            expanded_pairs.append(pair)
 
-    # from here on the only things left to be done
+    # from here on the only things left to be done are distance calculation
+    if len(pairs_no_expand) > 0:
+        logging.info(
+            "Calculating score for %d pairs that were reset or did not need expansion",
+            len(pairs_no_expand),
+        )
+        calculate_scores_multiprocess(bin, pairs_no_expand, network)
 
-    logging.info(
-        "Calculating score for %d pairs that were reset or did not need expansion",
-        len(pairs_no_expand),
-    )
-    calculate_scores_multiprocess(pairs_no_expand, network)
-
-    logging.info(
-        "Calculating score for %d pairs that were expanded",
-        len(expanded_pairs),
-    )
-    calculate_scores_multiprocess(expanded_pairs, network)
+    if len(expanded_pairs) > 0:
+        logging.info(
+            "Calculating score for %d pairs that were expanded",
+            len(expanded_pairs),
+        )
+        calculate_scores_multiprocess(bin, expanded_pairs, network)
 
 
 def get_lcs_worker_method(
@@ -241,32 +245,32 @@ def get_lcs_multiprocess(
 
 
 def calculate_scores_worker_method(
-    pair_idx: int, pairs: list[BGCPair]
-) -> tuple[int, float, float, float, float]:
-    """Calculate and return the scores and distance for a pair
+    task: tuple[int, BGCPair], anchor_boost: float
+) -> tuple[int, float, float, float]:
+    """Calculate and return the scores for a pair
 
     Args:
-        pair_idx: The index in the original list of this pair.
-        pair (BGCPair): Pair of BGCs to calculate scores for
+        task: The task, in this case in the form of a tuple where the first item is a
+        pair index relating to the original pair, and the second item is a copy of the
+        pair object
+        anchor_boost (float): anchor_boost parameter for the dss calculation
 
     Returns:
-        tuple[float, float, float, float]: distance, jaccard, AI, DSS
+        tuple[int, float, float, float]: index of pair, jaccard, AI, DSS
     """
-    pair = pairs[pair_idx]
+    pair_idx, pair = task
 
     jaccard = calc_jaccard_pair(pair)
 
     adjacency = calc_ai_pair(pair)
     # mix anchor boost = 2.0
-    dss = calc_dss_pair_legacy(pair, anchor_boost=2.0)
+    dss = calc_dss_pair_legacy(pair, anchor_boost=anchor_boost)
 
-    # mix
-    distance = 1 - (0.2 * jaccard) - (0.05 * adjacency) - (0.75 * dss)
-
-    return pair_idx, distance, jaccard, adjacency, dss
+    return pair_idx, jaccard, adjacency, dss
 
 
 def calculate_scores_multiprocess(
+    bin: BGCBin,
     pairs: list[BGCPair],
     network: BSNetwork,
     num_processes: int = cpu_count(),
@@ -285,13 +289,20 @@ def calculate_scores_multiprocess(
         after a batch is returned from a worker
     """
 
+    bin_weights = LEGACY_BINS[bin.label]["weights"]
+    jc_weight, ai_weight, dss_weight, anchor_boost = bin_weights
+
     # prepare processes
+    # if we only have two pairs to process, we only need two processes. otherwise we
+    # will use all of them
+    needed_processes = min(len(pairs), num_processes)
+
     processes, connections = start_processes(
-        num_processes, calculate_scores_worker_method, pairs
+        needed_processes, calculate_scores_worker_method, anchor_boost
     )
 
     if batch_size is None:
-        batch_size = ceil(len(pairs) / num_processes)
+        batch_size = ceil(len(pairs) / needed_processes)
 
     tasks_done = 0
     pair_idx = 0
@@ -304,9 +315,18 @@ def calculate_scores_multiprocess(
 
             output_data = connection.recv()
 
+            # prepare to send data
             if pair_idx < len(pairs):
+                # this is the batch of data to send
                 num_tasks_to_send = min(batch_size, len(pairs) - pair_idx)
-                input_data = list(range(pair_idx, pair_idx + num_tasks_to_send))
+
+                input_data = []
+                for task_pair_idx in range(pair_idx, pair_idx + num_tasks_to_send):
+                    # the actual pair to send
+                    pair = pairs[task_pair_idx]
+                    input_data.append((task_pair_idx, pair))
+
+                # update the sent pair number
                 pair_idx += num_tasks_to_send
             else:
                 input_data = None
@@ -322,10 +342,13 @@ def calculate_scores_multiprocess(
 
             num_received_tasks = len(output_data)
             for task_output in output_data:
-                done_pair_idx, dist, jc, ai, dss = task_output
+                done_pair_idx, jc, ai, dss = task_output
+
+                similarity = jc * jc_weight + ai * ai_weight + dss * dss_weight
+                distance = 1 - similarity
 
                 network.add_edge_pair(
-                    pairs[done_pair_idx], dist=dist, jc=jc, ai=ai, dss=dss
+                    pairs[done_pair_idx], dist=distance, jc=jc, ai=ai, dss=dss
                 )
 
             tasks_done += num_received_tasks

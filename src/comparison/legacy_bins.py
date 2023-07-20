@@ -1,5 +1,50 @@
 """Contains code to generate legacy bins based on product."""
 
+# from python
+from typing import Iterator
+
+# from other modules
+from src.genbank import GBK, BGCRecord
+
+# from this module
+from .binning import BGCBin
+
+
+LEGACY_BINS = {
+    "PKSI": {"weights": (0.22, 0.76, 0.02, 1.0)},
+    "PKSother": {"weights": (0.0, 0.32, 0.68, 4.0)},
+    "NRPS": {"weights": (0.0, 1.0, 0.0, 4.0)},
+    "RiPPs": {"weights": (0.28, 0.71, 0.01, 1.0)},
+    "Saccharides": {"weights": (0.0, 0.0, 1.0, 1.0)},
+    "Terpene": {"weights": (0.2, 0.75, 0.05, 2.0)},
+    "PKS-NRP_Hybrids": {"weights": (0.0, 0.78, 0.22, 1.0)},
+    "Others": {"weights": (0.01, 0.97, 0.02, 4.0)},
+    "mix": {"weights": (0.2, 0.75, 0.05, 2.0)},
+}
+
+
+def legacy_bin_generator(gbks: list[GBK]) -> Iterator[BGCBin]:
+    # generate index
+    class_idx: dict[str, list[BGCRecord]] = {
+        class_name: [] for class_name in LEGACY_BINS.keys() if class_name != "mix"
+    }
+
+    for gbk in gbks:
+        if gbk.region is None:
+            continue
+
+        if gbk.region.product is None:
+            continue
+
+        region_class = legacy_get_class(gbk.region.product)
+
+        class_idx[region_class].append(gbk.region)
+
+    for class_name, regions in class_idx.items():
+        bin = BGCBin(class_name)
+        bin.add_bgcs(regions)
+        yield bin
+
 
 # one of the few direct copy-and-pastes!
 def legacy_get_class(product):

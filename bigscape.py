@@ -11,7 +11,7 @@ from src.file_input import load_dataset_folder
 from src.genbank import SOURCE_TYPE, BGCRecord, CDS
 from src.hmm import HMMer, legacy_filter_overlap
 from src.parameters import RunParameters, parse_cmd
-from src.comparison import generate_mix, create_bin_network_edges
+from src.comparison import generate_mix, legacy_bin_generator, create_bin_network_edges
 from src.diagnostics import Profiler
 from src.network import BSNetwork
 from src.output import generate_legacy_output
@@ -156,6 +156,7 @@ if __name__ == "__main__":
     # networking - mix
 
     if run.binning.mix:
+        logging.info("Generating mix bin")
         mix_network = BSNetwork()
         all_regions: list[BGCRecord] = []
         for gbk in gbks:
@@ -165,7 +166,7 @@ if __name__ == "__main__":
 
         mix_bin = generate_mix(all_regions)
 
-        logging.info("Generated mix bin: %s", mix_bin)
+        logging.info(mix_bin)
 
         create_bin_network_edges(mix_bin, mix_network, run.comparison.alignment_mode)
 
@@ -173,12 +174,42 @@ if __name__ == "__main__":
 
         # Output
 
-        mix_network.write_graphml(run.output.output_dir / Path("network.graphml"))
-        mix_network.write_edgelist_tsv(run.output.output_dir / Path("network.tsv"))
+        mix_network.write_graphml(run.output.output_dir / Path("network_mix.graphml"))
+        mix_network.write_edgelist_tsv(run.output.output_dir / Path("network_mix.tsv"))
 
         generate_legacy_output(
             run.output.output_dir, "test", [0.3], ["mix"], mix_network, gbks, pfam_info
         )
+
+    # networking - bins
+
+    if not run.binning.legacy_no_classify:
+        logging.info("Generating legacy bins")
+        for bin in legacy_bin_generator(gbks):
+            if bin.num_pairs() == 0:
+                logging.info("Bin %s has no pairs. Skipping...", bin.label)
+
+            bin_network = BSNetwork()
+            for record in bin.source_records:
+                bin_network.add_node(record)
+
+            logging.info(bin)
+
+            create_bin_network_edges(bin, bin_network, run.comparison.alignment_mode)
+
+            bin_network.generate_families_cutoff("dist", 0.3)
+
+            # Output
+
+            bin_graphml_filename = f"network_{bin.label}.graphml"
+            bin_network.write_graphml(
+                run.output.output_dir / Path(bin_graphml_filename)
+            )
+
+            bin_tsv_filename = f"network_{bin.label}.tsv"
+            bin_network.write_edgelist_tsv(
+                run.output.output_dir / Path(bin_tsv_filename)
+            )
 
     if run.diagnostics.profiling:
         profiler.stop()
