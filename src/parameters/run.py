@@ -58,7 +58,7 @@ class RunParameters(Namespace):
         """
         start_time: datetime = datetime.now()
 
-        timestamp = start_time.strftime("%d-%m-%Y %H:%M:%S.%f")
+        timestamp = start_time.strftime("%d-%m-%Y %H_%M_%S")
         self.label = f"{self.label}_{timestamp}"
 
         return start_time
