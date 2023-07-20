@@ -1,7 +1,7 @@
 /* Copyright 2017 Satria Kautsar */
 
 var BigscapeFunc = {
-  ver: "1.0",
+  ver: "2.0",
   requires: [
     "fusejs",
     "treelib",
