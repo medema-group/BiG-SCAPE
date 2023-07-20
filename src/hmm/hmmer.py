@@ -98,7 +98,7 @@ class HMMer:
         HMMer.pipeline = None
 
     @staticmethod
-    def get_pfam_info() -> list[tuple[str]]:
+    def get_pfam_info() -> list[tuple[str, str, str]]:
         """Generate a list of string tuples. Each tuple contains the accession, name and description
         of a PFAM entry
 
