@@ -453,7 +453,7 @@ def generate_bs_data_js_orfs_domains(cds: CDS) -> Any:
         domains.append(
             {
                 "bitscore": hsp.score,
-                "code": hsp.domain,
+                "code": hsp.domain[:7],  # trim version number
                 "start": hsp.env_start,
                 "end": hsp.env_stop,
             }
