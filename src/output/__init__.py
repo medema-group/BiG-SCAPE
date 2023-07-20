@@ -1,3 +1,3 @@
-from .legacy_output import generate_legacy_output
+from .legacy_output import legacy_prepare_output, legacy_generate_output
 
-__all__ = ["generate_legacy_output"]
+__all__ = ["legacy_prepare_output", "legacy_generate_output"]

@@ -14,7 +14,7 @@ from src.parameters import RunParameters, parse_cmd
 from src.comparison import generate_mix, legacy_bin_generator, create_bin_network_edges
 from src.diagnostics import Profiler
 from src.network import BSNetwork
-from src.output import generate_legacy_output
+from src.output import legacy_prepare_output, legacy_generate_output
 
 
 if __name__ == "__main__":
@@ -153,6 +153,9 @@ if __name__ == "__main__":
 
     DB.save_to_disk(run.output.db_path)
 
+    # prepare output files
+    legacy_prepare_output(run.output.output_dir, run.label)
+
     # networking - mix
 
     if run.binning.mix:
@@ -177,8 +180,8 @@ if __name__ == "__main__":
         mix_network.write_graphml(run.output.output_dir / Path("network_mix.graphml"))
         mix_network.write_edgelist_tsv(run.output.output_dir / Path("network_mix.tsv"))
 
-        generate_legacy_output(
-            run.output.output_dir, "test", [0.3], ["mix"], mix_network, gbks, pfam_info
+        legacy_generate_output(
+            run.output.output_dir, "test", [0.3], ["mix"], mix_network, gbks
         )
 
     # networking - bins

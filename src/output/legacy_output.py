@@ -13,12 +13,7 @@ from src.genbank import GBK, CDS, SOURCE_TYPE
 from src.network import BSNetwork
 
 
-def copy_output_templates(
-    output_dir: Path,
-    label: str,
-    cutoffs: list[float],
-    bins: list[str],
-):
+def copy_base_output_templates(output_dir: Path):
     """Copy the necessary output html/javascript templates to a relevant output
     directory
 
@@ -31,8 +26,6 @@ def copy_output_templates(
 
     template_root = Path("src/output/html_template")
     template_dir = template_root / "output"
-    overview_template = template_root / "overview_html"
-    bin_template = template_root / "index_html"
 
     # copy html content
     dir_util.copy_tree(str(template_dir), str(output_dir), verbose=False)
@@ -43,21 +36,36 @@ def copy_output_templates(
     if not output_network_root.exists():
         output_network_root.mkdir(exist_ok=True)
 
-    for cutoff in cutoffs:
-        cutoff_path = output_network_root / f"{label}_c{cutoff}"
 
-        cutoff_path.mkdir(exist_ok=True)
+def prepare_cutoff_folder(output_dir: Path, label: str, cutoff: float) -> None:
+    # networks subfolders
+    output_network_root = output_dir / "html_content/networks"
 
-        # copy overview html
-        shutil.copy(str(overview_template), str(cutoff_path / "overview.html"))
+    cutoff_path = output_network_root / f"{label}_c{cutoff}"
 
-        # copy bin html
-        for bin in bins:
-            bin_path = cutoff_path / bin
+    cutoff_path.mkdir(exist_ok=True)
 
-            bin_path.mkdir(exist_ok=True)
+    template_root = Path("src/output/html_template")
+    overview_template = template_root / "overview_html"
 
-            shutil.copy(str(bin_template), str(bin_path / "index.html"))
+    # copy overview html
+    shutil.copy(str(overview_template), str(cutoff_path / "overview.html"))
+
+
+def prepare_bin_folder(output_dir, label: str, cutoff: float, bin: str) -> None:
+    # networks subfolders
+    output_network_root = output_dir / "html_content/networks"
+
+    cutoff_path = output_network_root / f"{label}_c{cutoff}"
+
+    bin_path = cutoff_path / bin
+
+    bin_path.mkdir(exist_ok=True)
+
+    template_root = Path("src/output/html_template")
+    bin_template = template_root / "index_html"
+
+    shutil.copy(str(bin_template), str(bin_path / "index.html"))
 
 
 def generate_pfams_js(output_dir: Path, pfam_info: list[tuple[str, str, str]]) -> None:
@@ -619,20 +627,23 @@ def generate_bs_networks_js(
         bs_networks_js.write("dataLoaded('bs_networks');\n")
 
 
-def generate_legacy_output(
+def legacy_prepare_output(output_dir: Path, pfam_info) -> None:
+    copy_base_output_templates(output_dir)
+
+    generate_pfams_js(output_dir, pfam_info)
+
+
+def legacy_generate_output(
     output_dir: Path,
     label: str,
     cutoffs: list[float],
     bins: list[str],
     network: BSNetwork,
     gbks: list[GBK],
-    pfam_info: list[tuple[str, str, str]],
 ) -> None:
-    copy_output_templates(output_dir, label, cutoffs, bins)
-
-    generate_pfams_js(output_dir, pfam_info)
-
     for cutoff in cutoffs:
+        prepare_cutoff_folder(output_dir, label, cutoff)
+
         generate_bigscape_results_js(
             output_dir,
             label,
@@ -642,5 +653,7 @@ def generate_legacy_output(
         generate_run_data_js(output_dir, label, gbks, cutoff)
 
         for bin in bins:
+            prepare_bin_folder(output_dir, label, cutoff, bin)
+
             generate_bs_data_js(output_dir, label, gbks, cutoff, bin)
             generate_bs_networks_js(output_dir, label, network, gbks, cutoff, bin)
