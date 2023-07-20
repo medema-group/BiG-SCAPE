@@ -221,8 +221,8 @@ def parse_cmd(args):  # pragma: no cover
     )
 
     parser.add_argument(
-        "--legacy_bins",
-        dest="binning.legacy_bins",
+        "--legacy_no_classify",
+        dest="binning.legacy_no_classify",
         default=False,
         action="store_true",
         help="Run analyses on bins as in BiG-SCAPE 1.0",
