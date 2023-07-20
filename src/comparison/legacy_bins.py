@@ -10,16 +10,17 @@ from src.genbank import GBK, BGCRecord
 from .binning import BGCBin
 
 
+# weights are in the order JC, AI, DSS, Anchor boost
 LEGACY_BINS = {
-    "PKSI": {"weights": (0.22, 0.76, 0.02, 1.0)},
-    "PKSother": {"weights": (0.0, 0.32, 0.68, 4.0)},
-    "NRPS": {"weights": (0.0, 1.0, 0.0, 4.0)},
-    "RiPPs": {"weights": (0.28, 0.71, 0.01, 1.0)},
-    "Saccharides": {"weights": (0.0, 0.0, 1.0, 1.0)},
-    "Terpene": {"weights": (0.2, 0.75, 0.05, 2.0)},
-    "PKS-NRP_Hybrids": {"weights": (0.0, 0.78, 0.22, 1.0)},
-    "Others": {"weights": (0.01, 0.97, 0.02, 4.0)},
-    "mix": {"weights": (0.2, 0.75, 0.05, 2.0)},
+    "PKSI": {"weights": (0.22, 0.02, 0.76, 1.0)},
+    "PKSother": {"weights": (0.0, 0.68, 0.32, 4.0)},
+    "NRPS": {"weights": (0.0, 0.0, 1.0, 4.0)},
+    "RiPPs": {"weights": (0.28, 0.01, 0.71, 1.0)},
+    "Saccharides": {"weights": (0.0, 1.0, 0.0, 1.0)},
+    "Terpene": {"weights": (0.2, 0.05, 0.75, 2.0)},
+    "PKS-NRP_Hybrids": {"weights": (0.0, 0.22, 0.78, 1.0)},
+    "Others": {"weights": (0.01, 0.02, 0.97, 4.0)},
+    "mix": {"weights": (0.2, 0.05, 0.75, 2.0)},
 }
 
 
