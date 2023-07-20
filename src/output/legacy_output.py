@@ -14,14 +14,11 @@ from src.network import BSNetwork
 
 
 def copy_base_output_templates(output_dir: Path):
-    """Copy the necessary output html/javascript templates to a relevant output
+    """Copy the base output html/javascript templates to an output
     directory
 
     Args:
         output_dir (Path): main output directory
-        label (str): label for the run
-        cutoffs (list[float]): list of cutoffs used in the analysis
-        bins (list[str]): list of bins used in the analyis
     """
 
     template_root = Path("src/output/html_template")
@@ -38,6 +35,13 @@ def copy_base_output_templates(output_dir: Path):
 
 
 def prepare_cutoff_folder(output_dir: Path, label: str, cutoff: float) -> None:
+    """Prepare a folder for a given cutoff output
+
+    Args:
+        output_dir (Path): base output directory
+        label (str): run label
+        cutoff (float): cutoff value
+    """
     # networks subfolders
     output_network_root = output_dir / "html_content/networks"
 
@@ -52,7 +56,17 @@ def prepare_cutoff_folder(output_dir: Path, label: str, cutoff: float) -> None:
     shutil.copy(str(overview_template), str(cutoff_path / "overview.html"))
 
 
-def prepare_bin_folder(output_dir, label: str, cutoff: float, bin: BGCBin) -> None:
+def prepare_bin_folder(
+    output_dir: Path, label: str, cutoff: float, bin: BGCBin
+) -> None:
+    """Prepare the output folder for a bin under a cutoff
+
+    Args:
+        output_dir (Path): output folder
+        label (str): run label
+        cutoff (float): cutoff value
+        bin (BGCBin): BGC bin
+    """
     # networks subfolders
     output_network_root = output_dir / "html_content/networks"
 
@@ -161,8 +175,8 @@ def generate_run_data_js(
     Args:
         output_dir (Path): main output path
         label (str): label of the run
-        gbks (list[GBK]): full list of GBKs used in the analysis
         cutoff (float): cutoff to generate the run_data.js for
+        gbks (list[GBK]): full list of GBKs used in the analysis
     """
 
     run_data: dict[str, Any] = {
@@ -254,6 +268,16 @@ def add_run_data_network(
     bin: BGCBin,
     families_members: dict[int, list[int]],
 ) -> None:
+    """Add run data to the run_data.js file for the given bin with a given cutoff
+
+    Args:
+        output_dir (Path): output directory
+        label (str): run label
+        cutoff (float): cutoff
+        bin (BGCBin): BGC bin
+        families_members (dict[int, list[int]]): a dictionary with family ids as keys
+        and a list of region indexes as values
+    """
     output_network_root = output_dir / Path("html_content/networks")
     cutoff_path = output_network_root / Path(f"{label}_c{cutoff}")
     run_data_js_path = cutoff_path / Path("run_data.js")
@@ -404,6 +428,17 @@ def generate_bigscape_results_js(output_dir: Path, label: str, cutoff: float) ->
 def add_bigscape_results_js_network(
     output_dir: Path, label: str, cutoff: float, bin: BGCBin
 ) -> None:
+    """Add cutoff and network data to an existing bigscape_results.js file
+
+    Args:
+        output_dir (Path): output directory
+        label (str): run label
+        cutoff (float): cutoff value
+        bin (BGCBin): BGC bin
+
+    Raises:
+        FileNotFoundError: Raised when the bigscape_results.js file does not exist
+    """
     bigscape_results_js_path = output_dir / "html_content/js/bigscape_results.js"
 
     if not bigscape_results_js_path.exists():
@@ -447,7 +482,16 @@ def add_bigscape_results_js_network(
         )
 
 
-def generate_bs_data_js_orfs_domains(cds: CDS) -> Any:
+def generate_bs_data_js_orfs_domains(cds: CDS) -> list[dict[str, Any]]:
+    """Generate the domains for the orfs field in a bs_data.js file
+
+    Args:
+        cds (CDS): Coding Domain Sequence object
+
+    Returns:
+        list[dict[str: Any]]: A list of domains in the form of dictionaries with
+        bitscores, accessions, start coordinates and stop coordinates
+    """
     domains = []
     for hsp in cds.hsps:
         domains.append(
@@ -462,6 +506,15 @@ def generate_bs_data_js_orfs_domains(cds: CDS) -> Any:
 
 
 def generate_bs_data_js_orfs(gbk: GBK) -> Any:
+    """Generate the orf fields for an existing bs_data.js file
+
+    Args:
+        gbk (GBK): GBK file
+
+    Returns:
+        Any: A dictionary object representing an ORF as understood by the big-scape
+        output page
+    """
     orfs = []
     for idx, cds in enumerate(gbk.genes):
         orfs.append(
@@ -515,7 +568,6 @@ def generate_bs_data_js(
     Args:
         output_dir (Path): main output directory
         label (str): _description_
-        gbks (list[GBK]): Full list of GBKs used in the analysis
         cutoff (float): cutoff to generate results for
         bin (str): bin to generate results for
     """
@@ -566,6 +618,16 @@ def generate_bs_networks_js_sim_matrix(
     bin: BGCBin,
     network: BSNetwork,
 ) -> list[list[float]]:
+    """Generate a similarity matrix for the bs_networks.js file
+
+    Args:
+        cutoff (float): cutoff value
+        bin (BGCBin): BGC bin
+        network (BSNetwork): network object
+
+    Returns:
+        list[list[float]]: a similarity matrix
+    """
     sim_matrix = []
 
     for idx, record_a in enumerate(bin.source_records):
@@ -586,7 +648,16 @@ def generate_bs_families_members(
     cutoff: float,
     bin: BGCBin,
 ) -> dict[int, list[int]]:
-    # TODO: repeated code can be merged
+    """Generate a dictionary where keys are family indexes and values are list of region
+    indexes that belong to that family
+
+    Args:
+        cutoff (float): cutoff value
+        bin (BGCBin): BGC bin
+
+    Returns:
+        dict[int, list[int]]: family to member regions index
+    """
     families_members: dict[int, list[int]] = {}
     for idx, record in enumerate(bin.source_records):
         if cutoff not in record._families:
@@ -605,6 +676,15 @@ def generate_bs_families_members(
 def generate_bs_networks_families(
     families_members: dict[int, list[int]]
 ) -> list[dict[str, Any]]:
+    """Generate a list object that represents the families that are present in a network
+    and the regions that are members of that family for the bs_networks.js file
+
+    Args:
+        families_members (dict[int, list[int]]): family to member regions index
+
+    Returns:
+        list[dict[str, Any]]: networks families object
+    """
     networks_families: list[dict[str, Any]] = []
     for family_idx, family_members in families_members.items():
         networks_families.append(
@@ -705,7 +785,18 @@ def generate_bs_networks_js(
         bs_networks_js.write("dataLoaded('bs_networks');\n")
 
 
-def legacy_prepare_output(output_dir: Path, pfam_info) -> None:
+def legacy_prepare_output(
+    output_dir: Path, pfam_info: list[tuple[str, str, str]]
+) -> None:
+    """Prepare the base output files for the run. These are not specific to cutoffs or
+    to bins
+
+    Args:
+        output_dir (Path): output directory
+        pfam_info (list[tuple(str, str, str)]): A list of tuples containing information
+        about the PFAM entries used in this analysis. tuples correspond to the accession
+        name and description of a pfam entry
+    """
     copy_base_output_templates(output_dir)
 
     generate_pfams_js(output_dir, pfam_info)
@@ -714,6 +805,14 @@ def legacy_prepare_output(output_dir: Path, pfam_info) -> None:
 def legacy_prepare_cutoff_output(
     output_dir: Path, label: str, cutoff: float, gbks: list[GBK]
 ) -> None:
+    """Prepare output data for a given cutoff value
+
+    Args:
+        output_dir (Path): output directory
+        label (str): run label
+        cutoff (float): cutoff value
+        gbks (list[GBK]): list of gbks used in the analysis
+    """
     prepare_cutoff_folder(output_dir, label, cutoff)
 
     generate_bigscape_results_js(output_dir, label, cutoff)
@@ -724,6 +823,14 @@ def legacy_prepare_cutoff_output(
 def legacy_prepare_bin_output(
     output_dir: Path, label: str, cutoff: float, bin: BGCBin
 ) -> None:
+    """Prepare output data for a given bin at a given cutoff value
+
+    Args:
+        output_dir (Path): output directory
+        label (str): run label
+        cutoff (float): cutoff value
+        bin (BGCBin): BGC bin
+    """
     prepare_bin_folder(output_dir, label, cutoff, bin)
     generate_bs_data_js(output_dir, label, cutoff, bin)
     add_bigscape_results_js_network(output_dir, label, cutoff, bin)
@@ -736,6 +843,16 @@ def legacy_generate_bin_output(
     bin: BGCBin,
     network: BSNetwork,
 ) -> None:
+    """Generate the network data from a bin from cutoff filtering and affinity
+    propagation
+
+    Args:
+        output_dir (Path): output directory
+        label (str): run label
+        cutoff (float): cutoff value
+        bin (BGCBin): BGC bin
+        network (BSNetwork): the network object for the bin
+    """
     families_members = generate_bs_families_members(cutoff, bin)
     networks_families = generate_bs_networks_families(families_members)
 
