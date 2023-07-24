@@ -8,8 +8,8 @@ from pathlib import Path
 # from other modules
 from src.data import DB
 from src.file_input import load_dataset_folder
-from src.genbank import SOURCE_TYPE, BGCRecord, CDS
-from src.hmm import HMMer, legacy_filter_overlap
+from src.genbank import SOURCE_TYPE, BGCRecord, CDS, GBK
+from src.hmm import HMMer, legacy_filter_overlap, HSP
 from src.parameters import RunParameters, parse_cmd
 from src.comparison import generate_mix, legacy_bin_generator, create_bin_network_edges
 from src.diagnostics import Profiler
@@ -20,6 +20,15 @@ from src.output import (
     legacy_prepare_bin_output,
     legacy_generate_bin_output,
 )
+
+
+def load_data(run: RunParameters):
+    """Performs data loading tasks for BiG-SCAPE. This will reconstruct a run up to and
+    including HMMAlign if a database file was detected in the run directory
+
+    Args:
+        run (RunParameters): Run parameters object for this run
+    """
 
 
 if __name__ == "__main__":
@@ -42,121 +51,145 @@ if __name__ == "__main__":
         profiler = Profiler(run.output.profile_path)
         profiler.start()
 
-    # start DB
-    DB.create_in_mem()
+    if run.output.db_path.exists():
+        logging.info("Loading existing run from disk...")
 
-    # Load datasets
-    gbks = load_dataset_folder(
-        run.input.input_dir,
-        SOURCE_TYPE.QUERY,
-        run.input.input_mode,
-        run.input.include_gbk,
-        run.input.exclude_gbk,
-        run.input.cds_overlap_cutoff,
-        run.legacy,
-    )
+        DB.load_from_disk(run.output.db_path)
 
-    exec_time = datetime.now() - start_time
-    logging.info("loaded %d gbks at %f seconds", len(gbks), exec_time.total_seconds())
+        gbks = GBK.load_all()
 
-    all_cds: list[CDS] = []
-    for gbk in gbks:
-        gbk.save_all()
-        all_cds.extend(gbk.genes)
+        for gbk in gbks:
+            HSP.load_all(gbk.genes)
+            for cds in gbk.genes:
+                # TODO: remove once we get rid of sortedlists
+                cds.lock()
 
-    logging.info("loaded %d cds total", len(all_cds))
+        HMMer.init(run.input.pfam_path)
 
-    # HMMER - Search
+        pfam_info = HMMer.get_pfam_info()
 
-    HMMer.init(run.input.pfam_path)
+        HMMer.unload()
 
-    # we will need this information for the output later
-    pfam_info = HMMer.get_pfam_info()
-
-    def callback(tasks_done):
-        percentage = int(tasks_done / len(all_cds) * 100)
-        logging.info("%d/%d (%d%%)", tasks_done, len(all_cds), percentage)
-
-    if platform.system() == "Darwin":
-        logging.warning("Running on mac-OS: hmmsearch_simple single threaded")
-        all_hsps = list(HMMer.hmmsearch_simple(all_cds, 1))
     else:
-        logging.debug(
-            "Running on %s: hmmsearch_multiprocess with %d cores",
-            platform.system(),
-            run.cores,
+        # start DB
+        DB.create_in_mem()
+
+        # Load datasets
+        gbks = load_dataset_folder(
+            run.input.input_dir,
+            SOURCE_TYPE.QUERY,
+            run.input.input_mode,
+            run.input.include_gbk,
+            run.input.exclude_gbk,
+            run.input.cds_overlap_cutoff,
+            run.legacy,
         )
 
-        # if legacy is true, set cutoff to 1.1 for the domain filtering so we can use
-        # legacy filtering later
+        exec_time = datetime.now() - start_time
+        logging.info(
+            "loaded %d gbks at %f seconds", len(gbks), exec_time.total_seconds()
+        )
 
-        if run.legacy:
-            domain_overlap_cutoff = 1.1
+        all_cds: list[CDS] = []
+        for gbk in gbks:
+            gbk.save_all()
+            all_cds.extend(gbk.genes)
+
+        logging.info("loaded %d cds total", len(all_cds))
+
+        # HMMER - Search
+
+        HMMer.init(run.input.pfam_path)
+
+        # we will need this information for the output later
+        pfam_info = HMMer.get_pfam_info()
+
+        def callback(tasks_done):
+            percentage = int(tasks_done / len(all_cds) * 100)
+            logging.info("%d/%d (%d%%)", tasks_done, len(all_cds), percentage)
+
+        if platform.system() == "Darwin":
+            logging.warning("Running on mac-OS: hmmsearch_simple single threaded")
+            all_hsps = list(HMMer.hmmsearch_simple(all_cds, 1))
         else:
-            domain_overlap_cutoff = run.hmmer.domain_overlap_cutoff
-        HMMer.hmmsearch_multiprocess(
-            all_cds,
-            domain_overlap_cutoff=domain_overlap_cutoff,
-            cores=run.cores,
+            logging.debug(
+                "Running on %s: hmmsearch_multiprocess with %d cores",
+                platform.system(),
+                run.cores,
+            )
+
+            # if legacy is true, set cutoff to 1.1 for the domain filtering so we can use
+            # legacy filtering later
+
+            if run.legacy:
+                domain_overlap_cutoff = 1.1
+            else:
+                domain_overlap_cutoff = run.hmmer.domain_overlap_cutoff
+            HMMer.hmmsearch_multiprocess(
+                all_cds,
+                domain_overlap_cutoff=domain_overlap_cutoff,
+                cores=run.cores,
+            )
+
+        # TODO: move, or remove after the add_hsp_overlap function is fixed (if it is broken
+        # in the first place)
+        for cds in all_cds:
+            if run.legacy:
+                cds.hsps = legacy_filter_overlap(cds.hsps, 0.1)
+
+            # TODO: remove when sortedlists are removed
+            # this converts the sortedlist used internally to regular lists.
+            # for some reason, doing this beforehand really messes things up for reasons I don't
+            # understand.
+            cds.lock()
+
+        all_hsps = []
+        for cds in all_cds:
+            all_hsps.extend(cds.hsps)
+
+        logging.info("%d hsps", len(all_hsps))
+
+        exec_time = datetime.now() - start_time
+        logging.info("scan done at %f seconds", exec_time.total_seconds())
+
+        HMMer.unload()
+
+        # save hsps to database
+        for new_hsp in all_hsps:
+            new_hsp.save(False)
+        DB.commit()
+
+        exec_time = datetime.now() - start_time
+        logging.info("DB: HSP save done at %f seconds", exec_time.total_seconds())
+
+        # HMMER - Align
+
+        HMMer.init(run.input.pfam_path, False)
+
+        HMMer.align_simple(all_hsps)
+
+        all_alignments = list()
+        for cds in all_cds:
+            for hsp in cds.hsps:
+                all_alignments.append(hsp.alignment)
+
+        logging.info("%d alignments", len(all_alignments))
+
+        exec_time = datetime.now() - start_time
+        logging.info("align done at %f seconds", exec_time.total_seconds())
+
+        HMMer.unload()
+
+        for hsp_alignment in all_alignments:
+            hsp_alignment.save(False)
+        DB.commit()
+
+        exec_time = datetime.now() - start_time
+        logging.info(
+            "DB: HSP alignment save done at %f seconds", exec_time.total_seconds()
         )
 
-    # TODO: move, or remove after the add_hsp_overlap function is fixed (if it is broken
-    # in the first place)
-    for cds in all_cds:
-        if run.legacy:
-            cds.hsps = legacy_filter_overlap(cds.hsps, 0.1)
-
-        # TODO: remove when sortedlists are removed
-        # this converts the sortedlist used internally to regular lists.
-        # for some reason, doing this beforehand really messes things up for reasons I don't
-        # understand.
-        cds.lock()
-
-    all_hsps = []
-    for cds in all_cds:
-        all_hsps.extend(cds.hsps)
-
-    logging.info("%d hsps", len(all_hsps))
-
-    exec_time = datetime.now() - start_time
-    logging.info("scan done at %f seconds", exec_time.total_seconds())
-
-    HMMer.unload()
-
-    # save hsps to database
-    for new_hsp in all_hsps:
-        new_hsp.save(False)
-    DB.commit()
-
-    exec_time = datetime.now() - start_time
-    logging.info("DB: HSP save done at %f seconds", exec_time.total_seconds())
-
-    # HMMER - Align
-
-    HMMer.init(run.input.pfam_path, False)
-
-    HMMer.align_simple(all_hsps)
-
-    all_alignments = list()
-    for cds in all_cds:
-        for hsp in cds.hsps:
-            all_alignments.append(hsp.alignment)
-
-    logging.info("%d alignments", len(all_alignments))
-
-    exec_time = datetime.now() - start_time
-    logging.info("align done at %f seconds", exec_time.total_seconds())
-
-    HMMer.unload()
-
-    for hsp_alignment in all_alignments:
-        hsp_alignment.save(False)
-    DB.commit()
-
-    exec_time = datetime.now() - start_time
-    logging.info("DB: HSP alignment save done at %f seconds", exec_time.total_seconds())
-
-    DB.save_to_disk(run.output.db_path)
+        DB.save_to_disk(run.output.db_path)
 
     # prepare output files
     legacy_prepare_output(run.output.output_dir, pfam_info)
