@@ -317,6 +317,7 @@ class CDS:
 
         for result in cursor_result.all():
             new_cds = CDS(result.nt_start, result.nt_stop)
+            new_cds._db_id = result.id
 
             # add to GBK
             gbk_dict[result.gbk_id].genes.append(new_cds)
