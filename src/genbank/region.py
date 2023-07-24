@@ -9,6 +9,7 @@ from typing import Dict, Optional, TYPE_CHECKING
 from Bio.SeqFeature import SeqFeature
 
 # from other modules
+from src.data import DB
 from src.errors import InvalidGBKError, InvalidGBKRegionChildError
 
 # from this module
@@ -31,8 +32,7 @@ class Region(BGCRecord):
     """
 
     def __init__(self, number: int):
-        super().__init__()
-        self.number = number
+        super().__init__(number)
         self.cand_clusters: Dict[int, Optional[CandidateCluster]] = {}
 
     def add_cand_cluster(self, cand_cluster: CandidateCluster):
@@ -133,3 +133,49 @@ class Region(BGCRecord):
 
     def __repr__(self):
         return f"{self.parent_gbk} Region {self.number} {self.nt_start}-{self.nt_stop} "
+
+    @staticmethod
+    def load_all(gbk_dict: dict[int, GBK]) -> None:
+        """Load all Region objects from the database
+
+        This function populates the region objects in the GBKs provided in the input
+        gbk_dict
+
+        Args:
+            gbk_dict (dict[int, GBK]): Dictionary of GBK objects with database ids as
+            keys. Used for reassembling the hierarchy
+        """
+        record_table = DB.metadata.tables["bgc_record"]
+
+        region_select_query = (
+            record_table.select()
+            .add_columns(
+                record_table.c.id,
+                record_table.c.gbk_id,
+                record_table.c.parent_id,
+                record_table.c.record_type,
+                record_table.c.contig_edge,
+                record_table.c.nt_start,
+                record_table.c.nt_stop,
+            )
+            .where(record_table.c.record_type == "region")
+            .compile()
+        )
+
+        cursor_result = DB.execute(region_select_query)
+
+        region_dict = {}
+
+        for result in cursor_result.all():
+            new_region = Region(1)
+            new_region.nt_start = result.nt_start
+            new_region.nt_stop = result.nt_stop
+            new_region.contig_edge = result.contig_edge
+
+            # add to parent GBK
+            gbk_dict[result.gbk_id].region = new_region
+
+            # add to dictionary
+            region_dict[result.id] = new_region
+
+        CandidateCluster.load_all(region_dict)

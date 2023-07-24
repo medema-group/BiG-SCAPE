@@ -1,6 +1,7 @@
 """Module containing code to load and store GBK files"""
 
 # from python
+from __future__ import annotations
 import logging
 from enum import Enum
 from pathlib import Path
@@ -175,6 +176,43 @@ class GBK:
 
         for cds in self.genes:
             cds.save(False)
+
+    @staticmethod
+    def load_all() -> list[GBK]:
+        """Load all GBK, CDS and BGCRecord objects from the database
+
+        Returns:
+            list[GBK]: _description_
+        """
+        gbk_table = DB.metadata.tables["gbk"]
+
+        select_query = (
+            gbk_table.select()
+            .add_columns(
+                gbk_table.c.id,
+                gbk_table.c.path,
+                gbk_table.c.source_type,
+                gbk_table.c.nt_seq,
+            )
+            .compile()
+        )
+
+        cursor_result = DB.execute(select_query)
+
+        gbk_dict = {}
+        for result in cursor_result.all():
+            new_gbk = GBK(result.path, result.source_type)
+            new_gbk.nt_seq = result.nt_seq
+            gbk_dict[result.id] = new_gbk
+
+        # load GBK regions. This will also populate all record levels below region
+        # e.g. candidate cluster, protocore if they exist
+
+        Region.load_all(gbk_dict)
+
+        CDS.load_all(gbk_dict)
+
+        return list(gbk_dict.values())
 
     @staticmethod
     def get_as_version(gbk_seq_record: SeqRecord):

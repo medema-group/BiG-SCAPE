@@ -226,3 +226,27 @@ class TestGBK(TestCase):
         actual_row_count += len(cursor_result.fetchall())
 
         self.assertEqual(expected_row_count, actual_row_count)
+
+    def test_load_all(self):
+        """Tests whether a set of GBKs can be recreated from a database"""
+        populated_db_path = Path("test/test_data/database/valid_populated.db")
+        DB.load_from_disk(populated_db_path)
+
+        expected_gbk_count = 10
+
+        actual_gbk_count = len(GBK.load_all())
+
+        self.assertEqual(expected_gbk_count, actual_gbk_count)
+
+    def test_load_all_has_regions(self):
+        """Tests whether the region objects were correctly loaded when loading GBKs"""
+        populated_db_path = Path("test/test_data/database/valid_populated.db")
+        DB.load_from_disk(populated_db_path)
+
+        all_gbk = GBK.load_all()
+
+        gbks_have_regions = [gbk.region is not None for gbk in all_gbk]
+
+        self.assertTrue(all(gbks_have_regions))
+
+    # TODO: test load candidate clusters, protoclusters, protocores

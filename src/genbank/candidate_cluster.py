@@ -9,6 +9,7 @@ from typing import Dict, Optional, TYPE_CHECKING
 from Bio.SeqFeature import SeqFeature
 
 # from other modules
+from src.data import DB
 from src.errors import InvalidGBKError, InvalidGBKRegionChildError
 
 # from this module
@@ -18,6 +19,7 @@ from src.genbank.proto_cluster import ProtoCluster
 
 # from circular imports
 if TYPE_CHECKING:  # pragma: no cover
+    from src.genbank import Region  # imported earlier in src.file_input.load_files
     from src.genbank import GBK  # imported earlier in src.file_input.load_files
 
 
@@ -36,8 +38,7 @@ class CandidateCluster(BGCRecord):
     """
 
     def __init__(self, number: int):
-        super().__init__()
-        self.number = number
+        super().__init__(number)
         self.kind: str = ""
         self.proto_clusters: Dict[int, Optional[ProtoCluster]] = {}
 
@@ -120,3 +121,51 @@ class CandidateCluster(BGCRecord):
 
     def __repr__(self) -> str:
         return f"{self.parent_gbk} Candidate cluster {self.number} {self.nt_start}-{self.nt_stop} "
+
+    @staticmethod
+    def load_all(region_dict: dict[int, Region]):
+        """Load all CandidateCluster objects from the database
+
+        This function populates the CandidateCluster lists in the Regions provided in
+        the input region_dict
+
+        Args:
+            region_dict (dict[int, Region]): Dictionary of Region objects with database
+            ids as keys. Used for reassembling the hierarchy
+        """
+        record_table = DB.metadata.tables["bgc_record"]
+
+        candidate_cluster_select_query = (
+            record_table.select()
+            .add_columns(
+                record_table.c.id,
+                record_table.c.record_number,
+                record_table.c.parent_id,
+                record_table.c.record_type,
+                record_table.c.contig_edge,
+                record_table.c.nt_start,
+                record_table.c.nt_stop,
+            )
+            .where(record_table.c.record_type == "cand_cluster")
+            .compile()
+        )
+
+        cursor_result = DB.execute(candidate_cluster_select_query)
+
+        candidate_cluster_dict = {}
+
+        for result in cursor_result.all():
+            new_candidate_cluster = CandidateCluster(result.record_number)
+            new_candidate_cluster.nt_start = result.nt_start
+            new_candidate_cluster.nt_stop = result.nt_stop
+            new_candidate_cluster.contig_edge = result.contig_edge
+
+            # add to parent Region candidate cluster dict
+            region_dict[result.parent_id].cand_clusters[
+                result.record_number
+            ] = new_candidate_cluster
+
+            # add to dictionary
+            candidate_cluster_dict[result.id] = new_candidate_cluster
+
+        ProtoCluster.load_all(candidate_cluster_dict)

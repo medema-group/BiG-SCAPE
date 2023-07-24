@@ -111,6 +111,21 @@ class TestCDS(TestCase):
 
         self.assertEqual(expected_row_count, actual_row_count)
 
+    def test_load_all(self):
+        """Tests whether a set of CDS objects can be recreated from a database"""
+        populated_db_path = Path("test/test_data/database/valid_populated.db")
+        DB.load_from_disk(populated_db_path)
+
+        expected_cds_count = 355
+
+        all_gbk = GBK.load_all()
+
+        gbk_cds_count = [len(gbk.genes) for gbk in all_gbk]
+
+        actual_gbk_count = sum(gbk_cds_count)
+
+        self.assertEqual(expected_cds_count, actual_gbk_count)
+
     def test_cds_has_overlap_false(self):
         """Tests the has_overlap function where a is left of b"""
 

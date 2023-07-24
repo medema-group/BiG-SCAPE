@@ -9,6 +9,7 @@ from typing import Dict, Optional, TYPE_CHECKING
 from Bio.SeqFeature import SeqFeature
 
 # from other modules
+from src.data import DB
 from src.errors import InvalidGBKError, InvalidGBKRegionChildError
 
 # from this module
@@ -18,6 +19,7 @@ from src.genbank.proto_core import ProtoCore
 
 # from circular imports
 if TYPE_CHECKING:  # pragma: no cover
+    from src.genbank import CandidateCluster
     from src.genbank import GBK  # imported earlier in src.file_input.load_files
 
 
@@ -36,8 +38,7 @@ class ProtoCluster(BGCRecord):
     """
 
     def __init__(self, number: int):
-        super().__init__()
-        self.number = number
+        super().__init__(number)
         self.category: str = ""
         self.proto_core: Dict[int, Optional[ProtoCore]] = {}
 
@@ -110,3 +111,51 @@ class ProtoCluster(BGCRecord):
 
     def __repr__(self) -> str:
         return f"{self.parent_gbk} ProtoCluster {self.number} {self.nt_start}-{self.nt_stop} "
+
+    @staticmethod
+    def load_all(candidate_cluster_dict: dict[int, CandidateCluster]):
+        """Load all ProtoCluster objects from the database
+
+        This function populates the CandidateCluster objects in the GBKs provided in the
+        input candidate_cluster_dict
+
+        Args:
+            candidate_cluster_dict (dict[int, GBK]): Dictionary of CandidateCluster
+            objects with database ids as keys. Used for reassembling the hierarchy
+        """
+        record_table = DB.metadata.tables["bgc_record"]
+
+        protocluster_select_query = (
+            record_table.select()
+            .add_columns(
+                record_table.c.id,
+                record_table.c.record_number,
+                record_table.c.parent_id,
+                record_table.c.record_type,
+                record_table.c.contig_edge,
+                record_table.c.nt_start,
+                record_table.c.nt_stop,
+            )
+            .where(record_table.c.record_type == "protocluster")
+            .compile()
+        )
+
+        cursor_result = DB.execute(protocluster_select_query)
+
+        protocluster_dict = {}
+
+        for result in cursor_result.all():
+            new_proto_cluster = ProtoCluster(result.record_number)
+            new_proto_cluster.nt_start = result.nt_start
+            new_proto_cluster.nt_stop = result.nt_stop
+            new_proto_cluster.contig_edge = result.contig_edge
+
+            # add to parent CandidateCluster protocluster dict
+            candidate_cluster_dict[result.parent_id].proto_clusters[
+                result.record_number
+            ] = new_proto_cluster
+
+            # add to dictionary
+            protocluster_dict[result.id] = new_proto_cluster
+
+        ProtoCore.load_all(protocluster_dict)

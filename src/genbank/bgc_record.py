@@ -34,9 +34,11 @@ class BGCRecord:
         nt_start: int
         nt_stop: int
         product: str
+        number: int
     """
 
-    def __init__(self):
+    def __init__(self, number: Optional[int] = None):
+        self.number: Optional[int] = number
         self.parent_gbk: Optional[GBK] = None
         # contig edge is optional, proto_core does not have it
         self.contig_edge: Optional[bool] = None
@@ -161,11 +163,13 @@ class BGCRecord:
                 domains.extend(cds.hsps)
         return domains
 
-    def save(self, type: str, commit=True):
+    def save(self, record_type: str, parent_id: Optional[int] = None, commit=True):
         """Stores this BGCRecord in the database
 
         Args:
             type (str):  type of antiSMASH record
+            parent_id (Optional[int]): database ID of the parent bgc record. None if
+            this record is a region. Defaults to None.
             commit (bool, optional): commit immediately after executing the insert
             query. Defaults to True.
         """
@@ -176,19 +180,20 @@ class BGCRecord:
         if self.contig_edge is not None:
             contig_edge = self.contig_edge
 
-        parent_gbk_id = None
+        gbk_id = None
         if self.parent_gbk is not None and self.parent_gbk._db_id is not None:
-            parent_gbk_id = self.parent_gbk._db_id
+            gbk_id = self.parent_gbk._db_id
 
         insert_query = (
             bgc_record_table.insert()
             .prefix_with("OR REPLACE")
             .values(
-                gbk_id=parent_gbk_id,
+                gbk_id=gbk_id,
+                parent_id=parent_id,
                 contig_edge=contig_edge,
                 nt_start=self.nt_start,
                 nt_stop=self.nt_stop,
-                type=type,
+                record_type=record_type,
             )
             .compile()
         )

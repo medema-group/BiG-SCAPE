@@ -283,3 +283,40 @@ class CDS:
 
         # limit to > 0
         return max(0, right - left)
+
+    @staticmethod
+    def load_all(gbk_dict: dict[int, GBK]):
+        """Load all Region objects from the database
+
+        This function populates the region objects in the GBKs provided in the input
+        gbk_dict
+
+        Args:
+            region_dict (dict[int, GBK]): Dictionary of Region objects with database ids
+            as keys. Used for parenting
+        """
+        cds_table = DB.metadata.tables["cds"]
+
+        region_select_query = (
+            cds_table.select()
+            .add_columns(
+                cds_table.c.id,
+                cds_table.c.gbk_id,
+                cds_table.c.nt_start,
+                cds_table.c.nt_stop,
+                cds_table.c.orf_num,
+                cds_table.c.strand,
+                cds_table.c.gene_kind,
+                cds_table.c.aa_seq,
+            )
+            .order_by(cds_table.c.orf_num)
+            .compile()
+        )
+
+        cursor_result = DB.execute(region_select_query)
+
+        for result in cursor_result.all():
+            new_cds = CDS(result.nt_start, result.nt_stop)
+
+            # add to GBK
+            gbk_dict[result.gbk_id].genes.append(new_cds)
