@@ -19,6 +19,7 @@ CREATE TABLE IF NOT EXISTS bgc_record (
     record_type TEXT,
     nt_start INTEGER,
     nt_stop INTEGER,
+    product TEXT,
     UNIQUE(id),
     UNIQUE(parent_id, record_type, nt_start, nt_stop),
     FOREIGN KEY(gbk_id) REFERENCES gbk(id)
