@@ -168,6 +168,10 @@ class Region(BGCRecord):
 
         for result in cursor_result.all():
             new_region = Region(1)
+
+            new_region._db_id = result.id
+
+            new_region.parent_gbk = gbk_dict[result.gbk_id]
             new_region.nt_start = result.nt_start
             new_region.nt_stop = result.nt_stop
             new_region.contig_edge = result.contig_edge

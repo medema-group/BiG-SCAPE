@@ -146,6 +146,9 @@ class ProtoCluster(BGCRecord):
 
         for result in cursor_result.all():
             new_proto_cluster = ProtoCluster(result.record_number)
+
+            new_proto_cluster._db_id = result.id
+
             new_proto_cluster.nt_start = result.nt_start
             new_proto_cluster.nt_stop = result.nt_stop
             new_proto_cluster.contig_edge = result.contig_edge

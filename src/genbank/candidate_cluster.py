@@ -156,6 +156,9 @@ class CandidateCluster(BGCRecord):
 
         for result in cursor_result.all():
             new_candidate_cluster = CandidateCluster(result.record_number)
+
+            new_candidate_cluster._db_id = result.id
+
             new_candidate_cluster.nt_start = result.nt_start
             new_candidate_cluster.nt_stop = result.nt_stop
             new_candidate_cluster.contig_edge = result.contig_edge

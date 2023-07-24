@@ -113,6 +113,9 @@ class ProtoCore(BGCRecord):
 
         for result in cursor_result.all():
             new_proto_core = ProtoCore(result.record_number)
+
+            new_proto_core._db_id = result.id
+
             new_proto_core.nt_start = result.nt_start
             new_proto_core.nt_stop = result.nt_stop
             new_proto_core.contig_edge = result.contig_edge

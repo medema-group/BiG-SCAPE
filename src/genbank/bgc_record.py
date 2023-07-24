@@ -46,6 +46,10 @@ class BGCRecord:
         self.nt_stop: Optional[int] = None
         self.product: Optional[str] = None
 
+        # for database operations
+        self._db_id: Optional[int] = None
+
+        # for networking
         self._families: dict[float, int] = {}
 
     def get_cds(self, return_all=False, reverse=False) -> list[CDS]:
