@@ -15,40 +15,111 @@ import requests  # type: ignore
 from src.genbank.gbk import GBK, SOURCE_TYPE
 
 
-def download_mibig(mibig_version: str, reference_dir: Path):
+def get_mibig(mibig_version: str, reference_dir: Path):
     """download mibig"""
+
+    # if there is a given valid path, use (no version, given path)
+    if reference_dir and os.path.exists(reference_dir):
+        return reference_dir
 
     # TODO: update to proper link once Kai makes it available
     mibig_url = (
         f"https://dl.secondarymetabolites.org/mibig/mibig_json_{mibig_version}.tar.gz"
     )
 
-    if reference_dir is None:
-        parent_dir = Path(os.path.dirname(os.path.abspath(__file__)), "reference")
-        if not parent_dir.exists:
-            os.makedirs(parent_dir)
-        reference_dir = Path(parent_dir, f"mibig_antismash_{mibig_version}")
-
-    reference_dir_compressed = Path(str(reference_dir) + ".tar.gz")
-
-    # check if the folder already exists, and if so use it
-    if os.path.exists(reference_dir):
+    # download to given path (given version, given path but empty)
+    if mibig_version and reference_dir and not os.path.exists(reference_dir):
+        reference_dir_compressed = Path(f"{reference_dir}.tar.gz")
+        download_dataset(mibig_url, reference_dir, reference_dir_compressed)
         return reference_dir
 
-    # if not, try to download
-    response = requests.get(mibig_url, stream=True)
+    default_parent_dir = Path(os.path.dirname(os.path.abspath(__file__)), "reference")
+    default_reference_dir = Path(default_parent_dir, f"mibig_antismash_{mibig_version}")
+    default_reference_dir_compressed = Path(str(reference_dir) + ".tar.gz")
+
+    # download to default path (yes version, no path - default full)
+    if mibig_version and os.path.exists(default_reference_dir):
+        return default_reference_dir
+
+    # download to default path (yes version, no path - default empty)
+    if mibig_version and not os.path.exists(default_reference_dir):
+        download_dataset(mibig_url, reference_dir, default_reference_dir_compressed)
+        return default_reference_dir
+
+    return reference_dir
+
+
+def get_pfam(pfam_version: Optional[str], pfam_path: Optional[Path]):
+    """Download pfam file"""
+
+    # defaults
+    def_pfam_dir = Path(os.path.dirname(os.path.abspath(__file__)), "pfam")
+    def_pfam_path = Path(def_pfam_dir, "Pfam-A.hmm")
+    def_pfam_path_compressed = Path(def_pfam_dir, "Pfam-A.hmm.gz")
+    current_version_url = (
+        "https://ftp.ebi.ac.uk/pub/databases/Pfam/current_release/Pfam-A.hmm.gz"
+    )
+
+    # values to set
+    if pfam_version:
+        version_url = f"https://ftp.ebi.ac.uk/pub/databases/Pfam/releases/Pfam{pfam_version}/Pfam-A.hmm.gz"
+
+    if pfam_path:
+        pfam_path_compressed = Path(f"{pfam_path}.gz")
+
+    # if there is a path given
+
+    if pfam_path:
+        # if path already filled, use
+        if pfam_path.exists():
+            return pfam_path
+
+        if not pfam_path.exists():
+            if pfam_version:
+                download_dataset(version_url, pfam_path, pfam_path_compressed)
+                return pfam_path
+
+            else:
+                download_dataset(current_version_url, pfam_path, pfam_path_compressed)
+                return pfam_path
+
+    # if there is no path given
+
+    if not pfam_path:
+        # if default path already filled, use it
+        if def_pfam_path.exists():
+            return def_pfam_path
+
+        # if its the first time and have to make the parent dir
+        if not def_pfam_dir.exists():
+            os.makedirs(def_pfam_dir)
+
+        # download given or current version
+        if pfam_version:
+            download_dataset(version_url, def_pfam_path, def_pfam_path_compressed)
+        else:
+            download_dataset(
+                current_version_url, def_pfam_path, def_pfam_path_compressed
+            )
+        return def_pfam_path
+
+
+def download_dataset(url: str, path: Path, path_compressed: Path) -> None:
+    """Download a dataset"""
+
+    response = requests.get(url, stream=True)
     if response.status_code != 200:
         raise ValueError("Could not download MIBiG file")
-    with open(reference_dir_compressed, "wb") as f:
+    with open(path_compressed, "wb") as f:
         f.write(response.raw.read())
 
     # extract contents
-    file = tarfile.open(reference_dir_compressed)
-    file.extractall(reference_dir)
+    file = tarfile.open(path_compressed)
+    file.extractall(path)
     file.close()
-    os.remove(reference_dir_compressed)
+    os.remove(path_compressed)
 
-    return reference_dir
+    return None
 
 
 def load_dataset_folder(

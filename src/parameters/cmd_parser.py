@@ -81,7 +81,7 @@ def parse_cmd(args):  # pragma: no cover
         "-p",
         "--pfam_path",
         dest="input.pfam_path",
-        default=Path(os.path.dirname(os.path.abspath(__file__)), "pfam", "Pfam-A.hmm"),
+        # default=Path(os.path.dirname(os.path.abspath(__file__)), "pfam", "Pfam-A.hmm"),
         type=Path,
         required=False,
         help="Path to (hmmpress-processed) Pfam database file(s). If file does \
@@ -93,10 +93,10 @@ def parse_cmd(args):  # pragma: no cover
     parser.add_argument(
         "--pfam_version",
         dest="input.pfam_version",
-        default="Current release",
+        # default="Current release",
         type=str,
         required=False,
-        help="Pfam release number. Download and press given pfam database.\
+        help="Pfam release number (e.g. 35.0). Download and press given pfam database.\
             Default: current release. If no pfam_path provide, Pfam file will \
             be downloaded in the BiG-SCAPE folder.",
     )
@@ -106,7 +106,7 @@ def parse_cmd(args):  # pragma: no cover
         dest="input.mibig_version",
         type=str,
         choices=["1.0", "1.1", "1.2", "1.3", "1.4", "2.0", "3.0", "3.1"],
-        help="MIBiG relase number. Download and use this version of MiBIG database. \
+        help="MIBiG relase number (e.g. 3.1). Download and use this version of MiBIG database. \
             If not provided, MiBIG will not be included in the analysis. \
             If no reference-directory path is provided, MIBiG files will be downloaded \
             in the BiG-SCAPE folder.",

@@ -43,7 +43,7 @@ class InputParameters:
         # other db
         # TODO: test
         self.pfam_path: Optional[Path] = None
-        self.pfam_version: str = ""
+        self.pfam_version: Optional[str] = None
         self.mibig_version: Optional[str] = None
 
         # other user supplied stuff
@@ -72,7 +72,17 @@ class InputParameters:
 def validate_pfam(pfam_version, pfam_path):
     """Validates the pfam related properties"""
 
-    if pfam_version and pfam_path.exists():
+    # given only a path, the file must exist
+    if not pfam_version and pfam_path and not pfam_path.exists():
+        logging.error("Pfam file does not exist!")
+        raise InvalidArgumentError("--pfam_path", pfam_path)
+
+    # given a version (download action) the parent must exist
+    if pfam_version and pfam_path and not pfam_path.parent.exists():
+        logging.error("Path to pfam file is not valid")
+        raise InvalidArgumentError("--pfam_path", pfam_path)
+
+    if pfam_version and pfam_path and pfam_path.exists():
         logging.info(
             "Pfam file already exists, if you wish to re-download,"
             " delete or move this file. In the meantime, BiG_SCAPE"
@@ -83,10 +93,18 @@ def validate_pfam(pfam_version, pfam_path):
 def validate_reference(mibig_version, reference_dir):
     """Validates the reference/MIBiG related properties"""
 
-    if reference_dir and not reference_dir.exists():
+    # given neither -> do nothing
+
+    # given reference dir and no mibig version, the dir must exist
+    if not mibig_version and reference_dir and not reference_dir.exists():
         logging.error("GBK reference directory does not exist!")
 
-    if mibig_version and reference_dir.exists():
+    # given reference dir and mibig version (download action), the parent dir must exist
+    if mibig_version and reference_dir and not reference_dir.parent.exists():
+        logging.error("Path to pfam file is not valid")
+        raise InvalidArgumentError("--reference_dir", reference_dir)
+
+    if mibig_version and reference_dir and reference_dir.exists():
         logging.info(
             "GBK reference directory already exists, if you wish to "
             "re-download, delete or move this directory. In the "
