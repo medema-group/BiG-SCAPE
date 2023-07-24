@@ -161,7 +161,7 @@ class HSP:
                 result.env_start,
                 result.env_stop,
             )
-            HSPAlignment(new_hsp, result.alignment)
+            new_hsp.alignment = HSPAlignment(new_hsp, result.alignment)
 
             if isinstance(cds.hsps, list):
                 raise ValueError("HSP list of CDS is a list. Did the CDS get locked?")
