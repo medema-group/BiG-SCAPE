@@ -41,10 +41,10 @@ CREATE TABLE IF NOT EXISTS cds (
 CREATE TABLE IF NOT EXISTS hsp (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     cds_id INTEGER NOT NULL,
-    hmm_id INTEGER NOT NULL,
+    accession TEXT NOT NULL,
     env_start INTEGER NOT NULL,
     env_stop INTEGER NOT NULL,
-    bitscore REAL NOT NULL
+    bit_score REAL NOT NULL
 );
 
 CREATE TABLE IF NOT EXISTS hsp_alignment (

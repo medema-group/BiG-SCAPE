@@ -50,10 +50,10 @@ class HSP:
             .returning(hsp_table.c.id)
             .values(
                 cds_id=parent_cds_id,
-                hmm_id=self.domain,
+                accession=self.domain,
                 env_start=self.env_start,
                 env_stop=self.env_stop,
-                bitscore=self.score,
+                bit_score=self.score,
             )
         )
 
@@ -118,6 +118,55 @@ class HSP:
 
     def __hash__(self) -> int:
         return hash((self.domain))
+
+    @staticmethod
+    def load_all(cds_list: list[CDS]) -> None:
+        """Load all HSPs and HSP alignments from the database
+
+        This function adds the HSP objects to the CDS objects in cds_list
+
+        Args:
+            cds_list (list[CDS]): list of CDS objects that were previously loaded from
+            to populate with HSP objects from the database
+        """
+        cds_dict = {cds._db_id: cds for cds in cds_list}
+
+        hsp_table = DB.metadata.tables["hsp"]
+        hsp_alignment_table = DB.metadata.tables["hsp_alignment"]
+
+        hsp_select_query = (
+            hsp_table.select()
+            .add_columns(
+                hsp_table.c.id,
+                hsp_table.c.cds_id,
+                hsp_table.c.accession,
+                hsp_table.c.env_start,
+                hsp_table.c.env_stop,
+                hsp_table.c.bit_score,
+                hsp_alignment_table.c.alignment,
+            )
+            .join(hsp_alignment_table, hsp_alignment_table.c.hsp_id == hsp_table.c.id)
+            .where(hsp_table.c.cds_id.in_(cds_dict))
+            .compile()
+        )
+
+        cursor_result = DB.execute(hsp_select_query)
+
+        for result in cursor_result.all():
+            cds = cds_dict[result.cds_id]
+            new_hsp = HSP(
+                cds,
+                result.accession,
+                result.bit_score,
+                result.env_start,
+                result.env_stop,
+            )
+            HSPAlignment(new_hsp, result.alignment)
+
+            if isinstance(cds.hsps, list):
+                raise ValueError("HSP list of CDS is a list. Did the CDS get locked?")
+
+            cds.hsps.add(new_hsp)
 
     @staticmethod
     def has_overlap(hsp_a: HSP, hsp_b: HSP) -> bool:
