@@ -145,6 +145,7 @@ class CandidateCluster(BGCRecord):
                 record_table.c.contig_edge,
                 record_table.c.nt_start,
                 record_table.c.nt_stop,
+                record_table.c.product,
             )
             .where(record_table.c.record_type == "cand_cluster")
             .compile()
@@ -162,6 +163,7 @@ class CandidateCluster(BGCRecord):
             new_candidate_cluster.nt_start = result.nt_start
             new_candidate_cluster.nt_stop = result.nt_stop
             new_candidate_cluster.contig_edge = result.contig_edge
+            new_candidate_cluster.product = result.product
 
             # add to parent Region candidate cluster dict
             region_dict[result.parent_id].cand_clusters[

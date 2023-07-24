@@ -135,6 +135,7 @@ class ProtoCluster(BGCRecord):
                 record_table.c.contig_edge,
                 record_table.c.nt_start,
                 record_table.c.nt_stop,
+                record_table.c.product,
             )
             .where(record_table.c.record_type == "protocluster")
             .compile()
@@ -152,6 +153,7 @@ class ProtoCluster(BGCRecord):
             new_proto_cluster.nt_start = result.nt_start
             new_proto_cluster.nt_stop = result.nt_stop
             new_proto_cluster.contig_edge = result.contig_edge
+            new_proto_cluster.product = result.product
 
             # add to parent CandidateCluster protocluster dict
             candidate_cluster_dict[result.parent_id].proto_clusters[

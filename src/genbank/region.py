@@ -157,6 +157,7 @@ class Region(BGCRecord):
                 record_table.c.contig_edge,
                 record_table.c.nt_start,
                 record_table.c.nt_stop,
+                record_table.c.product,
             )
             .where(record_table.c.record_type == "region")
             .compile()
@@ -175,6 +176,7 @@ class Region(BGCRecord):
             new_region.nt_start = result.nt_start
             new_region.nt_stop = result.nt_stop
             new_region.contig_edge = result.contig_edge
+            new_region.product = result.product
 
             # add to parent GBK
             gbk_dict[result.gbk_id].region = new_region

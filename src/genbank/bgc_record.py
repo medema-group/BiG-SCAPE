@@ -197,6 +197,7 @@ class BGCRecord:
                 contig_edge=contig_edge,
                 nt_start=self.nt_start,
                 nt_stop=self.nt_stop,
+                product=self.product,
                 record_type=record_type,
             )
             .compile()
