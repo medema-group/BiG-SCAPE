@@ -4,10 +4,9 @@
 -- regular tables
 CREATE TABLE IF NOT EXISTS gbk (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
-    name VARCHAR,
-    as_version TEXT,
-    nt_seq TEXT,
     path TEXT,
+    source_type TEXT,
+    nt_seq TEXT,
     UNIQUE(id)
 );
 

@@ -63,8 +63,8 @@ class TestSQLite(TestCase):
 
         insert_row_query = (
             "INSERT INTO gbk "
-            "(name, as_version, nt_seq, path) "
-            "VALUES ('test', 'test', 'test', 'test')"
+            "(path, source_type, nt_seq) "
+            "VALUES ('test', 'test', 'test')"
         )
 
         result = DB.execute_raw_query(insert_row_query)
