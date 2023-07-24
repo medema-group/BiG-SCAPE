@@ -317,7 +317,14 @@ class CDS:
 
         for result in cursor_result.all():
             new_cds = CDS(result.nt_start, result.nt_stop)
+
             new_cds._db_id = result.id
+
+            new_cds.parent_gbk = gbk_dict[result.gbk_id]
+            new_cds.strand = result.strand
+            new_cds.aa_seq = result.aa_seq
+            new_cds.orf_num = result.orf_num
+            new_cds.gene_kind = result.gene_kind
 
             # add to GBK
             gbk_dict[result.gbk_id].genes.append(new_cds)
