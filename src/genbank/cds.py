@@ -201,7 +201,7 @@ class CDS:
         )
 
     @classmethod
-    def parse(cls, feature: SeqFeature, parent_gbk: Optional[GBK] = None):
+    def parse(cls, feature: SeqFeature, parent_gbk: Optional[GBK] = None) -> CDS:
         """Creates a cds object from a region feature in a GBK file
 
         Note that this will not add biosynthetic information if no parent gbk is passed
@@ -285,7 +285,7 @@ class CDS:
         return max(0, right - left)
 
     @staticmethod
-    def load_all(gbk_dict: dict[int, GBK]):
+    def load_all(gbk_dict: dict[int, GBK]) -> None:
         """Load all Region objects from the database
 
         This function populates the region objects in the GBKs provided in the input

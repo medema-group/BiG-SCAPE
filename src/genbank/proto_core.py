@@ -36,15 +36,15 @@ class ProtoCore(BGCRecord):
     def __init__(self, number: int):
         super().__init__(number)
 
-    def save(self, commit=True):
+    def save(self, commit=True) -> None:
         """Stores this protocore in the database
 
         Arguments:
             commit: commit immediately after executing the insert query"""
-        return super().save("proto_core", commit)
+        super().save_record("proto_core", commit)
 
     @classmethod
-    def parse(cls, feature: SeqFeature, parent_gbk: Optional[GBK] = None):
+    def parse(cls, feature: SeqFeature, parent_gbk: Optional[GBK] = None) -> ProtoCore:
         """Creates a Protocore object from a region feature in a GBK file
 
         Args:

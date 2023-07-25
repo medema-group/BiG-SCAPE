@@ -42,7 +42,7 @@ class CandidateCluster(BGCRecord):
         self.kind: str = ""
         self.proto_clusters: Dict[int, Optional[ProtoCluster]] = {}
 
-    def add_proto_cluster(self, proto_cluster: ProtoCluster):
+    def add_proto_cluster(self, proto_cluster: ProtoCluster) -> None:
         """Add a protocluster object to this region
 
         Args:
@@ -57,23 +57,28 @@ class CandidateCluster(BGCRecord):
 
         self.proto_clusters[proto_cluster.number] = proto_cluster
 
-    def save(self, commit=True):
+    def save(self, commit=True) -> None:
         """Stores this candidate cluster in the database
 
         Arguments:
             commit: commit immediately after executing the insert query"""
-        return super().save("cand_cluster", commit)
+        super().save_record("cand_cluster", commit)
 
-    def save_all(self):
+    def save_all(self) -> None:
         """Stores this candidate cluster and its children in the database. Does not
         commit immediately
         """
         self.save(False)
         for proto_cluster in self.proto_clusters.values():
+            if proto_cluster is None:
+                continue
+
             proto_cluster.save_all()
 
     @classmethod
-    def parse(cls, feature: SeqFeature, parent_gbk: Optional[GBK] = None):
+    def parse(
+        cls, feature: SeqFeature, parent_gbk: Optional[GBK] = None
+    ) -> CandidateCluster:
         """_summary_Creates a cand_cluster object from a region feature in a GBK file
 
         Args:

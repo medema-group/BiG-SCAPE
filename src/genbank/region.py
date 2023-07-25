@@ -35,7 +35,7 @@ class Region(BGCRecord):
         super().__init__(number)
         self.cand_clusters: Dict[int, Optional[CandidateCluster]] = {}
 
-    def add_cand_cluster(self, cand_cluster: CandidateCluster):
+    def add_cand_cluster(self, cand_cluster: CandidateCluster) -> None:
         """Add a candidate cluster object to this region
 
         Args:
@@ -50,21 +50,24 @@ class Region(BGCRecord):
 
         self.cand_clusters[cand_cluster.number] = cand_cluster
 
-    def save(self, commit=True):
+    def save(self, commit=True) -> None:
         """Stores this region in the database
 
         Args:
             commit: commit immediately after executing the insert query"""
-        return super().save("region", commit)
+        super().save_record("region", commit)
 
-    def save_all(self):
+    def save_all(self) -> None:
         """Stores this Region and its children in the database. Does not commit immediately"""
         self.save(False)
         for candidate_cluster in self.cand_clusters.values():
+            if candidate_cluster is None:
+                continue
+
             candidate_cluster.save_all()
 
     @classmethod
-    def parse(cls, feature: SeqFeature, parent_gbk: Optional[GBK] = None):
+    def parse(cls, feature: SeqFeature, parent_gbk: Optional[GBK] = None) -> Region:
         """Creates a region object from a region feature in a GBK file
 
         Args:
@@ -123,6 +126,9 @@ class Region(BGCRecord):
 
             region.parse_bgc_record(feature, parent_gbk=parent_gbk)
             return region
+
+        else:
+            raise ValueError("Could not parse region feature")
 
     def get_cds_with_domains(self, return_all=True, reverse=False) -> list[CDS]:
         return super().get_cds_with_domains(return_all, reverse)

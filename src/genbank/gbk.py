@@ -138,7 +138,7 @@ class GBK:
         # a CDS so add a new one here
         self.genes.append(new_cds)
 
-    def save(self, commit=True):
+    def save(self, commit=True) -> None:
         """Stores this GBK in the database
 
         this returns the id of the GBK row
@@ -167,12 +167,14 @@ class GBK:
         if commit:
             DB.commit()
 
-    def save_all(self):
+    def save_all(self) -> None:
         """Stores this GBK and its children in the database. Does not commit immediately
 
         this function never commits"""
         self.save(False)
-        self.region.save_all()
+
+        if self.region is not None:
+            self.region.save_all()
 
         for cds in self.genes:
             cds.save(False)
@@ -216,7 +218,7 @@ class GBK:
         return list(gbk_dict.values())
 
     @staticmethod
-    def get_as_version(gbk_seq_record: SeqRecord):
+    def get_as_version(gbk_seq_record: SeqRecord) -> str:
         """Get AS version from GBK record
 
         Args:
@@ -243,7 +245,7 @@ class GBK:
         source_type: SOURCE_TYPE,
         cds_overlap_cutoff: Optional[float] = None,
         legacy_mode=False,
-    ):
+    ) -> GBK:
         """Parses a GBK file and returns a GBK object with all necessary information
 
         Args:
@@ -280,7 +282,7 @@ class GBK:
         record: SeqRecord,
         cds_overlap_cutoff: Optional[float] = None,
         legacy_mode=False,
-    ):
+    ) -> None:
         """Parses a GBK record of AS version 4 and returns a GBK object with all necessary information
 
         Args:
@@ -323,7 +325,7 @@ class GBK:
         record: SeqRecord,
         cds_overlap_cutoff: Optional[float] = None,
         legacy_mode=False,
-    ):
+    ) -> None:
         """Parses a GBK record of AS versions 5 and up and returns a GBK object with all necessary information
 
         Args:

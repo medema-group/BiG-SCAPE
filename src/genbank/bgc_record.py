@@ -167,7 +167,9 @@ class BGCRecord:
                 domains.extend(cds.hsps)
         return domains
 
-    def save(self, record_type: str, parent_id: Optional[int] = None, commit=True):
+    def save_record(
+        self, record_type: str, parent_id: Optional[int] = None, commit=True
+    ) -> None:
         """Stores this BGCRecord in the database
 
         Args:
@@ -208,7 +210,7 @@ class BGCRecord:
         if commit:
             DB.commit()
 
-    def parse_bgc_record(self, feature: SeqFeature, parent_gbk: Optional[GBK]):
+    def parse_bgc_record(self, feature: SeqFeature, parent_gbk: Optional[GBK]) -> None:
         """Parses a BGC record locale info
 
         Args:
