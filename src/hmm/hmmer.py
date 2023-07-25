@@ -88,7 +88,7 @@ class HMMer:
         )
 
     @staticmethod
-    def unload():
+    def unload() -> None:
         """Unload the variables that were set up during init(). Do this before running
         init() again for hmmalign
         """
@@ -140,7 +140,7 @@ class HMMer:
     @staticmethod
     def hmmsearch_simple(
         cds_list: list[CDS], domain_overlap_cutoff=0.1, cores=cpu_count()
-    ):
+    ) -> None:
         """Performs hmmsearch on a list of CDS and appends detected HSPs to the CDS
         objects
 
@@ -360,7 +360,7 @@ class HMMer:
     @staticmethod
     def hmmsearch_process(
         process_id, worker_connection: Connection
-    ):  # pragma: no cover
+    ) -> None:  # pragma: no cover
         """Process for hmmsearch workers
 
         Args:
@@ -534,7 +534,7 @@ def task_generator(cds_list: list[CDS], batch_size) -> Iterator[list]:
         yield tasks
 
 
-def process_algn_string(algn_string: str):
+def process_algn_string(algn_string: str) -> str:
     """removes any model gaps from the alignment string and returns a string with only
     cds gaps
     """

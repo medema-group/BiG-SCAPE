@@ -33,7 +33,7 @@ class HSP:
         # db specific fields
         self._db_id: Optional[int] = None
 
-    def save(self, commit=True):
+    def save(self, commit=True) -> None:
         """Saves this hsp object to a database and optionally executes a commit
 
         Args:
@@ -272,7 +272,7 @@ class HSPAlignment:
         # database specific fields
         self._db_id: Optional[int] = None
 
-    def save(self, commit=True):
+    def save(self, commit=True) -> None:
         """Saves this hsp alignment object to a database and optionally executes a
         commit
 
