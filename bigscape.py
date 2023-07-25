@@ -229,6 +229,8 @@ if __name__ == "__main__":
         mix_network.write_graphml(run.output.output_dir / Path("network_mix.graphml"))
         mix_network.write_edgelist_tsv(run.output.output_dir / Path("network_mix.tsv"))
 
+        mix_network.export_distances_to_db()
+
     # networking - bins
 
     if not run.binning.legacy_no_classify:
@@ -264,6 +266,15 @@ if __name__ == "__main__":
             bin_network.write_edgelist_tsv(
                 run.output.output_dir / Path(bin_tsv_filename)
             )
+
+            # if running mix, distances are already in the database
+            if run.binning.mix:
+                continue
+
+            bin_network.export_distances_to_db()
+
+    # last dump of the database
+    DB.save_to_disk(run.output.db_path)
 
     if run.diagnostics.profiling:
         profiler.stop()

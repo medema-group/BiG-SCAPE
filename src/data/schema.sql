@@ -53,17 +53,14 @@ CREATE TABLE IF NOT EXISTS hsp_alignment (
     alignment TEXT NOT NULL
 );
 
-CREATE TABLE IF NOT EXISTS hmm (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    accession TEXT NOT NULL,
-    name TEXT NOT NULL,
-    db_id INTEGER NOT NULL,
-    model_length INTEGER NOT NULL,
-    FOREIGN KEY(db_id) REFERENCES hmm_db(id)
-);
-
-CREATE TABLE IF NOT EXISTS hmm_db (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    path TEXT NOT NULL,
-    md5 TEXT NOT NULL
+CREATE TABLE IF NOT EXISTS distance (
+    region_a_id INTEGER NOT NULL,
+    region_b_id INTEGER NOT NULL,
+    distance REAL NOT NULL,
+    jaccard REAL NOT NULL,
+    adjacency REAL NOT NULL,
+    dss REAL NOT NULL,
+    UNIQUE(region_a_id, region_b_id)
+    FOREIGN KEY(region_a_id) REFERENCES bgc_record(id)
+    FOREIGN KEY(region_b_id) REFERENCES bgc_record(id)
 );

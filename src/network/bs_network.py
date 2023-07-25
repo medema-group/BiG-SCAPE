@@ -13,6 +13,7 @@ from networkx.readwrite import graphml
 from networkx.readwrite import edgelist
 
 # from other modules
+from src.data import DB
 from src.genbank import BGCRecord
 from src.comparison import BGCPair
 
@@ -82,6 +83,32 @@ class BSNetwork:
                 node._families[cutoff] = centers[labels[idx]]
                 # also add to graph node attributes
                 self.graph.nodes.get(node)[family_key] = centers[labels[idx]]
+
+    def export_distances_to_db(self, commit=True) -> None:
+        """Save the distances stored in this network to the database
+
+        Args:
+            commit (bool, optional): Commit the result immediately. Defaults to True.
+        """
+        distance_table = DB.metadata.tables["distance"]
+
+        for region_a in self.graph.adj:
+            for region_b in self.graph.adj[region_a]:
+                edge_data = self.graph.adj[region_a][region_b]
+
+                insert_statement = distance_table.insert().values(
+                    region_a_id=region_a._db_id,
+                    region_b_id=region_b._db_id,
+                    distance=edge_data["dist"],
+                    jaccard=edge_data["jc"],
+                    adjacency=edge_data["ai"],
+                    dss=edge_data["dss"],
+                )
+
+                DB.execute(insert_statement)
+
+        if commit:
+            DB.commit()
 
     def generate_cutoff_subgraphs(
         self, property_key: str, cutoff: float
