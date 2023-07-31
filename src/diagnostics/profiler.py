@@ -39,11 +39,11 @@ class Profiler:
         )
 
     def start(self) -> None:
-        """Starts the worker thread"""
+        """Start the worker thread"""
         self.worker.start()
 
     def stop(self):
-        """Stops the worker thread"""
+        """Stop the worker thread"""
         self.command_queue.put((1, None))
         self.worker.join()
 

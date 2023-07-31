@@ -247,7 +247,11 @@ class BGCRecord:
             self.parent_gbk = parent_gbk
 
     def get_attr_dict(self) -> dict[str, object]:
-        """Gets a dictionary of attributes, useful for adding to network nodes later"""
+        """Gets a dictionary of attributes, used for adding to network nodes later
+
+        Returns:
+            dict[str, object]: dictionary of attributes
+        """
         attr_dict: dict[str, object] = {
             "product": self.product,
             "contig_edge": self.contig_edge,
@@ -262,7 +266,6 @@ class BGCRecord:
         return f"{self.parent_gbk} Record (superclass) {self.nt_start}-{self.nt_stop}"
 
     def __hash__(self, record_type="BGCRecord") -> int:
-        # return a hash of a tuple containing identifying properties
         return hash(
             (
                 self.parent_gbk,
@@ -274,6 +277,14 @@ class BGCRecord:
 
 
 def parse_products(products: set[str]) -> str:
+    """Parse a set of products from a BGC record. Used in cases where there are hybrid products
+
+    Args:
+        products (set[str]): set of products
+
+    Returns:
+        str: Singular string representing the product type
+    """
     # single product? just return it
     if len(products) == 1:
         return products.pop()

@@ -7,7 +7,7 @@ from src.hmm import HSP
 
 
 def calc_ai_lists(list_a: list, list_b: list):
-    """Calculates the adjacency index of two lists, which is the Jaccard index of sets
+    """Calculate the adjacency index of two lists, which is the Jaccard index of sets
     of neighbouring items in two sorted lists.
 
     e.g.

@@ -1,6 +1,8 @@
 """Contains code to calculate the DSS for a pair of BGCs. Also contains a helper
 function to perform calculation for all BGCs in a bin using just-in-time execution of
 HHMAlign
+
+NOTE: this is currently not being used!
 """
 
 # from python

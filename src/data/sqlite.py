@@ -173,11 +173,20 @@ class DB:
 
 
 def read_schema(path: Path) -> List[str]:
+    """Read an .sql schema from a file"""
     with open(path, encoding="utf-8") as schema_file:
         return text_to_queries(schema_file.readlines())
 
 
-def text_to_queries(schema_lines: List[str]):
+def text_to_queries(schema_lines: List[str]) -> list[str]:
+    """Convert list of lines from an .sql file to a list of queries
+
+    Args:
+        schema_lines (List[str]): list of lines from an .sql file
+
+    Returns:
+        list[str]: list of queries that can be executed
+    """
     create_queries = []
     query_lines = []
     for line in schema_lines:

@@ -29,15 +29,36 @@ class BSNetwork:
     def __init__(self):
         self.graph = Graph()
 
-    def add_node(self, node: BGCRecord):
+    def add_node(self, node: BGCRecord) -> None:
+        """Add a node in the form of a BGCRecord. This function calls node.get_attr_dict() to get
+        the attributes that are relevant for this node (e.g. family memberships)
+
+        Args:
+            node (BGCRecord): BGCRecord
+        """
         # the ** before the get_att_dict call converts the dict returned in the
         # method into a keyword argument set
         self.graph.add_node(node, **node.get_attr_dict())
 
-    def add_edge_pair(self, pair: BGCPair, **attr):
+    def add_edge_pair(self, pair: BGCPair, **attr) -> None:
+        """Add an edge between two regions in a pair.
+
+        Args:
+            pair (BGCPair): BGC pair to add an edge for
+            attr (dict[str, Any]): values to add to edge
+        """
         self.add_edge(pair.region_a, pair.region_b, **attr)
 
-    def add_edge(self, region_a: BGCRecord, region_b: BGCRecord, **attr):
+    def add_edge(self, region_a: BGCRecord, region_b: BGCRecord, **attr) -> None:
+        """Add an edge between two regions
+
+        Args:
+            region_a (BGCRecord): U node of edge as a BGCRecord
+            region_b (BGCRecord): V node of edge as a BGCRecord
+
+        Raises:
+            KeyError: Raised if a node from an edge is not present in the network
+        """
         # we want to ensure all edges are accounted for
         if region_a not in self.graph:
             logging.error(
@@ -59,7 +80,14 @@ class BSNetwork:
 
         self.graph.add_edge(u_of_edge=region_a, v_of_edge=region_b, **attr)
 
-    def generate_families_cutoff(self, edge_property: str, cutoff: float):
+    def generate_families_cutoff(self, edge_property: str, cutoff: float) -> None:
+        """Generate the families for nodes in a network, using a given cutoff for a property that is
+        present on an edge. This will usually be 'dist'
+
+        Args:
+            edge_property (str): edge property to use for cutoff
+            cutoff (float): the cutoff value to use
+        """
         subgraphs = self.generate_cutoff_subgraphs(edge_property, cutoff)
 
         family_key = f"family_{cutoff}"
@@ -113,7 +141,7 @@ class BSNetwork:
     def generate_cutoff_subgraphs(
         self, property_key: str, cutoff: float
     ) -> Iterator[Graph]:
-        """Returns an iterator that returns new graphs for each connected component in
+        """Return an iterator that returns new graphs for each connected component in
         a subgraph created by applying a cutoff for a property on the main graph
 
         Args:
@@ -136,8 +164,8 @@ class BSNetwork:
         for connected_component in connected_components(cutoff_subgraph):
             yield self.graph.subgraph(connected_component)
 
-    def write_graphml(self, graph_path: Path):
-        """Writes this network graph as a graphml file to the specified output file
+    def write_graphml(self, graph_path: Path) -> None:
+        """Write this network graph as a graphml file to the specified output file
 
         graphml is easier to read in most graph software, but is a lot larger than e.g.
         a TSV file. This makes reading and writing the file more time consuming, and the
@@ -148,8 +176,8 @@ class BSNetwork:
         """
         graphml.write_graphml_xml(self.graph, graph_path)
 
-    def write_edgelist_tsv(self, graph_path: Path):
-        """Writes this network graph as an edge list tsv file to the specified output
+    def write_edgelist_tsv(self, graph_path: Path) -> None:
+        """Write this network graph as an edge list tsv file to the specified output
         file
 
         Args:

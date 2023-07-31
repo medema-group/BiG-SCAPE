@@ -163,7 +163,9 @@ class CDS:
             DB.commit()
 
     def lock(self):
-        """Locks this CDS, converting the sorted list of HSPs to a regular list to support pickling"""
+        """Locks this CDS, converting the sorted list of HSPs to a regular list to support pickling
+        TOOD: remove once sortedlists are removed
+        """
         self.__locked = True
         self.hsps = list(self.hsps)
 
