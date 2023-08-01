@@ -11,6 +11,7 @@ from typing import Iterator
 from networkx import Graph, connected_components
 from networkx.readwrite import graphml
 from networkx.readwrite import edgelist
+from sqlalchemy.dialects.sqlite import insert
 
 # from other modules
 from src.data import DB
@@ -113,7 +114,10 @@ class BSNetwork:
                 self.graph.nodes.get(node)[family_key] = centers[labels[idx]]
 
     def export_distances_to_db(self, commit=True) -> None:
-        """Save the distances stored in this network to the database
+        """Save the distances stored in this network to the database.
+
+        If a distance between two nodes already exists, this will overwrite that
+        distance
 
         Args:
             commit (bool, optional): Commit the result immediately. Defaults to True.
@@ -124,16 +128,28 @@ class BSNetwork:
             for region_b in self.graph.adj[region_a]:
                 edge_data = self.graph.adj[region_a][region_b]
 
-                insert_statement = distance_table.insert().values(
-                    region_a_id=region_a._db_id,
-                    region_b_id=region_b._db_id,
-                    distance=edge_data["dist"],
-                    jaccard=edge_data["jc"],
-                    adjacency=edge_data["ai"],
-                    dss=edge_data["dss"],
+                upsert_statement = (
+                    insert(distance_table)
+                    .values(
+                        region_a_id=region_a._db_id,
+                        region_b_id=region_b._db_id,
+                        distance=edge_data["dist"],
+                        jaccard=edge_data["jc"],
+                        adjacency=edge_data["ai"],
+                        dss=edge_data["dss"],
+                    )
+                    .on_conflict_do_update(
+                        index_elements=["region_a_id", "region_b_id"],
+                        set_={
+                            "distance": edge_data["dist"],
+                            "jaccard": edge_data["jc"],
+                            "adjacency": edge_data["ai"],
+                            "dss": edge_data["dss"],
+                        },
+                    )
                 )
 
-                DB.execute(insert_statement)
+                DB.execute(upsert_statement)
 
         if commit:
             DB.commit()
