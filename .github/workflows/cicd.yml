@@ -20,26 +20,26 @@ jobs:
       uses: actions/checkout@v3
 
     - name: Set up conda environment
-      uses: conda-incubator/setup-miniconda@v2
+      uses: mamba-org/setup-micromamba@v1
       with:
-        miniconda-version: latest
-        mamba-version: "*"
-        channels: conda-forge, bioconda
-        channel-priority: true
+        micromamba-version: 1.4.2
+        environment-file: environment.yml
+        init-shell: >-
+          bash
+        post-cleanup: all
 
     - name: Install dependencies
       shell: bash
       run: |
-        $CONDA/bin/mamba env update --file environment.yml --name base
-        $CONDA/bin/python -m pip install pytest coverage coverage-badge
+        python -m pip install pytest coverage coverage-badge
 
     - name: Test with Pytest
       shell: bash
       run: |
-        $CONDA/bin/coverage run -m pytest
-        $CONDA/bin/coverage report
+        coverage run -m pytest
+        coverage report
         mkdir badges
-        $CONDA/bin/coverage-badge -o badges/coverage.svg
+        coverage-badge -o badges/coverage.svg
 
     - name: Upload badges folder
       uses: peaceiris/actions-gh-pages@v3
