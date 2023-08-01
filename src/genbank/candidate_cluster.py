@@ -28,19 +28,39 @@ class CandidateCluster(BGCRecord):
     Class to describe a candidate cluster within an Antismash GBK
 
     Attributes:
+        parent_gbk: GBK | None
+        number: int
         contig_edge: Bool
         nt_start: int
         nt_stop: int
         product: str
-        number: int
+        _db_id: int | None
+        _families: dict[float, int]
         kind: str
-        proto_clusters: Dict{number: int, ProtoCluster}
+        proto_clusters: Dict{number: int, ProtoCluster | None}
     """
 
-    def __init__(self, number: int):
-        super().__init__(number)
-        self.kind: str = ""
-        self.proto_clusters: Dict[int, Optional[ProtoCluster]] = {}
+    def __init__(
+        self,
+        parent_gbk: Optional[GBK],
+        number: int,
+        nt_start: int,
+        nt_stop: int,
+        contig_edge: Optional[bool],
+        product: str,
+        kind: str,
+        proto_clusters: dict[int, Optional[ProtoCluster]],
+    ):
+        super().__init__(
+            parent_gbk,
+            number,
+            nt_start,
+            nt_stop,
+            contig_edge,
+            product,
+        )
+        self.kind: str = kind
+        self.proto_clusters: Dict[int, Optional[ProtoCluster]] = proto_clusters
 
     def add_proto_cluster(self, proto_cluster: ProtoCluster) -> None:
         """Add a protocluster object to this region
@@ -111,18 +131,26 @@ class CandidateCluster(BGCRecord):
 
         cand_cluster_kind = feature.qualifiers["kind"][0]
 
-        cand_cluster = cls(cand_cluster_number)
-        cand_cluster.parse_bgc_record(feature, parent_gbk=parent_gbk)
-        cand_cluster.kind = cand_cluster_kind
-
         if "protoclusters" not in feature.qualifiers:
             logging.error("protoclusters qualifier not found in region feature!")
             raise InvalidGBKError()
 
+        proto_clusters: dict[int, Optional[ProtoCluster]] = {}
         for proto_cluster_number in feature.qualifiers["protoclusters"]:
-            cand_cluster.proto_clusters[int(proto_cluster_number)] = None
+            proto_clusters[int(proto_cluster_number)] = None
 
-        return cand_cluster
+        nt_start, nt_stop, contig_edge, product = BGCRecord.parse_common(feature)
+
+        return cls(
+            parent_gbk,
+            cand_cluster_number,
+            nt_start,
+            nt_stop,
+            contig_edge,
+            product,
+            cand_cluster_kind,
+            proto_clusters,
+        )
 
     def __repr__(self) -> str:
         return f"{self.parent_gbk} Candidate cluster {self.number} {self.nt_start}-{self.nt_stop} "
@@ -161,19 +189,25 @@ class CandidateCluster(BGCRecord):
         candidate_cluster_dict = {}
 
         for result in cursor_result.all():
-            new_candidate_cluster = CandidateCluster(result.record_number)
+            parent_region = region_dict[result.parent_id]
+
+            parent_gbk = parent_region.parent_gbk
+
+            new_candidate_cluster = CandidateCluster(
+                parent_gbk,
+                result.record_number,
+                result.nt_start,
+                result.nt_stop,
+                result.contig_edge,
+                result.product,
+                result.kind,
+                {},
+            )
 
             new_candidate_cluster._db_id = result.id
 
-            new_candidate_cluster.nt_start = result.nt_start
-            new_candidate_cluster.nt_stop = result.nt_stop
-            new_candidate_cluster.contig_edge = result.contig_edge
-            new_candidate_cluster.product = result.product
-
             # add to parent Region candidate cluster dict
-            region_dict[result.parent_id].cand_clusters[
-                result.record_number
-            ] = new_candidate_cluster
+            parent_region.cand_clusters[result.record_number] = new_candidate_cluster
 
             # add to dictionary
             candidate_cluster_dict[result.id] = new_candidate_cluster

@@ -26,16 +26,6 @@ class TestCDS(TestCase):
         super().__init__(methodName)
         self.addCleanup(self.clean_db)
 
-    def test_create_cds(self):
-        """Tests whether a cds is instatiated correclty"""
-
-        expected_start = 1
-        expected_end = 5
-
-        cds = CDS(expected_start, expected_end)
-
-        self.assertIsInstance(cds, CDS)
-
     def test_parse_aa_seq(self):
         """Tests whether an aa sequence is correclty parsed from a feature"""
 

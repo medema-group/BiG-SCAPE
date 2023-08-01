@@ -29,22 +29,32 @@ class BGCRecord:
     records
 
     Attributes:
-        parent_gbk: GBK
+        parent_gbk: GBK | None
+        number: int
         contig_edge: Bool
         nt_start: int
         nt_stop: int
         product: str
-        number: int
+        _db_id: int | None
+        _families: dict[float, int]
     """
 
-    def __init__(self, number: Optional[int] = None):
-        self.number: Optional[int] = number
-        self.parent_gbk: Optional[GBK] = None
+    def __init__(
+        self,
+        parent_gbk: Optional[GBK],
+        number: int,
+        nt_start: int,
+        nt_stop: int,
+        contig_edge: Optional[bool],
+        product: str,
+    ):
+        self.parent_gbk = parent_gbk
+        self.number = number
         # contig edge is optional, proto_core does not have it
-        self.contig_edge: Optional[bool] = None
-        self.nt_start: Optional[int] = None
-        self.nt_stop: Optional[int] = None
-        self.product: Optional[str] = None
+        self.contig_edge = contig_edge
+        self.nt_start = nt_start
+        self.nt_stop = nt_stop
+        self.product = product
 
         # for database operations
         self._db_id: Optional[int] = None
@@ -210,42 +220,6 @@ class BGCRecord:
         if commit:
             DB.commit()
 
-    def parse_bgc_record(self, feature: SeqFeature, parent_gbk: Optional[GBK]) -> None:
-        """Parses a BGC record locale info
-
-        Args:
-            feature (SeqFeature): SeqFeature, any type BGC record
-
-        Raises:
-            InvalidGBKError: Invalid or missing fields in SeqFeature
-        """
-
-        if "contig_edge" in feature.qualifiers:
-            contig_edge_qualifier = feature.qualifiers["contig_edge"][0]
-
-            if contig_edge_qualifier == "True":
-                self.contig_edge = True
-            else:
-                self.contig_edge = False
-
-        self.nt_start = feature.location.start
-        self.nt_stop = feature.location.end
-
-        if "product" not in feature.qualifiers:
-            logging.error("product qualifier not found in feature!")
-            raise InvalidGBKError()
-
-        # record may have multiple products. handle them here
-        products = set(feature.qualifiers["product"][0].split("-"))
-
-        product = parse_products(products)
-
-        self.product = product
-
-        # add parent gbk if available
-        if parent_gbk is not None:
-            self.parent_gbk = parent_gbk
-
     def get_attr_dict(self) -> dict[str, object]:
         """Gets a dictionary of attributes, used for adding to network nodes later
 
@@ -275,25 +249,64 @@ class BGCRecord:
             )
         )
 
+    @staticmethod
+    def parse_products(products: set[str]) -> str:
+        """Parse a set of products from a BGC record. Used in cases where there are hybrid products
 
-def parse_products(products: set[str]) -> str:
-    """Parse a set of products from a BGC record. Used in cases where there are hybrid products
+        Args:
+            products (set[str]): set of products
 
-    Args:
-        products (set[str]): set of products
+        Returns:
+            str: Singular string representing the product type
+        """
+        # single product? just return it
+        if len(products) == 1:
+            return products.pop()
 
-    Returns:
-        str: Singular string representing the product type
-    """
-    # single product? just return it
-    if len(products) == 1:
-        return products.pop()
+        # return easy hybrids
+        if "other" not in products:
+            return ".".join(products)
 
-    # return easy hybrids
-    if "other" not in products:
-        return ".".join(products)
+        # in all other cases we have an 'other' classification. for the rest of the cases we can remove
+        # that and just parse the products again
+        products.remove("other")
+        return BGCRecord.parse_products(products)
 
-    # in all other cases we have an 'other' classification. for the rest of the cases we can remove
-    # that and just parse the products again
-    products.remove("other")
-    return parse_products(products)
+    def parse_common(
+        feature: SeqFeature,
+    ) -> tuple[int, int, Optional[bool], str]:
+        """Parse and return the common attributes of BGC records in a GBK feature
+
+        Args:
+            feature (SeqFeature): Seq feature of a BGC record to parse
+
+        Raises:
+            InvalidGBKError: Raised when a field that was expected to be present in the
+            feature is not present
+
+        Returns:
+            tuple[int, int, Optional[bool], str]: nt_start, nt_stop, contig_edge,
+            product
+        """
+        nt_start = feature.location.start
+        nt_stop = feature.location.end
+
+        contig_edge = None
+        if "contig_edge" in feature.qualifiers:
+            contig_edge_qualifier = feature.qualifiers["contig_edge"][0]
+
+            if contig_edge_qualifier == "True":
+                contig_edge = True
+            else:
+                contig_edge = False
+
+        if "product" not in feature.qualifiers:
+            logging.error("product qualifier not found in feature!")
+            raise InvalidGBKError()
+
+        # record may have multiple products. handle them here
+        products = set(feature.qualifiers["product"][0].split("-"))
+
+        product = BGCRecord.parse_products(products)
+
+        return nt_start, nt_stop, contig_edge, product

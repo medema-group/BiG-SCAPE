@@ -16,10 +16,8 @@ class TestBSNetwork(TestCase):
 
     def test_add_node(self):
         """Tests whether a node can be created from a BGCRecord object"""
-        region = Region(1)
-        region.nt_start = 0
-        region.nt_stop = 100
-        region.parent_gbk = GBK("", "test")
+        gbk = GBK("", "test")
+        region = Region(gbk, 0, 0, 100, False, "")
 
         network = BSNetwork()
 
@@ -29,15 +27,11 @@ class TestBSNetwork(TestCase):
 
     def test_add_edge(self):
         """Tests whether an edge can be correctly added between two nodes"""
-        region_a = Region(1)
-        region_a.nt_start = 0
-        region_a.nt_stop = 100
-        region_a.parent_gbk = GBK("", "test")
+        gbk_a = GBK("", "test")
+        region_a = Region(gbk_a, 0, 0, 100, False, "")
 
-        region_b = Region(1)
-        region_b.nt_start = 0
-        region_b.nt_stop = 100
-        region_b.parent_gbk = GBK("", "test")
+        gbk_b = GBK("", "test")
+        region_b = Region(gbk_b, 0, 0, 100, False, "")
 
         pair = BGCPair(region_a, region_b)
 
@@ -54,15 +48,11 @@ class TestBSNetwork(TestCase):
         """Tests whether add_edge correctly raises a ValueError if one node is not yet
         present in the graph
         """
-        region_a = Region(1)
-        region_a.nt_start = 0
-        region_a.nt_stop = 100
-        region_a.parent_gbk = GBK(Path("test/test_data/tmp/a.gbk"), "test")
+        gbk_a = GBK(Path("test/test_data/tmp/a.gbk"), "test")
+        region_a = Region(gbk_a, 0, 0, 100, False, "")
 
-        region_b = Region(1)
-        region_b.nt_start = 0
-        region_b.nt_stop = 100
-        region_b.parent_gbk = GBK(Path("test/test_data/tmp/b.gbk"), "test")
+        gbk_b = GBK(Path("test/test_data/tmp/b.gbk"), "test")
+        region_b = Region(gbk_b, 0, 0, 100, False, "")
 
         pair = BGCPair(region_a, region_b)
 
@@ -76,19 +66,11 @@ class TestBSNetwork(TestCase):
     def test_write_graphml(self):
         """Tests whether the graph can be written to an output grpahm file"""
 
-        region_a = Region(1)
-        region_a.nt_start = 0
-        region_a.nt_stop = 100
-        region_a.product = ""
-        region_a.contig_edge = False
-        region_a.parent_gbk = GBK(Path("test1.gbk"), "test")
+        gbk_a = GBK(Path("test1.gbk"), "test")
+        region_a = Region(gbk_a, 0, 0, 100, False, "")
 
-        region_b = Region(1)
-        region_b.nt_start = 0
-        region_b.nt_stop = 100
-        region_b.product = ""
-        region_b.contig_edge = False
-        region_b.parent_gbk = GBK(Path("test2.gbk"), "test")
+        gbk_b = GBK(Path("test2.gbk"), "test")
+        region_b = Region(gbk_b, 0, 0, 100, False, "")
 
         pair = BGCPair(region_a, region_b)
 
@@ -108,19 +90,11 @@ class TestBSNetwork(TestCase):
     def test_write_tsv(self):
         """Tests whether the graph can be written to an output grpahm file"""
 
-        region_a = Region(1)
-        region_a.nt_start = 0
-        region_a.nt_stop = 100
-        region_a.product = ""
-        region_a.contig_edge = False
-        region_a.parent_gbk = GBK(Path("test1.gbk"), "test")
+        gbk_a = GBK(Path("test1.gbk"), "test")
+        region_a = Region(gbk_a, 0, 0, 100, False, "")
 
-        region_b = Region(1)
-        region_b.nt_start = 0
-        region_b.nt_stop = 100
-        region_b.product = ""
-        region_b.contig_edge = False
-        region_b.parent_gbk = GBK(Path("test2.gbk"), "test")
+        gbk_b = GBK(Path("test2.gbk"), "test")
+        region_b = Region(gbk_b, 0, 0, 100, False, "")
 
         pair = BGCPair(region_a, region_b)
 
@@ -143,14 +117,13 @@ class TestBSNetwork(TestCase):
 
         network = BSNetwork()
 
+        gbk = GBK(Path("test1.gbk"), "test")
+
         # 6 regions
-        regions = [Region(i) for i in range(6)]
-        for region in regions:
-            region.nt_start = 0
-            region.nt_stop = 100
-            region.product = ""
-            region.contig_edge = False
-            region.parent_gbk = GBK(Path("test1.gbk"), "test")
+        regions = []
+        for region_number in range(6):
+            region = Region(gbk, region_number, 0, 100, False, "")
+            regions.append(region)
             network.add_node(region)
 
         edges = list(combinations(regions, 2))

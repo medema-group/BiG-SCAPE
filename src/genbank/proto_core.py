@@ -27,14 +27,33 @@ class ProtoCore(BGCRecord):
     Class to describe a protocore within an Antismash GBK
 
     Attributes:
+        parent_gbk: GBK | None
+        number: int
+        contig_edge: Bool
         nt_start: int
         nt_stop: int
         product: str
-        number: int
+        _db_id: int | None
+        _families: dict[float, int]
     """
 
-    def __init__(self, number: int):
-        super().__init__(number)
+    def __init__(
+        self,
+        parent_gbk: Optional[GBK],
+        number: int,
+        nt_start: int,
+        nt_stop: int,
+        contig_edge: Optional[bool],
+        product: str,
+    ):
+        super().__init__(
+            parent_gbk,
+            number,
+            nt_start,
+            nt_stop,
+            contig_edge,
+            product,
+        )
 
     def save(self, commit=True) -> None:
         """Stores this protocore in the database
@@ -71,10 +90,11 @@ class ProtoCore(BGCRecord):
 
         proto_core_number = int(feature.qualifiers["protocluster_number"][0])
 
-        proto_core = cls(proto_core_number)
-        proto_core.parse_bgc_record(feature, parent_gbk=parent_gbk)
+        nt_start, nt_stop, contig_edge, product = BGCRecord.parse_common(feature)
 
-        return proto_core
+        return cls(
+            parent_gbk, proto_core_number, nt_start, nt_stop, contig_edge, product
+        )
 
     def __repr__(self) -> str:
         return (
@@ -113,16 +133,19 @@ class ProtoCore(BGCRecord):
         cursor_result = DB.execute(region_select_query)
 
         for result in cursor_result.all():
-            new_proto_core = ProtoCore(result.record_number)
+            parent_proto_cluster = protocluster_dict[result.parent_id]
+            parent_gbk = parent_proto_cluster.parent_gbk
+
+            new_proto_core = ProtoCore(
+                parent_gbk,
+                result.record_number,
+                result.nt_start,
+                result.nt_stop,
+                result.contig_edge,
+                result.product,
+            )
 
             new_proto_core._db_id = result.id
 
-            new_proto_core.nt_start = result.nt_start
-            new_proto_core.nt_stop = result.nt_stop
-            new_proto_core.contig_edge = result.contig_edge
-            new_proto_core.product = result.product
-
             # add to parent ProtoCluster protocore dict
-            protocluster_dict[result.parent_id].proto_core[
-                result.record_number
-            ] = new_proto_core
+            parent_proto_cluster.proto_core[result.record_number] = new_proto_core

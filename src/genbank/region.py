@@ -27,12 +27,34 @@ class Region(BGCRecord):
     Class to describe a region within an Antismash GBK
 
     Attributes:
+        parent_gbk: GBK | None
         number: int
+        contig_edge: Bool
+        nt_start: int
+        nt_stop: int
+        product: str
+        _db_id: int | None
+        _families: dict[float, int]
         cand_clusters: Dict{number: int, CandidateCluster}
     """
 
-    def __init__(self, number: int):
-        super().__init__(number)
+    def __init__(
+        self,
+        parent_gbk: Optional[GBK],
+        number: int,
+        nt_start: int,
+        nt_stop: int,
+        contig_edge: Optional[bool],
+        product: str,
+    ):
+        super().__init__(
+            parent_gbk,
+            number,
+            nt_start,
+            nt_stop,
+            contig_edge,
+            product,
+        )
         self.cand_clusters: Dict[int, Optional[CandidateCluster]] = {}
 
     def add_cand_cluster(self, cand_cluster: CandidateCluster) -> None:
@@ -95,24 +117,19 @@ class Region(BGCRecord):
 
             region_number = int(feature.qualifiers["region_number"][0])
 
-            region = cls(region_number)
-
-            region.parse_bgc_record(feature, parent_gbk=parent_gbk)
-
             if "candidate_cluster_numbers" not in feature.qualifiers:
                 logging.error(
                     "candidate_cluster_numbers qualifier not found in region feature!"
                 )
                 raise InvalidGBKError()
 
+            cand_clusters: dict[int, Optional[CandidateCluster]] = {}
             for cand_cluster_number in feature.qualifiers["candidate_cluster_numbers"]:
-                region.cand_clusters[int(cand_cluster_number)] = None
-
-            return region
+                cand_clusters[int(cand_cluster_number)] = None
 
         # AS4 gbks have cluster features instead of region, and no children features
         # we artifically input the info in the cluster feature into the Region object
-        if feature.type == "cluster":
+        elif feature.type == "cluster":
             if (
                 "note" not in feature.qualifiers
                 or "Cluster number" not in feature.qualifiers["note"][0]
@@ -121,14 +138,26 @@ class Region(BGCRecord):
                 raise InvalidGBKError()
 
             cluster_note_number = feature.qualifiers["note"][0]
-            cluster_number = int(cluster_note_number.split(": ")[1])
-            region = cls(cluster_number)
+            region_number = int(cluster_note_number.split(": ")[1])
 
-            region.parse_bgc_record(feature, parent_gbk=parent_gbk)
-            return region
+            cand_clusters = {}
 
         else:
             raise ValueError("Could not parse region feature")
+
+        nt_start, nt_stop, contig_edge, product = BGCRecord.parse_common(feature)
+
+        # now we have all the parameters needed to assemble the region
+        region = cls(
+            parent_gbk,
+            region_number,
+            nt_start,
+            nt_stop,
+            contig_edge,
+            product,
+        )
+        region.cand_clusters = cand_clusters
+        return region
 
     def get_cds_with_domains(self, return_all=True, reverse=False) -> list[CDS]:
         return super().get_cds_with_domains(return_all, reverse)
@@ -160,6 +189,7 @@ class Region(BGCRecord):
                 record_table.c.gbk_id,
                 record_table.c.parent_id,
                 record_table.c.record_type,
+                record_table.c.record_number,
                 record_table.c.contig_edge,
                 record_table.c.nt_start,
                 record_table.c.nt_stop,
@@ -174,15 +204,18 @@ class Region(BGCRecord):
         region_dict = {}
 
         for result in cursor_result.all():
-            new_region = Region(1)
+            gbk = gbk_dict[result.gbk_id]
+
+            new_region = Region(
+                gbk,
+                result.record_number,
+                result.nt_start,
+                result.nt_stop,
+                result.contig_edge,
+                result.product,
+            )
 
             new_region._db_id = result.id
-
-            new_region.parent_gbk = gbk_dict[result.gbk_id]
-            new_region.nt_start = result.nt_start
-            new_region.nt_stop = result.nt_stop
-            new_region.contig_edge = result.contig_edge
-            new_region.product = result.product
 
             # add to parent GBK
             gbk_dict[result.gbk_id].region = new_region

@@ -20,10 +20,7 @@ class TestBGCRecord(TestCase):
         """
 
         gbk = GBK("", "")
-        record = BGCRecord()
-        record.parent_gbk = gbk
-        record.nt_start = 10
-        record.nt_stop = 90
+        record = BGCRecord(gbk, 0, 10, 90, False, "")
 
         # 10 total
         gbk.genes = [
@@ -54,10 +51,7 @@ class TestBGCRecord(TestCase):
         """
 
         gbk = GBK("", "")
-        record = BGCRecord()
-        record.parent_gbk = gbk
-        record.nt_start = 10
-        record.nt_stop = 90
+        record = BGCRecord(gbk, 0, 10, 90, False, "")
 
         gbk.genes = [
             CDS(0, 10),
@@ -88,10 +82,7 @@ class TestBGCRecord(TestCase):
         domains = ["PF00001", "PF00002", "PF00003", "PF00004", "PF00005"]
 
         gbk = GBK("", "")
-        gbk.region = Region(1)
-        gbk.region.parent_gbk = gbk
-        gbk.region.nt_start = 0
-        gbk.region.nt_stop = 100
+        gbk.region = Region(gbk, 0, 0, 100, False, "")
         cds = CDS(10, 90)
         gbk.genes.append(cds)
 

@@ -28,19 +28,39 @@ class ProtoCluster(BGCRecord):
     Class to describe a protocore within an Antismash GBK
 
     Attributes:
+        parent_gbk: GBK | None
+        number: int
         contig_edge: Bool
         nt_start: int
         nt_stop: int
         product: str
-        number: int
         categoty: str
         protocore: Protocore
+        _db_id: int | None
+        _families: dict[float, int]
     """
 
-    def __init__(self, number: int):
-        super().__init__(number)
-        self.category: str = ""
-        self.proto_core: Dict[int, Optional[ProtoCore]] = {}
+    def __init__(
+        self,
+        parent_gbk: Optional[GBK],
+        number: int,
+        nt_start: int,
+        nt_stop: int,
+        contig_edge: Optional[bool],
+        product: str,
+        category: str,
+        proto_core: dict[int, Optional[ProtoCore]],
+    ):
+        super().__init__(
+            parent_gbk,
+            number,
+            nt_start,
+            nt_stop,
+            contig_edge,
+            product,
+        )
+        self.category: str = category
+        self.proto_core: Dict[int, Optional[ProtoCore]] = proto_core
 
     def add_proto_core(self, proto_core: ProtoCore):
         """Add a proto_core object to this region
@@ -105,14 +125,24 @@ class ProtoCluster(BGCRecord):
 
         proto_cluster_number = int(feature.qualifiers["protocluster_number"][0])
 
-        proto_cluster = cls(proto_cluster_number)
-        proto_cluster.parse_bgc_record(feature, parent_gbk=parent_gbk)
-        proto_cluster.proto_core[proto_cluster_number] = None
+        proto_core: dict[int, Optional[ProtoCore]] = {proto_cluster_number: None}
 
+        category = ""
         if "category" in feature.qualifiers:
-            proto_cluster.category = feature.qualifiers["category"][0]
+            category = feature.qualifiers["category"][0]
 
-        return proto_cluster
+        nt_start, nt_stop, contig_edge, product = BGCRecord.parse_common(feature)
+
+        return cls(
+            parent_gbk,
+            proto_cluster_number,
+            nt_start,
+            nt_stop,
+            contig_edge,
+            product,
+            category,
+            proto_core,
+        )
 
     def __repr__(self) -> str:
         return f"{self.parent_gbk} ProtoCluster {self.number} {self.nt_start}-{self.nt_stop} "
@@ -151,17 +181,23 @@ class ProtoCluster(BGCRecord):
         protocluster_dict = {}
 
         for result in cursor_result.all():
-            new_proto_cluster = ProtoCluster(result.record_number)
+            parent_candidate_cluster = candidate_cluster_dict[result.parent_id]
+            parent_gbk = parent_candidate_cluster.parent_gbk
+
+            new_proto_cluster = ProtoCluster(
+                parent_gbk,
+                result.record_number,
+                result.nt_start,
+                result.nt_stop,
+                result.contig_edge,
+                result.product,
+                result.category,
+                {},
+            )
 
             new_proto_cluster._db_id = result.id
-
-            new_proto_cluster.nt_start = result.nt_start
-            new_proto_cluster.nt_stop = result.nt_stop
-            new_proto_cluster.contig_edge = result.contig_edge
-            new_proto_cluster.product = result.product
-
             # add to parent CandidateCluster protocluster dict
-            candidate_cluster_dict[result.parent_id].proto_clusters[
+            parent_candidate_cluster.proto_clusters[
                 result.record_number
             ] = new_proto_cluster
 

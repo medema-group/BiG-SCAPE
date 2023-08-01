@@ -4,7 +4,7 @@
 from unittest import TestCase
 
 # from other modules
-from src.genbank import GBK, Region, BGCRecord, CDS
+from src.genbank import GBK, Region, CDS
 from src.hmm import HSP
 from src.comparison import BGCPair, ComparableRegion
 
@@ -28,10 +28,7 @@ class TestComparibleRegions(TestCase):
         ]
 
         gbk_a = GBK("", "")
-        gbk_a.region = Region(1)
-        gbk_a.region.parent_gbk = gbk_a
-        gbk_a.region.nt_start = 0
-        gbk_a.region.nt_stop = 100
+        gbk_a.region = Region(gbk_a, 0, 0, 100, False, "")
 
         for a_domain in a_domains:
             cds_a = CDS(10, 90)
@@ -39,10 +36,7 @@ class TestComparibleRegions(TestCase):
             cds_a.hsps.add(HSP(cds_a, a_domain, 100, 0, 30))
 
         gbk_b = GBK("", "")
-        gbk_b.region = Region(1)
-        gbk_b.region.parent_gbk = gbk_b
-        gbk_b.region.nt_start = 0
-        gbk_b.region.nt_stop = 100
+        gbk_b.region = Region(gbk_b, 0, 0, 100, False, "")
 
         for b_domain in b_domains:
             cds_b = CDS(10, 90)
@@ -84,10 +78,7 @@ class TestComparibleRegions(TestCase):
         ]
 
         gbk_a = GBK("", "")
-        gbk_a.region = Region(1)
-        gbk_a.region.parent_gbk = gbk_a
-        gbk_a.region.nt_start = 0
-        gbk_a.region.nt_stop = 100
+        gbk_a.region = Region(gbk_a, 0, 0, 100, False, "")
 
         for a_domain in a_domains:
             cds_a = CDS(10, 90)
@@ -95,10 +86,7 @@ class TestComparibleRegions(TestCase):
             cds_a.hsps.add(HSP(cds_a, a_domain, 100, 0, 30))
 
         gbk_b = GBK("", "")
-        gbk_b.region = Region(1)
-        gbk_b.region.parent_gbk = gbk_b
-        gbk_b.region.nt_start = 0
-        gbk_b.region.nt_stop = 100
+        gbk_b.region = Region(gbk_b, 0, 0, 100, False, "")
 
         for b_domain in b_domains:
             cds_b = CDS(10, 90)
@@ -156,11 +144,9 @@ class TestComparibleRegions(TestCase):
         record in which a region contains a biosynthetic gene
         """
 
-        record = BGCRecord()
-        record.nt_start = 0
-        record.nt_stop = 0
-
         gbk = GBK(None, "test")
+
+        record = Region(gbk, 0, 0, 0, False, "")
 
         non_bio_cds_1 = CDS(0, 25)
         non_bio_cds_1.hsps.add(HSP(non_bio_cds_1, "test", 100.0, 0, 25))
@@ -195,11 +181,9 @@ class TestComparibleRegions(TestCase):
         record in which a region contains a biosynthetic gene
         """
 
-        record = BGCRecord()
-        record.nt_start = 0
-        record.nt_stop = 0
-
         gbk = GBK(None, "test")
+
+        record = Region(gbk, 0, 0, 0, False, "")
 
         non_bio_cds_1 = CDS(0, 25)
         non_bio_cds_1.gene_kind = ""
@@ -242,10 +226,7 @@ class TestComparibleRegions(TestCase):
         ]
 
         gbk_a = GBK("", "")
-        gbk_a.region = Region(1)
-        gbk_a.region.parent_gbk = gbk_a
-        gbk_a.region.nt_start = 0
-        gbk_a.region.nt_stop = 100
+        gbk_a.region = Region(gbk_a, 0, 0, 100, False, "")
 
         for a_domain in a_domains:
             cds_a = CDS(10, 90)
@@ -255,10 +236,7 @@ class TestComparibleRegions(TestCase):
             cds_a.hsps.add(HSP(cds_a, a_domain, 100, env_start, env_stop))
 
         gbk_b = GBK("", "")
-        gbk_b.region = Region(1)
-        gbk_b.region.parent_gbk = gbk_b
-        gbk_b.region.nt_start = 0
-        gbk_b.region.nt_stop = 100
+        gbk_b.region = Region(gbk_b, 0, 0, 100, False, "")
 
         for b_domain in b_domains:
             cds_b = CDS(10, 90)

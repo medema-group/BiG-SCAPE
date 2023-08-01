@@ -63,10 +63,7 @@ class TestJaccard(TestCase):
         b_domains = [""]
 
         gbk_a = GBK("", "")
-        gbk_a.region = Region(1)
-        gbk_a.region.parent_gbk = gbk_a
-        gbk_a.region.nt_start = 0
-        gbk_a.region.nt_stop = 100
+        gbk_a.region = Region(gbk_a, 0, 0, 100, False, "")
 
         for a_domain in a_domains:
             cds_a = CDS(10, 90)
@@ -74,10 +71,7 @@ class TestJaccard(TestCase):
             cds_a.hsps.add(HSP(cds_a, a_domain, 100, 0, 30))
 
         gbk_b = GBK("", "")
-        gbk_b.region = Region(1)
-        gbk_b.region.parent_gbk = gbk_b
-        gbk_b.region.nt_start = 0
-        gbk_b.region.nt_stop = 100
+        gbk_b.region = Region(gbk_b, 0, 0, 100, False, "")
 
         for b_domain in b_domains:
             cds_b = CDS(10, 90)
@@ -119,10 +113,7 @@ class TestJaccard(TestCase):
         ]
 
         gbk_a = GBK("", "")
-        gbk_a.region = Region(1)
-        gbk_a.region.parent_gbk = gbk_a
-        gbk_a.region.nt_start = 0
-        gbk_a.region.nt_stop = 100
+        gbk_a.region = Region(gbk_a, 0, 0, 100, False, "")
 
         for a_domain in a_domains:
             cds_a = CDS(10, 90)
@@ -130,10 +121,7 @@ class TestJaccard(TestCase):
             cds_a.hsps.add(HSP(cds_a, a_domain, 100, 0, 30))
 
         gbk_b = GBK("", "")
-        gbk_b.region = Region(1)
-        gbk_b.region.parent_gbk = gbk_b
-        gbk_b.region.nt_start = 0
-        gbk_b.region.nt_stop = 100
+        gbk_b.region = Region(gbk_b, 0, 0, 100, False, "")
 
         for b_domain in b_domains:
             cds_b = CDS(10, 90)
@@ -173,10 +161,8 @@ class TestJaccard(TestCase):
         ]
 
         gbk_a = GBK("", "")
-        gbk_a.region = Region(1)
+        gbk_a.region = Region(gbk_a, 0, 0, 100, False, "")
         gbk_a.region.parent_gbk = gbk_a
-        gbk_a.region.nt_start = 0
-        gbk_a.region.nt_stop = 100
 
         for a_domain in a_domains:
             cds_a = CDS(10, 90)
@@ -184,10 +170,8 @@ class TestJaccard(TestCase):
             cds_a.hsps.add(HSP(cds_a, a_domain, 100, 0, 30))
 
         gbk_b = GBK("", "")
-        gbk_b.region = Region(1)
+        gbk_b.region = Region(gbk_b, 0, 0, 100, False, "")
         gbk_b.region.parent_gbk = gbk_b
-        gbk_b.region.nt_start = 0
-        gbk_b.region.nt_stop = 100
 
         for b_domain in b_domains:
             cds_b = CDS(10, 90)
@@ -283,16 +267,10 @@ class TestAdjacency(TestCase):
         ]
 
         gbk_a = GBK("", "")
-        gbk_a.region = Region(1)
-        gbk_a.region.parent_gbk = gbk_a
-        gbk_a.region.nt_start = 0
-        gbk_a.region.nt_stop = 100
+        gbk_a.region = Region(gbk_a, 0, 0, 100, False, "")
 
         gbk_b = GBK("", "")
-        gbk_b.region = Region(1)
-        gbk_b.region.parent_gbk = gbk_b
-        gbk_b.region.nt_start = 0
-        gbk_b.region.nt_stop = 100
+        gbk_b.region = Region(gbk_b, 0, 0, 100, False, "")
 
         for shared_domain in shared_domains:
             cds_a = CDS(10, 90)
@@ -324,16 +302,10 @@ class TestDSS(TestCase):
         b_domains = ["A", "B", "C"]
 
         gbk_a = GBK("", "")
-        gbk_a.region = Region(1)
-        gbk_a.region.parent_gbk = gbk_a
-        gbk_a.region.nt_start = 0
-        gbk_a.region.nt_stop = 100
+        gbk_a.region = Region(gbk_a, 0, 0, 100, False, "")
 
         gbk_b = GBK("", "")
-        gbk_b.region = Region(1)
-        gbk_b.region.parent_gbk = gbk_b
-        gbk_b.region.nt_start = 0
-        gbk_b.region.nt_stop = 100
+        gbk_b.region = Region(gbk_b, 0, 0, 100, False, "")
 
         for a_domain in a_domains:
             cds_a = CDS(10, 90)
@@ -362,16 +334,10 @@ class TestDSS(TestCase):
         b_domains = ["C", "D", "E"]
 
         gbk_a = GBK("", "")
-        gbk_a.region = Region(1)
-        gbk_a.region.parent_gbk = gbk_a
-        gbk_a.region.nt_start = 0
-        gbk_a.region.nt_stop = 100
+        gbk_a.region = Region(gbk_a, 0, 0, 100, False, "")
 
         gbk_b = GBK("", "")
-        gbk_b.region = Region(1)
-        gbk_b.region.parent_gbk = gbk_b
-        gbk_b.region.nt_start = 0
-        gbk_b.region.nt_stop = 100
+        gbk_b.region = Region(gbk_b, 0, 0, 100, False, "")
 
         for a_domain in a_domains:
             cds_a = CDS(10, 90)
@@ -401,16 +367,10 @@ class TestDSS(TestCase):
         anchor_domains_set = set(["A", "E"])
 
         gbk_a = GBK("", "")
-        gbk_a.region = Region(1)
-        gbk_a.region.parent_gbk = gbk_a
-        gbk_a.region.nt_start = 0
-        gbk_a.region.nt_stop = 100
+        gbk_a.region = Region(gbk_a, 0, 0, 100, False, "")
 
         gbk_b = GBK("", "")
-        gbk_b.region = Region(1)
-        gbk_b.region.parent_gbk = gbk_b
-        gbk_b.region.nt_start = 0
-        gbk_b.region.nt_stop = 100
+        gbk_b.region = Region(gbk_b, 0, 0, 100, False, "")
 
         for a_domain in a_domains:
             cds_a = CDS(10, 90)

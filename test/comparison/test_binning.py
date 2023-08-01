@@ -19,15 +19,8 @@ class TestBGCPair(TestCase):
         """
         gbk = GBK(Path("test"), "test")
 
-        bgc_a = BGCRecord()
-        bgc_a.parent_gbk = gbk
-        bgc_a.nt_start = 0
-        bgc_a.nt_stop = 10
-
-        bgc_b = BGCRecord()
-        bgc_b.parent_gbk = gbk
-        bgc_b.nt_start = 10
-        bgc_b.nt_stop = 20
+        bgc_a = BGCRecord(gbk, 0, 0, 10, False, "")
+        bgc_b = BGCRecord(gbk, 0, 10, 20, False, "")
 
         pair = BGCPair(bgc_a, bgc_b)
 
@@ -46,11 +39,10 @@ class TestBGCPair(TestCase):
         """
         gbk = GBK("", "")
 
-        bgc_a = BGCRecord()
-        bgc_a.parent_gbk = gbk
+        bgc_a = BGCRecord(gbk, 0, 0, 10, False, "")
 
         # b is missing GBK
-        bgc_b = BGCRecord()
+        bgc_b = BGCRecord(None, 0, 0, 10, False, "")
 
         self.assertRaises(ValueError, BGCPair, bgc_a, bgc_b)
 
@@ -61,9 +53,9 @@ class TestBGCBin(TestCase):
         representation of the object
         """
 
-        bgc_a = BGCRecord()
-        bgc_b = BGCRecord()
-        bgc_c = BGCRecord()
+        bgc_a = BGCRecord(None, 0, 0, 10, False, "")
+        bgc_b = BGCRecord(None, 0, 0, 10, False, "")
+        bgc_c = BGCRecord(None, 0, 0, 10, False, "")
 
         bgc_list = [bgc_a, bgc_b, bgc_c]
 
@@ -84,13 +76,13 @@ class TestMixComparison(TestCase):
         """Tests whether a new mix bin can be created for comparison"""
         gbk = GBK("", "")
 
-        bgc_a = BGCRecord()
+        bgc_a = BGCRecord(gbk, 0, 0, 10, False, "")
         bgc_a.parent_gbk = gbk
 
-        bgc_b = BGCRecord()
+        bgc_b = BGCRecord(gbk, 0, 0, 10, False, "")
         bgc_b.parent_gbk = gbk
 
-        bgc_c = BGCRecord()
+        bgc_c = BGCRecord(gbk, 0, 0, 10, False, "")
         bgc_c.parent_gbk = gbk
 
         bgc_list = [bgc_a, bgc_b, bgc_c]
