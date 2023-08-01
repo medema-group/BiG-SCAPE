@@ -19,10 +19,10 @@ jobs:
     - name: Checkout code
       uses: actions/checkout@v3
 
-    - name: Set up conda environment
+    - name: Set up mamba environment
       uses: mamba-org/setup-micromamba@v1
       with:
-        micromamba-version: 1.4.2
+        micromamba-version: '1.3.1-0'
         environment-file: environment.yml
         init-shell: >-
           bash
