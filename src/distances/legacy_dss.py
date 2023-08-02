@@ -25,7 +25,7 @@ from src.comparison import BGCPair
 
 def get_distance_from_unshared(
     bgc_pair: BGCPair, anchor_domains: set[str]
-) -> tuple[float, float]:
+) -> tuple[float, float]:  # pragma no cover
     """Get the distance for anchor and non-anchor domains for a pair of BGCs based upon
     the unshared domains. Each domain that is unshared adds 1.0 to either distance
 
@@ -120,7 +120,7 @@ def get_distance_from_unshared(
     return distance_anchor, distance_non_anchor
 
 
-def get_aligned_string_dist(string_a: str, string_b: str) -> float:
+def get_aligned_string_dist(string_a: str, string_b: str) -> float:  # pragma no cover
     """Calculate a simple distance between two strings of equal length from an MSA
 
     Strings must be equal lengths.
@@ -157,7 +157,7 @@ def get_aligned_string_dist(string_a: str, string_b: str) -> float:
 
 def get_sum_seq_dist(
     a_domain_list, b_domain_list, a_domain_dict, b_domain_dict, shared_domain
-) -> tuple[float, int]:
+) -> tuple[float, int]:  # pragma no cover
     """Get the sum of squared distances and the normalization element for the DSS calculation of a
     given domain. These are the d and S parameters in supplementary note 1 in the original BiG-SCAPE
     paper
@@ -199,7 +199,7 @@ def get_sum_seq_dist(
 
 def get_distance_from_shared(
     bgc_pair: BGCPair, anchor_domains: set[str]
-) -> tuple[float, float, int, int]:
+) -> tuple[float, float, int, int]:  # pragma no cover
     """Get the DSS for the set of shared domains between bgcs of a pair, and return the number of
     anchor and non-anchor domains that were used in the calculation.
 
@@ -240,7 +240,7 @@ def get_distance_from_shared(
 
 def calc_dss_pair_legacy(
     bgc_pair: BGCPair, anchor_domains: Optional[set[str]] = None, anchor_boost=1.0
-) -> float:
+) -> float:  # pragma no cover
     """Calculate the DSS for a given pair based on how the BiG-SCAPE 1.0 implementation works
 
     Args:

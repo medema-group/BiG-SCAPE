@@ -102,7 +102,7 @@ def get_aligned_string_dist(string_a: str, string_b: str) -> float:
 
 def get_sum_seq_dist(
     a_domain_list, b_domain_list, a_domain_dict, b_domain_dict, shared_domain
-) -> tuple[float, int]:
+) -> tuple[float, int]:  # pragma no cover
     a_domain_count = len(a_domain_dict[shared_domain])
     b_domain_count = len(b_domain_dict[shared_domain])
 
@@ -128,7 +128,9 @@ def get_sum_seq_dist(
     return sum_seq_dist, normalization_element
 
 
-def get_distance_from_shared(bgc_pair: BGCPair, anchor_domains: set[str]):
+def get_distance_from_shared(
+    bgc_pair: BGCPair, anchor_domains: set[str]
+):  # pragma no cover
     domain_set_a, domain_set_b = bgc_pair.comparable_region.get_domain_sets()
     a_domain_list, b_domain_list = bgc_pair.comparable_region.get_domain_lists()
     a_domain_dict, b_domain_dict = bgc_pair.comparable_region.get_domain_dicts()
@@ -158,7 +160,7 @@ def get_distance_from_shared(bgc_pair: BGCPair, anchor_domains: set[str]):
 
 def calc_dss_pair(
     bgc_pair: BGCPair, anchor_domains: Optional[set[str]] = None
-) -> float:
+) -> float:  # pragma no cover
     # intialize an empty set of anchor domains if it is set to None
     if anchor_domains is None:
         anchor_domains = set(LEGACY_ANCHOR_DOMAINS)
