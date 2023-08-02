@@ -447,7 +447,7 @@ class HMMer:
                 # different versions of pyhmmer have a different starting offset that we may or may
                 # not need to apply.
 
-                start = domain_hsp.env_start - 1
+                start = domain_hsp.env_start
                 stop = domain_hsp.env_stop
                 seq_to_align = domain_hsp.cds.aa_seq[start:stop]
                 sequences.append(
