@@ -212,10 +212,15 @@ class BGCRecord:
                 product=self.product,
                 record_type=record_type,
             )
+            .returning(bgc_record_table.c.id)
             .compile()
         )
 
-        DB.execute(insert_query)
+        cursor_result = DB.execute(insert_query, False)
+
+        # get return value
+        return_row = cursor_result.fetchone()
+        self._db_id = return_row[0]
 
         if commit:
             DB.commit()
