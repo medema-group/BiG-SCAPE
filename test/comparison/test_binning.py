@@ -70,6 +70,55 @@ class TestBGCBin(TestCase):
 
         self.assertEqual(expected_repr, actual_repr)
 
+    def test_num_pairs_too_few_records(self):
+        """tests if bin.num_pairs() correctly returns 0 if there is only one record in the bin"""
+
+        gbk_a = GBK(Path("test1.gbk"), "test")
+        bgc_a = BGCRecord(gbk_a, 0, 0, 10, False, "")
+
+        new_bin = BGCBin("test")
+
+        new_bin.add_bgcs([bgc_a])
+
+        expected_num_pairs = 0
+        actual_num_pairs = new_bin.num_pairs()
+
+        self.assertEqual(expected_num_pairs, actual_num_pairs)
+
+    def test_legacy_sorting(self):
+        """Tests whether the legacy sorting option in bin.pairs() correctly orders the pairs"""
+
+        gbk_a = GBK(Path("test1.gbk"), "test")
+        bgc_a = BGCRecord(gbk_a, 0, 0, 10, False, "")
+        gbk_b = GBK(Path("test2.gbk"), "test")
+        bgc_b = BGCRecord(gbk_b, 0, 0, 10, False, "")
+        gbk_c = GBK(Path("test3.gbk"), "test")
+        bgc_c = BGCRecord(gbk_c, 0, 0, 10, False, "")
+
+        # due to the order, this should generate a list of pairs as follows without legacy sort:
+        # bgc_a, bgc_c
+        # bgc_a, bgc_b
+        # bgc_c, bgc_b
+        bgc_list = [bgc_a, bgc_c, bgc_b]
+
+        new_bin = BGCBin("test")
+
+        new_bin.add_bgcs(bgc_list)
+
+        # expected list should correctly sort the third entry int the list to be bgc_b, bgc_c
+        expected_pair_list = [
+            (bgc_a, bgc_c),
+            (bgc_a, bgc_b),
+            (bgc_b, bgc_c),
+        ]
+
+        actual_pair_list = [
+            tuple([pair.region_a, pair.region_b])
+            for pair in new_bin.pairs(None, legacy_sorting=True)
+        ]
+
+        self.assertEqual(expected_pair_list, actual_pair_list)
+
 
 class TestMixComparison(TestCase):
     def test_mix_iter(self):

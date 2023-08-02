@@ -14,7 +14,7 @@ from src.genbank import BGCRecord
 from .comparable_region import ComparableRegion
 
 # from circular imports
-if TYPE_CHECKING:
+if TYPE_CHECKING:  # pragma no cover
     from src.network import BSNetwork
 
 
