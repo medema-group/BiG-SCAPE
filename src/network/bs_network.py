@@ -149,7 +149,7 @@ class BSNetwork:
                     )
                 )
 
-                DB.execute(upsert_statement)
+                DB.execute(upsert_statement, False)
 
         if commit:
             DB.commit()
