@@ -19,7 +19,7 @@ from pyhmmer.plan7 import (
 )
 from pyhmmer.hmmer import hmmpress, hmmsearch, hmmalign
 from pyhmmer.easel import Alphabet, TextSequence, TextSequenceBlock
-
+from pyhmmer import __version__ as pyhmmer_version
 
 # from this module
 from src.hmm.hsp import HSP, HSPAlignment
@@ -410,6 +410,18 @@ class HMMer:
             hsps (list[HSP]): List of HSPs to align
         """
 
+        # emit a warning for people not using a certain version of pyhmmer
+        version_parts = list(map(int, pyhmmer_version.split(".")))
+        if int(version_parts[1]) < 8 or version_parts[1] == 8 and version_parts[2] < 2:
+            logging.warning(
+                (
+                    "You are using a version of Pyhmmer that might have an env_start offset "
+                    "that is different from what is expected. This may mean that the DSS "
+                    "calculations are incorrect. Please make sure your python environment is up to "
+                    "date"
+                )
+            )
+
         # there are going to be cases where certain domains are not present in HSPs at
         # all. we can assemble a dictionary which contains only those domains that are
         # present and the HSPs associated with those domains
@@ -432,7 +444,10 @@ class HMMer:
             for hsp_idx, domain_hsp in enumerate(hsp_list):
                 # we can cut the alignment down to only the range of the domain as found
                 # in hmmscan to speed up the process
-                start = domain_hsp.env_start
+                # different versions of pyhmmer have a different starting offset that we may or may
+                # not need to apply.
+
+                start = domain_hsp.env_start - 1
                 stop = domain_hsp.env_stop
                 seq_to_align = domain_hsp.cds.aa_seq[start:stop]
                 sequences.append(
