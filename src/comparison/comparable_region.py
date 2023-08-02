@@ -87,9 +87,6 @@ class ComparableRegion:
             if not cache:
                 return (set(a_domain_list), set(b_domain_list))
 
-            if not cache:
-                return (set(a_domain_list), set(b_domain_list))
-
             self.domain_sets = (set(a_domain_list), set(b_domain_list))
 
         return self.domain_sets
