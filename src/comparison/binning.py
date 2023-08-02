@@ -101,14 +101,6 @@ class BGCPair:
             self, 0, a_len, 0, b_len, False
         )
 
-    def find_lcs(self) -> tuple[int, int, int, int]:
-        """Generate the comparable region for this BGC pair
-
-        Returns:
-            tuple[int]: A tuple in the form (a_start, a_stop, b_start, b_stop)
-        """
-        return self.comparable_region.find_lcs()
-
     def __repr__(self) -> str:
         return f"Pair {self.region_a} - {self.region_b}"
 
