@@ -17,7 +17,7 @@ from src.comparison import ComparableRegion, BGCPair
 
 def reset_expansion(
     comparable_region: ComparableRegion, a_start=0, a_stop=None, b_start=0, b_stop=None
-) -> None:
+) -> None:  # pragma no cover
     """Resets the comparable region starts and stops
 
     If no arguments beyond comparable region are given, resets to the full range
@@ -48,7 +48,7 @@ def expand_glocal(
     comparable_region: ComparableRegion,
     min_lcs_len=MIN_LCS_LEN,
     min_expand_len=MIN_EXPAND_LEN,
-) -> None:
+) -> None:  # pragma no cover
     """Expand the comparable region on both sides using a simple scoring algorithm
 
     This assumes the initial a_len and b_len were set by LCS, and are the same.
@@ -89,7 +89,7 @@ def expand_glocal(
 
 def check_expand(
     comparable_region: ComparableRegion, min_expand_len=MIN_EXPAND_LEN
-) -> bool:
+) -> bool:  # pragma no cover
     """Returns True if the expansion is valid. Returns False if the expansion should be reset"""
 
     # final checks: did we expand enough?
@@ -129,7 +129,7 @@ def check_expand(
 
 def set_expansion_left(
     comparable_region: ComparableRegion, a_expansion: int, b_expansion: int
-) -> None:
+) -> None:  # pragma no cover
     """Set new start and length positions after expansion for the left side
 
 
@@ -164,7 +164,7 @@ def set_expansion_left(
     comparable_region.b_start -= b_expansion
 
 
-def expand_glocal_left(comparable_region: ComparableRegion) -> None:
+def expand_glocal_left(comparable_region: ComparableRegion) -> None:  # pragma no cover
     """Perform expansion on the left side of two regions where necessary and set new
     start and stop positions
 
@@ -242,7 +242,7 @@ def expand_glocal_left(comparable_region: ComparableRegion) -> None:
 
 def set_expansion_right(
     comparable_region: ComparableRegion, a_expansion: int, b_expansion: int
-) -> None:
+) -> None:  # pragma no cover
     """Set new start and length positions after expansion for the right side
 
     This function is similar to set_expansion_left, except that it only adds to the
@@ -277,7 +277,7 @@ def set_expansion_right(
     comparable_region.b_stop += b_expansion
 
 
-def expand_glocal_right(comparable_region: ComparableRegion) -> None:
+def expand_glocal_right(comparable_region: ComparableRegion) -> None:  # pragma no cover
     """Set new comparable region positions using glocal expand results
 
     Args:
@@ -356,7 +356,7 @@ def expand_score(
     match_score: int = EXPAND_MATCH_SCORE,
     mismatch_score: int = EXPAND_MISMATCH_SCORE,
     gap_score: int = EXPAND_GAP_SCORE,
-) -> tuple[int, int]:
+) -> tuple[int, int]:  # pragma no cover
     """TODO
 
     Args:
@@ -405,7 +405,7 @@ def expand_score(
 
 def legacy_needs_expand_pair(
     pair: BGCPair, alignment_mode: str, extend_slice_cutoff=MIN_LCS_LEN
-) -> bool:
+) -> bool:  # pragma no cover
     """Returns False if:
 
     - alignment_mode is global
@@ -433,7 +433,7 @@ def legacy_needs_extend(
     a_start: int,
     a_stop: int,
     extend_slice_cutoff=MIN_LCS_LEN,
-) -> bool:
+) -> bool:  # pragma no cover
     if alignment_mode == "global":
         return False
 

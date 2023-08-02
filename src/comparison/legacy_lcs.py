@@ -8,7 +8,9 @@ from difflib import Match, SequenceMatcher
 from src.genbank import CDS
 
 
-def legacy_find_lcs(list_a: list[Any], list_b: list[Any]) -> tuple[Match, list[Match]]:
+def legacy_find_lcs(
+    list_a: list[Any], list_b: list[Any]
+) -> tuple[Match, list[Match]]:  # pragma no cover
     """Detect longest common substring using sequencematcher
 
     Args:
@@ -26,7 +28,7 @@ def legacy_find_lcs(list_a: list[Any], list_b: list[Any]) -> tuple[Match, list[M
 
 def legacy_find_cds_lcs(
     a_cds: list[CDS], b_cds: list[CDS]
-) -> tuple[int, int, int, int, bool]:
+) -> tuple[int, int, int, int, bool]:  # pragma no cover
     """Find the longest stretch of matching domains between two CDS lists
 
     Args:

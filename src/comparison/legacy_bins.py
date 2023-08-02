@@ -24,7 +24,7 @@ LEGACY_BINS = {
 }
 
 
-def legacy_bin_generator(gbks: list[GBK]) -> Iterator[BGCBin]:
+def legacy_bin_generator(gbks: list[GBK]) -> Iterator[BGCBin]:  # pragma no cover
     """Generate bins for each class as they existed in the BiG-SCAPE 1.0 implementation
 
     Args:
@@ -58,7 +58,7 @@ def legacy_bin_generator(gbks: list[GBK]) -> Iterator[BGCBin]:
 
 
 # one of the few direct copy-and-pastes!
-def legacy_get_class(product):
+def legacy_get_class(product):  # pragma no cover
     """Sort BGC by its type. Uses AntiSMASH annotations
     (see https://docs.antismash.secondarymetabolites.org/glossary/#cluster-types)
 

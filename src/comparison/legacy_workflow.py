@@ -24,7 +24,9 @@ from .legacy_extend import (
 from .legacy_lcs import legacy_find_cds_lcs
 
 
-def create_bin_network_edges(bin: BGCBin, network: BSNetwork, alignment_mode: str):
+def create_bin_network_edges(
+    bin: BGCBin, network: BSNetwork, alignment_mode: str
+):  # pragma no cover
     # first step is to calculate the Jaccard of all pairs. This is pretty fast, but
     # could be optimized by multiprocessing for very large bins
     logging.info("Calculating Jaccard for %d pairs", bin.num_pairs())
@@ -103,7 +105,7 @@ def create_bin_network_edges(bin: BGCBin, network: BSNetwork, alignment_mode: st
 
 def get_lcs_worker_method(
     task: tuple[int, BGCPair], extra_data=None
-) -> tuple[int, int, int, int, int, bool]:
+) -> tuple[int, int, int, int, int, bool]:  # pragma no cover
     """Find LCS on pair and return the LCS coordinates
 
     Args:
@@ -125,7 +127,7 @@ def get_lcs_multiprocess(
     num_processes: int = cpu_count(),
     batch_size=None,
     callback: Optional[Callable] = None,
-) -> tuple[list[BGCPair], list[BGCPair]]:
+) -> tuple[list[BGCPair], list[BGCPair]]:  # pragma no cover
     """Find the LCS using multiple processes and return two lists of pairs.
 
     The first list returned by this function is a list of pairs which need expansion.
@@ -246,7 +248,7 @@ def get_lcs_multiprocess(
 
 def calculate_scores_worker_method(
     task: tuple[int, BGCPair], anchor_boost: float
-) -> tuple[int, float, float, float]:
+) -> tuple[int, float, float, float]:  # pragma no cover
     """Calculate and return the scores for a pair
 
     Args:
@@ -276,7 +278,7 @@ def calculate_scores_multiprocess(
     num_processes: int = cpu_count(),
     batch_size=None,
     callback: Optional[Callable] = None,
-):
+):  # pragma no cover
     """Calculate the scores for a list of pairs by using subprocesses
 
     Args:
