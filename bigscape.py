@@ -51,7 +51,7 @@ if __name__ == "__main__":
         profiler = Profiler(run.output.profile_path)
         profiler.start()
 
-    if False:
+    if run.output.db_path.exists():
         logging.info("Loading existing run from disk...")
 
         DB.load_from_disk(run.output.db_path)
