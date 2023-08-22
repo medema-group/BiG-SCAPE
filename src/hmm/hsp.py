@@ -163,10 +163,7 @@ class HSP:
             )
             new_hsp.alignment = HSPAlignment(new_hsp, result.alignment)
 
-            if isinstance(cds.hsps, list):
-                raise ValueError("HSP list of CDS is a list. Did the CDS get locked?")
-
-            cds.hsps.add(new_hsp)
+            cds.hsps.append(new_hsp)
 
     @staticmethod
     def has_overlap(hsp_a: HSP, hsp_b: HSP) -> bool:

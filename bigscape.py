@@ -51,7 +51,7 @@ if __name__ == "__main__":
         profiler = Profiler(run.output.profile_path)
         profiler.start()
 
-    if run.output.db_path.exists():
+    if False:
         logging.info("Loading existing run from disk...")
 
         DB.load_from_disk(run.output.db_path)
@@ -60,9 +60,6 @@ if __name__ == "__main__":
 
         for gbk in gbks:
             HSP.load_all(gbk.genes)
-            for cds in gbk.genes:
-                # TODO: remove once we get rid of sortedlists
-                cds.lock()
 
         HMMer.init(run.input.pfam_path)
 
@@ -110,7 +107,7 @@ if __name__ == "__main__":
 
         if platform.system() == "Darwin":
             logging.warning("Running on mac-OS: hmmsearch_simple single threaded")
-            all_hsps = list(HMMer.hmmsearch_simple(all_cds, 1))
+            HMMer.hmmsearch_simple(all_cds, 1)
         else:
             logging.debug(
                 "Running on %s: hmmsearch_multiprocess with %d cores",
@@ -118,30 +115,25 @@ if __name__ == "__main__":
                 run.cores,
             )
 
-            # if legacy is true, set cutoff to 1.1 for the domain filtering so we can use
-            # legacy filtering later
-
-            if run.legacy:
-                domain_overlap_cutoff = 1.1
-            else:
-                domain_overlap_cutoff = run.hmmer.domain_overlap_cutoff
+            # TODO: the overlap filtering in this function does not seem to work
             HMMer.hmmsearch_multiprocess(
                 all_cds,
-                domain_overlap_cutoff=domain_overlap_cutoff,
+                domain_overlap_cutoff=run.hmmer.domain_overlap_cutoff,
                 cores=run.cores,
             )
 
         # TODO: move, or remove after the add_hsp_overlap function is fixed (if it is broken
         # in the first place)
-        for cds in all_cds:
-            if run.legacy:
-                cds.hsps = legacy_filter_overlap(cds.hsps, 0.1)
-
-            # TODO: remove when sortedlists are removed
-            # this converts the sortedlist used internally to regular lists.
-            # for some reason, doing this beforehand really messes things up for reasons I don't
-            # understand.
-            cds.lock()
+        # this sorts all CDS and then filters them using the old filtering system, which
+        # is less efficient than the flitering using the CDS.add_hsp_overlap_filter
+        # method. however, that method seems to be broken somehow
+        all_hsps = []
+        for gbk in gbks:
+            for cds in gbk.genes:
+                cds.hsps = sorted(cds.hsps)
+                all_hsps.extend(
+                    [hsp.domain for hsp in legacy_filter_overlap(cds.hsps, 0.1)]
+                )
 
         all_hsps = []
         for cds in all_cds:
@@ -171,6 +163,8 @@ if __name__ == "__main__":
         all_alignments = list()
         for cds in all_cds:
             for hsp in cds.hsps:
+                if hsp.alignment is None:
+                    continue
                 all_alignments.append(hsp.alignment)
 
         logging.info("%d alignments", len(all_alignments))

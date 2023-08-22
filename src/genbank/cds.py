@@ -7,7 +7,6 @@ from typing import Optional, TYPE_CHECKING
 
 # from dependencies
 from Bio.SeqFeature import SeqFeature
-from sortedcontainers import SortedList
 
 # from other modules
 from src.errors import InvalidGBKError
@@ -32,7 +31,7 @@ class CDS:
         gene_kind: str
         strand: Bool
         aa_seq: SeqRecord.seq
-        hsps: SortedList[HSP]
+        hsps: list[HSP]
     """
 
     def __init__(self, nt_start: int, nt_stop: int):
@@ -43,7 +42,7 @@ class CDS:
         self.gene_kind: Optional[str] = None
         self.strand: Optional[int] = None
         self.aa_seq: str = ""
-        self.hsps: SortedList[HSP] | list[HSP] = SortedList()
+        self.hsps: list[HSP] = []
         self.__locked = False
 
         # db specific fields
@@ -65,13 +64,9 @@ class CDS:
             0.1
 
         """
-        # TODO: remove once sorted lists are gone entirely
-        if self.__locked or isinstance(self.hsps, list):
-            raise AttributeError("Cannot add HSPs to a locked CDS")
-
         # if no hsps added yet, just add and continue
         if len(self.hsps) == 0:
-            self.hsps.add(new_hsp)
+            self.hsps.append(new_hsp)
             return
 
         delete_list = []
@@ -117,7 +112,7 @@ class CDS:
 
         # if we got through all of that without the function, we never replaced an HSP
         # so add a new one here
-        self.hsps.add(new_hsp)
+        self.hsps.append(new_hsp)
 
     def save(self, commit=True):
         """Saves this CDS to the database and optionally executes a commit
