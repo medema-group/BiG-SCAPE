@@ -164,7 +164,7 @@ class TestCDS(TestCase):
 
         cds.add_hsp_overlap_filter(new_hsp)
 
-        expected_result = SortedSet([new_hsp])
+        expected_result = [new_hsp]
 
         actual_result = cds.hsps
 
@@ -186,7 +186,7 @@ class TestCDS(TestCase):
 
         cds.add_hsp_overlap_filter(new_hsp)
 
-        expected_result = SortedSet([old_hsp])
+        expected_result = [old_hsp]
 
         actual_result = cds.hsps
 
@@ -208,7 +208,7 @@ class TestCDS(TestCase):
 
         cds.add_hsp_overlap_filter(new_hsp)
 
-        expected_result = SortedSet([new_hsp])
+        expected_result = [new_hsp]
 
         actual_result = cds.hsps
 
@@ -230,7 +230,7 @@ class TestCDS(TestCase):
 
         cds.add_hsp_overlap_filter(new_hsp)
 
-        expected_result = SortedSet([new_hsp])
+        expected_result = [new_hsp]
 
         actual_result = cds.hsps
 

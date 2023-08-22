@@ -33,7 +33,7 @@ class TestComparibleRegions(TestCase):
         for a_domain in a_domains:
             cds_a = CDS(10, 90)
             gbk_a.genes.append(cds_a)
-            cds_a.hsps.add(HSP(cds_a, a_domain, 100, 0, 30))
+            cds_a.hsps.append(HSP(cds_a, a_domain, 100, 0, 30))
 
         gbk_b = GBK("", "")
         gbk_b.region = Region(gbk_b, 0, 0, 100, False, "")
@@ -41,16 +41,16 @@ class TestComparibleRegions(TestCase):
         for b_domain in b_domains:
             cds_b = CDS(10, 90)
             gbk_b.genes.append(cds_b)
-            cds_b.hsps.add(HSP(cds_b, b_domain, 100, 0, 30))
+            cds_b.hsps.append(HSP(cds_b, b_domain, 100, 0, 30))
 
         for shared_domain in shared_domains:
             cds_a = CDS(10, 90)
             gbk_a.genes.append(cds_a)
-            cds_a.hsps.add(HSP(cds_a, shared_domain, 100, 0, 30))
+            cds_a.hsps.append(HSP(cds_a, shared_domain, 100, 0, 30))
 
             cds_b = CDS(10, 90)
             gbk_b.genes.append(cds_b)
-            cds_b.hsps.add(HSP(cds_b, shared_domain, 100, 0, 30))
+            cds_b.hsps.append(HSP(cds_b, shared_domain, 100, 0, 30))
 
         pair = BGCPair(gbk_a.region, gbk_b.region)
 
@@ -83,7 +83,7 @@ class TestComparibleRegions(TestCase):
         for a_domain in a_domains:
             cds_a = CDS(10, 90)
             gbk_a.genes.append(cds_a)
-            cds_a.hsps.add(HSP(cds_a, a_domain, 100, 0, 30))
+            cds_a.hsps.append(HSP(cds_a, a_domain, 100, 0, 30))
 
         gbk_b = GBK("", "")
         gbk_b.region = Region(gbk_b, 0, 0, 100, False, "")
@@ -91,16 +91,16 @@ class TestComparibleRegions(TestCase):
         for b_domain in b_domains:
             cds_b = CDS(10, 90)
             gbk_b.genes.append(cds_b)
-            cds_b.hsps.add(HSP(cds_b, b_domain, 100, 0, 30))
+            cds_b.hsps.append(HSP(cds_b, b_domain, 100, 0, 30))
 
         for shared_domain in shared_domains:
             cds_a = CDS(10, 90)
             gbk_a.genes.append(cds_a)
-            cds_a.hsps.add(HSP(cds_a, shared_domain, 100, 0, 30))
+            cds_a.hsps.append(HSP(cds_a, shared_domain, 100, 0, 30))
 
             cds_b = CDS(10, 90)
             gbk_b.genes.append(cds_b)
-            cds_b.hsps.add(HSP(cds_b, shared_domain, 100, 0, 30))
+            cds_b.hsps.append(HSP(cds_b, shared_domain, 100, 0, 30))
 
         # reverse the b genes
         gbk_b.genes = gbk_b.genes[::-1]
@@ -149,22 +149,22 @@ class TestComparibleRegions(TestCase):
         record = Region(gbk, 0, 0, 0, False, "")
 
         non_bio_cds_1 = CDS(0, 25)
-        non_bio_cds_1.hsps.add(HSP(non_bio_cds_1, "test", 100.0, 0, 25))
+        non_bio_cds_1.hsps.append(HSP(non_bio_cds_1, "test", 100.0, 0, 25))
         non_bio_cds_1.gene_kind = ""
         gbk.genes.append(non_bio_cds_1)
 
         non_bio_cds_2 = CDS(25, 50)
-        non_bio_cds_2.hsps.add(HSP(non_bio_cds_2, "test", 100.0, 0, 25))
+        non_bio_cds_2.hsps.append(HSP(non_bio_cds_2, "test", 100.0, 0, 25))
         non_bio_cds_2.gene_kind = ""
         gbk.genes.append(non_bio_cds_2)
 
         non_bio_cds_3 = CDS(50, 75)
-        non_bio_cds_3.hsps.add(HSP(non_bio_cds_3, "test", 100.0, 0, 25))
+        non_bio_cds_3.hsps.append(HSP(non_bio_cds_3, "test", 100.0, 0, 25))
         non_bio_cds_3.gene_kind = ""
         gbk.genes.append(non_bio_cds_3)
 
         bio_cds_1 = CDS(75, 100)
-        bio_cds_1.hsps.add(HSP(bio_cds_1, "test", 100.0, 0, 25))
+        bio_cds_1.hsps.append(HSP(bio_cds_1, "test", 100.0, 0, 25))
         bio_cds_1.gene_kind = "biosynthetic"
         gbk.genes.append(bio_cds_1)
 
@@ -233,7 +233,7 @@ class TestComparibleRegions(TestCase):
             gbk_a.genes.append(cds_a)
             env_start = len(gbk_a.genes) * 10
             env_stop = env_start + 10
-            cds_a.hsps.add(HSP(cds_a, a_domain, 100, env_start, env_stop))
+            cds_a.hsps.append(HSP(cds_a, a_domain, 100, env_start, env_stop))
 
         gbk_b = GBK("", "")
         gbk_b.region = Region(gbk_b, 0, 0, 100, False, "")
@@ -243,20 +243,20 @@ class TestComparibleRegions(TestCase):
             gbk_b.genes.append(cds_b)
             env_start = len(gbk_b.genes) * 10
             env_stop = env_start + 10
-            cds_b.hsps.add(HSP(cds_b, b_domain, 100, env_start, env_stop))
+            cds_b.hsps.append(HSP(cds_b, b_domain, 100, env_start, env_stop))
 
         for shared_domain in shared_domains:
             cds_a = CDS(10, 90)
             gbk_a.genes.append(cds_a)
             env_start = len(gbk_a.genes) * 10
             env_stop = env_start + 10
-            cds_a.hsps.add(HSP(cds_a, shared_domain, 100, env_start, env_stop))
+            cds_a.hsps.append(HSP(cds_a, shared_domain, 100, env_start, env_stop))
 
             cds_b = CDS(10, 90)
             gbk_b.genes.append(cds_b)
             env_start = len(gbk_b.genes) * 10
             env_stop = env_start + 10
-            cds_b.hsps.add(HSP(cds_b, shared_domain, 100, env_start, env_stop))
+            cds_b.hsps.append(HSP(cds_b, shared_domain, 100, env_start, env_stop))
 
         pair = BGCPair(gbk_a.region, gbk_b.region)
 

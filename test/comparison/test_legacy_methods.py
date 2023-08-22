@@ -51,13 +51,13 @@ class TestLegacyComparableRegion(TestCase):
         target_cds_list = []
         for target_domain in target_domains:
             target_cds = CDS(0, 10)
-            target_cds.hsps.add(HSP(target_cds, target_domain, 100, 0, 10))
+            target_cds.hsps.append(HSP(target_cds, target_domain, 100, 0, 10))
             target_cds_list.append(target_cds)
 
         query_cds_list = []
         for query_domain in query_domains:
             query_cds = CDS(0, 10)
-            query_cds.hsps.add(HSP(query_cds, query_domain, 100, 0, 10))
+            query_cds.hsps.append(HSP(query_cds, query_domain, 100, 0, 10))
             query_cds_list.append(query_cds)
 
         actual_results = expand_score(

@@ -87,7 +87,7 @@ class TestBGCRecord(TestCase):
         gbk.genes.append(cds)
 
         for domain in domains:
-            cds.hsps.add(HSP(cds, domain, 100, 0, 30))
+            cds.hsps.append(HSP(cds, domain, 100, 0, 30))
 
         expected_domains = domains
 
@@ -96,3 +96,32 @@ class TestBGCRecord(TestCase):
         actual_domains = [hsp.domain for hsp in hsps]
 
         self.assertEqual(expected_domains, actual_domains)
+
+    def test_get_cds_with_domains(self):
+        """Tests whether the test_get_cds_with_domains method correctly retrieves a
+        subset of CDS containing only domains
+        """
+        cds_list = [
+            CDS(0, 100),
+            CDS(0, 100),
+            CDS(0, 100),
+            CDS(0, 100),
+            CDS(0, 100),
+            CDS(0, 100),
+            CDS(0, 100),
+        ]
+
+        cds_list[0].hsps = [HSP(cds_list[0], "test", 1.0, 0, 100)]
+        cds_list[2].hsps = [HSP(cds_list[0], "test", 1.0, 0, 100)]
+        cds_list[4].hsps = [HSP(cds_list[0], "test", 1.0, 0, 100)]
+        cds_list[6].hsps = [HSP(cds_list[0], "test", 1.0, 0, 100)]
+
+        gbk = GBK("", "test")
+        gbk.genes = cds_list
+        region = BGCRecord(gbk, 0, 0, 100, False, "")
+        
+
+        expected_cds_count = 4
+        actual_cds_count = len(region.get_cds_with_domains())
+
+        self.assertEqual(expected_cds_count, actual_cds_count)
