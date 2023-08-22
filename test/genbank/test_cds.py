@@ -6,7 +6,6 @@ from unittest import TestCase
 
 # from dependencies
 from Bio.SeqFeature import SeqFeature, FeatureLocation
-from sortedcontainers import SortedSet
 
 # from other modules
 from src.genbank import GBK, CDS

@@ -119,7 +119,6 @@ class TestBGCRecord(TestCase):
         gbk = GBK("", "test")
         gbk.genes = cds_list
         region = BGCRecord(gbk, 0, 0, 100, False, "")
-        
 
         expected_cds_count = 4
         actual_cds_count = len(region.get_cds_with_domains())
