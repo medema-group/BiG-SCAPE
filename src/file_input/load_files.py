@@ -4,6 +4,7 @@
 import logging
 from pathlib import Path
 from typing import List, Optional
+from math import floor
 
 # from other modules
 from src.genbank.gbk import GBK, SOURCE_TYPE
@@ -45,9 +46,15 @@ def load_dataset_folder(
         raise FileNotFoundError()
 
     filtered_files = filter_files(files, include_gbk, exclude_gbk)
+    num_files = len(filtered_files)
+
+    logging.info(f"Loading {num_files} GBKs")
 
     gbk_list = []
-    for file in filtered_files:
+    for idx, file in enumerate(filtered_files):
+        if num_files > 9 and idx % floor(num_files / 10) == 0:
+            logging.info(f"Loaded {idx}/{num_files} GBKs")
+
         gbk = load_gbk(file, source_type, cds_overlap_cutoff, legacy_mode)
 
         gbk_list.append(gbk)
