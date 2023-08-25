@@ -25,13 +25,14 @@ from .legacy_lcs import legacy_find_cds_lcs
 
 
 def create_bin_network_edges(
-    bin: BGCBin, network: BSNetwork, alignment_mode: str
+    bin: BGCBin, network: BSNetwork, alignment_mode: str, cores: int
 ):  # pragma no cover
+    logging.info("Using %d cores for distance calculation", cores)
     # first step is to calculate the Jaccard of all pairs. This is pretty fast, but
     # could be optimized by multiprocessing for very large bins
     logging.info("Calculating Jaccard for %d pairs", bin.num_pairs())
 
-    related_pairs = calculate_jaccard_multiprocess(bin, network)
+    related_pairs = calculate_jaccard_multiprocess(bin, network, cores)
 
     # any pair that had a jaccard of 0 are put into the network and should not be
     # processed again. If there are no more pairs left, leave the workflow
@@ -43,7 +44,7 @@ def create_bin_network_edges(
 
     logging.info("Performing LCS for %d pairs with Jaccard > 0", len(related_pairs))
     pairs_need_expand, pairs_no_expand = get_lcs_multiprocess(
-        related_pairs, alignment_mode
+        related_pairs, alignment_mode, cores
     )
 
     if len(pairs_need_expand) > 0:
@@ -82,14 +83,14 @@ def create_bin_network_edges(
             "Calculating score for %d pairs that were reset or did not need expansion",
             len(pairs_no_expand),
         )
-        calculate_scores_multiprocess(bin, pairs_no_expand, network)
+        calculate_scores_multiprocess(bin, pairs_no_expand, network, cores)
 
     if len(expanded_pairs) > 0:
         logging.info(
             "Calculating score for %d pairs that were expanded",
             len(expanded_pairs),
         )
-        calculate_scores_multiprocess(bin, expanded_pairs, network)
+        calculate_scores_multiprocess(bin, expanded_pairs, network, cores)
 
 
 def get_lcs_worker_method(

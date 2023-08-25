@@ -210,7 +210,9 @@ if __name__ == "__main__":
 
         logging.info(mix_bin)
 
-        create_bin_network_edges(mix_bin, mix_network, run.comparison.alignment_mode)
+        create_bin_network_edges(
+            mix_bin, mix_network, run.comparison.alignment_mode, run.cores
+        )
 
         mix_network.generate_families_cutoff("dist", 0.3)
 
@@ -241,7 +243,9 @@ if __name__ == "__main__":
 
             logging.info(bin)
 
-            create_bin_network_edges(bin, bin_network, run.comparison.alignment_mode)
+            create_bin_network_edges(
+                bin, bin_network, run.comparison.alignment_mode, run.cores
+            )
 
             bin_network.generate_families_cutoff("dist", 0.3)
 
