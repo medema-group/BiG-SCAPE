@@ -46,6 +46,10 @@ if __name__ == "__main__":
     if run.legacy:
         logging.info("Using legacy mode")
 
+    if not HMMer.are_profiles_pressed(run.input.pfam_path):
+        logging.warning("HMM files were not pressed!")
+        HMMer.press(run.input.pfam_path)
+
     # start profiler
     if run.diagnostics.profiling:
         profiler = Profiler(run.output.profile_path)
