@@ -25,7 +25,7 @@ from .legacy_lcs import legacy_find_cds_lcs
 
 
 def create_bin_network_edges(
-    bin: BGCBin, network: BSNetwork, alignment_mode: str, cores: int
+    bin: BGCBin, network: BSNetwork, alignment_mode: str, cores: int, callback: Callable
 ):  # pragma no cover
     logging.info("Using %d cores for distance calculation", cores)
     # first step is to calculate the Jaccard of all pairs. This is pretty fast, but
@@ -47,12 +47,12 @@ def create_bin_network_edges(
         related_pairs, alignment_mode, cores
     )
 
+    expanded_pairs = []
     if len(pairs_need_expand) > 0:
         # those regions which need expansion are now expanded. Expansion is expensive and
         # is also done through multiprocessing
         logging.info("Expanding regions for %d pairs", len(pairs_need_expand))
 
-        expanded_pairs = []
         for pair in pairs_need_expand:
             expand_glocal(pair.comparable_region)
 

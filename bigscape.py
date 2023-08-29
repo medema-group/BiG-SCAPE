@@ -11,7 +11,8 @@ from src.file_input import load_dataset_folder
 from src.genbank import SOURCE_TYPE, BGCRecord, CDS, GBK
 from src.hmm import HMMer, legacy_filter_overlap, HSP
 from src.parameters import RunParameters, parse_cmd
-from src.comparison import generate_mix, legacy_bin_generator, create_bin_network_edges
+from src.comparison import generate_mix, legacy_bin_generator
+from src.comparison import create_bin_network_edges_alt as create_bin_network_edges
 from src.diagnostics import Profiler
 from src.network import BSNetwork
 from src.output import (
@@ -124,6 +125,7 @@ if __name__ == "__main__":
                 all_cds,
                 domain_overlap_cutoff=run.hmmer.domain_overlap_cutoff,
                 cores=run.cores,
+                callback=callback,
             )
 
         # TODO: move, or remove after the add_hsp_overlap function is fixed (if it is broken
@@ -214,8 +216,19 @@ if __name__ == "__main__":
 
         logging.info(mix_bin)
 
+        def callback(done_pairs):
+            if mix_bin.num_pairs() > 10:
+                mod = round(mix_bin.num_pairs() / 10)
+            else:
+                mod = 1
+
+            if done_pairs % mod == 0:
+                logging.info(
+                    f"{done_pairs}/{mix_bin.num_pairs()} ({done_pairs/mix_bin.num_pairs():.2%})"
+                )
+
         create_bin_network_edges(
-            mix_bin, mix_network, run.comparison.alignment_mode, run.cores
+            mix_bin, mix_network, run.comparison.alignment_mode, run.cores, callback
         )
 
         mix_network.generate_families_cutoff("dist", 0.3)
@@ -247,8 +260,19 @@ if __name__ == "__main__":
 
             logging.info(bin)
 
+            def callback(done_pairs):
+                if bin.num_pairs() > 10:
+                    mod = round(bin.num_pairs() / 10)
+                else:
+                    mod = 1
+
+                if done_pairs % mod == 0:
+                    logging.info(
+                        f"{done_pairs}/{bin.num_pairs()} ({done_pairs/bin.num_pairs():.2%})"
+                    )
+
             create_bin_network_edges(
-                bin, bin_network, run.comparison.alignment_mode, run.cores
+                bin, bin_network, run.comparison.alignment_mode, run.cores, callback
             )
 
             bin_network.generate_families_cutoff("dist", 0.3)
