@@ -1,8 +1,12 @@
 """Contains methods to run the legacy comparison workflow on a bin of BGC pairs
 
 This is a an alternate implementation that minimizes memory overhead and is generally
-cleaner. TODO: profile this and compare performance with other implementation. this may
+cleaner. 
+TODO: profile this and compare performance with other implementation. this may
 actually be faster
+TODO: this is relatively simple code and worth testing, except 
+create_bin_network_edges_alt
+TODO: docstrings, none typings
 """
 
 # from python
