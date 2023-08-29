@@ -25,28 +25,18 @@ from .legacy_lcs import legacy_find_cds_lcs
 
 
 def create_bin_network_edges(
-    bin: BGCBin, network: BSNetwork, alignment_mode: str
+    bin: BGCBin, network: BSNetwork, alignment_mode: str, cores: int
 ):  # pragma no cover
+    logging.info("Using %d cores for distance calculation", cores)
     # first step is to calculate the Jaccard of all pairs. This is pretty fast, but
     # could be optimized by multiprocessing for very large bins
     logging.info("Calculating Jaccard for %d pairs", bin.num_pairs())
 
-    related_pairs = []
-
-    for pair in bin.pairs(legacy_sorting=True):
-        # calculate jaccard for the full sets. if this is 0, there are no shared domains
-        # important not to cache here otherwise we are using the full range again later
-        jaccard = calc_jaccard_pair(pair, cache=False)
-
-        if jaccard == 0.0:
-            network.add_edge_pair(pair, jc=0.0, ai=0.0, dss=0.0, dist=1.0)
-            continue
-
-        related_pairs.append(pair)
+    related_pairs = calculate_jaccard_multiprocess(bin, network, cores)
 
     # any pair that had a jaccard of 0 are put into the network and should not be
     # processed again. If there are no more pairs left, leave the workflow
-    if len(related_pairs) == 0:
+    if bin.num_pairs() == 0:
         return
 
     # next step is to perform LCS. We need to multiprocess this and that is a bit of a
@@ -54,7 +44,7 @@ def create_bin_network_edges(
 
     logging.info("Performing LCS for %d pairs with Jaccard > 0", len(related_pairs))
     pairs_need_expand, pairs_no_expand = get_lcs_multiprocess(
-        related_pairs, alignment_mode
+        related_pairs, alignment_mode, cores
     )
 
     if len(pairs_need_expand) > 0:
@@ -93,14 +83,14 @@ def create_bin_network_edges(
             "Calculating score for %d pairs that were reset or did not need expansion",
             len(pairs_no_expand),
         )
-        calculate_scores_multiprocess(bin, pairs_no_expand, network)
+        calculate_scores_multiprocess(bin, pairs_no_expand, network, cores)
 
     if len(expanded_pairs) > 0:
         logging.info(
             "Calculating score for %d pairs that were expanded",
             len(expanded_pairs),
         )
-        calculate_scores_multiprocess(bin, expanded_pairs, network)
+        calculate_scores_multiprocess(bin, expanded_pairs, network, cores)
 
 
 def get_lcs_worker_method(
@@ -244,6 +234,113 @@ def get_lcs_multiprocess(
         process.kill()
 
     return need_expansion, no_expansion
+
+
+def calculate_jaccard_worker_method(
+    task: BGCPair, extra_data=None
+) -> float:  # pragma no cover
+    """Calculate and return the scores for a pair
+
+    Args:
+        task: The task, in this case in the form of a tuple where the first item is a
+        pair index relating to the original pair, and the second item is a copy of the
+        pair object
+
+    Returns:
+        float: jaccard index
+    """
+    pair = task
+
+    jaccard = calc_jaccard_pair(pair)
+
+    return jaccard
+
+
+def calculate_jaccard_multiprocess(
+    bin: BGCBin,
+    network: BSNetwork,
+    num_processes: int = cpu_count(),
+    callback: Optional[Callable] = None,
+) -> list[BGCPair]:  # pragma no cover
+    """Calculate the jaccard for a list of pairs by using subprocesses
+    This returns a list of related pairs of which the jaccard index for the full list of
+    CDS is > 0.0
+
+    Any pairs with a jaccard of 0.0 are added to the network with a 1.0 distance edge
+
+    Args:
+        bin: (BGCBin): BGC Bin to calculate pair jaccards for
+        network (BSNetwork): BSnetwork objects to add new edges to
+        num_processes (int): number of cores to use. Defaults to number of cpus available
+        callback (callable): A callback function that reports the number of pairs done
+        after a batch is returned from a worker
+    """
+
+    bin_weights = LEGACY_BINS[bin.label]["weights"]
+    jc_weight, ai_weight, dss_weight, anchor_boost = bin_weights
+
+    # prepare processes
+    # if we only have two pairs to process, we only need two processes. otherwise we
+    # will use all of them
+    needed_processes = min(bin.num_pairs(), num_processes)
+
+    processes, connections = start_processes(
+        needed_processes,
+        calculate_jaccard_worker_method,
+        extra_data=None,
+        use_batches=False,
+    )
+
+    tasks_done = 0
+
+    related_pairs: list[BGCPair] = []
+
+    # we use this to retrieve the original object
+    # TODO: investigate if we can use sharedmemory
+    original_data: dict[Connection, Optional[BGCPair]] = {
+        connection: None for connection in connections
+    }
+
+    pair_generator = bin.pairs(legacy_sorting=True)
+
+    while len(connections) > 0:
+        available_connections = wait(connections)
+
+        for connection in available_connections:
+            connection = cast(Connection, connection)
+
+            output_data = connection.recv()
+            original_pair = original_data[connection]
+
+            input_data = next(pair_generator, None)
+            original_data[connection] = input_data
+
+            connection.send(input_data)
+
+            if input_data is None:
+                connection.close()
+                connections.remove(connection)
+
+            if output_data is None or original_pair is None:
+                continue
+
+            jc = output_data
+
+            if jc == 0.0:
+                network.add_edge_pair(original_pair, dist=1.0, jc=0.0, ai=0.0, dss=0.0)
+            else:
+                related_pairs.append(original_pair)
+
+            tasks_done += 1
+
+            if callback is not None:
+                callback(tasks_done)
+
+    # just to make sure, kill any remaining processes
+    for process in processes:
+        process.kill()
+
+    return related_pairs
 
 
 def calculate_scores_worker_method(

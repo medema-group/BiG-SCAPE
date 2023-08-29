@@ -36,6 +36,25 @@ class HMMer:
     alphabet = Alphabet.amino()
 
     @staticmethod
+    def are_profiles_pressed(hmm_path: Path) -> bool:
+        """Returns true if HMM profiles are already pressed
+
+        Args:
+            hmm_path (Path): Path to the .hmm file containing domain models
+        """
+        expected_extensions = [
+            ".h3f",
+            ".h3i",
+            ".h3m",
+            ".h3p",
+        ]
+        expected_paths = [
+            hmm_path.parent / (hmm_path.name + expected_extension)
+            for expected_extension in expected_extensions
+        ]
+        return all([path.exists() for path in expected_paths])
+
+    @staticmethod
     def press(hmm_path: Path) -> None:
         """Presses hmm files for optimized files for further analysis
 

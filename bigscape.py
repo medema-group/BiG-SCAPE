@@ -46,6 +46,10 @@ if __name__ == "__main__":
     if run.legacy:
         logging.info("Using legacy mode")
 
+    if not HMMer.are_profiles_pressed(run.input.pfam_path):
+        logging.warning("HMM files were not pressed!")
+        HMMer.press(run.input.pfam_path)
+
     # start profiler
     if run.diagnostics.profiling:
         profiler = Profiler(run.output.profile_path)
@@ -210,7 +214,9 @@ if __name__ == "__main__":
 
         logging.info(mix_bin)
 
-        create_bin_network_edges(mix_bin, mix_network, run.comparison.alignment_mode)
+        create_bin_network_edges(
+            mix_bin, mix_network, run.comparison.alignment_mode, run.cores
+        )
 
         mix_network.generate_families_cutoff("dist", 0.3)
 
@@ -241,7 +247,9 @@ if __name__ == "__main__":
 
             logging.info(bin)
 
-            create_bin_network_edges(bin, bin_network, run.comparison.alignment_mode)
+            create_bin_network_edges(
+                bin, bin_network, run.comparison.alignment_mode, run.cores
+            )
 
             bin_network.generate_families_cutoff("dist", 0.3)
 
