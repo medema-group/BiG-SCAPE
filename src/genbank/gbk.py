@@ -4,7 +4,7 @@
 import logging
 from enum import Enum
 from pathlib import Path
-from typing import Dict, Optional
+from typing import Dict, Optional, List
 
 
 # from dependencies
@@ -49,7 +49,7 @@ class GBK:
         self.metadata: Dict[str, str] = {}
         self.region: Optional[Region] = None
         self.nt_seq: SeqRecord.seq = None
-        self.genes: list[CDS] = []
+        self.genes: List[CDS] = []
         self.as_version: Optional[str] = None
         self.source_type: SOURCE_TYPE = source_type
 
@@ -168,7 +168,8 @@ class GBK:
 
             if feature.type == "CDS":
                 cds = CDS.parse(feature, parent_gbk=self)
-                self.genes.append(cds)
+                if cds is not None:
+                    self.genes.append(cds)
 
     def parse_as5up(self, record: SeqRecord):
         """Parses a GBK record of AS versions 5 and up and returns a GBK object with all necessary information
@@ -211,7 +212,8 @@ class GBK:
 
             if feature.type == "CDS":
                 cds = CDS.parse(feature, parent_gbk=self)
-                self.genes.append(cds)
+                if cds is not None:
+                    self.genes.append(cds)
 
         # add features to parent objects
         for proto_cluster_num, proto_cluster in tmp_proto_clusters.items():
