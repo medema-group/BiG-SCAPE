@@ -39,6 +39,7 @@ class TestHMMScan(TestCase):
 
         cds = CDS(0, len(aa_seq) * 3)
         cds.aa_seq = aa_seq
+        cds.orf_num = 1
 
         expected_result = (0, cds.aa_seq)
         actual_result = next(cds_to_input_task([cds]))
@@ -94,7 +95,9 @@ class TestHMMScan(TestCase):
 
         HMMer.init(hmm_path)
 
-        actual_result = next(HMMer.hmmsearch_simple([cds]))
+        HMMer.hmmsearch_simple([cds])
+
+        actual_result = cds.hsps[0]
 
         self.assertEqual(expected_result, actual_result)
 
@@ -120,7 +123,9 @@ class TestHMMScan(TestCase):
 
         expected_result = HSP(cds, "PF00457.19", 249.32315063476562, 0, 0)
 
-        actual_result = list(HMMer.hmmsearch_multiprocess([cds], 1))[0]
+        HMMer.hmmsearch_multiprocess([cds], batch_size=1)
+
+        actual_result = cds.hsps[0]
 
         self.assertEqual(expected_result, actual_result)
 
@@ -140,6 +145,7 @@ class TestHMMScan(TestCase):
 
         cds = CDS(0, len(aa_seq) * 3)
         cds.strand = 1
+        cds.orf_num = 1
         cds.aa_seq = aa_seq
         cds.parent_gbk = gbk
         cds.save()

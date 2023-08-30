@@ -24,15 +24,6 @@ class TestCandidateCluster(TestCase):
         super().__init__(methodName)
         self.addCleanup(self.clean_db)
 
-    def test_create_cand_cluster(self):
-        """Tests whether a CandidateCluster is instatiated correclty"""
-
-        expected_number = 1
-
-        cand_cluster = CandidateCluster(expected_number)
-
-        self.assertIsInstance(cand_cluster, CandidateCluster)
-
     def test_parse_number(self):
         """Tests whether a CandidateCluster number is correctly parsed from a feature"""
 

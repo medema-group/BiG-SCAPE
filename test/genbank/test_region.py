@@ -22,15 +22,6 @@ class TestRegion(TestCase):
         super().__init__(methodName)
         self.addCleanup(self.clean_db)
 
-    def test_create_region(self):
-        """Tests whether a region is instantiated correctly"""
-
-        expected_number = 1
-
-        region = Region(expected_number)
-
-        self.assertIsInstance(region, Region)
-
     def test_parse_number(self):
         """Tests whether a region number is correctly parsed from a feature"""
         feature = SeqFeature(FeatureLocation(0, 100), type="region")

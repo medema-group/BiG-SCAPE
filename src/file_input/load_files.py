@@ -4,9 +4,10 @@
 import logging
 from pathlib import Path
 from typing import List, Optional
+from math import floor
 
 # from other modules
-from src.genbank.gbk import GBK, CDS, SOURCE_TYPE
+from src.genbank.gbk import GBK, SOURCE_TYPE
 
 
 def load_dataset_folder(
@@ -16,6 +17,7 @@ def load_dataset_folder(
     include_gbk: Optional[List[str]] = None,
     exclude_gbk: Optional[List[str]] = None,
     cds_overlap_cutoff: Optional[float] = None,
+    legacy_mode=False,
 ) -> List[GBK]:
     """Loads all gbk files in a given folder
 
@@ -44,17 +46,16 @@ def load_dataset_folder(
         raise FileNotFoundError()
 
     filtered_files = filter_files(files, include_gbk, exclude_gbk)
+    num_files = len(filtered_files)
+
+    logging.info(f"Loading {num_files} GBKs")
 
     gbk_list = []
-    for file in filtered_files:
-        gbk = load_gbk(file, source_type)
+    for idx, file in enumerate(filtered_files):
+        if num_files > 9 and idx % floor(num_files / 10) == 0:
+            logging.info(f"Loaded {idx}/{num_files} GBKs")
 
-        # Filter out CDS for this gbk where CDS coordinates overlap by a certain amount.
-        # The longest CDS will be chosen and other CDS will be discarded. This is done
-        # in order to remove isoforms of the same gene in organisms that perform
-        # alternative splicing
-        if cds_overlap_cutoff is not None:
-            CDS.filter_overlap(gbk.genes, cds_overlap_cutoff)
+        gbk = load_gbk(file, source_type, cds_overlap_cutoff, legacy_mode)
 
         gbk_list.append(gbk)
 
@@ -99,12 +100,19 @@ def is_included(path: Path, include_list: List[str]):
     return False
 
 
-def load_gbk(path: Path, source_type: SOURCE_TYPE) -> GBK:
+def load_gbk(
+    path: Path,
+    source_type: SOURCE_TYPE,
+    cds_overlap_cutoff: Optional[float] = None,
+    legacy_mode=False,
+) -> GBK:
     """Loads a GBK file. Returns a GBK object
 
     Args:
         path (Path): path to gbk file
         source_type (SOURCE_TYPE): str, type of gbk file (query, mibig, reference)
+        cds_overlap_cutoff (Optional[float]): cds region overlap cutoff to use.
+        Defaults to None
 
     Raises:
         IsADirectoryError: expected file path, got directory instead
@@ -117,4 +125,4 @@ def load_gbk(path: Path, source_type: SOURCE_TYPE) -> GBK:
         logging.error("GBK path does not point to a file!")
         raise IsADirectoryError()
 
-    return GBK.parse(path, source_type)
+    return GBK.parse(path, source_type, cds_overlap_cutoff, legacy_mode)

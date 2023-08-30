@@ -4,8 +4,8 @@
 import logging
 
 
-def init_logger(run) -> None:
-    """Initializes the logger"""
+def init_logger(run) -> None:  # pragma: no cover
+    """Initialize the logger"""
 
     # logger
     # this tells the logger what the messages should look like
@@ -28,8 +28,8 @@ def init_logger(run) -> None:
         root_logger.addHandler(console_handler)
 
 
-def init_logger_file(run) -> None:
-    """Initializes the logger file"""
+def init_logger_file(run) -> None:  # pragma: no cover
+    """Initialize the logger file"""
 
     log_formatter = logging.Formatter("%(asctime)s %(levelname)-7.7s %(message)s")
     root_logger = logging.getLogger()

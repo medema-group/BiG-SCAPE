@@ -107,6 +107,79 @@ class TestGBK(TestCase):
 
         self.assertIsInstance(dna_sequence, Seq)
 
+    def test_filter_overlap_over_threshold(self):
+        """Test whether add_cds_filter_overlap correctly throws out a cds"""
+
+        gbk = GBK("", "")
+
+        cds_a = CDS(0, 18)
+        cds_a.aa_seq = "M" * 6
+        cds_a.strand = 1
+
+        cds_b = CDS(0, 9)
+        cds_b.strand = 1
+        cds_b.aa_seq = "M" * 3
+        # nt_overlap_len_a_b = 9
+        # aa_overlap = 9/3 = 3
+        # 10% cds_b aa len = 0.1 * 3 = 0.3
+        # aa_overlap > 10% shortest cds: 3 > 0.3
+
+        gbk.add_cds_overlap_filter(cds_a, 0.1)
+
+        gbk.add_cds_overlap_filter(cds_b, 0.1)
+
+        expected_cds_list = [cds_a]
+
+        self.assertEqual(expected_cds_list, gbk.genes)
+
+    def test_filter_overlap_under_threshold(self):
+        """Test whether filter_overlap correctly includes a new CDS if it overlaps with
+        another CDS but under the cutoff threshold
+        """
+
+        gbk = GBK("", "")
+
+        cds_a = CDS(0, 18)
+        cds_a.aa_seq = "M" * 6
+        cds_b = CDS(18, 36)
+        cds_b.aa_seq = "M" * 4
+        # nt_overlap_len_a_b = 1
+        # aa_overlap = 1/3 = 0.33
+        # 10% cds_b aa len = 0.1*4 = 0.4
+        # aa_overlap < 10% shortest cds: 0.33 < 0.4
+
+        gbk.add_cds_overlap_filter(cds_a, cds_overlap_cutoff=0.1)
+        gbk.add_cds_overlap_filter(cds_b, cds_overlap_cutoff=0.1)
+
+        expected_cds_list = [cds_a, cds_b]
+
+        self.assertEqual(expected_cds_list, gbk.genes)
+
+    def test_filter_overlap_over_threshold_diff_strands(self):
+        """Test whether filter_overlap correclty preserves a CDS that is over the cds
+        cutoff threshold, but is on a different strand
+        """
+
+        gbk = GBK("", "")
+
+        cds_a = CDS(0, 18)
+        cds_a.aa_seq = "M" * 6
+        cds_a.strand = 1
+        cds_b = CDS(0, 9)
+        cds_b.aa_seq = "M" * 3
+        cds_b.strand = -1
+        # nt_overlap_len_a_b = 9
+        # aa_overlap = 9/3 = 3
+        # 10% cds_b aa len = 0.1 * 3 = 0.3
+        # aa_overlap > 10% shortest cds: 3 > 0.3
+
+        gbk.add_cds_overlap_filter(cds_a, cds_overlap_cutoff=0.1)
+        gbk.add_cds_overlap_filter(cds_b, cds_overlap_cutoff=0.1)
+
+        expected_cds_list = [cds_a, cds_b]
+
+        self.assertEqual(expected_cds_list, gbk.genes)
+
     def test_save(self):
         """Tests whether a GBK object is correctly stored in the SQLite database"""
 
@@ -153,3 +226,27 @@ class TestGBK(TestCase):
         actual_row_count += len(cursor_result.fetchall())
 
         self.assertEqual(expected_row_count, actual_row_count)
+
+    def test_load_all(self):
+        """Tests whether a set of GBKs can be recreated from a database"""
+        populated_db_path = Path("test/test_data/database/valid_populated.db")
+        DB.load_from_disk(populated_db_path)
+
+        expected_gbk_count = 10
+
+        actual_gbk_count = len(GBK.load_all())
+
+        self.assertEqual(expected_gbk_count, actual_gbk_count)
+
+    def test_load_all_has_regions(self):
+        """Tests whether the region objects were correctly loaded when loading GBKs"""
+        populated_db_path = Path("test/test_data/database/valid_populated.db")
+        DB.load_from_disk(populated_db_path)
+
+        all_gbk = GBK.load_all()
+
+        gbks_have_regions = [gbk.region is not None for gbk in all_gbk]
+
+        self.assertTrue(all(gbks_have_regions))
+
+    # TODO: test load candidate clusters, protoclusters, protocores

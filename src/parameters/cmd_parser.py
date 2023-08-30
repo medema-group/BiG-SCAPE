@@ -10,7 +10,7 @@ from pathlib import Path
 from .run import RunParameters
 
 
-def parse_cmd(args):
+def parse_cmd(args):  # pragma: no cover
     """
     Parse arguments from the command line
 
@@ -44,6 +44,15 @@ def parse_cmd(args):
         type=int,
         help="Set the max number of cores available (default: use all available\
         cores).",
+    )
+
+    parser.add_argument(
+        "--legacy",
+        dest="legacy",
+        default=False,
+        action="store_true",
+        help="Whether to use the logic and workflow of BiG-SCAPE 1.0. For use in\
+            validation and benchmarking",
     )
 
     # input parameters
@@ -204,11 +213,19 @@ def parse_cmd(args):
 
     parser.add_argument(
         "--mix",
-        dest="mix",
+        dest="binning.mix",
         default=False,
         action="store_true",
         help="Run an all-vs-all analysis",
         # TODO: update with binning modes
+    )
+
+    parser.add_argument(
+        "--legacy_no_classify",
+        dest="binning.legacy_no_classify",
+        default=False,
+        action="store_true",
+        help="Run analyses on bins as in BiG-SCAPE 1.0",
     )
 
     # comparison parameters

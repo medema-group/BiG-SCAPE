@@ -23,15 +23,6 @@ class TestProtocore(TestCase):
         super().__init__(methodName)
         self.addCleanup(self.clean_db)
 
-    def test_create_proto_core(self):
-        """Tests whether a proto_core is instantiated correctly"""
-
-        expected_number = 1
-
-        proto_core = ProtoCore(expected_number)
-
-        self.assertIsInstance(proto_core, ProtoCore)
-
     def test_parse_number(self):
         """Tests whether a protocluster/proto_core number is correctly parsed from a feature"""
         feature = SeqFeature(FeatureLocation(0, 100), type="proto_core")

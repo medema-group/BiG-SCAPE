@@ -5,11 +5,12 @@ channels:
 dependencies:
   - python=3.9
   - biopython
+  - sortedcontainers
   - fasttree
   - networkx
   - numpy
   - pandas
-  - pyhmmer
+  - pyhmmer=0.8.2
   - scikit-learn
   - scipy
   - sqlalchemy

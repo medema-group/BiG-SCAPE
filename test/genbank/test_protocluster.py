@@ -23,15 +23,6 @@ class TestProtocluster(TestCase):
         super().__init__(methodName)
         self.addCleanup(self.clean_db)
 
-    def test_create_protocluster(self):
-        """Tests whether a Protocluster is instatiated correclty"""
-
-        expected_number = 1
-
-        protocluster = ProtoCluster(expected_number)
-
-        self.assertIsInstance(protocluster, ProtoCluster)
-
     def test_parse_number(self):
         """Tests whether a Protocluster number is correctly parsed from a feature"""
 

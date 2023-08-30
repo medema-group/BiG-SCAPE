@@ -14,6 +14,7 @@ from Bio.SeqFeature import (
 )
 
 # from other modules
+from src.hmm import HSP
 from src.genbank import (
     GBK,
     CDS,
@@ -36,16 +37,6 @@ class TestCDS(TestCase):
     def __init__(self, methodName: str = "runTest") -> None:
         super().__init__(methodName)
         self.addCleanup(self.clean_db)
-
-    def test_create_cds(self):
-        """Tests whether a cds is instatiated correclty"""
-
-        expected_start = 1
-        expected_end = 5
-
-        cds = CDS(expected_start, expected_end)
-
-        self.assertIsInstance(cds, CDS)
 
     def test_parse_aa_seq(self):
         """Tests whether an aa sequence is correclty parsed from a feature"""
@@ -124,6 +115,21 @@ class TestCDS(TestCase):
 
         self.assertEqual(expected_row_count, actual_row_count)
 
+    def test_load_all(self):
+        """Tests whether a set of CDS objects can be recreated from a database"""
+        populated_db_path = Path("test/test_data/database/valid_populated.db")
+        DB.load_from_disk(populated_db_path)
+
+        expected_cds_count = 355
+
+        all_gbk = GBK.load_all()
+
+        gbk_cds_count = [len(gbk.genes) for gbk in all_gbk]
+
+        actual_gbk_count = sum(gbk_cds_count)
+
+        self.assertEqual(expected_cds_count, actual_gbk_count)
+
     def test_cds_has_overlap_false(self):
         """Tests the has_overlap function where a is left of b"""
 
@@ -148,20 +154,6 @@ class TestCDS(TestCase):
 
         self.assertEqual(expected_result, actual_result)
 
-    def test_cds_has_overlap_diff_strands(self):
-        """Tests the has_overlap function where a and b are in different strands"""
-
-        cds_a = CDS(0, 50)
-        cds_a.strand = 1
-        cds_b = CDS(10, 80)
-        cds_b.strand = -1
-
-        expected_result = False
-
-        actual_result = CDS.has_overlap(cds_a, cds_b)
-
-        self.assertEqual(expected_result, actual_result)
-
     def test_len_overlap(self):
         """Tests whether the len_overlap function returns a correct overlap len"""
 
@@ -174,85 +166,89 @@ class TestCDS(TestCase):
 
         self.assertEqual(expected_len, actual_len)
 
-    def test_len_overlap_diff_strands(self):
-        """Tests whether the len_overlap function returns len = 0 if cds in different
-        strands"""
+    def test_add_hsp_overlap_filter(self):
+        """Tests whether a new hsp can be added on a new CDS using the add with overlap
+        filter function
+        """
+        cds = CDS(0, 100)
+        cds.aa_seq = "M" * 100
+        cds.strand = 1
 
-        cds_a = CDS(0, 50)
-        cds_a.strand = 1
-        cds_b = CDS(10, 80)
-        cds_b.strand = -1
+        new_hsp = HSP(cds, "test_domain", 100.0, 0, 100)
 
-        expected_result = 0
+        cds.add_hsp_overlap_filter(new_hsp)
 
-        actual_result = CDS.len_nt_overlap(cds_a, cds_b)
+        expected_result = [new_hsp]
+
+        actual_result = cds.hsps
 
         self.assertEqual(expected_result, actual_result)
 
-    def test_filter_overlap_over_threshold(self):
-        """Test whether filter_overlap correclty throws out a cds"""
+    def test_add_hsp_overlap_filter_keep_old(self):
+        """Tests whether a newly added HSP is discarded because it overlaps with a
+        better scoring existing HSP
+        """
+        cds = CDS(0, 100)
+        cds.aa_seq = "M" * 100
+        cds.strand = 1
 
-        cds_a = CDS(0, 18)
-        cds_a.aa_seq = "M" * 6
-        cds_a.strand = 1
+        old_hsp = HSP(cds, "test_domain_1", 100.0, 0, 100)
 
-        cds_b = CDS(0, 9)
-        cds_b.strand = 1
-        cds_b.aa_seq = "M" * 3
-        # nt_overlap_len_a_b = 9
-        # aa_overlap = 9/3 = 3
-        # 10% cds_b aa len = 0.1 * 3 = 0.3
-        # aa_overlap > 10% shortest cds: 3 > 0.3
+        cds.add_hsp_overlap_filter(old_hsp)
 
-        expected_cds_list = [cds_a]
+        new_hsp = HSP(cds, "test_domain_2", 50.0, 0, 100)
 
-        cds_list = [cds_a, cds_b]
+        cds.add_hsp_overlap_filter(new_hsp)
 
-        CDS.filter_overlap(cds_list, 0.1)
+        expected_result = [old_hsp]
 
-        self.assertEqual(expected_cds_list, cds_list)
+        actual_result = cds.hsps
 
-    def test_filter_overlap_under_threshold(self):
-        """Test whether filter_overlap correclty throws out a cds"""
+        self.assertEqual(expected_result, actual_result)
 
-        cds_a = CDS(0, 18)
-        cds_a.aa_seq = "M" * 6
-        cds_b = CDS(18, 36)
-        cds_b.aa_seq = "M" * 4
-        # nt_overlap_len_a_b = 1
-        # aa_overlap = 1/3 = 0.33
-        # 10% cds_b aa len = 0.1*4 = 0.4
-        # aa_overlap < 10% shortest cds: 0.33 < 0.4
+    def test_add_hsp_overlap_filter_keep_new(self):
+        """Tests whether an old HSP is replaced because it overlaps with a better
+        scoring new HSP
+        """
+        cds = CDS(0, 100)
+        cds.aa_seq = "M" * 100
+        cds.strand = 1
 
-        expected_cds_list = [cds_a, cds_b]
+        old_hsp = HSP(cds, "test_domain_1", 50.0, 0, 100)
 
-        cds_list = [cds_a, cds_b]
+        cds.add_hsp_overlap_filter(old_hsp)
 
-        CDS.filter_overlap(cds_list, 0.1)
+        new_hsp = HSP(cds, "test_domain_2", 100.0, 0, 100)
 
-        self.assertEqual(expected_cds_list, cds_list)
+        cds.add_hsp_overlap_filter(new_hsp)
 
-    def test_filter_overlap_over_threshold_diff_strands(self):
-        """Test whether filter_overlap correclty throws out a cds"""
+        expected_result = [new_hsp]
 
-        cds_a = CDS(0, 18)
-        cds_a.aa_seq = "M" * 6
-        cds_a.strand = 1
-        cds_b = CDS(0, 9)
-        cds_b.aa_seq = "M" * 3
-        cds_b.strand = -1
-        # nt_overlap_len_a_b = 9
-        # aa_overlap = 9/3 = 3
-        # 10% cds_b aa len = 0.1 * 3 = 0.3
-        # aa_overlap > 10% shortest cds: 3 > 0.3
+        actual_result = cds.hsps
 
-        expected_cds_list = [cds_a, cds_b]
+        self.assertEqual(expected_result, actual_result)
 
-        cds_list = [cds_a, cds_b]
+    def test_add_hsp_overlap_filter_keep_new_same_bitscore(self):
+        """Tests whether an old HSP is replaced because it has a higher env_start than
+        a newly added HSP with the same bitscore
+        """
+        cds = CDS(0, 100)
+        cds.aa_seq = "M" * 100
+        cds.strand = 1
 
-        CDS.filter_overlap(cds_list, 0.1)
+        old_hsp = HSP(cds, "test_domain_1", 100.0, 20, 100)
 
-        self.assertEqual(expected_cds_list, cds_list)
+        cds.add_hsp_overlap_filter(old_hsp)
+
+        new_hsp = HSP(cds, "test_domain_2", 100.0, 0, 100)
+
+        cds.add_hsp_overlap_filter(new_hsp)
+
+        expected_result = [new_hsp]
+
+        actual_result = cds.hsps
+
+        self.assertEqual(expected_result, actual_result)
 
     def test_translate_output_type(self):
         """Tests whether translate correclty outputs a Seq object"""
