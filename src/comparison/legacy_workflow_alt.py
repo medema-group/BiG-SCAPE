@@ -145,13 +145,12 @@ def expand_pair(pair: BGCPair) -> bool:
 
     if not check_expand(pair.comparable_region):
         reset_expansion(pair.comparable_region)
-        return True
+        jc = calc_jaccard_pair(pair)
+        return jc
 
     jc = calc_jaccard_pair(pair)
-    if jc == 0.0:
-        return False
 
-    return True
+    return jc
 
 
 def calculate_scores_pair(
@@ -170,11 +169,10 @@ def calculate_scores_pair(
         # in the form [bool, Pair]. true bools means they need expansion, false they don't
         needs_expand = do_lcs_pair(pair, alignment_mode)
 
-        still_related = True
         if needs_expand:
-            still_related = expand_pair(pair)
+            jc = expand_pair(pair)
 
-        if not still_related:
+        if jc == 0.0:
             results.append((1.0, 0.0, 0.0, 0.0))
 
         bin_weights = LEGACY_BINS[bin_label]["weights"]
