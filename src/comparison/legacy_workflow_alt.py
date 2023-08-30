@@ -1,10 +1,10 @@
 """Contains methods to run the legacy comparison workflow on a bin of BGC pairs
 
 This is a an alternate implementation that minimizes memory overhead and is generally
-cleaner. 
+cleaner.
 TODO: profile this and compare performance with other implementation. this may
 actually be faster
-TODO: this is relatively simple code and worth testing, except 
+TODO: this is relatively simple code and worth testing, except
 create_bin_network_edges_alt
 TODO: docstrings, none typings
 """
@@ -30,56 +30,85 @@ from .legacy_extend import (
 from .legacy_lcs import legacy_find_cds_lcs
 
 
+def batch_generator(iterator, batch_size):
+    batch = []
+    for i in range(batch_size):
+        item = next(iterator, None)
+        if item is None:
+            return batch
+        batch.append(item)
+
+    return batch
+
+
 def create_bin_network_edges_alt(
-    bin: BGCBin, network: BSNetwork, alignment_mode: str, cores: int, callback: Callable
+    bin: BGCBin,
+    network: BSNetwork,
+    alignment_mode: str,
+    cores: int,
+    callback: Callable,
+    batch_size=100,
 ):  # pragma no cover
+    pair_generator = bin.pairs()
+
     pairs_todo = bin.num_pairs()
     logging.info("Performing distance calculation for %d pairs", pairs_todo)
 
     # prepare a process pool
     logging.info("Using %d cores", cores)
+
+    batch_size = min(bin.num_pairs(), batch_size)
+
+    logging.info("Using batch size: %d", batch_size)
+
     with ProcessPoolExecutor(cores) as executor:
         done_pairs = 0
 
         running_tasks = {}
 
-        pair_generator = bin.pairs()
+        for i in range(cores):
+            batch = batch_generator(pair_generator, batch_size)
 
-        for i in range(cores * 3):
-            if next_pair := next(pair_generator, None):
-                startup_task = executor.submit(
-                    calculate_scores_pair, (next_pair, alignment_mode, bin.label)
-                )
-                running_tasks[startup_task] = next_pair
+            if len(batch) == 0:
+                break
+
+            new_task = executor.submit(
+                calculate_scores_pair, (batch, alignment_mode, bin.label)
+            )
+            running_tasks[new_task] = batch
 
         while True:
             done, not_done = wait(running_tasks, None, "FIRST_COMPLETED")
 
             # first quickly start new tasks
             for done_task in done:
-                next_pair = next(pair_generator, None)
+                batch = batch_generator(pair_generator, batch_size)
 
-                if next_pair:
-                    new_task = executor.submit(
-                        calculate_scores_pair, (next_pair, alignment_mode, bin.label)
-                    )
-                    running_tasks[new_task] = next_pair
+                if len(batch) == 0:
+                    continue
+
+                new_task = executor.submit(
+                    calculate_scores_pair, (batch, alignment_mode, bin.label)
+                )
+                running_tasks[new_task] = batch
 
             # second loop to store results
             for done_task in done:
-                task_pair = running_tasks[done_task]
+                task_batch = running_tasks[done_task]
 
                 exception = done_task.exception()
                 if exception:
                     raise exception
 
-                dist, jc, ai, dss = done_task.result()
+                results = done_task.result()
 
                 del running_tasks[done_task]
 
-                network.add_edge_pair(task_pair, dist=dist, jc=jc, ai=ai, dss=dss)
+                for idx, pair in enumerate(task_batch):
+                    dist, jc, ai, dss = results[idx]
+                    network.add_edge_pair(pair, dist=dist, jc=jc, ai=ai, dss=dss)
 
-                done_pairs += 1
+                done_pairs += len(results)
                 callback(done_pairs)
 
             if len(running_tasks) == 0:
@@ -126,35 +155,40 @@ def expand_pair(pair: BGCPair) -> bool:
 
 
 def calculate_scores_pair(
-    data: tuple[BGCPair, str, str]
-) -> tuple[float, float, float, float]:  # pragma no cover
-    pair, alignment_mode, bin_label = data
+    data: tuple[list[BGCPair], str, str]
+) -> list[tuple[float, float, float, float]]:  # pragma no cover
+    pairs, alignment_mode, bin_label = data
 
-    jc = calc_jaccard_pair(pair)
+    results = []
 
-    if jc == 0.0:
-        return 1.0, 0.0, 0.0, 0.0
+    for pair in pairs:
+        jc = calc_jaccard_pair(pair)
 
-    # in the form [bool, Pair]. true bools means they need expansion, false they don't
-    needs_expand = do_lcs_pair(pair, alignment_mode)
+        if jc == 0.0:
+            results.append((1.0, 0.0, 0.0, 0.0))
 
-    still_related = True
-    if needs_expand:
-        still_related = expand_pair(pair)
+        # in the form [bool, Pair]. true bools means they need expansion, false they don't
+        needs_expand = do_lcs_pair(pair, alignment_mode)
 
-    if not still_related:
-        return 1.0, 0.0, 0.0, 0.0
+        still_related = True
+        if needs_expand:
+            still_related = expand_pair(pair)
 
-    bin_weights = LEGACY_BINS[bin_label]["weights"]
-    jc_weight, ai_weight, dss_weight, anchor_boost = bin_weights
+        if not still_related:
+            results.append((1.0, 0.0, 0.0, 0.0))
 
-    jaccard = calc_jaccard_pair(pair)
+        bin_weights = LEGACY_BINS[bin_label]["weights"]
+        jc_weight, ai_weight, dss_weight, anchor_boost = bin_weights
 
-    adjacency = calc_ai_pair(pair)
-    # mix anchor boost = 2.0
-    dss = calc_dss_pair_legacy(pair, anchor_boost=anchor_boost)
+        jaccard = calc_jaccard_pair(pair)
 
-    similarity = jaccard * jc_weight + adjacency * ai_weight + dss * dss_weight
-    distance = 1 - similarity
+        adjacency = calc_ai_pair(pair)
+        # mix anchor boost = 2.0
+        dss = calc_dss_pair_legacy(pair, anchor_boost=anchor_boost)
 
-    return distance, jaccard, adjacency, dss
+        similarity = jaccard * jc_weight + adjacency * ai_weight + dss * dss_weight
+        distance = 1 - similarity
+
+        results.append((distance, jaccard, adjacency, dss))
+
+    return results
