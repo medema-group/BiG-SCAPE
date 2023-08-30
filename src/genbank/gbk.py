@@ -311,6 +311,9 @@ class GBK:
             if feature.type == "CDS":
                 cds = CDS.parse(feature, parent_gbk=self)
 
+                if cds is None:
+                    continue
+
                 cds.orf_num = orf_num
                 orf_num += 1
 
@@ -369,6 +372,9 @@ class GBK:
 
             if feature.type == "CDS":
                 cds = CDS.parse(feature, parent_gbk=self)
+
+                if cds is None:
+                    continue
 
                 cds.orf_num = orf_num
                 orf_num += 1
