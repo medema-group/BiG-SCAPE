@@ -12,6 +12,8 @@ from sqlalchemy import (
     Compiled,
     CursorResult,
     create_engine,
+    func,
+    select,
     text,
 )
 
@@ -170,6 +172,13 @@ class DB:
         NOTE: may be redundant if we turn off journaling
         """
         DB.connection.commit()
+
+    @staticmethod
+    def get_table_row_count(table_name: str) -> int:
+        table_metadata = DB.metadata.tables[table_name]
+        return DB.execute(
+            select(func.count("*")).select_from(table_metadata)
+        ).scalar_one()
 
 
 def read_schema(path: Path) -> List[str]:
