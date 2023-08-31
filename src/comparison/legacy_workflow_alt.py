@@ -104,6 +104,9 @@ def create_bin_network_edges_alt(
 
                 del running_tasks[done_task]
 
+                if len(results) != len(task_batch):
+                    raise ValueError("Mismatch between task length and result length")
+
                 for idx, pair in enumerate(task_batch):
                     dist, jc, ai, dss = results[idx]
                     network.add_edge_pair(pair, dist=dist, jc=jc, ai=ai, dss=dss)
@@ -165,6 +168,7 @@ def calculate_scores_pair(
 
         if jc == 0.0:
             results.append((1.0, 0.0, 0.0, 0.0))
+            continue
 
         # in the form [bool, Pair]. true bools means they need expansion, false they don't
         needs_expand = do_lcs_pair(pair, alignment_mode)
@@ -174,6 +178,7 @@ def calculate_scores_pair(
 
         if jc == 0.0:
             results.append((1.0, 0.0, 0.0, 0.0))
+            continue
 
         bin_weights = LEGACY_BINS[bin_label]["weights"]
         jc_weight, ai_weight, dss_weight, anchor_boost = bin_weights
