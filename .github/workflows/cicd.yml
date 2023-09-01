@@ -36,6 +36,7 @@ jobs:
     - name: Test with Pytest
       shell: micromamba-shell {0}
       run: |
+        pytest
         coverage run -m pytest
         coverage report
         mkdir badges
