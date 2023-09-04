@@ -103,9 +103,7 @@ def parse_cmd(args):  # pragma: no cover
         # TODO: can a default be provided here that includes the mibig version param ?
         type=Path,
         help="Directory containing reference BGC antiSMASH-processed \
-            genbank files. If directory does not exist and MIBiG version \
-            parameter is also passed, MiBIG files will be downloaded \
-            to this directory",
+            genbank files.",
     )
 
     parser.add_argument(
