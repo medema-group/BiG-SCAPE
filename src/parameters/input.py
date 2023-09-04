@@ -6,6 +6,7 @@ import logging
 from enum import Enum
 from pathlib import Path
 from typing import Optional
+import os
 
 # from other modules
 from src.errors import InvalidArgumentError
@@ -84,6 +85,13 @@ def validate_reference(reference_dir):
     # given reference dir, the dir must exist
     if reference_dir and not reference_dir.exists():
         logging.error("GBK reference directory does not exist!")
+        raise InvalidArgumentError("--reference_dir", reference_dir)
+
+    if reference_dir and reference_dir.exists():
+        contents = os.listdir(reference_dir)
+        if len(contents) == 0:
+            logging.error("GBK reference directory empty!")
+            raise InvalidArgumentError("--reference_dir", reference_dir)
 
 
 def validate_input_dir(input_dir):
