@@ -80,6 +80,7 @@ class RunParameters(Namespace):
         self.comparison.validate()
         self.networking.validate()
         self.output.validate()
+        self.hmmer.validate(self)
 
         # initializes the logger file, can only happen once output is validated
         # and the log file path is created

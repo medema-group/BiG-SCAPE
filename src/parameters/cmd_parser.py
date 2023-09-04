@@ -187,16 +187,17 @@ def parse_cmd(args):  # pragma: no cover
         default=False,
         action="store_true",
         help="Force domain prediction using hmmscan even if BiG-SCAPE finds \
-            processed domtable files (e.g. to use a new version of Pfam).",
+            processed gbk files (e.g. to use a new version of Pfam).",
     )
 
     parser.add_argument(
-        "--force_hmmalign",
+        "--skip_hmmscan",
         dest="hmmer.force_hmmalign",
         default=False,
         action="store_true",
-        help="Force multiple alignment of domains' sequences, even if alignments \
-            have been generated in a previous run.",
+        help="Skip domain prediction using hmmscan. BiG-SCAPE expects to find \
+            a database of already processed gbks.",
+        # TODO: make sure to add second tier check when reading in from db
     )
 
     parser.add_argument(
