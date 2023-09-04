@@ -43,7 +43,6 @@ class InputParameters:
         # other db
         # TODO: test
         self.pfam_path: Optional[Path] = None
-        self.pfam_version: Optional[str] = None
         self.mibig_version: Optional[str] = None
 
         # other user supplied stuff
@@ -65,51 +64,26 @@ class InputParameters:
         """Validate the arguments contained in this object and set default values"""
         validate_input_dir(self.input_dir)
         validate_input_mode(self.input_mode)
-        validate_pfam(self.pfam_version, self.pfam_path)
+        validate_pfam(self.pfam_path)
         validate_reference(self.mibig_version, self.reference_dir)
+        validate_cds_overlap_cutoff(self.cds_overlap_cutoff)
 
 
-def validate_pfam(pfam_version, pfam_path):
+def validate_pfam(pfam_path):
     """Validates the pfam related properties"""
 
     # given only a path, the file must exist
-    if not pfam_version and pfam_path and not pfam_path.exists():
+    if pfam_path and not pfam_path.exists():
         logging.error("Pfam file does not exist!")
         raise InvalidArgumentError("--pfam_path", pfam_path)
 
-    # given a version (download action) the parent must exist
-    if pfam_version and pfam_path and not pfam_path.parent.exists():
-        logging.error("Path to pfam file is not valid")
-        raise InvalidArgumentError("--pfam_path", pfam_path)
 
-    if pfam_version and pfam_path and pfam_path.exists():
-        logging.info(
-            "Pfam file already exists, if you wish to re-download,"
-            " delete or move this file. In the meantime, BiG_SCAPE"
-            " will use the existing file."
-        )
-
-
-def validate_reference(mibig_version, reference_dir):
+def validate_reference(reference_dir):
     """Validates the reference/MIBiG related properties"""
 
-    # given neither -> do nothing
-
-    # given reference dir and no mibig version, the dir must exist
-    if not mibig_version and reference_dir and not reference_dir.exists():
+    # given reference dir, the dir must exist
+    if reference_dir and not reference_dir.exists():
         logging.error("GBK reference directory does not exist!")
-
-    # given reference dir and mibig version (download action), the parent dir must exist
-    if mibig_version and reference_dir and not reference_dir.parent.exists():
-        logging.error("Path to pfam file is not valid")
-        raise InvalidArgumentError("--reference_dir", reference_dir)
-
-    if mibig_version and reference_dir and reference_dir.exists():
-        logging.info(
-            "GBK reference directory already exists, if you wish to "
-            "re-download, delete or move this directory. In the "
-            "meantime, BiG-SCAPE will use the existing directory."
-        )
 
 
 def validate_input_dir(input_dir):

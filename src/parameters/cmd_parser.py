@@ -5,7 +5,6 @@ line arguments"""
 from argparse import ArgumentParser
 from multiprocessing import cpu_count
 from pathlib import Path
-import os
 
 # from this module
 from .run import RunParameters
@@ -84,21 +83,7 @@ def parse_cmd(args):  # pragma: no cover
         # default=Path(os.path.dirname(os.path.abspath(__file__)), "pfam", "Pfam-A.hmm"),
         type=Path,
         required=False,
-        help="Path to (hmmpress-processed) Pfam database file(s). If file does \
-            not exist and  pfam_version parameter is also passed, pfam file \
-            will be downloaded and hmmpressed to this location."
-        # TODO: check this when implementing automated pressing
-    )
-
-    parser.add_argument(
-        "--pfam_version",
-        dest="input.pfam_version",
-        # default="Current release",
-        type=str,
-        required=False,
-        help="Pfam release number (e.g. 35.0). Download and press given pfam database.\
-            Default: current release. If no pfam_path provide, Pfam file will \
-            be downloaded in the BiG-SCAPE folder.",
+        help="Path to Pfam database file(s).",
     )
 
     parser.add_argument(
@@ -106,10 +91,21 @@ def parse_cmd(args):  # pragma: no cover
         dest="input.mibig_version",
         type=str,
         choices=["1.0", "1.1", "1.2", "1.3", "1.4", "2.0", "3.0", "3.1"],
-        help="MIBiG relase number (e.g. 3.1). Download and use this version of MiBIG database. \
-            If not provided, MiBIG will not be included in the analysis. \
-            If no reference-directory path is provided, MIBiG files will be downloaded \
-            in the BiG-SCAPE folder.",
+        # TODO: get rid of hardcoded versions?
+        help="MIBiG relase number (e.g. 3.1). Download (if needed) and use this version of MiBIG database. \
+            If not provided, MiBIG will not be included in the analysis. If download is required, BiG-SCAPE\
+            will download the MIBiG database to the BiG-SCAPE folder",
+    )
+
+    parser.add_argument(
+        "--reference_dir",
+        dest="input.reference_dir",
+        # TODO: can a default be provided here that includes the mibig version param ?
+        type=Path,
+        help="Directory containing reference BGC antiSMASH-processed \
+            genbank files. If directory does not exist and MIBiG version \
+            parameter is also passed, MiBIG files will be downloaded \
+            to this directory",
     )
 
     parser.add_argument(
@@ -125,17 +121,6 @@ def parse_cmd(args):  # pragma: no cover
         type=Path,
         help="Path to location of input dataset mapping file."
         # TODO: check this when implementing method
-    )
-
-    parser.add_argument(
-        "--reference_dir",
-        dest="input.reference_dir",
-        # TODO: can a default be provided here that includes the mibig version param ?
-        type=Path,
-        help="Directory containing reference BGC antiSMASH-processed \
-            genbank files. If directory does not exist and MIBiG version \
-            parameter is also passed, MiBIG files will be downloaded \
-            to this directory",
     )
 
     parser.add_argument(
