@@ -4,7 +4,7 @@ from unittest import TestCase
 from pathlib import Path
 
 # from other modules
-from src.genbank import SOURCE_TYPE
+from src.enums import SOURCE_TYPE
 
 # from this module
 from src.file_input.load_files import load_dataset_folder, load_gbk
