@@ -16,7 +16,7 @@ from src.comparison import (
     legacy_bin_generator,
     create_bin_network_edges_alt as create_bin_network_edges,
 )
-from src.file_input import load_dataset_folder, get_mibig, get_pfam
+from src.file_input import load_dataset_folder, get_mibig
 from src.diagnostics import Profiler
 from src.network import BSNetwork
 from src.output import (
@@ -97,26 +97,6 @@ if __name__ == "__main__":
         run.input.include_gbk,
         run.input.exclude_gbk,
         run.input.cds_overlap_cutoff,
-    )
-
-    # get pfam
-    # TODO: update to fetch from argument only
-    get_pfam(run.input.pfam_version, run.input.pfam_path)
-
-    # Load datasets
-    gbks = load_dataset_folder(
-        run.input.input_dir,
-        SOURCE_TYPE.QUERY,
-        run.input.input_mode,
-        run.input.include_gbk,
-        run.input.exclude_gbk,
-        run.input.cds_overlap_cutoff,
-        run.legacy,
-    )
-
-    exec_time = datetime.now() - start_time
-    logging.info(
-        "loaded %d gbks at %f seconds", len(gbks), exec_time.total_seconds()
     )
 
     all_cds: list[CDS] = []

@@ -50,62 +50,6 @@ def get_mibig(mibig_version: str, bigscape_dir: Path):
     return mibig_version_dir
 
 
-def get_pfam(pfam_version: Optional[str], pfam_path: Optional[Path]):
-    # TODO delete
-    """Download pfam file"""
-
-    # defaults
-    def_pfam_dir = Path(os.path.dirname(os.path.abspath(__file__)), "pfam")
-    def_pfam_path = Path(def_pfam_dir, "Pfam-A.hmm")
-    def_pfam_path_compressed = Path(def_pfam_dir, "Pfam-A.hmm.gz")
-    current_version_url = (
-        "https://ftp.ebi.ac.uk/pub/databases/Pfam/current_release/Pfam-A.hmm.gz"
-    )
-
-    # values to set
-    if pfam_version:
-        version_url = f"https://ftp.ebi.ac.uk/pub/databases/Pfam/releases/Pfam{pfam_version}/Pfam-A.hmm.gz"
-
-    if pfam_path:
-        pfam_path_compressed = Path(f"{pfam_path}.gz")
-
-    # if there is a path given
-
-    if pfam_path:
-        # if path already filled, use
-        if pfam_path.exists():
-            return pfam_path
-
-        if not pfam_path.exists():
-            if pfam_version:
-                download_dataset(version_url, pfam_path, pfam_path_compressed)
-                return pfam_path
-
-            else:
-                download_dataset(current_version_url, pfam_path, pfam_path_compressed)
-                return pfam_path
-
-    # if there is no path given
-
-    if not pfam_path:
-        # if default path already filled, use it
-        if def_pfam_path.exists():
-            return def_pfam_path
-
-        # if its the first time and have to make the parent dir
-        if not def_pfam_dir.exists():
-            os.makedirs(def_pfam_dir)
-
-        # download given or current version
-        if pfam_version:
-            download_dataset(version_url, def_pfam_path, def_pfam_path_compressed)
-        else:
-            download_dataset(
-                current_version_url, def_pfam_path, def_pfam_path_compressed
-            )
-        return def_pfam_path
-
-
 def download_dataset(url: str, path: Path, path_compressed: Path) -> None:
     # pragma: no cover
     """A function to download and decompress a dataset from an online repository
