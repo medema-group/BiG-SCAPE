@@ -190,7 +190,7 @@ def parse_cmd(args):  # pragma: no cover
 
     parser.add_argument(
         "--skip_hmmscan",
-        dest="hmmer.force_hmmalign",
+        dest="hmmer.skip_hmmscan",
         default=False,
         action="store_true",
         help="Skip domain prediction using hmmscan. BiG-SCAPE expects to find \
@@ -247,8 +247,8 @@ def parse_cmd(args):  # pragma: no cover
     parser.add_argument(
         "--gcf_cutoffs",
         dest="networking.gcf_cutoffs",
-        default=0.30,
-        type=float,
+        default=[0.30],
+        type=list,
         nargs="+",
         help="Generate networks using multiple raw distance cutoff values. \
             Values should be in the range [0.0, 1.0]. Example: --cutoffs 0.1 \

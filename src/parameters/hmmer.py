@@ -2,16 +2,18 @@
 hmmer parameters/arguments"""
 
 # from python
+from __future__ import annotations
 import logging
 from pathlib import Path
-from typing import Optional
+from typing import Optional, TYPE_CHECKING
 import os
-
-# from same module
-from .run import RunParameters
 
 # from other modules
 from src.errors import InvalidArgumentError, ArgumentParseError
+
+# from circular imports
+if TYPE_CHECKING:
+    from .run import RunParameters
 
 
 class HmmerParameters:

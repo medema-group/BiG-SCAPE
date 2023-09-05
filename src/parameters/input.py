@@ -66,7 +66,7 @@ class InputParameters:
         validate_input_dir(self.input_dir)
         validate_input_mode(self.input_mode)
         validate_pfam(self.pfam_path)
-        validate_reference(self.mibig_version, self.reference_dir)
+        validate_reference(self.reference_dir)
         validate_cds_overlap_cutoff(self.cds_overlap_cutoff)
 
 
