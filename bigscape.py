@@ -37,8 +37,7 @@ def load_data(run: RunParameters):
 
 
 if __name__ == "__main__":
-    # initialize run
-    bigscape_dir = os.path.dirname(os.path.abspath(__file__))
+    bigscape_dir = Path(os.path.dirname(os.path.abspath(__file__)))
 
     # parsing needs to come first because we need it in setting up the logging
     run: RunParameters = parse_cmd(sys.argv[1:])
@@ -80,15 +79,28 @@ if __name__ == "__main__":
     else:
         # start DB
         DB.create_in_mem()
-
+        
     # get reference if either MIBiG version or user-made reference dir passed
     if run.input.mibig_version:
-        mibig_dir = get_mibig(run.input.mibig_version, run.input.reference_dir)
-        mibig_gbks = load_dataset_folder(mibig_dir, SOURCE_TYPE.MIBIG)
-    elif run.input.reference_dir and not run.input.mibig_version:
-        mibig_gbks = load_dataset_folder(run.input.reference_dir, SOURCE_TYPE.MIBIG)
+        mibig_version_dir = get_mibig(run.input.mibig_version, bigscape_dir)
+        # mibig_gbks = load_dataset_folder(mibig_version_dir, SOURCE_TYPE.MIBIG)
+
+    if run.input.reference_dir:
+        reference_gbks = load_dataset_folder(
+            run.input.reference_dir, SOURCE_TYPE.REFERENCE
+        )
+
+    gbks = load_dataset_folder(
+        run.input.input_dir,
+        SOURCE_TYPE.QUERY,
+        run.input.input_mode,
+        run.input.include_gbk,
+        run.input.exclude_gbk,
+        run.input.cds_overlap_cutoff,
+    )
 
     # get pfam
+    # TODO: update to fetch from argument only
     get_pfam(run.input.pfam_version, run.input.pfam_path)
 
     # Load datasets

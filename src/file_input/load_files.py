@@ -15,41 +15,43 @@ import requests  # type: ignore
 from src.genbank.gbk import GBK, SOURCE_TYPE
 
 
-def get_mibig(mibig_version: str, reference_dir: Path):
-    """download mibig"""
+def get_mibig(mibig_version: str, bigscape_dir: Path):
+    # pragma: no cover
+    """A function to download a given version of MIBiG (if need be), and return its location
+        pragma: no cover -> we dont wish to test downloading and decompressing of files, due to
+        time and resource constraints
 
-    # if there is a given valid path, use (no version, given path)
-    if reference_dir and os.path.exists(reference_dir):
-        return reference_dir
+    Args:
+        mibig_version (str): version
+        bigscape_dir (Path): main BiG-SCAPE directory
 
-    # TODO: update to proper link once Kai makes it available
-    mibig_url = (
-        f"https://dl.secondarymetabolites.org/mibig/mibig_json_{mibig_version}.tar.gz"
-    )
+    Returns:
+        Path: path to MIBiG database (antismash processed gbks)
+    """
 
-    # download to given path (given version, given path but empty)
-    if mibig_version and reference_dir and not os.path.exists(reference_dir):
-        reference_dir_compressed = Path(f"{reference_dir}.tar.gz")
-        download_dataset(mibig_url, reference_dir, reference_dir_compressed)
-        return reference_dir
+    mibig_url = f"https://dl.secondarymetabolites.org/mibig/mibig_antismash_{mibig_version}_gbk.tar.bz2"
+    # TODO: this only works for 3.1, update to proper link once Kai makes it available
+    # https://dl.secondarymetabolites.org/mibig/mibig_antismash_3.1_gbk.tar.bz2
+    # https://dl.secondarymetabolites.org/mibig/mibig_antismash_3.1_json.tar.bz2
 
-    default_parent_dir = Path(os.path.dirname(os.path.abspath(__file__)), "reference")
-    default_reference_dir = Path(default_parent_dir, f"mibig_antismash_{mibig_version}")
-    default_reference_dir_compressed = Path(str(reference_dir) + ".tar.gz")
+    mibig_dir = Path(os.path.join(bigscape_dir, "MIBiG"))
+    mibig_version_dir = Path(os.path.join(f"mibig_antismash_{mibig_version}_gbk"))
 
-    # download to default path (yes version, no path - default full)
-    if mibig_version and os.path.exists(default_reference_dir):
-        return default_reference_dir
+    if not os.path.exists(mibig_dir):
+        os.makedirs(mibig_dir)
 
-    # download to default path (yes version, no path - default empty)
-    if mibig_version and not os.path.exists(default_reference_dir):
-        download_dataset(mibig_url, reference_dir, default_reference_dir_compressed)
-        return default_reference_dir
+    contents_dir = os.listdir(mibig_dir)
+    if len(contents_dir) > 0 and any(mibig_version in dir for dir in contents_dir):
+        # we assume that if a folder is here, that it is uncompressed and ready to use
+        return mibig_version_dir
 
-    return reference_dir
+    mibig_dir_compressed = Path(f"{mibig_version_dir}.tar.bz2")
+    download_dataset(mibig_url, mibig_dir, mibig_dir_compressed)
+    return mibig_version_dir
 
 
 def get_pfam(pfam_version: Optional[str], pfam_path: Optional[Path]):
+    # TODO delete
     """Download pfam file"""
 
     # defaults
@@ -105,8 +107,24 @@ def get_pfam(pfam_version: Optional[str], pfam_path: Optional[Path]):
 
 
 def download_dataset(url: str, path: Path, path_compressed: Path) -> None:
-    """Download a dataset"""
+    # pragma: no cover
+    """A function to download and decompress a dataset from an online repository
+        pragma: no cover -> we dont wish to test downloading and decompressing of files, due to
+        time and resource constraints
 
+    Args:
+        url (str): url to download
+        path (Path): path to decompressed file/folder
+        path_compressed (Path): path to compressed file/folder
+
+    Raises:
+        ValueError: could not download/request file
+
+    Returns:
+        None
+    """
+
+    # download
     response = requests.get(url, stream=True)
     if response.status_code != 200:
         raise ValueError("Could not download MIBiG file")
