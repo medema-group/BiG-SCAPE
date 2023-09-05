@@ -8,7 +8,7 @@ from pathlib import Path
 
 # from other modules
 from src.data import DB
-from src.genbank import SOURCE_TYPE, BGCRecord, CDS, GBK
+from src.genbank import BGCRecord, CDS, GBK
 from src.hmm import HMMer, legacy_filter_overlap, HSP
 from src.parameters import RunParameters, parse_cmd
 from src.comparison import (
@@ -25,16 +25,7 @@ from src.output import (
     legacy_prepare_bin_output,
     legacy_generate_bin_output,
 )
-
-
-def load_data(run: RunParameters):
-    """Performs data loading tasks for BiG-SCAPE. This will reconstruct a run up to and
-    including HMMAlign if a database file was detected in the run directory
-
-    Args:
-        run (RunParameters): Run parameters object for this run
-    """
-
+from src.enums import SOURCE_TYPE
 
 if __name__ == "__main__":
     bigscape_dir = Path(os.path.dirname(os.path.abspath(__file__)))
@@ -83,7 +74,7 @@ if __name__ == "__main__":
     # get reference if either MIBiG version or user-made reference dir passed
     if run.input.mibig_version:
         mibig_version_dir = get_mibig(run.input.mibig_version, bigscape_dir)
-        # mibig_gbks = load_dataset_folder(mibig_version_dir, SOURCE_TYPE.MIBIG)
+        mibig_gbks = load_dataset_folder(mibig_version_dir, SOURCE_TYPE.MIBIG)
 
     if run.input.reference_dir:
         reference_gbks = load_dataset_folder(

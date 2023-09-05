@@ -1,14 +1,16 @@
 """Contains tests for the GBK class and functions"""
 # from python
 from unittest import TestCase
+from pathlib import Path
 
 # from dependencies
 from Bio.SeqFeature import SeqFeature, FeatureLocation
 
 # from other modules
-from src.genbank import Region, CandidateCluster
+from src.genbank import Region, CandidateCluster, GBK
 from src.errors import InvalidGBKError
 from src.data import DB
+from src.enums import SOURCE_TYPE
 
 
 class TestRegion(TestCase):
@@ -74,7 +76,13 @@ class TestRegion(TestCase):
         feature.qualifiers["region_number"] = ["1"]
         feature.qualifiers["product"] = ["NRPS"]
 
-        self.assertRaises(InvalidGBKError, Region.parse, feature)
+        gbk_file_path = Path(
+            "test/test_data/metagenome_valid_gbk_input/as5_metagenome_valid...region001.gbk"
+        )
+
+        parent_gbk = GBK.parse(gbk_file_path, SOURCE_TYPE.QUERY)
+
+        self.assertRaises(InvalidGBKError, Region.parse, feature, parent_gbk)
 
     def test_parse_no_product(self):
         """Tests whether parse correctly throws an error when given a feature lacking a product qualifier"""

@@ -12,7 +12,8 @@ import tarfile
 import requests  # type: ignore
 
 # from other modules
-from src.genbank.gbk import GBK, SOURCE_TYPE
+from src.genbank.gbk import GBK
+from src.enums import SOURCE_TYPE
 
 
 def get_mibig(mibig_version: str, bigscape_dir: Path):
@@ -35,7 +36,9 @@ def get_mibig(mibig_version: str, bigscape_dir: Path):
     # https://dl.secondarymetabolites.org/mibig/mibig_antismash_3.1_json.tar.bz2
 
     mibig_dir = Path(os.path.join(bigscape_dir, "MIBiG"))
-    mibig_version_dir = Path(os.path.join(f"mibig_antismash_{mibig_version}_gbk"))
+    mibig_version_dir = Path(
+        os.path.join(mibig_dir, f"mibig_antismash_{mibig_version}_gbk")
+    )
 
     if not os.path.exists(mibig_dir):
         os.makedirs(mibig_dir)
@@ -98,11 +101,15 @@ def load_dataset_folder(
     Returns empty list if path does not point to a folder or if folder does not contain gbk files
     """
 
-    if not include_gbk:
-        include_gbk = ["cluster", "region"]
+    if source_type == SOURCE_TYPE.QUERY or source_type == SOURCE_TYPE.REFERENCE:
+        if not include_gbk:
+            include_gbk = ["cluster", "region"]
 
-    if not exclude_gbk:
-        exclude_gbk = ["final"]
+        if not exclude_gbk:
+            exclude_gbk = ["final"]
+
+    if source_type == SOURCE_TYPE.MIBIG:
+        include_gbk = ["BGC"]
 
     if not path.is_dir():
         logging.error("Dataset folder does not point to a directory!")
@@ -136,7 +143,11 @@ def load_dataset_folder(
     return gbk_list
 
 
-def filter_files(files: List[Path], include_string: List[str], exclude_str: List[str]):
+def filter_files(
+    files: List[Path],
+    include_string: Optional[List[str]] = None,
+    exclude_str: Optional[List[str]] = None,
+):
     """Removes files from input based on include/exclude string conditions
 
     Args:
@@ -146,13 +157,13 @@ def filter_files(files: List[Path], include_string: List[str], exclude_str: List
     """
     filtered_files = []
 
-    if include_string[0] == "*":
+    if include_string and include_string[0] == "*":
         return files
 
     for file in files:
-        if is_included(file, exclude_str):
+        if exclude_str and is_included(file, exclude_str):
             continue
-        if is_included(file, include_string):
+        if include_string and is_included(file, include_string):
             filtered_files.append(file)
 
     return filtered_files

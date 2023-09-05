@@ -1,5 +1,5 @@
 """Module containing code related to genbank file parsing and storage"""
-from src.genbank.gbk import GBK, SOURCE_TYPE
+from src.genbank.gbk import GBK
 from src.genbank.region import Region
 from src.genbank.candidate_cluster import CandidateCluster
 from src.genbank.proto_cluster import ProtoCluster
@@ -25,5 +25,4 @@ __all__ = [
     "translate",
     "trim_fuzzy",
     "BGCRecord",
-    "SOURCE_TYPE",
 ]
