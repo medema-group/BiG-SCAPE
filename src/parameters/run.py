@@ -75,7 +75,7 @@ class RunParameters(Namespace):
         init_logger(self)
 
         self.input.validate()
-        self.hmmer.validate()
+        self.hmmer.validate(self)
         self.binning.validate()
         self.comparison.validate()
         self.networking.validate()
