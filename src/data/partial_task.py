@@ -37,11 +37,11 @@ def find_minimum_task(gbks: list[GBK]):
 
     hmm_data_state = get_hmm_data_state(gbks)
 
-    if hmm_data_state.value < HMM_TASK.ALL_SCANNED.value:
+    if hmm_data_state.value < HMM_TASK.NEED_ALIGN.value:
         return TASK.HMM_SCAN
 
     if hmm_data_state.value < HMM_TASK.ALL_ALIGNED.value:
-        return TASK.HMM_SCAN
+        return TASK.HMM_ALIGN
 
     comparison_data_state = get_comparison_data_state(gbks)
 
@@ -92,8 +92,7 @@ def get_input_data_state(gbks: list[GBK]) -> INPUT_TASK:
 
 class HMM_TASK(Enum):
     NO_DATA = 0  # nothing done yet
-    NEED_SCAN = 0  # new CDS need to be scanned
-    ALL_SCANNED = 1  # all CDS in database were scanned
+    NEED_SCAN = 1  # new CDS need to be scanned
     NEED_ALIGN = 2  # new HSP need alignment
     ALL_ALIGNED = 3  # all HSP in database were aligned
 
@@ -104,6 +103,19 @@ def get_hmm_data_state(gbks: list[GBK]) -> HMM_TASK:
 
     if hsp_count == 0:
         return HMM_TASK.NO_DATA
+
+    cds_count = DB.get_table_row_count("cds")
+    scanned_cds_count = DB.get_table_row_count("scanned_cds")
+
+    if cds_count > scanned_cds_count:
+        return HMM_TASK.NEED_SCAN
+
+    align_count = DB.get_table_row_count("hsp_alignment")
+
+    if align_count < hsp_count:
+        return HMM_TASK.NEED_ALIGN
+
+    return HMM_TASK.ALL_ALIGNED
 
 
 class COMPARISON_TASK(Enum):
@@ -119,3 +131,5 @@ def get_comparison_data_state(gbks: list[GBK]) -> COMPARISON_TASK:
 
     if distance_count == 0:
         return COMPARISON_TASK.NO_DATA
+
+    return None

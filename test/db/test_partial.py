@@ -20,7 +20,7 @@ from src.data import (
     COMPARISON_TASK,
 )
 from src.genbank import GBK, CDS
-from src.hmm import HSP, HSPAlignment
+from src.hmm import HSP, HSPAlignment, HMMer
 
 
 def create_mock_gbk() -> GBK:
@@ -85,6 +85,7 @@ class TestPartial(TestCase):
         gbks[0].save_all()
         # add hsp to db
         gbks[0].genes[0].hsps[0].save()
+        HMMer.set_hmm_scanned(gbks[0].genes[0])
 
         expected_min_task = TASK.HMM_ALIGN
         actual_min_task = find_minimum_task(gbks)
@@ -103,6 +104,7 @@ class TestPartial(TestCase):
         gbks[0].save_all()
         # add hsp to db
         gbks[0].genes[0].hsps[0].save()
+        HMMer.set_hmm_scanned(gbks[0].genes[0])
         # sigh
         gbks[0].genes[0].hsps[0].alignment.save()
 

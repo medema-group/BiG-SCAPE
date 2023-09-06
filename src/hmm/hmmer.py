@@ -20,6 +20,10 @@ from pyhmmer.plan7 import (
 from pyhmmer.hmmer import hmmpress, hmmsearch, hmmalign
 from pyhmmer.easel import Alphabet, TextSequence, TextSequenceBlock
 from pyhmmer import __version__ as pyhmmer_version
+from sqlalchemy import insert
+
+# from other modules
+from src.data import DB
 
 # from this module
 from src.hmm.hsp import HSP, HSPAlignment
@@ -157,6 +161,20 @@ class HMMer:
         return HMMer.profiles[profile_idx]
 
     @staticmethod
+    def set_hmm_scanned(cds: CDS) -> None:
+        """Set a CDS as being scanned in the database
+
+        Args:
+            cds (CDS): cds to update state for
+        """
+
+        state_table = DB.metadata.tables["scanned_cds"]
+
+        insert_statement = insert(state_table).values(cds_id=cds._db_id)
+
+        DB.execute(insert_statement, False)
+
+    @staticmethod
     def hmmsearch_simple(
         cds_list: list[CDS], domain_overlap_cutoff=0.1, cores=cpu_count()
     ) -> None:
@@ -201,6 +219,8 @@ class HMMer:
                     relevant_cds = cds_list[cds_idx]
                     hsp = HSP(relevant_cds, accession, score, env_start, env_stop)
                     relevant_cds.add_hsp_overlap_filter(hsp, domain_overlap_cutoff)
+                    if DB.opened():
+                        HMMer.set_hmm_scanned(relevant_cds)
 
     @staticmethod
     def calc_batch_size(num_genes: int, cores=cpu_count()) -> int:
@@ -536,6 +556,9 @@ def process_task_output(
     relevant_cds: CDS = cds_list[cds_id]
     hsp = HSP(relevant_cds, domain, score, env_start, env_stop)
     relevant_cds.add_hsp_overlap_filter(hsp, domain_overlap_cutoff)
+
+    if DB.opened():
+        HMMer.set_hmm_scanned(relevant_cds)
 
 
 def task_generator(cds_list: list[CDS], batch_size) -> Iterator[list]:

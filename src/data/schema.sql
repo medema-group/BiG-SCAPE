@@ -25,6 +25,12 @@ CREATE TABLE IF NOT EXISTS bgc_record (
     FOREIGN KEY(gbk_id) REFERENCES gbk(id)
 );
 
+CREATE TABLE IF NOT EXISTS scanned_cds (
+    cds_id INTEGER PRIMARY KEY NOT NULL,
+    unique(cds_id),
+    FOREIGN KEY(cds_id) REFERENCES cds(id)
+);
+
 CREATE TABLE IF NOT EXISTS cds (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     gbk_id INTEGER NOT NULL,
