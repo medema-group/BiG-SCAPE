@@ -6,6 +6,7 @@ return the state of partial analyses so that they can be continued
 from pathlib import Path
 import random
 from unittest import TestCase
+from itertools import combinations
 
 # from other modules
 from src.data import (
@@ -19,8 +20,9 @@ from src.data import (
     HMM_TASK,
     COMPARISON_TASK,
 )
-from src.genbank import GBK, CDS
+from src.genbank import GBK, CDS, Region
 from src.hmm import HSP, HSPAlignment, HMMer
+from src.network import BSNetwork
 
 
 def create_mock_gbk() -> GBK:
@@ -30,6 +32,7 @@ def create_mock_gbk() -> GBK:
     cds.orf_num = 1
     cds.strand = 1
     gbk.genes.append(cds)
+    gbk.region = Region(gbk, 1, 0, 100, False, "test")
     return gbk
 
 
@@ -41,6 +44,21 @@ def add_mock_hsp_cds(cds: CDS) -> None:
 def add_mock_hsp_alignment_hsp(hsp: HSP) -> None:
     hsp_alignment = HSPAlignment(hsp, "AAAAAAAAAA")
     hsp.alignment = hsp_alignment
+
+
+def gen_mock_network(gbks: list[GBK], edge_gbks: list[GBK]) -> BSNetwork:
+    network = BSNetwork()
+    for gbk in gbks:
+        if gbk.region is None:
+            continue
+        network.add_node(gbk.region)
+
+    for gbk_a, gbk_b in combinations(edge_gbks, 2):
+        if gbk_a.region is None or gbk_b.region is None:
+            continue
+        network.add_edge(gbk_a.region, gbk_b.region, dist=0.0, jc=0.0, ai=0.0, dss=0.0)
+
+    return network
 
 
 class TestPartial(TestCase):
@@ -292,7 +310,28 @@ class TestPartialComparison(TestCase):
     def test_no_comparisons_done(self):
         DB.create_in_mem()
 
-        gbks = [create_mock_gbk()]
+        gbks = [
+            create_mock_gbk(),
+            create_mock_gbk(),
+            create_mock_gbk(),
+        ]
+        # add hsp to both gbks
+        add_mock_hsp_cds(gbks[0].genes[0])
+        add_mock_hsp_cds(gbks[1].genes[0])
+        add_mock_hsp_cds(gbks[2].genes[0])
+        # add hspalignment to both hsps
+        add_mock_hsp_alignment_hsp(gbks[0].genes[0].hsps[0])
+        add_mock_hsp_alignment_hsp(gbks[1].genes[0].hsps[0])
+        add_mock_hsp_alignment_hsp(gbks[2].genes[0].hsps[0])
+
+        # add gbks, hsps and alignments to db
+        for gbk in gbks:
+            gbk.save_all()
+            gbk.genes[0].hsps[0].save()
+            HMMer.set_hmm_scanned(gbk.genes[0])
+            gbk.genes[0].hsps[0].alignment.save()
+
+        # no alignments done. expect no data
 
         expected_state = COMPARISON_TASK.NO_DATA
         actual_state = get_comparison_data_state(gbks)
@@ -300,17 +339,68 @@ class TestPartialComparison(TestCase):
         self.assertEqual(expected_state, actual_state)
 
     def test_new_comparisons_to_do(self):
-        self.skipTest("Not implemented")
-        expected_state = COMPARISON_TASK.NEW_DATA
+        DB.create_in_mem()
 
-        actual_state = get_comparison_data_state()
+        gbks = [
+            create_mock_gbk(),
+            create_mock_gbk(),
+            create_mock_gbk(),
+        ]
+        # add hsp to both gbks
+        add_mock_hsp_cds(gbks[0].genes[0])
+        add_mock_hsp_cds(gbks[1].genes[0])
+        add_mock_hsp_cds(gbks[2].genes[0])
+        # add hspalignment to both hsps
+        add_mock_hsp_alignment_hsp(gbks[0].genes[0].hsps[0])
+        add_mock_hsp_alignment_hsp(gbks[1].genes[0].hsps[0])
+        add_mock_hsp_alignment_hsp(gbks[2].genes[0].hsps[0])
+
+        # add gbks, hsps and alignments to db
+        for gbk in gbks:
+            gbk.save_all()
+            gbk.genes[0].hsps[0].save()
+            HMMer.set_hmm_scanned(gbk.genes[0])
+            gbk.genes[0].hsps[0].alignment.save()
+
+        # only one distance done. (1-2, missing 1-3 and 2-3)
+        network = gen_mock_network(gbks, gbks[0:2])
+        network.export_distances_to_db()
+
+        expected_state = COMPARISON_TASK.NEW_DATA
+        actual_state = get_comparison_data_state(gbks)
 
         self.assertEqual(expected_state, actual_state)
 
     def test_no_new_comparisons(self):
-        self.skipTest("Not implemented")
-        expected_state = COMPARISON_TASK.ALL_DONE
+        self.skipTest("not working")
+        DB.create_in_mem()
 
-        actual_state = get_comparison_data_state()
+        gbks = [
+            create_mock_gbk(),
+            create_mock_gbk(),
+            create_mock_gbk(),
+        ]
+        # add hsp to both gbks
+        add_mock_hsp_cds(gbks[0].genes[0])
+        add_mock_hsp_cds(gbks[1].genes[0])
+        add_mock_hsp_cds(gbks[2].genes[0])
+        # add hspalignment to both hsps
+        add_mock_hsp_alignment_hsp(gbks[0].genes[0].hsps[0])
+        add_mock_hsp_alignment_hsp(gbks[1].genes[0].hsps[0])
+        add_mock_hsp_alignment_hsp(gbks[2].genes[0].hsps[0])
+
+        # add gbks, hsps and alignments to db
+        for gbk in gbks:
+            gbk.save_all()
+            gbk.genes[0].hsps[0].save()
+            HMMer.set_hmm_scanned(gbk.genes[0])
+            gbk.genes[0].hsps[0].alignment.save()
+
+        # all distances done (1-2, 1-3, 2-3)
+        network = gen_mock_network(gbks, gbks)
+        network.export_distances_to_db()
+
+        expected_state = COMPARISON_TASK.ALL_DONE
+        actual_state = get_comparison_data_state(gbks)
 
         self.assertEqual(expected_state, actual_state)

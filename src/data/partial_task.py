@@ -9,6 +9,9 @@ from __future__ import annotations
 from enum import Enum
 from typing import TYPE_CHECKING
 
+# from dependencies
+from sqlalchemy import select, func
+
 # from other modules
 from src.data import DB
 
@@ -132,4 +135,26 @@ def get_comparison_data_state(gbks: list[GBK]) -> COMPARISON_TASK:
     if distance_count == 0:
         return COMPARISON_TASK.NO_DATA
 
-    return None
+    # TODO: this needs changing once we implement protocluster/protocore
+    # stuff. currently this is a naive way of calculating this
+
+    # check if all record ids are present in the comparison region ids
+
+    bgc_record_table = DB.metadata.tables["bgc_record"]
+
+    select_statement = bgc_record_table.select().column(bgc_record_table.columns.id)
+
+    record_ids = set(DB.execute(select_statement).fetchall())
+
+    distance_table = DB.metadata.tables["distance"]
+
+    select_statement = distance_table.select().distinct(
+        distance_table.columns.region_a_id, distance_table.columns.region_b_id
+    )
+
+    distance_region_ids = set(DB.execute(select_statement).fetchall())
+
+    if len(record_ids.symmetric_difference(distance_region_ids)) > 0:
+        return COMPARISON_TASK.NEW_DATA
+
+    return COMPARISON_TASK.ALL_DONE
