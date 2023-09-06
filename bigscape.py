@@ -10,7 +10,11 @@ from src.data import DB
 from src.genbank import SOURCE_TYPE, BGCRecord, CDS, GBK
 from src.hmm import HMMer, legacy_filter_overlap, HSP
 from src.parameters import RunParameters, parse_cmd
-from src.comparison import generate_mix, legacy_bin_generator, create_bin_network_edges_alt as create_bin_network_edges
+from src.comparison import (
+    generate_mix,
+    legacy_bin_generator,
+    create_bin_network_edges_alt as create_bin_network_edges,
+)
 from src.file_input import load_dataset_folder, download_mibig
 from src.diagnostics import Profiler
 from src.network import BSNetwork
