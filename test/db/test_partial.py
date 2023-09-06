@@ -81,6 +81,7 @@ class TestPartial(TestCase):
         gbks = [create_mock_gbk()]
         # add hsp to gbk
         add_mock_hsp_cds(gbks[0].genes[0])
+
         # add gbk to db
         gbks[0].save_all()
         # add hsp to db
@@ -100,6 +101,7 @@ class TestPartial(TestCase):
         add_mock_hsp_cds(gbks[0].genes[0])
         # add hspalignment to hsp
         add_mock_hsp_alignment_hsp(gbks[0].genes[0].hsps[0])
+
         # add gbk to db
         gbks[0].save_all()
         # add hsp to db
@@ -203,34 +205,76 @@ class TestPartialHMM(TestCase):
         self.assertEqual(expected_state, actual_state)
 
     def test_new_scans_to_do(self):
-        self.skipTest("Not implemented")
+        DB.create_in_mem()
+
+        gbks = [
+            create_mock_gbk(),
+            create_mock_gbk(),
+        ]
+        # add hsp to one gbk
+        add_mock_hsp_cds(gbks[0].genes[0])
+
+        # add gbks to db
+        for gbk in gbks:
+            gbk.save_all()
+        # add hsp to db
+        gbks[0].genes[0].hsps[0].save()
+        HMMer.set_hmm_scanned(gbks[0].genes[0])
+
         expected_state = HMM_TASK.NEED_SCAN
-
-        actual_state = get_hmm_data_state()
-
-        self.assertEqual(expected_state, actual_state)
-
-    def test_no_new_scans(self):
-        self.skipTest("Not implemented")
-        expected_state = HMM_TASK.ALL_SCANNED
-
-        actual_state = get_hmm_data_state()
+        actual_state = get_hmm_data_state(gbks)
 
         self.assertEqual(expected_state, actual_state)
 
     def test_new_align_to_do(self):
-        self.skipTest("Not implemented")
-        expected_state = HMM_TASK.NEED_ALIGN
+        DB.create_in_mem()
 
-        actual_state = get_hmm_data_state()
+        gbks = [
+            create_mock_gbk(),
+            create_mock_gbk(),
+        ]
+        # add hsp to both gbks
+        add_mock_hsp_cds(gbks[0].genes[0])
+        add_mock_hsp_cds(gbks[1].genes[0])
+        # add hspalignment to only one hsp
+        add_mock_hsp_alignment_hsp(gbks[0].genes[0].hsps[0])
+
+        # add gbks and hsps to db
+        for gbk in gbks:
+            gbk.save_all()
+            gbk.genes[0].hsps[0].save()
+            HMMer.set_hmm_scanned(gbk.genes[0])
+        # add hspalignment to db
+        gbks[0].genes[0].hsps[0].alignment.save()
+
+        expected_state = HMM_TASK.NEED_ALIGN
+        actual_state = get_hmm_data_state(gbks)
 
         self.assertEqual(expected_state, actual_state)
 
     def test_no_new_align(self):
-        self.skipTest("Not implemented")
-        expected_state = HMM_TASK.ALL_ALIGNED
+        DB.create_in_mem()
 
-        actual_state = get_hmm_data_state()
+        gbks = [
+            create_mock_gbk(),
+            create_mock_gbk(),
+        ]
+        # add hsp to both gbks
+        add_mock_hsp_cds(gbks[0].genes[0])
+        add_mock_hsp_cds(gbks[1].genes[0])
+        # add hspalignment to both hsps
+        add_mock_hsp_alignment_hsp(gbks[0].genes[0].hsps[0])
+        add_mock_hsp_alignment_hsp(gbks[1].genes[0].hsps[0])
+
+        # add gbks, hsps and alignments to db
+        for gbk in gbks:
+            gbk.save_all()
+            gbk.genes[0].hsps[0].save()
+            HMMer.set_hmm_scanned(gbk.genes[0])
+            gbk.genes[0].hsps[0].alignment.save()
+
+        expected_state = HMM_TASK.ALL_ALIGNED
+        actual_state = get_hmm_data_state(gbks)
 
         self.assertEqual(expected_state, actual_state)
 
