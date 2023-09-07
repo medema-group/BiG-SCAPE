@@ -1,5 +1,6 @@
 # from python
 import sys
+import os
 import logging
 from datetime import datetime
 import platform
@@ -7,12 +8,15 @@ from pathlib import Path
 
 # from other modules
 from src.data import DB
-from src.file_input import load_dataset_folder
-from src.genbank import SOURCE_TYPE, BGCRecord, CDS, GBK
+from src.genbank import BGCRecord, CDS, GBK
 from src.hmm import HMMer, legacy_filter_overlap, HSP
 from src.parameters import RunParameters, parse_cmd
-from src.comparison import generate_mix, legacy_bin_generator
-from src.comparison import create_bin_network_edges_alt as create_bin_network_edges
+from src.comparison import (
+    generate_mix,
+    legacy_bin_generator,
+    create_bin_network_edges_alt as create_bin_network_edges,
+)
+from src.file_input import load_dataset_folder, get_mibig
 from src.diagnostics import Profiler
 from src.network import BSNetwork
 from src.output import (
@@ -21,19 +25,10 @@ from src.output import (
     legacy_prepare_bin_output,
     legacy_generate_bin_output,
 )
-
-
-def load_data(run: RunParameters):
-    """Performs data loading tasks for BiG-SCAPE. This will reconstruct a run up to and
-    including HMMAlign if a database file was detected in the run directory
-
-    Args:
-        run (RunParameters): Run parameters object for this run
-    """
-
+from src.enums import SOURCE_TYPE
 
 if __name__ == "__main__":
-    # initialize run
+    bigscape_dir = Path(os.path.dirname(os.path.abspath(__file__)))
 
     # parsing needs to come first because we need it in setting up the logging
     run: RunParameters = parse_cmd(sys.argv[1:])
@@ -75,58 +70,61 @@ if __name__ == "__main__":
     else:
         # start DB
         DB.create_in_mem()
+        
+    # get reference if either MIBiG version or user-made reference dir passed
+    if run.input.mibig_version:
+        mibig_version_dir = get_mibig(run.input.mibig_version, bigscape_dir)
+        mibig_gbks = load_dataset_folder(mibig_version_dir, SOURCE_TYPE.MIBIG)
 
-        # Load datasets
-        gbks = load_dataset_folder(
-            run.input.input_dir,
-            SOURCE_TYPE.QUERY,
-            run.input.input_mode,
-            run.input.include_gbk,
-            run.input.exclude_gbk,
-            run.input.cds_overlap_cutoff,
-            run.legacy,
+    if run.input.reference_dir:
+        reference_gbks = load_dataset_folder(
+            run.input.reference_dir, SOURCE_TYPE.REFERENCE
         )
 
-        exec_time = datetime.now() - start_time
-        logging.info(
-            "loaded %d gbks at %f seconds", len(gbks), exec_time.total_seconds()
+    gbks = load_dataset_folder(
+        run.input.input_dir,
+        SOURCE_TYPE.QUERY,
+        run.input.input_mode,
+        run.input.include_gbk,
+        run.input.exclude_gbk,
+        run.input.cds_overlap_cutoff,
+    )
+
+    all_cds: list[CDS] = []
+    for gbk in gbks:
+        gbk.save_all()
+        all_cds.extend(gbk.genes)
+
+    logging.info("loaded %d cds total", len(all_cds))
+
+    # HMMER - Search
+
+    HMMer.init(run.input.pfam_path)
+
+    # we will need this information for the output later
+    pfam_info = HMMer.get_pfam_info()
+
+    def callback(tasks_done):
+        percentage = int(tasks_done / len(all_cds) * 100)
+        logging.info("%d/%d (%d%%)", tasks_done, len(all_cds), percentage)
+
+    if platform.system() == "Darwin":
+        logging.warning("Running on mac-OS: hmmsearch_simple single threaded")
+        HMMer.hmmsearch_simple(all_cds, 1)
+    else:
+        logging.debug(
+            "Running on %s: hmmsearch_multiprocess with %d cores",
+            platform.system(),
+            run.cores,
         )
 
-        all_cds: list[CDS] = []
-        for gbk in gbks:
-            gbk.save_all()
-            all_cds.extend(gbk.genes)
-
-        logging.info("loaded %d cds total", len(all_cds))
-
-        # HMMER - Search
-
-        HMMer.init(run.input.pfam_path)
-
-        # we will need this information for the output later
-        pfam_info = HMMer.get_pfam_info()
-
-        def callback(tasks_done):
-            percentage = int(tasks_done / len(all_cds) * 100)
-            logging.info("%d/%d (%d%%)", tasks_done, len(all_cds), percentage)
-
-        if platform.system() == "Darwin":
-            logging.warning("Running on mac-OS: hmmsearch_simple single threaded")
-            HMMer.hmmsearch_simple(all_cds, 1)
-        else:
-            logging.debug(
-                "Running on %s: hmmsearch_multiprocess with %d cores",
-                platform.system(),
-                run.cores,
-            )
-
-            # TODO: the overlap filtering in this function does not seem to work
-            HMMer.hmmsearch_multiprocess(
-                all_cds,
-                domain_overlap_cutoff=run.hmmer.domain_overlap_cutoff,
-                cores=run.cores,
-                callback=callback,
-            )
+        # TODO: the overlap filtering in this function does not seem to work
+        HMMer.hmmsearch_multiprocess(
+            all_cds,
+            domain_overlap_cutoff=run.hmmer.domain_overlap_cutoff,
+            cores=run.cores,
+            callback=callback,
+        )
 
         # TODO: move, or remove after the add_hsp_overlap function is fixed (if it is broken
         # in the first place)

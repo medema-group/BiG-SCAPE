@@ -3,7 +3,8 @@
 # from python
 from __future__ import annotations
 import logging
-from enum import Enum
+
+# from enum import Enum
 from pathlib import Path
 from typing import Dict, Optional
 
@@ -16,6 +17,7 @@ from Bio.SeqFeature import SeqFeature
 # from other modules
 from src.errors import InvalidGBKError
 from src.data import DB
+from src.enums import SOURCE_TYPE
 
 # from this module
 from src.genbank.region import Region
@@ -25,10 +27,10 @@ from src.genbank.proto_core import ProtoCore
 from src.genbank.cds import CDS
 
 
-class SOURCE_TYPE(Enum):
-    QUERY = "query"
-    MIBIG = "mibig"
-    REFERENCE = "reference"
+# class SOURCE_TYPE(Enum):
+#     QUERY = "query"
+#     MIBIG = "mibig"
+#     REFERENCE = "reference"
 
 
 class GBK:

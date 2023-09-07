@@ -11,6 +11,7 @@ from Bio.Seq import Seq
 from src.genbank import GBK, Region, ProtoCore, CDS
 from src.errors import InvalidGBKError
 from src.data import DB
+from src.enums import SOURCE_TYPE
 
 
 class TestGBK(TestCase):
@@ -29,7 +30,7 @@ class TestGBK(TestCase):
 
         gbk_file_path = Path("test/test_data/valid_gbk_folder/valid_input_region.gbk")
 
-        gbk = GBK.parse(gbk_file_path, "query")
+        gbk = GBK.parse(gbk_file_path, SOURCE_TYPE.QUERY)
 
         self.assertIsInstance(gbk, GBK)
 
@@ -40,7 +41,7 @@ class TestGBK(TestCase):
             "test/test_data/valid_gbk_folder/CM001015.1.cluster001.gbk"
         )
 
-        gbk = GBK.parse(gbk_file_path, "query")
+        gbk = GBK.parse(gbk_file_path, SOURCE_TYPE.QUERY)
 
         self.assertIsInstance(gbk, GBK)
 
@@ -51,7 +52,25 @@ class TestGBK(TestCase):
             "test/test_data/metagenome_valid_gbk_input/as5_metagenome_valid...region001.gbk"
         )
 
-        gbk = GBK.parse(gbk_file_path, "query")
+        gbk = GBK.parse(gbk_file_path, SOURCE_TYPE.QUERY)
+
+        self.assertIsInstance(gbk, GBK)
+
+    def test_parse_mibig_bac_region_only_gbk(self):
+        """Tests whether a MIBiG bacterial gbk file, with only regions and CDSs, is instantiated correclty"""
+
+        gbk_file_path = Path("test/test_data/MIBiG_gbk/BGC0002476.gbk")
+
+        gbk = GBK.parse(gbk_file_path, SOURCE_TYPE.MIBIG)
+
+        self.assertIsInstance(gbk, GBK)
+
+    def test_parse_mibig_fun_region_only_gbk(self):
+        """Tests whether a MIBiG fungal gbk file, with only regions and CDSs, is instantiated correclty"""
+
+        gbk_file_path = Path("test/test_data/MIBiG_gbk/BGC0002609.gbk")
+
+        gbk = GBK.parse(gbk_file_path, SOURCE_TYPE.MIBIG)
 
         self.assertIsInstance(gbk, GBK)
 
@@ -62,7 +81,7 @@ class TestGBK(TestCase):
             "test/test_data/valid_gbk_multiple_regions_folder/valid_input_multiple_regions.gbk"
         )
 
-        self.assertRaises(InvalidGBKError, GBK.parse, gbk_file_path, "query")
+        self.assertRaises(InvalidGBKError, GBK.parse, gbk_file_path, SOURCE_TYPE.QUERY)
 
     def test_populate_regions(self):
         """Tests whether parsing a GBK correctly populates the underlying region"""
@@ -70,7 +89,7 @@ class TestGBK(TestCase):
         # GBK has one region
         gbk_file_path = Path("test/test_data/valid_gbk_folder/valid_input_region.gbk")
 
-        gbk = GBK.parse(gbk_file_path, "query")
+        gbk = GBK.parse(gbk_file_path, SOURCE_TYPE.QUERY)
 
         self.assertIsInstance(gbk.region, Region)
 
@@ -80,7 +99,16 @@ class TestGBK(TestCase):
         # GBK has one region
         gbk_file_path = Path("test/test_data/valid_gbk_folder/valid_input_region.gbk")
 
-        gbk = GBK.parse(gbk_file_path, "query")
+        gbk = GBK.parse(gbk_file_path, SOURCE_TYPE.QUERY)
+
+        self.assertIsInstance(gbk.genes[0], CDS)
+
+    def test_populate_cds_mibig(self):
+        """Tests whether parsing a mibig GBK correctly populates the underlying CDSs"""
+
+        gbk_file_path = Path("test/test_data/MIBiG_gbk/BGC0002609.gbk")
+
+        gbk = GBK.parse(gbk_file_path, SOURCE_TYPE.MIBIG)
 
         self.assertIsInstance(gbk.genes[0], CDS)
 
@@ -90,7 +118,7 @@ class TestGBK(TestCase):
 
         gbk_file_path = Path("test/test_data/valid_gbk_folder/valid_input_region.gbk")
 
-        gbk = GBK.parse(gbk_file_path, "query")
+        gbk = GBK.parse(gbk_file_path, SOURCE_TYPE.QUERY)
 
         proto_core = gbk.region.cand_clusters[1].proto_clusters[1].proto_core[1]
 
@@ -101,7 +129,7 @@ class TestGBK(TestCase):
 
         gbk_file_path = Path("test/test_data/valid_gbk_folder/valid_input_region.gbk")
 
-        gbk = GBK.parse(gbk_file_path, "query")
+        gbk = GBK.parse(gbk_file_path, SOURCE_TYPE.QUERY)
 
         dna_sequence = gbk.nt_seq
 
@@ -187,7 +215,7 @@ class TestGBK(TestCase):
 
         gbk_file_path = Path("test/test_data/valid_gbk_folder/valid_input_region.gbk")
 
-        gbk = GBK.parse(gbk_file_path, "query")
+        gbk = GBK.parse(gbk_file_path, SOURCE_TYPE.QUERY)
 
         gbk.save()
 
@@ -205,7 +233,7 @@ class TestGBK(TestCase):
 
         gbk_file_path = Path("test/test_data/valid_gbk_folder/valid_input_region.gbk")
 
-        gbk = GBK.parse(gbk_file_path, "query")
+        gbk = GBK.parse(gbk_file_path, SOURCE_TYPE.QUERY)
 
         gbk.save_all()
 
