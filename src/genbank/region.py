@@ -185,9 +185,6 @@ class Region(BGCRecord):
 
         cand_clusters: dict[int, Optional[CandidateCluster]] = {}
 
-        # else:
-        #    raise ValueError("Could not parse region feature")
-
         nt_start, nt_stop, contig_edge, product = BGCRecord.parse_common(feature)
 
         # now we have all the parameters needed to assemble the region
