@@ -4,7 +4,6 @@ return the state of partial analyses so that they can be continued
 
 # from python
 from pathlib import Path
-import random
 from unittest import TestCase
 from itertools import combinations
 
@@ -25,8 +24,8 @@ from src.hmm import HSP, HSPAlignment, HMMer
 from src.network import BSNetwork
 
 
-def create_mock_gbk() -> GBK:
-    gbk = GBK(Path(f"test_path_{random.randint(0, 1000)}.gbk"), "test")
+def create_mock_gbk(i) -> GBK:
+    gbk = GBK(Path(f"test_path_{i}.gbk"), "test")
     cds = CDS(0, 100)
     cds.parent_gbk = gbk
     cds.orf_num = 1
@@ -75,7 +74,7 @@ class TestPartial(TestCase):
         DB.create_in_mem()
         expected_min_task = TASK.LOAD_GBKS
 
-        gbks = [create_mock_gbk()]
+        gbks = [create_mock_gbk(1)]
 
         actual_min_task = find_minimum_task(gbks)
 
@@ -84,7 +83,7 @@ class TestPartial(TestCase):
     def test_min_task_hmm_scan(self):
         DB.create_in_mem()
 
-        gbks = [create_mock_gbk()]
+        gbks = [create_mock_gbk(1)]
         # add gbk to db
         gbks[0].save_all()
 
@@ -96,7 +95,7 @@ class TestPartial(TestCase):
     def test_min_task_hmm_align(self):
         DB.create_in_mem()
 
-        gbks = [create_mock_gbk()]
+        gbks = [create_mock_gbk(1)]
         # add hsp to gbk
         add_mock_hsp_cds(gbks[0].genes[0])
 
@@ -114,7 +113,7 @@ class TestPartial(TestCase):
     def test_min_task_comparison(self):
         DB.create_in_mem()
 
-        gbks = [create_mock_gbk()]
+        gbks = [create_mock_gbk(1)]
         # add hsp to gbk
         add_mock_hsp_cds(gbks[0].genes[0])
         # add hspalignment to hsp
@@ -147,7 +146,7 @@ class TestPartialInputs(TestCase):
     def test_no_data(self):
         DB.create_in_mem()
 
-        gbks = [create_mock_gbk()]
+        gbks = [create_mock_gbk(1)]
 
         expected_state = INPUT_TASK.NO_DATA
         actual_state = get_input_data_state(gbks)
@@ -158,10 +157,10 @@ class TestPartialInputs(TestCase):
         DB.create_in_mem()
 
         # gbk 1
-        gbk_1_in_db = create_mock_gbk()
+        gbk_1_in_db = create_mock_gbk(1)
         gbk_1_in_db.save_all()
         # gbk 2
-        gbk_2_in_db = create_mock_gbk()
+        gbk_2_in_db = create_mock_gbk(2)
         gbk_2_in_db.save_all()
 
         gbks = [gbk_1_in_db]
@@ -174,10 +173,10 @@ class TestPartialInputs(TestCase):
     def test_new_data(self):
         DB.create_in_mem()
 
-        gbk_in_db = create_mock_gbk()
+        gbk_in_db = create_mock_gbk(1)
         gbk_in_db.save_all()
 
-        gbk_not_in_db = create_mock_gbk()
+        gbk_not_in_db = create_mock_gbk(2)
         gbks = [gbk_in_db, gbk_not_in_db]
 
         expected_state = INPUT_TASK.NEW_DATA
@@ -189,9 +188,9 @@ class TestPartialInputs(TestCase):
         DB.create_in_mem()
 
         gbks = [
-            create_mock_gbk(),
-            create_mock_gbk(),
-            create_mock_gbk(),
+            create_mock_gbk(1),
+            create_mock_gbk(2),
+            create_mock_gbk(3),
         ]
         for gbk in gbks:
             gbk.save_all()
@@ -215,7 +214,7 @@ class TestPartialHMM(TestCase):
     def test_no_scans_done(self):
         DB.create_in_mem()
 
-        gbks = [create_mock_gbk()]
+        gbks = [create_mock_gbk(1)]
 
         expected_state = HMM_TASK.NO_DATA
         actual_state = get_hmm_data_state(gbks)
@@ -226,8 +225,8 @@ class TestPartialHMM(TestCase):
         DB.create_in_mem()
 
         gbks = [
-            create_mock_gbk(),
-            create_mock_gbk(),
+            create_mock_gbk(1),
+            create_mock_gbk(2),
         ]
         # add hsp to one gbk
         add_mock_hsp_cds(gbks[0].genes[0])
@@ -248,8 +247,8 @@ class TestPartialHMM(TestCase):
         DB.create_in_mem()
 
         gbks = [
-            create_mock_gbk(),
-            create_mock_gbk(),
+            create_mock_gbk(1),
+            create_mock_gbk(2),
         ]
         # add hsp to both gbks
         add_mock_hsp_cds(gbks[0].genes[0])
@@ -274,8 +273,8 @@ class TestPartialHMM(TestCase):
         DB.create_in_mem()
 
         gbks = [
-            create_mock_gbk(),
-            create_mock_gbk(),
+            create_mock_gbk(1),
+            create_mock_gbk(2),
         ]
         # add hsp to both gbks
         add_mock_hsp_cds(gbks[0].genes[0])
@@ -310,11 +309,8 @@ class TestPartialComparison(TestCase):
     def test_no_comparisons_done(self):
         DB.create_in_mem()
 
-        gbks = [
-            create_mock_gbk(),
-            create_mock_gbk(),
-            create_mock_gbk(),
-        ]
+        gbks = [create_mock_gbk(i) for i in range(3)]
+
         # add hsp to both gbks
         add_mock_hsp_cds(gbks[0].genes[0])
         add_mock_hsp_cds(gbks[1].genes[0])
@@ -341,11 +337,8 @@ class TestPartialComparison(TestCase):
     def test_new_comparisons_to_do(self):
         DB.create_in_mem()
 
-        gbks = [
-            create_mock_gbk(),
-            create_mock_gbk(),
-            create_mock_gbk(),
-        ]
+        gbks = [create_mock_gbk(i) for i in range(3)]
+
         # add hsp to both gbks
         add_mock_hsp_cds(gbks[0].genes[0])
         add_mock_hsp_cds(gbks[1].genes[0])
@@ -372,19 +365,15 @@ class TestPartialComparison(TestCase):
         self.assertEqual(expected_state, actual_state)
 
     def test_no_new_comparisons(self):
-        self.skipTest("not working")
         DB.create_in_mem()
 
-        gbks = [
-            create_mock_gbk(),
-            create_mock_gbk(),
-            create_mock_gbk(),
-        ]
-        # add hsp to both gbks
+        gbks = [create_mock_gbk(i) for i in range(3)]
+
+        # add hsp to gbks
         add_mock_hsp_cds(gbks[0].genes[0])
         add_mock_hsp_cds(gbks[1].genes[0])
         add_mock_hsp_cds(gbks[2].genes[0])
-        # add hspalignment to both hsps
+        # add hspalignment to hsps
         add_mock_hsp_alignment_hsp(gbks[0].genes[0].hsps[0])
         add_mock_hsp_alignment_hsp(gbks[1].genes[0].hsps[0])
         add_mock_hsp_alignment_hsp(gbks[2].genes[0].hsps[0])

@@ -142,19 +142,21 @@ def get_comparison_data_state(gbks: list[GBK]) -> COMPARISON_TASK:
 
     bgc_record_table = DB.metadata.tables["bgc_record"]
 
-    select_statement = bgc_record_table.select().column(bgc_record_table.columns.id)
+    select_statement = select(bgc_record_table.c.id)
 
     record_ids = set(DB.execute(select_statement).fetchall())
 
     distance_table = DB.metadata.tables["distance"]
 
-    select_statement = distance_table.select().distinct(
-        distance_table.columns.region_a_id, distance_table.columns.region_b_id
-    )
+    select_statement = select(distance_table.c.region_a_id).distinct()
 
-    distance_region_ids = set(DB.execute(select_statement).fetchall())
+    regions_a = set(DB.execute(select_statement).fetchall())
 
-    if len(record_ids.symmetric_difference(distance_region_ids)) > 0:
+    select_statement = select(distance_table.c.region_b_id).distinct()
+
+    regions_b = set(DB.execute(select_statement).fetchall())
+
+    if len(record_ids.symmetric_difference(regions_a & regions_b)) > 0:
         return COMPARISON_TASK.NEW_DATA
 
     return COMPARISON_TASK.ALL_DONE
