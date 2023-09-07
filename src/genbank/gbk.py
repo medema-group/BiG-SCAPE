@@ -307,7 +307,7 @@ class GBK:
                     logging.error("GBK file provided contains more than one region")
                     raise InvalidGBKError()
 
-                region = Region.parse(feature, parent_gbk=self)
+                region = Region.parse_as4(feature, parent_gbk=self)
                 self.region = region
 
             if feature.type == "CDS":
@@ -357,7 +357,7 @@ class GBK:
                     logging.error("GBK file provided contains more than one region")
                     raise InvalidGBKError()
 
-                region = Region.parse(feature, parent_gbk=self)
+                region = Region.parse_as5(feature, parent_gbk=self)
                 self.region = region
 
             if feature.type == "cand_cluster":

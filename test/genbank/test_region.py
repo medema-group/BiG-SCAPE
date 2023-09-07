@@ -34,7 +34,7 @@ class TestRegion(TestCase):
         feature.qualifiers["region_number"] = [str(expected_number)]
         feature.qualifiers["candidate_cluster_numbers"] = ["1"]
 
-        region = Region.parse(feature)
+        region = Region.parse_as5(feature)
 
         self.assertEqual(expected_number, region.number)
 
@@ -46,7 +46,7 @@ class TestRegion(TestCase):
         feature.qualifiers["note"] = ["Cluster number: 1"]
         expected_number = 1
 
-        region = Region.parse(feature)
+        region = Region.parse_as4(feature)
 
         self.assertEqual(expected_number, region.number)
 
@@ -56,9 +56,9 @@ class TestRegion(TestCase):
         feature.qualifiers["product"] = ["NRPS"]
         feature.qualifiers["note"] = ["Another note"]
 
-        self.assertRaises(InvalidGBKError, Region.parse, feature)
+        self.assertRaises(InvalidGBKError, Region.parse_as4, feature)
 
-    def test_parse_no_number(self):
+    def test_parse_region_no_number(self):
         """Tests whether parse correctly throws an error when given a feature
         lacking a region_number qualifier
         """
@@ -66,7 +66,7 @@ class TestRegion(TestCase):
         feature.qualifiers["candidate_cluster_numbers"] = ["1"]
         feature.qualifiers["product"] = ["NRPS"]
 
-        self.assertRaises(InvalidGBKError, Region.parse, feature)
+        self.assertRaises(InvalidGBKError, Region.parse_as5, feature)
 
     def test_parse_no_cand_clusters(self):
         """Tests whether parse correctly throws an error when given a feature
@@ -82,15 +82,15 @@ class TestRegion(TestCase):
 
         parent_gbk = GBK.parse(gbk_file_path, SOURCE_TYPE.QUERY)
 
-        self.assertRaises(InvalidGBKError, Region.parse, feature, parent_gbk)
+        self.assertRaises(InvalidGBKError, Region.parse_as5, feature, parent_gbk)
 
-    def test_parse_no_product(self):
+    def test_parse_as5_no_product(self):
         """Tests whether parse correctly throws an error when given a feature lacking a product qualifier"""
 
         feature = SeqFeature(FeatureLocation(0, 100), type="region")
         feature.qualifiers["region_number"] = ["1"]
 
-        self.assertRaises(InvalidGBKError, Region.parse, feature)
+        self.assertRaises(InvalidGBKError, Region.parse_as5, feature)
 
     def test_parse_candidate_cluster_numbers(self):
         """Tests whether a region cand_clusters is correctly parsed from a feature"""
@@ -103,18 +103,27 @@ class TestRegion(TestCase):
         feature.qualifiers["candidate_cluster_numbers"] = ["1"]
         feature.qualifiers["product"] = ["NRPS"]
 
-        region = Region.parse(feature)
+        region = Region.parse_as5(feature)
 
         self.assertEqual(expected_cand_clusters, region.cand_clusters)
 
-    def test_parse_wrong_type(self):
+    def test_parse_as5_wrong_type(self):
         """Tests whether create_region correctly throws an error when given a
         feature of a wrong type
         """
 
         feature = SeqFeature(FeatureLocation(0, 100), type="CDS")
 
-        self.assertRaises(InvalidGBKError, Region.parse, feature)
+        self.assertRaises(InvalidGBKError, Region.parse_as5, feature)
+
+    def test_parse_as4_wrong_type(self):
+        """Tests whether create_region correctly throws an error when given a
+        feature of a wrong type
+        """
+
+        feature = SeqFeature(FeatureLocation(0, 100), type="CDS")
+
+        self.assertRaises(InvalidGBKError, Region.parse_as4, feature)
 
     def test_add_candidate_cluster(self):
         """Tests whether a candidate cluster is correctly added to this region"""
@@ -125,7 +134,7 @@ class TestRegion(TestCase):
             "product": ["NRPS"],
         }
 
-        region = Region.parse(region_feature)
+        region = Region.parse_as5(region_feature)
 
         candidate_cluster_feature = SeqFeature(
             FeatureLocation(0, 100), type="cand_cluster"
@@ -153,7 +162,7 @@ class TestRegion(TestCase):
             "product": ["NRPS"],
         }
 
-        region = Region.parse(region_feature)
+        region = Region.parse_as5(region_feature)
 
         region.save()
 
