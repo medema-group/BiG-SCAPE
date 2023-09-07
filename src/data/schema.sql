@@ -21,7 +21,7 @@ CREATE TABLE IF NOT EXISTS bgc_record (
     nt_stop INTEGER,
     product TEXT,
     UNIQUE(id),
-    UNIQUE(parent_id, record_type, nt_start, nt_stop),
+    UNIQUE(gbk_id, record_number, record_type),
     FOREIGN KEY(gbk_id) REFERENCES gbk(id)
 );
 
