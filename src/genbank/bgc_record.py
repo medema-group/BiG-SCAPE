@@ -206,6 +206,7 @@ class BGCRecord:
             .values(
                 gbk_id=gbk_id,
                 parent_id=parent_id,
+                record_number=self.number,
                 contig_edge=contig_edge,
                 nt_start=self.nt_start,
                 nt_stop=self.nt_stop,
