@@ -2,12 +2,18 @@
 hmmer parameters/arguments"""
 
 # from python
+from __future__ import annotations
 import logging
 from pathlib import Path
-from typing import Optional
+from typing import Optional, TYPE_CHECKING
+import os
 
 # from other modules
 from src.errors import InvalidArgumentError, ArgumentParseError
+
+# from circular imports
+if TYPE_CHECKING:
+    from .run import RunParameters
 
 
 class HmmerParameters:
@@ -22,18 +28,39 @@ class HmmerParameters:
 
     def __init__(self):
         self.force_hmmscan: bool = False
-        self.force_hmmalign: bool = False
+        self.skip_hmmscan: bool = False
         self.domain_overlap_cutoff: float = 1.0
         self.domain_includelist_path: Optional[Path] = None
 
         # not from arguments:
         self.domain_includelist = []
 
-    def validate(self):
+    def validate(self, run: RunParameters):
         """Performs validation on this class parameters"""
         validate_hsp_overlap_cutoff(self.domain_overlap_cutoff)
-
         self.domain_includelist = validate_includelist(self.domain_includelist_path)
+        validate_skip_hmmscan(self.skip_hmmscan, run.output.output_dir)
+
+
+def validate_skip_hmmscan(skip_hmmscan: bool, output_dir: Path):
+    """Validates whether an output directory exists and is not empty when running
+    skip_hmm, which requires already processed gbk files and hance a DB in output"""
+
+    if skip_hmmscan and not output_dir.exists():
+        logging.error(
+            "Output directory does not exist, skip_hmmscan requires a DB of\
+                          already processed gbk files."
+        )
+        raise InvalidArgumentError("--skip_hmmscan", skip_hmmscan)
+
+    if skip_hmmscan and output_dir.exists():
+        contents = os.listdir(output_dir)
+        if len(contents) == 0:
+            logging.error(
+                "Output directory empty, skip_hmmscan requires a DB of\
+                          already processed gbk files."
+            )
+            raise InvalidArgumentError("--skip_hmmscan", skip_hmmscan)
 
 
 def validate_includelist(

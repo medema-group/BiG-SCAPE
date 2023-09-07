@@ -22,7 +22,7 @@ class NetworkingParameters:
 
     def validate(self):
         """Validate the arguments contained in this object and set default values"""
-        pass
+        validate_gcf_cutoffs(self.gcf_cutoffs)
 
 
 def validate_gcf_cutoffs(gcf_cutoffs):

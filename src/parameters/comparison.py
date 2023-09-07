@@ -32,6 +32,9 @@ class ComparisonParameters:
 
 
 def validate_alignment_mode(alignment_mode):
+    """Validate the passed alignment mode is one of the allowed modes"""
+    # this should not ever run so long as the choices in the cmd_parser
+    # remain updated and relevant
     valid_modes = [mode.value for mode in ALIGNMENT_MODE]
     if alignment_mode not in valid_modes:
         raise InvalidArgumentError("--align_mode", alignment_mode)

@@ -75,11 +75,16 @@ class RunParameters(Namespace):
         init_logger(self)
 
         self.input.validate()
-        self.hmmer.validate()
+        self.hmmer.validate(self)
         self.binning.validate()
         self.comparison.validate()
         self.networking.validate()
         self.output.validate()
+        self.hmmer.validate(self)
+        self.binning.validate()
+        self.comparison.validate()
+        self.diagnostics.validate()
+        self.networking.validate()
 
         # initializes the logger file, can only happen once output is validated
         # and the log file path is created

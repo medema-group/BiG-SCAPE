@@ -80,26 +80,30 @@ def parse_cmd(args):  # pragma: no cover
         "-p",
         "--pfam_path",
         dest="input.pfam_path",
+        # default=Path(os.path.dirname(os.path.abspath(__file__)), "pfam", "Pfam-A.hmm"),
         type=Path,
-        required=True,
-        help="Path to hmmpress-processed Pfam database files."
-        # TODO: check this when implementing automated pressing
-    )
-
-    parser.add_argument(
-        "--download_pfam",
-        dest="input.download_pfam",
-        default=False,
-        action="store_true",
-        help="Download and press latest pfam database.",
+        required=False,
+        help="Path to Pfam database file(s).",
     )
 
     parser.add_argument(
         "--mibig_version",
         dest="input.mibig_version",
         type=str,
-        help="Version of MiBIG database. If not provided, MiBIG will not be included\
-             in the analysis.",
+        choices=["1.0", "1.1", "1.2", "1.3", "1.4", "2.0", "3.0", "3.1"],
+        # TODO: get rid of hardcoded versions?
+        help="MIBiG relase number (e.g. 3.1). Download (if needed) and use this version of MiBIG database. \
+            If not provided, MiBIG will not be included in the analysis. If download is required, BiG-SCAPE\
+            will download the MIBiG database to the BiG-SCAPE folder",
+    )
+
+    parser.add_argument(
+        "--reference_dir",
+        dest="input.reference_dir",
+        # TODO: can a default be provided here that includes the mibig version param ?
+        type=Path,
+        help="Directory containing reference BGC antiSMASH-processed \
+            genbank files.",
     )
 
     parser.add_argument(
@@ -115,14 +119,6 @@ def parse_cmd(args):  # pragma: no cover
         type=Path,
         help="Path to location of input dataset mapping file."
         # TODO: check this when implementing method
-    )
-
-    parser.add_argument(
-        "--reference_dir",
-        dest="input.reference_dir",
-        type=Path,
-        help="Directory containing user provided reference BGC antiSMASH-processed \
-            genbank files.",
     )
 
     parser.add_argument(
@@ -189,16 +185,17 @@ def parse_cmd(args):  # pragma: no cover
         default=False,
         action="store_true",
         help="Force domain prediction using hmmscan even if BiG-SCAPE finds \
-            processed domtable files (e.g. to use a new version of Pfam).",
+            processed gbk files (e.g. to use a new version of Pfam).",
     )
 
     parser.add_argument(
-        "--force_hmmalign",
-        dest="hmmer.force_hmmalign",
+        "--skip_hmmscan",
+        dest="hmmer.skip_hmmscan",
         default=False,
         action="store_true",
-        help="Force multiple alignment of domains' sequences, even if alignments \
-            have been generated in a previous run.",
+        help="Skip domain prediction using hmmscan. BiG-SCAPE expects to find \
+            a database of already processed gbks.",
+        # TODO: make sure to add second tier check when reading in from db
     )
 
     parser.add_argument(
@@ -250,8 +247,8 @@ def parse_cmd(args):  # pragma: no cover
     parser.add_argument(
         "--gcf_cutoffs",
         dest="networking.gcf_cutoffs",
-        default=0.30,
-        type=float,
+        default=[0.30],
+        type=list,
         nargs="+",
         help="Generate networks using multiple raw distance cutoff values. \
             Values should be in the range [0.0, 1.0]. Example: --cutoffs 0.1 \

@@ -11,11 +11,13 @@ from Bio.SeqFeature import SeqFeature
 # from other modules
 from src.data import DB
 from src.errors import InvalidGBKError, InvalidGBKRegionChildError
+from src.enums import SOURCE_TYPE
 
 # from this module
-from src.genbank.bgc_record import BGCRecord
-from src.genbank.candidate_cluster import CandidateCluster
-from src.genbank.cds import CDS
+from .bgc_record import BGCRecord
+from .candidate_cluster import CandidateCluster
+from .cds import CDS
+
 
 # from circular imports
 if TYPE_CHECKING:  # pragma: no cover
@@ -117,15 +119,39 @@ class Region(BGCRecord):
 
             region_number = int(feature.qualifiers["region_number"][0])
 
+            nt_start, nt_stop, contig_edge, product = BGCRecord.parse_common(feature)
+
+            # now we have all the parameters needed to assemble the region
+            region = cls(
+                parent_gbk,
+                region_number,
+                nt_start,
+                nt_stop,
+                contig_edge,
+                product,
+            )
+
             if "candidate_cluster_numbers" not in feature.qualifiers:
-                logging.error(
-                    "candidate_cluster_numbers qualifier not found in region feature!"
-                )
-                raise InvalidGBKError()
+                if (
+                    parent_gbk is not None
+                    and parent_gbk.source_type == SOURCE_TYPE.MIBIG
+                ):
+                    # we know that MIBiG BGCs, although processed with versions of AS7 and above,
+                    # dont always have features beyond region
+                    return region
+                else:
+                    logging.warning(
+                        "candidate_cluster_numbers qualifier not found in region feature!"
+                        "consider checking whether there is something special about this gbk"
+                    )
+                    raise InvalidGBKError()
 
             cand_clusters: dict[int, Optional[CandidateCluster]] = {}
             for cand_cluster_number in feature.qualifiers["candidate_cluster_numbers"]:
                 cand_clusters[int(cand_cluster_number)] = None
+            
+            region.cand_clusters = cand_clusters
+            return region
 
         # AS4 gbks have cluster features instead of region, and no children features
         # we artifically input the info in the cluster feature into the Region object

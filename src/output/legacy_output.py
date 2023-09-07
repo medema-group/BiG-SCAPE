@@ -9,8 +9,9 @@ from typing import Any
 
 # from other modules
 from src.comparison import BGCBin, legacy_get_class
-from src.genbank import GBK, CDS, SOURCE_TYPE
+from src.genbank import GBK, CDS
 from src.network import BSNetwork
+from src.enums import SOURCE_TYPE
 
 
 def copy_base_output_templates(output_dir: Path):

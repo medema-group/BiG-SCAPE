@@ -6,6 +6,7 @@ import logging
 from enum import Enum
 from pathlib import Path
 from typing import Optional
+import os
 
 # from other modules
 from src.errors import InvalidArgumentError
@@ -23,7 +24,8 @@ class InputParameters:
         input_dir: Path
         input_mode: INPUT_MODE
         pfam_path: Optional[Path]
-        download_pfam: bool
+        pfam_version: bool
+        mibig_dir: Optional[Path]
         mibig_version: str
         metadata_path: Optional[Path]
         dataset_path: Optional[Path]
@@ -42,8 +44,7 @@ class InputParameters:
         # other db
         # TODO: test
         self.pfam_path: Optional[Path] = None
-        self.download_pfam: bool = False
-        self.mibig_version: str = ""
+        self.mibig_version: Optional[str] = None
 
         # other user supplied stuff
         # TODO: test
@@ -64,6 +65,33 @@ class InputParameters:
         """Validate the arguments contained in this object and set default values"""
         validate_input_dir(self.input_dir)
         validate_input_mode(self.input_mode)
+        validate_pfam(self.pfam_path)
+        validate_reference(self.reference_dir)
+        validate_cds_overlap_cutoff(self.cds_overlap_cutoff)
+
+
+def validate_pfam(pfam_path):
+    """Validates the pfam related properties"""
+
+    # given only a path, the file must exist
+    if pfam_path and not pfam_path.exists():
+        logging.error("Pfam file does not exist!")
+        raise InvalidArgumentError("--pfam_path", pfam_path)
+
+
+def validate_reference(reference_dir):
+    """Validates the reference/MIBiG related properties"""
+
+    # given reference dir, the dir must exist
+    if reference_dir and not reference_dir.exists():
+        logging.error("GBK reference directory does not exist!")
+        raise InvalidArgumentError("--reference_dir", reference_dir)
+
+    if reference_dir and reference_dir.exists():
+        contents = os.listdir(reference_dir)
+        if len(contents) == 0:
+            logging.error("GBK reference directory empty!")
+            raise InvalidArgumentError("--reference_dir", reference_dir)
 
 
 def validate_input_dir(input_dir):
