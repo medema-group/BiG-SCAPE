@@ -4,10 +4,12 @@
 from __future__ import annotations
 import logging
 from typing import Optional, TYPE_CHECKING
+import warnings
 
 # from dependencies
 from Bio.SeqFeature import SeqFeature
 from Bio.Seq import Seq
+from Bio import BiopythonWarning
 
 # from other modules
 from src.errors import InvalidGBKError
@@ -379,6 +381,8 @@ def translate(feature: SeqFeature, nt_seq: Seq):
     Returns:
         _type_: Seq
     """
+
+    warnings.filterwarnings(action="ignore", category=BiopythonWarning)
 
     transl_table = "Standard"
 
