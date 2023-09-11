@@ -18,6 +18,7 @@ import src.enums as bs_enums
 # from circular imports
 if TYPE_CHECKING:
     from src.genbank.gbk import GBK, CDS
+    from src.hmm import HSP
 
 
 def find_minimum_task(gbks: list[GBK]):
@@ -128,6 +129,24 @@ def get_cds_to_scan(gbks: list[GBK]) -> list[CDS]:
                 cds_to_scan.append(gene)
 
     return cds_to_scan
+
+
+def get_hsp_to_align(gbks: list[GBK]) -> list[HSP]:
+    """Get a list of HSP objects that lack an alignment
+
+    Args:
+        gbks (list[GBK]): list of GBKs tos earch for missing gene hsp aligments
+
+    Returns:
+        list[HSP]: List of HSPs with missing alignments
+    """
+    hsps_to_align = []
+    for gbk in gbks:
+        for gene in gbk.genes:
+            for hsp in gene.hsps:
+                if hsp.alignment is None:
+                    hsps_to_align.append(hsp)
+    return hsps_to_align
 
 
 def get_comparison_data_state(gbks: list[GBK]) -> bs_enums.COMPARISON_TASK:
