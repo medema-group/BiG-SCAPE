@@ -26,7 +26,70 @@ from src.output import (
     legacy_generate_bin_output,
 )
 
+import src.data as bs_data
 import src.enums as bs_enums
+
+
+def load_gbks(run: RunParameters) -> list[GBK]:
+    # counterintuitive, but we need to load the gbks first to see if there are any differences with
+    # the data in the database
+
+    input_gbks = []
+
+    # get reference if either MIBiG version or user-made reference dir passed
+    if run.input.mibig_version:
+        mibig_version_dir = get_mibig(run.input.mibig_version, bigscape_dir)
+        mibig_gbks = load_dataset_folder(mibig_version_dir, bs_enums.SOURCE_TYPE.MIBIG)
+        input_gbks.extend(mibig_gbks)
+
+    if run.input.reference_dir:
+        reference_gbks = load_dataset_folder(
+            run.input.reference_dir, bs_enums.SOURCE_TYPE.REFERENCE
+        )
+        input_gbks.extend(reference_gbks)
+
+    # TODO: rename query? is this confusing with some other feature?
+    query_gbks = load_dataset_folder(
+        run.input.input_dir,
+        bs_enums.SOURCE_TYPE.QUERY,
+        run.input.input_mode,
+        run.input.include_gbk,
+        run.input.exclude_gbk,
+        run.input.cds_overlap_cutoff,
+    )
+    input_gbks.extend(query_gbks)
+
+    # find the minimum task set for these gbks
+    # if there is no database, create a new one and load in all the input stuff
+    if not run.output.db_path.exists():
+        DB.create_in_mem()
+
+        all_cds: list[CDS] = []
+        for gbk in input_gbks:
+            gbk.save_all()
+            all_cds.extend(gbk.genes)
+
+        return input_gbks
+
+    DB.load_from_disk(run.output.db_path)
+    task_state = bs_data.find_minimum_task(input_gbks)
+
+    # if we are are not on the load_gbks task, we have all the data we need
+    if task_state != bs_enums.TASK.LOAD_GBKS:
+        logging.info("Loading existing run from disk...")
+
+        gbks = GBK.load_all()
+
+        for gbk in gbks:
+            HSP.load_all(gbk.genes)
+
+        return gbks
+
+    # if we are on load gbks, find out what we need to load into database
+    # input_task_state = bs_data.get_input_data_state(input_gbks)
+
+    raise NotImplementedError()
+
 
 if __name__ == "__main__":
     bigscape_dir = Path(os.path.dirname(os.path.abspath(__file__)))
@@ -52,104 +115,79 @@ if __name__ == "__main__":
         profiler = Profiler(run.output.profile_path)
         profiler.start()
 
-    if run.output.db_path.exists():
-        logging.info("Loading existing run from disk...")
+    # INPUT - load data
 
-        DB.load_from_disk(run.output.db_path)
+    gbks = load_gbks(run)
 
-        gbks = GBK.load_all()
+    # get fist task
+    run_state = bs_data.find_minimum_task(gbks)
 
-        for gbk in gbks:
-            HSP.load_all(gbk.genes)
+    # nothing to do!
+    if run_state == bs_enums.TASK.NOTHING_TO_DO:
+        logging.info("Nothing to do!")
+        exit(0)
 
+    logging.info("First task: %s", run_state)
+
+    # we will need this later. this can be set in hmmscan, hmmalign or not at all
+    pfam_info = None
+
+    # HMMER - Search/scan
+    if run_state == bs_enums.TASK.HMM_SCAN:
         HMMer.init(run.input.pfam_path)
 
+        # first opportunity to set this is here
         pfam_info = HMMer.get_pfam_info()
 
-        HMMer.unload()
+        # we certainly need to do some sort of scan, since the run_state is on hmm_scan. but we do
+        # not need to do everything. Find the CDS that need scanning
+        cds_to_scan = bs_data.get_cds_to_scan(gbks)
 
-    else:
-        # start DB
-        DB.create_in_mem()
+        def callback(tasks_done):
+            percentage = int(tasks_done / len(cds_to_scan) * 100)
+            logging.info("%d/%d (%d%%)", tasks_done, len(cds_to_scan), percentage)
 
-    # get reference if either MIBiG version or user-made reference dir passed
-    if run.input.mibig_version:
-        mibig_version_dir = get_mibig(run.input.mibig_version, bigscape_dir)
-        mibig_gbks = load_dataset_folder(mibig_version_dir, bs_enums.SOURCE_TYPE.MIBIG)
+        if platform.system() == "Darwin":
+            logging.warning("Running on mac-OS: hmmsearch_simple single threaded")
+            HMMer.hmmsearch_simple(cds_to_scan, 1)
+        else:
+            logging.debug(
+                "Running on %s: hmmsearch_multiprocess with %d cores",
+                platform.system(),
+                run.cores,
+            )
 
-    if run.input.reference_dir:
-        reference_gbks = load_dataset_folder(
-            run.input.reference_dir, bs_enums.SOURCE_TYPE.REFERENCE
-        )
+            # TODO: the overlap filtering in this function does not seem to work
+            HMMer.hmmsearch_multiprocess(
+                cds_to_scan,
+                domain_overlap_cutoff=run.hmmer.domain_overlap_cutoff,
+                cores=run.cores,
+                callback=callback,
+            )
 
-    gbks = load_dataset_folder(
-        run.input.input_dir,
-        bs_enums.SOURCE_TYPE.QUERY,
-        run.input.input_mode,
-        run.input.include_gbk,
-        run.input.exclude_gbk,
-        run.input.cds_overlap_cutoff,
-    )
+            # TODO: move, or remove after the add_hsp_overlap function is fixed (if it is broken
+            # in the first place)
+            # this sorts all CDS and then filters them using the old filtering system, which
+            # is less efficient than the flitering using the CDS.add_hsp_overlap_filter
+            # method. however, that method seems to be broken somehow
+            all_hsps = []
+            for gbk in gbks:
+                for cds in gbk.genes:
+                    cds.hsps = sorted(cds.hsps)
+                    all_hsps.extend(
+                        [hsp.domain for hsp in legacy_filter_overlap(cds.hsps, 0.1)]
+                    )
 
-    all_cds: list[CDS] = []
-    for gbk in gbks:
-        gbk.save_all()
-        all_cds.extend(gbk.genes)
+            all_hsps = []
+            for cds in cds_to_scan:
+                all_hsps.extend(cds.hsps)
 
-    logging.info("loaded %d cds total", len(all_cds))
+            logging.info("%d new hsps found in this run", len(all_hsps))
 
-    # HMMER - Search
+            exec_time = datetime.now() - start_time
+            logging.info("scan done at %f seconds", exec_time.total_seconds())
 
-    HMMer.init(run.input.pfam_path)
-
-    # we will need this information for the output later
-    pfam_info = HMMer.get_pfam_info()
-
-    def callback(tasks_done):
-        percentage = int(tasks_done / len(all_cds) * 100)
-        logging.info("%d/%d (%d%%)", tasks_done, len(all_cds), percentage)
-
-    if platform.system() == "Darwin":
-        logging.warning("Running on mac-OS: hmmsearch_simple single threaded")
-        HMMer.hmmsearch_simple(all_cds, 1)
-    else:
-        logging.debug(
-            "Running on %s: hmmsearch_multiprocess with %d cores",
-            platform.system(),
-            run.cores,
-        )
-
-        # TODO: the overlap filtering in this function does not seem to work
-        HMMer.hmmsearch_multiprocess(
-            all_cds,
-            domain_overlap_cutoff=run.hmmer.domain_overlap_cutoff,
-            cores=run.cores,
-            callback=callback,
-        )
-
-        # TODO: move, or remove after the add_hsp_overlap function is fixed (if it is broken
-        # in the first place)
-        # this sorts all CDS and then filters them using the old filtering system, which
-        # is less efficient than the flitering using the CDS.add_hsp_overlap_filter
-        # method. however, that method seems to be broken somehow
-        all_hsps = []
-        for gbk in gbks:
-            for cds in gbk.genes:
-                cds.hsps = sorted(cds.hsps)
-                all_hsps.extend(
-                    [hsp.domain for hsp in legacy_filter_overlap(cds.hsps, 0.1)]
-                )
-
-        all_hsps = []
-        for cds in all_cds:
-            all_hsps.extend(cds.hsps)
-
-        logging.info("%d hsps", len(all_hsps))
-
-        exec_time = datetime.now() - start_time
-        logging.info("scan done at %f seconds", exec_time.total_seconds())
-
-        HMMer.unload()
+            HMMer.unload()
 
         # save hsps to database
         for new_hsp in all_hsps:
@@ -159,28 +197,35 @@ if __name__ == "__main__":
         exec_time = datetime.now() - start_time
         logging.info("DB: HSP save done at %f seconds", exec_time.total_seconds())
 
-        # HMMER - Align
+        # set new run state
+        run_state = bs_data.find_minimum_task(gbks)
+        logging.info("Next task: %s", run_state)
 
+    # HMMER - Align
+    if run_state == bs_enums.TASK.HMM_ALIGN:
         HMMer.init(run.input.pfam_path, False)
 
-        HMMer.align_simple(all_hsps)
+        # if this wasn't set before, set it now
+        if pfam_info is None:
+            pfam_info = HMMer.get_pfam_info()
 
-        all_alignments = list()
-        for cds in all_cds:
-            for hsp in cds.hsps:
-                if hsp.alignment is None:
-                    continue
-                all_alignments.append(hsp.alignment)
+        HMMer.align_simple(bs_data.get_hsp_to_align(gbks))
 
-        logging.info("%d alignments", len(all_alignments))
+        alignment_count = 0
+        for gbk in gbks:
+            for gene in gbk.genes:
+                for hsp in gene.hsps:
+                    if hsp.alignment is None:
+                        continue
+                    hsp.alignment.save(False)
+
+        logging.info("%d alignments", alignment_count)
 
         exec_time = datetime.now() - start_time
         logging.info("align done at %f seconds", exec_time.total_seconds())
 
         HMMer.unload()
 
-        for hsp_alignment in all_alignments:
-            hsp_alignment.save(False)
         DB.commit()
 
         exec_time = datetime.now() - start_time
@@ -190,6 +235,18 @@ if __name__ == "__main__":
 
         DB.save_to_disk(run.output.db_path)
 
+        # set new run state
+        run_state = bs_data.find_minimum_task(gbks)
+        logging.info("Next task: %s", run_state)
+
+    # OUTPUT
+
+    # if this wasn't set in scan or align, set it now
+    if pfam_info is None:
+        HMMer.init(run.input.pfam_path, False)
+        pfam_info = HMMer.get_pfam_info()
+        HMMer.unload()
+
     # prepare output files
     legacy_prepare_output(run.output.output_dir, pfam_info)
 
@@ -198,7 +255,6 @@ if __name__ == "__main__":
     legacy_prepare_cutoff_output(run.output.output_dir, run.label, 0.3, gbks)
 
     # networking - mix
-
     if run.binning.mix:
         logging.info("Generating mix bin")
 
