@@ -170,9 +170,11 @@ class HMMer:
 
         state_table = DB.metadata.tables["scanned_cds"]
 
-        insert_statement = insert(state_table).values(cds_id=cds._db_id)
+        upignore_statement = (
+            insert(state_table).prefix_with("OR IGNORE").values(cds_id=cds._db_id)
+        )
 
-        DB.execute(insert_statement, False)
+        DB.execute(upignore_statement, False)
 
     @staticmethod
     def hmmsearch_simple(
@@ -219,8 +221,12 @@ class HMMer:
                     relevant_cds = cds_list[cds_idx]
                     hsp = HSP(relevant_cds, accession, score, env_start, env_stop)
                     relevant_cds.add_hsp_overlap_filter(hsp, domain_overlap_cutoff)
-                    if DB.opened():
-                        HMMer.set_hmm_scanned(relevant_cds)
+
+        # almost certainly not every cds has an HSP, so we can only assume that if this reached the
+        # end of the function all of the CDS were scanned.
+        if DB.opened():
+            for cds in cds_list:
+                HMMer.set_hmm_scanned(cds)
 
     @staticmethod
     def calc_batch_size(num_genes: int, cores=cpu_count()) -> int:
@@ -353,6 +359,12 @@ class HMMer:
                     tasks_done += src_task_count
                     if callback is not None:
                         callback(tasks_done)
+
+        # almost certainly not every cds has an HSP, so we can only assume that if this reached the
+        # end of the function all of the CDS were scanned.
+        if DB.opened():
+            for cds in cds_list:
+                HMMer.set_hmm_scanned(cds)
 
         # just to make sure, kill any remaining processes
         for process in processes:
