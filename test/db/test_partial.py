@@ -14,14 +14,11 @@ from src.data import (
     get_input_data_state,
     get_hmm_data_state,
     get_comparison_data_state,
-    TASK,
-    INPUT_TASK,
-    HMM_TASK,
-    COMPARISON_TASK,
 )
 from src.genbank import GBK, CDS, Region
 from src.hmm import HSP, HSPAlignment, HMMer
 from src.network import BSNetwork
+import src.enums as bs_enums
 
 
 def create_mock_gbk(i) -> GBK:
@@ -72,7 +69,7 @@ class TestPartial(TestCase):
 
     def test_min_task_data(self):
         DB.create_in_mem()
-        expected_min_task = TASK.LOAD_GBKS
+        expected_min_task = bs_enums.TASK.LOAD_GBKS
 
         gbks = [create_mock_gbk(1)]
 
@@ -87,7 +84,7 @@ class TestPartial(TestCase):
         # add gbk to db
         gbks[0].save_all()
 
-        expected_min_task = TASK.HMM_SCAN
+        expected_min_task = bs_enums.TASK.HMM_SCAN
         actual_min_task = find_minimum_task(gbks)
 
         self.assertEqual(expected_min_task, actual_min_task)
@@ -105,7 +102,7 @@ class TestPartial(TestCase):
         gbks[0].genes[0].hsps[0].save()
         HMMer.set_hmm_scanned(gbks[0].genes[0])
 
-        expected_min_task = TASK.HMM_ALIGN
+        expected_min_task = bs_enums.TASK.HMM_ALIGN
         actual_min_task = find_minimum_task(gbks)
 
         self.assertEqual(expected_min_task, actual_min_task)
@@ -127,7 +124,7 @@ class TestPartial(TestCase):
         # sigh
         gbks[0].genes[0].hsps[0].alignment.save()
 
-        expected_min_task = TASK.COMPARISON
+        expected_min_task = bs_enums.TASK.COMPARISON
         actual_min_task = find_minimum_task(gbks)
 
         self.assertEqual(expected_min_task, actual_min_task)
@@ -148,7 +145,7 @@ class TestPartialInputs(TestCase):
 
         gbks = [create_mock_gbk(1)]
 
-        expected_state = INPUT_TASK.NO_DATA
+        expected_state = bs_enums.INPUT_TASK.NO_DATA
         actual_state = get_input_data_state(gbks)
 
         self.assertEqual(expected_state, actual_state)
@@ -165,7 +162,7 @@ class TestPartialInputs(TestCase):
 
         gbks = [gbk_1_in_db]
 
-        expected_state = INPUT_TASK.PARTIAL_DATA
+        expected_state = bs_enums.INPUT_TASK.PARTIAL_DATA
         actual_state = get_input_data_state(gbks)
 
         self.assertEqual(expected_state, actual_state)
@@ -179,7 +176,7 @@ class TestPartialInputs(TestCase):
         gbk_not_in_db = create_mock_gbk(2)
         gbks = [gbk_in_db, gbk_not_in_db]
 
-        expected_state = INPUT_TASK.NEW_DATA
+        expected_state = bs_enums.INPUT_TASK.NEW_DATA
         actual_state = get_input_data_state(gbks)
 
         self.assertEqual(expected_state, actual_state)
@@ -195,7 +192,7 @@ class TestPartialInputs(TestCase):
         for gbk in gbks:
             gbk.save_all()
 
-        expected_state = INPUT_TASK.SAME_DATA
+        expected_state = bs_enums.INPUT_TASK.SAME_DATA
         actual_state = get_input_data_state(gbks)
 
         self.assertEqual(expected_state, actual_state)
@@ -216,7 +213,7 @@ class TestPartialHMM(TestCase):
 
         gbks = [create_mock_gbk(1)]
 
-        expected_state = HMM_TASK.NO_DATA
+        expected_state = bs_enums.HMM_TASK.NO_DATA
         actual_state = get_hmm_data_state(gbks)
 
         self.assertEqual(expected_state, actual_state)
@@ -238,7 +235,7 @@ class TestPartialHMM(TestCase):
         gbks[0].genes[0].hsps[0].save()
         HMMer.set_hmm_scanned(gbks[0].genes[0])
 
-        expected_state = HMM_TASK.NEED_SCAN
+        expected_state = bs_enums.HMM_TASK.NEED_SCAN
         actual_state = get_hmm_data_state(gbks)
 
         self.assertEqual(expected_state, actual_state)
@@ -264,7 +261,7 @@ class TestPartialHMM(TestCase):
         # add hspalignment to db
         gbks[0].genes[0].hsps[0].alignment.save()
 
-        expected_state = HMM_TASK.NEED_ALIGN
+        expected_state = bs_enums.HMM_TASK.NEED_ALIGN
         actual_state = get_hmm_data_state(gbks)
 
         self.assertEqual(expected_state, actual_state)
@@ -290,7 +287,7 @@ class TestPartialHMM(TestCase):
             HMMer.set_hmm_scanned(gbk.genes[0])
             gbk.genes[0].hsps[0].alignment.save()
 
-        expected_state = HMM_TASK.ALL_ALIGNED
+        expected_state = bs_enums.HMM_TASK.ALL_ALIGNED
         actual_state = get_hmm_data_state(gbks)
 
         self.assertEqual(expected_state, actual_state)
@@ -329,7 +326,7 @@ class TestPartialComparison(TestCase):
 
         # no alignments done. expect no data
 
-        expected_state = COMPARISON_TASK.NO_DATA
+        expected_state = bs_enums.COMPARISON_TASK.NO_DATA
         actual_state = get_comparison_data_state(gbks)
 
         self.assertEqual(expected_state, actual_state)
@@ -359,7 +356,7 @@ class TestPartialComparison(TestCase):
         network = gen_mock_network(gbks, gbks[0:2])
         network.export_distances_to_db()
 
-        expected_state = COMPARISON_TASK.NEW_DATA
+        expected_state = bs_enums.COMPARISON_TASK.NEW_DATA
         actual_state = get_comparison_data_state(gbks)
 
         self.assertEqual(expected_state, actual_state)
@@ -389,7 +386,7 @@ class TestPartialComparison(TestCase):
         network = gen_mock_network(gbks, gbks)
         network.export_distances_to_db()
 
-        expected_state = COMPARISON_TASK.ALL_DONE
+        expected_state = bs_enums.COMPARISON_TASK.ALL_DONE
         actual_state = get_comparison_data_state(gbks)
 
         self.assertEqual(expected_state, actual_state)

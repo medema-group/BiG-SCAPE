@@ -5,10 +5,6 @@ from .partial_task import (
     get_input_data_state,
     get_hmm_data_state,
     get_comparison_data_state,
-    TASK,
-    INPUT_TASK,
-    HMM_TASK,
-    COMPARISON_TASK,
 )
 
 
@@ -18,8 +14,4 @@ __all__ = [
     "get_input_data_state",
     "get_hmm_data_state",
     "get_comparison_data_state",
-    "TASK",
-    "INPUT_TASK",
-    "HMM_TASK",
-    "COMPARISON_TASK",
 ]

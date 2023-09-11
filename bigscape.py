@@ -25,7 +25,8 @@ from src.output import (
     legacy_prepare_bin_output,
     legacy_generate_bin_output,
 )
-from src.enums import SOURCE_TYPE
+
+import src.enums as bs_enums
 
 if __name__ == "__main__":
     bigscape_dir = Path(os.path.dirname(os.path.abspath(__file__)))
@@ -70,20 +71,20 @@ if __name__ == "__main__":
     else:
         # start DB
         DB.create_in_mem()
-        
+
     # get reference if either MIBiG version or user-made reference dir passed
     if run.input.mibig_version:
         mibig_version_dir = get_mibig(run.input.mibig_version, bigscape_dir)
-        mibig_gbks = load_dataset_folder(mibig_version_dir, SOURCE_TYPE.MIBIG)
+        mibig_gbks = load_dataset_folder(mibig_version_dir, bs_enums.SOURCE_TYPE.MIBIG)
 
     if run.input.reference_dir:
         reference_gbks = load_dataset_folder(
-            run.input.reference_dir, SOURCE_TYPE.REFERENCE
+            run.input.reference_dir, bs_enums.SOURCE_TYPE.REFERENCE
         )
 
     gbks = load_dataset_folder(
         run.input.input_dir,
-        SOURCE_TYPE.QUERY,
+        bs_enums.SOURCE_TYPE.QUERY,
         run.input.input_mode,
         run.input.include_gbk,
         run.input.exclude_gbk,
