@@ -17,7 +17,7 @@ import src.enums as bs_enums
 
 # from circular imports
 if TYPE_CHECKING:
-    from src.genbank.gbk import GBK
+    from src.genbank.gbk import GBK, CDS
 
 
 def find_minimum_task(gbks: list[GBK]):
@@ -96,6 +96,38 @@ def get_hmm_data_state(gbks: list[GBK]) -> bs_enums.HMM_TASK:
         return bs_enums.HMM_TASK.NEED_ALIGN
 
     return bs_enums.HMM_TASK.ALL_ALIGNED
+
+
+def get_cds_to_scan(gbks: list[GBK]) -> list[CDS]:
+    """Find which cds within a list of GBK objects need to be scanned using hmmscan
+
+    Args:
+        gbks (list[GBK]): List of GBKs
+
+    Returns:
+        list[CDS]: List of CDS which were not scanned according to the data in scanned_cds table
+    """
+    hmm_state = get_hmm_data_state(gbks)
+
+    if hmm_state == bs_enums.HMM_TASK.NO_DATA:
+        cds_to_scan = []
+        for gbk in gbks:
+            cds_to_scan.extend(gbk.genes)
+        return cds_to_scan
+
+    cds_to_scan = []
+
+    # get a list of database cds_ids that are present in the cds_scanned table
+    scanned_cds_table = DB.metadata.tables["scanned_cds"]
+    select_query = select(scanned_cds_table.c.cds_id)
+    scanned_cds_ids = set(DB.execute(select_query))
+
+    for gbk in gbks:
+        for gene in gbk.genes:
+            if (gene._db_id,) not in scanned_cds_ids:
+                cds_to_scan.append(gene)
+
+    return cds_to_scan
 
 
 def get_comparison_data_state(gbks: list[GBK]) -> bs_enums.COMPARISON_TASK:
