@@ -14,6 +14,8 @@ from src.data import (
     get_input_data_state,
     get_hmm_data_state,
     get_comparison_data_state,
+    get_cds_to_scan,
+    get_hsp_to_align,
 )
 from src.genbank import GBK, CDS, Region
 from src.hmm import HSP, HSPAlignment, HMMer
@@ -291,6 +293,54 @@ class TestPartialHMM(TestCase):
         actual_state = get_hmm_data_state(gbks)
 
         self.assertEqual(expected_state, actual_state)
+
+    def test_get_cds_to_scan(self):
+        DB.create_in_mem()
+
+        gbks = [
+            create_mock_gbk(1),
+            create_mock_gbk(2),
+        ]
+        # add hsp to first gbk
+        add_mock_hsp_cds(gbks[0].genes[0])
+
+        # add gbks and cds to db
+        for gbk in gbks:
+            gbk.save_all()
+
+        # save first hsp and only set the first cds as scanned
+        gbks[0].genes[0].hsps[0].save()
+        HMMer.set_hmm_scanned(gbks[0].genes[0])
+
+        expected_cds_to_scan = [gbks[1].genes[0]]
+        actual_cds_to_scan = get_cds_to_scan(gbks)
+
+        self.assertEqual(expected_cds_to_scan, actual_cds_to_scan)
+
+    def test_get_hsp_to_align(self):
+        DB.create_in_mem()
+
+        gbks = [
+            create_mock_gbk(1),
+            create_mock_gbk(2),
+        ]
+        # add hsp to both gbks
+        add_mock_hsp_cds(gbks[0].genes[0])
+        add_mock_hsp_cds(gbks[1].genes[0])
+
+        # add gbks and cds to db. set cds as scnaned
+        for gbk in gbks:
+            gbk.save_all()
+            gbk.genes[0].hsps[0].save()
+            HMMer.set_hmm_scanned(gbks[0].genes[0])
+
+        # add alignment only to first hsp
+        add_mock_hsp_alignment_hsp(gbks[0].genes[0].hsps[0])
+
+        expected_hsp_to_align = [gbks[1].genes[0].hsps[0]]
+        actual_hsp_to_align = get_hsp_to_align(gbks)
+
+        self.assertEqual(expected_hsp_to_align, actual_hsp_to_align)
 
 
 class TestPartialComparison(TestCase):
