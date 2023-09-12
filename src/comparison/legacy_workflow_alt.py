@@ -143,7 +143,7 @@ def do_lcs_pair(pair: BGCPair, alignment_mode) -> bool:  # pragma no cover
     return False
 
 
-def expand_pair(pair: BGCPair) -> bool:
+def expand_pair(pair: BGCPair) -> float:
     expand_glocal(pair.comparable_region)
 
     if not check_expand(pair.comparable_region):
