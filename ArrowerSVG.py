@@ -9,6 +9,7 @@
 ######################################################################
 
 import os
+from pathlib import Path
 import sys
 from Bio import SeqIO
 from random import uniform
@@ -27,16 +28,14 @@ domain_contour_thickness = 1
 gene_contour_thickness = 2 # thickness grows outwards
 stripe_thickness = 3
 
-domains_color_file = os.path.join(os.path.dirname(os.path.realpath(__file__)), "domains_color_file.tsv")
 
-
-def read_color_domains_file():
+def read_color_domains_file(output_folder):
     # Try to read colors for domains
     color_domains = {}
     
-    if os.path.isfile(domains_color_file):
+    if os.path.isfile(output_folder / Path("domains_color_file.tsv")):
         print("  Found file with domains colors")
-        with open(domains_color_file, "r") as color_domains_handle:
+        with open(output_folder / Path("domains_color_file.tsv"), "r") as color_domains_handle:
             for line in color_domains_handle:
                 # handle comments and empty lines
                 if line[0] != "#" and line.strip():
@@ -46,7 +45,7 @@ def read_color_domains_file():
                     color_domains[name] = [int(rgb[x]) for x in range(3)]
     else:
         print("  Domains colors file was not found. An empty file will be created")
-        color_domains_handle = open(domains_color_file, "a+")
+        color_domains_handle = open(output_folder / Path("domains_color_file.tsv"), "a+")
         
     return color_domains
    
@@ -311,7 +310,7 @@ def new_color(gene_or_domain):
     return [r, g, b]
 
 
-def SVG(write_html, outputfile, GenBankFile, BGCname, pfdFile, use_pfd, color_genes, color_domains, pfam_domain_categories, pfam_info, loci, max_width, H=30, h=15, l=30, mX=10, mY=10, scaling=30, absolute_start=0, absolute_end=-1):
+def SVG(output_folder, write_html, outputfile, GenBankFile, BGCname, pfdFile, use_pfd, color_genes, color_domains, pfam_domain_categories, pfam_info, loci, max_width, H=30, h=15, l=30, mX=10, mY=10, scaling=30, absolute_start=0, absolute_end=-1):
     '''
     Create the main SVG document:
         - read pfd file with domain information (pfdFile contains complete path)
@@ -609,7 +608,7 @@ def SVG(write_html, outputfile, GenBankFile, BGCname, pfdFile, use_pfd, color_ge
         #else:
             #print("   Saving new color names for 10+ domains")
             
-        with open(domains_color_file, "a") as color_domains_handle:
+        with open(output_folder / Path("domains_color_file.tsv"), "a") as color_domains_handle:
             for new_names in new_color_domains:
                 color_domains_handle.write(new_names + "\t" + ",".join([str(ncdom) for ncdom in new_color_domains[new_names]]) + "\n")
 

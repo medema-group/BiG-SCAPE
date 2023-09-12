@@ -2719,7 +2719,7 @@ if __name__=="__main__":
     
     if len(working_set) > 0:
         color_genes = {}
-        color_domains = read_color_domains_file()
+        color_domains = read_color_domains_file(output_folder)
         pfam_domain_categories = {}
         
         #This must be done serially, because if a color for a gene/domain
@@ -2727,7 +2727,7 @@ if __name__=="__main__":
         print("  Reading BGC information and writing SVG")
         for bgc in working_set:
             with open(genbankDict[bgc][0],"r") as handle:
-                SVG(False, os.path.join(svg_folder,bgc+".svg"), handle, bgc, os.path.join(pfd_folder,bgc+".pfd"), True, color_genes, color_domains, pfam_domain_categories, pfam_info, bgc_info[bgc].records, bgc_info[bgc].max_width)
+                SVG(output_folder, False, os.path.join(svg_folder,bgc+".svg"), handle, bgc, os.path.join(pfd_folder,bgc+".pfd"), True, color_genes, color_domains, pfam_domain_categories, pfam_info, bgc_info[bgc].records, bgc_info[bgc].max_width)
         
         color_genes.clear()
         color_domains.clear()
