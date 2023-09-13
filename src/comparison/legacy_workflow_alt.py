@@ -19,7 +19,7 @@ from src.distances import calc_jaccard_pair, calc_ai_pair, calc_dss_pair_legacy
 from src.network import BSNetwork
 
 # from this module
-from .binning import BGCBin, BGCPair
+from .binning import RecordPairGeneratorQueryRef, BGCPair
 from .legacy_bins import LEGACY_BINS
 from .legacy_extend import (
     legacy_needs_expand_pair,
@@ -42,14 +42,14 @@ def batch_generator(iterator, batch_size):
 
 
 def create_bin_network_edges_alt(
-    bin: BGCBin,
+    bin: RecordPairGeneratorQueryRef,
     network: BSNetwork,
     alignment_mode: str,
     cores: int,
     callback: Callable,
     batch_size=100,
 ):  # pragma no cover
-    pair_generator = bin.pairs()
+    pair_generator = bin.generate_pairs()
 
     pairs_todo = bin.num_pairs()
     logging.info("Performing distance calculation for %d pairs", pairs_todo)

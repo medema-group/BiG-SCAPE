@@ -15,6 +15,7 @@ from src.comparison import (
     generate_mix,
     legacy_bin_generator,
     create_bin_network_edges_alt as create_bin_network_edges,
+    # Alt is an alternative multiprocessing implementation
 )
 from src.file_input import load_dataset_folder, get_mibig
 from src.diagnostics import Profiler
@@ -89,6 +90,8 @@ if __name__ == "__main__":
         run.input.exclude_gbk,
         run.input.cds_overlap_cutoff,
     )
+
+    gbks.extend(reference_gbks)
 
     all_cds: list[CDS] = []
     for gbk in gbks:
@@ -202,15 +205,14 @@ if __name__ == "__main__":
         logging.info("Generating mix bin")
 
         mix_network = BSNetwork()
-        all_regions: list[BGCRecord] = []
+        all_bgc_records: list[BGCRecord] = []
+
         for gbk in gbks:
             if gbk.region is not None:
-                all_regions.append(gbk.region)
+                all_bgc_records.append(gbk.region)
                 mix_network.add_node(gbk.region)
 
-        mix_bin = generate_mix(all_regions)
-
-        legacy_prepare_bin_output(run.output.output_dir, run.label, 0.3, mix_bin)
+        mix_bin = generate_mix(all_bgc_records)
 
         logging.info(mix_bin)
 
@@ -229,9 +231,16 @@ if __name__ == "__main__":
             mix_bin, mix_network, run.comparison.alignment_mode, run.cores, callback
         )
 
+        # create query <-> query & ref edges
+        # iterate ref <-> ref until no new links
+        # cull ref singletons
+        # generate families
+        # cull ref singletons again, for each family subgraph
+
         mix_network.generate_families_cutoff("dist", 0.3)
 
         # Output
+        legacy_prepare_bin_output(run.output.output_dir, run.label, 0.3, mix_bin)
 
         legacy_generate_bin_output(
             run.output.output_dir, run.label, 0.3, mix_bin, mix_network

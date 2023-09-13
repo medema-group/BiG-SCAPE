@@ -13,7 +13,7 @@ from src.network import BSNetwork
 from src.utility import start_processes
 
 # from this module
-from .binning import BGCBin, BGCPair
+from .binning import RecordPairGeneratorQueryRef, BGCPair
 from .legacy_bins import LEGACY_BINS
 from .legacy_extend import (
     legacy_needs_expand_pair,
@@ -25,7 +25,11 @@ from .legacy_lcs import legacy_find_cds_lcs
 
 
 def create_bin_network_edges(
-    bin: BGCBin, network: BSNetwork, alignment_mode: str, cores: int, callback: Callable
+    bin: RecordPairGeneratorQueryRef,
+    network: BSNetwork,
+    alignment_mode: str,
+    cores: int,
+    callback: Callable,
 ):  # pragma no cover
     logging.info("Using %d cores for distance calculation", cores)
     # first step is to calculate the Jaccard of all pairs. This is pretty fast, but
@@ -257,7 +261,7 @@ def calculate_jaccard_worker_method(
 
 
 def calculate_jaccard_multiprocess(
-    bin: BGCBin,
+    bin: RecordPairGeneratorQueryRef,
     network: BSNetwork,
     num_processes: int = cpu_count(),
     callback: Optional[Callable] = None,
@@ -301,7 +305,7 @@ def calculate_jaccard_multiprocess(
         connection: None for connection in connections
     }
 
-    pair_generator = bin.pairs(legacy_sorting=True)
+    pair_generator = bin.generate_pairs(legacy_sorting=True)
 
     while len(connections) > 0:
         available_connections = wait(connections)
@@ -369,7 +373,7 @@ def calculate_scores_worker_method(
 
 
 def calculate_scores_multiprocess(
-    bin: BGCBin,
+    bin: RecordPairGeneratorQueryRef,
     pairs: list[BGCPair],
     network: BSNetwork,
     num_processes: int = cpu_count(),

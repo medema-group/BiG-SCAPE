@@ -6,8 +6,9 @@ from pathlib import Path
 
 # from other modules
 from src.genbank import GBK, BGCRecord
-from src.comparison import BGCBin, BGCPair
+from src.comparison import RecordPairGeneratorQueryRef, BGCPair
 from src.comparison import generate_mix
+from src.enums import SOURCE_TYPE
 
 
 class TestBGCPair(TestCase):
@@ -52,14 +53,14 @@ class TestBGCBin(TestCase):
         """Tests whether calling str() on a bin object returns an expected string
         representation of the object
         """
-
-        bgc_a = BGCRecord(None, 0, 0, 10, False, "")
-        bgc_b = BGCRecord(None, 0, 0, 10, False, "")
-        bgc_c = BGCRecord(None, 0, 0, 10, False, "")
+        parent_gbk = GBK(Path("test"), source_type=SOURCE_TYPE.QUERY)
+        bgc_a = BGCRecord(parent_gbk, 0, 0, 10, False, "")
+        bgc_b = BGCRecord(parent_gbk, 0, 0, 10, False, "")
+        bgc_c = BGCRecord(parent_gbk, 0, 0, 10, False, "")
 
         bgc_list = [bgc_a, bgc_b, bgc_c]
 
-        new_bin = BGCBin("test")
+        new_bin = RecordPairGeneratorQueryRef("test")
 
         new_bin.add_bgcs(bgc_list)
 
@@ -76,7 +77,7 @@ class TestBGCBin(TestCase):
         gbk_a = GBK(Path("test1.gbk"), "test")
         bgc_a = BGCRecord(gbk_a, 0, 0, 10, False, "")
 
-        new_bin = BGCBin("test")
+        new_bin = RecordPairGeneratorQueryRef("test")
 
         new_bin.add_bgcs([bgc_a])
 
@@ -101,7 +102,7 @@ class TestBGCBin(TestCase):
         # bgc_c, bgc_b
         bgc_list = [bgc_a, bgc_c, bgc_b]
 
-        new_bin = BGCBin("test")
+        new_bin = RecordPairGeneratorQueryRef("test")
 
         new_bin.add_bgcs(bgc_list)
 
@@ -114,7 +115,7 @@ class TestBGCBin(TestCase):
 
         actual_pair_list = [
             tuple([pair.region_a, pair.region_b])
-            for pair in new_bin.pairs(None, legacy_sorting=True)
+            for pair in new_bin.generate_pairs(None, legacy_sorting=True)
         ]
 
         self.assertEqual(expected_pair_list, actual_pair_list)
@@ -123,7 +124,7 @@ class TestBGCBin(TestCase):
 class TestMixComparison(TestCase):
     def test_mix_iter(self):
         """Tests whether a new mix bin can be created for comparison"""
-        gbk = GBK("", "")
+        gbk = GBK(Path("test"), source_type=SOURCE_TYPE.QUERY)
 
         bgc_a = BGCRecord(gbk, 0, 0, 10, False, "")
         bgc_a.parent_gbk = gbk
@@ -141,6 +142,6 @@ class TestMixComparison(TestCase):
         # expected representation of the bin object
         expected_pair_count = 3
 
-        actual_pair_count = len(list(new_bin.pairs()))
+        actual_pair_count = len(list(new_bin.generate_pairs()))
 
         self.assertEqual(expected_pair_count, actual_pair_count)
