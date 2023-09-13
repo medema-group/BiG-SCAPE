@@ -70,7 +70,7 @@ if __name__ == "__main__":
     else:
         # start DB
         DB.create_in_mem()
-        
+
     # get reference if either MIBiG version or user-made reference dir passed
     if run.input.mibig_version:
         mibig_version_dir = get_mibig(run.input.mibig_version, bigscape_dir)
