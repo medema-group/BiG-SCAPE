@@ -11,6 +11,7 @@ from src.errors import InvalidArgumentError, ArgumentParseError
 from src.parameters.input import (
     validate_input_dir,
     validate_input_mode,
+    validate_query_bgc,
     validate_cds_overlap_cutoff,
 )
 from src.parameters.hmmer import validate_includelist, validate_hsp_overlap_cutoff
@@ -69,6 +70,20 @@ class TestInputValidation(TestCase):
         too low
         """
         self.assertRaises(InvalidArgumentError, validate_cds_overlap_cutoff, 2.0)
+
+    def test_validate_query_bgc_path_not_exist(self):
+        """Tests whether validate_query_bgc raises an exception if the given path does
+        not exist"""
+        missing_file_path = Path("test/test_data/non_existent_path")
+
+        self.assertRaises(InvalidArgumentError, validate_query_bgc, missing_file_path)
+
+    def test_validate_query_bgc_path_not_a_file(self):
+        """Tests whether validate_query_bgc raises and exception if the given path is
+        not a file"""
+        not_a_file_path = Path("test/test_data/")
+
+        self.assertRaises(InvalidArgumentError, validate_query_bgc, not_a_file_path)
 
 
 class TestHMMerValidation(TestCase):
