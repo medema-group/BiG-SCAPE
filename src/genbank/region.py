@@ -91,11 +91,11 @@ class Region(BGCRecord):
             candidate_cluster.save_all()
 
     @classmethod
-    def parse(cls, feature: SeqFeature, parent_gbk: Optional[GBK] = None) -> Region:
+    def parse_as5(cls, feature: SeqFeature, parent_gbk: Optional[GBK] = None) -> Region:
         """Creates a region object from a region feature in a GBK file
 
         Args:
-            feature (SeqFeature): region(as5+) or cluster (as4) GBK feature
+            feature (SeqFeature): region(as5+) GBK feature
 
         Raises:
             InvalidGBKError: Invalid or missing fields
@@ -103,73 +103,87 @@ class Region(BGCRecord):
         Returns:
             Region: region object
         """
-        if feature.type != "region" and feature.type != "cluster":
+        if feature.type != "region":
             logging.error(
-                "Feature is not of correct type! (expected: region or cluster, was: %s)",
+                "Feature is not of correct type! (expected: region, was: %s)",
                 feature.type,
             )
             raise InvalidGBKError()
 
         # AS5 and up gbks have region features, as well as candidate clusters and
         # children classes (protocluster, protocore)
-        if feature.type == "region":
-            if "region_number" not in feature.qualifiers:
-                logging.error("region number qualifier not found in region feature!")
+
+        if "region_number" not in feature.qualifiers:
+            logging.error("region number qualifier not found in region feature!")
+            raise InvalidGBKError()
+
+        region_number = int(feature.qualifiers["region_number"][0])
+
+        nt_start, nt_stop, contig_edge, product = BGCRecord.parse_common(feature)
+
+        # now we have all the parameters needed to assemble the region
+        region = cls(
+            parent_gbk,
+            region_number,
+            nt_start,
+            nt_stop,
+            contig_edge,
+            product,
+        )
+
+        if "candidate_cluster_numbers" not in feature.qualifiers:
+            if parent_gbk is not None and parent_gbk.source_type == SOURCE_TYPE.MIBIG:
+                # we know that MIBiG BGCs, although processed with versions of AS7 and above,
+                # dont always have features beyond region
+                return region
+            else:
+                logging.warning(
+                    "candidate_cluster_numbers qualifier not found in region feature!"
+                    "consider checking whether there is something special about this gbk"
+                )
                 raise InvalidGBKError()
 
-            region_number = int(feature.qualifiers["region_number"][0])
+        cand_clusters: dict[int, Optional[CandidateCluster]] = {}
+        for cand_cluster_number in feature.qualifiers["candidate_cluster_numbers"]:
+            cand_clusters[int(cand_cluster_number)] = None
 
-            nt_start, nt_stop, contig_edge, product = BGCRecord.parse_common(feature)
+        region.cand_clusters = cand_clusters
+        return region
 
-            # now we have all the parameters needed to assemble the region
-            region = cls(
-                parent_gbk,
-                region_number,
-                nt_start,
-                nt_stop,
-                contig_edge,
-                product,
+    @classmethod
+    def parse_as4(cls, feature: SeqFeature, parent_gbk: Optional[GBK] = None) -> Region:
+        """Creates a region object from a region feature in a GBK file
+
+        Args:
+            feature (SeqFeature): cluster (as4) GBK feature
+
+        Raises:
+            InvalidGBKError: Invalid or missing fields
+
+        Returns:
+            Region: region object
+        """
+        if feature.type != "cluster":
+            logging.error(
+                "Feature is not of correct type! (expected: cluster, was: %s)",
+                feature.type,
             )
-
-            if "candidate_cluster_numbers" not in feature.qualifiers:
-                if (
-                    parent_gbk is not None
-                    and parent_gbk.source_type == SOURCE_TYPE.MIBIG
-                ):
-                    # we know that MIBiG BGCs, although processed with versions of AS7 and above,
-                    # dont always have features beyond region
-                    return region
-                else:
-                    logging.warning(
-                        "candidate_cluster_numbers qualifier not found in region feature!"
-                        "consider checking whether there is something special about this gbk"
-                    )
-                    raise InvalidGBKError()
-
-            cand_clusters: dict[int, Optional[CandidateCluster]] = {}
-            for cand_cluster_number in feature.qualifiers["candidate_cluster_numbers"]:
-                cand_clusters[int(cand_cluster_number)] = None
-            
-            region.cand_clusters = cand_clusters
-            return region
+            raise InvalidGBKError()
 
         # AS4 gbks have cluster features instead of region, and no children features
         # we artifically input the info in the cluster feature into the Region object
-        elif feature.type == "cluster":
-            if (
-                "note" not in feature.qualifiers
-                or "Cluster number" not in feature.qualifiers["note"][0]
-            ):
-                logging.error("cluster number qualifier not found in cluster feature!")
-                raise InvalidGBKError()
 
-            cluster_note_number = feature.qualifiers["note"][0]
-            region_number = int(cluster_note_number.split(": ")[1])
+        if (
+            "note" not in feature.qualifiers
+            or "Cluster number" not in feature.qualifiers["note"][0]
+        ):
+            logging.error("cluster number qualifier not found in cluster feature!")
+            raise InvalidGBKError()
 
-            cand_clusters = {}
+        cluster_note_number = feature.qualifiers["note"][0]
+        region_number = int(cluster_note_number.split(": ")[1])
 
-        else:
-            raise ValueError("Could not parse region feature")
+        cand_clusters: dict[int, Optional[CandidateCluster]] = {}
 
         nt_start, nt_stop, contig_edge, product = BGCRecord.parse_common(feature)
 

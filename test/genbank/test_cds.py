@@ -26,6 +26,7 @@ from src.genbank import (
 )
 from src.errors import InvalidGBKError
 from src.data import DB
+from src.enums import SOURCE_TYPE
 
 
 class TestCDS(TestCase):
@@ -52,7 +53,7 @@ class TestCDS(TestCase):
         parent_gbk_file_path = Path(
             "test/test_data/valid_gbk_folder/valid_input_region.gbk"
         )
-        parent_gbk = GBK.parse(parent_gbk_file_path, "query")
+        parent_gbk = GBK.parse(parent_gbk_file_path, SOURCE_TYPE.QUERY)
 
         cds = CDS.parse(feature, parent_gbk)
 
@@ -71,7 +72,7 @@ class TestCDS(TestCase):
         parent_gbk_file_path = Path(
             "test/test_data/valid_gbk_folder/valid_input_region.gbk"
         )
-        parent_gbk = GBK.parse(parent_gbk_file_path, "query")
+        parent_gbk = GBK.parse(parent_gbk_file_path, SOURCE_TYPE.QUERY)
 
         cds = CDS.parse(feature, parent_gbk)
 
@@ -87,7 +88,7 @@ class TestCDS(TestCase):
         parent_gbk_file_path = Path(
             "test/test_data/valid_gbk_folder/valid_input_region.gbk"
         )
-        parent_gbk = GBK.parse(parent_gbk_file_path, "query")
+        parent_gbk = GBK.parse(parent_gbk_file_path, SOURCE_TYPE.QUERY)
 
         self.assertRaises(InvalidGBKError, CDS.parse, feature, parent_gbk)
 
@@ -98,7 +99,7 @@ class TestCDS(TestCase):
 
         gbk_file_path = Path("test/test_data/valid_gbk_folder/valid_input_region.gbk")
 
-        gbk = GBK.parse(gbk_file_path, "query")
+        gbk = GBK.parse(gbk_file_path, SOURCE_TYPE.QUERY)
 
         gbk.save_all()
 
@@ -376,7 +377,7 @@ class TestCDS(TestCase):
         parent_gbk_file_path = Path(
             "test/test_data/valid_gbk_folder/valid_input_region_cds_no_trans.gbk"
         )
-        parent_gbk = GBK.parse(parent_gbk_file_path, "query")
+        parent_gbk = GBK.parse(parent_gbk_file_path, SOURCE_TYPE.QUERY)
         cds_1 = parent_gbk.genes[1]
 
         expected_translation = (
@@ -398,7 +399,7 @@ class TestCDS(TestCase):
         parent_gbk_file_path = Path(
             "test/test_data/valid_gbk_folder/valid_input_region_cds_no_trans.gbk"
         )
-        parent_gbk = GBK.parse(parent_gbk_file_path, "query")
+        parent_gbk = GBK.parse(parent_gbk_file_path, SOURCE_TYPE.QUERY)
         cds_0 = parent_gbk.genes[0]
 
         expected_translation = (
@@ -420,7 +421,7 @@ class TestCDS(TestCase):
         parent_gbk_file_path = Path(
             "test/test_data/valid_gbk_folder/valid_input_region_cds_no_trans.gbk"
         )
-        parent_gbk = GBK.parse(parent_gbk_file_path, "query")
+        parent_gbk = GBK.parse(parent_gbk_file_path, SOURCE_TYPE.QUERY)
 
         feature = SeqFeature(FeatureLocation(1536, 2156, strand=1), type="CDS")
 
@@ -448,7 +449,7 @@ class TestCDS(TestCase):
         parent_gbk_file_path = Path(
             "test/test_data/valid_gbk_folder/valid_input_region_cds_no_trans.gbk"
         )
-        parent_gbk = GBK.parse(parent_gbk_file_path, "query")
+        parent_gbk = GBK.parse(parent_gbk_file_path, SOURCE_TYPE.QUERY)
 
         feature = SeqFeature(FeatureLocation(1536, 2156, strand=1), type="CDS")
 
@@ -468,3 +469,45 @@ class TestCDS(TestCase):
         warning = any(str in log for log in cm.output)
 
         self.assertEqual(warning, True)
+
+    def test_parse_mibig_mismatched_translation_no_warning(self):
+        """Tests whether a mibig cds with an antismash translation that does not
+        match a biopython translation generated no warnings"""
+
+        parent_gbk_mibig = GBK.parse(
+            "test/test_data/MIBiG_gbk/BGC0000966.gbk", SOURCE_TYPE.MIBIG
+        )
+
+        feature = SeqFeature(FeatureLocation(0, 3301, strand=1), type="CDS")
+
+        feature.qualifiers["translation"] = [
+            "VTLETHTIVGNEDPAYAGSSFVLAQRFAFNWEHILNMGPDQIEDL"
+            "VGRTAEDIIVPTRDERSHIKCARAQDAQGDTMRILRLGLPYGRSDATTNNDLRFKGASL"
+            "RDEQGVYFAGYARRAGILETIMDRQVGSHEGHMADRLLSTVHSNLGGVYFVPSATVLGL"
+            "DLPDLDDLDEVGWDDFPGMDWSRLDRHFTERSTNGLMFYNHRDWLYQMSTAAGEDRDHY"
+            "LPPTKRVLRLVAAAFSRWQDNWYFDRVQQEPEHLSYYLTRELGAEAAEEIMARPVMERM"
+            "GWTVRLGLGSVFASEEYGFRGRRRDAEGNWVNGADTYHIEPLELIVGGMPTLGLGQGKY"
+            "VIDYTRDDEKLANFFQNLGPASGVGHVVPGYEKLLRRGLGGLAEDVAALRDAAEDEDTR"
+            "LFYTAVHLALEGVRAHCLAFAELAAATADALPATREVERANLAEVESRMRRLSTDAPET"
+            "LLEAAQLIFTMHSCLHLIGEPTAIGRLDQLLQPFYESDIASGVLSPANEDEQAQEILDC"
+            "LWVKLGGNVLWNRMFVDDHQPDGNMAMGGMAGNYPQGAANNQWVQQITVGGTVANDSPG"
+            "SGDPAYNRMTMLCLRAARRLPLNAPCLSLRVRRDMPAEYAEEAAKALLSGGAHPILIND"
+            "EKVIPGLVRSGEEIGDGPDTGEYTPVRERAGDSWSSEVPLEVARDYACDGCYEPQFVGK"
+            "NWFTLGGLNTLQLLEATLNRGKSWLTAGPMWFRGQRVSFTSPKPNDIGSFEEVLDIFFR"
+            "HLSWSYAKQVDGQLGVYGKMSAVCPSPLLSVFVDDCLEKGMDYYAGGARYNVIGPCFTA"
+            "LPNTINSLWAVRKLVFDETTAVTSLPELVEALMCDWGESMVEPFVSTLAGEGRIAARAE"
+            "RFRDLRAAALALPRYGRGDQEVDAFGDEFLQRVSATVMSTLTDPAQPTARTLVELAERY"
+            "GSPEHPFGIQLQPGVGTFENYLEFGAMCGASAEGRRAGEPLATDLSPTPSPADRPVDHQ"
+            "EADFLTTLRGMTGAGSESFWDIAPTDYNIREDFGLDALTRVIREFASGEGSNLLTVTCA"
+            "NPETFEGACRDPEKYDVVRVRMGGWSEFFISMFPAHQRTHQRRPISVMTEG"
+        ]
+
+        with self.assertLogs(level=logging.INFO) as cm:
+            logging.info("nonsense")
+            CDS.parse(feature, parent_gbk_mibig)
+
+        # cm.output a list of strings of all the logs
+        str = " translation provided by antiSMASH and generated by biopython"
+        warning = any(str in log for log in cm.output)
+
+        self.assertEqual(warning, False)
