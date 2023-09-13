@@ -222,7 +222,10 @@ def parse_cmd(args):  # pragma: no cover
         dest="binning.legacy_no_classify",
         default=False,
         action="store_true",
-        help="Run analyses on bins as in BiG-SCAPE 1.0",
+        help="Does not use antiSMASH/BGC classes to run analyses on class-based bins.",
+        # TODO: needs to become just --no_classify, add a --legacy_classify and
+        # default becomes either --mix or --classify (BGS2 mode, based on
+        # As classes and not Jorge's classes)
     )
 
     # comparison parameters
