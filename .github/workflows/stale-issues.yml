@@ -1,0 +1,16 @@
+name: 'Close stale issues and PRs'
+on:
+  schedule:
+    - cron: '30 1 * * *'
+
+jobs:
+  stale:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/stale@v8
+        with:
+          stale-issue-message: 'This issue has not seen activity for 14 days and has been marked as stale. Please comment with additional information if this issue is still relevant.'
+          close-issue-message: 'This issue has been stale for 14 days and has been closed. Please feel free to re-open this issue if necessary.'
+          days-before-issue-stale: 14
+          days-before-issue-close: 28
+          exempt-issue-labels: 'no-stale,planned'
