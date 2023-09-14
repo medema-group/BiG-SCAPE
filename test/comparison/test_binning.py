@@ -86,6 +86,27 @@ class TestBGCBin(TestCase):
 
         self.assertEqual(expected_num_pairs, actual_num_pairs)
 
+    def test_num_pairs_correct_with_query_ref(self):
+        """Tests whether bin.num_pairs() correctly returns all query and ref but not ref <-> ref pairs"""
+
+        parent_gbk_query = GBK(Path("test"), source_type=SOURCE_TYPE.QUERY)
+        parent_gbk_ref = GBK(Path("test"), source_type=SOURCE_TYPE.REFERENCE)
+        bgc_a = BGCRecord(parent_gbk_query, 0, 0, 10, False, "")
+        bgc_b = BGCRecord(parent_gbk_query, 0, 0, 10, False, "")
+        bgc_c = BGCRecord(parent_gbk_ref, 0, 0, 10, False, "")
+        bgc_d = BGCRecord(parent_gbk_ref, 0, 0, 10, False, "")
+
+        bgc_list = [bgc_a, bgc_b, bgc_c, bgc_d]
+
+        new_bin = RecordPairGeneratorQueryRef("test")
+
+        new_bin.add_bgcs(bgc_list)
+
+        expected_num_pairs = 5
+        actual_num_pairs = new_bin.num_pairs()
+
+        self.assertEqual(expected_num_pairs, actual_num_pairs)
+
     def test_legacy_sorting(self):
         """Tests whether the legacy sorting option in bin.pairs() correctly orders the pairs"""
 

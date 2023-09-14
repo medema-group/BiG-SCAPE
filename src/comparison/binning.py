@@ -84,8 +84,10 @@ class RecordPairGeneratorQueryRef(RecordPairGenerator):
                 pair = BGCPair(sorted_a, sorted_b)
 
             else:
-                bgc_a_not_query = bgc_a.parent_gbk.source_type != SOURCE_TYPE.QUERY
-                bgc_b_not_query = bgc_b.parent_gbk.source_type != SOURCE_TYPE.QUERY
+                if bgc_a.parent_gbk is not None:
+                    bgc_a_not_query = bgc_a.parent_gbk.source_type != SOURCE_TYPE.QUERY
+                if bgc_b.parent_gbk is not None:
+                    bgc_b_not_query = bgc_b.parent_gbk.source_type != SOURCE_TYPE.QUERY
                 if bgc_a_not_query and bgc_b_not_query:
                     continue
 
@@ -107,7 +109,10 @@ class RecordPairGeneratorQueryRef(RecordPairGenerator):
 
         len_ref = 0
         for record in self.source_records:
-            if record.parent_gbk.source_type != SOURCE_TYPE.QUERY:
+            if (
+                record.parent_gbk is not None
+                and record.parent_gbk.source_type != SOURCE_TYPE.QUERY
+            ):
                 len_ref += 1
 
         len_all_records = len(self.source_records)
