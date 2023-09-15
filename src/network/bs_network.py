@@ -134,6 +134,18 @@ class BSNetwork:
 
         return singletons
 
+    def cull_singletons(self, node_types: Optional[list[SOURCE_TYPE]] = None) -> None:
+        """Removes all singletons from the network (of given source type, if specified.)
+
+        Args:
+            node_types (Optional[list[SOURCE_TYPE]], optional): parent gbk source type. Defaults to None.
+        """
+        network = self.graph
+
+        singletons = self.get_singletons(node_types=node_types)
+
+        network.remove_nodes_from(singletons)
+
     def generate_families_cutoff(self, edge_property: str, cutoff: float) -> None:
         """Generate the families for nodes in a network, using a given cutoff for a property that is
         present on an edge. This will usually be 'dist'

@@ -96,6 +96,50 @@ class TestBSNetwork(TestCase):
 
         self.assertEqual(expected_ref_singletons, ref_singletons)
 
+    def test_cull_singletons_no_source(self):
+        """Tests whether all singletons are culled"""
+
+        parent_gbk_query = GBK(Path("test"), source_type=SOURCE_TYPE.QUERY)
+        parent_gbk_ref = GBK(Path("test"), source_type=SOURCE_TYPE.REFERENCE)
+        bgc_a = BGCRecord(parent_gbk_query, 0, 0, 10, False, "")
+        bgc_b = BGCRecord(parent_gbk_query, 0, 0, 10, False, "")
+        bgc_c = BGCRecord(parent_gbk_ref, 0, 0, 10, False, "")
+        bgc_d = BGCRecord(parent_gbk_ref, 0, 0, 10, False, "")
+
+        network = BSNetwork()
+        network.add_node(bgc_a)
+        network.add_node(bgc_b)
+        network.add_node(bgc_c)
+        network.add_node(bgc_d)
+
+        network.cull_singletons()
+        post_cull_nodes = network.get_nodes()
+        expected_nodes = []
+
+        self.assertEqual(post_cull_nodes, expected_nodes)
+
+    def test_cull_singletons_with_source(self):
+        """Tests whether the correct singletons are culled"""
+
+        parent_gbk_query = GBK(Path("test"), source_type=SOURCE_TYPE.QUERY)
+        parent_gbk_ref = GBK(Path("test"), source_type=SOURCE_TYPE.REFERENCE)
+        bgc_a = BGCRecord(parent_gbk_query, 0, 0, 10, False, "")
+        bgc_b = BGCRecord(parent_gbk_query, 0, 0, 10, False, "")
+        bgc_c = BGCRecord(parent_gbk_ref, 0, 0, 10, False, "")
+        bgc_d = BGCRecord(parent_gbk_ref, 0, 0, 10, False, "")
+
+        network = BSNetwork()
+        network.add_node(bgc_a)
+        network.add_node(bgc_b)
+        network.add_node(bgc_c)
+        network.add_node(bgc_d)
+
+        network.cull_singletons(node_types=[SOURCE_TYPE.QUERY])
+        post_cull_nodes = network.get_nodes()
+        expected_nodes = [bgc_c, bgc_d]
+
+        self.assertEqual(post_cull_nodes, expected_nodes)
+
     def test_add_edge(self):
         """Tests whether an edge can be correctly added between two nodes"""
         gbk_a = GBK("", "test")

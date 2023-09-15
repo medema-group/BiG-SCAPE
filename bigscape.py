@@ -231,9 +231,15 @@ if __name__ == "__main__":
             mix_bin, mix_network, run.comparison.alignment_mode, run.cores, callback
         )
 
-        # create query <-> query & ref edges
-        # iterate ref <-> ref until no new links
-        # cull ref singletons
+        # for normal run:
+        #       create all <-> all edges
+        #       cull singletons
+
+        # for query_bgc run:
+        #   create query <-> query & ref edges
+        #   iterate ref <-> ref until no new edges
+        #   cull ref singletons
+
         # generate families
         # cull ref singletons again, for each family subgraph
 
