@@ -214,3 +214,47 @@ class BSNetwork:
             )
 
         return self.graph.has_edge(__o.region_a, __o.region_b)
+
+    def __eq__(self, __o):
+        if not isinstance(__o, BSNetwork):
+            return False
+
+        return (
+            self.graph.edges == __o.graph.edges and self.graph.nodes == __o.graph.nodes
+        )
+
+    @staticmethod
+    def load_from_db(bgc_records: set[BGCRecord]):
+        """Load a network from the database, using a set of bgc records to determine
+        which edges to load
+        """
+        network = BSNetwork()
+
+        for bgc_record in bgc_records:
+            network.add_node(bgc_record)
+
+        distance_table = DB.metadata.tables["distance"]
+
+        record_db_id_dict = {}
+        for bgc_record in bgc_records:
+            record_db_id_dict[bgc_record._db_id] = bgc_record
+
+        select_statement = distance_table.select().where(
+            distance_table.c.region_a_id.in_(record_db_id_dict)
+        )
+
+        distance_rows = DB.execute(select_statement).fetchall()
+
+        for distance_row in distance_rows:
+            record_a = record_db_id_dict[int(distance_row[0])]
+            record_b = record_db_id_dict[int(distance_row[1])]
+            network.add_edge(
+                record_a,
+                record_b,
+                dist=distance_row[2],
+                jc=distance_row[3],
+                ai=distance_row[4],
+                dss=distance_row[5],
+            )
+
+        return network

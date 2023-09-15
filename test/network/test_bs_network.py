@@ -4,6 +4,7 @@
 from pathlib import Path
 from unittest import TestCase
 from itertools import combinations
+from src.data.sqlite import DB
 
 # from other modules
 from src.genbank import GBK, Region
@@ -155,3 +156,47 @@ class TestBSNetwork(TestCase):
         actual_subgraph_sizes = [len(subgraph) for subgraph in subgraphs]
 
         self.assertEqual(expected_subgraph_sizes, actual_subgraph_sizes)
+
+    def test_load_from_db(self):
+        """Tests whether a network can be correctly loaded from the database"""
+        # open in-memory db
+        DB.create_in_mem()
+
+        network = BSNetwork()
+
+        gbk = GBK(Path("test1.gbk"), "test")
+        gbk.save()
+
+        # 6 regions
+        regions = []
+        for region_number in range(6):
+            region = Region(gbk, region_number, 0, 100, False, "")
+            region.save()
+            regions.append(region)
+            network.add_node(region)
+
+        edges_a = list(combinations(regions[:3], 2))
+        edges_b = list(combinations(regions[3:], 2))
+
+        # network will look like this:
+        #   0     3
+        #  / \   / \
+        # 1---2 4---5
+        #   A     B
+
+        for edge in edges_a:
+            pair = BGCPair(edge[0], edge[1])
+            network.add_edge_pair(pair, dist=0.0, jc=0.0, ai=0.0, dss=0.0)
+
+        for edge in edges_b:
+            pair = BGCPair(edge[0], edge[1])
+            network.add_edge_pair(pair, dist=0.0, jc=0.0, ai=0.0, dss=0.0)
+
+        # save network to do
+        network.export_distances_to_db()
+
+        # load the network from db
+        loaded_network = BSNetwork.load_from_db(set(regions))
+
+        # check that the loaded network is the same as the original
+        self.assertEqual(network, loaded_network)
