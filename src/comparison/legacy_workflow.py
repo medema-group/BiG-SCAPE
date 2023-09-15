@@ -13,7 +13,7 @@ from src.network import BSNetwork
 from src.utility import start_processes
 
 # from this module
-from .binning import RecordPairGeneratorQueryRef, BGCPair
+from .binning import RecordPairGenerator, BGCPair
 from .legacy_bins import LEGACY_BINS
 from .legacy_extend import (
     legacy_needs_expand_pair,
@@ -25,7 +25,7 @@ from .legacy_lcs import legacy_find_cds_lcs
 
 
 def create_bin_network_edges(
-    bin: RecordPairGeneratorQueryRef,
+    bin: RecordPairGenerator,
     network: BSNetwork,
     alignment_mode: str,
     cores: int,
@@ -261,7 +261,7 @@ def calculate_jaccard_worker_method(
 
 
 def calculate_jaccard_multiprocess(
-    bin: RecordPairGeneratorQueryRef,
+    bin: RecordPairGenerator,
     network: BSNetwork,
     num_processes: int = cpu_count(),
     callback: Optional[Callable] = None,
@@ -373,7 +373,7 @@ def calculate_scores_worker_method(
 
 
 def calculate_scores_multiprocess(
-    bin: RecordPairGeneratorQueryRef,
+    bin: RecordPairGenerator,
     pairs: list[BGCPair],
     network: BSNetwork,
     num_processes: int = cpu_count(),

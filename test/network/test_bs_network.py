@@ -6,9 +6,10 @@ from unittest import TestCase
 from itertools import combinations
 
 # from other modules
-from src.genbank import GBK, Region
+from src.genbank import GBK, Region, BGCRecord
 from src.comparison import BGCPair
 from src.network import BSNetwork
+from src.enums import SOURCE_TYPE
 
 
 class TestBSNetwork(TestCase):
@@ -24,6 +25,76 @@ class TestBSNetwork(TestCase):
         network.add_node(region)
 
         self.assertEqual(network.graph.number_of_nodes(), 1)
+
+    def test_get_nodes_no_source(self):
+        """Tests whether the correct nodes are returned when get_nodes is called"""
+
+        parent_gbk_query = GBK(Path("test"), source_type=SOURCE_TYPE.QUERY)
+        parent_gbk_ref = GBK(Path("test"), source_type=SOURCE_TYPE.REFERENCE)
+        parent_gbk_mibig = GBK(Path("test"), source_type=SOURCE_TYPE.MIBIG)
+        bgc_a = BGCRecord(parent_gbk_query, 0, 0, 10, False, "")
+        bgc_b = BGCRecord(parent_gbk_query, 0, 0, 10, False, "")
+        bgc_c = BGCRecord(parent_gbk_ref, 0, 0, 10, False, "")
+        bgc_d = BGCRecord(parent_gbk_mibig, 0, 0, 10, False, "")
+
+        network = BSNetwork()
+        network.add_node(bgc_a)
+        network.add_node(bgc_b)
+        network.add_node(bgc_c)
+        network.add_node(bgc_d)
+
+        expected_nodes = [bgc_a, bgc_b, bgc_c, bgc_d]
+        nodes = network.get_nodes()
+
+        self.assertEqual(expected_nodes, nodes)
+
+    def test_get_nodes_with_source(self):
+        """Tests whether the correct nodes are returned"""
+
+        parent_gbk_query = GBK(Path("test"), source_type=SOURCE_TYPE.QUERY)
+        parent_gbk_ref = GBK(Path("test"), source_type=SOURCE_TYPE.REFERENCE)
+        parent_gbk_mibig = GBK(Path("test"), source_type=SOURCE_TYPE.MIBIG)
+        bgc_a = BGCRecord(parent_gbk_query, 0, 0, 10, False, "")
+        bgc_b = BGCRecord(parent_gbk_query, 0, 0, 10, False, "")
+        bgc_c = BGCRecord(parent_gbk_ref, 0, 0, 10, False, "")
+        bgc_d = BGCRecord(parent_gbk_mibig, 0, 0, 10, False, "")
+
+        network = BSNetwork()
+        network.add_node(bgc_a)
+        network.add_node(bgc_b)
+        network.add_node(bgc_c)
+        network.add_node(bgc_d)
+
+        expected_nodes = [bgc_a, bgc_b, bgc_d]
+        nodes = network.get_nodes(node_types=[SOURCE_TYPE.QUERY, SOURCE_TYPE.MIBIG])
+
+        self.assertEqual(expected_nodes, nodes)
+
+    def test_get_singleton_nodes_with_source(self):
+        """Tests whether the correct singletons are returned"""
+
+        parent_gbk_query = GBK(Path("test"), source_type=SOURCE_TYPE.QUERY)
+        parent_gbk_ref = GBK(Path("test"), source_type=SOURCE_TYPE.REFERENCE)
+        bgc_a = BGCRecord(parent_gbk_query, 0, 0, 10, False, "")
+        bgc_b = BGCRecord(parent_gbk_query, 0, 0, 10, False, "")
+        bgc_c = BGCRecord(parent_gbk_ref, 0, 0, 10, False, "")
+        bgc_d = BGCRecord(parent_gbk_ref, 0, 0, 10, False, "")
+
+        network = BSNetwork()
+        network.add_node(bgc_a)
+        network.add_node(bgc_b)
+        network.add_node(bgc_c)
+        network.add_node(bgc_d)
+
+        network.add_edge_pair(BGCPair(bgc_a, bgc_b))  # query to query
+        network.add_edge_pair(BGCPair(bgc_a, bgc_c))  # query to ref
+
+        expected_ref_singletons = [bgc_d]
+        ref_singletons = network.get_singletons(
+            node_types=[SOURCE_TYPE.REFERENCE, SOURCE_TYPE.MIBIG]
+        )
+
+        self.assertEqual(expected_ref_singletons, ref_singletons)
 
     def test_add_edge(self):
         """Tests whether an edge can be correctly added between two nodes"""

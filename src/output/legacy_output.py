@@ -8,7 +8,7 @@ from pathlib import Path
 from typing import Any
 
 # from other modules
-from src.comparison import RecordPairGeneratorQueryRef, legacy_get_class
+from src.comparison import RecordPairGenerator, legacy_get_class
 from src.genbank import GBK, CDS
 from src.network import BSNetwork
 from src.enums import SOURCE_TYPE
@@ -58,7 +58,7 @@ def prepare_cutoff_folder(output_dir: Path, label: str, cutoff: float) -> None:
 
 
 def prepare_bin_folder(
-    output_dir: Path, label: str, cutoff: float, bin: RecordPairGeneratorQueryRef
+    output_dir: Path, label: str, cutoff: float, bin: RecordPairGenerator
 ) -> None:
     """Prepare the output folder for a bin under a cutoff
 
@@ -266,7 +266,7 @@ def add_run_data_network(
     output_dir: Path,
     label: str,
     cutoff: float,
-    bin: RecordPairGeneratorQueryRef,
+    bin: RecordPairGenerator,
     families_members: dict[int, list[int]],
 ) -> None:
     """Add run data to the run_data.js file for the given bin with a given cutoff
@@ -427,7 +427,7 @@ def generate_bigscape_results_js(output_dir: Path, label: str, cutoff: float) ->
 
 
 def add_bigscape_results_js_network(
-    output_dir: Path, label: str, cutoff: float, bin: RecordPairGeneratorQueryRef
+    output_dir: Path, label: str, cutoff: float, bin: RecordPairGenerator
 ) -> None:
     """Add cutoff and network data to an existing bigscape_results.js file
 
@@ -534,7 +534,7 @@ def generate_bs_data_js(
     output_dir: Path,
     label: str,
     cutoff: float,
-    bin: RecordPairGeneratorQueryRef,
+    bin: RecordPairGenerator,
 ):
     """Generates the bs_data.js file located at
     output/html_content/networks/[label]/[bin]
@@ -616,7 +616,7 @@ def generate_bs_data_js(
 
 def generate_bs_networks_js_sim_matrix(
     cutoff: float,
-    bin: RecordPairGeneratorQueryRef,
+    bin: RecordPairGenerator,
     network: BSNetwork,
 ) -> list[list[float]]:
     """Generate a similarity matrix for the bs_networks.js file
@@ -647,7 +647,7 @@ def generate_bs_networks_js_sim_matrix(
 
 def generate_bs_families_members(
     cutoff: float,
-    bin: RecordPairGeneratorQueryRef,
+    bin: RecordPairGenerator,
 ) -> dict[int, list[int]]:
     """Generate a dictionary where keys are family indexes and values are list of region
     indexes that belong to that family
@@ -701,7 +701,7 @@ def generate_bs_networks_js(
     output_dir: Path,
     label: str,
     cutoff: float,
-    bin: RecordPairGeneratorQueryRef,
+    bin: RecordPairGenerator,
     network: BSNetwork,
     bs_families: list[dict[str, Any]],
 ):
@@ -822,7 +822,7 @@ def legacy_prepare_cutoff_output(
 
 
 def legacy_prepare_bin_output(
-    output_dir: Path, label: str, cutoff: float, bin: RecordPairGeneratorQueryRef
+    output_dir: Path, label: str, cutoff: float, bin: RecordPairGenerator
 ) -> None:
     """Prepare output data for a given bin at a given cutoff value
 
@@ -841,7 +841,7 @@ def legacy_generate_bin_output(
     output_dir: Path,
     label: str,
     cutoff: float,
-    bin: RecordPairGeneratorQueryRef,
+    bin: RecordPairGenerator,
     network: BSNetwork,
 ) -> None:
     """Generate the network data from a bin from cutoff filtering and affinity

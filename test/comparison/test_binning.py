@@ -6,9 +6,15 @@ from pathlib import Path
 
 # from other modules
 from src.genbank import GBK, BGCRecord
-from src.comparison import RecordPairGeneratorQueryRef, BGCPair
+from src.comparison import (
+    RecordPairGenerator,
+    RecordPairGeneratorQueryRef,
+    RecordPairGeneratorConRefSinRef,
+    BGCPair,
+)
 from src.comparison import generate_mix
 from src.enums import SOURCE_TYPE
+from src.network import BSNetwork
 
 
 class TestBGCPair(TestCase):
@@ -60,7 +66,7 @@ class TestBGCBin(TestCase):
 
         bgc_list = [bgc_a, bgc_b, bgc_c]
 
-        new_bin = RecordPairGeneratorQueryRef("test")
+        new_bin = RecordPairGenerator("test")
 
         new_bin.add_bgcs(bgc_list)
 
@@ -77,7 +83,7 @@ class TestBGCBin(TestCase):
         gbk_a = GBK(Path("test1.gbk"), "test")
         bgc_a = BGCRecord(gbk_a, 0, 0, 10, False, "")
 
-        new_bin = RecordPairGeneratorQueryRef("test")
+        new_bin = RecordPairGenerator("test")
 
         new_bin.add_bgcs([bgc_a])
 
@@ -123,7 +129,7 @@ class TestBGCBin(TestCase):
         # bgc_c, bgc_b
         bgc_list = [bgc_a, bgc_c, bgc_b]
 
-        new_bin = RecordPairGeneratorQueryRef("test")
+        new_bin = RecordPairGenerator("test")
 
         new_bin.add_bgcs(bgc_list)
 
@@ -140,6 +146,69 @@ class TestBGCBin(TestCase):
         ]
 
         self.assertEqual(expected_pair_list, actual_pair_list)
+
+    def test_recordpairgenerator_conref_sinref_correctpairs_actualpairs(self):
+        """Tests whether the RecordPairGeneratorConRefSinRef correctly generates pairs between
+        connected ref nodes and singleton ref nodes"""
+
+        parent_gbk_query = GBK(Path("test"), source_type=SOURCE_TYPE.QUERY)
+        parent_gbk_ref = GBK(Path("test"), source_type=SOURCE_TYPE.REFERENCE)
+        bgc_a = BGCRecord(parent_gbk_query, 0, 0, 10, False, "")
+        bgc_b = BGCRecord(parent_gbk_query, 0, 0, 10, False, "")
+        bgc_c = BGCRecord(parent_gbk_ref, 0, 0, 10, False, "")
+        bgc_d = BGCRecord(parent_gbk_ref, 0, 0, 10, False, "")
+
+        network = BSNetwork()
+        network.add_node(bgc_a)  # query connected
+        network.add_node(bgc_b)  # query connected
+        network.add_node(bgc_c)  # ref connected
+        network.add_node(bgc_d)  # ref singleton
+
+        network.add_edge_pair(BGCPair(bgc_a, bgc_b))  # query to query
+        network.add_edge_pair(BGCPair(bgc_b, bgc_c))  # query to ref
+
+        bgc_list = [bgc_a, bgc_b, bgc_c, bgc_d]
+
+        new_bin = RecordPairGeneratorConRefSinRef("test", network)
+        new_bin.add_bgcs(bgc_list)
+
+        expected_pair_list = [(bgc_c, bgc_d)]
+
+        actual_pair_list = [
+            tuple([pair.region_a, pair.region_b]) for pair in new_bin.generate_pairs()
+        ]
+
+        self.assertEqual(expected_pair_list, actual_pair_list)
+
+    def test_recordpairgenerator_conref_sinref_correctpairs_numpairs(self):
+        """Tests whether the RecordPairGeneratorConRefSinRef correctly generates pairs between
+        connected ref nodes and singleton ref nodes"""
+
+        parent_gbk_query = GBK(Path("test"), source_type=SOURCE_TYPE.QUERY)
+        parent_gbk_ref = GBK(Path("test"), source_type=SOURCE_TYPE.REFERENCE)
+        bgc_a = BGCRecord(parent_gbk_query, 0, 0, 10, False, "")
+        bgc_b = BGCRecord(parent_gbk_query, 0, 0, 10, False, "")
+        bgc_c = BGCRecord(parent_gbk_ref, 0, 0, 10, False, "")
+        bgc_d = BGCRecord(parent_gbk_ref, 0, 0, 10, False, "")
+
+        network = BSNetwork()
+        network.add_node(bgc_a)  # query connected
+        network.add_node(bgc_b)  # query connected
+        network.add_node(bgc_c)  # ref connected
+        network.add_node(bgc_d)  # ref singleton
+
+        network.add_edge_pair(BGCPair(bgc_a, bgc_b))  # query to query
+        network.add_edge_pair(BGCPair(bgc_b, bgc_c))  # query to ref
+
+        bgc_list = [bgc_a, bgc_b, bgc_c, bgc_d]
+
+        new_bin = RecordPairGeneratorConRefSinRef("test", network)
+        new_bin.add_bgcs(bgc_list)
+
+        expected_num_pairs = 1  # bgc_c, bgc_d
+        actual_num_pairs = new_bin.num_pairs()
+
+        self.assertEqual(expected_num_pairs, actual_num_pairs)
 
 
 class TestMixComparison(TestCase):

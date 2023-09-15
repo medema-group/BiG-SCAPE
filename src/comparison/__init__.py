@@ -3,6 +3,7 @@ from .binning import (
     BGCPair,
     RecordPairGenerator,
     RecordPairGeneratorQueryRef,
+    RecordPairGeneratorConRefSinRef,
     generate_mix,
 )
 from .comparable_region import ComparableRegion
@@ -14,6 +15,7 @@ __all__ = [
     "BGCPair",
     "RecordPairGenerator",
     "RecordPairGeneratorQueryRef",
+    "RecordPairGeneratorConRefSinRef",
     "generate_mix",
     "ComparableRegion",
     "create_bin_network_edges",
