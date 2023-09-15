@@ -1,7 +1,7 @@
 # from python
 import logging
 from pathlib import Path
-from typing import List
+from typing import Generator, List
 from sqlite3 import Connection as Sqlite3Connection
 
 # from dependencies
@@ -179,6 +179,30 @@ class DB:
         return DB.execute(
             select(func.count("*")).select_from(table_metadata)
         ).scalar_one()
+
+    @staticmethod
+    def get_table_row_batch(
+        table_name: str, batch_size=100
+    ) -> Generator[tuple, None, None]:
+        """Generator that yields rows from a table
+
+        Args:
+            table_name (str): name of the table to get rows from
+            batch_size (int): how many rows to yield at a time
+
+        Yields:
+            Generator[tuple]: generator of tuples of rows from the table
+        """
+        table_metadata = DB.metadata.tables[table_name]
+        table_select = select(table_metadata)
+        table_select = table_select.execution_options(stream_results=True)
+
+        cursor = DB.execute(table_select, commit=False)
+        while True:
+            rows = cursor.fetchmany(batch_size)
+            if not rows:
+                break
+            yield rows
 
 
 def read_schema(path: Path) -> List[str]:

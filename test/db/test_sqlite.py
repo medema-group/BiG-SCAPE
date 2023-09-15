@@ -73,6 +73,33 @@ class TestSQLite(TestCase):
 
         DB.close_db()
 
+    def test_get_table_rows(self):
+        """Tests whether the get_table_row_batch function correctly returns a batch
+        of rows from the database
+        """
+        DB.create_in_mem()
+
+        # add 45 rows into database
+
+        for i in range(45):
+            insert_row_query = (
+                "INSERT INTO gbk "
+                "(path, source_type, nt_seq) "
+                f"VALUES ('{i}.gbk', 'test', 'test')"
+            )
+            DB.execute_raw_query(insert_row_query)
+
+        DB.commit()
+
+        expected_row_count = 10
+
+        # get 10 rows from database using DB.get_table_rows
+        rows = list(next(DB.get_table_row_batch("gbk", expected_row_count)))
+
+        actual_row_count = len(rows)
+
+        self.assertEqual(expected_row_count, actual_row_count)
+
     def test_save_to_disk(self):
         """Tests whether the sqlite database can be correctly saved to disk"""
         DB.create_in_mem()
