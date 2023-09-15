@@ -104,6 +104,15 @@ class BGCPair:
     def __repr__(self) -> str:
         return f"Pair {self.region_a} - {self.region_b}"
 
+    def __hash__(self) -> int:
+        return hash((self.region_a, self.region_b))
+
+    def __eq__(self, _o) -> bool:
+        if not isinstance(_o, BGCPair):
+            return False
+
+        return self.region_a == _o.region_a and self.region_b == _o.region_b
+
 
 def generate_mix(bgc_list: list[BGCRecord]) -> BGCBin:
     """Generate an all-vs-all bin of the supplied BGCs
