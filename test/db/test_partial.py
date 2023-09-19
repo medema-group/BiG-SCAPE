@@ -17,9 +17,11 @@ from src.data import (
     get_cds_to_scan,
     get_hsp_to_align,
 )
+from src.data import get_missing_distances, get_missing_distance_count
 from src.genbank import GBK, CDS, Region
 from src.hmm import HSP, HSPAlignment, HMMer
 from src.network import BSNetwork
+from src.comparison import BGCBin, BGCPair
 import src.enums as bs_enums
 
 
@@ -440,3 +442,76 @@ class TestPartialComparison(TestCase):
         actual_state = get_comparison_data_state(gbks)
 
         self.assertEqual(expected_state, actual_state)
+
+    def test_get_missing_distances(self):
+        DB.create_in_mem()
+
+        gbks = [create_mock_gbk(i) for i in range(3)]
+
+        # add hsp to gbks
+        add_mock_hsp_cds(gbks[0].genes[0])
+        add_mock_hsp_cds(gbks[1].genes[0])
+        add_mock_hsp_cds(gbks[2].genes[0])
+        # add hspalignment to hsps
+        add_mock_hsp_alignment_hsp(gbks[0].genes[0].hsps[0])
+        add_mock_hsp_alignment_hsp(gbks[1].genes[0].hsps[0])
+        add_mock_hsp_alignment_hsp(gbks[2].genes[0].hsps[0])
+
+        # add gbks, hsps and alignments to db
+        for gbk in gbks:
+            gbk.save_all()
+            gbk.genes[0].hsps[0].save()
+            HMMer.set_hmm_scanned(gbk.genes[0])
+            gbk.genes[0].hsps[0].alignment.save()
+
+        # only one distance done. (1-2, missing 1-3 and 2-3)
+        network = gen_mock_network(gbks, gbks[0:2])
+        network.export_distances_to_db()
+
+        # all-vs-all bin
+        mix_bin = BGCBin("mix")
+        mix_bin.add_bgcs([gbk.region for gbk in gbks])
+
+        expected_missing_pairs = [
+            BGCPair(gbks[0].region, gbks[2].region),
+            BGCPair(gbks[1].region, gbks[2].region),
+        ]
+
+        actual_missing_pairs = list(get_missing_distances(mix_bin))
+
+        self.assertListEqual(expected_missing_pairs, actual_missing_pairs)
+
+    def test_get_missing_distance_count(self):
+        DB.create_in_mem()
+
+        gbks = [create_mock_gbk(i) for i in range(3)]
+
+        # add hsp to gbks
+        add_mock_hsp_cds(gbks[0].genes[0])
+        add_mock_hsp_cds(gbks[1].genes[0])
+        add_mock_hsp_cds(gbks[2].genes[0])
+        # add hspalignment to hsps
+        add_mock_hsp_alignment_hsp(gbks[0].genes[0].hsps[0])
+        add_mock_hsp_alignment_hsp(gbks[1].genes[0].hsps[0])
+        add_mock_hsp_alignment_hsp(gbks[2].genes[0].hsps[0])
+
+        # add gbks, hsps and alignments to db
+        for gbk in gbks:
+            gbk.save_all()
+            gbk.genes[0].hsps[0].save()
+            HMMer.set_hmm_scanned(gbk.genes[0])
+            gbk.genes[0].hsps[0].alignment.save()
+
+        # only one distance done. (1-2, missing 1-3 and 2-3)
+        network = gen_mock_network(gbks, gbks[0:2])
+        network.export_distances_to_db()
+
+        # all-vs-all bin
+        mix_bin = BGCBin("mix")
+        mix_bin.add_bgcs([gbk.region for gbk in gbks])
+
+        expected_missing_count = 2
+
+        actual_missing_count = get_missing_distance_count(mix_bin)
+
+        self.assertEqual(expected_missing_count, actual_missing_count)

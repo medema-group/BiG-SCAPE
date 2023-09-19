@@ -7,6 +7,8 @@ from .partial_task import (
     get_cds_to_scan,
     get_hsp_to_align,
     get_comparison_data_state,
+    get_missing_distances,
+    get_missing_distance_count,
 )
 
 
@@ -18,4 +20,6 @@ __all__ = [
     "get_cds_to_scan",
     "get_hsp_to_align",
     "get_comparison_data_state",
+    "get_missing_distances",
+    "get_missing_distance_count",
 ]
