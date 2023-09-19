@@ -4,6 +4,7 @@ from .binning import (
     RecordPairGenerator,
     RecordPairGeneratorQueryRef,
     RecordPairGeneratorConRefSinRef,
+    RecordPairGeneratorGivenNodeSinRef,
     generate_mix,
 )
 from .comparable_region import ComparableRegion
@@ -16,6 +17,7 @@ __all__ = [
     "RecordPairGenerator",
     "RecordPairGeneratorQueryRef",
     "RecordPairGeneratorConRefSinRef",
+    "RecordPairGeneratorGivenNodeSinRef",
     "generate_mix",
     "ComparableRegion",
     "create_bin_network_edges",

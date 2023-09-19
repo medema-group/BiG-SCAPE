@@ -122,14 +122,6 @@ def parse_cmd(args):  # pragma: no cover
     )
 
     parser.add_argument(
-        "--query_bgc_path",
-        dest="input.query_bgc_path",
-        type=Path,
-        help="Path to location of query BGC gbk file. When provided, BiG-SCAPE\
-            will compare, all input BGCs to the query in a one-vs-all mode.",
-    )
-
-    parser.add_argument(
         "--include_gbk",
         dest="input.include_gbk",
         default=["cluster", "region"],
@@ -226,6 +218,14 @@ def parse_cmd(args):  # pragma: no cover
         # TODO: needs to become just --no_classify, add a --legacy_classify and
         # default becomes either --mix or --classify (BGS2 mode, based on
         # As classes and not Jorge's classes)
+    )
+
+    parser.add_argument(
+        "--query_bgc_path",
+        dest="binning.query_bgc_path",
+        type=Path,
+        help="Path to location of query BGC gbk file. When provided, BiG-SCAPE\
+            will compare, all input BGCs to the query in a one-vs-all mode.",
     )
 
     # comparison parameters

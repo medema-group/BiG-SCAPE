@@ -12,6 +12,9 @@ from src.genbank import BGCRecord, CDS, GBK
 from src.hmm import HMMer, legacy_filter_overlap, HSP
 from src.parameters import RunParameters, parse_cmd
 from src.comparison import (
+    RecordPairGeneratorQueryRef,
+    RecordPairGeneratorConRefSinRef,
+    RecordPairGeneratorGivenNodeSinRef,
     generate_mix,
     legacy_bin_generator,
     create_bin_network_edges_alt as create_bin_network_edges,
@@ -82,16 +85,32 @@ if __name__ == "__main__":
             run.input.reference_dir, SOURCE_TYPE.REFERENCE
         )
 
-    gbks = load_dataset_folder(
-        run.input.input_dir,
-        SOURCE_TYPE.QUERY,
-        run.input.input_mode,
-        run.input.include_gbk,
-        run.input.exclude_gbk,
-        run.input.cds_overlap_cutoff,
-    )
+    if run.binning.query_bgc_path:
+        query_bgc_gbk = GBK(run.binning.query_bgc_path, SOURCE_TYPE.QUERY)
+
+        gbks = load_dataset_folder(
+            run.input.input_dir,
+            SOURCE_TYPE.REFERENCE,
+            run.input.input_mode,
+            run.input.include_gbk,
+            run.input.exclude_gbk,
+            run.input.cds_overlap_cutoff,
+        )
+
+        gbks.append(query_bgc_gbk)
+
+    else:
+        gbks = load_dataset_folder(
+            run.input.input_dir,
+            SOURCE_TYPE.QUERY,
+            run.input.input_mode,
+            run.input.include_gbk,
+            run.input.exclude_gbk,
+            run.input.cds_overlap_cutoff,
+        )
 
     gbks.extend(reference_gbks)
+    gbks.extend(mibig_gbks)
 
     all_cds: list[CDS] = []
     for gbk in gbks:
@@ -204,15 +223,16 @@ if __name__ == "__main__":
     if run.binning.mix:
         logging.info("Generating mix bin")
 
+        mix_bgc_records: list[BGCRecord] = []
         mix_network = BSNetwork()
-        all_bgc_records: list[BGCRecord] = []
 
         for gbk in gbks:
             if gbk.region is not None:
-                all_bgc_records.append(gbk.region)
+                mix_bgc_records.append(gbk.region)
                 mix_network.add_node(gbk.region)
 
-        mix_bin = generate_mix(all_bgc_records)
+        # needs to be generalized
+        mix_bin = generate_mix(mix_bgc_records)
 
         logging.info(mix_bin)
 
@@ -231,19 +251,13 @@ if __name__ == "__main__":
             mix_bin, mix_network, run.comparison.alignment_mode, run.cores, callback
         )
 
-        # for normal run:
-        #       create all <-> all edges
-        #       cull singletons
-
-        # for query_bgc run:
-        #   create query <-> query & ref edges
-        #   iterate ref <-> ref until no new edges
-        #   cull ref singletons
-
-        # generate families
-        # cull ref singletons again, for each family subgraph
+        mix_network.cull_singletons(
+            node_types=[SOURCE_TYPE.MIBIG, SOURCE_TYPE.REFERENCE]
+        )
 
         mix_network.generate_families_cutoff("dist", 0.3)
+
+        # TODO: cull ref singletons again, for each family subgraph
 
         # Output
         legacy_prepare_bin_output(run.output.output_dir, run.label, 0.3, mix_bin)
@@ -257,9 +271,120 @@ if __name__ == "__main__":
 
         mix_network.export_distances_to_db()
 
+    # networking - query
+
+    if run.binning.query_bgc_path:
+        logging.info("Generating query BGC mode bin")
+
+        query_bgc_network = BSNetwork()
+        query_bgcs_records: list[BGCRecord] = []
+
+        for gbk in gbks:
+            if gbk.region is not None:
+                query_bgcs_records.append(gbk.region)
+                query_bgc_network.add_node(gbk.region)
+
+        # all query <-> query and query <-> ref pairs
+        query_bgc_pairs_queryref = RecordPairGeneratorQueryRef("Query_Ref")
+        query_bgc_pairs_queryref.add_bgcs(query_bgcs_records)
+
+        #   create edges (query <-> query & ref edges)
+        create_bin_network_edges(
+            query_bgc_pairs_queryref,
+            query_bgc_network,
+            run.comparison.alignment_mode,
+            run.cores,
+            callback,
+        )
+
+        ref_singletons = query_bgc_network.get_singletons(
+            node_types=[SOURCE_TYPE.REFERENCE, SOURCE_TYPE.MIBIG]
+        )
+
+        # create all con_ref <-> sin_ref pairs and add edges in network
+        query_bgc_pairs_conrefsinref = RecordPairGeneratorConRefSinRef(
+            "ConRef_SinRef", query_bgc_network
+        )
+        query_bgc_pairs_conrefsinref.add_bgcs(query_bgcs_records)
+        create_bin_network_edges(
+            query_bgc_pairs_conrefsinref,
+            query_bgc_network,
+            run.comparison.alignment_mode,
+            run.cores,
+            callback,
+        )
+
+        # get new_ref_connected, by checking which ref_singletons are no longer available
+        new_ref_singletons = query_bgc_network.get_singletons(
+            node_types=[SOURCE_TYPE.REFERENCE, SOURCE_TYPE.MIBIG]
+        )
+        new_ref_connected = [
+            node for node in ref_singletons if node not in new_ref_singletons
+        ]
+
+        old_nr_of_edges = 0
+        new_nr_of_edges = query_bgc_network.graph.number_of_edges()
+
+        while new_nr_of_edges > old_nr_of_edges:
+            old_nr_of_edges = new_nr_of_edges
+            ref_singletons = new_ref_singletons
+
+            # create pairs and edges
+            query_bgc_pairs_givensinref = RecordPairGeneratorGivenNodeSinRef(
+                "GivenRef_SinRef", query_bgc_network, new_ref_connected
+            )
+            query_bgc_pairs_givensinref.add_bgcs(query_bgcs_records)
+            create_bin_network_edges(
+                query_bgc_pairs_givensinref,
+                query_bgc_network,
+                run.comparison.alignment_mode,
+                run.cores,
+                callback,
+            )
+
+            # stored last updated edges
+            new_ref_singletons = query_bgc_network.get_singletons(
+                node_types=[SOURCE_TYPE.REFERENCE, SOURCE_TYPE.MIBIG]
+            )
+            new_ref_connected = [
+                node for node in ref_singletons if node not in new_ref_singletons
+            ]
+
+            # new nr of edges = network.graph.number_of_edges()
+            new_nr_of_edges = query_bgc_network.graph.number_of_edges()
+
+        #   cull leftover ref singletons
+        query_bgc_network.cull_singletons(
+            node_types=[SOURCE_TYPE.REFERENCE, SOURCE_TYPE.MIBIG]
+        )
+
+        # make sure all con-ref to con-ref edges are added
+        # get all ref nodes and sin-ref nodes, and con_ref nodes from there
+        # make pairs and add edges with all-vs-all pain_generator
+
+        # generate families
+        # TODO: cull ref singletons again, for each family subgraph
+        query_bgc_network.generate_families_cutoff("dist", 0.3)
+
+        # Output
+        legacy_prepare_bin_output(run.output.output_dir, run.label, 0.3, mix_bin)
+
+        legacy_generate_bin_output(
+            run.output.output_dir, run.label, 0.3, mix_bin, mix_network
+        )
+
+        query_bgc_network.write_graphml(
+            run.output.output_dir / Path("network_mix.graphml")
+        )
+        query_bgc_network.write_edgelist_tsv(
+            run.output.output_dir / Path("network_mix.tsv")
+        )
+
+        query_bgc_network.export_distances_to_db()
+
     # networking - bins
 
-    if not run.binning.legacy_no_classify:
+    if not run.binning.legacy_no_classify and not run.binning.query_bgc_path:
         logging.info("Generating legacy bins")
         for bin in legacy_bin_generator(gbks):
             if bin.num_pairs() == 0:
