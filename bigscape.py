@@ -12,6 +12,7 @@ from src.genbank import BGCRecord, CDS, GBK
 from src.hmm import HMMer, legacy_filter_overlap, HSP
 from src.parameters import RunParameters, parse_cmd
 from src.comparison import (
+    RecordPairGenerator,
     RecordPairGeneratorQueryRef,
     RecordPairGeneratorConRefSinRef,
     RecordPairGeneratorGivenNodeSinRef,
@@ -301,11 +302,18 @@ if __name__ == "__main__":
             node_types=[SOURCE_TYPE.REFERENCE, SOURCE_TYPE.MIBIG]
         )
 
+        ref_nodes = query_bgc_network.get_nodes(
+            node_types=[SOURCE_TYPE.REFERENCE, SOURCE_TYPE.MIBIG]
+        )
+
+        con_ref_nodes = [node for node in ref_nodes if node not in ref_singletons]
+
         # create all con_ref <-> sin_ref pairs and add edges in network
         query_bgc_pairs_conrefsinref = RecordPairGeneratorConRefSinRef(
             "ConRef_SinRef", query_bgc_network
         )
-        query_bgc_pairs_conrefsinref.add_bgcs(query_bgcs_records)
+        query_bgc_pairs_conrefsinref.add_bgcs(ref_singletons)
+        query_bgc_pairs_conrefsinref.add_bgcs(con_ref_nodes)
         create_bin_network_edges(
             query_bgc_pairs_conrefsinref,
             query_bgc_network,
@@ -333,7 +341,8 @@ if __name__ == "__main__":
             query_bgc_pairs_givensinref = RecordPairGeneratorGivenNodeSinRef(
                 "GivenRef_SinRef", query_bgc_network, new_ref_connected
             )
-            query_bgc_pairs_givensinref.add_bgcs(query_bgcs_records)
+            query_bgc_pairs_givensinref.add_bgcs(new_ref_singletons)
+            query_bgc_pairs_givensinref.add_bgcs(new_ref_connected)
             create_bin_network_edges(
                 query_bgc_pairs_givensinref,
                 query_bgc_network,
@@ -360,7 +369,26 @@ if __name__ == "__main__":
 
         # make sure all con-ref to con-ref edges are added
         # get all ref nodes and sin-ref nodes, and con_ref nodes from there
+        ref_nodes = query_bgc_network.get_nodes(
+            node_types=[SOURCE_TYPE.REFERENCE, SOURCE_TYPE.MIBIG]
+        )
+        singleton_ref_nodes = query_bgc_network.get_nodes(
+            node_types=[SOURCE_TYPE.REFERENCE, SOURCE_TYPE.MIBIG]
+        )
+        connected_ref_nodes = [
+            node for node in ref_nodes if node not in singleton_ref_nodes
+        ]
+
         # make pairs and add edges with all-vs-all pain_generator
+        query_bgc_pairs_conrefconref = RecordPairGenerator("ConRef_ConRef")
+        query_bgc_pairs_conrefsinref.add_bgcs(connected_ref_nodes)
+        create_bin_network_edges(
+            query_bgc_pairs_conrefconref,
+            query_bgc_network,
+            run.comparison.alignment_mode,
+            run.cores,
+            callback,
+        )
 
         # generate families
         # TODO: cull ref singletons again, for each family subgraph
