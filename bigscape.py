@@ -394,11 +394,22 @@ if __name__ == "__main__":
         # TODO: cull ref singletons again, for each family subgraph
         query_bgc_network.generate_families_cutoff("dist", 0.3)
 
+        final_query_bgc_nodes = query_bgc_network.get_nodes()
+        mock_query_bgc_pairs_conrefconref = RecordPairGenerator("Query_BGC")
+        query_bgc_pairs_conrefsinref.add_bgcs(final_query_bgc_nodes)
+
         # Output
-        legacy_prepare_bin_output(run.output.output_dir, run.label, 0.3, mix_bin)
+        # TODO: check whether query_bgc_pairs_conrefsinref bin works here
+        legacy_prepare_bin_output(
+            run.output.output_dir, run.label, 0.3, query_bgc_pairs_conrefsinref
+        )
 
         legacy_generate_bin_output(
-            run.output.output_dir, run.label, 0.3, mix_bin, mix_network
+            run.output.output_dir,
+            run.label,
+            0.3,
+            query_bgc_pairs_conrefsinref,
+            query_bgc_network,
         )
 
         query_bgc_network.write_graphml(
