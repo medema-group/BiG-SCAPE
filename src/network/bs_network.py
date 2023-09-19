@@ -124,32 +124,31 @@ class BSNetwork:
         """
         distance_table = DB.metadata.tables["distance"]
 
-        for region_a in self.graph.adj:
-            for region_b in self.graph.adj[region_a]:
-                edge_data = self.graph.adj[region_a][region_b]
+        for region_a, region_b in self.graph.edges:
+            edge_data = self.graph.adj[region_a][region_b]
 
-                upsert_statement = (
-                    insert(distance_table)
-                    .values(
-                        region_a_id=region_a._db_id,
-                        region_b_id=region_b._db_id,
-                        distance=edge_data["dist"],
-                        jaccard=edge_data["jc"],
-                        adjacency=edge_data["ai"],
-                        dss=edge_data["dss"],
-                    )
-                    .on_conflict_do_update(
-                        index_elements=["region_a_id", "region_b_id"],
-                        set_={
-                            "distance": edge_data["dist"],
-                            "jaccard": edge_data["jc"],
-                            "adjacency": edge_data["ai"],
-                            "dss": edge_data["dss"],
-                        },
-                    )
+            upsert_statement = (
+                insert(distance_table)
+                .values(
+                    region_a_id=region_a._db_id,
+                    region_b_id=region_b._db_id,
+                    distance=edge_data["dist"],
+                    jaccard=edge_data["jc"],
+                    adjacency=edge_data["ai"],
+                    dss=edge_data["dss"],
                 )
+                .on_conflict_do_update(
+                    index_elements=["region_a_id", "region_b_id"],
+                    set_={
+                        "distance": edge_data["dist"],
+                        "jaccard": edge_data["jc"],
+                        "adjacency": edge_data["ai"],
+                        "dss": edge_data["dss"],
+                    },
+                )
+            )
 
-                DB.execute(upsert_statement, False)
+            DB.execute(upsert_statement, False)
 
         if commit:
             DB.commit()
