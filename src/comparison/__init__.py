@@ -4,7 +4,6 @@ from .binning import (
     RecordPairGenerator,
     RecordPairGeneratorQueryRef,
     RecordPairGeneratorConRefSinRef,
-    RecordPairGeneratorGivenNodeSinRef,
     generate_mix,
 )
 from .comparable_region import ComparableRegion
