@@ -153,63 +153,63 @@ if __name__ == "__main__":
         # this sorts all CDS and then filters them using the old filtering system, which
         # is less efficient than the flitering using the CDS.add_hsp_overlap_filter
         # method. however, that method seems to be broken somehow
-        all_hsps = []
-        for gbk in gbks:
-            for cds in gbk.genes:
-                cds.hsps = sorted(cds.hsps)
-                all_hsps.extend(
-                    [hsp.domain for hsp in legacy_filter_overlap(cds.hsps, 0.1)]
-                )
+    all_hsps = []
+    for gbk in gbks:
+        for cds in gbk.genes:
+            cds.hsps = sorted(cds.hsps)
+            all_hsps.extend(
+                [hsp.domain for hsp in legacy_filter_overlap(cds.hsps, 0.1)]
+            )
 
-        all_hsps = []
-        for cds in all_cds:
-            all_hsps.extend(cds.hsps)
+    all_hsps = []
+    for cds in all_cds:
+        all_hsps.extend(cds.hsps)
 
-        logging.info("%d hsps", len(all_hsps))
+    logging.info("%d hsps", len(all_hsps))
 
-        exec_time = datetime.now() - start_time
-        logging.info("scan done at %f seconds", exec_time.total_seconds())
+    exec_time = datetime.now() - start_time
+    logging.info("scan done at %f seconds", exec_time.total_seconds())
 
-        HMMer.unload()
+    HMMer.unload()
 
-        # save hsps to database
-        for new_hsp in all_hsps:
-            new_hsp.save(False)
-        DB.commit()
+    # save hsps to database
+    for new_hsp in all_hsps:
+        new_hsp.save(False)
+    DB.commit()
 
-        exec_time = datetime.now() - start_time
-        logging.info("DB: HSP save done at %f seconds", exec_time.total_seconds())
+    exec_time = datetime.now() - start_time
+    logging.info("DB: HSP save done at %f seconds", exec_time.total_seconds())
 
-        # HMMER - Align
+    # HMMER - Align
 
-        HMMer.init(run.input.pfam_path, False)
+    HMMer.init(run.input.pfam_path, False)
 
-        HMMer.align_simple(all_hsps)
+    HMMer.align_simple(all_hsps)
 
-        all_alignments = list()
-        for cds in all_cds:
-            for hsp in cds.hsps:
-                if hsp.alignment is None:
-                    continue
-                all_alignments.append(hsp.alignment)
+    all_alignments = list()
+    for cds in all_cds:
+        for hsp in cds.hsps:
+            if hsp.alignment is None:
+                continue
+            all_alignments.append(hsp.alignment)
 
-        logging.info("%d alignments", len(all_alignments))
+    logging.info("%d alignments", len(all_alignments))
 
-        exec_time = datetime.now() - start_time
-        logging.info("align done at %f seconds", exec_time.total_seconds())
+    exec_time = datetime.now() - start_time
+    logging.info("align done at %f seconds", exec_time.total_seconds())
 
-        HMMer.unload()
+    HMMer.unload()
 
-        for hsp_alignment in all_alignments:
-            hsp_alignment.save(False)
-        DB.commit()
+    for hsp_alignment in all_alignments:
+        hsp_alignment.save(False)
+    DB.commit()
 
-        exec_time = datetime.now() - start_time
-        logging.info(
-            "DB: HSP alignment save done at %f seconds", exec_time.total_seconds()
-        )
+    exec_time = datetime.now() - start_time
+    logging.info(
+        "DB: HSP alignment save done at %f seconds", exec_time.total_seconds()
+    )
 
-        DB.save_to_disk(run.output.db_path)
+    DB.save_to_disk(run.output.db_path)
 
     # prepare output files
     legacy_prepare_output(run.output.output_dir, pfam_info)
@@ -220,7 +220,7 @@ if __name__ == "__main__":
 
     # networking - mix
 
-    if not run.binning.no_mix:
+    if not run.binning.no_mix and not run.binning.query_bgc_path:
         logging.info("Generating mix bin")
 
         mix_bgc_records: list[BGCRecord] = []
