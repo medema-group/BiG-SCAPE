@@ -201,8 +201,8 @@ def parse_cmd(args):  # pragma: no cover
     # binning parameters
 
     parser.add_argument(
-        "--mix",
-        dest="binning.mix",
+        "--no_mix",
+        dest="binning.no_mix",
         default=False,
         action="store_true",
         help="Run an all-vs-all analysis",
@@ -210,14 +210,20 @@ def parse_cmd(args):  # pragma: no cover
     )
 
     parser.add_argument(
-        "--legacy_no_classify",
-        dest="binning.legacy_no_classify",
+        "--legacy_cassify",
+        dest="binning.legacy_classify",
         default=False,
         action="store_true",
-        help="Does not use antiSMASH/BGC classes to run analyses on class-based bins.",
-        # TODO: needs to become just --no_classify, add a --legacy_classify and
-        # default becomes either --mix or --classify (BGS2 mode, based on
-        # As classes and not Jorge's classes)
+        help="Does not use antiSMASH/BGC classes to run analyses on class-based bins,"
+        "instead it uses BiG-SCAPEv1 predefined groups.",
+    )
+
+    parser.add_argument(
+        "--classify",
+        dest="binning.classify",
+        default=False,
+        action="store_true",
+        help="Use antiSMASH/BGC classes to run analyses on class-based bins. Default: True",
     )
 
     parser.add_argument(

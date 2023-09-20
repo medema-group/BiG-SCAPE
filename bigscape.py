@@ -76,16 +76,6 @@ if __name__ == "__main__":
         # start DB
         DB.create_in_mem()
 
-    # get reference if either MIBiG version or user-made reference dir passed
-    if run.input.mibig_version:
-        mibig_version_dir = get_mibig(run.input.mibig_version, bigscape_dir)
-        mibig_gbks = load_dataset_folder(mibig_version_dir, SOURCE_TYPE.MIBIG)
-
-    if run.input.reference_dir:
-        reference_gbks = load_dataset_folder(
-            run.input.reference_dir, SOURCE_TYPE.REFERENCE
-        )
-
     if run.binning.query_bgc_path:
         query_bgc_gbk = GBK(run.binning.query_bgc_path, SOURCE_TYPE.QUERY)
 
@@ -110,8 +100,17 @@ if __name__ == "__main__":
             run.input.cds_overlap_cutoff,
         )
 
-    gbks.extend(reference_gbks)
-    gbks.extend(mibig_gbks)
+    # get reference if either MIBiG version or user-made reference dir passed
+    if run.input.mibig_version:
+        mibig_version_dir = get_mibig(run.input.mibig_version, bigscape_dir)
+        mibig_gbks = load_dataset_folder(mibig_version_dir, SOURCE_TYPE.MIBIG)
+        gbks.extend(mibig_gbks)
+
+    if run.input.reference_dir:
+        reference_gbks = load_dataset_folder(
+            run.input.reference_dir, SOURCE_TYPE.REFERENCE
+        )
+        gbks.extend(reference_gbks)
 
     all_cds: list[CDS] = []
     for gbk in gbks:
@@ -221,7 +220,7 @@ if __name__ == "__main__":
 
     # networking - mix
 
-    if run.binning.mix:
+    if not run.binning.no_mix:
         logging.info("Generating mix bin")
 
         mix_bgc_records: list[BGCRecord] = []
@@ -423,7 +422,7 @@ if __name__ == "__main__":
 
     # networking - bins
 
-    if not run.binning.legacy_no_classify and not run.binning.query_bgc_path:
+    if run.binning.legacy_classify:
         logging.info("Generating legacy bins")
         for bin in legacy_bin_generator(gbks):
             if bin.num_pairs() == 0:
@@ -471,7 +470,7 @@ if __name__ == "__main__":
             )
 
             # if running mix, distances are already in the database
-            if run.binning.mix:
+            if run.binning.no_mix:
                 continue
 
             bin_network.export_distances_to_db()
