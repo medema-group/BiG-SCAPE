@@ -158,7 +158,14 @@ class RecordPairGeneratorQueryRef(RecordPairGenerator):
 
 class RecordPairGeneratorConRefSinRef(RecordPairGenerator):
     """Describes a bin of BGCs to generate pairs from, pair generation is limited to connected-ref
-    to singleton ref nodes"""
+    to singleton ref nodes
+
+    Args:
+        label (str): Label for this bin
+        source_records (list[BGCRecord]): List of BGCs to generate pairs from
+        network (BSNetwork, optional): A network object to use for fetching connected and
+        singleton nodes from. Also used for filtering out pairs that already have an edge
+    """
 
     def __init__(self, label: str, network: BSNetwork):
         super().__init__(label)
@@ -175,7 +182,9 @@ class RecordPairGeneratorConRefSinRef(RecordPairGenerator):
         ]
 
     def recalculate_nodes(self):
-        """thing for now"""
+        """Recalculate new connected nodes and new singleton nodes for this bin, so that pair and edge
+        generation are only performed on new connected vs new singleton nodes
+        """
 
         new_ref_singletons = self.network.get_singletons(
             node_types=[SOURCE_TYPE.REFERENCE, SOURCE_TYPE.MIBIG]
