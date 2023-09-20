@@ -472,6 +472,47 @@ function Bigscape(bs_data, bs_families, bs_alignment, bs_similarity, network_con
   return this;
 }
 
+// network filtering helpers
+BigscapeFunc.filterUtil = {
+  transl_syntax: {
+    "AND": "$and",
+    "OR": "$or"
+  }
+}
+
+BigscapeFunc.filterUtil.formatLeaf = function (target, search_terms) {
+  // restrict to specific term if given
+  if (target.indexOf("[") > 0) {
+    var search = target.slice(0, target.indexOf("["))
+    var term = target.slice(target.indexOf("[") + 1, -1)
+    return { [term]: search }
+  } else {
+    // otherwise, add all possible terms
+    var leaf = []
+    for (var term of search_terms) {
+      leaf.push({ [term]: target })
+    }
+    return { $or: leaf }
+  }
+}
+
+BigscapeFunc.filterUtil.formatFuseQuery = function (branch, terms, criteria = {}) {
+  // convert nested search tree into Fuse format
+  if (typeof branch === "string") {
+    var leaf = BigscapeFunc.filterUtil.formatLeaf(branch, terms)
+    return leaf
+  }
+  var left = branch["left"]
+  var right = branch["right"]
+  var lcrit = []
+  var rcrit = []
+  criteria[BigscapeFunc.filterUtil.transl_syntax[branch["operator"]]] = [
+    BigscapeFunc.filterUtil.formatFuseQuery(left, terms, lcrit),
+    BigscapeFunc.filterUtil.formatFuseQuery(right, terms, rcrit)
+  ]
+  return criteria
+}
+
 // input: VivaGraph graph object, network container jQuery object, on/off
 BigscapeFunc.showSingletons = function (graph, graphics, net_ui, isOn) {
   if (!isOn) { // show
