@@ -480,6 +480,65 @@ BigscapeFunc.filterUtil = {
   }
 }
 
+BigscapeFunc.filterUtil.tokenize = function (string) {
+  // split on spaces and brackets but keep brackets as tokens
+  var tokens = string.split(/ |(?=[)(])|(?<=[)(])/g)
+  return tokens
+}
+
+BigscapeFunc.filterUtil.findBrackets = function (tokens) {
+  // find all bracket indices
+  var opens = tokens.map((e, i) => e === "(" ? i : '').filter(String)
+  var closes = tokens.map((e, i) => e === ")" ? i : '').filter(String)
+  return [opens, closes]
+}
+
+BigscapeFunc.filterUtil.findGroup = function (opens, closes) {
+  // find end index of first top-level bracket grouping
+  for (var i = opens.length - 1; i >= 0; i--) {
+    if (opens[i] < closes[0]) {
+      return closes[i]
+    }
+  }
+}
+
+BigscapeFunc.filterUtil.parseTokens = function (tokens, tree = {}) {
+  // parse logic search string into nested tree
+  if (typeof tokens === "string") {
+    return tokens
+  }
+  if (typeof tokens === "object" && tokens.length === 1) {
+    return tokens[0]
+  }
+  if (tokens[0] === "(") {
+    var [opens, closes] = BigscapeFunc.filterUtil.findBrackets(tokens)
+    var end = BigscapeFunc.filterUtil.findGroup(opens, closes)
+
+    if (end === tokens.length - 1) {
+      var left = tokens[1]
+      var keyword = tokens[2]
+      var right = tokens.slice(3, -1)
+    } else {
+      var left = tokens.slice(1, end)
+      var keyword = tokens[end + 1]
+      var right = tokens.slice(end + 2)
+    }
+  } else {
+    var left = tokens[0]
+    var keyword = tokens[1]
+    var right = tokens.slice(2)
+
+  }
+  var left_branch = {}
+  var right_branch = {}
+  var tree = {
+    "operator": keyword,
+    "left": BigscapeFunc.filterUtil.parseTokens(left, left_branch),
+    "right": BigscapeFunc.filterUtil.parseTokens(right, right_branch)
+  }
+  return tree
+}
+
 BigscapeFunc.filterUtil.formatLeaf = function (target, search_terms) {
   // restrict to specific term if given
   if (target.indexOf("[") > 0) {
