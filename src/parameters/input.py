@@ -30,7 +30,6 @@ class InputParameters:
         metadata_path: Optional[Path]
         dataset_path: Optional[Path]
         reference_dir: Optional[Path]
-        query_bgc_path: Optional[Path]
         include_gbk: list[str]
         exclude_gbk: list[str]
         min_bgc_length: int
@@ -51,7 +50,6 @@ class InputParameters:
         self.metadata_path: Optional[Path] = None
         self.dataset_path: Optional[Path] = None
         self.reference_dir: Optional[Path] = None
-        self.query_bgc_path: Optional[Path] = None
 
         # filtering
         # TODO: test

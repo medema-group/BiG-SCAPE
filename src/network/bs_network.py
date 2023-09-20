@@ -5,7 +5,7 @@ manipulate this network
 
 # from dependencies
 import logging
-from typing import Any
+from typing import Any, Optional
 from pathlib import Path
 from typing import Iterator
 from networkx import Graph, connected_components
@@ -17,6 +17,7 @@ from sqlalchemy.dialects.sqlite import insert
 from src.data import DB
 from src.genbank import BGCRecord
 from src.comparison import BGCPair
+from src.enums import SOURCE_TYPE
 
 # from this module
 from .affinity_propagation import sim_matrix_from_graph, aff_sim_matrix
@@ -80,6 +81,70 @@ class BSNetwork:
             )
 
         self.graph.add_edge(u_of_edge=region_a, v_of_edge=region_b, **attr)
+
+    def get_nodes(
+        self, node_types: Optional[list[SOURCE_TYPE]] = None
+    ) -> list[BGCRecord]:
+        """Returns a list of all nodes in the network.
+          If a node type is specified, only node of that kind are returned
+
+        Args:
+            node_type (Optional[SOURCE_TYPE], optional): source type of parent gbk. Defaults to None.
+
+        Returns:
+            list: nodes
+
+        """
+        graph = self.graph
+        nodes = list(graph.nodes)
+
+        filtered_nodes = nodes
+
+        if node_types is not None:
+            filtered_nodes = []
+            for node_type in node_types:
+                if not isinstance(node_type, SOURCE_TYPE):
+                    raise ValueError("node_type must be of type SOURCE_TYPE")
+                nodes_type = filter(
+                    lambda node: node.parent_gbk.source_type == node_type, nodes
+                )
+                filtered_nodes.extend(nodes_type)
+
+        return filtered_nodes
+
+    def get_singletons(
+        self, node_types: Optional[list[SOURCE_TYPE]] = None
+    ) -> list[BGCRecord]:
+        """Returns a list of all nodes in the network that are singletons.
+
+        Args:
+            node_types (Optional[list[SOURCE_TYPE]], optional): type of parent gbk. Defaults to None.
+
+        Returns:
+            list[BGCRecord]: list of nodes
+        """
+
+        singletons = []
+
+        nodes = self.get_nodes(node_types=node_types)
+
+        for node in nodes:
+            if list(self.graph.edges(node)) == []:
+                singletons.append(node)
+
+        return singletons
+
+    def cull_singletons(self, node_types: Optional[list[SOURCE_TYPE]] = None) -> None:
+        """Removes all singletons from the network (of given source type, if specified.)
+
+        Args:
+            node_types (Optional[list[SOURCE_TYPE]], optional): parent gbk source type. Defaults to None.
+        """
+        network = self.graph
+
+        singletons = self.get_singletons(node_types=node_types)
+
+        network.remove_nodes_from(singletons)
 
     def generate_families_cutoff(self, edge_property: str, cutoff: float) -> None:
         """Generate the families for nodes in a network, using a given cutoff for a property that is

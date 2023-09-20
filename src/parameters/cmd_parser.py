@@ -122,14 +122,6 @@ def parse_cmd(args):  # pragma: no cover
     )
 
     parser.add_argument(
-        "--query_bgc_path",
-        dest="input.query_bgc_path",
-        type=Path,
-        help="Path to location of query BGC gbk file. When provided, BiG-SCAPE\
-            will compare, all input BGCs to the query in a one-vs-all mode.",
-    )
-
-    parser.add_argument(
         "--include_gbk",
         dest="input.include_gbk",
         default=["cluster", "region"],
@@ -209,8 +201,8 @@ def parse_cmd(args):  # pragma: no cover
     # binning parameters
 
     parser.add_argument(
-        "--mix",
-        dest="binning.mix",
+        "--no_mix",
+        dest="binning.no_mix",
         default=False,
         action="store_true",
         help="Run an all-vs-all analysis",
@@ -218,11 +210,28 @@ def parse_cmd(args):  # pragma: no cover
     )
 
     parser.add_argument(
-        "--legacy_no_classify",
-        dest="binning.legacy_no_classify",
+        "--legacy_cassify",
+        dest="binning.legacy_classify",
         default=False,
         action="store_true",
-        help="Run analyses on bins as in BiG-SCAPE 1.0",
+        help="Does not use antiSMASH/BGC classes to run analyses on class-based bins,"
+        "instead it uses BiG-SCAPEv1 predefined groups.",
+    )
+
+    parser.add_argument(
+        "--classify",
+        dest="binning.classify",
+        default=False,
+        action="store_true",
+        help="Use antiSMASH/BGC classes to run analyses on class-based bins. Default: True",
+    )
+
+    parser.add_argument(
+        "--query_bgc_path",
+        dest="binning.query_bgc_path",
+        type=Path,
+        help="Path to location of query BGC gbk file. When provided, BiG-SCAPE\
+            will compare, all input BGCs to the query in a one-vs-all mode.",
     )
 
     # comparison parameters

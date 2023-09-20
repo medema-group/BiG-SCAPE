@@ -12,9 +12,13 @@ from src.genbank import BGCRecord, CDS, GBK
 from src.hmm import HMMer, legacy_filter_overlap, HSP
 from src.parameters import RunParameters, parse_cmd
 from src.comparison import (
+    RecordPairGenerator,
+    RecordPairGeneratorQueryRef,
+    RecordPairGeneratorConRefSinRef,
     generate_mix,
     legacy_bin_generator,
     create_bin_network_edges_alt as create_bin_network_edges,
+    # Alt is an alternative multiprocessing implementation
 )
 from src.file_input import load_dataset_folder, get_mibig
 from src.diagnostics import Profiler
@@ -71,24 +75,41 @@ if __name__ == "__main__":
         # start DB
         DB.create_in_mem()
 
+    if run.binning.query_bgc_path:
+        query_bgc_gbk = GBK(run.binning.query_bgc_path, SOURCE_TYPE.QUERY)
+
+        gbks = load_dataset_folder(
+            run.input.input_dir,
+            SOURCE_TYPE.REFERENCE,
+            run.input.input_mode,
+            run.input.include_gbk,
+            run.input.exclude_gbk,
+            run.input.cds_overlap_cutoff,
+        )
+
+        gbks.append(query_bgc_gbk)
+
+    else:
+        gbks = load_dataset_folder(
+            run.input.input_dir,
+            SOURCE_TYPE.QUERY,
+            run.input.input_mode,
+            run.input.include_gbk,
+            run.input.exclude_gbk,
+            run.input.cds_overlap_cutoff,
+        )
+
     # get reference if either MIBiG version or user-made reference dir passed
     if run.input.mibig_version:
         mibig_version_dir = get_mibig(run.input.mibig_version, bigscape_dir)
         mibig_gbks = load_dataset_folder(mibig_version_dir, SOURCE_TYPE.MIBIG)
+        gbks.extend(mibig_gbks)
 
     if run.input.reference_dir:
         reference_gbks = load_dataset_folder(
             run.input.reference_dir, SOURCE_TYPE.REFERENCE
         )
-
-    gbks = load_dataset_folder(
-        run.input.input_dir,
-        SOURCE_TYPE.QUERY,
-        run.input.input_mode,
-        run.input.include_gbk,
-        run.input.exclude_gbk,
-        run.input.cds_overlap_cutoff,
-    )
+        gbks.extend(reference_gbks)
 
     all_cds: list[CDS] = []
     for gbk in gbks:
@@ -131,63 +152,61 @@ if __name__ == "__main__":
         # this sorts all CDS and then filters them using the old filtering system, which
         # is less efficient than the flitering using the CDS.add_hsp_overlap_filter
         # method. however, that method seems to be broken somehow
-        all_hsps = []
-        for gbk in gbks:
-            for cds in gbk.genes:
-                cds.hsps = sorted(cds.hsps)
-                all_hsps.extend(
-                    [hsp.domain for hsp in legacy_filter_overlap(cds.hsps, 0.1)]
-                )
+    all_hsps = []
+    for gbk in gbks:
+        for cds in gbk.genes:
+            cds.hsps = sorted(cds.hsps)
+            all_hsps.extend(
+                [hsp.domain for hsp in legacy_filter_overlap(cds.hsps, 0.1)]
+            )
 
-        all_hsps = []
-        for cds in all_cds:
-            all_hsps.extend(cds.hsps)
+    all_hsps = []
+    for cds in all_cds:
+        all_hsps.extend(cds.hsps)
 
-        logging.info("%d hsps", len(all_hsps))
+    logging.info("%d hsps", len(all_hsps))
 
-        exec_time = datetime.now() - start_time
-        logging.info("scan done at %f seconds", exec_time.total_seconds())
+    exec_time = datetime.now() - start_time
+    logging.info("scan done at %f seconds", exec_time.total_seconds())
 
-        HMMer.unload()
+    HMMer.unload()
 
-        # save hsps to database
-        for new_hsp in all_hsps:
-            new_hsp.save(False)
-        DB.commit()
+    # save hsps to database
+    for new_hsp in all_hsps:
+        new_hsp.save(False)
+    DB.commit()
 
-        exec_time = datetime.now() - start_time
-        logging.info("DB: HSP save done at %f seconds", exec_time.total_seconds())
+    exec_time = datetime.now() - start_time
+    logging.info("DB: HSP save done at %f seconds", exec_time.total_seconds())
 
-        # HMMER - Align
+    # HMMER - Align
 
-        HMMer.init(run.input.pfam_path, False)
+    HMMer.init(run.input.pfam_path, False)
 
-        HMMer.align_simple(all_hsps)
+    HMMer.align_simple(all_hsps)
 
-        all_alignments = list()
-        for cds in all_cds:
-            for hsp in cds.hsps:
-                if hsp.alignment is None:
-                    continue
-                all_alignments.append(hsp.alignment)
+    all_alignments = list()
+    for cds in all_cds:
+        for hsp in cds.hsps:
+            if hsp.alignment is None:
+                continue
+            all_alignments.append(hsp.alignment)
 
-        logging.info("%d alignments", len(all_alignments))
+    logging.info("%d alignments", len(all_alignments))
 
-        exec_time = datetime.now() - start_time
-        logging.info("align done at %f seconds", exec_time.total_seconds())
+    exec_time = datetime.now() - start_time
+    logging.info("align done at %f seconds", exec_time.total_seconds())
 
-        HMMer.unload()
+    HMMer.unload()
 
-        for hsp_alignment in all_alignments:
-            hsp_alignment.save(False)
-        DB.commit()
+    for hsp_alignment in all_alignments:
+        hsp_alignment.save(False)
+    DB.commit()
 
-        exec_time = datetime.now() - start_time
-        logging.info(
-            "DB: HSP alignment save done at %f seconds", exec_time.total_seconds()
-        )
+    exec_time = datetime.now() - start_time
+    logging.info("DB: HSP alignment save done at %f seconds", exec_time.total_seconds())
 
-        DB.save_to_disk(run.output.db_path)
+    DB.save_to_disk(run.output.db_path)
 
     # prepare output files
     legacy_prepare_output(run.output.output_dir, pfam_info)
@@ -198,19 +217,19 @@ if __name__ == "__main__":
 
     # networking - mix
 
-    if run.binning.mix:
+    if not run.binning.no_mix and not run.binning.query_bgc_path:
         logging.info("Generating mix bin")
 
+        mix_bgc_records: list[BGCRecord] = []
         mix_network = BSNetwork()
-        all_regions: list[BGCRecord] = []
+
         for gbk in gbks:
             if gbk.region is not None:
-                all_regions.append(gbk.region)
+                mix_bgc_records.append(gbk.region)
                 mix_network.add_node(gbk.region)
 
-        mix_bin = generate_mix(all_regions)
-
-        legacy_prepare_bin_output(run.output.output_dir, run.label, 0.3, mix_bin)
+        # needs to be generalized
+        mix_bin = generate_mix(mix_bgc_records)
 
         logging.info(mix_bin)
 
@@ -229,9 +248,16 @@ if __name__ == "__main__":
             mix_bin, mix_network, run.comparison.alignment_mode, run.cores, callback
         )
 
+        mix_network.cull_singletons(
+            node_types=[SOURCE_TYPE.MIBIG, SOURCE_TYPE.REFERENCE]
+        )
+
         mix_network.generate_families_cutoff("dist", 0.3)
 
+        # TODO: cull ref singletons again, for each family subgraph
+
         # Output
+        legacy_prepare_bin_output(run.output.output_dir, run.label, 0.3, mix_bin)
 
         legacy_generate_bin_output(
             run.output.output_dir, run.label, 0.3, mix_bin, mix_network
@@ -242,9 +268,119 @@ if __name__ == "__main__":
 
         mix_network.export_distances_to_db()
 
+    # networking - query
+
+    if run.binning.query_bgc_path:
+        logging.info("Generating query BGC mode bin")
+
+        query_bgc_network = BSNetwork()
+        query_bgcs_records: list[BGCRecord] = []
+
+        for gbk in gbks:
+            if gbk.region is not None:
+                query_bgcs_records.append(gbk.region)
+                query_bgc_network.add_node(gbk.region)
+
+        # all query <-> query and query <-> ref pairs
+        query_bgc_pairs_queryref = RecordPairGeneratorQueryRef("Query_Ref")
+        query_bgc_pairs_queryref.add_bgcs(query_bgcs_records)
+
+        #   create edges (query <-> query & ref edges)
+        create_bin_network_edges(
+            query_bgc_pairs_queryref,
+            query_bgc_network,
+            run.comparison.alignment_mode,
+            run.cores,
+            callback,
+        )
+
+        # create firstly all con_ref <-> sin_ref pairs and add edges in network
+        query_bgc_pairs_conrefsinref = RecordPairGeneratorConRefSinRef(
+            "ConRef_SinRef", query_bgc_network
+        )
+        query_bgc_pairs_conrefsinref.add_bgcs(query_bgcs_records)
+        create_bin_network_edges(
+            query_bgc_pairs_conrefsinref,
+            query_bgc_network,
+            run.comparison.alignment_mode,
+            run.cores,
+            callback,
+        )
+
+        # get newly connected ref nodes, and recalculate nodes as to only compare new connected
+        # refs to new singletons, to avoid double calculations
+        query_bgc_pairs_conrefsinref.recalculate_nodes()
+
+        old_nr_of_edges = 0
+        new_nr_of_edges = query_bgc_network.graph.number_of_edges()
+
+        # propagate network with new connected ref <-> new singletons until no new edges are added
+        while new_nr_of_edges > old_nr_of_edges:
+            old_nr_of_edges = new_nr_of_edges
+
+            create_bin_network_edges(
+                query_bgc_pairs_conrefsinref,
+                query_bgc_network,
+                run.comparison.alignment_mode,
+                run.cores,
+                callback,
+            )
+
+            query_bgc_pairs_conrefsinref.recalculate_nodes()
+            new_nr_of_edges = query_bgc_network.graph.number_of_edges()
+
+        #   cull leftover ref singletons
+        query_bgc_network.cull_singletons(
+            node_types=[SOURCE_TYPE.REFERENCE, SOURCE_TYPE.MIBIG]
+        )
+
+        all_current_nodes = query_bgc_network.get_nodes()
+
+        # make pairs and add missing edges with all-vs-all pain_generator
+        query_bgc_pairs_conrefconref = RecordPairGenerator("ConRef_ConRef")
+        query_bgc_pairs_conrefsinref.add_bgcs(all_current_nodes)
+        create_bin_network_edges(
+            query_bgc_pairs_conrefconref,
+            query_bgc_network,
+            run.comparison.alignment_mode,
+            run.cores,
+            callback,
+        )
+
+        # generate families
+        # TODO: cull ref singletons again, for each family subgraph
+        query_bgc_network.generate_families_cutoff("dist", 0.3)
+
+        final_query_bgc_nodes = query_bgc_network.get_nodes()
+        mock_query_bgc_pairs_conrefconref = RecordPairGenerator("Query_BGC")
+        query_bgc_pairs_conrefsinref.add_bgcs(final_query_bgc_nodes)
+
+        # Output
+        # TODO: check whether query_bgc_pairs_conrefsinref bin works here
+        legacy_prepare_bin_output(
+            run.output.output_dir, run.label, 0.3, query_bgc_pairs_conrefsinref
+        )
+
+        legacy_generate_bin_output(
+            run.output.output_dir,
+            run.label,
+            0.3,
+            query_bgc_pairs_conrefsinref,
+            query_bgc_network,
+        )
+
+        query_bgc_network.write_graphml(
+            run.output.output_dir / Path("network_mix.graphml")
+        )
+        query_bgc_network.write_edgelist_tsv(
+            run.output.output_dir / Path("network_mix.tsv")
+        )
+
+        query_bgc_network.export_distances_to_db()
+
     # networking - bins
 
-    if not run.binning.legacy_no_classify:
+    if run.binning.legacy_classify:
         logging.info("Generating legacy bins")
         for bin in legacy_bin_generator(gbks):
             if bin.num_pairs() == 0:
@@ -292,7 +428,7 @@ if __name__ == "__main__":
             )
 
             # if running mix, distances are already in the database
-            if run.binning.mix:
+            if run.binning.no_mix:
                 continue
 
             bin_network.export_distances_to_db()
