@@ -26,25 +26,10 @@ function Bigscape(bs_data, bs_families, bs_alignment, bs_similarity, network_con
     bs_svg.push(svg);
   }
   // for search optimization
-  for (var i in bs_families) {
-    bs_families[i]["idx"] = i;
-  }
-  var bs_pfam = [];
-  for (var i in bs_data) {
-    bs_data[i]["idx"] = i;
-    for (var j in bs_data[i]["orfs"]) {
-      for (var k in bs_data[i]["orfs"][j]["domains"]) {
-        var pfam = bs_data[i]["orfs"][j]["domains"][k]["code"];
-        var bspf = bs_pfam.find(function (bsp) { return bsp["code"] === pfam; });
-        if (bspf === undefined) {
-          bspf = { idx: bs_pfam.length, code: pfam, bgc: [i] };
-          bs_pfam.push(bspf);
-        } else {
-          if (bspf["bgc"].indexOf(i) < 0) {
-            bspf["bgc"].push(i);
-          }
-        }
-      }
+  for (fam of bs_families) {
+    for (member of fam["members"]) {
+      bs_data[member]["family"] = fam["id"]
+      bs_data[member]["idx"] = member
     }
   }
   $("#" + network_container).html("<div class='network-layer' style='position: fixed; top: 0; left: 0; bottom: 0; right: 0;'><div class='network-overlay' style='display: none; position: fixed; top: 0; left: 0; bottom: 0; right: 0;'>");
