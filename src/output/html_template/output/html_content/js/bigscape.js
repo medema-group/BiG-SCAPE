@@ -80,10 +80,10 @@ function Bigscape(bs_data, bs_families, bs_alignment, bs_similarity, network_con
   var search_ui = $("<div class='' style='margin-top: 2px;'></div>");
   var search_bar = $("<input type='text'>");
   var search_result_ui = $("<div class='search-result hidden'></div>");
-  search_bar.keyup({ bigscape: bigscape, bs_data: bs_data, bs_families: bs_families, bs_pfam: bs_pfam, search_result_ui: search_result_ui }, function (handler) {
-    var keyword = handler.target.value;
-    var bigscape = handler.data.bigscape;
-    if (keyword.length > 0) {
+  search_bar.keyup({ bigscape: bigscape, bs_data: bs_data, bs_families: bs_families, search_result_ui: search_result_ui }, function (handler) {
+    var search_string = handler.target.value;
+
+    if (search_string.length > 0) {
       search_result_ui.html("");
       var fuse_options = {
         id: "idx",
@@ -93,67 +93,27 @@ function Bigscape(bs_data, bs_families, bs_alignment, bs_similarity, network_con
         threshold: 0,
         location: 0,
         distance: 100,
-        maxPatternLength: 32,
-        minMatchCharLength: 1,
+        keys: ["family", "id", "orfs.domains.code"] // searchable tags
       };
-      // ...
-      fuse_options["keys"] = ["id"];
-      var fuse_bgcfam = new Fuse(handler.data.bs_families, fuse_options);
-      var res_bgcfam = fuse_bgcfam.search(keyword);
-      var sels_bgcfam = [];
-      for (var i in res_bgcfam) {
-        var ob = handler.data.bs_families[parseInt(res_bgcfam[i]["item"])];
-        for (var j in ob["members"]) {
-          var bi = parseInt(ob["members"][j]);
-          if (sels_bgcfam.indexOf(bi) < 0) {
-            sels_bgcfam.push(bi);
-          }
+      var search_tokens = BigscapeFunc.filterUtil.tokenize(search_string);
+      var search_tree = BigscapeFunc.filterUtil.parseTokens(search_tokens);
+      var fuse_query = BigscapeFunc.filterUtil.formatFuseQuery(search_tree, fuse_options["keys"]);
+      var fuse = new Fuse(bs_data, fuse_options);
+      var res = fuse.search(fuse_query);
+      var sels_nodes = [];
+      for (i in res) {
+        var ob_id = parseInt(res[i]["item"]["idx"])
+        if (sels_nodes.indexOf(ob_id) < 0) {
+          sels_nodes.push(ob_id)
         }
       }
-      var div_bgcfam = $("<div>" + res_bgcfam.length + " Families (<a class='selectbgcs' href='##'>select</a>)</div>");
-      div_bgcfam.find("a.selectbgcs").click({ bigscape: bigscape, sels: sels_bgcfam }, function (handler) {
+      var div_bgc_hits = $("<div>" + sels_nodes.length + " Hits (<a class='selectbgcs' href='##'>select</a>)</div>");
+      div_bgc_hits.find("a.selectbgcs").click({ bigscape: bigscape, sels: sels_nodes }, function (handler) {
         handler.data.bigscape.setHighlightedNodes(handler.data.sels);
         handler.data.bigscape.highlightNodes(handler.data.sels);
         handler.data.bigscape.updateDescription(handler.data.sels);
       });
-      search_result_ui.append(div_bgcfam);
-      //...
-      fuse_options["keys"] = ["id", "desc", "orfs.id"];
-      var fuse_bgc = new Fuse(handler.data.bs_data, fuse_options);
-      var res_bgc = fuse_bgc.search(keyword);
-      var sels_bgc = [];
-      for (var i in res_bgc) {
-        sels_bgc.push(parseInt(res_bgc[i]["item"]));
-      }
-      var div_bgc = $("<div>" + sels_bgc.length + " BGCs (<a class='selectbgcs' href='##'>select</a>)</div>");
-      div_bgc.find("a.selectbgcs").click({ bigscape: bigscape, sels: sels_bgc }, function (handler) {
-        handler.data.bigscape.setHighlightedNodes(handler.data.sels);
-        handler.data.bigscape.highlightNodes(handler.data.sels);
-        handler.data.bigscape.updateDescription(handler.data.sels);
-      });
-      search_result_ui.append(div_bgc);
-      //...
-      fuse_options["keys"] = ["code"];
-      var fuse_pfam = new Fuse(handler.data.bs_pfam, fuse_options);
-      var res_pfam = fuse_pfam.search(keyword);
-      var sels_pfam = [];
-      for (var i in res_pfam) {
-        var ob = handler.data.bs_pfam[parseInt(res_pfam[i]["item"])];
-        for (var j in ob["bgc"]) {
-          var bi = parseInt(ob["bgc"][j]);
-          if (sels_pfam.indexOf(bi) < 0) {
-            sels_pfam.push(bi);
-          }
-        }
-      }
-      var div_pfam = $("<div>" + res_pfam.length + " PFams (<a class='selectbgcs' href='##'>select</a>)</div>");
-      div_pfam.find("a.selectbgcs").click({ bigscape: bigscape, sels: sels_pfam }, function (handler) {
-        handler.data.bigscape.setHighlightedNodes(handler.data.sels);
-        handler.data.bigscape.highlightNodes(handler.data.sels);
-        handler.data.bigscape.updateDescription(handler.data.sels);
-      });
-      search_result_ui.append(div_pfam);
-      // ...
+      search_result_ui.append(div_bgc_hits);
       search_result_ui.removeClass("hidden");
     } else {
       search_result_ui.addClass("hidden");
