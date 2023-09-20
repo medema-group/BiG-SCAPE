@@ -7,7 +7,7 @@ from typing import Iterator
 from src.genbank import GBK, BGCRecord
 
 # from this module
-from .binning import BGCBin
+from .binning import RecordPairGenerator
 
 
 # weights are in the order JC, AI, DSS, Anchor boost
@@ -24,7 +24,9 @@ LEGACY_BINS = {
 }
 
 
-def legacy_bin_generator(gbks: list[GBK]) -> Iterator[BGCBin]:  # pragma no cover
+def legacy_bin_generator(
+    gbks: list[GBK],
+) -> Iterator[RecordPairGenerator]:  # pragma no cover
     """Generate bins for each class as they existed in the BiG-SCAPE 1.0 implementation
 
     Args:
@@ -52,7 +54,7 @@ def legacy_bin_generator(gbks: list[GBK]) -> Iterator[BGCBin]:  # pragma no cove
         class_idx[region_class].append(gbk.region)
 
     for class_name, regions in class_idx.items():
-        bin = BGCBin(class_name)
+        bin = RecordPairGenerator(class_name)
         bin.add_bgcs(regions)
         yield bin
 

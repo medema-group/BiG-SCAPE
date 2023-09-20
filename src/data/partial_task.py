@@ -19,7 +19,7 @@ import src.enums as bs_enums
 if TYPE_CHECKING:
     from src.genbank.gbk import GBK, CDS
     from src.hmm import HSP
-    from src.comparison.binning import BGCBin, BGCPair
+    from src.comparison.binning import RecordPairGenerator, BGCPair
 
 
 def find_minimum_task(gbks: list[GBK]):
@@ -77,6 +77,33 @@ def get_input_data_state(gbks: list[GBK]) -> bs_enums.INPUT_TASK:
 
     # otherwise there is some new data, some old data is missing
     return bs_enums.INPUT_TASK.MIXED_DATA
+
+
+def get_missing_gbks(gbks: list[GBK]) -> list[GBK]:
+    """Find which GBKs are missing from the database and return them
+
+    Args:
+        gbks (list[GBK]): List of GBKs to check
+
+    Returns:
+        list[GBK]: List of GBKs that are missing from the database
+    """
+    # dictionary of gbk path to gbk object
+    gbk_dict = {str(gbk.path): gbk for gbk in gbks}
+
+    gbk_table = DB.metadata.tables["gbk"]
+
+    # get set of gbks in database
+    db_gbk_rows = DB.execute(gbk_table.select()).all()
+    db_gbk_paths = set([db_gbk_row[1] for db_gbk_row in db_gbk_rows])
+
+    missing_gbks = []
+
+    for gbk_path in gbk_dict:
+        if gbk_path not in db_gbk_paths:
+            missing_gbks.append(gbk_dict[gbk_path])
+
+    return missing_gbks
 
 
 def get_hmm_data_state(gbks: list[GBK]) -> bs_enums.HMM_TASK:
@@ -185,7 +212,7 @@ def get_comparison_data_state(gbks: list[GBK]) -> bs_enums.COMPARISON_TASK:
     return bs_enums.COMPARISON_TASK.ALL_DONE
 
 
-def get_missing_distances(bin: BGCBin) -> Generator[BGCPair, None, None]:
+def get_missing_distances(bin: RecordPairGenerator) -> Generator[BGCPair, None, None]:
     """Get a generator of BGCPairs that are missing from a network
 
     Args:
@@ -207,13 +234,13 @@ def get_missing_distances(bin: BGCBin) -> Generator[BGCPair, None, None]:
     # generate a set of tuples of region id pairs
     existing_distances = set(DB.execute(select_statement).fetchall())
 
-    for pair in bin.pairs():
+    for pair in bin.generate_pairs():
         # if the pair is not in the set of existing distances, yield it
         if (pair.region_a._db_id, pair.region_b._db_id) not in existing_distances:
             yield pair
 
 
-def get_missing_distance_count(bin: BGCBin):
+def get_missing_distance_count(bin: RecordPairGenerator):
     """Get the number of missing distances in a bin
 
     Args:

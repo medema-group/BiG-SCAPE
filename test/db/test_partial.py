@@ -21,7 +21,7 @@ from src.data import get_missing_distances, get_missing_distance_count
 from src.genbank import GBK, CDS, Region
 from src.hmm import HSP, HSPAlignment, HMMer
 from src.network import BSNetwork
-from src.comparison import BGCBin, BGCPair
+from src.comparison import RecordPairGenerator, BGCPair
 import src.enums as bs_enums
 
 
@@ -470,7 +470,7 @@ class TestPartialComparison(TestCase):
         network.export_distances_to_db()
 
         # all-vs-all bin
-        mix_bin = BGCBin("mix")
+        mix_bin = RecordPairGenerator("mix")
         mix_bin.add_bgcs([gbk.region for gbk in gbks])
 
         expected_missing_pairs = [
@@ -508,7 +508,7 @@ class TestPartialComparison(TestCase):
         network.export_distances_to_db()
 
         # all-vs-all bin
-        mix_bin = BGCBin("mix")
+        mix_bin = RecordPairGenerator("mix")
         mix_bin.add_bgcs([gbk.region for gbk in gbks])
 
         expected_missing_count = 2
