@@ -462,8 +462,21 @@ BigscapeFunc.filterUtil.findGroup = function (opens, closes) {
   }
 }
 
+BigscapeFunc.filterUtil.trimBrackets = function (tokens) {
+  // trim extra brackets enclosing all tokens
+  if (tokens[0] === "(") {
+    var [opens, closes] = BigscapeFunc.filterUtil.findBrackets(tokens)
+    var end = BigscapeFunc.filterUtil.findGroup(opens, closes)
+    if (end === tokens.length - 1) {
+      var tokens = BigscapeFunc.filterUtil.trimBrackets(tokens.slice(1, -1))
+    }
+  }
+  return tokens
+}
+
 BigscapeFunc.filterUtil.parseTokens = function (tokens, tree = {}) {
   // parse logic search string into nested tree
+  var tokens = BigscapeFunc.filterUtil.trimBrackets(tokens)
   if (typeof tokens === "string") {
     return tokens
   }
