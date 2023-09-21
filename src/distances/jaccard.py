@@ -3,7 +3,7 @@
 
 # from other modules
 from typing import Any
-from src.comparison import BGCPair
+from src.comparison import RecordPair
 
 
 def calc_jaccard_sets(set_a: set[Any], set_b: set[Any]) -> float:
@@ -22,7 +22,7 @@ def calc_jaccard_sets(set_a: set[Any], set_b: set[Any]) -> float:
     return len(set_a & set_b) / len(set_a | set_b)
 
 
-def calc_jaccard_pair(bgc_pair: BGCPair, cache=True) -> float:
+def calc_jaccard_pair(bgc_pair: RecordPair, cache=True) -> float:
     """Generates the Jaccard index between a pair of BGCs
 
     Args:

@@ -15,7 +15,7 @@ from scipy.optimize import linear_sum_assignment
 
 # from other modules
 from src.parameters.constants import LEGACY_ANCHOR_DOMAINS
-from src.comparison import BGCPair
+from src.comparison import RecordPair
 
 # from this module
 
@@ -24,7 +24,7 @@ from src.comparison import BGCPair
 
 
 def get_distance_from_unshared(
-    bgc_pair: BGCPair, anchor_domains: set[str]
+    bgc_pair: RecordPair, anchor_domains: set[str]
 ) -> tuple[float, float]:  # pragma no cover
     """Get the distance for anchor and non-anchor domains for a pair of BGCs based upon
     the unshared domains. Each domain that is unshared adds 1.0 to either distance
@@ -198,7 +198,7 @@ def get_sum_seq_dist(
 
 
 def get_distance_from_shared(
-    bgc_pair: BGCPair, anchor_domains: set[str]
+    bgc_pair: RecordPair, anchor_domains: set[str]
 ) -> tuple[float, float, int, int]:  # pragma no cover
     """Get the DSS for the set of shared domains between bgcs of a pair, and return the number of
     anchor and non-anchor domains that were used in the calculation.
@@ -239,7 +239,7 @@ def get_distance_from_shared(
 
 
 def calc_dss_pair_legacy(
-    bgc_pair: BGCPair, anchor_domains: Optional[set[str]] = None, anchor_boost=1.0
+    bgc_pair: RecordPair, anchor_domains: Optional[set[str]] = None, anchor_boost=1.0
 ) -> float:  # pragma no cover
     """Calculate the DSS for a given pair based on how the BiG-SCAPE 1.0 implementation works
 

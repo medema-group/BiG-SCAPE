@@ -10,6 +10,10 @@ from networkx import Graph
 from sklearn.cluster import AffinityPropagation
 from sklearn.exceptions import ConvergenceWarning
 
+# from other modules
+from src.data import DB
+from src.comparison.binning import RecordPair
+
 
 def aff_sim_matrix(matrix):
     """Execute affinity propagation on a __similarity__ matrix
@@ -50,3 +54,42 @@ def sim_matrix_from_graph(graph: Graph, edge_property: str) -> ndarray:
     # have to convert from distances to similarity
     matrix = 1 - matrix
     return matrix
+
+
+def sim_matrix_from_edge_list(
+    edge_list: list[tuple[RecordPair, float, float, float, float]]
+) -> ndarray:
+    """Return a similarity matrix from a list of edges in the form of a numpy array
+
+    Args:
+        edge_list (list[tuple[BGCPair, float, float, float, float]]): list of edges
+
+    Returns:
+        ndarray: _description_
+    """
+    # get the number of regions
+    num_regions = len(set([pair.region_a for pair in edge_list]))
+
+    # initialize the matrix
+    matrix = [[0.0 for _ in range(num_regions)] for _ in range(num_regions)]
+
+    # populate the matrix
+    for pair, distance, _, _, _ in edge_list:
+        matrix[pair.region_a._db_id][pair.region_b._db_id] = 1 - distance
+        matrix[pair.region_b._db_id][pair.region_a._db_id] = 1 - distance
+
+    return matrix
+
+
+def save_families_to_db(edge_list, cutoff, families) -> None:
+    """Save families to the database
+
+    Args:
+        edge_list (list[tuple[BGCPair, float, float, float, float]]): list of edges
+        labels (list[int]): list of labels
+        centers (list[int]): list of centers
+    """
+
+    families_table = DB.metadata.tables["bgc_record_family"]
+
+    # save the entry to the database

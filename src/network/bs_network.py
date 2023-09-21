@@ -5,7 +5,7 @@ manipulate this network
 
 # from dependencies
 import logging
-from typing import Any, Optional
+from typing import Any, Optional, Generator
 from pathlib import Path
 from typing import Iterator
 from networkx import Graph, connected_components
@@ -16,7 +16,7 @@ from sqlalchemy.dialects.sqlite import insert
 # from other modules
 from src.data import DB
 from src.genbank import BGCRecord
-from src.comparison import BGCPair
+from src.comparison import RecordPair
 from src.enums import SOURCE_TYPE
 
 # from this module
@@ -42,7 +42,7 @@ class BSNetwork:
         # method into a keyword argument set
         self.graph.add_node(node, **node.get_attr_dict())
 
-    def add_edge_pair(self, pair: BGCPair, **attr) -> None:
+    def add_edge_pair(self, pair: RecordPair, **attr) -> None:
         """Add an edge between two regions in a pair.
 
         Args:
@@ -272,7 +272,7 @@ class BSNetwork:
             edgelist.write_edgelist(self.graph, tsv_file, data=fields, delimiter="\t")
 
     def __contains__(self, __o: Any):
-        if not isinstance(__o, BGCPair):
+        if not isinstance(__o, RecordPair):
             raise NotImplementedError(
                 "Contains check on BSNetwork must be using type BGCPair"
             )
@@ -322,3 +322,95 @@ class BSNetwork:
             )
 
         return network
+
+    @staticmethod
+    def generate_connected_component_networks(
+        cutoff: Optional[float] = None,
+    ) -> Generator[list[tuple[RecordPair, float, float, float, float]], None, None]:
+        """Generate a network for each connected component in the network"""
+        # the idea behind this is that the distance table is an edge list. If no
+        # distance threshold is applied, any edge is itself a connected component that
+        # may be extended with other edges. We can use the distance information that is
+        # also present in the network to apply a cutoff value
+
+        if cutoff is None:
+            cutoff = 1.0
+
+        # list of nodes to ignore (we have seen them before)
+        ignore_nodes = set()
+
+        # get an edge from the database
+        edge = get_edge(ignore_nodes)
+
+        # we now have an edge. we need to expand this edge into a connected
+        # component. we do this by iteratively selecting for more nodes
+
+        # once edge is none, this means that the get_connected_edges function has
+        # found no more new nodes
+        while edge is not None:
+            # this is our first edge of a connected component
+            cc_edges = [edge]
+
+            # we will stop once we have no more new edges
+            last_len = len(cc_edges)
+
+            # list of node region ids in the connected component
+            edge_nodes = set(cc_edges)
+
+            # we can expand this by adding more edges
+            new_edges = get_connected_edges(edge_nodes)
+            while len(cc_edges) > last_len:
+                edge_nodes.update([edge[0] for edge in cc_edges])
+                edge_nodes.update([edge[1] for edge in cc_edges])
+
+                cc_edges.extend(new_edges)
+
+                new_edges = get_connected_edges(edge_nodes)
+
+            # we update the list of ignore nodes with any node we found in the connected
+            # component
+            ignore_nodes.update([edge[0] for edge in cc_edges])
+            ignore_nodes.update([edge[1] for edge in cc_edges])
+
+            # at some point new_edges is empty, so no more new edges were found
+            # we can now yield the connected component
+
+            cc = []
+            for edge in cc_edges:
+                cc.append(RecordPair.load_from_db(edge[0], edge[1]))
+
+            # now we need a new edge to start a new connected component
+            edge = get_edge(ignore_nodes)
+
+
+def get_edge(
+    exclude_nodes: set[int],
+) -> tuple[RecordPair, float, float, float, float]:
+    """Get an edge from the database that is not connected to exclude_nodes"""
+    # fetch an edge from the database
+    select_statment = (
+        DB.metadata.tables["distance"]
+        .select()
+        .where(DB.metadata.tables["distance"].c.region_a_id.notin_(exclude_nodes))
+        .where(DB.metadata.tables["distance"].c.region_b_id.notin_(exclude_nodes))
+    )
+
+    edge = DB.execute(select_statment).fetchone()
+
+    return edge
+
+
+def get_connected_edges(
+    include_nodes: set[int],
+) -> list[tuple[RecordPair, float, float, float, float]]:
+    """Get all edges that are connected to include_nodes, but not to exclude_nodes"""
+    # fetch an edge from the database
+    select_statment = (
+        DB.metadata.tables["distance"]
+        .select()
+        .where(DB.metadata.tables["distance"].c.region_a_id.in_(include_nodes))
+    )
+
+    edges = DB.execute(select_statment).fetchall()
+
+    return edges

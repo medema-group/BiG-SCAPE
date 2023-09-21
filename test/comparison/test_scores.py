@@ -8,7 +8,7 @@ from unittest import TestCase
 # from other modules
 from src.genbank import GBK, Region, CDS
 from src.hmm import HSP
-from src.comparison import BGCPair
+from src.comparison import RecordPair
 from src.distances import (
     calc_jaccard_sets,
     calc_jaccard_pair,
@@ -88,7 +88,7 @@ class TestJaccard(TestCase):
             cds_a.hsps.append(HSP(cds_a, shared_domain, 100, 0, 30))
             cds_b.hsps.append(HSP(cds_b, shared_domain, 100, 0, 30))
 
-        pair = BGCPair(gbk_a.region, gbk_b.region)
+        pair = RecordPair(gbk_a.region, gbk_b.region)
 
         expected_jaccard = 1
 
@@ -138,7 +138,7 @@ class TestJaccard(TestCase):
             cds_a.hsps.append(HSP(cds_a, shared_domain, 100, 0, 30))
             cds_b.hsps.append(HSP(cds_b, shared_domain, 100, 0, 30))
 
-        pair = BGCPair(gbk_a.region, gbk_b.region)
+        pair = RecordPair(gbk_a.region, gbk_b.region)
 
         expected_jaccard = 0.6
 
@@ -178,7 +178,7 @@ class TestJaccard(TestCase):
             gbk_b.genes.append(cds_b)
             cds_b.hsps.append(HSP(cds_b, b_domain, 100, 0, 30))
 
-        pair = BGCPair(gbk_a.region, gbk_b.region)
+        pair = RecordPair(gbk_a.region, gbk_b.region)
 
         expected_jaccard = 0
 
@@ -282,7 +282,7 @@ class TestAdjacency(TestCase):
             cds_a.hsps.append(HSP(cds_a, shared_domain, 100, 0, 30))
             cds_b.hsps.append(HSP(cds_b, shared_domain, 100, 0, 30))
 
-        pair = BGCPair(gbk_a.region, gbk_b.region)
+        pair = RecordPair(gbk_a.region, gbk_b.region)
 
         expected_ai = 1.0
 
@@ -317,7 +317,7 @@ class TestDSS(TestCase):
             gbk_b.genes.append(cds_b)
             cds_b.hsps.append(HSP(cds_b, b_domain, 100, 0, 30))
 
-        pair = BGCPair(gbk_a.region, gbk_b.region)
+        pair = RecordPair(gbk_a.region, gbk_b.region)
 
         expected_distances = (0, 0)
 
@@ -349,7 +349,7 @@ class TestDSS(TestCase):
             gbk_b.genes.append(cds_b)
             cds_b.hsps.append(HSP(cds_b, b_domain, 100, 0, 30))
 
-        pair = BGCPair(gbk_a.region, gbk_b.region)
+        pair = RecordPair(gbk_a.region, gbk_b.region)
 
         expected_distances = (4, 0)
 
@@ -382,7 +382,7 @@ class TestDSS(TestCase):
             gbk_b.genes.append(cds_b)
             cds_b.hsps.append(HSP(cds_b, b_domain, 100, 0, 30))
 
-        pair = BGCPair(gbk_a.region, gbk_b.region)
+        pair = RecordPair(gbk_a.region, gbk_b.region)
 
         expected_distances = (2, 2)
 

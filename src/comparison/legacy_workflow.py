@@ -13,7 +13,7 @@ from src.network import BSNetwork
 from src.utility import start_processes
 
 # from this module
-from .binning import RecordPairGenerator, BGCPair
+from .binning import RecordPairGenerator, RecordPair
 from .legacy_bins import LEGACY_BINS
 from .legacy_extend import (
     legacy_needs_expand_pair,
@@ -98,7 +98,7 @@ def create_bin_network_edges(
 
 
 def get_lcs_worker_method(
-    task: tuple[int, BGCPair], extra_data=None
+    task: tuple[int, RecordPair], extra_data=None
 ) -> tuple[int, int, int, int, int, bool]:  # pragma no cover
     """Find LCS on pair and return the LCS coordinates
 
@@ -116,12 +116,12 @@ def get_lcs_worker_method(
 
 
 def get_lcs_multiprocess(
-    pairs: list[BGCPair],
+    pairs: list[RecordPair],
     alignment_mode: str,
     num_processes: int = cpu_count(),
     batch_size=None,
     callback: Optional[Callable] = None,
-) -> tuple[list[BGCPair], list[BGCPair]]:  # pragma no cover
+) -> tuple[list[RecordPair], list[RecordPair]]:  # pragma no cover
     """Find the LCS using multiple processes and return two lists of pairs.
 
     The first list returned by this function is a list of pairs which need expansion.
@@ -241,7 +241,7 @@ def get_lcs_multiprocess(
 
 
 def calculate_jaccard_worker_method(
-    task: BGCPair, extra_data=None
+    task: RecordPair, extra_data=None
 ) -> float:  # pragma no cover
     """Calculate and return the scores for a pair
 
@@ -265,7 +265,7 @@ def calculate_jaccard_multiprocess(
     network: BSNetwork,
     num_processes: int = cpu_count(),
     callback: Optional[Callable] = None,
-) -> list[BGCPair]:  # pragma no cover
+) -> list[RecordPair]:  # pragma no cover
     """Calculate the jaccard for a list of pairs by using subprocesses
     This returns a list of related pairs of which the jaccard index for the full list of
     CDS is > 0.0
@@ -297,11 +297,11 @@ def calculate_jaccard_multiprocess(
 
     tasks_done = 0
 
-    related_pairs: list[BGCPair] = []
+    related_pairs: list[RecordPair] = []
 
     # we use this to retrieve the original object
     # TODO: investigate if we can use sharedmemory
-    original_data: dict[Connection, Optional[BGCPair]] = {
+    original_data: dict[Connection, Optional[RecordPair]] = {
         connection: None for connection in connections
     }
 
@@ -348,7 +348,7 @@ def calculate_jaccard_multiprocess(
 
 
 def calculate_scores_worker_method(
-    task: tuple[int, BGCPair], anchor_boost: float
+    task: tuple[int, RecordPair], anchor_boost: float
 ) -> tuple[int, float, float, float]:  # pragma no cover
     """Calculate and return the scores for a pair
 
@@ -374,7 +374,7 @@ def calculate_scores_worker_method(
 
 def calculate_scores_multiprocess(
     bin: RecordPairGenerator,
-    pairs: list[BGCPair],
+    pairs: list[RecordPair],
     network: BSNetwork,
     num_processes: int = cpu_count(),
     batch_size=None,

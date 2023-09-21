@@ -55,7 +55,7 @@ def legacy_bin_generator(
 
     for class_name, regions in class_idx.items():
         bin = RecordPairGenerator(class_name)
-        bin.add_bgcs(regions)
+        bin.add_records(regions)
         yield bin
 
 

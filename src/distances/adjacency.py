@@ -2,7 +2,7 @@
 
 
 # from other modules
-from src.comparison import BGCPair
+from src.comparison import RecordPair
 from src.hmm import HSP
 
 
@@ -53,7 +53,7 @@ def calc_ai_lists(list_a: list, list_b: list):
     return adjacency_index
 
 
-def calc_ai_pair(bgc_pair: BGCPair) -> float:
+def calc_ai_pair(bgc_pair: RecordPair) -> float:
     """Calculate the adjacency index of a pair of BGCs
 
     Args:

@@ -12,7 +12,7 @@ from src.parameters.constants import (
     EXPAND_MISMATCH_SCORE,
 )
 from src.genbank import CDS, BGCRecord
-from src.comparison import ComparableRegion, BGCPair
+from src.comparison import ComparableRegion, RecordPair
 
 
 def reset_expansion(
@@ -404,7 +404,7 @@ def expand_score(
 
 
 def legacy_needs_expand_pair(
-    pair: BGCPair, alignment_mode: str, extend_slice_cutoff=MIN_LCS_LEN
+    pair: RecordPair, alignment_mode: str, extend_slice_cutoff=MIN_LCS_LEN
 ) -> bool:  # pragma no cover
     """Returns False if:
 

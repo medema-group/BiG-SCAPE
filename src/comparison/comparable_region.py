@@ -20,7 +20,9 @@ from src.hmm import HSP
 
 # from circular imports
 if TYPE_CHECKING:  # pragma: no cover
-    from .binning import BGCPair  # not sure why this one throws a circular import error
+    from .binning import (
+        RecordPair,
+    )  # not sure why this one throws a circular import error
 
 
 class ComparableRegion:
@@ -40,7 +42,7 @@ class ComparableRegion:
 
     def __init__(
         self,
-        pair: BGCPair,
+        pair: RecordPair,
         a_start: int,
         a_stop: int,
         b_start: int,

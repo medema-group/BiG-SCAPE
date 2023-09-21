@@ -17,11 +17,11 @@ from src.data import (
     get_cds_to_scan,
     get_hsp_to_align,
 )
-from src.data import get_missing_distances, get_missing_distance_count
 from src.genbank import GBK, CDS, Region
 from src.hmm import HSP, HSPAlignment, HMMer
 from src.network import BSNetwork
-from src.comparison import RecordPairGenerator, BGCPair
+from src.comparison import RecordPairGenerator, RecordPair, PartialRecordPairGenerator
+
 import src.enums as bs_enums
 
 
@@ -444,7 +444,7 @@ class TestPartialComparison(TestCase):
 
         self.assertEqual(expected_state, actual_state)
 
-    def test_get_missing_distances(self):
+    def test_partial_pair_generator(self):
         DB.create_in_mem()
 
         gbks = [create_mock_gbk(i) for i in range(3)]
@@ -471,14 +471,19 @@ class TestPartialComparison(TestCase):
 
         # all-vs-all bin
         mix_bin = RecordPairGenerator("mix")
-        mix_bin.add_bgcs([gbk.region for gbk in gbks])
+        mix_bin.add_records([gbk.region for gbk in gbks])
 
         expected_missing_pairs = [
-            BGCPair(gbks[0].region, gbks[2].region),
-            BGCPair(gbks[1].region, gbks[2].region),
+            RecordPair(gbks[0].region, gbks[2].region),
+            RecordPair(gbks[1].region, gbks[2].region),
         ]
 
-        actual_missing_pairs = list(get_missing_distances(mix_bin))
+        pair_generator = RecordPairGenerator("mix")
+        pair_generator.add_records([gbk.region for gbk in gbks])
+
+        missing_edge_generator = PartialRecordPairGenerator(pair_generator)
+
+        actual_missing_pairs = list(missing_edge_generator.generate_pairs())
 
         self.assertListEqual(expected_missing_pairs, actual_missing_pairs)
 
@@ -509,10 +514,15 @@ class TestPartialComparison(TestCase):
 
         # all-vs-all bin
         mix_bin = RecordPairGenerator("mix")
-        mix_bin.add_bgcs([gbk.region for gbk in gbks])
+        mix_bin.add_records([gbk.region for gbk in gbks])
 
         expected_missing_count = 2
 
-        actual_missing_count = get_missing_distance_count(mix_bin)
+        pair_generator = RecordPairGenerator("mix")
+        pair_generator.add_records([gbk.region for gbk in gbks])
+
+        missing_edge_generator = PartialRecordPairGenerator(pair_generator)
+
+        actual_missing_count = missing_edge_generator.num_pairs()
 
         self.assertEqual(expected_missing_count, actual_missing_count)

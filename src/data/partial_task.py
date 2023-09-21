@@ -19,7 +19,6 @@ import src.enums as bs_enums
 if TYPE_CHECKING:
     from src.genbank.gbk import GBK, CDS
     from src.hmm import HSP
-    from src.comparison.binning import RecordPairGenerator, BGCPair
 
 
 def find_minimum_task(gbks: list[GBK]):
@@ -212,7 +211,9 @@ def get_comparison_data_state(gbks: list[GBK]) -> bs_enums.COMPARISON_TASK:
     return bs_enums.COMPARISON_TASK.ALL_DONE
 
 
-def get_missing_distances(bin: RecordPairGenerator) -> Generator[BGCPair, None, None]:
+def get_missing_distances(
+    bin: RecordPairGenerator,
+) -> Generator[RecordPair, None, None]:
     """Get a generator of BGCPairs that are missing from a network
 
     Args:
@@ -238,29 +239,3 @@ def get_missing_distances(bin: RecordPairGenerator) -> Generator[BGCPair, None, 
         # if the pair is not in the set of existing distances, yield it
         if (pair.region_a._db_id, pair.region_b._db_id) not in existing_distances:
             yield pair
-
-
-def get_missing_distance_count(bin: RecordPairGenerator):
-    """Get the number of missing distances in a bin
-
-    Args:
-        bin (BGCBin): bin to check
-
-    Returns:
-        int: number of missing distances
-    """
-    distance_table = DB.metadata.tables["distance"]
-
-    # get all region._db_id in the bin where the region_a_id and region_b_id are in the
-    # bin
-    select_statement = (
-        select(func.count(distance_table.c.region_a_id))
-        .where(distance_table.c.region_a_id.in_(bin.region_ids))
-        .where(distance_table.c.region_b_id.in_(bin.region_ids))
-    )
-
-    # get count
-    existing_distance_count = DB.execute(select_statement).scalar_one()
-
-    # subtract from expected number of distances
-    return bin.num_pairs() - existing_distance_count

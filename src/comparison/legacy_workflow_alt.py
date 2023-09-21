@@ -12,14 +12,14 @@ TODO: docstrings, none typings
 # from python
 import logging
 from concurrent.futures import ProcessPoolExecutor, wait
-from typing import Callable
+from typing import Callable, Generator
 
 # from other modules
 from src.distances import calc_jaccard_pair, calc_ai_pair, calc_dss_pair_legacy
 from src.network import BSNetwork
 
 # from this module
-from .binning import RecordPairGenerator, BGCPair
+from .binning import RecordPairGenerator, RecordPair
 from .legacy_bins import LEGACY_BINS
 from .legacy_extend import (
     legacy_needs_expand_pair,
@@ -118,19 +118,19 @@ def create_bin_network_edges_alt(
                 break
 
 
-def generate_bin_distances(
-    bin: RecordPairGenerator,
+def generate_edges(
+    pair_generator: RecordPairGenerator,
     alignment_mode: str,
     cores: int,
     callback: Callable,
     batch_size=100,
 ):  # pragma no cover
-    pair_generator = bin.generate_pairs()
-
     # prepare a process pool
     logging.info("Using %d cores", cores)
 
-    batch_size = min(bin.num_pairs(), batch_size)
+    pairs = pair_generator.generate_pairs()
+
+    batch_size = min(pair_generator.num_pairs(), batch_size)
 
     logging.info("Using batch size: %d", batch_size)
 
@@ -140,13 +140,13 @@ def generate_bin_distances(
         running_tasks = {}
 
         for i in range(cores):
-            batch = batch_generator(pair_generator, batch_size)
+            batch = batch_generator(pairs, batch_size)
 
             if len(batch) == 0:
                 break
 
             new_task = executor.submit(
-                calculate_scores_pair, (batch, alignment_mode, bin.label)
+                calculate_scores_pair, (batch, alignment_mode, pair_generator.label)
             )
             running_tasks[new_task] = batch
 
@@ -155,13 +155,13 @@ def generate_bin_distances(
 
             # first quickly start new tasks
             for done_task in done:
-                batch = batch_generator(pair_generator, batch_size)
+                batch = batch_generator(pairs, batch_size)
 
                 if len(batch) == 0:
                     continue
 
                 new_task = executor.submit(
-                    calculate_scores_pair, (batch, alignment_mode, bin.label)
+                    calculate_scores_pair, (batch, alignment_mode, pair_generator.label)
                 )
                 running_tasks[new_task] = batch
 
@@ -191,7 +191,7 @@ def generate_bin_distances(
                 break
 
 
-def do_lcs_pair(pair: BGCPair, alignment_mode) -> bool:  # pragma no cover
+def do_lcs_pair(pair: RecordPair, alignment_mode) -> bool:  # pragma no cover
     (
         a_start,
         a_stop,
@@ -216,7 +216,7 @@ def do_lcs_pair(pair: BGCPair, alignment_mode) -> bool:  # pragma no cover
     return False
 
 
-def expand_pair(pair: BGCPair) -> float:
+def expand_pair(pair: RecordPair) -> float:
     expand_glocal(pair.comparable_region)
 
     if not check_expand(pair.comparable_region):
@@ -230,7 +230,7 @@ def expand_pair(pair: BGCPair) -> float:
 
 
 def calculate_scores_pair(
-    data: tuple[list[BGCPair], str, str]
+    data: tuple[list[RecordPair], str, str]
 ) -> list[tuple[float, float, float, float]]:  # pragma no cover
     pairs, alignment_mode, bin_label = data
 

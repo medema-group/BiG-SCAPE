@@ -14,14 +14,14 @@ from src.parameters import RunParameters, parse_cmd
 from src.comparison import (
     RecordPairGenerator,
     RecordPairGeneratorQueryRef,
-    RecordPairGeneratorConRefSinRef,
+    PartialRecordPairGenerator,
     legacy_bin_generator,
-    generate_bin_distances,
+    generate_edges,
     save_edge_to_db,
 )
 from src.file_input import load_dataset_folder, get_mibig
 from src.diagnostics import Profiler
-from src.network import BSNetwork
+from src.network import BSNetwork, sim_matrix_from_edge_list, aff_sim_matrix
 from src.output import (
     legacy_prepare_output,
     legacy_prepare_cutoff_output,
@@ -297,53 +297,96 @@ if __name__ == "__main__":
                 mix_bgc_regions.append(gbk.region)
 
         mix_bin = RecordPairGenerator("mix")
-        mix_bin.add_bgcs(mix_bgc_regions)
+        mix_bin.add_records(mix_bgc_regions)
 
         logging.info(mix_bin)
 
-        def callback(done_pairs):
-            if mix_bin.num_pairs() > 10:
-                mod = round(mix_bin.num_pairs() / 10)
-            else:
-                mod = 1
+        # check if there are existing distances
+        missing_edge_bin = PartialRecordPairGenerator(mix_bin)
+        num_missing_edges = missing_edge_bin.num_pairs()
 
-            if done_pairs % mod == 0:
-                logging.info(
-                    f"{done_pairs}/{mix_bin.num_pairs()} ({done_pairs/mix_bin.num_pairs():.2%})"
-                )
+        if num_missing_edges > 0:
+            logging.info("Calculating distances for %d pairs", num_missing_edges)
 
-        mix_distances = generate_bin_distances(
-            mix_bin, run.comparison.alignment_mode, run.cores, callback
-        )
+            def callback(done_pairs):
+                if mix_bin.num_pairs() > 10:
+                    mod = round(mix_bin.num_pairs() / 10)
+                else:
+                    mod = 1
 
-        logging.info("Generated %d distances", len(mix_distances))
-        for distance in mix_distances:
-            save_edge_to_db(distance)
+                if done_pairs % mod == 0:
+                    logging.info(
+                        f"{done_pairs}/{mix_bin.num_pairs()} ({done_pairs/mix_bin.num_pairs():.2%})"
+                    )
 
-        DB.commit()
+            mix_edges = generate_edges(
+                missing_edge_bin, run.comparison.alignment_mode, run.cores, callback
+            )
+
+            num_edges = 0
+            for edge in mix_edges:
+                num_edges += 1
+                save_edge_to_db(edge)
+                if num_edges == 100:
+                    break
+
+            logging.info("Generated %d edges", num_edges)
+
+            DB.commit()
+            DB.save_to_disk(run.output.db_path)
+
+    exit(0)
 
     # NETWORKING
 
     # mix
 
-    # if not run.binning.no_mix and not run.binning.query_bgc_path:
-    #     logging.info("Generating mix bin")
+    if not run.binning.no_mix and not run.binning.query_bgc_path:
+        logging.info("Generating mix connected component networks")
 
-    #     mix_network.generate_families_cutoff("dist", 0.3)
+        # labels will start at 0 and go up to the number of families. we have to
+        # keep track of the last number we used, so we don't overlap numbers
 
-    #     # TODO: cull ref singletons again, for each family subgraph
+        last_center = 0
 
-    #     # Output
-    #     legacy_prepare_bin_output(run.output.output_dir, run.label, 0.3, mix_bin)
+        for connected_component in BSNetwork.generate_connected_component_networks(0.3):
+            logging.info(
+                "Found connected component with %d edges", len(connected_component)
+            )
 
-    #     legacy_generate_bin_output(
-    #         run.output.output_dir, run.label, 0.3, mix_bin, mix_network
-    #     )
+            logging.debug("Performing AP on connected component")
 
-    #     mix_network.write_graphml(run.output.output_dir / Path("network_mix.graphml"))
-    #     mix_network.write_edgelist_tsv(run.output.output_dir / Path("network_mix.tsv"))
+            distance_matrix = sim_matrix_from_edge_list(connected_component)
 
-    #     mix_network.export_distances_to_db()
+            labels, centers = aff_sim_matrix(distance_matrix)
+
+            for label in labels:
+                if label == -1:
+                    continue
+
+                family = label + last_center
+
+            last_center = max(label)
+
+            logging.debug("Found %d clusters", len(centers))
+
+            # save families to database
+
+        # mix_network.generate_families_cutoff("dist", 0.3)
+
+        # # TODO: cull ref singletons again, for each family subgraph
+
+        # # Output
+        # legacy_prepare_bin_output(run.output.output_dir, run.label, 0.3, mix_bin)
+
+        # legacy_generate_bin_output(
+        #     run.output.output_dir, run.label, 0.3, mix_bin, mix_network
+        # )
+
+        # mix_network.write_graphml(run.output.output_dir / Path("network_mix.graphml"))
+        # mix_network.write_edgelist_tsv(run.output.output_dir / Path("network_mix.tsv"))
+
+        # mix_network.export_distances_to_db()
 
     exit(0)
 
@@ -362,7 +405,7 @@ if __name__ == "__main__":
 
         # all query <-> query and query <-> ref pairs
         query_bgc_pairs_queryref = RecordPairGeneratorQueryRef("Query_Ref")
-        query_bgc_pairs_queryref.add_bgcs(query_bgcs_records)
+        query_bgc_pairs_queryref.add_records(query_bgcs_records)
 
         #   create edges (query <-> query & ref edges)
         create_bin_network_edges(
@@ -377,7 +420,7 @@ if __name__ == "__main__":
         query_bgc_pairs_conrefsinref = RecordPairGeneratorConRefSinRef(
             "ConRef_SinRef", query_bgc_network
         )
-        query_bgc_pairs_conrefsinref.add_bgcs(query_bgcs_records)
+        query_bgc_pairs_conrefsinref.add_records(query_bgcs_records)
         create_bin_network_edges(
             query_bgc_pairs_conrefsinref,
             query_bgc_network,
@@ -417,7 +460,7 @@ if __name__ == "__main__":
 
         # make pairs and add missing edges with all-vs-all pain_generator
         query_bgc_pairs_conrefconref = RecordPairGenerator("ConRef_ConRef")
-        query_bgc_pairs_conrefsinref.add_bgcs(all_current_nodes)
+        query_bgc_pairs_conrefsinref.add_records(all_current_nodes)
         create_bin_network_edges(
             query_bgc_pairs_conrefconref,
             query_bgc_network,
@@ -432,7 +475,7 @@ if __name__ == "__main__":
 
         final_query_bgc_nodes = query_bgc_network.get_nodes()
         mock_query_bgc_pairs_conrefconref = RecordPairGenerator("Query_BGC")
-        query_bgc_pairs_conrefsinref.add_bgcs(final_query_bgc_nodes)
+        query_bgc_pairs_conrefsinref.add_records(final_query_bgc_nodes)
 
         # Output
         # TODO: check whether query_bgc_pairs_conrefsinref bin works here

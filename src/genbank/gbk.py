@@ -219,6 +219,77 @@ class GBK:
 
         return list(gbk_dict.values())
 
+    def load_one(gbk_id: int) -> GBK:
+        """Load a single GBK object from the database
+
+        Args:
+            gbk_id (int): id of gbk to load
+
+        Returns:
+            GBK: loaded GBK object
+        """
+
+        gbk_table = DB.metadata.tables["gbk"]
+        select_query = (
+            gbk_table.select()
+            .add_columns(
+                gbk_table.c.id,
+                gbk_table.c.path,
+                gbk_table.c.source_type,
+                gbk_table.c.nt_seq,
+            )
+            .compile()
+        )
+
+        result = DB.execute(select_query).fetchone()
+
+        new_gbk = GBK(Path(result.path), result.source_type)
+        new_gbk._db_id = result.id
+        new_gbk.nt_seq = result.nt_seq
+
+        return new_gbk
+
+    def load_many(gbk_ids: list[int]) -> list[GBK]:
+        """Load a list of GBK objects from the database
+
+        Args:
+            gbk_ids (list[int]): list of ids of gbk to load
+
+        Returns:
+            list[GBK]: loaded GBK objects
+        """
+
+        gbk_table = DB.metadata.tables["gbk"]
+        select_query = (
+            gbk_table.select()
+            .add_columns(
+                gbk_table.c.id,
+                gbk_table.c.path,
+                gbk_table.c.source_type,
+                gbk_table.c.nt_seq,
+            )
+            .where(gbk_table.c.id.in_(gbk_ids))
+            .compile()
+        )
+
+        cursor_result = DB.execute(select_query)
+
+        gbk_dict = {}
+        for result in cursor_result.all():
+            new_gbk = GBK(Path(result.path), result.source_type)
+            new_gbk._db_id = result.id
+            new_gbk.nt_seq = result.nt_seq
+            gbk_dict[result.id] = new_gbk
+
+        # load GBK regions. This will also populate all record levels below region
+        # e.g. candidate cluster, protocore if they exist
+
+        Region.load_all(gbk_dict)
+
+        CDS.load_all(gbk_dict)
+
+        return list(gbk_dict.values())
+
     @staticmethod
     def get_as_version(gbk_seq_record: SeqRecord) -> str:
         """Get AS version from GBK record

@@ -8,7 +8,7 @@ from src.data.sqlite import DB
 
 # from other modules
 from src.genbank import GBK, Region, BGCRecord
-from src.comparison import BGCPair
+from src.comparison import RecordPair
 from src.network import BSNetwork
 from src.enums import SOURCE_TYPE
 
@@ -87,8 +87,8 @@ class TestBSNetwork(TestCase):
         network.add_node(bgc_c)
         network.add_node(bgc_d)
 
-        network.add_edge_pair(BGCPair(bgc_a, bgc_b))  # query to query
-        network.add_edge_pair(BGCPair(bgc_a, bgc_c))  # query to ref
+        network.add_edge_pair(RecordPair(bgc_a, bgc_b))  # query to query
+        network.add_edge_pair(RecordPair(bgc_a, bgc_c))  # query to ref
 
         expected_ref_singletons = [bgc_d]
         ref_singletons = network.get_singletons(
@@ -149,7 +149,7 @@ class TestBSNetwork(TestCase):
         gbk_b = GBK("", "test")
         region_b = Region(gbk_b, 0, 0, 100, False, "")
 
-        pair = BGCPair(region_a, region_b)
+        pair = RecordPair(region_a, region_b)
 
         network = BSNetwork()
 
@@ -170,7 +170,7 @@ class TestBSNetwork(TestCase):
         gbk_b = GBK(Path("test/test_data/tmp/b.gbk"), "test")
         region_b = Region(gbk_b, 0, 0, 100, False, "")
 
-        pair = BGCPair(region_a, region_b)
+        pair = RecordPair(region_a, region_b)
 
         network = BSNetwork()
 
@@ -188,7 +188,7 @@ class TestBSNetwork(TestCase):
         gbk_b = GBK(Path("test2.gbk"), "test")
         region_b = Region(gbk_b, 0, 0, 100, False, "")
 
-        pair = BGCPair(region_a, region_b)
+        pair = RecordPair(region_a, region_b)
 
         network = BSNetwork()
 
@@ -212,7 +212,7 @@ class TestBSNetwork(TestCase):
         gbk_b = GBK(Path("test2.gbk"), "test")
         region_b = Region(gbk_b, 0, 0, 100, False, "")
 
-        pair = BGCPair(region_a, region_b)
+        pair = RecordPair(region_a, region_b)
 
         network = BSNetwork()
 
@@ -254,7 +254,7 @@ class TestBSNetwork(TestCase):
         subgraph_b = [regions[i] for i in [3, 4, 5]]
         for idx, edge in enumerate(edges):
             bgc_a, bgc_b = edge
-            pair = BGCPair(bgc_a, bgc_b)
+            pair = RecordPair(bgc_a, bgc_b)
 
             if bgc_a in subgraph_a and bgc_b in subgraph_a:
                 distance = 0.2
@@ -300,11 +300,11 @@ class TestBSNetwork(TestCase):
         #   A     B
 
         for edge in edges_a:
-            pair = BGCPair(edge[0], edge[1])
+            pair = RecordPair(edge[0], edge[1])
             network.add_edge_pair(pair, dist=0.0, jc=0.0, ai=0.0, dss=0.0)
 
         for edge in edges_b:
-            pair = BGCPair(edge[0], edge[1])
+            pair = RecordPair(edge[0], edge[1])
             network.add_edge_pair(pair, dist=0.0, jc=0.0, ai=0.0, dss=0.0)
 
         # save network to do

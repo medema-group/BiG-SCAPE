@@ -1,30 +1,32 @@
-"""Contains a description of a bgc pair to pass to distance calculation and networking
+"""Contains classes and functions for generating bins of Regions to compare
+
+At this level, the comparisons are referred to as pairs. Whenever anything talks about
+pairs, it refers to things generated from these classes. This is distinct from what are
+referred to as edges, which are pairs that have a (set of) distances between them and
+may be present in the database.
 """
 
 # from python
 from __future__ import annotations
 from itertools import combinations
-from typing import TYPE_CHECKING, Iterator, Optional, Any, Generator
+from typing import Generator
+from sqlalchemy import select, func
 
-# from dependencies
 # from other modules
+from src.data import DB
 from src.genbank import BGCRecord
 from src.enums import SOURCE_TYPE
 
 # from this module
 from .comparable_region import ComparableRegion
 
-# from circular imports
-if TYPE_CHECKING:  # pragma no cover
-    from src.network import BSNetwork
-
 
 class RecordPairGenerator:
-    """Describes a bin of BGCs to generate all-to-all pairs from
+    """Generator to generate all-vs-all comparisons form a list of BGC records
 
     Attributes:
         label (str): Label for this bin
-        source_records (list[BGCRecord]): List of BGCs to generate pairs from
+        source_records (list[BGCRecord]): List of BGC records to generate pairs from
     """
 
     def __init__(self, label: str):
@@ -32,62 +34,57 @@ class RecordPairGenerator:
         self.source_records: list[BGCRecord] = []
         self.region_ids: set[int] = set()
 
-    def generate_pairs(
-        self, network: Optional[BSNetwork] = None, legacy_sorting=False
-    ) -> Iterator[BGCPair]:
-        """Returns an iterator for all vs all BGC pairs in this bins
+    def generate_pairs(self, legacy_sorting=False) -> Generator[RecordPair, None, None]:
+        """Returns a generator for all vs all Region pairs in this bins
+
+        This will always generate all pairs, and does not take into account any edges
+        that already exist in the database
 
         Args:
-            network (BSNetwork, optional): A network object to use for filtering. If
-            this is set, the generator will not yield any pairs that already have an
-            edge in the network
-            legacy_sorting (bool, optional): Whether to sort the BGCs by GBK file name.
+            legacy_sorting (bool, optional): Whether to sort the BGC records by GBK file name.
             This is done in BiG-SCAPE 1.0 and can affect scoring depending on which of
-            the BGCs is region A in a pair.
+            the BGC regions is region A in a pair. TODO: may be removed in the future
 
         Yields:
-            Iterator[BGCPair]: Iterator for BGC pairs in this bin
+            Generator[RegionPair]: Generator for Region pairs in this bin
         """
-        for bgc_a, bgc_b in combinations(self.source_records, 2):
+        for record_a, record_b in combinations(self.source_records, 2):
             if legacy_sorting:
-                sorted_a, sorted_b = sorted((bgc_a, bgc_b), key=sort_name_key)
-                pair = BGCPair(sorted_a, sorted_b)
+                sorted_a, sorted_b = sorted((record_a, record_b), key=sort_name_key)
+                pair = RecordPair(sorted_a, sorted_b)
 
             else:
-                pair = BGCPair(bgc_a, bgc_b)
+                pair = RecordPair(record_a, record_b)
 
-            if network is None or pair not in network:
-                yield pair
+            yield pair
 
     def generate_batch(
-        self, batch_size: int, network: Optional[BSNetwork] = None, legacy_sorting=False
-    ) -> Generator[list[BGCPair], None, None]:
-        """Returns a batch of BGC pairs in this bins
+        self, batch_size: int, legacy_sorting=False
+    ) -> Generator[list[RecordPair], None, None]:
+        """Generator for batches of pairs in this bin
 
         Args:
             batch_size (int): The size of the batch to generate
-            network (BSNetwork, optional): A network object to use for filtering. If
-            this is set, the generator will not yield any pairs that already have an
-            edge in the network
-            legacy_sorting (bool, optional): Whether to sort the BGCs by GBK file name.
+            legacy_sorting (bool, optional): Whether to sort the BGC records by GBK file name.
             This is done in BiG-SCAPE 1.0 and can affect scoring depending on which of
-            the BGCs is region A in a pair.
+            the BGC records is region A in a pair.
 
         Yields:
-            Generator[list[BGCPair], None, None]]: Generator for BGC pairs in this bin
+            Generator[list[RegionPair], None, None]]: Generator for Region pairs in this
+            bin
         """
         batch = []
-        while pair := next(self.generate_pairs(network, legacy_sorting), None):
+        while pair := next(self.generate_pairs(legacy_sorting), None):
             batch.append(pair)
             if len(batch) == batch_size:
                 yield batch
                 batch = []
 
     def num_pairs(self) -> int:
-        """Returns the number of pairs expected to be generated by the pairs iterator
+        """Return the number of pairs expected to be generated by the pairs Generator
 
         Returns:
-            int: The number of pairs expected to be generated from the iterator
+            int: The number of pairs expected to be generated from the Generator
         """
 
         if len(self.source_records) < 2:
@@ -100,14 +97,14 @@ class RecordPairGenerator:
 
         return num_all_pairs
 
-    def add_bgcs(self, bgc_list: list[BGCRecord]):
-        """Adds BGCs to this bin and creates a generator for the pairs
+    def add_records(self, record_list: list[BGCRecord]):
+        """Adds BGC records to this bin and creates a generator for the pairs
 
         Args:
-            bgc_list (list[BGCRecord]): List of BGCs to add to this bin
+            record_list (list[BGCRecord]): List of BGC records to add to this bin
         """
-        self.source_records.extend(bgc_list)
-        self.region_ids.update([region._db_id or -1 for region in bgc_list])
+        self.source_records.extend(record_list)
+        self.region_ids.update([region._db_id or -1 for region in record_list])
 
         # throw a ValueError if any region db id is None, as we expect all regions to be
         # represented in the database
@@ -117,34 +114,29 @@ class RecordPairGenerator:
     def __repr__(self) -> str:
         return (
             f"Bin '{self.label}': {self.num_pairs()} pairs from "
-            f"{len(self.source_records)} BGCs"
+            f"{len(self.source_records)} BGC records"
         )
 
 
 class RecordPairGeneratorQueryRef(RecordPairGenerator):
-    """Describes a bin of BGCs to generate pairs from. Pair generation excludes ref <-> ref pairs"""
+    """Describes a bin of BGC records to generate pairs from. Pair generation excludes ref <-> ref pairs"""
 
-    def generate_pairs(
-        self, network: Optional[BSNetwork] = None, legacy_sorting=False
-    ) -> Iterator[BGCPair]:
-        """Returns an iterator for BGC pairs in this bin, all pairs are generated
+    def generate_pairs(self, legacy_sorting=False) -> Generator[RecordPair]:
+        """Returns an Generator for Region pairs in this bin, all pairs are generated
         except for ref <-> ref pairs
 
         Args:
-            network (BSNetwork, optional): A network object to use for filtering. If
-            this is set, the generator will not yield any pairs that already have an
-            edge in the network
-            legacy_sorting (bool, optional): Whether to sort the BGCs by GBK file name.
+            legacy_sorting (bool, optional): Whether to sort the BGC records by GBK file name.
             This is done in BiG-SCAPE 1.0 and can affect scoring depending on which of
-            the BGCs is region A in a pair.
+            the BGC records is region A in a pair.
 
         Yields:
-            Iterator[BGCPair]: Iterator for BGC pairs in this bin
+            Generator[RegionPair]: Generator for Region pairs in this bin
         """
         for bgc_a, bgc_b in combinations(self.source_records, 2):
             if legacy_sorting:
                 sorted_a, sorted_b = sorted((bgc_a, bgc_b), key=sort_name_key)
-                pair = BGCPair(sorted_a, sorted_b)
+                pair = RecordPair(sorted_a, sorted_b)
 
             else:
                 if bgc_a.parent_gbk is not None:
@@ -154,17 +146,16 @@ class RecordPairGeneratorQueryRef(RecordPairGenerator):
                 if bgc_a_not_query and bgc_b_not_query:
                     continue
 
-                pair = BGCPair(bgc_a, bgc_b)
+                pair = RecordPair(bgc_a, bgc_b)
 
-            if network is None or pair not in network:
-                yield pair
+            yield pair
 
     def num_pairs(self) -> int:
-        """Returns the number of pairs expected to be generated by the pairs iterator,
+        """Returns the number of pairs expected to be generated by the pairs Generator,
         which excludes ref <-> ref pairs
 
         Returns:
-            int: The number of pairs expected to be generated from the iterator
+            int: The number of pairs expected to be generated from the Generator
         """
 
         if len(self.source_records) < 2:
@@ -188,19 +179,16 @@ class RecordPairGeneratorQueryRef(RecordPairGenerator):
 
 
 class RecordPairGeneratorConRefSinRef(RecordPairGenerator):
-    """Describes a bin of BGCs to generate pairs from, pair generation is limited to connected-ref
+    """Describes a bin of BGC records to generate pairs from, pair generation is limited to connected-ref
     to singleton ref nodes
 
     Args:
         label (str): Label for this bin
-        source_records (list[BGCRecord]): List of BGCs to generate pairs from
-        network (BSNetwork, optional): A network object to use for fetching connected and
-        singleton nodes from. Also used for filtering out pairs that already have an edge
+        source_records (list[BGCRecord]): List of BGC records to generate pairs from
     """
 
-    def __init__(self, label: str, network: BSNetwork):
+    def __init__(self, label: str):
         super().__init__(label)
-        self.network: BSNetwork = network
 
         self.ref_nodes = self.network.get_nodes(
             node_types=[SOURCE_TYPE.REFERENCE, SOURCE_TYPE.MIBIG]
@@ -213,8 +201,8 @@ class RecordPairGeneratorConRefSinRef(RecordPairGenerator):
         ]
 
     def recalculate_nodes(self):
-        """Recalculate new connected nodes and new singleton nodes for this bin, so that pair and edge
-        generation are only performed on new connected vs new singleton nodes
+        """Recalculate new connected nodes and new singleton nodes for this bin, so that
+        pair generation is only performed on new connected vs new singleton nodes
         """
 
         new_ref_singletons = self.network.get_singletons(
@@ -227,18 +215,18 @@ class RecordPairGeneratorConRefSinRef(RecordPairGenerator):
         self.ref_connected_nodes = new_ref_connected_nodes
         self.ref_singletons = new_ref_singletons
 
-    def generate_pairs(self, *args: Any, legacy_sorting=False) -> Iterator[BGCPair]:
-        """Returns an iterator for BGC pairs in this bin, pairs are only generated between
+    def generate_pairs(self, legacy_sorting=False) -> Generator[RecordPair]:
+        """Returns an Generator for Region pairs in this bin, pairs are only generated between
         given nodes to all singleton ref nodes
 
         Args:
             network (BSNetwork): A network object to use for finding and sorting the nodes.
             all records in this bin must be in the network as nodes, with or without edges
 
-            given_nodes (list[BGCRecord]): List of BGCs to generate pairs from
+            given_nodes (list[BGCRecord]): List of BGC records to generate pairs from
 
         Yields:
-            Iterator[BGCPair]: Iterator for BGC pairs in this bin
+            Generator[RegionPair]: Generator for Region pairs in this bin
         """
 
         if len(self.ref_connected_nodes) == 0 or len(self.ref_singletons) == 0:
@@ -248,20 +236,20 @@ class RecordPairGeneratorConRefSinRef(RecordPairGenerator):
             for bgc_b in self.ref_singletons:
                 if legacy_sorting:
                     sorted_a, sorted_b = sorted((bgc_a, bgc_b), key=sort_name_key)
-                    pair = BGCPair(sorted_a, sorted_b)
+                    pair = RecordPair(sorted_a, sorted_b)
 
                 else:
-                    pair = BGCPair(bgc_a, bgc_b)
+                    pair = RecordPair(bgc_a, bgc_b)
 
                 if pair not in self.network:
                     yield pair
 
     def num_pairs(self) -> int:
-        """Returns the number of pairs expected to be generated by the pairs iterator,
+        """Returns the number of pairs expected to be generated by the pairs Generator,
         which includes only given node <-> singleton ref pairs
 
         Returns:
-            int: The number of pairs expected to be generated from the iterator
+            int: The number of pairs expected to be generated from the Generator
         """
 
         num_rec_connected_nodes = len(self.ref_connected_nodes)
@@ -272,8 +260,56 @@ class RecordPairGeneratorConRefSinRef(RecordPairGenerator):
         return num_pairs
 
 
-class BGCPair:
-    """Contains a pair of BGCs, which can be any type of BGCRecord
+class PartialRecordPairGenerator(RecordPairGenerator):
+    """Generator that wraps around another RecordPairGenerator to exclude any distances
+    already in the database
+    """
+
+    def __init__(self, bin):
+        super().__init__(bin.label)
+        self.bin = bin
+
+    def num_pairs(self) -> int:
+        distance_table = DB.metadata.tables["distance"]
+
+        # get all region._db_id in the bin where the region_a_id and region_b_id are in the
+        # bin
+        select_statement = (
+            select(func.count(distance_table.c.region_a_id))
+            .where(distance_table.c.region_a_id.in_(self.bin.region_ids))
+            .where(distance_table.c.region_b_id.in_(self.bin.region_ids))
+        )
+
+        # get count
+        existing_distance_count = DB.execute(select_statement).scalar_one()
+
+        # subtract from expected number of distances
+        return self.bin.num_pairs() - existing_distance_count
+
+    def generate_pairs(self, legacy_sorting=False) -> Generator[RecordPair, None, None]:
+        distance_table = DB.metadata.tables["distance"]
+
+        # get all region._db_id in the bin
+        select_statement = (
+            select(distance_table.c.region_a_id, distance_table.c.region_b_id)
+            .where(distance_table.c.region_a_id.in_(self.bin.region_ids))
+            .where(distance_table.c.region_b_id.in_(self.bin.region_ids))
+        )
+
+        # generate a set of tuples of region id pairs
+        existing_distances = set(DB.execute(select_statement).fetchall())
+
+        for pair in self.bin.generate_pairs(legacy_sorting):
+            # if the pair is not in the set of existing distances, yield it
+            if (pair.region_a._db_id, pair.region_b._db_id) not in existing_distances:
+                yield pair
+
+    def add_records(self, _: list[BGCRecord]):
+        raise NotImplementedError("Cannot add records to a PartialRecordPairGenerator")
+
+
+class RecordPair:
+    """Contains a pair of BGC records, which can be any type of BGCRecord
 
     This will also contain any other necessary information specific to this pair needed
     to generate the scores
@@ -301,24 +337,40 @@ class BGCPair:
         return hash((self.region_a, self.region_b))
 
     def __eq__(self, _o) -> bool:
-        if not isinstance(_o, BGCPair):
+        if not isinstance(_o, RecordPair):
             return False
 
         return self.region_a == _o.region_a and self.region_b == _o.region_b
 
+    @staticmethod
+    def load_from_db(region_a_id: int, region_b_id: int):
+        """Load a pair from the database
+
+        Args:
+            region_a_id (int): The id of the first region in the pair
+            region_b_id (int): The id of the second region in the pair
+
+        Returns:
+            RegionPair: The pair loaded from the database
+        """
+        region_a = BGCRecord.load_from_db(region_a_id)
+        region_b = BGCRecord.load_from_db(region_b_id)
+
+        return RecordPair(region_a, region_b)
+
 
 def generate_mix(bgc_list: list[BGCRecord]) -> RecordPairGenerator:
-    """Generate an all-vs-all bin of the supplied BGCs
+    """Generate an all-vs-all bin of the supplied BGC records
 
     Args:
-        bgc_list (list[BGCRecord]): BGCs to make into an all-vs-all bin
+        bgc_list (list[BGCRecord]): BGC records to make into an all-vs-all bin
 
     Returns:
         BGCBin: The all-vs-all BGC bin
     """
     mix_bin = RecordPairGenerator("mix")
 
-    mix_bin.add_bgcs(bgc_list)
+    mix_bin.add_records(bgc_list)
 
     return mix_bin
 

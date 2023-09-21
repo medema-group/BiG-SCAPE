@@ -8,10 +8,10 @@ from sqlalchemy import insert
 
 # from other modules
 from src.data import DB
-from src.comparison.binning import RecordPairGenerator, BGCPair
+from src.comparison.binning import RecordPairGenerator, RecordPair
 
 
-def save_edge_to_db(edge: tuple[BGCPair, float, float, float, float]) -> None:
+def save_edge_to_db(edge: tuple[RecordPair, float, float, float, float]) -> None:
     """Save edge to the database
 
     Args:
@@ -37,10 +37,12 @@ def save_edge_to_db(edge: tuple[BGCPair, float, float, float, float]) -> None:
         dss=dss,
     )
 
+    DB.execute(upsert_statement)
+
 
 def distances_from_db(
     pair_generator: RecordPairGenerator,
-) -> Generator[tuple[BGCPair, float, float, float, float], None, None]:
+) -> Generator[tuple[RecordPair, float, float, float, float], None, None]:
     """Reconstruct distances from the database instead of recalculating them
 
     Args:
@@ -73,7 +75,7 @@ def distances_from_db(
             # get the pair
             region_a = region_ids[distance.region_a_id]
             region_b = region_ids[distance.region_b_id]
-            pair = BGCPair(region_a, region_b)
+            pair = RecordPair(region_a, region_b)
 
             # get the distances
             distance = distance.distance
