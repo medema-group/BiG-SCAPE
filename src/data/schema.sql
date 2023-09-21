@@ -25,6 +25,14 @@ CREATE TABLE IF NOT EXISTS bgc_record (
     FOREIGN KEY(gbk_id) REFERENCES gbk(id)
 );
 
+CREATE TABLE IF NOT EXISTS bgc_record_family (
+    id INTEGER NOT NULL,
+    family INTEGER NOT NULL,
+    cutoff REAL NOT NULL,
+    UNIQUE(id, cutoff, family),
+    FOREIGN KEY(id) REFERENCES bgc_record(id)
+);
+
 CREATE TABLE IF NOT EXISTS scanned_cds (
     cds_id INTEGER PRIMARY KEY NOT NULL,
     unique(cds_id),
