@@ -8,8 +8,9 @@ from .binning import (
 )
 from .comparable_region import ComparableRegion
 from .legacy_workflow import create_bin_network_edges
-from .legacy_workflow_alt import create_bin_network_edges_alt
+from .legacy_workflow_alt import create_bin_network_edges_alt, generate_bin_distances
 from .legacy_bins import legacy_bin_generator, legacy_get_class
+from .utility import save_edge_to_db
 
 __all__ = [
     "BGCPair",
@@ -21,6 +22,8 @@ __all__ = [
     "ComparableRegion",
     "create_bin_network_edges",
     "create_bin_network_edges_alt",
+    "generate_bin_distances",
     "legacy_bin_generator",
     "legacy_get_class",
+    "save_edge_to_db",
 ]

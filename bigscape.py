@@ -15,10 +15,9 @@ from src.comparison import (
     RecordPairGenerator,
     RecordPairGeneratorQueryRef,
     RecordPairGeneratorConRefSinRef,
-    generate_mix,
     legacy_bin_generator,
-    create_bin_network_edges_alt as create_bin_network_edges,
-    # Alt is an alternative multiprocessing implementation
+    generate_bin_distances,
+    save_edge_to_db,
 )
 from src.file_input import load_dataset_folder, get_mibig
 from src.diagnostics import Profiler
@@ -37,6 +36,8 @@ import src.enums as bs_enums
 def load_gbks(run: RunParameters) -> list[GBK]:
     # counterintuitive, but we need to load the gbks first to see if there are any differences with
     # the data in the database
+
+    print(sys.argv[0])
 
     input_gbks = []
 
@@ -105,7 +106,10 @@ def load_gbks(run: RunParameters) -> list[GBK]:
 
     # if we end up here, we are in some halfway state and need to load in the new data
     logging.info("Loading existing run from disk and adding new data...")
-    for gbk in bs_data.get_missing_gbks(input_gbks):
+    missing_gbks = bs_data.get_missing_gbks(input_gbks)
+    logging.info("Found %d missing gbks", len(missing_gbks))
+
+    for gbk in missing_gbks:
         gbk.save_all()
 
     # still return the full set
@@ -164,6 +168,8 @@ if __name__ == "__main__":
         # not need to do everything. Find the CDS that need scanning
         cds_to_scan = bs_data.get_cds_to_scan(gbks)
 
+        logging.info("Scanning %d CDS", len(cds_to_scan))
+
         def callback(tasks_done):
             percentage = int(tasks_done / len(cds_to_scan) * 100)
             logging.info("%d/%d (%d%%)", tasks_done, len(cds_to_scan), percentage)
@@ -199,29 +205,31 @@ if __name__ == "__main__":
                     [hsp.domain for hsp in legacy_filter_overlap(cds.hsps, 0.1)]
                 )
 
-    all_hsps = []
-    for gbk in gbks:
-        for cds in gbk.genes:
-            all_hsps.extend(cds.hsps)
+        exec_time = datetime.now() - start_time
+        logging.info("scan done at %f seconds", exec_time.total_seconds())
 
-    logging.info("%d hsps found in this run", len(all_hsps))
+        # save hsps to database
 
-    exec_time = datetime.now() - start_time
-    logging.info("scan done at %f seconds", exec_time.total_seconds())
+        for cds in cds_to_scan:
+            for hsp in cds.hsps:
+                hsp.save(False)
+        DB.commit()
 
-    HMMer.unload()
+        exec_time = datetime.now() - start_time
+        logging.info("DB: HSP save done at %f seconds", exec_time.total_seconds())
 
-    # save hsps to database
-    for new_hsp in all_hsps:
-        new_hsp.save(False)
-    DB.commit()
+        HMMer.unload()
 
-    exec_time = datetime.now() - start_time
-    logging.info("DB: HSP save done at %f seconds", exec_time.total_seconds())
+        # set new run state
+        run_state = bs_data.find_minimum_task(gbks)
+        logging.info("Next task: %s", run_state)
 
-    # set new run state
-    run_state = bs_data.find_minimum_task(gbks)
-    logging.info("Next task: %s", run_state)
+        all_hsps = []
+        for gbk in gbks:
+            for cds in gbk.genes:
+                all_hsps.extend(cds.hsps)
+
+        logging.info("%d hsps found in this run", len(all_hsps))
 
     # HMMER - Align
     if run_state == bs_enums.TASK.HMM_ALIGN:
@@ -243,20 +251,22 @@ if __name__ == "__main__":
 
         logging.info("%d alignments", alignment_count)
 
-    exec_time = datetime.now() - start_time
-    logging.info("align done at %f seconds", exec_time.total_seconds())
+        exec_time = datetime.now() - start_time
+        logging.info("align done at %f seconds", exec_time.total_seconds())
 
-    HMMer.unload()
+        DB.commit()
+        DB.save_to_disk(run.output.db_path)
 
-    exec_time = datetime.now() - start_time
-    logging.info("DB: HSP alignment save done at %f seconds", exec_time.total_seconds())
+        exec_time = datetime.now() - start_time
+        logging.info(
+            "DB: HSP alignment save done at %f seconds", exec_time.total_seconds()
+        )
 
-    DB.commit()
-    DB.save_to_disk(run.output.db_path)
+        HMMer.unload()
 
-    # set new run state
-    run_state = bs_data.find_minimum_task(gbks)
-    logging.info("Next task: %s", run_state)
+        # set new run state
+        run_state = bs_data.find_minimum_task(gbks)
+        logging.info("Next task: %s", run_state)
 
     # PREPARE OUTPUT
 
@@ -275,21 +285,19 @@ if __name__ == "__main__":
 
     # DISTANCE GENERATION
 
-    # networking - mix
+    # mix
 
     if not run.binning.no_mix and not run.binning.query_bgc_path:
         logging.info("Generating mix bin")
 
-        mix_bgc_records: list[BGCRecord] = []
-        mix_network = BSNetwork()
+        mix_bgc_regions: list[BGCRecord] = []
 
         for gbk in gbks:
             if gbk.region is not None:
-                mix_bgc_records.append(gbk.region)
-                mix_network.add_node(gbk.region)
+                mix_bgc_regions.append(gbk.region)
 
-        # needs to be generalized
-        mix_bin = generate_mix(mix_bgc_records)
+        mix_bin = RecordPairGenerator("mix")
+        mix_bin.add_bgcs(mix_bgc_regions)
 
         logging.info(mix_bin)
 
@@ -304,29 +312,40 @@ if __name__ == "__main__":
                     f"{done_pairs}/{mix_bin.num_pairs()} ({done_pairs/mix_bin.num_pairs():.2%})"
                 )
 
-        create_bin_network_edges(
-            mix_bin, mix_network, run.comparison.alignment_mode, run.cores, callback
+        mix_distances = generate_bin_distances(
+            mix_bin, run.comparison.alignment_mode, run.cores, callback
         )
 
-        mix_network.cull_singletons(
-            node_types=[bs_enums.SOURCE_TYPE.MIBIG, bs_enums.SOURCE_TYPE.REFERENCE]
-        )
+        logging.info("Generated %d distances", len(mix_distances))
+        for distance in mix_distances:
+            save_edge_to_db(distance)
 
-        mix_network.generate_families_cutoff("dist", 0.3)
+        DB.commit()
 
-        # TODO: cull ref singletons again, for each family subgraph
+    # NETWORKING
 
-        # Output
-        legacy_prepare_bin_output(run.output.output_dir, run.label, 0.3, mix_bin)
+    # mix
 
-        legacy_generate_bin_output(
-            run.output.output_dir, run.label, 0.3, mix_bin, mix_network
-        )
+    # if not run.binning.no_mix and not run.binning.query_bgc_path:
+    #     logging.info("Generating mix bin")
 
-        mix_network.write_graphml(run.output.output_dir / Path("network_mix.graphml"))
-        mix_network.write_edgelist_tsv(run.output.output_dir / Path("network_mix.tsv"))
+    #     mix_network.generate_families_cutoff("dist", 0.3)
 
-        mix_network.export_distances_to_db()
+    #     # TODO: cull ref singletons again, for each family subgraph
+
+    #     # Output
+    #     legacy_prepare_bin_output(run.output.output_dir, run.label, 0.3, mix_bin)
+
+    #     legacy_generate_bin_output(
+    #         run.output.output_dir, run.label, 0.3, mix_bin, mix_network
+    #     )
+
+    #     mix_network.write_graphml(run.output.output_dir / Path("network_mix.graphml"))
+    #     mix_network.write_edgelist_tsv(run.output.output_dir / Path("network_mix.tsv"))
+
+    #     mix_network.export_distances_to_db()
+
+    exit(0)
 
     # networking - query
 

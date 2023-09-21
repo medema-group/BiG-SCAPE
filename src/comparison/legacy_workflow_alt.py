@@ -118,6 +118,79 @@ def create_bin_network_edges_alt(
                 break
 
 
+def generate_bin_distances(
+    bin: RecordPairGenerator,
+    alignment_mode: str,
+    cores: int,
+    callback: Callable,
+    batch_size=100,
+):  # pragma no cover
+    pair_generator = bin.generate_pairs()
+
+    # prepare a process pool
+    logging.info("Using %d cores", cores)
+
+    batch_size = min(bin.num_pairs(), batch_size)
+
+    logging.info("Using batch size: %d", batch_size)
+
+    with ProcessPoolExecutor(cores) as executor:
+        done_pairs = 0
+
+        running_tasks = {}
+
+        for i in range(cores):
+            batch = batch_generator(pair_generator, batch_size)
+
+            if len(batch) == 0:
+                break
+
+            new_task = executor.submit(
+                calculate_scores_pair, (batch, alignment_mode, bin.label)
+            )
+            running_tasks[new_task] = batch
+
+        while True:
+            done, not_done = wait(running_tasks, None, "FIRST_COMPLETED")
+
+            # first quickly start new tasks
+            for done_task in done:
+                batch = batch_generator(pair_generator, batch_size)
+
+                if len(batch) == 0:
+                    continue
+
+                new_task = executor.submit(
+                    calculate_scores_pair, (batch, alignment_mode, bin.label)
+                )
+                running_tasks[new_task] = batch
+
+            # second loop to store results
+            for done_task in done:
+                task_batch = running_tasks[done_task]
+
+                exception = done_task.exception()
+                if exception:
+                    raise exception
+
+                results = done_task.result()
+
+                del running_tasks[done_task]
+
+                if len(results) != len(task_batch):
+                    raise ValueError("Mismatch between task length and result length")
+
+                for idx, pair in enumerate(task_batch):
+                    dist, jc, ai, dss = results[idx]
+                    yield (pair, dist, jc, ai, dss)
+
+                done_pairs += len(results)
+                callback(done_pairs)
+
+            if len(running_tasks) == 0:
+                break
+
+
 def do_lcs_pair(pair: BGCPair, alignment_mode) -> bool:  # pragma no cover
     (
         a_start,
