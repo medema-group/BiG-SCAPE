@@ -121,7 +121,7 @@ class RecordPairGenerator:
 class RecordPairGeneratorQueryRef(RecordPairGenerator):
     """Describes a bin of BGC records to generate pairs from. Pair generation excludes ref <-> ref pairs"""
 
-    def generate_pairs(self, legacy_sorting=False) -> Generator[RecordPair]:
+    def generate_pairs(self, legacy_sorting=False) -> Generator[RecordPair, None, None]:
         """Returns an Generator for Region pairs in this bin, all pairs are generated
         except for ref <-> ref pairs
 
@@ -215,7 +215,7 @@ class RecordPairGeneratorConRefSinRef(RecordPairGenerator):
         self.ref_connected_nodes = new_ref_connected_nodes
         self.ref_singletons = new_ref_singletons
 
-    def generate_pairs(self, legacy_sorting=False) -> Generator[RecordPair]:
+    def generate_pairs(self, legacy_sorting=False) -> Generator[RecordPair, None, None]:
         """Returns an Generator for Region pairs in this bin, pairs are only generated between
         given nodes to all singleton ref nodes
 
@@ -341,22 +341,6 @@ class RecordPair:
             return False
 
         return self.region_a == _o.region_a and self.region_b == _o.region_b
-
-    @staticmethod
-    def load_from_db(region_a_id: int, region_b_id: int):
-        """Load a pair from the database
-
-        Args:
-            region_a_id (int): The id of the first region in the pair
-            region_b_id (int): The id of the second region in the pair
-
-        Returns:
-            RegionPair: The pair loaded from the database
-        """
-        region_a = BGCRecord.load_from_db(region_a_id)
-        region_b = BGCRecord.load_from_db(region_b_id)
-
-        return RecordPair(region_a, region_b)
 
 
 def generate_mix(bgc_list: list[BGCRecord]) -> RecordPairGenerator:
