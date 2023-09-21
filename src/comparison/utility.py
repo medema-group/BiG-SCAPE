@@ -11,18 +11,15 @@ from src.data import DB
 from src.comparison.binning import RecordPairGenerator, RecordPair
 
 
-def save_edge_to_db(edge: tuple[RecordPair, float, float, float, float]) -> None:
+def save_edge_to_db(edge: tuple[int, int, float, float, float, float]) -> None:
     """Save edge to the database
 
     Args:
-        edge (tuple[BGCPair, float, float, float, float]): edge tuple containing
-            the pair, distance, jaccard, adjacency, and dss
+        edge (tuple[int, int, float, float, float, float]): edge tuple containing
+            region_a_id, region_b_id, distance, jaccard, adjacency, dss
     """
 
-    pair, distance, jaccard, adjacency, dss = edge
-
-    region_a_id = pair.region_a._db_id
-    region_b_id = pair.region_b._db_id
+    region_a_id, region_b_id, distance, jaccard, adjacency, dss = edge
 
     # save the comparison data to the database
     distance_table = DB.metadata.tables["distance"]

@@ -12,11 +12,10 @@ TODO: docstrings, none typings
 # from python
 import logging
 from concurrent.futures import ProcessPoolExecutor, wait
-from typing import Callable, Generator
+from typing import Callable
 
 # from other modules
 from src.distances import calc_jaccard_pair, calc_ai_pair, calc_dss_pair_legacy
-from src.network import BSNetwork
 
 # from this module
 from .binning import RecordPairGenerator, RecordPair
@@ -39,83 +38,6 @@ def batch_generator(iterator, batch_size):
         batch.append(item)
 
     return batch
-
-
-def create_bin_network_edges_alt(
-    bin: RecordPairGenerator,
-    network: BSNetwork,
-    alignment_mode: str,
-    cores: int,
-    callback: Callable,
-    batch_size=100,
-):  # pragma no cover
-    pair_generator = bin.generate_pairs()
-
-    pairs_todo = bin.num_pairs()
-    logging.info("Performing distance calculation for %d pairs", pairs_todo)
-
-    # prepare a process pool
-    logging.info("Using %d cores", cores)
-
-    batch_size = min(bin.num_pairs(), batch_size)
-
-    logging.info("Using batch size: %d", batch_size)
-
-    with ProcessPoolExecutor(cores) as executor:
-        done_pairs = 0
-
-        running_tasks = {}
-
-        for i in range(cores):
-            batch = batch_generator(pair_generator, batch_size)
-
-            if len(batch) == 0:
-                break
-
-            new_task = executor.submit(
-                calculate_scores_pair, (batch, alignment_mode, bin.label)
-            )
-            running_tasks[new_task] = batch
-
-        while True:
-            done, not_done = wait(running_tasks, None, "FIRST_COMPLETED")
-
-            # first quickly start new tasks
-            for done_task in done:
-                batch = batch_generator(pair_generator, batch_size)
-
-                if len(batch) == 0:
-                    continue
-
-                new_task = executor.submit(
-                    calculate_scores_pair, (batch, alignment_mode, bin.label)
-                )
-                running_tasks[new_task] = batch
-
-            # second loop to store results
-            for done_task in done:
-                task_batch = running_tasks[done_task]
-
-                exception = done_task.exception()
-                if exception:
-                    raise exception
-
-                results = done_task.result()
-
-                del running_tasks[done_task]
-
-                if len(results) != len(task_batch):
-                    raise ValueError("Mismatch between task length and result length")
-
-                for idx, pair in enumerate(task_batch):
-                    dist, jc, ai, dss = results[idx]
-                    network.add_edge_pair(pair, dist=dist, jc=jc, ai=ai, dss=dss)
-
-                done_pairs += len(results)
-                callback(done_pairs)
-
-            if len(running_tasks) == 0:
-                break
 
 
 def generate_edges(

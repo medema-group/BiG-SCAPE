@@ -13,15 +13,12 @@ from src.hmm import HMMer, legacy_filter_overlap, HSP
 from src.parameters import RunParameters, parse_cmd
 from src.comparison import (
     RecordPairGenerator,
-    RecordPairGeneratorQueryRef,
     PartialRecordPairGenerator,
-    legacy_bin_generator,
     generate_edges,
     save_edge_to_db,
 )
 from src.file_input import load_dataset_folder, get_mibig
 from src.diagnostics import Profiler
-from src.network import BSNetwork, sim_matrix_from_edge_list, aff_sim_matrix
 from src.output import (
     legacy_prepare_output,
     legacy_prepare_cutoff_output,
@@ -29,8 +26,11 @@ from src.output import (
     legacy_generate_bin_output,
 )
 
+
 import src.data as bs_data
 import src.enums as bs_enums
+import src.network.network as bs_network
+import src.network.families as bs_families
 
 
 def load_gbks(run: RunParameters) -> list[GBK]:
@@ -327,15 +327,11 @@ if __name__ == "__main__":
             for edge in mix_edges:
                 num_edges += 1
                 save_edge_to_db(edge)
-                if num_edges == 100:
-                    break
 
             logging.info("Generated %d edges", num_edges)
 
             DB.commit()
             DB.save_to_disk(run.output.db_path)
-
-    exit(0)
 
     # NETWORKING
 
@@ -344,222 +340,199 @@ if __name__ == "__main__":
     if not run.binning.no_mix and not run.binning.query_bgc_path:
         logging.info("Generating mix connected component networks")
 
-        # labels will start at 0 and go up to the number of families. we have to
-        # keep track of the last number we used, so we don't overlap numbers
-
-        last_center = 0
-
-        for connected_component in BSNetwork.generate_connected_component_networks(0.3):
-            logging.info(
+        for connected_component in bs_network.get_connected_components(0.3):
+            logging.debug(
                 "Found connected component with %d edges", len(connected_component)
             )
 
-            logging.debug("Performing AP on connected component")
-
-            distance_matrix = sim_matrix_from_edge_list(connected_component)
-
-            labels, centers = aff_sim_matrix(distance_matrix)
-
-            for label in labels:
-                if label == -1:
-                    continue
-
-                family = label + last_center
-
-            last_center = max(label)
-
-            logging.debug("Found %d clusters", len(centers))
+            regions_families = bs_families.generate_families(connected_component)
 
             # save families to database
+            bs_families.save_to_db(regions_families)
 
-        # mix_network.generate_families_cutoff("dist", 0.3)
+        DB.commit()
 
-        # # TODO: cull ref singletons again, for each family subgraph
+        DB.save_to_disk(run.output.db_path)
 
-        # # Output
-        # legacy_prepare_bin_output(run.output.output_dir, run.label, 0.3, mix_bin)
+        legacy_prepare_bin_output(run.output.output_dir, run.label, 0.3, mix_bin)
 
-        # legacy_generate_bin_output(
-        #     run.output.output_dir, run.label, 0.3, mix_bin, mix_network
-        # )
+        legacy_generate_bin_output(run.output.output_dir, run.label, 0.3, mix_bin)
 
         # mix_network.write_graphml(run.output.output_dir / Path("network_mix.graphml"))
         # mix_network.write_edgelist_tsv(run.output.output_dir / Path("network_mix.tsv"))
 
         # mix_network.export_distances_to_db()
 
-    exit(0)
-
     # networking - query
 
-    if run.binning.query_bgc_path:
-        logging.info("Generating query BGC mode bin")
+    # if run.binning.query_bgc_path:
+    #     logging.info("Generating query BGC mode bin")
 
-        query_bgc_network = BSNetwork()
-        query_bgcs_records: list[BGCRecord] = []
+    #     query_bgc_network = BSNetwork()
+    #     query_bgcs_records: list[BGCRecord] = []
 
-        for gbk in gbks:
-            if gbk.region is not None:
-                query_bgcs_records.append(gbk.region)
-                query_bgc_network.add_node(gbk.region)
+    #     for gbk in gbks:
+    #         if gbk.region is not None:
+    #             query_bgcs_records.append(gbk.region)
+    #             query_bgc_network.add_node(gbk.region)
 
-        # all query <-> query and query <-> ref pairs
-        query_bgc_pairs_queryref = RecordPairGeneratorQueryRef("Query_Ref")
-        query_bgc_pairs_queryref.add_records(query_bgcs_records)
+    #     # all query <-> query and query <-> ref pairs
+    #     query_bgc_pairs_queryref = RecordPairGeneratorQueryRef("Query_Ref")
+    #     query_bgc_pairs_queryref.add_records(query_bgcs_records)
 
-        #   create edges (query <-> query & ref edges)
-        create_bin_network_edges(
-            query_bgc_pairs_queryref,
-            query_bgc_network,
-            run.comparison.alignment_mode,
-            run.cores,
-            callback,
-        )
+    #     #   create edges (query <-> query & ref edges)
+    #     create_bin_network_edges(
+    #         query_bgc_pairs_queryref,
+    #         query_bgc_network,
+    #         run.comparison.alignment_mode,
+    #         run.cores,
+    #         callback,
+    #     )
 
-        # create firstly all con_ref <-> sin_ref pairs and add edges in network
-        query_bgc_pairs_conrefsinref = RecordPairGeneratorConRefSinRef(
-            "ConRef_SinRef", query_bgc_network
-        )
-        query_bgc_pairs_conrefsinref.add_records(query_bgcs_records)
-        create_bin_network_edges(
-            query_bgc_pairs_conrefsinref,
-            query_bgc_network,
-            run.comparison.alignment_mode,
-            run.cores,
-            callback,
-        )
+    #     # create firstly all con_ref <-> sin_ref pairs and add edges in network
+    #     query_bgc_pairs_conrefsinref = RecordPairGeneratorConRefSinRef(
+    #         "ConRef_SinRef", query_bgc_network
+    #     )
+    #     query_bgc_pairs_conrefsinref.add_records(query_bgcs_records)
+    #     create_bin_network_edges(
+    #         query_bgc_pairs_conrefsinref,
+    #         query_bgc_network,
+    #         run.comparison.alignment_mode,
+    #         run.cores,
+    #         callback,
+    #     )
 
-        # get newly connected ref nodes, and recalculate nodes as to only compare new connected
-        # refs to new singletons, to avoid double calculations
-        query_bgc_pairs_conrefsinref.recalculate_nodes()
+    #     # get newly connected ref nodes, and recalculate nodes as to only compare new connected
+    #     # refs to new singletons, to avoid double calculations
+    #     query_bgc_pairs_conrefsinref.recalculate_nodes()
 
-        old_nr_of_edges = 0
-        new_nr_of_edges = query_bgc_network.graph.number_of_edges()
+    #     old_nr_of_edges = 0
+    #     new_nr_of_edges = query_bgc_network.graph.number_of_edges()
 
-        # propagate network with new connected ref <-> new singletons until no new edges are added
-        while new_nr_of_edges > old_nr_of_edges:
-            old_nr_of_edges = new_nr_of_edges
+    #     # propagate network with new connected ref <-> new singletons until no new edges are added
+    #     while new_nr_of_edges > old_nr_of_edges:
+    #         old_nr_of_edges = new_nr_of_edges
 
-            create_bin_network_edges(
-                query_bgc_pairs_conrefsinref,
-                query_bgc_network,
-                run.comparison.alignment_mode,
-                run.cores,
-                callback,
-            )
+    #         create_bin_network_edges(
+    #             query_bgc_pairs_conrefsinref,
+    #             query_bgc_network,
+    #             run.comparison.alignment_mode,
+    #             run.cores,
+    #             callback,
+    #         )
 
-            query_bgc_pairs_conrefsinref.recalculate_nodes()
-            new_nr_of_edges = query_bgc_network.graph.number_of_edges()
+    #         query_bgc_pairs_conrefsinref.recalculate_nodes()
+    #         new_nr_of_edges = query_bgc_network.graph.number_of_edges()
 
-        #   cull leftover ref singletons
-        query_bgc_network.cull_singletons(
-            node_types=[bs_enums.SOURCE_TYPE.REFERENCE, bs_enums.SOURCE_TYPE.MIBIG]
-        )
+    #     #   cull leftover ref singletons
+    #     query_bgc_network.cull_singletons(
+    #         node_types=[bs_enums.SOURCE_TYPE.REFERENCE, bs_enums.SOURCE_TYPE.MIBIG]
+    #     )
 
-        all_current_nodes = query_bgc_network.get_nodes()
+    #     all_current_nodes = query_bgc_network.get_nodes()
 
-        # make pairs and add missing edges with all-vs-all pain_generator
-        query_bgc_pairs_conrefconref = RecordPairGenerator("ConRef_ConRef")
-        query_bgc_pairs_conrefsinref.add_records(all_current_nodes)
-        create_bin_network_edges(
-            query_bgc_pairs_conrefconref,
-            query_bgc_network,
-            run.comparison.alignment_mode,
-            run.cores,
-            callback,
-        )
+    #     # make pairs and add missing edges with all-vs-all pain_generator
+    #     query_bgc_pairs_conrefconref = RecordPairGenerator("ConRef_ConRef")
+    #     query_bgc_pairs_conrefsinref.add_records(all_current_nodes)
+    #     create_bin_network_edges(
+    #         query_bgc_pairs_conrefconref,
+    #         query_bgc_network,
+    #         run.comparison.alignment_mode,
+    #         run.cores,
+    #         callback,
+    #     )
 
-        # generate families
-        # TODO: cull ref singletons again, for each family subgraph
-        query_bgc_network.generate_families_cutoff("dist", 0.3)
+    #     # generate families
+    #     # TODO: cull ref singletons again, for each family subgraph
+    #     query_bgc_network.generate_families_cutoff("dist", 0.3)
 
-        final_query_bgc_nodes = query_bgc_network.get_nodes()
-        mock_query_bgc_pairs_conrefconref = RecordPairGenerator("Query_BGC")
-        query_bgc_pairs_conrefsinref.add_records(final_query_bgc_nodes)
+    #     final_query_bgc_nodes = query_bgc_network.get_nodes()
+    #     mock_query_bgc_pairs_conrefconref = RecordPairGenerator("Query_BGC")
+    #     query_bgc_pairs_conrefsinref.add_records(final_query_bgc_nodes)
 
-        # Output
-        # TODO: check whether query_bgc_pairs_conrefsinref bin works here
-        legacy_prepare_bin_output(
-            run.output.output_dir, run.label, 0.3, query_bgc_pairs_conrefsinref
-        )
+    #     # Output
+    #     # TODO: check whether query_bgc_pairs_conrefsinref bin works here
+    #     legacy_prepare_bin_output(
+    #         run.output.output_dir, run.label, 0.3, query_bgc_pairs_conrefsinref
+    #     )
 
-        legacy_generate_bin_output(
-            run.output.output_dir,
-            run.label,
-            0.3,
-            query_bgc_pairs_conrefsinref,
-            query_bgc_network,
-        )
+    #     legacy_generate_bin_output(
+    #         run.output.output_dir,
+    #         run.label,
+    #         0.3,
+    #         query_bgc_pairs_conrefsinref,
+    #         query_bgc_network,
+    #     )
 
-        query_bgc_network.write_graphml(
-            run.output.output_dir / Path("network_mix.graphml")
-        )
-        query_bgc_network.write_edgelist_tsv(
-            run.output.output_dir / Path("network_mix.tsv")
-        )
+    #     query_bgc_network.write_graphml(
+    #         run.output.output_dir / Path("network_mix.graphml")
+    #     )
+    #     query_bgc_network.write_edgelist_tsv(
+    #         run.output.output_dir / Path("network_mix.tsv")
+    #     )
 
-        query_bgc_network.export_distances_to_db()
+    #     query_bgc_network.export_distances_to_db()
 
-    # networking - bins
+    # # networking - bins
 
-    if run.binning.legacy_classify:
-        logging.info("Generating legacy bins")
-        for bin in legacy_bin_generator(gbks):
-            if bin.num_pairs() == 0:
-                logging.info("Bin %s has no pairs. Skipping...", bin.label)
+    # if run.binning.legacy_classify:
+    #     logging.info("Generating legacy bins")
+    #     for bin in legacy_bin_generator(gbks):
+    #         if bin.num_pairs() == 0:
+    #             logging.info("Bin %s has no pairs. Skipping...", bin.label)
 
-            bin_network = BSNetwork()
-            for record in bin.source_records:
-                bin_network.add_node(record)
+    #         bin_network = BSNetwork()
+    #         for record in bin.source_records:
+    #             bin_network.add_node(record)
 
-            legacy_prepare_bin_output(run.output.output_dir, run.label, 0.3, bin)
+    #         legacy_prepare_bin_output(run.output.output_dir, run.label, 0.3, bin)
 
-            logging.info(bin)
+    #         logging.info(bin)
 
-            def callback(done_pairs):
-                if bin.num_pairs() > 10:
-                    mod = round(bin.num_pairs() / 10)
-                else:
-                    mod = 1
+    #         def callback(done_pairs):
+    #             if bin.num_pairs() > 10:
+    #                 mod = round(bin.num_pairs() / 10)
+    #             else:
+    #                 mod = 1
 
-                if done_pairs % mod == 0:
-                    logging.info(
-                        f"{done_pairs}/{bin.num_pairs()} ({done_pairs/bin.num_pairs():.2%})"
-                    )
+    #             if done_pairs % mod == 0:
+    #                 logging.info(
+    #                     f"{done_pairs}/{bin.num_pairs()} ({done_pairs/bin.num_pairs():.2%})"
+    #                 )
 
-            create_bin_network_edges(
-                bin, bin_network, run.comparison.alignment_mode, run.cores, callback
-            )
+    #         create_bin_network_edges(
+    #             bin, bin_network, run.comparison.alignment_mode, run.cores, callback
+    #         )
 
-            bin_network.generate_families_cutoff("dist", 0.3)
+    #         bin_network.generate_families_cutoff("dist", 0.3)
 
-            # Output
+    #         # Output
 
-            legacy_generate_bin_output(
-                run.output.output_dir, run.label, 0.3, bin, bin_network
-            )
+    #         legacy_generate_bin_output(
+    #             run.output.output_dir, run.label, 0.3, bin, bin_network
+    #         )
 
-            bin_graphml_filename = f"network_{bin.label}.graphml"
-            bin_network.write_graphml(
-                run.output.output_dir / Path(bin_graphml_filename)
-            )
+    #         bin_graphml_filename = f"network_{bin.label}.graphml"
+    #         bin_network.write_graphml(
+    #             run.output.output_dir / Path(bin_graphml_filename)
+    #         )
 
-            bin_tsv_filename = f"network_{bin.label}.tsv"
-            bin_network.write_edgelist_tsv(
-                run.output.output_dir / Path(bin_tsv_filename)
-            )
+    #         bin_tsv_filename = f"network_{bin.label}.tsv"
+    #         bin_network.write_edgelist_tsv(
+    #             run.output.output_dir / Path(bin_tsv_filename)
+    #         )
 
-            # if running mix, distances are already in the database
-            if run.binning.no_mix:
-                continue
+    #         # if running mix, distances are already in the database
+    #         if run.binning.no_mix:
+    #             continue
 
-            bin_network.export_distances_to_db()
+    #         bin_network.export_distances_to_db()
 
-    # last dump of the database
-    DB.save_to_disk(run.output.db_path)
+    # # last dump of the database
+    # DB.save_to_disk(run.output.db_path)
 
-    if run.diagnostics.profiling:
-        profiler.stop()
+    # if run.diagnostics.profiling:
+    #     profiler.stop()
 
-    exec_time = datetime.now() - start_time
-    logging.info("All tasks done at %f seconds", exec_time.total_seconds())
+    # exec_time = datetime.now() - start_time
+    # logging.info("All tasks done at %f seconds", exec_time.total_seconds())

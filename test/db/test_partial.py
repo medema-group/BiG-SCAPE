@@ -19,8 +19,8 @@ from src.data import (
 )
 from src.genbank import GBK, CDS, Region
 from src.hmm import HSP, HSPAlignment, HMMer
-from src.network import BSNetwork
-from src.comparison import RecordPairGenerator, RecordPair, PartialRecordPairGenerator
+
+import src.comparison as bs_comparison
 
 import src.enums as bs_enums
 
@@ -46,19 +46,16 @@ def add_mock_hsp_alignment_hsp(hsp: HSP) -> None:
     hsp.alignment = hsp_alignment
 
 
-def gen_mock_network(gbks: list[GBK], edge_gbks: list[GBK]) -> BSNetwork:
-    network = BSNetwork()
-    for gbk in gbks:
-        if gbk.region is None:
-            continue
-        network.add_node(gbk.region)
-
+def gen_mock_edge_list(
+    edge_gbks: list[GBK],
+) -> list[tuple[int, int, float, float, float, float]]:
+    edges = []
     for gbk_a, gbk_b in combinations(edge_gbks, 2):
         if gbk_a.region is None or gbk_b.region is None:
             continue
-        network.add_edge(gbk_a.region, gbk_b.region, dist=0.0, jc=0.0, ai=0.0, dss=0.0)
+        edges.append((gbk_a.region._db_id, gbk_b.region._db_id, 0.0, 0.0, 0.0, 0.0))
 
-    return network
+    return edges
 
 
 class TestPartial(TestCase):
@@ -405,8 +402,9 @@ class TestPartialComparison(TestCase):
             gbk.genes[0].hsps[0].alignment.save()
 
         # only one distance done. (1-2, missing 1-3 and 2-3)
-        network = gen_mock_network(gbks, gbks[0:2])
-        network.export_distances_to_db()
+        edges = gen_mock_edge_list(gbks[0:2])
+        for edge in edges:
+            bs_comparison.save_edge_to_db(edge)
 
         expected_state = bs_enums.COMPARISON_TASK.NEW_DATA
         actual_state = get_comparison_data_state(gbks)
@@ -466,22 +464,25 @@ class TestPartialComparison(TestCase):
             gbk.genes[0].hsps[0].alignment.save()
 
         # only one distance done. (1-2, missing 1-3 and 2-3)
-        network = gen_mock_network(gbks, gbks[0:2])
-        network.export_distances_to_db()
+        edges = gen_mock_edge_list(gbks[0:2])
+        for edge in edges:
+            bs_comparison.save_edge_to_db(edge)
 
         # all-vs-all bin
-        mix_bin = RecordPairGenerator("mix")
+        mix_bin = bs_comparison.RecordPairGenerator("mix")
         mix_bin.add_records([gbk.region for gbk in gbks])
 
         expected_missing_pairs = [
-            RecordPair(gbks[0].region, gbks[2].region),
-            RecordPair(gbks[1].region, gbks[2].region),
+            bs_comparison.RecordPair(gbks[0].region, gbks[2].region),
+            bs_comparison.RecordPair(gbks[1].region, gbks[2].region),
         ]
 
-        pair_generator = RecordPairGenerator("mix")
+        pair_generator = bs_comparison.RecordPairGenerator("mix")
         pair_generator.add_records([gbk.region for gbk in gbks])
 
-        missing_edge_generator = PartialRecordPairGenerator(pair_generator)
+        missing_edge_generator = bs_comparison.PartialRecordPairGenerator(
+            pair_generator
+        )
 
         actual_missing_pairs = list(missing_edge_generator.generate_pairs())
 
@@ -509,19 +510,22 @@ class TestPartialComparison(TestCase):
             gbk.genes[0].hsps[0].alignment.save()
 
         # only one distance done. (1-2, missing 1-3 and 2-3)
-        network = gen_mock_network(gbks, gbks[0:2])
-        network.export_distances_to_db()
+        edges = gen_mock_edge_list(gbks[0:2])
+        for edge in edges:
+            bs_comparison.save_edge_to_db(edge)
 
         # all-vs-all bin
-        mix_bin = RecordPairGenerator("mix")
+        mix_bin = bs_comparison.RecordPairGenerator("mix")
         mix_bin.add_records([gbk.region for gbk in gbks])
 
         expected_missing_count = 2
 
-        pair_generator = RecordPairGenerator("mix")
+        pair_generator = bs_comparison.RecordPairGenerator("mix")
         pair_generator.add_records([gbk.region for gbk in gbks])
 
-        missing_edge_generator = PartialRecordPairGenerator(pair_generator)
+        missing_edge_generator = bs_comparison.PartialRecordPairGenerator(
+            pair_generator
+        )
 
         actual_missing_count = missing_edge_generator.num_pairs()
 

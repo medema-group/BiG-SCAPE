@@ -10,7 +10,6 @@ from typing import Any
 # from other modules
 from src.comparison import RecordPairGenerator, legacy_get_class
 from src.genbank import GBK, CDS
-from src.network import BSNetwork
 from src.enums import SOURCE_TYPE
 
 
@@ -617,7 +616,6 @@ def generate_bs_data_js(
 def generate_bs_networks_js_sim_matrix(
     cutoff: float,
     bin: RecordPairGenerator,
-    network: BSNetwork,
 ) -> list[list[float]]:
     """Generate a similarity matrix for the bs_networks.js file
 
@@ -682,9 +680,6 @@ def generate_bs_networks_families(
 
     Args:
         families_members (dict[int, list[int]]): family to member regions index
-
-    Returns:
-        list[dict[str, Any]]: networks families object
     """
     networks_families: list[dict[str, Any]] = []
     for family_idx, family_members in families_members.items():
@@ -694,7 +689,7 @@ def generate_bs_networks_families(
                 "members": family_members,
             }
         )
-    return networks_families
+        return networks_families
 
 
 def generate_bs_networks_js(
@@ -702,7 +697,6 @@ def generate_bs_networks_js(
     label: str,
     cutoff: float,
     bin: RecordPairGenerator,
-    network: BSNetwork,
     bs_families: list[dict[str, Any]],
 ):
     """Generates the bs_networks.js file located at
@@ -842,7 +836,6 @@ def legacy_generate_bin_output(
     label: str,
     cutoff: float,
     bin: RecordPairGenerator,
-    network: BSNetwork,
 ) -> None:
     """Generate the network data from a bin from cutoff filtering and affinity
     propagation
@@ -855,7 +848,7 @@ def legacy_generate_bin_output(
         network (BSNetwork): the network object for the bin
     """
     families_members = generate_bs_families_members(cutoff, bin)
-    networks_families = generate_bs_networks_families(families_members)
+    networks_families = generate_bs_networks_families()
 
     add_run_data_network(output_dir, label, cutoff, bin, families_members)
-    generate_bs_networks_js(output_dir, label, cutoff, bin, network, networks_families)
+    generate_bs_networks_js(output_dir, label, cutoff, bin, networks_families)
