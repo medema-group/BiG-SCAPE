@@ -470,7 +470,7 @@ BigscapeFunc.filterUtil = {
 
 BigscapeFunc.filterUtil.tokenize = function (string) {
   // split on spaces and brackets but keep brackets as tokens
-  var tokens = string.split(/ |(?=[)(])|(?<=[)(])/g)
+  var tokens = string.split(/[ \n]+|(?=[)(])|(?<=[)(])/g)
   return tokens
 }
 
