@@ -219,6 +219,7 @@ class GBK:
 
         return list(gbk_dict.values())
 
+    @staticmethod
     def load_one(gbk_id: int) -> GBK:
         """Load a single GBK object from the database
 
@@ -249,6 +250,7 @@ class GBK:
 
         return new_gbk
 
+    @staticmethod
     def load_many(gbk_ids: list[int]) -> list[GBK]:
         """Load a list of GBK objects from the database
 
