@@ -26,6 +26,21 @@ def generate_families(
     Returns:
         list[tuple[int, int, float]]: list of (region_id, family, cutoff) tuples
     """
+    # assemble list of (region_id, family, cutoff) tuples for easy insertion
+    # into db
+    regions_families = []
+
+    # if there are only one or two edges, this can all be the same family
+    # choose the first node id as the family id
+    if len(connected_component) <= 2:
+        family_id = connected_component[0][0]
+
+        for edge in connected_component:
+            regions_families.append((edge[0], family_id, 0.3))
+            regions_families.append((edge[1], family_id, 0.3))
+
+        return regions_families
+
     adj_list = edge_list_to_adj_list(connected_component)
 
     # this list is going to be in the same order as the distance matrix rows/col
@@ -36,10 +51,6 @@ def generate_families(
 
     labels, centers = aff_sim_matrix(distance_matrix)
 
-    # assemble list of (region_id, family, cutoff) tuples for easy insertion
-    # into db
-    regions_families = []
-
     for idx, label in enumerate(labels):
         label = int(label)
         if label == -1:
@@ -47,7 +58,8 @@ def generate_families(
 
         region_id = node_ids[idx]
 
-        family = int(label)
+        center = centers[label]
+        family = node_ids[center]
 
         regions_families.append((region_id, family, 0.3))
 
