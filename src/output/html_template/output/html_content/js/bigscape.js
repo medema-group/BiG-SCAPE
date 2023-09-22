@@ -78,11 +78,10 @@ function Bigscape(bs_data, bs_families, bs_alignment, bs_similarity, network_con
   net_ui.parent().find(".desc-container").append(desc_ui);
   //
   var search_ui = $("<div class='' style='margin-top: 2px;'></div>");
-  var search_bar = $("<input type='text'>");
+  var search_bar = $("<textarea id='search-input' rows='1' cols='20'>");
   var search_result_ui = $("<div class='search-result hidden'></div>");
   search_bar.keyup({ bigscape: bigscape, bs_data: bs_data, bs_families: bs_families, search_result_ui: search_result_ui }, function (handler) {
-    var search_string = handler.target.value;
-
+    var search_string = handler.target.value.trim();
     if (search_string.length > 0) {
       search_result_ui.html("");
       var fuse_options = {
@@ -119,8 +118,34 @@ function Bigscape(bs_data, bs_families, bs_alignment, bs_similarity, network_con
       search_result_ui.addClass("hidden");
     }
   });
-  search_ui.append("<span>Search: </span>");
+  var adv_btn = $("<div id='advanced-btn' class=''><u><a>Advanced</a></u></div>");
+  adv_btn.find("a").click(function () {
+    $("#advanced-btn").addClass("hidden");
+    $("#search-input").attr({ "cols": "38", "rows": "2" });
+    $("#search-text").find("span").text("Advanced search:");
+    var advanced_search_ui = $("<div id='advanced-container' class=''></div>");
+    var tag_select = $("<select id='tag-selector' style='width:96px'>" +
+      "<option value=''>All tags</option>" +
+      "<option value='family'>Gene Cluster Family</option>" +
+      "<option value='BGC'>BGC Name</option>" +
+      "<option value='domain'>Protein Domain</option></select>");
+    var query_builder = $("<input id='query-builder' type='text' placeholder='Add new search term'>");
+    var and_btn = $("<button onclick=\"BigscapeFunc.filterUtil.extendQuery('AND')\">AND</button>");
+    var or_btn = $("<button onclick=\"BigscapeFunc.filterUtil.extendQuery('OR')\">OR</button>");
+    advanced_search_ui.append(tag_select, query_builder, and_btn, or_btn);
+    $("#search-text").after(advanced_search_ui);
+    var close_btn = $("<div id='close-advanced' class=''><u><a>Close</a></u></div>");
+    close_btn.find("a").click(function () {
+      $("#advanced-container").remove();
+      $("#close-advanced").remove();
+      $("#search-text").find("span").text("Search:");
+      $("#advanced-btn").removeClass("hidden");
+    });
+    search_ui.append(close_btn)
+  });
+  search_ui.append("<div id='search-text'><span>Search:</span></div>");
   search_ui.append(search_bar);
+  search_ui.append(adv_btn);
   net_ui.after("<div class='search-container'></div>");
   net_ui.parent().find(".search-container").append(search_ui);
   net_ui.parent().find(".search-container").append(search_result_ui);
