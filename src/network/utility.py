@@ -1,8 +1,5 @@
 """Utility functions for network analysis"""
 
-# from python
-import logging
-
 # from dependencies
 import numpy as np
 import networkx as nx
@@ -28,6 +25,9 @@ def edge_list_to_adj_list(
     edge_list: list[tuple[int, int, float, float, float, float]]
 ) -> dict[int, dict[int, float]]:
     """Return an adjacency list from a list of edges
+
+    values in the adjacency list are the similarity between the two regions, not
+    the distance
 
     Args:
         edge_list (list[tuple[int, int, float, float, float, float]]): list of edges
@@ -57,7 +57,7 @@ def edge_list_to_adj_list(
     return adj_list
 
 
-def sim_matrix_from_adj_list(adj_list: dict[int, dict[int, float]]) -> np.ndarray:
+def adj_list_to_sim_matrix(adj_list: dict[int, dict[int, float]]) -> np.ndarray:
     """Return a similarity matrix from an adjacency list
 
     Adjacency list is expected to be a dictionary of dictionaries, where the keys of
@@ -89,4 +89,4 @@ def sim_matrix_from_adj_list(adj_list: dict[int, dict[int, float]]) -> np.ndarra
             b_matrix_idx = region_to_index[region_b]
             matrix[a_matrix_idx][b_matrix_idx] = 1 - adj_list[region_a][region_b]
 
-    return matrix
+    return matrix.tolist()

@@ -72,10 +72,10 @@ class TestAffinityPropagation(TestCase):
             [0.0, 0.0, 0.0, 0.0, 0.99, 0.99, 0.99, 1.0],
         ]
 
-        actual_sim_matrix = bs_families.sim_matrix_from_adj_list(adj_list)
+        actual_sim_matrix = bs_families.adj_list_to_sim_matrix(adj_list)
 
         # check if the matrices have the exact same values
-        self.assertListEqual(expected_sim_matrix, actual_sim_matrix.tolist())
+        self.assertListEqual(expected_sim_matrix, actual_sim_matrix)
 
     def test_aff_sim_matrix(self):
         """Tests whether affinity propagation is correctly executed on a similarity
@@ -83,7 +83,7 @@ class TestAffinityPropagation(TestCase):
         """
         adj_list = TestAffinityPropagation.gen_adj_list()
 
-        sim_matrix = bs_families.sim_matrix_from_adj_list(adj_list)
+        sim_matrix = bs_families.adj_list_to_sim_matrix(adj_list)
 
         expected_labels = [0, 0, 0, 0, 1, 1, 1, 1]
 

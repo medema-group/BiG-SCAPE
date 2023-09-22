@@ -32,7 +32,7 @@ class RecordPairGenerator:
     def __init__(self, label: str):
         self.label = label
         self.source_records: list[BGCRecord] = []
-        self.region_ids: set[int] = set()
+        self.record_ids: set[int] = set()
 
     def generate_pairs(self, legacy_sorting=False) -> Generator[RecordPair, None, None]:
         """Returns a generator for all vs all Region pairs in this bins
@@ -104,11 +104,11 @@ class RecordPairGenerator:
             record_list (list[BGCRecord]): List of BGC records to add to this bin
         """
         self.source_records.extend(record_list)
-        self.region_ids.update([region._db_id or -1 for region in record_list])
+        self.record_ids.update([region._db_id or -1 for region in record_list])
 
         # throw a ValueError if any region db id is None, as we expect all regions to be
         # represented in the database
-        if None in self.region_ids:
+        if None in self.record_ids:
             raise ValueError("Region in bin has no db id!")
 
     def __repr__(self) -> str:
@@ -276,8 +276,8 @@ class PartialRecordPairGenerator(RecordPairGenerator):
         # bin
         select_statement = (
             select(func.count(distance_table.c.region_a_id))
-            .where(distance_table.c.region_a_id.in_(self.bin.region_ids))
-            .where(distance_table.c.region_b_id.in_(self.bin.region_ids))
+            .where(distance_table.c.region_a_id.in_(self.bin.record_ids))
+            .where(distance_table.c.region_b_id.in_(self.bin.record_ids))
         )
 
         # get count
@@ -292,8 +292,8 @@ class PartialRecordPairGenerator(RecordPairGenerator):
         # get all region._db_id in the bin
         select_statement = (
             select(distance_table.c.region_a_id, distance_table.c.region_b_id)
-            .where(distance_table.c.region_a_id.in_(self.bin.region_ids))
-            .where(distance_table.c.region_b_id.in_(self.bin.region_ids))
+            .where(distance_table.c.region_a_id.in_(self.bin.record_ids))
+            .where(distance_table.c.region_b_id.in_(self.bin.record_ids))
         )
 
         # generate a set of tuples of region id pairs

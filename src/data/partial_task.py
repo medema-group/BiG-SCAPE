@@ -9,7 +9,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING, Generator
 
 # from dependencies
-from sqlalchemy import select, func
+from sqlalchemy import select
 
 # from other modules
 from src.data import DB
@@ -17,6 +17,7 @@ import src.enums as bs_enums
 
 # from circular imports
 if TYPE_CHECKING:
+    from src.comparison import RecordPairGenerator, RecordPair
     from src.genbank.gbk import GBK, CDS
     from src.hmm import HSP
 
@@ -228,8 +229,8 @@ def get_missing_distances(
     # get all region._db_id in the bin
     select_statement = (
         select(distance_table.c.region_a_id, distance_table.c.region_b_id)
-        .where(distance_table.c.region_a_id.in_(bin.region_ids))
-        .where(distance_table.c.region_b_id.in_(bin.region_ids))
+        .where(distance_table.c.region_a_id.in_(bin.record_ids))
+        .where(distance_table.c.region_b_id.in_(bin.record_ids))
     )
 
     # generate a set of tuples of region id pairs

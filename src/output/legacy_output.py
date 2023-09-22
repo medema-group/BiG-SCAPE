@@ -8,9 +8,13 @@ from pathlib import Path
 from typing import Any
 
 # from other modules
+from src.data import DB
 from src.comparison import RecordPairGenerator, legacy_get_class
 from src.genbank import GBK, CDS
 from src.enums import SOURCE_TYPE
+
+import src.network.network as bs_network
+import src.network.utility as bs_network_utility
 
 
 def copy_base_output_templates(output_dir: Path):
@@ -627,20 +631,46 @@ def generate_bs_networks_js_sim_matrix(
     Returns:
         list[list[float]]: a similarity matrix
     """
-    sim_matrix = []
+    edges = bs_network.get_edges(bin.record_ids, cutoff)
 
-    for idx, record_a in enumerate(bin.source_records):
-        region_sim = []
-        for record_b in bin.source_records[:idx]:
-            dist = network.graph.adj[record_a][record_b]["dist"]
-            if dist > cutoff:
-                dist = 1.0
-            sim = round(1 - dist, 4)
-            region_sim.append(sim)
-        region_sim.append(1.0)  # for self similarity
-        sim_matrix.append(region_sim)
+    adj_list = bs_network_utility.edge_list_to_adj_list(edges)
 
-    return sim_matrix
+    # the above adjacency list is likely not ordered in the same way as the entries in
+    # the bin, which are eventually used to determine the order of records in the output
+    # files. Go through the records in the same order as the bin and create a sparse
+    # matrix from that
+    # the adjacency list contains edges, also. these contain distances. convert to sim
+    # by subracting distance from 1
+
+    sparse_matrix = []
+    for record_idx, record_a in enumerate(bin.source_records):
+        a_record_id = record_a._db_id
+
+        sparse_row = []
+        # the sparse matrix is the 'lower half' of a full similarity matrix.
+        # this means that if we are on the third element, matrix so far should look like
+        # 1
+        # 1 2
+        # 1 2 3
+        # obviously this means that the last element in each row should always be 1.0
+        # and we are iterating "behind" the current element
+        for record_b in bin.source_records[:record_idx]:
+            # assume similarity is 0.0
+            similarity = 0.0
+
+            # but if we find an entry in the adjacency list this can change
+            if a_record_id in adj_list:
+                if record_b._db_id in adj_list[a_record_id]:
+                    similarity = adj_list[a_record_id][record_b._db_id]
+
+            sparse_row.append(similarity)
+
+        # add the 1.0 to the end
+        sparse_row.append(1.0)
+
+        sparse_matrix.append(sparse_row)
+
+    return sparse_matrix
 
 
 def generate_bs_families_members(
@@ -657,12 +687,31 @@ def generate_bs_families_members(
     Returns:
         dict[int, list[int]]: family to member regions index
     """
+    # get a dictionary of node id to family id
+    node_family = {}
+
+    # get all families from the database
+    bgc_families_table = DB.metadata.tables["bgc_record_family"]
+
+    select_statement = (
+        bgc_families_table.select()
+        .where(bgc_families_table.c.record_id.in_(bin.record_ids))
+        .where(bgc_families_table.c.cutoff == cutoff)
+    )
+
+    result = DB.execute(select_statement).fetchall()
+
+    for row in result:
+        node_family[row.record_id] = row.family
+
     families_members: dict[int, list[int]] = {}
     for idx, record in enumerate(bin.source_records):
-        if cutoff not in record._families:
+        record_id = record._db_id
+
+        if record_id not in node_family:
             continue
 
-        family_id = record._families[cutoff]
+        family_id = node_family[record_id]
 
         if family_id not in families_members:
             families_members[family_id] = []
@@ -689,7 +738,7 @@ def generate_bs_networks_families(
                 "members": family_members,
             }
         )
-        return networks_families
+    return networks_families
 
 
 def generate_bs_networks_js(
@@ -728,7 +777,7 @@ def generate_bs_networks_js(
     bs_networks_js_path = bin_path / "bs_networks.js"
 
     # TODO: replace with functions to generate objects
-    bs_similarity: list[Any] = generate_bs_networks_js_sim_matrix(cutoff, bin, network)
+    bs_similarity: list[Any] = generate_bs_networks_js_sim_matrix(cutoff, bin)
     bs_families_alignment: list[Any] = []
     bs_similarity_families: list[Any] = []
 
@@ -848,7 +897,7 @@ def legacy_generate_bin_output(
         network (BSNetwork): the network object for the bin
     """
     families_members = generate_bs_families_members(cutoff, bin)
-    networks_families = generate_bs_networks_families()
+    networks_families = generate_bs_networks_families(families_members)
 
     add_run_data_network(output_dir, label, cutoff, bin, families_members)
     generate_bs_networks_js(output_dir, label, cutoff, bin, networks_families)

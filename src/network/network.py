@@ -8,12 +8,11 @@ from sqlalchemy import tuple_
 
 # from other modules
 from src.data import DB
-from src.comparison import RecordPair
 
 
 def get_connected_components(
     cutoff: Optional[float] = None,
-) -> Generator[list[tuple[RecordPair, float, float, float, float]], None, None]:
+) -> Generator[list[tuple[int, int, float, float, float, float]], None, None]:
     """Generate a network for each connected component in the network"""
     # the idea behind this is that the distance table is an edge list. If no
     # distance threshold is applied, any edge is itself a connected component that
@@ -24,7 +23,7 @@ def get_connected_components(
         cutoff = 1.0
 
     # list of nodes to ignore (we have seen them before)
-    ignore_nodes = set()
+    ignore_nodes: set[int] = set()
 
     # get an edge from the database
     edge = get_edge(ignore_nodes)
@@ -39,7 +38,9 @@ def get_connected_components(
         connected_component = set((edge,))
 
         # list of node region ids in the connected component
-        edge_node_ids = set([edge[0], edge[1]])
+        edge_node_ids: set[int] = set()
+        edge_node_ids.add(edge[0])
+        edge_node_ids.add(edge[1])
 
         # we can expand this by adding more edges
         new_edges = get_connected_edges(edge_node_ids, connected_component, cutoff)
@@ -80,7 +81,7 @@ def get_connected_components(
 
 def get_edge(
     exclude_nodes: set[int],
-) -> tuple[RecordPair, float, float, float, float]:
+) -> tuple[int, int, float, float, float, float]:
     """Get an edge from the database that is not connected to exclude_nodes"""
     # fetch an edge from the database
     select_statment = (
@@ -95,6 +96,31 @@ def get_edge(
     return edge
 
 
+def get_edges(
+    include_nodes: set[int], distance_cutoff: Optional[float] = None
+) -> list[tuple[int, int, float, float, float, float]]:
+    """Get all edges that are connected to include_nodes"""
+    if distance_cutoff is None:
+        distance_cutoff = 1.0
+
+    # fetch edges from the database
+    distance_table = DB.metadata.tables["distance"]
+    select_statement = (
+        distance_table.select()
+        # equivalent to WHERE (region_a_id in (...) OR region_b_id in (...))
+        .where(
+            distance_table.c.region_a_id.in_(include_nodes)
+            | distance_table.c.region_b_id.in_(include_nodes)
+        )
+        # equivalent to AND distance < ...
+        .where(distance_table.c.distance < distance_cutoff)
+    ).compile()
+
+    edges = DB.execute(select_statement).fetchall()
+
+    return edges
+
+
 def get_connected_edges(
     include_nodes: set[int],
     connected_component: set[tuple[int, int, float, float, float, float]],
@@ -104,7 +130,7 @@ def get_connected_edges(
     if distance_cutoff is None:
         distance_cutoff = 1.0
 
-    # fetch an edge from the database
+    # fetch edges from the database
     distance_table = DB.metadata.tables["distance"]
     select_statement = (
         distance_table.select()

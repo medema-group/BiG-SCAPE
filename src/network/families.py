@@ -4,18 +4,14 @@
 import warnings
 
 # from dependencies
-import numpy as np
-import networkx as nx
-from networkx import Graph
 from sklearn.cluster import AffinityPropagation
 from sklearn.exceptions import ConvergenceWarning
 
 # from other modules
 from src.data import DB
-from src.comparison.binning import RecordPair
 
 # from this module
-from .utility import edge_list_to_adj_list, sim_matrix_from_adj_list
+from .utility import edge_list_to_adj_list, adj_list_to_sim_matrix
 
 
 def generate_families(
@@ -36,7 +32,7 @@ def generate_families(
     # and the list of labels after AP
     node_ids = list(adj_list.keys())
 
-    distance_matrix = sim_matrix_from_adj_list(adj_list)
+    distance_matrix = adj_list_to_sim_matrix(adj_list)
 
     labels, centers = aff_sim_matrix(distance_matrix)
 

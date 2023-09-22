@@ -354,6 +354,10 @@ if __name__ == "__main__":
 
         DB.save_to_disk(run.output.db_path)
 
+        # OUTPUT
+
+        # mix
+
         legacy_prepare_bin_output(run.output.output_dir, run.label, 0.3, mix_bin)
 
         legacy_generate_bin_output(run.output.output_dir, run.label, 0.3, mix_bin)
@@ -528,11 +532,11 @@ if __name__ == "__main__":
 
     #         bin_network.export_distances_to_db()
 
-    # # last dump of the database
+    # last dump of the database
     # DB.save_to_disk(run.output.db_path)
 
-    # if run.diagnostics.profiling:
-    #     profiler.stop()
+    if run.diagnostics.profiling:
+        profiler.stop()
 
-    # exec_time = datetime.now() - start_time
-    # logging.info("All tasks done at %f seconds", exec_time.total_seconds())
+    exec_time = datetime.now() - start_time
+    logging.info("All tasks done at %f seconds", exec_time.total_seconds())
