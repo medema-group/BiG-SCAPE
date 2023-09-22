@@ -461,7 +461,10 @@ function Bigscape(bs_data, bs_families, bs_alignment, bs_similarity, network_con
 BigscapeFunc.filterUtil = {
   transl_syntax: {
     "AND": "$and",
-    "OR": "$or"
+    "OR": "$or",
+    "domain": "orfs.domains.code",
+    "BGC": "id",
+    "family": "family"
   }
 }
 
@@ -565,6 +568,33 @@ BigscapeFunc.filterUtil.formatFuseQuery = function (branch, terms, criteria = {}
     BigscapeFunc.filterUtil.formatFuseQuery(right, terms, rcrit)
   ]
   return criteria
+}
+
+BigscapeFunc.filterUtil.extendQuery = function (operator) {
+  var search_tag = $("#tag-selector").val()
+  var current_query = $("#search-input").val()
+  var added_query = $("#query-builder").val().trim().replace(/ +/g, " ")
+  if (added_query.length > 0) {
+    if (search_tag.length > 0) {
+      var split_query = added_query.split(/(?=[) (])|(?<=[) (])/g)
+      var tagged_query = ''
+      for (word of split_query) {
+        if (!["(", ")", " ", "AND", "OR", "NOT"].includes(word)) {
+          tagged_query += word + "[" + search_tag + "]"
+        } else {
+          tagged_query += word
+        }
+      }
+      added_query = tagged_query
+    }
+    if (current_query.length > 0) {
+      $("#search-input").val("(" + current_query + ") " + operator + " (" + added_query + ")")
+    } else {
+      $("#search-input").val(added_query)
+    }
+    $("#query-builder").val("")
+    $("#search-input").trigger("keyup")
+  }
 }
 
 // input: VivaGraph graph object, network container jQuery object, on/off
