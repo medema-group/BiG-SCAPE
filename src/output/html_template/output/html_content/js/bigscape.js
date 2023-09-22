@@ -446,18 +446,17 @@ BigscapeFunc.filterUtil.tokenize = function (string) {
   return tokens
 }
 
-BigscapeFunc.filterUtil.findBrackets = function (tokens) {
-  // find all bracket indices
-  var opens = tokens.map((e, i) => e === "(" ? i : '').filter(String)
-  var closes = tokens.map((e, i) => e === ")" ? i : '').filter(String)
-  return [opens, closes]
-}
-
-BigscapeFunc.filterUtil.findGroup = function (opens, closes) {
+BigscapeFunc.filterUtil.findGroup = function (tokens) {
   // find end index of first top-level bracket grouping
-  for (var i = opens.length - 1; i >= 0; i--) {
-    if (opens[i] < closes[0]) {
-      return closes[i]
+  level = 0
+  for (var i = 0; i < tokens.length; i++) {
+    if (tokens[i] === "(") {
+      level += 1
+    } else if (tokens[i] === ")") {
+      level -= 1
+    }
+    if (level === 0) {
+      return i
     }
   }
 }
@@ -465,8 +464,7 @@ BigscapeFunc.filterUtil.findGroup = function (opens, closes) {
 BigscapeFunc.filterUtil.trimBrackets = function (tokens) {
   // trim extra brackets enclosing all tokens
   if (tokens[0] === "(") {
-    var [opens, closes] = BigscapeFunc.filterUtil.findBrackets(tokens)
-    var end = BigscapeFunc.filterUtil.findGroup(opens, closes)
+    var end = BigscapeFunc.filterUtil.findGroup(tokens)
     if (end === tokens.length - 1) {
       var tokens = BigscapeFunc.filterUtil.trimBrackets(tokens.slice(1, -1))
     }
@@ -484,8 +482,7 @@ BigscapeFunc.filterUtil.parseTokens = function (tokens, tree = {}) {
     return tokens[0]
   }
   if (tokens[0] === "(") {
-    var [opens, closes] = BigscapeFunc.filterUtil.findBrackets(tokens)
-    var end = BigscapeFunc.filterUtil.findGroup(opens, closes)
+    var end = BigscapeFunc.filterUtil.findGroup(tokens)
 
     if (end === tokens.length - 1) {
       var left = tokens[1]
