@@ -104,7 +104,14 @@ def generate_edges(
 
                 for idx, pair in enumerate(task_batch):
                     dist, jc, ai, dss = results[idx]
-                    yield (pair, dist, jc, ai, dss)
+                    yield (
+                        pair.region_a._db_id,
+                        pair.region_b._db_id,
+                        dist,
+                        jc,
+                        ai,
+                        dss,
+                    )
 
                 done_pairs += len(results)
                 callback(done_pairs)
