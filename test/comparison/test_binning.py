@@ -8,12 +8,13 @@ from pathlib import Path
 from src.genbank import GBK, BGCRecord
 from src.comparison import (
     RecordPairGenerator,
-    RecordPairGeneratorQueryRef,
-    RecordPairGeneratorConRefSinRef,
+    QueryToRefRecordPairGenerator,
+    RefToRefRecordPairGenerator,
     RecordPair,
 )
 from src.comparison import generate_mix
-from src.enums import SOURCE_TYPE
+
+import src.enums as bs_enums
 
 
 class TestBGCPair(TestCase):
@@ -23,7 +24,7 @@ class TestBGCPair(TestCase):
         """Tests whether calling str() on a bin object returns an expected string
         representation of the object
         """
-        gbk = GBK(Path("test"), "test")
+        gbk = GBK(Path("test"), bs_enums.SOURCE_TYPE.QUERY)
 
         bgc_a = BGCRecord(gbk, 0, 0, 10, False, "")
         bgc_b = BGCRecord(gbk, 0, 10, 20, False, "")
@@ -58,7 +59,7 @@ class TestBGCBin(TestCase):
         """Tests whether calling str() on a bin object returns an expected string
         representation of the object
         """
-        parent_gbk = GBK(Path("test"), source_type=SOURCE_TYPE.QUERY)
+        parent_gbk = GBK(Path("test"), source_type=bs_enums.SOURCE_TYPE.QUERY)
         bgc_a = BGCRecord(parent_gbk, 0, 0, 10, False, "")
         bgc_b = BGCRecord(parent_gbk, 0, 0, 10, False, "")
         bgc_c = BGCRecord(parent_gbk, 0, 0, 10, False, "")
@@ -94,8 +95,8 @@ class TestBGCBin(TestCase):
     def test_num_pairs_correct_with_query_ref(self):
         """Tests whether bin.num_pairs() correctly returns all query and ref but not ref <-> ref pairs"""
 
-        parent_gbk_query = GBK(Path("test"), source_type=SOURCE_TYPE.QUERY)
-        parent_gbk_ref = GBK(Path("test"), source_type=SOURCE_TYPE.REFERENCE)
+        parent_gbk_query = GBK(Path("test"), source_type=bs_enums.SOURCE_TYPE.QUERY)
+        parent_gbk_ref = GBK(Path("test"), source_type=bs_enums.SOURCE_TYPE.REFERENCE)
         bgc_a = BGCRecord(parent_gbk_query, 0, 0, 10, False, "")
         bgc_b = BGCRecord(parent_gbk_query, 0, 0, 10, False, "")
         bgc_c = BGCRecord(parent_gbk_ref, 0, 0, 10, False, "")
@@ -103,7 +104,7 @@ class TestBGCBin(TestCase):
 
         bgc_list = [bgc_a, bgc_b, bgc_c, bgc_d]
 
-        new_bin = RecordPairGeneratorQueryRef("test")
+        new_bin = QueryToRefRecordPairGenerator("test")
 
         new_bin.add_records(bgc_list)
 
@@ -152,8 +153,8 @@ class TestBGCBin(TestCase):
 
         self.skipTest("This test is currently broken")
 
-        parent_gbk_query = GBK(Path("test"), source_type=SOURCE_TYPE.QUERY)
-        parent_gbk_ref = GBK(Path("test"), source_type=SOURCE_TYPE.REFERENCE)
+        parent_gbk_query = GBK(Path("test"), source_type=bs_enums.SOURCE_TYPE.QUERY)
+        parent_gbk_ref = GBK(Path("test"), source_type=bs_enums.SOURCE_TYPE.REFERENCE)
         bgc_a = BGCRecord(parent_gbk_query, 0, 0, 10, False, "")
         bgc_b = BGCRecord(parent_gbk_query, 0, 0, 10, False, "")
         bgc_c = BGCRecord(parent_gbk_ref, 0, 0, 10, False, "")
@@ -170,7 +171,7 @@ class TestBGCBin(TestCase):
 
         bgc_list = [bgc_a, bgc_b, bgc_c, bgc_d]
 
-        new_bin = RecordPairGeneratorConRefSinRef("test", network)
+        new_bin = RefToRefRecordPairGenerator("test", network)
         new_bin.add_records(bgc_list)
 
         expected_pair_list = [(bgc_c, bgc_d)]
@@ -187,8 +188,8 @@ class TestBGCBin(TestCase):
 
         self.skipTest("This test is currently broken")
 
-        parent_gbk_query = GBK(Path("test"), source_type=SOURCE_TYPE.QUERY)
-        parent_gbk_ref = GBK(Path("test"), source_type=SOURCE_TYPE.REFERENCE)
+        parent_gbk_query = GBK(Path("test"), source_type=bs_enums.SOURCE_TYPE.QUERY)
+        parent_gbk_ref = GBK(Path("test"), source_type=bs_enums.SOURCE_TYPE.REFERENCE)
         bgc_a = BGCRecord(parent_gbk_query, 0, 0, 10, False, "")
         bgc_b = BGCRecord(parent_gbk_query, 0, 0, 10, False, "")
         bgc_c = BGCRecord(parent_gbk_ref, 0, 0, 10, False, "")
@@ -205,7 +206,7 @@ class TestBGCBin(TestCase):
 
         bgc_list = [bgc_a, bgc_b, bgc_c, bgc_d]
 
-        new_bin = RecordPairGeneratorConRefSinRef("test", network)
+        new_bin = RefToRefRecordPairGenerator("test", network)
         new_bin.add_records(bgc_list)
 
         expected_num_pairs = 1  # bgc_c, bgc_d
@@ -219,8 +220,8 @@ class TestBGCBin(TestCase):
 
         self.skipTest("This test is currently broken")
 
-        parent_gbk_query = GBK(Path("test"), source_type=SOURCE_TYPE.QUERY)
-        parent_gbk_ref = GBK(Path("test"), source_type=SOURCE_TYPE.REFERENCE)
+        parent_gbk_query = GBK(Path("test"), source_type=bs_enums.SOURCE_TYPE.QUERY)
+        parent_gbk_ref = GBK(Path("test"), source_type=bs_enums.SOURCE_TYPE.REFERENCE)
         bgc_a = BGCRecord(parent_gbk_query, 0, 0, 10, False, "")
         bgc_b = BGCRecord(parent_gbk_ref, 0, 0, 10, False, "")
         bgc_c = BGCRecord(parent_gbk_ref, 0, 0, 10, False, "")
@@ -234,7 +235,7 @@ class TestBGCBin(TestCase):
 
         bgc_list = [bgc_a, bgc_b, bgc_c]
 
-        new_bin = RecordPairGeneratorConRefSinRef("test", network)
+        new_bin = RefToRefRecordPairGenerator("test", network)
         new_bin.add_records(bgc_list)
 
         network.add_edge_pair(RecordPair(bgc_b, bgc_c))  # ref to ref
@@ -251,7 +252,7 @@ class TestBGCBin(TestCase):
 class TestMixComparison(TestCase):
     def test_mix_iter(self):
         """Tests whether a new mix bin can be created for comparison"""
-        gbk = GBK(Path("test"), source_type=SOURCE_TYPE.QUERY)
+        gbk = GBK(Path("test"), source_type=bs_enums.SOURCE_TYPE.QUERY)
 
         bgc_a = BGCRecord(gbk, 0, 0, 10, False, "")
         bgc_a.parent_gbk = gbk

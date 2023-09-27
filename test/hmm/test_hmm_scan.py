@@ -15,6 +15,8 @@ from src.hmm.hmmer import HMMer, cds_to_input_task
 from src.genbank import GBK, CDS
 from src.hmm import HSP
 
+import src.enums as bs_enums
+
 
 class TestHMMScan(TestCase):
     """Contains tests to check the hmmscan functionality"""
@@ -140,7 +142,7 @@ class TestHMMScan(TestCase):
             "IMATEGYQSSGSSNITVSG"
         )
 
-        gbk = GBK("", "")
+        gbk = GBK("", bs_enums.SOURCE_TYPE.QUERY)
         gbk.save()
 
         cds = CDS(0, len(aa_seq) * 3)

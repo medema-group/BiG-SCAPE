@@ -26,7 +26,7 @@ import src.enums as bs_enums
 
 
 def create_mock_gbk(i) -> GBK:
-    gbk = GBK(Path(f"test_path_{i}.gbk"), "test")
+    gbk = GBK(Path(f"test_path_{i}.gbk"), bs_enums.SOURCE_TYPE.QUERY)
     cds = CDS(0, 100)
     cds.parent_gbk = gbk
     cds.orf_num = 1
@@ -53,6 +53,9 @@ def gen_mock_edge_list(
     for gbk_a, gbk_b in combinations(edge_gbks, 2):
         if gbk_a.region is None or gbk_b.region is None:
             continue
+        if gbk_a.region._db_id is None or gbk_b.region._db_id is None:
+            continue
+
         edges.append((gbk_a.region._db_id, gbk_b.region._db_id, 0.0, 0.0, 0.0, 0.0))
 
     return edges
@@ -480,7 +483,7 @@ class TestPartialComparison(TestCase):
         pair_generator = bs_comparison.RecordPairGenerator("mix")
         pair_generator.add_records([gbk.region for gbk in gbks])
 
-        missing_edge_generator = bs_comparison.PartialRecordPairGenerator(
+        missing_edge_generator = bs_comparison.MissingRecordPairGenerator(
             pair_generator
         )
 
@@ -523,7 +526,7 @@ class TestPartialComparison(TestCase):
         pair_generator = bs_comparison.RecordPairGenerator("mix")
         pair_generator.add_records([gbk.region for gbk in gbks])
 
-        missing_edge_generator = bs_comparison.PartialRecordPairGenerator(
+        missing_edge_generator = bs_comparison.MissingRecordPairGenerator(
             pair_generator
         )
 

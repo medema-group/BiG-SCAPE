@@ -9,6 +9,8 @@ from src.data import DB
 from src.genbank import GBK, CDS
 from src.hmm import HMMer, HSP, HSPAlignment
 
+import src.enums as bs_enums
+
 
 class TestHMMAlign(TestCase):
     """Contains test methods of hmm alignment"""
@@ -68,7 +70,7 @@ class TestHMMAlign(TestCase):
             "IMATEGYQSSGSSNITVSG"
         )
 
-        gbk = GBK("", "")
+        gbk = GBK("", bs_enums.SOURCE_TYPE.QUERY)
         gbk.save()
 
         cds = CDS(0, len(aa_seq) * 3)
