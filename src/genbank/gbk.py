@@ -150,7 +150,11 @@ class GBK:
         gbk_table = DB.metadata.tables["gbk"]
         insert_query = (
             gbk_table.insert()
-            .values(path=str(self.path), nt_seq=str(self.nt_seq))
+            .values(
+                path=str(self.path),
+                nt_seq=str(self.nt_seq),
+                source_type=self.source_type.value,
+            )
             .returning(gbk_table.c.id)
             .compile()
         )
