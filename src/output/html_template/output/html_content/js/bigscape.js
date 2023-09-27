@@ -94,6 +94,9 @@ function Bigscape(bs_data, bs_families, bs_alignment, bs_similarity, network_con
         keys: ["family", "id", "orfs.domains.code"] // searchable tags
       };
       var search_tokens = BigscapeFunc.filterUtil.tokenize(search_string);
+      if (search_tokens.filter(x => x == "(").length != search_tokens.filter(x => x == ")").length) {
+        throw (SyntaxError, "bracket mismatch!")
+      }
       var search_tree = BigscapeFunc.filterUtil.parseTokens(search_tokens);
       var fuse_query = BigscapeFunc.filterUtil.formatFuseQuery(search_tree, fuse_options["keys"]);
       var fuse = new Fuse(bs_data, fuse_options);
