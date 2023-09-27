@@ -99,13 +99,16 @@ function Bigscape(bs_data, bs_families, bs_alignment, bs_similarity, network_con
       var fuse = new Fuse(bs_data, fuse_options);
       var res = fuse.search(fuse_query);
       var sels_nodes = [];
+      var uniq_fam = new Set;
       for (i in res) {
+        uniq_fam.add(res[i]["item"]["family"])
         var ob_id = parseInt(res[i]["item"]["idx"])
         if (sels_nodes.indexOf(ob_id) < 0) {
           sels_nodes.push(ob_id)
         }
       }
-      var div_bgc_hits = $("<div>" + sels_nodes.length + " Hits (<a class='selectbgcs' href='##'>select</a>)</div>");
+      var div_bgc_hits = $("<div>" + sels_nodes.length + " Hits in " + uniq_fam.size +
+        " Families (<a class='selectbgcs' href='##'>select</a>)</div>");
       div_bgc_hits.find("a.selectbgcs").click({ bigscape: bigscape, sels: sels_nodes }, function (handler) {
         handler.data.bigscape.setHighlightedNodes(handler.data.sels);
         handler.data.bigscape.highlightNodes(handler.data.sels);
