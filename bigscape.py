@@ -11,12 +11,6 @@ from src.data import DB
 from src.genbank import BGCRecord, CDS, GBK
 from src.hmm import HMMer, legacy_filter_overlap, HSP
 from src.parameters import RunParameters, parse_cmd
-from src.comparison import (
-    RecordPairGenerator,
-    PartialRecordPairGenerator,
-    generate_edges,
-    save_edge_to_db,
-)
 from src.file_input import load_dataset_folder, get_mibig
 from src.diagnostics import Profiler
 from src.output import (
@@ -29,6 +23,7 @@ from src.output import (
 
 import src.data as bs_data
 import src.enums as bs_enums
+import src.comparison as bs_comparison
 import src.network.network as bs_network
 import src.network.families as bs_families
 
@@ -45,12 +40,17 @@ def load_gbks(run: RunParameters) -> list[GBK]:
         query_bgc_gbk = GBK(run.binning.query_bgc_path, bs_enums.SOURCE_TYPE.QUERY)
         input_gbks.append(query_bgc_gbk)
 
+        query_bgc_stem = run.binning.query_bgc_path.stem
+
+        # add the query bgc to the exclude list
+        exclude_gbk = run.input.exclude_gbk + [query_bgc_stem]
+
         gbks = load_dataset_folder(
             run.input.input_dir,
             bs_enums.SOURCE_TYPE.REFERENCE,
             run.input.input_mode,
             run.input.include_gbk,
-            run.input.exclude_gbk,
+            exclude_gbk,
             run.input.cds_overlap_cutoff,
         )
         input_gbks.extend(gbks)
@@ -296,13 +296,13 @@ if __name__ == "__main__":
             if gbk.region is not None:
                 mix_bgc_regions.append(gbk.region)
 
-        mix_bin = RecordPairGenerator("mix")
+        mix_bin = bs_comparison.RecordPairGenerator("mix")
         mix_bin.add_records(mix_bgc_regions)
 
         logging.info(mix_bin)
 
         # check if there are existing distances
-        missing_edge_bin = PartialRecordPairGenerator(mix_bin)
+        missing_edge_bin = bs_comparison.MissingRecordPairGenerator(mix_bin)
         num_missing_edges = missing_edge_bin.num_pairs()
 
         if num_missing_edges > 0:
@@ -319,60 +319,137 @@ if __name__ == "__main__":
                         f"{done_pairs}/{mix_bin.num_pairs()} ({done_pairs/mix_bin.num_pairs():.2%})"
                     )
 
-            mix_edges = generate_edges(
+            mix_edges = bs_comparison.generate_edges(
                 missing_edge_bin, run.comparison.alignment_mode, run.cores, callback
             )
 
             num_edges = 0
             for edge in mix_edges:
                 num_edges += 1
-                save_edge_to_db(edge)
+                bs_comparison.save_edge_to_db(edge)
 
             logging.info("Generated %d edges", num_edges)
 
             DB.commit()
-            DB.save_to_disk(run.output.db_path)
+
+    # query
+
+    if run.binning.query_bgc_path:
+        logging.info("Generating query BGC mode bin")
+
+        query_bgcs_records: list[BGCRecord] = []
+
+        for gbk in gbks:
+            if gbk.region is None:
+                continue
+            query_bgcs_records.append(gbk.region)
+
+        query_to_ref_bin = bs_comparison.QueryToRefRecordPairGenerator("mix")
+        query_to_ref_bin.add_records(query_bgcs_records)
+
+        missing_edge_bin = bs_comparison.MissingRecordPairGenerator(query_to_ref_bin)
+        num_missing_edges = missing_edge_bin.num_pairs()
+
+        if num_missing_edges > 0:
+            logging.info(
+                "Calculating distances for %d pairs (Query to Reference)",
+                num_missing_edges,
+            )
+
+            query_edges = bs_comparison.generate_edges(
+                missing_edge_bin,
+                run.comparison.alignment_mode,
+                run.cores,
+            )
+
+            num_edges = 0
+
+            for edge in query_edges:
+                num_edges += 1
+                bs_comparison.save_edge_to_db(edge)
+
+            logging.info("Generated %d edges", num_edges)
+
+        # now we expand these edges from reference to other reference
+
+        ref_to_ref_bin = bs_comparison.RefToRefRecordPairGenerator("Ref_Ref")
+        ref_to_ref_bin.add_records(query_bgcs_records)
+
+        missing_edge_bin = bs_comparison.MissingRecordPairGenerator(ref_to_ref_bin)
+
+        while True:
+            num_missing_edges = missing_edge_bin.num_pairs()
+
+            if num_missing_edges == 0:
+                break
+
+            logging.info(
+                "Calculating distances for %d pairs (Reference to Reference)",
+                num_missing_edges,
+            )
+
+            def callback(done_pairs):
+                if num_missing_edges > 10:
+                    mod = round(num_missing_edges / 10)
+                else:
+                    mod = 1
+
+                if done_pairs % mod == 0:
+                    logging.info(
+                        f"{done_pairs}/{num_missing_edges} ({done_pairs/mix_bin.num_pairs():.2%})"
+                    )
+
+            ref_edges = bs_comparison.generate_edges(
+                missing_edge_bin, run.comparison.alignment_mode, run.cores, callback
+            )
+
+            num_edges = 0
+            for edge in ref_edges:
+                num_edges += 1
+                bs_comparison.save_edge_to_db(edge)
+
+            if num_edges == 0:
+                break
+
+            logging.info("Generated %d edges", num_edges)
+
+        DB.commit()
 
     # NETWORKING
 
     # mix
 
+    logging.info("Generating mix connected component networks")
+
+    for connected_component in bs_network.get_connected_components(0.3):
+        logging.debug(
+            "Found connected component with %d edges", len(connected_component)
+        )
+
+        regions_families = bs_families.generate_families(connected_component)
+
+        # save families to database
+        bs_families.save_to_db(regions_families)
+
+    DB.commit()
+
+    DB.save_to_disk(run.output.db_path)
+
+    # OUTPUT
+
+    # mix
+
     if not run.binning.no_mix and not run.binning.query_bgc_path:
-        logging.info("Generating mix connected component networks")
-
-        for connected_component in bs_network.get_connected_components(0.3):
-            logging.debug(
-                "Found connected component with %d edges", len(connected_component)
-            )
-
-            regions_families = bs_families.generate_families(connected_component)
-
-            # save families to database
-            bs_families.save_to_db(regions_families)
-
-        DB.commit()
-
-        DB.save_to_disk(run.output.db_path)
-
-        # OUTPUT
-
-        # mix
-
         legacy_prepare_bin_output(run.output.output_dir, run.label, 0.3, mix_bin)
 
         legacy_generate_bin_output(run.output.output_dir, run.label, 0.3, mix_bin)
 
-        # mix_network.write_graphml(run.output.output_dir / Path("network_mix.graphml"))
-        # mix_network.write_edgelist_tsv(run.output.output_dir / Path("network_mix.tsv"))
+    # mix_network.write_graphml(run.output.output_dir / Path("network_mix.graphml"))
+    # mix_network.write_edgelist_tsv(run.output.output_dir / Path("network_mix.tsv"))
 
-        # mix_network.export_distances_to_db()
+    # mix_network.export_distances_to_db()
 
     # networking - query
-
-    # if run.binning.query_bgc_path:
-    #     logging.info("Generating query BGC mode bin")
-
-    #     query_bgc_network = BSNetwork()
     #     query_bgcs_records: list[BGCRecord] = []
 
     #     for gbk in gbks:

@@ -36,7 +36,7 @@ def edge_list_to_adj_list(
         dict[int, dict[int, float]]: adjacency list
     """
     # set up the dictionary of dictionaries
-    adj_list = dict()
+    adj_list: dict[int, dict[int, float]] = dict()
     for edge in edge_list:
         adj_list[edge[0]] = dict()
         adj_list[edge[1]] = dict()
