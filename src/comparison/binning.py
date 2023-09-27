@@ -118,8 +118,15 @@ class RecordPairGenerator:
         )
 
 
-class RecordPairGeneratorQueryRef(RecordPairGenerator):
-    """Describes a bin of BGC records to generate pairs from. Pair generation excludes ref <-> ref pairs"""
+class QueryToRefRecordPairGenerator(RecordPairGenerator):
+    """Describes a bin of BGC records to generate pairs from. Pair generation excludes
+    ref <-> ref pairs
+    """
+
+    def __init__(self, label: str):
+        super().__init__(label)
+        self.reference_records: list[BGCRecord] = []
+        self.query_records: list[BGCRecord] = []
 
     def generate_pairs(self, legacy_sorting=False) -> Generator[RecordPair, None, None]:
         """Returns an Generator for Region pairs in this bin, all pairs are generated
@@ -133,19 +140,16 @@ class RecordPairGeneratorQueryRef(RecordPairGenerator):
         Yields:
             Generator[RegionPair]: Generator for Region pairs in this bin
         """
-        for bgc_a, bgc_b in combinations(self.source_records, 2):
-            if legacy_sorting:
-                sorted_a, sorted_b = sorted((bgc_a, bgc_b), key=sort_name_key)
-                pair = RecordPair(sorted_a, sorted_b)
-
-            else:
-                if bgc_a.parent_gbk is not None:
-                    bgc_a_not_query = bgc_a.parent_gbk.source_type != SOURCE_TYPE.QUERY
-                if bgc_b.parent_gbk is not None:
-                    bgc_b_not_query = bgc_b.parent_gbk.source_type != SOURCE_TYPE.QUERY
-                if bgc_a_not_query and bgc_b_not_query:
+        for query_idx, bgc_a in enumerate(self.query_records):
+            query_start = query_idx + 1
+            for bgc_b in self.reference_records + self.query_records[query_start:]:
+                if bgc_a == bgc_b:
                     continue
 
+                if legacy_sorting:
+                    sorted_a, sorted_b = sorted((bgc_a, bgc_b), key=sort_name_key)
+                    pair = RecordPair(sorted_a, sorted_b)
+            else:
                 pair = RecordPair(bgc_a, bgc_b)
 
             yield pair
@@ -161,26 +165,42 @@ class RecordPairGeneratorQueryRef(RecordPairGenerator):
         if len(self.source_records) < 2:
             return 0
 
-        len_ref = 0
-        for record in self.source_records:
+        if len(self.reference_records) == 0:
+            return 0
+
+        if len(self.query_records) == 0:
+            return 0
+
+        query_to_ref_comps = len(self.query_records) * len(self.reference_records)
+
+        query_to_query_comps = int(
+            (len(self.query_records) * (len(self.query_records) - 1)) / 2
+        )
+
+        return query_to_ref_comps + query_to_query_comps
+
+    def add_records(self, record_list: list[BGCRecord]) -> None:
+        """Adds BGC records to this bin, additionaly splitting them into query and
+        reference records
+
+        Args:
+            record_list (list[BGCRecord]): List of BGC records to add to this bin
+        """
+        for record in record_list:
             if (
                 record.parent_gbk is not None
-                and record.parent_gbk.source_type != SOURCE_TYPE.QUERY
+                and record.parent_gbk.source_type == SOURCE_TYPE.QUERY.value
             ):
-                len_ref += 1
+                self.query_records.append(record)
+            else:
+                self.reference_records.append(record)
 
-        len_all_records = len(self.source_records)
-
-        # (n*(n-1)) / 2
-        num_all_pairs = int((len_all_records * (len_all_records - 1)) / 2)
-        num_ref_pairs = int((len_ref * (len_ref - 1)) / 2)
-
-        return num_all_pairs - num_ref_pairs
+        super().add_records(record_list)
 
 
-class RecordPairGeneratorConRefSinRef(RecordPairGenerator):
-    """Describes a bin of BGC records to generate pairs from, pair generation is limited to connected-ref
-    to singleton ref nodes
+class RefToRefRecordPairGenerator(RecordPairGenerator):
+    """A generator for pairs of connected reference regions to unconected reference
+    regions
 
     Args:
         label (str): Label for this bin
@@ -188,32 +208,9 @@ class RecordPairGeneratorConRefSinRef(RecordPairGenerator):
     """
 
     def __init__(self, label: str):
+        self.record_id_to_obj: dict[int, BGCRecord] = {}
+        self.done_record_ids: set[int] = set()
         super().__init__(label)
-
-        self.ref_nodes = self.network.get_nodes(
-            node_types=[SOURCE_TYPE.REFERENCE, SOURCE_TYPE.MIBIG]
-        )
-        self.ref_singletons = self.network.get_singletons(
-            node_types=[SOURCE_TYPE.REFERENCE, SOURCE_TYPE.MIBIG]
-        )
-        self.ref_connected_nodes = [
-            node for node in self.ref_nodes if node not in self.ref_singletons
-        ]
-
-    def recalculate_nodes(self):
-        """Recalculate new connected nodes and new singleton nodes for this bin, so that
-        pair generation is only performed on new connected vs new singleton nodes
-        """
-
-        new_ref_singletons = self.network.get_singletons(
-            node_types=[SOURCE_TYPE.REFERENCE, SOURCE_TYPE.MIBIG]
-        )
-        new_ref_connected_nodes = [
-            node for node in self.ref_singletons if node not in new_ref_singletons
-        ]
-
-        self.ref_connected_nodes = new_ref_connected_nodes
-        self.ref_singletons = new_ref_singletons
 
     def generate_pairs(self, legacy_sorting=False) -> Generator[RecordPair, None, None]:
         """Returns an Generator for Region pairs in this bin, pairs are only generated between
@@ -229,11 +226,11 @@ class RecordPairGeneratorConRefSinRef(RecordPairGenerator):
             Generator[RegionPair]: Generator for Region pairs in this bin
         """
 
-        if len(self.ref_connected_nodes) == 0 or len(self.ref_singletons) == 0:
-            return 0
+        singleton_reference_regions = self.get_singleton_reference_nodes()
+        connected_reference_regions = self.get_connected_reference_nodes()
 
-        for bgc_a in self.ref_connected_nodes:
-            for bgc_b in self.ref_singletons:
+        for bgc_a in connected_reference_regions:
+            for bgc_b in singleton_reference_regions:
                 if legacy_sorting:
                     sorted_a, sorted_b = sorted((bgc_a, bgc_b), key=sort_name_key)
                     pair = RecordPair(sorted_a, sorted_b)
@@ -241,8 +238,7 @@ class RecordPairGeneratorConRefSinRef(RecordPairGenerator):
                 else:
                     pair = RecordPair(bgc_a, bgc_b)
 
-                if pair not in self.network:
-                    yield pair
+                yield pair
 
     def num_pairs(self) -> int:
         """Returns the number of pairs expected to be generated by the pairs Generator,
@@ -251,16 +247,185 @@ class RecordPairGeneratorConRefSinRef(RecordPairGenerator):
         Returns:
             int: The number of pairs expected to be generated from the Generator
         """
+        num_connected = self.get_connected_reference_node_count()
+        num_singletons = self.get_singleton_reference_node_count()
 
-        num_rec_connected_nodes = len(self.ref_connected_nodes)
-        num_ref_singletons = len(self.ref_singletons)
-
-        num_pairs = num_rec_connected_nodes * num_ref_singletons
+        num_pairs = num_connected * num_singletons
 
         return num_pairs
 
+    def add_records(self, record_list: list[BGCRecord]):
+        """Adds BGC records to this bin and creates a generator for the pairs
 
-class PartialRecordPairGenerator(RecordPairGenerator):
+        also creates a dictionary of record id to record objects
+        """
+        for record in record_list:
+            if record._db_id is None:
+                raise ValueError("Region in bin has no db id!")
+
+            self.record_id_to_obj[record._db_id] = record
+
+        return super().add_records(record_list)
+
+    def get_connected_reference_nodes(self) -> set[BGCRecord]:
+        """Returns a set of reference nodes that are connected to other reference nodes
+
+        Returns:
+            set[BGCRecord]: A set of reference nodes that are connected to other reference nodes
+        """
+        distance_table = DB.metadata.tables["distance"]
+        bgc_record_table = DB.metadata.tables["bgc_record"]
+        gbk_table = DB.metadata.tables["gbk"]
+
+        select_statement = (
+            select(bgc_record_table.c.id)
+            .where(
+                bgc_record_table.c.id.notin_(
+                    select(distance_table.c.region_a_id)
+                    .distinct()
+                    .where(distance_table.c.distance < 1.0)
+                )
+            )
+            .where(
+                bgc_record_table.c.id.notin_(
+                    select(distance_table.c.region_b_id)
+                    .distinct()
+                    .where(distance_table.c.distance < 1.0)
+                )
+            )
+            .where(gbk_table.c.source_type == SOURCE_TYPE.REFERENCE.value)
+            .join(gbk_table, bgc_record_table.c.gbk_id == gbk_table.c.id)
+        )
+
+        connected_reference_nodes = set()
+
+        for row in DB.execute(select_statement).fetchall():
+            region_id = row[0]
+
+            if region_id in self.record_id_to_obj:
+                connected_reference_nodes.add(self.record_id_to_obj[region_id])
+
+            self.done_record_ids.add(region_id)
+
+        return connected_reference_nodes
+
+    def get_connected_reference_node_count(self) -> int:
+        """Returns the number of reference nodes that are not connected to other
+        reference nodes
+
+        Returns:
+            int: The number of reference nodes that are not connected to other reference
+            nodes
+        """
+        distance_table = DB.metadata.tables["distance"]
+        bgc_record_table = DB.metadata.tables["bgc_record"]
+        gbk_table = DB.metadata.tables["gbk"]
+
+        select_statement = (
+            select(func.count(bgc_record_table.c.id))
+            .where(
+                bgc_record_table.c.id.in_(
+                    select(distance_table.c.region_a_id)
+                    .distinct()
+                    .where(distance_table.c.distance < 1.0)
+                )
+            )
+            .where(
+                bgc_record_table.c.id.in_(
+                    select(distance_table.c.region_b_id)
+                    .distinct()
+                    .where(distance_table.c.distance < 1.0)
+                )
+            )
+            .where(bgc_record_table.c.id.notin_(self.done_record_ids))
+            .where(gbk_table.c.source_type == SOURCE_TYPE.REFERENCE.value)
+            .join(gbk_table, bgc_record_table.c.gbk_id == gbk_table.c.id)
+        )
+
+        connected_reference_node_count = DB.execute(select_statement).scalar_one()
+
+        return connected_reference_node_count
+
+    def get_singleton_reference_nodes(self) -> set[BGCRecord]:
+        """Returns a set of reference nodes that are not connected to other reference
+        nodes
+
+        Returns:
+            set[BGCRecord]: A set of reference nodes that are not connected to other
+            reference nodes
+        """
+        distance_table = DB.metadata.tables["distance"]
+        bgc_record_table = DB.metadata.tables["bgc_record"]
+        gbk_table = DB.metadata.tables["gbk"]
+
+        select_statement = (
+            select(
+                bgc_record_table.c.id,
+            )
+            .where(
+                bgc_record_table.c.id.notin_(
+                    select(distance_table.c.region_a_id)
+                    .distinct()
+                    .where(distance_table.c.distance < 1.0)
+                )
+            )
+            .where(
+                bgc_record_table.c.id.notin_(
+                    select(distance_table.c.region_b_id)
+                    .distinct()
+                    .where(distance_table.c.distance < 1.0)
+                )
+            )
+            .where(gbk_table.c.source_type == SOURCE_TYPE.REFERENCE.value)
+            .where(bgc_record_table.c.id.notin_(self.done_record_ids))
+            .join(gbk_table, bgc_record_table.c.gbk_id == gbk_table.c.id)
+        )
+
+        singleton_reference_nodes = set()
+
+        for row in DB.execute(select_statement).fetchall():
+            region_id = row[0]
+
+            if region_id in self.record_id_to_obj:
+                singleton_reference_nodes.add(self.record_id_to_obj[region_id])
+
+        return singleton_reference_nodes
+
+    def get_singleton_reference_node_count(self) -> int:
+        """Returns the number of reference nodes that are not connected to other
+        reference nodes
+
+        Returns:
+            int: The number of reference nodes that are not connected to other reference
+            nodes
+        """
+        distance_table = DB.metadata.tables["distance"]
+        bgc_record_table = DB.metadata.tables["bgc_record"]
+        gbk_table = DB.metadata.tables["gbk"]
+
+        select_statement = (
+            select(func.count(bgc_record_table.c.id))
+            .where(
+                bgc_record_table.c.id.notin_(
+                    select(distance_table.c.region_a_id).distinct()
+                )
+            )
+            .where(
+                bgc_record_table.c.id.notin_(
+                    select(distance_table.c.region_b_id).distinct()
+                )
+            )
+            .where(gbk_table.c.source_type == SOURCE_TYPE.REFERENCE.value)
+            .where(bgc_record_table.c.id.notin_(self.done_record_ids))
+            .join(gbk_table, bgc_record_table.c.gbk_id == gbk_table.c.id)
+        )
+
+        singleton_reference_node_count = DB.execute(select_statement).scalar_one()
+
+        return singleton_reference_node_count
+
+
+class MissingRecordPairGenerator(RecordPairGenerator):
     """Generator that wraps around another RecordPairGenerator to exclude any distances
     already in the database
     """

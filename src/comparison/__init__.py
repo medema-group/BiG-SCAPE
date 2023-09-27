@@ -2,9 +2,9 @@
 from .binning import (
     RecordPair,
     RecordPairGenerator,
-    RecordPairGeneratorQueryRef,
-    RecordPairGeneratorConRefSinRef,
-    PartialRecordPairGenerator,
+    QueryToRefRecordPairGenerator,
+    RefToRefRecordPairGenerator,
+    MissingRecordPairGenerator,
     generate_mix,
 )
 from .comparable_region import ComparableRegion
@@ -15,9 +15,9 @@ from .utility import save_edge_to_db
 __all__ = [
     "RecordPair",
     "RecordPairGenerator",
-    "RecordPairGeneratorQueryRef",
-    "RecordPairGeneratorConRefSinRef",
-    "PartialRecordPairGenerator",
+    "QueryToRefRecordPairGenerator",
+    "RefToRefRecordPairGenerator",
+    "MissingRecordPairGenerator",
     "generate_mix",
     "ComparableRegion",
     "generate_edges",
