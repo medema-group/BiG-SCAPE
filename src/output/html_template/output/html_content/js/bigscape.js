@@ -90,8 +90,7 @@ function Bigscape(bs_data, bs_families, bs_alignment, bs_similarity, network_con
         shouldSort: true,
         includeMatches: true,
         threshold: 0,
-        location: 0,
-        distance: 100,
+        ignoreLocation: true,
         keys: ["family", "id", "orfs.domains.code"] // searchable tags
       };
       var search_tokens = BigscapeFunc.filterUtil.tokenize(search_string);
