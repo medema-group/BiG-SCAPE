@@ -99,7 +99,7 @@ function Bigscape(bs_data, bs_families, bs_alignment, bs_similarity, network_con
       }
       var search_tree = BigscapeFunc.filterUtil.parseTokens(search_tokens);
       var fuse_query = BigscapeFunc.filterUtil.formatFuseQuery(search_tree, fuse_options["keys"]);
-      var fuse = new Fuse(bs_data, fuse_options);
+      var fuse = new Fuse(handler.data.bs_data, fuse_options);
       var res = fuse.search(fuse_query);
       var sels_nodes = [];
       var uniq_fam = new Set;
@@ -112,7 +112,7 @@ function Bigscape(bs_data, bs_families, bs_alignment, bs_similarity, network_con
       }
       var div_bgc_hits = $("<div>" + sels_nodes.length + " Hits in " + uniq_fam.size +
         " Families (<a class='selectbgcs' href='##'>select</a>)</div>");
-      div_bgc_hits.find("a.selectbgcs").click({ bigscape: bigscape, sels: sels_nodes }, function (handler) {
+      div_bgc_hits.find("a.selectbgcs").click({ bigscape: handler.data.bigscape, sels: sels_nodes }, function (handler) {
         handler.data.bigscape.setHighlightedNodes(handler.data.sels);
         handler.data.bigscape.highlightNodes(handler.data.sels);
         handler.data.bigscape.updateDescription(handler.data.sels);
