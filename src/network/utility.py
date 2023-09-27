@@ -54,6 +54,9 @@ def edge_list_to_adj_list(
             if region_a not in adj_list[region_b]:
                 adj_list[region_b][region_a] = 0.0
 
+        # self similarity
+        adj_list[region_a][region_a] = 1.0
+
     return adj_list
 
 
