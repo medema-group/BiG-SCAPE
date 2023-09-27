@@ -2,7 +2,6 @@
 
 
 # from dependencies
-import logging
 from typing import Optional, Generator
 from sqlalchemy import tuple_
 
@@ -26,7 +25,7 @@ def get_connected_components(
     ignore_nodes: set[int] = set()
 
     # get an edge from the database
-    edge = get_edge(ignore_nodes)
+    edge = get_edge(ignore_nodes, cutoff)
 
     # we now have an edge. we need to expand this edge into a connected
     # component. we do this by iteratively selecting for more nodes
@@ -64,31 +63,28 @@ def get_connected_components(
         # at some point new_edges is empty, so no more new edges were found
         # we can now yield the connected component
 
-        # except if there are only two nodes
-        if len(connected_component) == 1:
-            edge = get_edge(ignore_nodes)
-            continue
-
-        logging.debug(
-            "Yielding connected component with %s edges", len(connected_component)
-        )
-
         yield list(connected_component)
 
         # now we need a new edge to start a new connected component
-        edge = get_edge(ignore_nodes)
+        edge = get_edge(ignore_nodes, cutoff)
 
 
 def get_edge(
     exclude_nodes: set[int],
+    cutoff: Optional[float] = None,
 ) -> tuple[int, int, float, float, float, float]:
     """Get an edge from the database that is not connected to exclude_nodes"""
+
+    if cutoff is None:
+        cutoff = 1.0
+
     # fetch an edge from the database
     select_statment = (
         DB.metadata.tables["distance"]
         .select()
         .where(DB.metadata.tables["distance"].c.region_a_id.notin_(exclude_nodes))
         .where(DB.metadata.tables["distance"].c.region_b_id.notin_(exclude_nodes))
+        .where(DB.metadata.tables["distance"].c.distance < cutoff)
     )
 
     edge = DB.execute(select_statment).fetchone()
