@@ -546,7 +546,7 @@ BigscapeFunc.filterUtil.formatLeaf = function (target, search_terms) {
   // restrict to specific term if given
   if (target.indexOf("[") > 0) {
     var search = target.slice(0, target.indexOf("["))
-    var term = target.slice(target.indexOf("[") + 1, -1)
+    var term = BigscapeFunc.filterUtil.transl_syntax[target.slice(target.indexOf("[") + 1, -1)]
     return { [term]: search }
   } else {
     // otherwise, add all possible terms
