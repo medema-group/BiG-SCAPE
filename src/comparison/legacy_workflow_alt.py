@@ -12,7 +12,7 @@ TODO: docstrings, none typings
 # from python
 import logging
 from concurrent.futures import ProcessPoolExecutor, wait
-from typing import Callable
+from typing import Callable, Optional
 
 # from other modules
 from src.distances import calc_jaccard_pair, calc_ai_pair, calc_dss_pair_legacy
@@ -44,7 +44,7 @@ def generate_edges(
     pair_generator: RecordPairGenerator,
     alignment_mode: str,
     cores: int,
-    callback: Callable,
+    callback: Optional[Callable] = None,
     batch_size=100,
 ):  # pragma no cover
     # prepare a process pool
@@ -114,7 +114,8 @@ def generate_edges(
                     )
 
                 done_pairs += len(results)
-                callback(done_pairs)
+                if callback:
+                    callback(done_pairs)
 
             if len(running_tasks) == 0:
                 break
