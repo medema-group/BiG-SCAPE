@@ -8,10 +8,9 @@ from pathlib import Path
 
 # from other modules
 from src.data import DB
-from src.genbank import BGCRecord, CDS, GBK
-from src.hmm import HMMer, legacy_filter_overlap, HSP
+from src.genbank import BGCRecord
+from src.hmm import HMMer, legacy_filter_overlap
 from src.parameters import RunParameters, parse_cmd
-from src.file_input import load_dataset_folder, get_mibig
 from src.diagnostics import Profiler
 from src.output import (
     legacy_prepare_output,
@@ -21,99 +20,12 @@ from src.output import (
 )
 
 
+import src.file_input as bs_files
 import src.data as bs_data
 import src.enums as bs_enums
 import src.comparison as bs_comparison
 import src.network.network as bs_network
 import src.network.families as bs_families
-
-
-def load_gbks(run: RunParameters) -> list[GBK]:
-    # counterintuitive, but we need to load the gbks first to see if there are any differences with
-    # the data in the database
-
-    print(sys.argv[0])
-
-    input_gbks = []
-
-    if run.binning.query_bgc_path:
-        query_bgc_gbk = GBK(run.binning.query_bgc_path, bs_enums.SOURCE_TYPE.QUERY)
-        input_gbks.append(query_bgc_gbk)
-
-        query_bgc_stem = run.binning.query_bgc_path.stem
-
-        # add the query bgc to the exclude list
-        exclude_gbk = run.input.exclude_gbk + [query_bgc_stem]
-
-        gbks = load_dataset_folder(
-            run.input.input_dir,
-            bs_enums.SOURCE_TYPE.REFERENCE,
-            run.input.input_mode,
-            run.input.include_gbk,
-            exclude_gbk,
-            run.input.cds_overlap_cutoff,
-        )
-        input_gbks.extend(gbks)
-
-    else:
-        gbks = load_dataset_folder(
-            run.input.input_dir,
-            bs_enums.SOURCE_TYPE.QUERY,
-            run.input.input_mode,
-            run.input.include_gbk,
-            run.input.exclude_gbk,
-            run.input.cds_overlap_cutoff,
-        )
-        input_gbks.extend(gbks)
-
-    # get reference if either MIBiG version or user-made reference dir passed
-    if run.input.mibig_version:
-        mibig_version_dir = get_mibig(run.input.mibig_version, bigscape_dir)
-        mibig_gbks = load_dataset_folder(mibig_version_dir, bs_enums.SOURCE_TYPE.MIBIG)
-        input_gbks.extend(mibig_gbks)
-
-    if run.input.reference_dir:
-        reference_gbks = load_dataset_folder(
-            run.input.reference_dir, bs_enums.SOURCE_TYPE.REFERENCE
-        )
-        input_gbks.extend(reference_gbks)
-
-    # find the minimum task set for these gbks
-    # if there is no database, create a new one and load in all the input stuff
-    if not run.output.db_path.exists():
-        DB.create_in_mem()
-
-        all_cds: list[CDS] = []
-        for gbk in input_gbks:
-            gbk.save_all()
-            all_cds.extend(gbk.genes)
-
-        return input_gbks
-
-    DB.load_from_disk(run.output.db_path)
-    task_state = bs_data.find_minimum_task(input_gbks)
-
-    # if we are are not on the load_gbks task, we have all the data we need
-    if task_state != bs_enums.TASK.LOAD_GBKS:
-        logging.info("Loading existing run from disk...")
-
-        gbks = GBK.load_all()
-
-        for gbk in gbks:
-            HSP.load_all(gbk.genes)
-
-        return gbks
-
-    # if we end up here, we are in some halfway state and need to load in the new data
-    logging.info("Loading existing run from disk and adding new data...")
-    missing_gbks = bs_data.get_missing_gbks(input_gbks)
-    logging.info("Found %d missing gbks", len(missing_gbks))
-
-    for gbk in missing_gbks:
-        gbk.save_all()
-
-    # still return the full set
-    return input_gbks
 
 
 if __name__ == "__main__":
@@ -142,7 +54,7 @@ if __name__ == "__main__":
 
     # INPUT - load data
 
-    gbks = load_gbks(run)
+    gbks = bs_files.load_gbks(run, bigscape_dir)
 
     # get fist task
     run_state = bs_data.find_minimum_task(gbks)
