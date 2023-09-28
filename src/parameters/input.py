@@ -65,6 +65,7 @@ class InputParameters:
         validate_input_mode(self.input_mode)
         validate_pfam(self.pfam_path)
         validate_reference(self.reference_dir)
+        validate_query_bgc(self.query_bgc_path)
         validate_cds_overlap_cutoff(self.cds_overlap_cutoff)
 
 
@@ -90,6 +91,19 @@ def validate_reference(reference_dir):
         if len(contents) == 0:
             logging.error("GBK reference directory empty!")
             raise InvalidArgumentError("--reference_dir", reference_dir)
+
+
+def validate_query_bgc(query_bgc_path):
+    """Validates the query_gbc_path property"""
+
+    # given single query bgc file, file must exist
+    if query_bgc_path and not query_bgc_path.exists():
+        logging.error("Query BGC file does not exist!")
+        raise InvalidArgumentError("--query_bgc_path", query_bgc_path)
+
+    if query_bgc_path and not query_bgc_path.is_file():
+        logging.error("Query BGC file is not a file!")
+        raise InvalidArgumentError("--query_bgc_path", query_bgc_path)
 
 
 def validate_input_dir(input_dir):
