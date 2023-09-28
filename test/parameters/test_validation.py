@@ -11,11 +11,10 @@ from src.errors import InvalidArgumentError, ArgumentParseError
 from src.parameters.input import (
     validate_input_dir,
     validate_input_mode,
-    validate_query_bgc,
     validate_cds_overlap_cutoff,
 )
 from src.parameters.hmmer import validate_includelist, validate_hsp_overlap_cutoff
-from src.parameters.binning import validate_mix
+from src.parameters.binning import validate_mix, validate_query_bgc
 from src.parameters.comparison import validate_alignment_mode
 from src.parameters.networking import validate_gcf_cutoffs
 from src.parameters.output import (
