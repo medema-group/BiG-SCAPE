@@ -8,7 +8,6 @@ from pathlib import Path
 
 # from other modules
 from src.data import DB
-from src.genbank import BGCRecord
 from src.hmm import HMMer, legacy_filter_overlap
 from src.parameters import RunParameters, parse_cmd
 from src.diagnostics import Profiler
@@ -26,6 +25,8 @@ import src.enums as bs_enums
 import src.comparison as bs_comparison
 import src.network.network as bs_network
 import src.network.families as bs_families
+import src.distances.mix as bs_mix
+import src.distances.query as bs_query
 
 
 if __name__ == "__main__":
@@ -180,156 +181,30 @@ if __name__ == "__main__":
         run_state = bs_data.find_minimum_task(gbks)
         logging.info("Next task: %s", run_state)
 
-    # PREPARE OUTPUT
-
-    # if this wasn't set in scan or align, set it now
-    if pfam_info is None:
-        HMMer.init(run.input.pfam_path, False)
-        pfam_info = HMMer.get_pfam_info()
-        HMMer.unload()
-
-    # prepare output files
-    legacy_prepare_output(run.output.output_dir, pfam_info)
-
-    # work per cutoff
-    # TODO: currently only 0.3
-    legacy_prepare_cutoff_output(run.output.output_dir, run.label, 0.3, gbks)
+    # TODO: idea: use sqlite to set distances of 1.0 for all pairs that have no domains
+    # in common
 
     # DISTANCE GENERATION
+    # TODO: legacy bins
 
     # mix
 
     if not run.binning.no_mix and not run.binning.query_bgc_path:
-        logging.info("Generating mix bin")
+        bs_mix.calculate_distances_mix(run, gbks)
 
-        mix_bgc_regions: list[BGCRecord] = []
-
-        for gbk in gbks:
-            if gbk.region is not None:
-                mix_bgc_regions.append(gbk.region)
-
-        mix_bin = bs_comparison.RecordPairGenerator("mix")
-        mix_bin.add_records(mix_bgc_regions)
-
-        logging.info(mix_bin)
-
-        # check if there are existing distances
-        missing_edge_bin = bs_comparison.MissingRecordPairGenerator(mix_bin)
-        num_pairs = missing_edge_bin.num_pairs()
-
-        if num_pairs > 0:
-            logging.info("Calculating distances for %d pairs", num_pairs)
-
-            def callback(done_pairs):
-                if mix_bin.num_pairs() > 10:
-                    mod = round(mix_bin.num_pairs() / 10)
-                else:
-                    mod = 1
-
-                if done_pairs % mod == 0:
-                    logging.info(
-                        f"{done_pairs}/{mix_bin.num_pairs()} ({done_pairs/mix_bin.num_pairs():.2%})"
-                    )
-
-            mix_edges = bs_comparison.generate_edges(
-                missing_edge_bin, run.comparison.alignment_mode, run.cores, callback
-            )
-
-            num_edges = 0
-            for edge in mix_edges:
-                num_edges += 1
-                bs_comparison.save_edge_to_db(edge)
-
-            logging.info("Generated %d edges", num_edges)
-
-            DB.commit()
+        DB.commit()
 
     # query
 
     if run.binning.query_bgc_path:
-        logging.info("Generating query BGC mode bin")
-
-        query_bgcs_records: list[BGCRecord] = []
-
-        for gbk in gbks:
-            if gbk.region is None:
-                continue
-            query_bgcs_records.append(gbk.region)
-
-        query_to_ref_bin = bs_comparison.QueryToRefRecordPairGenerator("mix")
-        query_to_ref_bin.add_records(query_bgcs_records)
-
-        missing_edge_bin = bs_comparison.MissingRecordPairGenerator(query_to_ref_bin)
-        num_pairs = missing_edge_bin.num_pairs()
-
-        if num_pairs > 0:
-            logging.info(
-                "Calculating distances for %d pairs (Query to Reference)",
-                num_pairs,
-            )
-
-            query_edges = bs_comparison.generate_edges(
-                missing_edge_bin,
-                run.comparison.alignment_mode,
-                run.cores,
-            )
-
-            num_edges = 0
-
-            for edge in query_edges:
-                num_edges += 1
-                bs_comparison.save_edge_to_db(edge)
-
-            logging.info("Generated %d edges", num_edges)
-
-        # now we expand these edges from reference to other reference
-        # TODO: see if we can implement missing for these
-        ref_to_ref_bin = bs_comparison.RefToRefRecordPairGenerator("Ref_Ref")
-        ref_to_ref_bin.add_records(query_bgcs_records)
-
-        while True:
-            num_pairs = ref_to_ref_bin.num_pairs()
-
-            if num_pairs == 0:
-                break
-
-            logging.info(
-                "Calculating distances for %d pairs (Reference to Reference)",
-                num_pairs,
-            )
-
-            def callback(done_pairs):
-                if num_pairs > 10:
-                    mod = round(num_pairs / 10)
-                else:
-                    mod = 1
-
-                if done_pairs % mod == 0:
-                    logging.info(
-                        f"{done_pairs}/{num_pairs} ({done_pairs/num_pairs:.2%})"
-                    )
-
-            ref_edges = bs_comparison.generate_edges(
-                ref_to_ref_bin, run.comparison.alignment_mode, run.cores, callback
-            )
-
-            num_edges = 0
-            for edge in ref_edges:
-                num_edges += 1
-                bs_comparison.save_edge_to_db(edge, True)
-
-            if num_edges == 0:
-                break
-
-            logging.info("Generated %d edges", num_edges)
+        bs_query.calculate_distances_query(run, gbks)
 
         DB.commit()
 
-    # NETWORKING
+    # FAMILIES
+    # TODO: per cutoff
 
-    # mix
-
-    logging.info("Generating mix connected component networks")
+    logging.info("Generating families")
 
     for connected_component in bs_network.get_connected_components(0.3):
         logging.debug(
@@ -347,19 +222,27 @@ if __name__ == "__main__":
 
     # OUTPUT
 
-    # mix
+    # if this wasn't set in scan or align, set it now
+    if pfam_info is None:
+        HMMer.init(run.input.pfam_path, False)
+        pfam_info = HMMer.get_pfam_info()
+        HMMer.unload()
 
-    if not run.binning.no_mix and not run.binning.query_bgc_path:
-        legacy_prepare_bin_output(run.output.output_dir, run.label, 0.3, mix_bin)
+    # prepare output files
+    legacy_prepare_output(run.output.output_dir, pfam_info)
 
-        legacy_generate_bin_output(run.output.output_dir, run.label, 0.3, mix_bin)
+    # work per cutoff
+    legacy_prepare_cutoff_output(run.output.output_dir, run.label, 0.3, gbks)
 
-    if run.binning.query_bgc_path:
-        legacy_prepare_bin_output(run.output.output_dir, run.label, 0.3, ref_to_ref_bin)
+    # TODO: I don't think the bins make much sense anymore
+    # see if we can refactor this
+    # TODO: per cutoff
+    mix_bin = bs_comparison.RecordPairGenerator("mix")
+    mix_bin.add_records([gbk.region for gbk in gbks if gbk.region is not None])
 
-        legacy_generate_bin_output(
-            run.output.output_dir, run.label, 0.3, ref_to_ref_bin
-        )
+    legacy_prepare_bin_output(run.output.output_dir, run.label, 0.3, mix_bin)
+
+    legacy_generate_bin_output(run.output.output_dir, run.label, 0.3, mix_bin)
 
     if run.diagnostics.profiling:
         profiler.stop()
