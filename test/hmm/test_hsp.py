@@ -6,9 +6,9 @@ from unittest import TestCase
 from pathlib import Path
 
 # from other modules
-from src.genbank import GBK
-from src.data import DB
-from src.hmm import HSP
+from big_scape.genbank import GBK
+from big_scape.data import DB
+from big_scape.hmm import HSP
 
 
 class TestHSP(TestCase):

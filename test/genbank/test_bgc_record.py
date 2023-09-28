@@ -6,8 +6,8 @@ clasess inherit
 from unittest import TestCase
 
 # from other modules
-from src.genbank import GBK, BGCRecord, CDS, Region
-from src.hmm import HSP
+from big_scape.genbank import GBK, BGCRecord, CDS, Region
+from big_scape.hmm import HSP
 
 
 class TestBGCRecord(TestCase):

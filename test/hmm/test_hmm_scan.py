@@ -10,12 +10,12 @@ import platform
 from pyhmmer.easel import TextSequence
 
 # from other modules
-from src.data import DB
-from src.hmm.hmmer import HMMer, cds_to_input_task
-from src.genbank import GBK, CDS
-from src.hmm import HSP
+from big_scape.data import DB
+from big_scape.hmm.hmmer import HMMer, cds_to_input_task
+from big_scape.genbank import GBK, CDS
+from big_scape.hmm import HSP
 
-import src.enums as bs_enums
+import big_scape.enums as bs_enums
 
 
 class TestHMMScan(TestCase):

@@ -5,19 +5,19 @@ from unittest import TestCase
 from pathlib import Path
 
 # from other modules
-from src.genbank import GBK, BGCRecord, CDS, Region
-from src.comparison import (
+from big_scape.genbank import GBK, BGCRecord, CDS, Region
+from big_scape.comparison import (
     RecordPairGenerator,
     QueryToRefRecordPairGenerator,
     RefToRefRecordPairGenerator,
     RecordPair,
     save_edge_to_db,
 )
-from src.comparison import generate_mix
+from big_scape.comparison import generate_mix
 
-import src.hmm as bs_hmm
-import src.data as bs_data
-import src.enums as bs_enums
+import big_scape.hmm as bs_hmm
+import big_scape.data as bs_data
+import big_scape.enums as bs_enums
 
 
 def create_mock_gbk(i, source_type: bs_enums.SOURCE_TYPE) -> GBK:

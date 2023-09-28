@@ -6,16 +6,16 @@ BiG-SCAPE
 from unittest import TestCase
 
 # from other modules
-from src.genbank import GBK, Region, CDS
-from src.hmm import HSP
-from src.comparison import RecordPair
-from src.distances import (
+from big_scape.genbank import GBK, Region, CDS
+from big_scape.hmm import HSP
+from big_scape.comparison import RecordPair
+from big_scape.distances import (
     calc_jaccard_sets,
     calc_jaccard_pair,
     calc_ai_lists,
     calc_ai_pair,
 )
-from src.distances.dss import get_aligned_string_dist, get_distance_from_unshared
+from big_scape.distances.dss import get_aligned_string_dist, get_distance_from_unshared
 
 
 class TestJaccard(TestCase):

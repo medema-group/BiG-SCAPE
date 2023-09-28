@@ -7,10 +7,10 @@ from pathlib import Path
 from Bio.SeqFeature import SeqFeature, FeatureLocation
 
 # from other modules
-from src.genbank import Region, CandidateCluster, GBK
-from src.errors import InvalidGBKError
-from src.data import DB
-from src.enums import SOURCE_TYPE
+from big_scape.genbank import Region, CandidateCluster, GBK
+from big_scape.errors import InvalidGBKError
+from big_scape.data import DB
+from big_scape.enums import SOURCE_TYPE
 
 
 class TestRegion(TestCase):

@@ -7,17 +7,17 @@ from random import randint
 import time
 
 # from other modules
-from src.errors import InvalidArgumentError, ArgumentParseError
-from src.parameters.input import (
+from big_scape.errors import InvalidArgumentError, ArgumentParseError
+from big_scape.parameters.input import (
     validate_input_dir,
     validate_input_mode,
     validate_cds_overlap_cutoff,
 )
-from src.parameters.hmmer import validate_includelist, validate_hsp_overlap_cutoff
-from src.parameters.binning import validate_mix, validate_query_bgc
-from src.parameters.comparison import validate_alignment_mode
-from src.parameters.networking import validate_gcf_cutoffs
-from src.parameters.output import (
+from big_scape.parameters.hmmer import validate_includelist, validate_hsp_overlap_cutoff
+from big_scape.parameters.binning import validate_mix, validate_query_bgc
+from big_scape.parameters.comparison import validate_alignment_mode
+from big_scape.parameters.networking import validate_gcf_cutoffs
+from big_scape.parameters.output import (
     validate_output_dir,
     validate_db_path,
     validate_log_path,

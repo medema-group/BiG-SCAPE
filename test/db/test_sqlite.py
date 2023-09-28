@@ -8,9 +8,9 @@ from unittest import TestCase
 from sqlalchemy import text
 
 # from other modules
-from src.data import DB
-from src.data.sqlite import text_to_queries
-from src.errors import DBAlreadyOpenError, DBClosedError
+from big_scape.data import DB
+from big_scape.data.sqlite import text_to_queries
+from big_scape.errors import DBAlreadyOpenError, DBClosedError
 
 
 class TestSQLite(TestCase):
@@ -93,7 +93,7 @@ class TestSQLite(TestCase):
 
         expected_row_count = 10
 
-        # get 10 rows from database using DB.get_table_rows
+        # get 10 rows from big_scape.database using DB.get_table_rows
         rows = list(next(DB.get_table_row_batch("gbk", expected_row_count)))
 
         actual_row_count = len(rows)

@@ -8,7 +8,7 @@ from unittest import TestCase
 from itertools import combinations
 
 # from other modules
-from src.data import (
+from big_scape.data import (
     DB,
     find_minimum_task,
     get_input_data_state,
@@ -17,12 +17,12 @@ from src.data import (
     get_cds_to_scan,
     get_hsp_to_align,
 )
-from src.genbank import GBK, CDS, Region
-from src.hmm import HSP, HSPAlignment, HMMer
+from big_scape.genbank import GBK, CDS, Region
+from big_scape.hmm import HSP, HSPAlignment, HMMer
 
-import src.comparison as bs_comparison
+import big_scape.comparison as bs_comparison
 
-import src.enums as bs_enums
+import big_scape.enums as bs_enums
 
 
 def create_mock_gbk(i) -> GBK:

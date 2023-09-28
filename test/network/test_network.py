@@ -8,11 +8,11 @@ from unittest import TestCase
 from itertools import combinations
 
 # from other modules
-import src.genbank as bs_gbk
-import src.data as bs_data
-import src.network.network as bs_network
-import src.comparison as bs_comparison
-import src.enums as bs_enums
+import big_scape.genbank as bs_gbk
+import big_scape.data as bs_data
+import big_scape.network.network as bs_network
+import big_scape.comparison as bs_comparison
+import big_scape.enums as bs_enums
 
 
 def create_mock_gbk(i) -> bs_gbk.GBK:

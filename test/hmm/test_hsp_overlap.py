@@ -4,8 +4,8 @@
 from unittest import TestCase
 
 # from other modules
-from src.genbank import CDS
-from src.hmm import HSP
+from big_scape.genbank import CDS
+from big_scape.hmm import HSP
 
 
 class TestHSPOverlap(TestCase):

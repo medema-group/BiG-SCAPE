@@ -8,10 +8,10 @@ from unittest import TestCase
 from Bio.Seq import Seq
 
 # from other modules
-from src.genbank import GBK, Region, ProtoCore, CDS
-from src.errors import InvalidGBKError
-from src.data import DB
-from src.enums import SOURCE_TYPE
+from big_scape.genbank import GBK, Region, ProtoCore, CDS
+from big_scape.errors import InvalidGBKError
+from big_scape.data import DB
+from big_scape.enums import SOURCE_TYPE
 
 
 class TestGBK(TestCase):

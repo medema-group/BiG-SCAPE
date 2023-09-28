@@ -5,7 +5,7 @@ from itertools import combinations
 from unittest import TestCase
 
 # from other modules
-import src.network.families as bs_families
+import big_scape.network.families as bs_families
 
 
 class TestAffinityPropagation(TestCase):

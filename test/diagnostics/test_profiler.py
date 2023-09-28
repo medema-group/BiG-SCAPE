@@ -7,7 +7,7 @@ import os
 import time
 
 # from this module
-from src.diagnostics.profiler import calc_cpu_percent
+from big_scape.diagnostics.profiler import calc_cpu_percent
 
 
 class TestProfiler(TestCase):

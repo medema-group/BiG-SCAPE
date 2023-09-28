@@ -4,9 +4,9 @@
 from unittest import TestCase
 
 # from other modules
-from src.genbank import GBK, Region, CDS
-from src.hmm import HSP
-from src.comparison import RecordPair, ComparableRegion
+from big_scape.genbank import GBK, Region, CDS
+from big_scape.hmm import HSP
+from big_scape.comparison import RecordPair, ComparableRegion
 
 
 class TestComparibleRegions(TestCase):
