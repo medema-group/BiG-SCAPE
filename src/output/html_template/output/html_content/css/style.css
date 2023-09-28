@@ -85,9 +85,11 @@ a:visited {
 }
 .search-result {
   position: fixed;
-  left: 80px;
-  min-height: 100px;
-  min-width: 100px;
+  left: 10px;
+  margin: 4px;
+  padding: 3px;
+  min-height: 30px;
+  min-width: 210px;
   background-color: rgba(255,255,255,0.9);
   box-shadow: 2px 3px;
   border: 1px solid gray;
