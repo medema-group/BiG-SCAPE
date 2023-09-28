@@ -183,7 +183,10 @@ def calculate_scores_pair(
             results.append((1.0, 0.0, 0.0, 0.0))
             continue
 
-        bin_weights = LEGACY_BINS[bin_label]["weights"]
+        if bin_label not in LEGACY_BINS:
+            bin_weights = LEGACY_BINS["mix"]["weights"]
+        else:
+            bin_weights = LEGACY_BINS[bin_label]["weights"]
         jc_weight, ai_weight, dss_weight, anchor_boost = bin_weights
 
         jaccard = calc_jaccard_pair(pair)

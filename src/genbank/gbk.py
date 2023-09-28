@@ -209,7 +209,8 @@ class GBK:
 
         gbk_dict = {}
         for result in cursor_result.all():
-            new_gbk = GBK(Path(result.path), result.source_type)
+            source_type = SOURCE_TYPE[result.source_type.upper()]
+            new_gbk = GBK(Path(result.path), source_type)
             new_gbk._db_id = result.id
             new_gbk.nt_seq = result.nt_seq
             gbk_dict[result.id] = new_gbk

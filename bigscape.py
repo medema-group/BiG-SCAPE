@@ -303,10 +303,10 @@ if __name__ == "__main__":
 
         # check if there are existing distances
         missing_edge_bin = bs_comparison.MissingRecordPairGenerator(mix_bin)
-        num_missing_edges = missing_edge_bin.num_pairs()
+        num_pairs = missing_edge_bin.num_pairs()
 
-        if num_missing_edges > 0:
-            logging.info("Calculating distances for %d pairs", num_missing_edges)
+        if num_pairs > 0:
+            logging.info("Calculating distances for %d pairs", num_pairs)
 
             def callback(done_pairs):
                 if mix_bin.num_pairs() > 10:
@@ -348,12 +348,12 @@ if __name__ == "__main__":
         query_to_ref_bin.add_records(query_bgcs_records)
 
         missing_edge_bin = bs_comparison.MissingRecordPairGenerator(query_to_ref_bin)
-        num_missing_edges = missing_edge_bin.num_pairs()
+        num_pairs = missing_edge_bin.num_pairs()
 
-        if num_missing_edges > 0:
+        if num_pairs > 0:
             logging.info(
                 "Calculating distances for %d pairs (Query to Reference)",
-                num_missing_edges,
+                num_pairs,
             )
 
             query_edges = bs_comparison.generate_edges(
@@ -371,42 +371,40 @@ if __name__ == "__main__":
             logging.info("Generated %d edges", num_edges)
 
         # now we expand these edges from reference to other reference
-
+        # TODO: see if we can implement missing for these
         ref_to_ref_bin = bs_comparison.RefToRefRecordPairGenerator("Ref_Ref")
         ref_to_ref_bin.add_records(query_bgcs_records)
 
-        missing_edge_bin = bs_comparison.MissingRecordPairGenerator(ref_to_ref_bin)
-
         while True:
-            num_missing_edges = missing_edge_bin.num_pairs()
+            num_pairs = ref_to_ref_bin.num_pairs()
 
-            if num_missing_edges == 0:
+            if num_pairs == 0:
                 break
 
             logging.info(
                 "Calculating distances for %d pairs (Reference to Reference)",
-                num_missing_edges,
+                num_pairs,
             )
 
             def callback(done_pairs):
-                if num_missing_edges > 10:
-                    mod = round(num_missing_edges / 10)
+                if num_pairs > 10:
+                    mod = round(num_pairs / 10)
                 else:
                     mod = 1
 
                 if done_pairs % mod == 0:
                     logging.info(
-                        f"{done_pairs}/{num_missing_edges} ({done_pairs/mix_bin.num_pairs():.2%})"
+                        f"{done_pairs}/{num_pairs} ({done_pairs/num_pairs:.2%})"
                     )
 
             ref_edges = bs_comparison.generate_edges(
-                missing_edge_bin, run.comparison.alignment_mode, run.cores, callback
+                ref_to_ref_bin, run.comparison.alignment_mode, run.cores, callback
             )
 
             num_edges = 0
             for edge in ref_edges:
                 num_edges += 1
-                bs_comparison.save_edge_to_db(edge)
+                bs_comparison.save_edge_to_db(edge, True)
 
             if num_edges == 0:
                 break
@@ -443,6 +441,13 @@ if __name__ == "__main__":
         legacy_prepare_bin_output(run.output.output_dir, run.label, 0.3, mix_bin)
 
         legacy_generate_bin_output(run.output.output_dir, run.label, 0.3, mix_bin)
+
+    if run.binning.query_bgc_path:
+        legacy_prepare_bin_output(run.output.output_dir, run.label, 0.3, ref_to_ref_bin)
+
+        legacy_generate_bin_output(
+            run.output.output_dir, run.label, 0.3, ref_to_ref_bin
+        )
 
     # mix_network.write_graphml(run.output.output_dir / Path("network_mix.graphml"))
     # mix_network.write_edgelist_tsv(run.output.output_dir / Path("network_mix.tsv"))

@@ -11,12 +11,15 @@ from src.data import DB
 from src.comparison.binning import RecordPairGenerator, RecordPair
 
 
-def save_edge_to_db(edge: tuple[int, int, float, float, float, float]) -> None:
+def save_edge_to_db(
+    edge: tuple[int, int, float, float, float, float], upsert=False
+) -> None:
     """Save edge to the database
 
     Args:
         edge (tuple[int, int, float, float, float, float]): edge tuple containing
             region_a_id, region_b_id, distance, jaccard, adjacency, dss
+        upsert (bool, optional): whether to upsert the edge into the database.
     """
 
     region_a_id, region_b_id, distance, jaccard, adjacency, dss = edge
@@ -25,7 +28,7 @@ def save_edge_to_db(edge: tuple[int, int, float, float, float, float]) -> None:
     distance_table = DB.metadata.tables["distance"]
 
     # save the entry to the database
-    upsert_statement = insert(distance_table).values(
+    statement = insert(distance_table).values(
         region_a_id=region_a_id,
         region_b_id=region_b_id,
         distance=distance,
@@ -34,7 +37,10 @@ def save_edge_to_db(edge: tuple[int, int, float, float, float, float]) -> None:
         dss=dss,
     )
 
-    DB.execute(upsert_statement)
+    if upsert:
+        statement = statement.prefix_with("OR REPLACE")
+
+    DB.execute(statement)
 
 
 def distances_from_db(
