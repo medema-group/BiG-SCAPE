@@ -39,6 +39,7 @@ class RunParameters(Namespace):
     """
 
     def __init__(self):
+        super().__init__()
         self.label: str = "BiG-SCAPE"
         self.cores: int = cpu_count()
         self.legacy: bool = False

@@ -9,13 +9,10 @@ from typing import TYPE_CHECKING, Optional
 
 # from other modules
 from big_scape.genbank import BGCRecord
-
+from big_scape.hmm import HSP
 
 # from this module
 from .legacy_lcs import legacy_find_cds_lcs
-
-# from other modules
-from big_scape.hmm import HSP
 
 
 # from circular imports
@@ -253,7 +250,15 @@ class ComparableRegion:
             if i == b_stop:
                 b_region_str = "STOP"
 
-            log_line = f"{i:<3} {a_domains:<25} {a_region_str:<10} {b_domains:<25} {b_region_str:<10}"
+            log_line = " ".join(
+                [
+                    f"{i:<3}",
+                    f"{a_domains:<25}",
+                    f"{a_region_str:<10}",
+                    f"{b_domains:<25}",
+                    f"{b_region_str:<10}",
+                ]
+            )
             logging.debug(log_line)
 
     def __eq__(self, __o: object) -> bool:

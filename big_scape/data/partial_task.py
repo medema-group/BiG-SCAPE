@@ -23,9 +23,9 @@ if TYPE_CHECKING:
 
 
 def find_minimum_task(gbks: list[GBK]):
-    """Finds the earliest bs_enums.TASK to start at. if new data was added, this will always
-    be the load_gbks bs_enums.TASK. otherwise, it tries to find the latest bs_enums.TASK with unfinished
-    business
+    """Finds the earliest bs_enums.TASK to start at. if new data was added, this will
+    always be the load_gbks bs_enums.TASK. otherwise, it tries to find the latest
+    bs_enums.TASK with unfinished business
     """
     input_data_state = get_input_data_state(gbks)
 
@@ -59,8 +59,8 @@ def get_input_data_state(gbks: list[GBK]) -> bs_enums.INPUT_TASK:
 
     # get set of gbks in database
     db_gbk_rows = DB.execute(gbk_table.select()).all()
-    db_gbk_paths = set([db_gbk_row[1] for db_gbk_row in db_gbk_rows])
-    input_gbk_paths = set([str(gbk.path) for gbk in gbks])
+    db_gbk_paths: set[str] = {db_gbk_row[1] for db_gbk_row in db_gbk_rows}
+    input_gbk_paths: set[str] = {str(gbk.path) for gbk in gbks}
 
     if db_gbk_paths == input_gbk_paths:
         return bs_enums.INPUT_TASK.SAME_DATA
@@ -95,7 +95,7 @@ def get_missing_gbks(gbks: list[GBK]) -> list[GBK]:
 
     # get set of gbks in database
     db_gbk_rows = DB.execute(gbk_table.select()).all()
-    db_gbk_paths = set([db_gbk_row[1] for db_gbk_row in db_gbk_rows])
+    db_gbk_paths: set[int] = {db_gbk_row[1] for db_gbk_row in db_gbk_rows}
 
     missing_gbks = []
 
@@ -213,7 +213,7 @@ def get_comparison_data_state(gbks: list[GBK]) -> bs_enums.COMPARISON_TASK:
 
 
 def get_missing_distances(
-    bin: RecordPairGenerator,
+    pair_generator: RecordPairGenerator,
 ) -> Generator[RecordPair, None, None]:
     """Get a generator of BGCPairs that are missing from a network
 
@@ -229,14 +229,14 @@ def get_missing_distances(
     # get all region._db_id in the bin
     select_statement = (
         select(distance_table.c.region_a_id, distance_table.c.region_b_id)
-        .where(distance_table.c.region_a_id.in_(bin.record_ids))
-        .where(distance_table.c.region_b_id.in_(bin.record_ids))
+        .where(distance_table.c.region_a_id.in_(pair_generator.record_ids))
+        .where(distance_table.c.region_b_id.in_(pair_generator.record_ids))
     )
 
     # generate a set of tuples of region id pairs
     existing_distances = set(DB.execute(select_statement).fetchall())
 
-    for pair in bin.generate_pairs():
+    for pair in pair_generator.generate_pairs():
         # if the pair is not in the set of existing distances, yield it
         if (pair.region_a._db_id, pair.region_b._db_id) not in existing_distances:
             yield pair

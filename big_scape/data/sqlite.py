@@ -30,12 +30,12 @@ class DB:
     metadata: MetaData = None
 
     @staticmethod
-    def opened():
+    def opened() -> bool:
         """Returns true if database is already openened"""
         return DB.connection is not None and not DB.connection.closed
 
     @staticmethod
-    def reflect():
+    def reflect() -> None:
         """Populates the metadata object with information about the tables
 
         This is necessary since we describe our database in schema.sql and load it, instead
@@ -48,12 +48,12 @@ class DB:
         DB.metadata.reflect(bind=DB.engine)
 
     @staticmethod
-    def create_tables():
+    def create_tables() -> None:
         """Populates the database with tables"""
         if not DB.opened():
             raise DBClosedError()
 
-        creation_queries = read_schema(DB_SCHEMA_PATH)
+        creation_queries = read_schema(Path(DB_SCHEMA_PATH))
 
         for creation_query in creation_queries:
             DB.connection.execute(text(creation_query))
@@ -61,7 +61,9 @@ class DB:
         DB.connection.commit()
 
     @staticmethod
-    def open_memory_connection():
+    def open_memory_connection() -> None:
+        """Open a connection to an in-memory database"""
+
         if DB.opened():
             raise DBAlreadyOpenError()
 
@@ -69,7 +71,7 @@ class DB:
         DB.connection = DB.engine.connect()
 
     @staticmethod
-    def create_in_mem():
+    def create_in_mem() -> None:
         """Create a new database in-memory"""
         DB.open_memory_connection()
 
@@ -78,7 +80,7 @@ class DB:
         DB.reflect()
 
     @staticmethod
-    def save_to_disk(db_path: Path):
+    def save_to_disk(db_path: Path) -> None:
         """Saves the in-memory database to a .db file. This overwrites any last database
         file in the same location
         """
@@ -104,7 +106,7 @@ class DB:
         raw_memory_connection.backup(raw_file_connection)
 
     @staticmethod
-    def load_from_disk(db_path: Path):
+    def load_from_disk(db_path: Path) -> None:
         """Loads the database from a database file to memory
 
         Args:
@@ -138,12 +140,12 @@ class DB:
         raw_file_connection.backup(raw_memory_connection)
 
     @staticmethod
-    def close_db():
+    def close_db() -> None:
         """Closes the database connection. This does not save the database to disk"""
         DB.connection.close()
 
     @staticmethod
-    def execute_raw_query(query: str):
+    def execute_raw_query(query: str) -> CursorResult:
         """Executes a raw simple query. Should only be used for very short queries"""
         return DB.connection.execute(text(query))
 
@@ -165,7 +167,7 @@ class DB:
         return cursor_result
 
     @staticmethod
-    def commit():
+    def commit() -> None:
         """Performs a commit to the database, saving any alterations to rows and tables
         that have been executed prior
 
@@ -175,6 +177,14 @@ class DB:
 
     @staticmethod
     def get_table_row_count(table_name: str) -> int:
+        """Return the number of rows in a table
+
+        Args:
+            table_name (str): name of the table to get the row count from
+
+        Returns:
+            int: number of rows in the table
+        """
         table_metadata = DB.metadata.tables[table_name]
         return DB.execute(
             select(func.count("*")).select_from(table_metadata)

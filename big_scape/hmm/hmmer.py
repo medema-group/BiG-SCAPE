@@ -1,4 +1,5 @@
-"""Contains methods to press an input .hmm file into more optimal formats for hmmscan and hmmalign
+"""Contains methods to press an input .hmm file into more optimal formats for hmmscan
+and hmmalign
 """
 
 # from python
@@ -34,6 +35,8 @@ if TYPE_CHECKING:  # pragma: no cover
 
 
 class HMMer:
+    """Class to handle HMMer related tasks"""
+
     pipeline: Pipeline = None
     profiles: list[OptimizedProfile]
     profile_index: dict[str, int]
@@ -56,7 +59,7 @@ class HMMer:
             hmm_path.parent / (hmm_path.name + expected_extension)
             for expected_extension in expected_extensions
         ]
-        return all([path.exists() for path in expected_paths])
+        return all((path.exists() for path in expected_paths))
 
     @staticmethod
     def press(hmm_path: Path) -> None:
@@ -88,7 +91,7 @@ class HMMer:
             exist. Defaults to True.
         """
         logging.info("Reading HMM Profiles")
-        HMMer.profiles = list()
+        HMMer.profiles = []
         with HMMFile(hmm_path) as hmm_file:
             if optimized:
                 logging.debug("Loading optimized profiles")
@@ -116,7 +119,7 @@ class HMMer:
         init() again for hmmalign
         """
         logging.info("Unloading profiles")
-        HMMer.profiles = list()
+        HMMer.profiles = []
         HMMer.profile_index = {}
         HMMer.pipeline = None
 
@@ -198,10 +201,10 @@ class HMMer:
             # name is actually the list index of the original CDS
             sequences.append(TextSequence(name=str(idx).encode(), sequence=cds.aa_seq))
 
-        ds = TextSequenceBlock(sequences).digitize(HMMer.alphabet)
+        digital_sequence = TextSequenceBlock(sequences).digitize(HMMer.alphabet)
 
         for top_hits in hmmsearch(
-            HMMer.profiles, ds, bit_cutoffs="trusted", cpus=cores
+            HMMer.profiles, digital_sequence, bit_cutoffs="trusted", cpus=cores
         ):
             for hit in top_hits:
                 if not hit.included:

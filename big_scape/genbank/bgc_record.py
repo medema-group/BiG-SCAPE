@@ -273,11 +273,12 @@ class BGCRecord:
         if "other" not in products:
             return ".".join(products)
 
-        # in all other cases we have an 'other' classification. for the rest of the cases we can remove
-        # that and just parse the products again
+        # in all other cases we have an 'other' classification. for the rest of the
+        # cases we can remove that and just parse the products again
         products.remove("other")
         return BGCRecord.parse_products(products)
 
+    @staticmethod
     def parse_common(
         feature: SeqFeature,
     ) -> tuple[int, int, Optional[bool], str]:
@@ -301,10 +302,7 @@ class BGCRecord:
         if "contig_edge" in feature.qualifiers:
             contig_edge_qualifier = feature.qualifiers["contig_edge"][0]
 
-            if contig_edge_qualifier == "True":
-                contig_edge = True
-            else:
-                contig_edge = False
+            contig_edge = contig_edge_qualifier == "True"
 
         if "product" not in feature.qualifiers:
             logging.error("product qualifier not found in feature!")

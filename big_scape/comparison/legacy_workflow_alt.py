@@ -12,7 +12,7 @@ TODO: docstrings, none typings
 # from python
 import logging
 from concurrent.futures import ProcessPoolExecutor, wait
-from typing import Callable, Optional
+from typing import Generator, Callable, Optional, TypeVar
 
 # from other modules
 from big_scape.distances import calc_jaccard_pair, calc_ai_pair, calc_dss_pair_legacy
@@ -28,11 +28,22 @@ from .legacy_extend import (
 )
 from .legacy_lcs import legacy_find_cds_lcs
 
+T = TypeVar("T")
 
-def batch_generator(iterator, batch_size):
-    batch = []
-    for i in range(batch_size):
-        item = next(iterator, None)
+
+def batch_generator(generator: Generator[T, None, None], batch_size: int) -> list[T]:
+    """Generate batches of items from a generator
+
+    Args:
+        generator: generator to generate batches from
+        batch_size: int: size of the batches to generate
+
+    Returns:
+        list[Any]: batch of items
+    """
+    batch: list[T] = []
+    for _ in range(batch_size):
+        item = next(generator, None)
         if item is None:
             return batch
         batch.append(item)
@@ -47,6 +58,19 @@ def generate_edges(
     callback: Optional[Callable] = None,
     batch_size=100,
 ):  # pragma no cover
+    """Generate edges for pairs generated using a pair generator
+
+    Args:
+        pair_generator (RecordPairGenerator): generator for pairs
+        alignment_mode (str): alignment mode
+        cores (int): number of cores to use
+        callback (Optional[Callable]): callback to call when a batch is done
+        batch_size (int): batch size to use
+
+    yields:
+        tuple[str, str, float, float, float, float]: tuple of (a_id, b_id, distance,
+        jaccard, adjacency, dss)
+    """
     # prepare a process pool
     logging.info("Using %d cores", cores)
 
@@ -61,7 +85,7 @@ def generate_edges(
 
         running_tasks = {}
 
-        for i in range(cores):
+        for _ in range(cores):
             batch = batch_generator(pairs, batch_size)
 
             if len(batch) == 0:
@@ -73,7 +97,7 @@ def generate_edges(
             running_tasks[new_task] = batch
 
         while True:
-            done, not_done = wait(running_tasks, None, "FIRST_COMPLETED")
+            done, _ = wait(running_tasks, None, "FIRST_COMPLETED")
 
             # first quickly start new tasks
             for done_task in done:
@@ -89,7 +113,7 @@ def generate_edges(
 
             # second loop to store results
             for done_task in done:
-                task_batch = running_tasks[done_task]
+                task_batch: list[RecordPair] = running_tasks[done_task]
 
                 exception = done_task.exception()
                 if exception:
@@ -103,13 +127,13 @@ def generate_edges(
                     raise ValueError("Mismatch between task length and result length")
 
                 for idx, pair in enumerate(task_batch):
-                    dist, jc, ai, dss = results[idx]
+                    distance, jaccard, adjacency, dss = results[idx]
                     yield (
                         pair.region_a._db_id,
                         pair.region_b._db_id,
-                        dist,
-                        jc,
-                        ai,
+                        distance,
+                        jaccard,
+                        adjacency,
                         dss,
                     )
 
@@ -122,13 +146,15 @@ def generate_edges(
 
 
 def do_lcs_pair(pair: RecordPair, alignment_mode) -> bool:  # pragma no cover
-    (
-        a_start,
-        a_stop,
-        b_start,
-        b_stop,
-        reverse,
-    ) = legacy_find_cds_lcs(
+    """Find the longest common subsequence of protein domains between two regions
+
+    Args:
+        pair (RecordPair): pair to find the lcs for
+
+    Returns:
+        bool: True if the pair needs expansion, False if it does not
+    """
+    a_start, a_stop, b_start, b_stop, reverse = legacy_find_cds_lcs(
         pair.region_a.get_cds_with_domains(), pair.region_b.get_cds_with_domains()
     )
 
@@ -147,6 +173,14 @@ def do_lcs_pair(pair: RecordPair, alignment_mode) -> bool:  # pragma no cover
 
 
 def expand_pair(pair: RecordPair) -> float:
+    """Expand the pair and calculate the jaccard index
+
+    Args:
+        pair (RecordPair): pair to expand
+
+    Returns:
+        float: jaccard index
+    """
     expand_glocal(pair.comparable_region)
 
     if not check_expand(pair.comparable_region):
@@ -162,14 +196,24 @@ def expand_pair(pair: RecordPair) -> float:
 def calculate_scores_pair(
     data: tuple[list[RecordPair], str, str]
 ) -> list[tuple[float, float, float, float]]:  # pragma no cover
+    """Calculate the scores for a list of pairs
+
+    Args:
+        data (tuple[list[RecordPair], str, str]): list of pairs, alignment mode, bin
+        label
+
+    Returns:
+        list[tuple[float, float, float, float]]: list of scores for each pair in the
+        order as the input data list
+    """
     pairs, alignment_mode, bin_label = data
 
     results = []
 
     for pair in pairs:
-        jc = calc_jaccard_pair(pair)
+        jaccard = calc_jaccard_pair(pair)
 
-        if jc == 0.0:
+        if jaccard == 0.0:
             results.append((1.0, 0.0, 0.0, 0.0))
             continue
 
@@ -177,9 +221,9 @@ def calculate_scores_pair(
         needs_expand = do_lcs_pair(pair, alignment_mode)
 
         if needs_expand:
-            jc = expand_pair(pair)
+            jaccard = expand_pair(pair)
 
-        if jc == 0.0:
+        if jaccard == 0.0:
             results.append((1.0, 0.0, 0.0, 0.0))
             continue
 

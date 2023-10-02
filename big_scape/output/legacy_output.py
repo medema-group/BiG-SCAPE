@@ -60,30 +60,30 @@ def prepare_cutoff_folder(output_dir: Path, label: str, cutoff: float) -> None:
     shutil.copy(str(overview_template), str(cutoff_path / "overview.html"))
 
 
-def prepare_bin_folder(
-    output_dir: Path, label: str, cutoff: float, bin: RecordPairGenerator
+def prepare_pair_generator_folder(
+    output_dir: Path, label: str, cutoff: float, pair_generator: RecordPairGenerator
 ) -> None:
-    """Prepare the output folder for a bin under a cutoff
+    """Prepare the output folder for a pair_generator under a cutoff
 
     Args:
         output_dir (Path): output folder
         label (str): run label
         cutoff (float): cutoff value
-        bin (BGCBin): BGC bin
+        pair_generator (BGCBin): BGC pair_generator
     """
     # networks subfolders
     output_network_root = output_dir / "html_content/networks"
 
     cutoff_path = output_network_root / f"{label}_c{cutoff}"
 
-    bin_path = cutoff_path / bin.label
+    pair_generator_path = cutoff_path / pair_generator.label
 
-    bin_path.mkdir(exist_ok=True)
+    pair_generator_path.mkdir(exist_ok=True)
 
     template_root = Path("big_scape/output/html_template")
-    bin_template = template_root / "index_html"
+    pair_generator_template = template_root / "index_html"
 
-    shutil.copy(str(bin_template), str(bin_path / "index.html"))
+    shutil.copy(str(pair_generator_template), str(pair_generator_path / "index.html"))
 
 
 def generate_pfams_js(output_dir: Path, pfam_info: list[tuple[str, str, str]]) -> None:
@@ -114,9 +114,7 @@ def generate_pfams_js(output_dir: Path, pfam_info: list[tuple[str, str, str]]) -
         accession = accession[:7]
 
         # default to white
-        color = "255,255,255"
-        if accession in pfam_colors_dict:
-            color = pfam_colors_dict[accession]
+        color = pfam_colors_dict.get(accession, "255,255,255")
 
         pfams_data[accession] = {
             "col": color,
@@ -166,7 +164,7 @@ def generate_run_data_js(
     },
     "networks": [
         {
-            "label": string, (e.g. PKSother. these are the bins. can also be "mix")
+            "label": string, (e.g. PKSother. these are the pair_generators. can also be "mix")
             "families": [
                 "label": "FAM_xxxxx",
                 "members": int[], (refers to bgc index above),
@@ -269,16 +267,16 @@ def add_run_data_network(
     output_dir: Path,
     label: str,
     cutoff: float,
-    bin: RecordPairGenerator,
+    pair_generator: RecordPairGenerator,
     families_members: dict[int, list[int]],
 ) -> None:
-    """Add run data to the run_data.js file for the given bin with a given cutoff
+    """Add run data to the run_data.js file for the given pair_generator with a given cutoff
 
     Args:
         output_dir (Path): output directory
         label (str): run label
         cutoff (float): cutoff
-        bin (BGCBin): BGC bin
+        pair_generator (BGCBin): BGC pair_generator
         families_members (dict[int, list[int]]): a dictionary with family ids as keys
         and a list of region indexes as values
     """
@@ -290,7 +288,7 @@ def add_run_data_network(
 
     run_data["networks"].append(
         {
-            "label": bin.label,
+            "label": pair_generator.label,
             "families": [],
             "families_similarity": [],
         }
@@ -376,13 +374,13 @@ def generate_bigscape_results_js(output_dir: Path, label: str, cutoff: float) ->
 
     This function will open an existing file and append a new result, just like v1
     If a result with a label already exists, the networks in that run are cleared.
-    Networks are appended to later when each bin is generated
+    Networks are appended to later when each pair_generator is generated
 
     structure of bigscape_results.js:
 
 
     {
-        "networks": [ // per bin
+        "networks": [ // per pair_generator
             {
                 "css": string, (e.g. PKSother. mix uses 'Others'),
                 "label": string, (appears at the top of the overview as a tab),
@@ -430,7 +428,7 @@ def generate_bigscape_results_js(output_dir: Path, label: str, cutoff: float) ->
 
 
 def add_bigscape_results_js_network(
-    output_dir: Path, label: str, cutoff: float, bin: RecordPairGenerator
+    output_dir: Path, label: str, cutoff: float, pair_generator: RecordPairGenerator
 ) -> None:
     """Add cutoff and network data to an existing bigscape_results.js file
 
@@ -438,7 +436,7 @@ def add_bigscape_results_js_network(
         output_dir (Path): output directory
         label (str): run label
         cutoff (float): cutoff value
-        bin (BGCBin): BGC bin
+        pair_generator (BGCBin): BGC pair_generator
 
     Raises:
         FileNotFoundError: Raised when the bigscape_results.js file does not exist
@@ -460,11 +458,11 @@ def add_bigscape_results_js_network(
             break
 
     # the following is a bit confusing because the mix class uses some different values
-    css = bin.label
-    label = bin.label
+    css = pair_generator.label
+    label = pair_generator.label
 
-    # one exception to the above values is the mix bin, which uses others as a CSS class
-    if bin.label == "mix":
+    # one exception to the above values is the mix pair_generator, which uses others as a CSS class
+    if pair_generator.label == "mix":
         css = "Others"
         label = "Mixed"
 
@@ -472,7 +470,7 @@ def add_bigscape_results_js_network(
         {
             "css": css,
             "label": label,
-            "name": bin.label,
+            "name": pair_generator.label,
         }
     )
 
@@ -537,10 +535,10 @@ def generate_bs_data_js(
     output_dir: Path,
     label: str,
     cutoff: float,
-    bin: RecordPairGenerator,
+    pair_generator: RecordPairGenerator,
 ):
     """Generates the bs_data.js file located at
-    output/html_content/networks/[label]/[bin]
+    output/html_content/networks/[label]/[pair_generator]
 
     structure:
     [
@@ -573,16 +571,16 @@ def generate_bs_data_js(
         output_dir (Path): main output directory
         label (str): _description_
         cutoff (float): cutoff to generate results for
-        bin (str): bin to generate results for
+        pair_generator (str): pair_generator to generate results for
     """
     output_network_root = output_dir / Path("html_content/networks")
     cutoff_path = output_network_root / Path(f"{label}_c{cutoff}")
-    bin_path = cutoff_path / bin.label
+    pair_generator_path = cutoff_path / pair_generator.label
 
     bs_data = []
 
     # go through all gbks. no need to go through the network
-    for record in bin.source_records:
+    for record in pair_generator.source_records:
         if record.parent_gbk is None:
             raise AttributeError("Record parent GBK is not set!")
 
@@ -602,7 +600,7 @@ def generate_bs_data_js(
             }
         )
 
-    bs_data_path = bin_path / "bs_data.js"
+    bs_data_path = pair_generator_path / "bs_data.js"
 
     with open(bs_data_path, "w", encoding="utf-8") as bs_data_js:
         bs_data_js.write(
@@ -619,31 +617,31 @@ def generate_bs_data_js(
 
 def generate_bs_networks_js_sim_matrix(
     cutoff: float,
-    bin: RecordPairGenerator,
+    pair_generator: RecordPairGenerator,
 ) -> list[list[float]]:
     """Generate a similarity matrix for the bs_networks.js file
 
     Args:
         cutoff (float): cutoff value
-        bin (BGCBin): BGC bin
+        pair_generator (BGCBin): BGC pair_generator
         network (BSNetwork): network object
 
     Returns:
         list[list[float]]: a similarity matrix
     """
-    edges = bs_network.get_edges(bin.record_ids, cutoff)
+    edges = bs_network.get_edges(pair_generator.record_ids, cutoff)
 
     adj_list = bs_network_utility.edge_list_to_adj_list(edges)
 
     # the above adjacency list is likely not ordered in the same way as the entries in
-    # the bin, which are eventually used to determine the order of records in the output
-    # files. Go through the records in the same order as the bin and create a sparse
+    # the pair_generator, which are eventually used to determine the order of records in the output
+    # files. Go through the records in the same order as the pair_generator and create a sparse
     # matrix from that
     # the adjacency list contains edges, also. these contain distances. convert to sim
     # by subracting distance from 1
 
     sparse_matrix = []
-    for record_idx, record_a in enumerate(bin.source_records):
+    for record_idx, record_a in enumerate(pair_generator.source_records):
         a_record_id = record_a._db_id
 
         sparse_row = []
@@ -654,7 +652,7 @@ def generate_bs_networks_js_sim_matrix(
         # 1 2 3
         # obviously this means that the last element in each row should always be 1.0
         # and we are iterating "behind" the current element
-        for record_b in bin.source_records[:record_idx]:
+        for record_b in pair_generator.source_records[:record_idx]:
             # assume similarity is 0.0
             similarity = 0.0
 
@@ -675,14 +673,14 @@ def generate_bs_networks_js_sim_matrix(
 
 def generate_bs_families_members(
     cutoff: float,
-    bin: RecordPairGenerator,
+    pair_generator: RecordPairGenerator,
 ) -> dict[int, list[int]]:
     """Generate a dictionary where keys are family indexes and values are list of region
     indexes that belong to that family
 
     Args:
         cutoff (float): cutoff value
-        bin (BGCBin): BGC bin
+        pair_generator (BGCBin): BGC pair_generator
 
     Returns:
         dict[int, list[int]]: family to member regions index
@@ -695,7 +693,7 @@ def generate_bs_families_members(
 
     select_statement = (
         bgc_families_table.select()
-        .where(bgc_families_table.c.record_id.in_(bin.record_ids))
+        .where(bgc_families_table.c.record_id.in_(pair_generator.record_ids))
         .where(bgc_families_table.c.cutoff == cutoff)
     )
 
@@ -705,7 +703,7 @@ def generate_bs_families_members(
         node_family[row.record_id] = row.family
 
     families_members: dict[int, list[int]] = {}
-    for idx, record in enumerate(bin.source_records):
+    for idx, record in enumerate(pair_generator.source_records):
         record_id = record._db_id
 
         if record_id not in node_family:
@@ -745,11 +743,11 @@ def generate_bs_networks_js(
     output_dir: Path,
     label: str,
     cutoff: float,
-    bin: RecordPairGenerator,
+    pair_generator: RecordPairGenerator,
     bs_families: list[dict[str, Any]],
 ):
     """Generates the bs_networks.js file located at
-    output/html_content/networks/[label]/[bin]
+    output/html_content/networks/[label]/[pair_generator]
 
     There are four components to this file:
     bs_similarity
@@ -768,16 +766,18 @@ def generate_bs_networks_js(
         network (BSNetwork): BiG-SCAPE network object of nodes (bgcs/regions) and edges
         gbks (list[GBK]): Full list of GBK files TODO: may not be needed. remove?
         cutoff (float): cutoff to generate results for
-        bin (str): bin to generate results for
+        pair_generator (str): pair_generator to generate results for
     """
     output_network_root = output_dir / Path("html_content/networks")
     cutoff_path = output_network_root / Path(f"{label}_c{cutoff}")
-    bin_path = cutoff_path / bin.label
+    pair_generator_path = cutoff_path / pair_generator.label
 
-    bs_networks_js_path = bin_path / "bs_networks.js"
+    bs_networks_js_path = pair_generator_path / "bs_networks.js"
 
     # TODO: replace with functions to generate objects
-    bs_similarity: list[Any] = generate_bs_networks_js_sim_matrix(cutoff, bin)
+    bs_similarity: list[Any] = generate_bs_networks_js_sim_matrix(
+        cutoff, pair_generator
+    )
     bs_families_alignment: list[Any] = []
     bs_similarity_families: list[Any] = []
 
@@ -833,7 +833,7 @@ def legacy_prepare_output(
     output_dir: Path, pfam_info: list[tuple[str, str, str]]
 ) -> None:
     """Prepare the base output files for the run. These are not specific to cutoffs or
-    to bins
+    to pair_generators
 
     Args:
         output_dir (Path): output directory
@@ -865,39 +865,41 @@ def legacy_prepare_cutoff_output(
 
 
 def legacy_prepare_bin_output(
-    output_dir: Path, label: str, cutoff: float, bin: RecordPairGenerator
+    output_dir: Path, label: str, cutoff: float, pair_generator: RecordPairGenerator
 ) -> None:
-    """Prepare output data for a given bin at a given cutoff value
+    """Prepare output data for a given pair_generator at a given cutoff value
 
     Args:
         output_dir (Path): output directory
         label (str): run label
         cutoff (float): cutoff value
-        bin (BGCBin): BGC bin
+        pair_generator (BGCBin): BGC pair_generator
     """
-    prepare_bin_folder(output_dir, label, cutoff, bin)
-    generate_bs_data_js(output_dir, label, cutoff, bin)
-    add_bigscape_results_js_network(output_dir, label, cutoff, bin)
+    prepare_pair_generator_folder(output_dir, label, cutoff, pair_generator)
+    generate_bs_data_js(output_dir, label, cutoff, pair_generator)
+    add_bigscape_results_js_network(output_dir, label, cutoff, pair_generator)
 
 
 def legacy_generate_bin_output(
     output_dir: Path,
     label: str,
     cutoff: float,
-    bin: RecordPairGenerator,
+    pair_generator: RecordPairGenerator,
 ) -> None:
-    """Generate the network data from a bin from cutoff filtering and affinity
+    """Generate the network data from a pair_generator from cutoff filtering and affinity
     propagation
 
     Args:
         output_dir (Path): output directory
         label (str): run label
         cutoff (float): cutoff value
-        bin (BGCBin): BGC bin
-        network (BSNetwork): the network object for the bin
+        pair_generator (BGCBin): BGC pair_generator
+        network (BSNetwork): the network object for the pair_generator
     """
-    families_members = generate_bs_families_members(cutoff, bin)
+    families_members = generate_bs_families_members(cutoff, pair_generator)
     networks_families = generate_bs_networks_families(families_members)
 
-    add_run_data_network(output_dir, label, cutoff, bin, families_members)
-    generate_bs_networks_js(output_dir, label, cutoff, bin, networks_families)
+    add_run_data_network(output_dir, label, cutoff, pair_generator, families_members)
+    generate_bs_networks_js(
+        output_dir, label, cutoff, pair_generator, networks_families
+    )

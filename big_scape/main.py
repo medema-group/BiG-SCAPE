@@ -1,3 +1,5 @@
+"""Main file for bigscape"""
+
 # from python
 import sys
 import os
@@ -29,7 +31,10 @@ import big_scape.distances.mix as bs_mix
 import big_scape.distances.query as bs_query
 
 
-def run_bigscape():
+def run_bigscape() -> None:
+    """Run a bigscape analysis. This is the main function of the program that parses the
+    command line arguments, loads the data, runs the analysis and saves the output.
+    """
     bigscape_dir = Path(os.path.dirname(os.path.abspath(__file__)))
 
     # parsing needs to come first because we need it in setting up the logging
@@ -63,7 +68,7 @@ def run_bigscape():
     # nothing to do!
     if run_state == bs_enums.TASK.NOTHING_TO_DO:
         logging.info("Nothing to do!")
-        exit(0)
+        sys.exit(0)
 
     logging.info("First task: %s", run_state)
 

@@ -82,7 +82,9 @@ class Region(BGCRecord):
         super().save_record("region", commit)
 
     def save_all(self) -> None:
-        """Stores this Region and its children in the database. Does not commit immediately"""
+        """Stores this Region and its children in the database. Does not commit
+        immediately
+        """
         self.save(False)
         for candidate_cluster in self.cand_clusters.values():
             if candidate_cluster is None:
@@ -133,15 +135,15 @@ class Region(BGCRecord):
 
         if "candidate_cluster_numbers" not in feature.qualifiers:
             if parent_gbk is not None and parent_gbk.source_type == SOURCE_TYPE.MIBIG:
-                # we know that MIBiG BGCs, although processed with versions of AS7 and above,
-                # dont always have features beyond region
+                # we know that MIBiG BGCs, although processed with versions of AS7 and
+                # above dont always have features beyond region
                 return region
-            else:
-                logging.warning(
-                    "candidate_cluster_numbers qualifier not found in region feature!"
-                    "consider checking whether there is something special about this gbk"
-                )
-                raise InvalidGBKError()
+
+            logging.warning(
+                "candidate_cluster_numbers qualifier not found in region feature!"
+                "consider checking whether there is something special about this gbk"
+            )
+            raise InvalidGBKError()
 
         cand_clusters: dict[int, Optional[CandidateCluster]] = {}
         for cand_cluster_number in feature.qualifiers["candidate_cluster_numbers"]:
@@ -201,10 +203,6 @@ class Region(BGCRecord):
 
     def get_cds_with_domains(self, return_all=True, reverse=False) -> list[CDS]:
         return super().get_cds_with_domains(return_all, reverse)
-
-    def get_attr_dict(self) -> dict[str, object]:
-        """Gets a dictionary of attributes, useful for adding to network nodes later"""
-        return super().get_attr_dict()
 
     def __repr__(self):
         return f"{self.parent_gbk} Region {self.number} {self.nt_start}-{self.nt_stop} "

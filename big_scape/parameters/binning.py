@@ -34,7 +34,9 @@ class BinningParameters:
         self.validate_work()
 
     def validate_work(self):
-        """Raise an error if the combination of parameters in this object means no work will be done"""
+        """Raise an error if the combination of parameters in this object means no work
+        will be done
+        """
 
         if (
             self.no_mix is True
@@ -50,7 +52,8 @@ class BinningParameters:
             )
             raise InvalidArgumentError("--no_mix", self.no_mix)
 
-        # TODO: legacy_no_classify needs to be changed to legacy_classify, and add argument to no_classify
+        # TODO: legacy_no_classify needs to be changed to legacy_classify, and add
+        # argument to no_classify
         if self.query_bgc_path is not None and (
             self.legacy_classify is True or self.no_mix is True or self.classify is True
         ):
@@ -80,6 +83,9 @@ def validate_mix(no_mix: bool):
 
 
 def validate_legacy_classify(legacy_classify: bool):
+    """Validates the legacy_classify attribute. Raises an exception if it is set to
+    none, which should never happen
+    """
     if legacy_classify is None:
         logging.error(
             (
@@ -92,6 +98,9 @@ def validate_legacy_classify(legacy_classify: bool):
 
 
 def validate_classify(classify: bool):
+    """Validates the classify attribute. Raises an exception if it is set to none, which
+    should never happen
+    """
     if classify is None:
         logging.error(
             (

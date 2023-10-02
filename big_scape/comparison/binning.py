@@ -443,9 +443,9 @@ class MissingRecordPairGenerator(RecordPairGenerator):
     already in the database
     """
 
-    def __init__(self, bin):
-        super().__init__(bin.label)
-        self.bin = bin
+    def __init__(self, pair_generator):
+        super().__init__(pair_generator.label)
+        self.bin = pair_generator
 
     def num_pairs(self) -> int:
         distance_table = DB.metadata.tables["distance"]

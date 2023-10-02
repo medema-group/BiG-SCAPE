@@ -81,14 +81,14 @@ def aff_sim_matrix(matrix):
     # thanks numpy but we sort of know what we're doing
     warnings.filterwarnings(action="ignore", category=ConvergenceWarning)
 
-    af = AffinityPropagation(
+    af_results = AffinityPropagation(
         damping=0.9,
         max_iter=1000,
         convergence_iter=200,
         affinity="precomputed",
     ).fit(matrix)
 
-    return af.labels_, af.cluster_centers_indices_
+    return af_results.labels_, af_results.cluster_centers_indices_
 
 
 def save_to_db(regions_families):

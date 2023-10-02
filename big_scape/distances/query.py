@@ -79,7 +79,12 @@ def calculate_distances_query(
                 mod = 1
 
             if done_pairs % mod == 0:
-                logging.info(f"{done_pairs}/{num_pairs} ({done_pairs/num_pairs:.2%})")
+                logging.info(
+                    "%d/%d (%.2f%%)",
+                    done_pairs,
+                    num_pairs,
+                    done_pairs / num_pairs * 100,
+                )
 
         ref_edges = bs_comparison.generate_edges(
             ref_to_ref_bin, run.comparison.alignment_mode, run.cores, callback

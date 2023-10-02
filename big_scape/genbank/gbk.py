@@ -244,6 +244,7 @@ class GBK:
                 gbk_table.c.source_type,
                 gbk_table.c.nt_seq,
             )
+            .where(gbk_table.c.id == gbk_id)
             .compile()
         )
 
@@ -363,7 +364,8 @@ class GBK:
         cds_overlap_cutoff: Optional[float] = None,
         legacy_mode=False,
     ) -> None:
-        """Parses a GBK record of AS version 4 and returns a GBK object with all necessary information
+        """Parses a GBK record of AS version 4 and returns a GBK object with all
+        necessary information
 
         Args:
             record (SeqRecord): gbk file record
@@ -409,7 +411,8 @@ class GBK:
         cds_overlap_cutoff: Optional[float] = None,
         legacy_mode=False,
     ) -> None:
-        """Parses a GBK record of AS versions 5 and up and returns a GBK object with all necessary information
+        """Parses a GBK record of AS versions 5 and up and returns a GBK object with all
+        necessary information
 
         Args:
             record (SeqRecord): gbk file record

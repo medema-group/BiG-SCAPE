@@ -48,7 +48,10 @@ def calculate_distances_mix(
 
             if done_pairs % mod == 0:
                 logging.info(
-                    f"{done_pairs}/{mix_bin.num_pairs()} ({done_pairs/mix_bin.num_pairs():.2%})"
+                    "%d/%d (%.2f%%)",
+                    done_pairs,
+                    mix_bin.num_pairs(),
+                    done_pairs / mix_bin.num_pairs() * 100,
                 )
 
         mix_edges = bs_comparison.generate_edges(
