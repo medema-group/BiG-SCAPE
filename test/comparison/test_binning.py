@@ -5,16 +5,40 @@ from unittest import TestCase
 from pathlib import Path
 
 # from other modules
-from src.genbank import GBK, BGCRecord
-from src.comparison import (
+from big_scape.genbank import GBK, BGCRecord, CDS, Region
+from big_scape.comparison import (
     RecordPairGenerator,
-    RecordPairGeneratorQueryRef,
-    RecordPairGeneratorConRefSinRef,
-    BGCPair,
+    QueryToRefRecordPairGenerator,
+    RefToRefRecordPairGenerator,
+    RecordPair,
+    save_edge_to_db,
 )
-from src.comparison import generate_mix
-from src.enums import SOURCE_TYPE
-from src.network import BSNetwork
+from big_scape.comparison import generate_mix
+
+import big_scape.hmm as bs_hmm
+import big_scape.data as bs_data
+import big_scape.enums as bs_enums
+
+
+def create_mock_gbk(i, source_type: bs_enums.SOURCE_TYPE) -> GBK:
+    gbk = GBK(Path(f"test_path_{i}.gbk"), source_type)
+    cds = CDS(0, 100)
+    cds.parent_gbk = gbk
+    cds.orf_num = 1
+    cds.strand = 1
+    gbk.genes.append(cds)
+    gbk.region = Region(gbk, 1, 0, 100, False, "test")
+    return gbk
+
+
+def add_mock_hsp_cds(cds: CDS) -> None:
+    hsp = bs_hmm.HSP(cds, "PF01234.12", 1.0, 0, 100)
+    cds.hsps.append(hsp)
+
+
+def add_mock_hsp_alignment_hsp(hsp: bs_hmm.HSP) -> None:
+    hsp_alignment = bs_hmm.HSPAlignment(hsp, "AAAAAAAAAA")
+    hsp.alignment = hsp_alignment
 
 
 class TestBGCPair(TestCase):
@@ -24,12 +48,12 @@ class TestBGCPair(TestCase):
         """Tests whether calling str() on a bin object returns an expected string
         representation of the object
         """
-        gbk = GBK(Path("test"), "test")
+        gbk = GBK(Path("test"), bs_enums.SOURCE_TYPE.QUERY)
 
         bgc_a = BGCRecord(gbk, 0, 0, 10, False, "")
         bgc_b = BGCRecord(gbk, 0, 10, 20, False, "")
 
-        pair = BGCPair(bgc_a, bgc_b)
+        pair = RecordPair(bgc_a, bgc_b)
 
         expected_repr = (
             "Pair GBK test, 0 genes Record (superclass) 0-10 - GBK test, 0 genes "
@@ -51,15 +75,25 @@ class TestBGCPair(TestCase):
         # b is missing GBK
         bgc_b = BGCRecord(None, 0, 0, 10, False, "")
 
-        self.assertRaises(ValueError, BGCPair, bgc_a, bgc_b)
+        self.assertRaises(ValueError, RecordPair, bgc_a, bgc_b)
 
 
 class TestBGCBin(TestCase):
+    def clean_db(self):
+        """Closes the database connection and resets the metadata"""
+        if bs_data.DB.opened():
+            bs_data.DB.close_db()
+        bs_data.DB.metadata = None
+
+    def __init__(self, methodName: str = "runTest") -> None:
+        super().__init__(methodName)
+        self.addCleanup(self.clean_db)
+
     def test_bin_repr(self):
         """Tests whether calling str() on a bin object returns an expected string
         representation of the object
         """
-        parent_gbk = GBK(Path("test"), source_type=SOURCE_TYPE.QUERY)
+        parent_gbk = GBK(Path("test"), source_type=bs_enums.SOURCE_TYPE.QUERY)
         bgc_a = BGCRecord(parent_gbk, 0, 0, 10, False, "")
         bgc_b = BGCRecord(parent_gbk, 0, 0, 10, False, "")
         bgc_c = BGCRecord(parent_gbk, 0, 0, 10, False, "")
@@ -68,10 +102,10 @@ class TestBGCBin(TestCase):
 
         new_bin = RecordPairGenerator("test")
 
-        new_bin.add_bgcs(bgc_list)
+        new_bin.add_records(bgc_list)
 
         # expected representation of the bin object
-        expected_repr = "Bin 'test': 3 pairs from 3 BGCs"
+        expected_repr = "Bin 'test': 3 pairs from 3 BGC records"
 
         actual_repr = str(new_bin)
 
@@ -85,7 +119,7 @@ class TestBGCBin(TestCase):
 
         new_bin = RecordPairGenerator("test")
 
-        new_bin.add_bgcs([bgc_a])
+        new_bin.add_records([bgc_a])
 
         expected_num_pairs = 0
         actual_num_pairs = new_bin.num_pairs()
@@ -95,8 +129,8 @@ class TestBGCBin(TestCase):
     def test_num_pairs_correct_with_query_ref(self):
         """Tests whether bin.num_pairs() correctly returns all query and ref but not ref <-> ref pairs"""
 
-        parent_gbk_query = GBK(Path("test"), source_type=SOURCE_TYPE.QUERY)
-        parent_gbk_ref = GBK(Path("test"), source_type=SOURCE_TYPE.REFERENCE)
+        parent_gbk_query = GBK(Path("test"), source_type=bs_enums.SOURCE_TYPE.QUERY)
+        parent_gbk_ref = GBK(Path("test"), source_type=bs_enums.SOURCE_TYPE.REFERENCE)
         bgc_a = BGCRecord(parent_gbk_query, 0, 0, 10, False, "")
         bgc_b = BGCRecord(parent_gbk_query, 0, 0, 10, False, "")
         bgc_c = BGCRecord(parent_gbk_ref, 0, 0, 10, False, "")
@@ -104,9 +138,9 @@ class TestBGCBin(TestCase):
 
         bgc_list = [bgc_a, bgc_b, bgc_c, bgc_d]
 
-        new_bin = RecordPairGeneratorQueryRef("test")
+        new_bin = QueryToRefRecordPairGenerator("test")
 
-        new_bin.add_bgcs(bgc_list)
+        new_bin.add_records(bgc_list)
 
         expected_num_pairs = 5
         actual_num_pairs = new_bin.num_pairs()
@@ -131,7 +165,7 @@ class TestBGCBin(TestCase):
 
         new_bin = RecordPairGenerator("test")
 
-        new_bin.add_bgcs(bgc_list)
+        new_bin.add_records(bgc_list)
 
         # expected list should correctly sort the third entry int the list to be bgc_b, bgc_c
         expected_pair_list = [
@@ -142,111 +176,229 @@ class TestBGCBin(TestCase):
 
         actual_pair_list = [
             tuple([pair.region_a, pair.region_b])
-            for pair in new_bin.generate_pairs(None, legacy_sorting=True)
+            for pair in new_bin.generate_pairs(legacy_sorting=True)
         ]
 
         self.assertEqual(expected_pair_list, actual_pair_list)
 
-    def test_recordpairgenerator_conref_sinref_correctpairs_actualpairs(self):
-        """Tests whether the RecordPairGeneratorConRefSinRef correctly generates pairs between
-        connected ref nodes and singleton ref nodes"""
+    def test_query_to_ref_pair_generator(self):
+        """Tests whether the QueryToRefPairGenerator correctly generates a set of
+        pairs in a specific network
+        """
 
-        parent_gbk_query = GBK(Path("test"), source_type=SOURCE_TYPE.QUERY)
-        parent_gbk_ref = GBK(Path("test"), source_type=SOURCE_TYPE.REFERENCE)
-        bgc_a = BGCRecord(parent_gbk_query, 0, 0, 10, False, "")
-        bgc_b = BGCRecord(parent_gbk_query, 0, 0, 10, False, "")
-        bgc_c = BGCRecord(parent_gbk_ref, 0, 0, 10, False, "")
-        bgc_d = BGCRecord(parent_gbk_ref, 0, 0, 10, False, "")
+        bs_data.DB.create_in_mem()
 
-        network = BSNetwork()
-        network.add_node(bgc_a)  # query connected
-        network.add_node(bgc_b)  # query connected
-        network.add_node(bgc_c)  # ref connected
-        network.add_node(bgc_d)  # ref singleton
-
-        network.add_edge_pair(BGCPair(bgc_a, bgc_b))  # query to query
-        network.add_edge_pair(BGCPair(bgc_b, bgc_c))  # query to ref
-
-        bgc_list = [bgc_a, bgc_b, bgc_c, bgc_d]
-
-        new_bin = RecordPairGeneratorConRefSinRef("test", network)
-        new_bin.add_bgcs(bgc_list)
-
-        expected_pair_list = [(bgc_c, bgc_d)]
-
-        actual_pair_list = [
-            tuple([pair.region_a, pair.region_b]) for pair in new_bin.generate_pairs()
+        query_gbk = create_mock_gbk(0, bs_enums.SOURCE_TYPE.QUERY)
+        ref_gbks = [
+            create_mock_gbk(i, bs_enums.SOURCE_TYPE.REFERENCE) for i in range(1, 4)
         ]
 
-        self.assertEqual(expected_pair_list, actual_pair_list)
+        query_to_ref_pair_generator = QueryToRefRecordPairGenerator("mix")
+        source_records = [query_gbk.region]
+        for ref_gbk in ref_gbks:
+            source_records.append(ref_gbk.region)
 
-    def test_recordpairgenerator_conref_sinref_correctpairs_numpairs(self):
-        """Tests whether the RecordPairGeneratorConRefSinRef correctly generates pairs between
-        connected ref nodes and singleton ref nodes"""
+        query_to_ref_pair_generator.add_records(source_records)
 
-        parent_gbk_query = GBK(Path("test"), source_type=SOURCE_TYPE.QUERY)
-        parent_gbk_ref = GBK(Path("test"), source_type=SOURCE_TYPE.REFERENCE)
-        bgc_a = BGCRecord(parent_gbk_query, 0, 0, 10, False, "")
-        bgc_b = BGCRecord(parent_gbk_query, 0, 0, 10, False, "")
-        bgc_c = BGCRecord(parent_gbk_ref, 0, 0, 10, False, "")
-        bgc_d = BGCRecord(parent_gbk_ref, 0, 0, 10, False, "")
+        # expected edges
+        expected_pairs = []
+        for ref_gbk in ref_gbks:
+            expected_pair = RecordPair(query_gbk.region, ref_gbk.region)
+            expected_pairs.append(expected_pair)
 
-        network = BSNetwork()
-        network.add_node(bgc_a)  # query connected
-        network.add_node(bgc_b)  # query connected
-        network.add_node(bgc_c)  # ref connected
-        network.add_node(bgc_d)  # ref singleton
+        # get all edges
+        actual_pairs = list(query_to_ref_pair_generator.generate_pairs())
 
-        network.add_edge_pair(BGCPair(bgc_a, bgc_b))  # query to query
-        network.add_edge_pair(BGCPair(bgc_b, bgc_c))  # query to ref
+        self.assertListEqual(expected_pairs, actual_pairs)
 
-        bgc_list = [bgc_a, bgc_b, bgc_c, bgc_d]
+    def test_ref_to_ref_pair_generator_first_iteration(self):
+        """Tests whether the RefTorefPairGenerator correctly generates a set of
+        pairs in the first iteration of a specific network
+        """
+        bs_data.DB.create_in_mem()
 
-        new_bin = RecordPairGeneratorConRefSinRef("test", network)
-        new_bin.add_bgcs(bgc_list)
+        query_gbk = create_mock_gbk(0, bs_enums.SOURCE_TYPE.QUERY)
+        query_gbk.save_all()
+        ref_gbks = [
+            create_mock_gbk(i, bs_enums.SOURCE_TYPE.REFERENCE) for i in range(1, 5)
+        ]
 
-        expected_num_pairs = 1  # bgc_c, bgc_d
-        actual_num_pairs = new_bin.num_pairs()
+        ref_to_ref_pair_generator = RefToRefRecordPairGenerator("mix")
+        source_records = [query_gbk.region]
+        for ref_gbk in ref_gbks:
+            source_records.append(ref_gbk.region)
+            ref_gbk.save_all()
 
-        self.assertEqual(expected_num_pairs, actual_num_pairs)
+        # the state at the network at this point should be that all query to ref pairs
+        # have been generated and their distances calculated. they are then added to
+        # the network
 
-    def test_recordpairgenerator_conref_sinref_recalculate_nodes(self):
-        """Tests whether the recalculate nodes function correclty gets and re-writes the
-        newly connected reference and new set of singleton nodes"""
+        # the idea is that in the first iteration, this should compare all connected
+        # ref nodes to all singleton ref nodes
+        ref_to_ref_pair_generator.add_records(source_records)
 
-        parent_gbk_query = GBK(Path("test"), source_type=SOURCE_TYPE.QUERY)
-        parent_gbk_ref = GBK(Path("test"), source_type=SOURCE_TYPE.REFERENCE)
-        bgc_a = BGCRecord(parent_gbk_query, 0, 0, 10, False, "")
-        bgc_b = BGCRecord(parent_gbk_ref, 0, 0, 10, False, "")
-        bgc_c = BGCRecord(parent_gbk_ref, 0, 0, 10, False, "")
+        # we will want to do this manually
+        for idx, ref_gbk in enumerate(ref_gbks):
+            # mypy please leave me alone
+            if ref_gbk.region is None:
+                continue
+            if ref_gbk.region._db_id is None:
+                continue
+            if query_gbk.region is None:
+                continue
+            if query_gbk.region._db_id is None:
+                continue
 
-        network = BSNetwork()
-        network.add_node(bgc_a)  # query connected
-        network.add_node(bgc_b)  # ref connected
-        network.add_node(bgc_c)  # ref singleton
+            # lets say two (0 and 1) of these distances are entirely similar
+            if idx < 2:
+                save_edge_to_db(
+                    (query_gbk.region._db_id, ref_gbk.region._db_id, 0.0, 1.0, 1.0, 1.0)
+                )
+            else:
+                # the other two (2 and 3) are entirely distant
+                save_edge_to_db(
+                    (query_gbk.region._db_id, ref_gbk.region._db_id, 1.0, 0.0, 0.0, 0.0)
+                )
 
-        network.add_edge_pair(BGCPair(bgc_a, bgc_b))  # query to ref
+        # so now we have a network where the query is connected to 2 of the reference
+        # records, and two of the reference records are not connected to anything
 
-        bgc_list = [bgc_a, bgc_b, bgc_c]
+        # in our first iteration of ref_to_ref, we should see the following pairs:
+        # (ref0, ref2)
+        # (ref0, ref3)
+        # (ref1, ref2)
+        # (ref1, ref3)
 
-        new_bin = RecordPairGeneratorConRefSinRef("test", network)
-        new_bin.add_bgcs(bgc_list)
+        # this is rough, so let's type it all out
+        expected_pairs = set(
+            [
+                RecordPair(ref_gbks[0].region, ref_gbks[2].region),
+                RecordPair(ref_gbks[0].region, ref_gbks[3].region),
+                RecordPair(ref_gbks[1].region, ref_gbks[2].region),
+                RecordPair(ref_gbks[1].region, ref_gbks[3].region),
+            ]
+        )
 
-        network.add_edge_pair(BGCPair(bgc_b, bgc_c))  # ref to ref
+        actual_pairs = set(list(ref_to_ref_pair_generator.generate_pairs()))
 
-        new_bin.recalculate_nodes()
+        self.assertEqual(expected_pairs, actual_pairs)
 
-        expected_new_connected_ref_nodes = [bgc_c]
+    def test_ref_to_ref_pair_generator_second_iteration(self):
+        """Tests whether the RefTorefPairGenerator correctly generates a set of
+        pairs in the second iteration of a specific network
+        """
+        bs_data.DB.create_in_mem()
 
-        new_connected_nodes = new_bin.ref_connected_nodes
+        query_gbk = create_mock_gbk(0, bs_enums.SOURCE_TYPE.QUERY)
+        query_gbk.save_all()
+        ref_gbks = [
+            create_mock_gbk(i, bs_enums.SOURCE_TYPE.REFERENCE) for i in range(1, 5)
+        ]
 
-        self.assertEqual(new_connected_nodes, expected_new_connected_ref_nodes)
+        ref_to_ref_pair_generator = RefToRefRecordPairGenerator("mix")
+        source_records = [query_gbk.region]
+        for ref_gbk in ref_gbks:
+            source_records.append(ref_gbk.region)
+            ref_gbk.save_all()
+
+        # the state at the network at this point should be that all query to ref pairs
+        # have been generated and their distances calculated. they are then added to
+        # the network
+
+        # the idea is that in the first iteration, this should compare all connected
+        # ref nodes to all singleton ref nodes
+
+        ref_to_ref_pair_generator.add_records(source_records)
+
+        # we will want to do this manually
+        for idx, ref_gbk in enumerate(ref_gbks):
+            # mypy please leave me alone
+            if ref_gbk.region is None:
+                continue
+            if ref_gbk.region._db_id is None:
+                continue
+            if query_gbk.region is None:
+                continue
+            if query_gbk.region._db_id is None:
+                continue
+
+            # lets say two (0 and 1) of these distances are entirely similar
+            if idx < 2:
+                save_edge_to_db(
+                    (query_gbk.region._db_id, ref_gbk.region._db_id, 0.0, 1.0, 1.0, 1.0)
+                )
+            else:
+                # the other two (2 and 3) are entirely distant
+                save_edge_to_db(
+                    (query_gbk.region._db_id, ref_gbk.region._db_id, 1.0, 0.0, 0.0, 0.0)
+                )
+
+        # so now we have a network where the query is connected to 2 of the reference
+        # records, and two of the reference records are not connected to anything
+        # let's do the first iteration
+        list(ref_to_ref_pair_generator.generate_pairs())
+
+        # we throw away the result because I want to test the second iteration, and
+        # I want to enter the distance data manually
+
+        # in our first iteration of ref_to_ref, we created the following pairs:
+        # (ref0, ref2)
+        # (ref0, ref3)
+        # (ref1, ref2)
+        # (ref1, ref3)
+
+        # we will connect ref1 and ref3
+        save_edge_to_db(
+            (ref_gbks[1].region._db_id, ref_gbks[3].region._db_id, 0.0, 1.0, 1.0, 1.0)
+        )
+
+        # we will generate distant edges for the others
+        save_edge_to_db(
+            (ref_gbks[0].region._db_id, ref_gbks[2].region._db_id, 1.0, 0.0, 0.0, 0.0)
+        )
+        save_edge_to_db(
+            (ref_gbks[0].region._db_id, ref_gbks[3].region._db_id, 1.0, 0.0, 0.0, 0.0)
+        )
+        save_edge_to_db(
+            (ref_gbks[1].region._db_id, ref_gbks[2].region._db_id, 1.0, 0.0, 0.0, 0.0)
+        )
+
+        # now the networks topology is this:
+        # ref0    ref1
+        #   \     /|
+        #    \   / |
+        #     \ /  |
+        #     query|
+        #          |
+        #          |
+        #          |
+        # ref2    ref3
+        # (There are more edges in the database, but these are all the ones with
+        # distances < 1.0)
+
+        # so we compared query to all, and we compared ref0 to ref2 and ref3, and ref1
+        # to ref2 and ref3. Each step has been an expansion of the previous step
+        # now the next iteration should be to take the newly connected noe (ref3) and
+        # compare it to all the other singletons (ref2)
+        # so we only expect to see one pair:
+        # (ref2, ref3)
+
+        # now we can do the second iteration
+        expected_pairs = set(
+            [
+                RecordPair(ref_gbks[2].region, ref_gbks[3].region),
+            ]
+        )
+
+        actual_pairs = set(list(ref_to_ref_pair_generator.generate_pairs()))
+
+        self.assertEqual(expected_pairs, actual_pairs)
 
 
 class TestMixComparison(TestCase):
     def test_mix_iter(self):
         """Tests whether a new mix bin can be created for comparison"""
-        gbk = GBK(Path("test"), source_type=SOURCE_TYPE.QUERY)
+        gbk = GBK(Path("test"), source_type=bs_enums.SOURCE_TYPE.QUERY)
 
         bgc_a = BGCRecord(gbk, 0, 0, 10, False, "")
         bgc_a.parent_gbk = gbk

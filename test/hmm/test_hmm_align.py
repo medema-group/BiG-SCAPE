@@ -5,9 +5,11 @@ from unittest import TestCase
 from pathlib import Path
 
 # from other modules
-from src.data import DB
-from src.genbank import GBK, CDS
-from src.hmm import HMMer, HSP, HSPAlignment
+from big_scape.data import DB
+from big_scape.genbank import GBK, CDS
+from big_scape.hmm import HMMer, HSP, HSPAlignment
+
+import big_scape.enums as bs_enums
 
 
 class TestHMMAlign(TestCase):
@@ -68,7 +70,7 @@ class TestHMMAlign(TestCase):
             "IMATEGYQSSGSSNITVSG"
         )
 
-        gbk = GBK("", "")
+        gbk = GBK("", bs_enums.SOURCE_TYPE.QUERY)
         gbk.save()
 
         cds = CDS(0, len(aa_seq) * 3)

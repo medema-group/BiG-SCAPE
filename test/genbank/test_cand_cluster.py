@@ -8,9 +8,9 @@ from Bio.SeqFeature import SeqFeature, FeatureLocation
 
 
 # from other modules
-from src.genbank import CandidateCluster, ProtoCluster
-from src.errors import InvalidGBKError
-from src.data import DB
+from big_scape.genbank import CandidateCluster, ProtoCluster
+from big_scape.errors import InvalidGBKError
+from big_scape.data import DB
 
 
 class TestCandidateCluster(TestCase):

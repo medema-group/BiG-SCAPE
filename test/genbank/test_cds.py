@@ -15,8 +15,8 @@ from Bio.SeqFeature import (
 )
 
 # from other modules
-from src.hmm import HSP
-from src.genbank import (
+from big_scape.hmm import HSP
+from big_scape.genbank import (
     GBK,
     CDS,
     check_translation,
@@ -24,9 +24,9 @@ from src.genbank import (
     translate,
     trim_fuzzy,
 )
-from src.errors import InvalidGBKError
-from src.data import DB
-from src.enums import SOURCE_TYPE
+from big_scape.errors import InvalidGBKError
+from big_scape.data import DB
+from big_scape.enums import SOURCE_TYPE
 
 
 class TestCDS(TestCase):

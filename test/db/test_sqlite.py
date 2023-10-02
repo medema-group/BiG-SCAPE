@@ -8,9 +8,9 @@ from unittest import TestCase
 from sqlalchemy import text
 
 # from other modules
-from src.data import DB
-from src.data.sqlite import text_to_queries
-from src.errors import DBAlreadyOpenError, DBClosedError
+from big_scape.data import DB
+from big_scape.data.sqlite import text_to_queries
+from big_scape.errors import DBAlreadyOpenError, DBClosedError
 
 
 class TestSQLite(TestCase):
@@ -72,6 +72,33 @@ class TestSQLite(TestCase):
         self.assertIsNotNone(result)
 
         DB.close_db()
+
+    def test_get_table_rows(self):
+        """Tests whether the get_table_row_batch function correctly returns a batch
+        of rows from the database
+        """
+        DB.create_in_mem()
+
+        # add 45 rows into database
+
+        for i in range(45):
+            insert_row_query = (
+                "INSERT INTO gbk "
+                "(path, source_type, nt_seq) "
+                f"VALUES ('{i}.gbk', 'test', 'test')"
+            )
+            DB.execute_raw_query(insert_row_query)
+
+        DB.commit()
+
+        expected_row_count = 10
+
+        # get 10 rows from big_scape.database using DB.get_table_rows
+        rows = list(next(DB.get_table_row_batch("gbk", expected_row_count)))
+
+        actual_row_count = len(rows)
+
+        self.assertEqual(expected_row_count, actual_row_count)
 
     def test_save_to_disk(self):
         """Tests whether the sqlite database can be correctly saved to disk"""

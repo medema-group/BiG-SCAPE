@@ -6,7 +6,7 @@ from unittest import TestCase
 
 
 # from other modules
-from src.hmm import HMMer
+from big_scape.hmm import HMMer
 
 
 class TestHMMPress(TestCase):

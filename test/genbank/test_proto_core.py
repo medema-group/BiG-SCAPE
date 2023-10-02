@@ -7,9 +7,9 @@ from unittest import TestCase
 from Bio.SeqFeature import SeqFeature, FeatureLocation
 
 # from other modules
-from src.genbank import ProtoCore
-from src.errors import InvalidGBKError
-from src.data import DB
+from big_scape.genbank import ProtoCore
+from big_scape.errors import InvalidGBKError
+from big_scape.data import DB
 
 
 class TestProtocore(TestCase):

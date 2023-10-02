@@ -4,9 +4,9 @@
 from unittest import TestCase
 
 # from other modules
-from src.genbank import GBK, Region, CDS
-from src.hmm import HSP
-from src.comparison import BGCPair, ComparableRegion
+from big_scape.genbank import GBK, Region, CDS
+from big_scape.hmm import HSP
+from big_scape.comparison import RecordPair, ComparableRegion
 
 
 class TestComparibleRegions(TestCase):
@@ -52,7 +52,7 @@ class TestComparibleRegions(TestCase):
             gbk_b.genes.append(cds_b)
             cds_b.hsps.append(HSP(cds_b, shared_domain, 100, 0, 30))
 
-        pair = BGCPair(gbk_a.region, gbk_b.region)
+        pair = RecordPair(gbk_a.region, gbk_b.region)
 
         expected_lcs = ComparableRegion(pair, 1, 4, 1, 4, False)
 
@@ -105,7 +105,7 @@ class TestComparibleRegions(TestCase):
         # reverse the b genes
         gbk_b.genes = gbk_b.genes[::-1]
 
-        pair = BGCPair(gbk_a.region, gbk_b.region)
+        pair = RecordPair(gbk_a.region, gbk_b.region)
 
         expected_lcs = ComparableRegion(pair, 1, 4, 1, 4, True)
 
@@ -258,7 +258,7 @@ class TestComparibleRegions(TestCase):
             env_stop = env_start + 10
             cds_b.hsps.append(HSP(cds_b, shared_domain, 100, env_start, env_stop))
 
-        pair = BGCPair(gbk_a.region, gbk_b.region)
+        pair = RecordPair(gbk_a.region, gbk_b.region)
 
         expected_dicts = (
             {

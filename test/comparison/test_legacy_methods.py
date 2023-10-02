@@ -4,9 +4,9 @@
 from unittest import TestCase
 
 # from other modules
-from src.genbank import CDS
-from src.hmm import HSP
-from src.comparison.legacy_extend import expand_score
+from big_scape.genbank import CDS
+from big_scape.hmm import HSP
+from big_scape.comparison.legacy_extend import expand_score
 
 
 class TestLegacyComparableRegion(TestCase):

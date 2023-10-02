@@ -8,7 +8,7 @@ from unittest import TestCase
 from pyhmmer.plan7 import HMM, OptimizedProfile
 
 # from other modules
-from src.hmm import HMMer
+from big_scape.hmm import HMMer
 
 
 class TestHMMSetup(TestCase):

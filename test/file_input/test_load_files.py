@@ -4,10 +4,10 @@ from unittest import TestCase
 from pathlib import Path
 
 # from other modules
-from src.enums import SOURCE_TYPE
+from big_scape.enums import SOURCE_TYPE
 
 # from this module
-from src.file_input.load_files import load_dataset_folder, load_gbk
+from big_scape.file_input.load_files import load_dataset_folder, load_gbk
 
 
 class TestLoadGBK(TestCase):
