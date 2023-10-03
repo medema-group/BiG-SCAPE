@@ -17,6 +17,8 @@ from typing import Generator, Callable, Optional, TypeVar
 # from other modules
 from big_scape.distances import calc_jaccard_pair, calc_ai_pair, calc_dss_pair_legacy
 
+import big_scape.enums as bs_enums
+
 # from this module
 from .binning import RecordPairGenerator, RecordPair
 from .legacy_bins import LEGACY_BINS
@@ -53,7 +55,7 @@ def batch_generator(generator: Generator[T, None, None], batch_size: int) -> lis
 
 def generate_edges(
     pair_generator: RecordPairGenerator,
-    alignment_mode: str,
+    alignment_mode: bs_enums.ALIGNMENT_MODE,
     cores: int,
     callback: Optional[Callable] = None,
     batch_size=100,
@@ -145,7 +147,9 @@ def generate_edges(
                 break
 
 
-def do_lcs_pair(pair: RecordPair, alignment_mode) -> bool:  # pragma no cover
+def do_lcs_pair(
+    pair: RecordPair, alignment_mode: bs_enums.ALIGNMENT_MODE
+) -> bool:  # pragma no cover
     """Find the longest common subsequence of protein domains between two regions
 
     Args:
@@ -194,7 +198,7 @@ def expand_pair(pair: RecordPair) -> float:
 
 
 def calculate_scores_pair(
-    data: tuple[list[RecordPair], str, str]
+    data: tuple[list[RecordPair], bs_enums.ALIGNMENT_MODE, str]
 ) -> list[tuple[float, float, float, float]]:  # pragma no cover
     """Calculate the scores for a list of pairs
 

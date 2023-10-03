@@ -112,6 +112,10 @@ class ProtoCore(BGCRecord):
             region_dict (dict[int, GBK]): Dictionary of Region objects with database ids
             as keys. Used for parenting
         """
+
+        if not DB.metadata:
+            raise RuntimeError("DB.metadata is None")
+
         record_table = DB.metadata.tables["bgc_record"]
 
         region_select_query = (

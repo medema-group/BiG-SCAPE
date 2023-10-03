@@ -96,7 +96,7 @@ def download_dataset(url: str, path: Path, path_compressed: Path) -> None:
 def load_dataset_folder(
     path: Path,
     source_type: bs_enums.SOURCE_TYPE,
-    mode: str = "recursive",
+    mode: bs_enums.INPUT_MODE = bs_enums.INPUT_MODE.RECURSIVE,
     include_gbk: Optional[List[str]] = None,
     exclude_gbk: Optional[List[str]] = None,
     cds_overlap_cutoff: Optional[float] = None,
@@ -122,10 +122,10 @@ def load_dataset_folder(
         logging.error("Dataset folder does not point to a directory!")
         raise NotADirectoryError()
 
-    if mode == "recursive":
+    if mode == bs_enums.INPUT_MODE.RECURSIVE:
         files = list(path.glob("**/*.gbk"))
 
-    if mode == "flat":
+    if mode == bs_enums.INPUT_MODE.FLAT:
         files = list(path.glob("*.gbk"))
 
     # empty folder?

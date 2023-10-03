@@ -688,6 +688,9 @@ def generate_bs_families_members(
     # get a dictionary of node id to family id
     node_family = {}
 
+    if not DB.metadata:
+        raise RuntimeError("DB.metadata is None")
+
     # get all families from the database
     bgc_families_table = DB.metadata.tables["bgc_record_family"]
 

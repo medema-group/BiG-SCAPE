@@ -2,7 +2,7 @@
 
 
 # from dependencies
-from typing import Optional, Generator
+from typing import Optional, Generator, cast
 from sqlalchemy import tuple_
 
 # from other modules
@@ -72,13 +72,17 @@ def get_connected_components(
 def get_edge(
     exclude_nodes: set[int],
     cutoff: Optional[float] = None,
-) -> tuple[int, int, float, float, float, float]:
+) -> Optional[tuple[int, int, float, float, float, float]]:
     """Get an edge from the database that is not connected to exclude_nodes"""
 
     if cutoff is None:
         cutoff = 1.0
 
     # fetch an edge from the database
+
+    if not DB.metadata:
+        raise RuntimeError("DB.metadata is None")
+
     select_statment = (
         DB.metadata.tables["distance"]
         .select()
@@ -89,7 +93,10 @@ def get_edge(
 
     edge = DB.execute(select_statment).fetchone()
 
-    return edge
+    if edge is None:
+        return None
+
+    return cast(tuple[int, int, float, float, float, float], edge)
 
 
 def get_edges(
@@ -100,6 +107,10 @@ def get_edges(
         distance_cutoff = 1.0
 
     # fetch edges from the database
+
+    if not DB.metadata:
+        raise RuntimeError("DB.metadata is None")
+
     distance_table = DB.metadata.tables["distance"]
     select_statement = (
         distance_table.select()
@@ -114,7 +125,7 @@ def get_edges(
 
     edges = DB.execute(select_statement).fetchall()
 
-    return edges
+    return cast(list[tuple[int, int, float, float, float, float]], edges)
 
 
 def get_connected_edges(
@@ -127,6 +138,10 @@ def get_connected_edges(
         distance_cutoff = 1.0
 
     # fetch edges from the database
+
+    if not DB.metadata:
+        raise RuntimeError("DB.metadata is None")
+
     distance_table = DB.metadata.tables["distance"]
     select_statement = (
         distance_table.select()
@@ -152,4 +167,4 @@ def get_connected_edges(
 
     edges = DB.execute(select_statement).fetchall()
 
-    return edges
+    return cast(list[tuple[int, int, float, float, float, float]], edges)

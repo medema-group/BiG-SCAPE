@@ -153,6 +153,10 @@ class CDS:
 
         # get return value
         return_row = cursor_result.fetchone()
+
+        if return_row is None:
+            raise RuntimeError("No return value from insert query")
+
         self._db_id = return_row[0]
 
         # only now that we have handled the return we can commit
@@ -331,6 +335,10 @@ class CDS:
             region_dict (dict[int, GBK]): Dictionary of Region objects with database ids
             as keys. Used for parenting
         """
+
+        if not DB.metadata:
+            raise RuntimeError("DB.metadata is None")
+
         cds_table = DB.metadata.tables["cds"]
 
         region_select_query = (

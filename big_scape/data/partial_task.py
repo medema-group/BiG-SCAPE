@@ -55,6 +55,9 @@ def get_input_data_state(gbks: list[GBK]) -> bs_enums.INPUT_TASK:
     if distance_count == 0:
         return bs_enums.INPUT_TASK.NO_DATA
 
+    if not DB.metadata:
+        raise RuntimeError("DB.metadata is None")
+
     gbk_table = DB.metadata.tables["gbk"]
 
     # get set of gbks in database
@@ -90,6 +93,9 @@ def get_missing_gbks(gbks: list[GBK]) -> list[GBK]:
     """
     # dictionary of gbk path to gbk object
     gbk_dict = {str(gbk.path): gbk for gbk in gbks}
+
+    if not DB.metadata:
+        raise RuntimeError("DB.metadata is None")
 
     gbk_table = DB.metadata.tables["gbk"]
 
@@ -147,6 +153,10 @@ def get_cds_to_scan(gbks: list[GBK]) -> list[CDS]:
     cds_to_scan = []
 
     # get a list of database cds_ids that are present in the cds_scanned table
+
+    if not DB.metadata:
+        raise RuntimeError("DB.metadata is None")
+
     scanned_cds_table = DB.metadata.tables["scanned_cds"]
     select_query = select(scanned_cds_table.c.cds_id)
     scanned_cds_ids = set(DB.execute(select_query))
@@ -190,11 +200,17 @@ def get_comparison_data_state(gbks: list[GBK]) -> bs_enums.COMPARISON_TASK:
 
     # check if all record ids are present in the comparison region ids
 
+    if not DB.metadata:
+        raise RuntimeError("DB.metadata is None")
+
     bgc_record_table = DB.metadata.tables["bgc_record"]
 
     select_statement = select(bgc_record_table.c.id)
 
     record_ids = set(DB.execute(select_statement).fetchall())
+
+    if not DB.metadata:
+        raise RuntimeError("DB.metadata is None")
 
     distance_table = DB.metadata.tables["distance"]
 
@@ -224,6 +240,10 @@ def get_missing_distances(
     Yields:
         Generator[BGCPair]: generator of BGCPairs that are missing from the network
     """
+
+    if not DB.metadata:
+        raise RuntimeError("DB.metadata is None")
+
     distance_table = DB.metadata.tables["distance"]
 
     # get all region._db_id in the bin

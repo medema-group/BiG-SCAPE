@@ -16,7 +16,7 @@ class NetworkingParameters:
         #TODO: modes
     """
 
-    def __init__(self):
+    def __init__(self) -> None:
         self.gcf_cutoffs: list[float] = []
         self.include_singletons: bool = False
 
@@ -25,7 +25,7 @@ class NetworkingParameters:
         validate_gcf_cutoffs(self.gcf_cutoffs)
 
 
-def validate_gcf_cutoffs(gcf_cutoffs):
+def validate_gcf_cutoffs(gcf_cutoffs) -> None:
     """Raises an InvalidArgumentError if any cutoff is lower than 0"""
     for cutoff in gcf_cutoffs:
         if cutoff < 0:

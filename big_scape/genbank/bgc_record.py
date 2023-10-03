@@ -190,6 +190,9 @@ class BGCRecord:
             query. Defaults to True.
         """
 
+        if not DB.metadata:
+            raise RuntimeError("DB.metadata is None")
+
         bgc_record_table = DB.metadata.tables["bgc_record"]
 
         contig_edge = None
@@ -221,6 +224,10 @@ class BGCRecord:
 
         # get return value
         return_row = cursor_result.fetchone()
+
+        if return_row is None:
+            raise RuntimeError("No return value from insert query")
+
         self._db_id = return_row[0]
 
         if commit:

@@ -218,6 +218,10 @@ class Region(BGCRecord):
             gbk_dict (dict[int, GBK]): Dictionary of GBK objects with database ids as
             keys. Used for reassembling the hierarchy
         """
+
+        if not DB.metadata:
+            raise RuntimeError("DB.metadata is None")
+
         record_table = DB.metadata.tables["bgc_record"]
 
         region_select_query = (

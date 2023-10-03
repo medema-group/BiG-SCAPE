@@ -26,23 +26,27 @@ class HmmerParameters:
         domain_includelist_path: Optional[Path]
     """
 
-    def __init__(self):
+    def __init__(self) -> None:
         self.force_hmmscan: bool = False
         self.skip_hmmscan: bool = False
         self.domain_overlap_cutoff: float = 1.0
         self.domain_includelist_path: Optional[Path] = None
 
         # not from arguments:
-        self.domain_includelist = []
+        self.domain_includelist: list[str] = []
 
-    def validate(self, run: RunParameters):
+    def validate(self, run: RunParameters) -> None:
         """Performs validation on this class parameters"""
         validate_hsp_overlap_cutoff(self.domain_overlap_cutoff)
-        self.domain_includelist = validate_includelist(self.domain_includelist_path)
+
+        validated_includelist = validate_includelist(self.domain_includelist_path)
+        if validated_includelist is not None:
+            self.domain_includelist = validated_includelist
+
         validate_skip_hmmscan(self.skip_hmmscan, run.output.output_dir)
 
 
-def validate_skip_hmmscan(skip_hmmscan: bool, output_dir: Path):
+def validate_skip_hmmscan(skip_hmmscan: bool, output_dir: Path) -> None:
     """Validates whether an output directory exists and is not empty when running
     skip_hmm, which requires already processed gbk files and hance a DB in output"""
 
@@ -65,7 +69,7 @@ def validate_skip_hmmscan(skip_hmmscan: bool, output_dir: Path):
 
 def validate_includelist(
     domain_includelist_path: Optional[Path],
-):
+) -> Optional[list[str]]:
     """Validate the path to the domain include list and return a list of domain
     accession strings contained within this file
 
@@ -103,7 +107,7 @@ def validate_includelist(
         return lines
 
 
-def validate_hsp_overlap_cutoff(cutoff: float):
+def validate_hsp_overlap_cutoff(cutoff: float) -> None:
     """Raises an InvalidArgumentError if cutoff is not between 0.0 and 1.0"""
 
     if cutoff < 0.0 or cutoff > 1.0:

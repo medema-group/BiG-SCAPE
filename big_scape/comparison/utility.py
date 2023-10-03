@@ -25,6 +25,10 @@ def save_edge_to_db(
     region_a_id, region_b_id, distance, jaccard, adjacency, dss = edge
 
     # save the comparison data to the database
+
+    if not DB.metadata:
+        raise RuntimeError("DB.metadata is None")
+
     distance_table = DB.metadata.tables["distance"]
 
     # save the entry to the database
@@ -43,7 +47,7 @@ def save_edge_to_db(
     DB.execute(statement)
 
 
-def distances_from_db(
+def edges_from_db(
     pair_generator: RecordPairGenerator,
 ) -> Generator[tuple[RecordPair, float, float, float, float], None, None]:
     """Reconstruct distances from the database instead of recalculating them
@@ -66,25 +70,29 @@ def distances_from_db(
             region_ids[pair.region_b._db_id] = pair.region_b
 
         # get the distances from the database
+
+        if not DB.metadata:
+            raise RuntimeError("DB.metadata is None")
+
         distance_table = DB.metadata.tables["distance"]
         distance_query = distance_table.select().where(
             distance_table.c.region_a_id.in_(region_ids)
             & distance_table.c.region_b_id.in_(region_ids)
         )
-        distances = DB.execute(distance_query).fetchall()
+        edges = DB.execute(distance_query).fetchall()
 
         # yield the distances
-        for distance in distances:
+        for edge in edges:
             # get the pair
-            region_a = region_ids[distance.region_a_id]
-            region_b = region_ids[distance.region_b_id]
+            region_a = region_ids[edge.region_a_id]
+            region_b = region_ids[edge.region_b_id]
             pair = RecordPair(region_a, region_b)
 
             # get the distances
-            distance = distance.distance
-            jaccard = distance.jaccard
-            adjacency = distance.adjacency
-            dss = distance.dss
+            distance: float = edge.distance
+            jaccard: float = edge.jaccard
+            adjacency: float = edge.adjacency
+            dss: float = edge.dss
 
             # yield the distance
             yield pair, distance, jaccard, adjacency, dss

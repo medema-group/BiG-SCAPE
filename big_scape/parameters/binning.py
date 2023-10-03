@@ -19,13 +19,13 @@ class BinningParameters:
         query_bgc_path: Optional[Path]
     """
 
-    def __init__(self):
+    def __init__(self) -> None:
         self.no_mix: bool = False
         self.legacy_classify: bool = False
         self.classify: bool = False
         self.query_bgc_path: Optional[Path] = None
 
-    def validate(self):
+    def validate(self) -> None:
         """Validate the arguments contained in this object and set default values"""
         validate_mix(self.no_mix)
         validate_legacy_classify(self.legacy_classify)
@@ -33,7 +33,7 @@ class BinningParameters:
 
         self.validate_work()
 
-    def validate_work(self):
+    def validate_work(self) -> None:
         """Raise an error if the combination of parameters in this object means no work
         will be done
         """
@@ -67,7 +67,7 @@ class BinningParameters:
             raise InvalidArgumentError("--query_bgc_path", self.query_bgc_path)
 
 
-def validate_mix(no_mix: bool):
+def validate_mix(no_mix: bool) -> None:
     """Validates the no_mix attribute. Raises an exception if it is set to none, which
     should never happen
     """
@@ -82,7 +82,7 @@ def validate_mix(no_mix: bool):
         raise InvalidArgumentError("--no_mix", no_mix)
 
 
-def validate_legacy_classify(legacy_classify: bool):
+def validate_legacy_classify(legacy_classify: bool) -> None:
     """Validates the legacy_classify attribute. Raises an exception if it is set to
     none, which should never happen
     """
@@ -97,7 +97,7 @@ def validate_legacy_classify(legacy_classify: bool):
         raise InvalidArgumentError("--legacy_classify", legacy_classify)
 
 
-def validate_classify(classify: bool):
+def validate_classify(classify: bool) -> None:
     """Validates the classify attribute. Raises an exception if it is set to none, which
     should never happen
     """
@@ -112,17 +112,20 @@ def validate_classify(classify: bool):
         raise InvalidArgumentError("--classify", classify)
 
 
-def validate_query_bgc(query_bgc_path: Path):
+def validate_query_bgc(query_bgc_path: Optional[Path]) -> None:
     """Raises an InvalidArgumentError if the query bgc path does not exist"""
 
-    if query_bgc_path and not query_bgc_path.exists():
+    if not query_bgc_path:
+        return
+
+    if not query_bgc_path.exists():
         logging.error("Query BGC path does not exist!")
         raise InvalidArgumentError("--query_bgc_path", query_bgc_path)
 
-    if query_bgc_path and not query_bgc_path.is_file():
+    if not query_bgc_path.is_file():
         logging.error("Query BGC path is not a file!")
         raise InvalidArgumentError("--query_bgc_path", query_bgc_path)
 
-    if query_bgc_path and query_bgc_path.suffix != ".gbk":
+    if query_bgc_path.suffix != ".gbk":
         logging.error("Query BGC path is not a .gbk file!")
         raise InvalidArgumentError("--query_bgc_path", query_bgc_path)

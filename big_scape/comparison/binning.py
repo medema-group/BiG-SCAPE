@@ -279,6 +279,10 @@ class RefToRefRecordPairGenerator(RecordPairGenerator):
         Returns:
             set[BGCRecord]: A set of reference nodes that are connected to other reference nodes
         """
+
+        if not DB.metadata:
+            raise RuntimeError("DB.metadata is None")
+
         distance_table = DB.metadata.tables["distance"]
         bgc_record_table = DB.metadata.tables["bgc_record"]
         gbk_table = DB.metadata.tables["gbk"]
@@ -324,6 +328,10 @@ class RefToRefRecordPairGenerator(RecordPairGenerator):
             int: The number of reference nodes that are not connected to other reference
             nodes
         """
+
+        if not DB.metadata:
+            raise RuntimeError("DB.metadata is None")
+
         distance_table = DB.metadata.tables["distance"]
         bgc_record_table = DB.metadata.tables["bgc_record"]
         gbk_table = DB.metadata.tables["gbk"]
@@ -363,6 +371,10 @@ class RefToRefRecordPairGenerator(RecordPairGenerator):
             set[BGCRecord]: A set of reference nodes that are not connected to other
             reference nodes
         """
+
+        if not DB.metadata:
+            raise RuntimeError("DB.metadata is None")
+
         distance_table = DB.metadata.tables["distance"]
         bgc_record_table = DB.metadata.tables["bgc_record"]
         gbk_table = DB.metadata.tables["gbk"]
@@ -407,6 +419,10 @@ class RefToRefRecordPairGenerator(RecordPairGenerator):
             int: The number of reference nodes that are not connected to other reference
             nodes
         """
+
+        if not DB.metadata:
+            raise RuntimeError("DB.metadata is None")
+
         distance_table = DB.metadata.tables["distance"]
         bgc_record_table = DB.metadata.tables["bgc_record"]
         gbk_table = DB.metadata.tables["gbk"]
@@ -448,6 +464,9 @@ class MissingRecordPairGenerator(RecordPairGenerator):
         self.bin = pair_generator
 
     def num_pairs(self) -> int:
+        if not DB.metadata:
+            raise RuntimeError("DB.metadata is None")
+
         distance_table = DB.metadata.tables["distance"]
 
         # get all region._db_id in the bin where the region_a_id and region_b_id are in the
@@ -465,6 +484,9 @@ class MissingRecordPairGenerator(RecordPairGenerator):
         return self.bin.num_pairs() - existing_distance_count
 
     def generate_pairs(self, legacy_sorting=False) -> Generator[RecordPair, None, None]:
+        if not DB.metadata:
+            raise RuntimeError("DB.metadata is None")
+
         distance_table = DB.metadata.tables["distance"]
 
         # get all region._db_id in the bin

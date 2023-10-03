@@ -1,8 +1,9 @@
 # from python
+from __future__ import annotations
 import logging
 from pathlib import Path
-from typing import Generator, List
-from sqlite3 import Connection as Sqlite3Connection
+from typing import Generator, Optional, Any
+import sqlite3
 
 # from dependencies
 from sqlalchemy import (
@@ -10,6 +11,8 @@ from sqlalchemy import (
     Connection,
     MetaData,
     Compiled,
+    Select,
+    Insert,
     CursorResult,
     create_engine,
     func,
@@ -25,14 +28,20 @@ from big_scape.errors import DBClosedError, DBAlreadyOpenError
 class DB:
     """Class to manage database interaction"""
 
-    engine: Engine = None
-    connection: Connection = None
-    metadata: MetaData = None
+    engine: Optional[Engine] = None
+    connection: Optional[Connection] = None
+    metadata: Optional[MetaData] = None
 
     @staticmethod
     def opened() -> bool:
         """Returns true if database is already openened"""
-        return DB.connection is not None and not DB.connection.closed
+        if DB.engine is None or DB.connection is None:
+            return False
+
+        if DB.connection.closed:
+            return False
+
+        return True
 
     @staticmethod
     def reflect() -> None:
@@ -44,6 +53,9 @@ class DB:
         if not DB.opened():
             raise DBClosedError()
 
+        if DB.engine is None:
+            raise RuntimeError("DB.engine is None")
+
         DB.metadata = MetaData()
         DB.metadata.reflect(bind=DB.engine)
 
@@ -52,6 +64,9 @@ class DB:
         """Populates the database with tables"""
         if not DB.opened():
             raise DBClosedError()
+
+        if not DB.connection:
+            raise RuntimeError("DB.connection is None")
 
         creation_queries = read_schema(Path(DB_SCHEMA_PATH))
 
@@ -87,6 +102,12 @@ class DB:
         if not DB.opened():
             raise DBClosedError()
 
+        if not DB.engine:
+            raise RuntimeError("DB.engine is None")
+
+        if not DB.connection:
+            raise RuntimeError("DB.connection is None")
+
         logging.info("Saving database to %s", db_path)
 
         db_path.parent.mkdir(parents=True, exist_ok=True)
@@ -95,13 +116,23 @@ class DB:
         file_engine.connect()
 
         # from
-        raw_memory_connection: Sqlite3Connection = (
-            DB.engine.raw_connection().driver_connection
-        )
+
+        raw_memory_connection = DB.engine.raw_connection().driver_connection
+
+        if not isinstance(raw_memory_connection, sqlite3.Connection):
+            raise TypeError(
+                "Expected raw connection to be of type sqlite3.Connection, got "
+                + str(type(raw_memory_connection))
+            )
+
         # to
-        raw_file_connection: Sqlite3Connection = (
-            file_engine.raw_connection().driver_connection
-        )
+        raw_file_connection = file_engine.raw_connection().driver_connection
+
+        if not isinstance(raw_file_connection, sqlite3.Connection):
+            raise TypeError(
+                "Expected raw connection to be of type sqlite3.Connection, got "
+                + str(type(raw_file_connection))
+            )
 
         raw_memory_connection.backup(raw_file_connection)
 
@@ -123,14 +154,29 @@ class DB:
 
         DB.open_memory_connection()
 
+        if not DB.engine:
+            raise RuntimeError("DB.engine is None")
+
+        if not DB.connection:
+            raise RuntimeError("DB.connection is None")
+
         # from
-        raw_file_connection: Sqlite3Connection = (
-            file_engine.raw_connection().driver_connection
-        )
+        raw_file_connection = file_engine.raw_connection().driver_connection
+
+        if not isinstance(raw_file_connection, sqlite3.Connection):
+            raise TypeError(
+                "Expected raw connection to be of type sqlite3.Connection, got "
+                + str(type(raw_file_connection))
+            )
+
         # to
-        raw_memory_connection: Sqlite3Connection = (
-            DB.engine.raw_connection().driver_connection
-        )
+        raw_memory_connection = DB.engine.raw_connection().driver_connection
+
+        if not isinstance(raw_memory_connection, sqlite3.Connection):
+            raise TypeError(
+                "Expected raw connection to be of type sqlite3.Connection, got "
+                + str(type(raw_memory_connection))
+            )
 
         # backup only writes those tables that have data, it seems
         DB.create_tables()
@@ -142,15 +188,27 @@ class DB:
     @staticmethod
     def close_db() -> None:
         """Closes the database connection. This does not save the database to disk"""
+        if not DB.opened():
+            return
+
+        if not DB.connection:
+            raise RuntimeError("DB.connection is None")
+
         DB.connection.close()
 
     @staticmethod
     def execute_raw_query(query: str) -> CursorResult:
         """Executes a raw simple query. Should only be used for very short queries"""
+        if not DB.opened():
+            raise DBClosedError()
+
+        if not DB.connection:
+            raise RuntimeError("DB.connection is None")
+
         return DB.connection.execute(text(query))
 
     @staticmethod
-    def execute(query: Compiled, commit=True) -> CursorResult:
+    def execute(query: Compiled | Select[Any] | Insert, commit=True) -> CursorResult:
         """Wrapper for SQLAlchemy.connection.execute expecting a Compiled query
 
         Arguments:
@@ -158,8 +216,13 @@ class DB:
 
         This function is meant for single queries.
         """
+        if not DB.opened():
+            raise DBClosedError()
 
-        cursor_result = DB.connection.execute(query)
+        if not DB.connection:
+            raise RuntimeError("DB.connection is None")
+
+        cursor_result = DB.connection.execute(query)  # type: ignore
 
         if commit:
             DB.connection.commit()
@@ -173,6 +236,12 @@ class DB:
 
         NOTE: may be redundant if we turn off journaling
         """
+        if not DB.opened():
+            raise DBClosedError()
+
+        if not DB.connection:
+            raise RuntimeError("DB.connection is None")
+
         DB.connection.commit()
 
     @staticmethod
@@ -185,6 +254,12 @@ class DB:
         Returns:
             int: number of rows in the table
         """
+        if not DB.opened():
+            raise DBClosedError()
+
+        if not DB.metadata:
+            raise RuntimeError("DB.metadata is None")
+
         table_metadata = DB.metadata.tables[table_name]
         return DB.execute(
             select(func.count("*")).select_from(table_metadata)
@@ -203,6 +278,13 @@ class DB:
         Yields:
             Generator[tuple]: generator of tuples of rows from the table
         """
+
+        if not DB.opened():
+            raise DBClosedError()
+
+        if not DB.metadata:
+            raise RuntimeError("DB.metadata is None")
+
         table_metadata = DB.metadata.tables[table_name]
         table_select = select(table_metadata)
         table_select = table_select.execution_options(stream_results=True)
@@ -212,20 +294,20 @@ class DB:
             rows = cursor.fetchmany(batch_size)
             if not rows:
                 break
-            yield rows
+            yield tuple(rows)
 
 
-def read_schema(path: Path) -> List[str]:
+def read_schema(path: Path) -> list[str]:
     """Read an .sql schema from a file"""
     with open(path, encoding="utf-8") as schema_file:
         return text_to_queries(schema_file.readlines())
 
 
-def text_to_queries(schema_lines: List[str]) -> list[str]:
+def text_to_queries(schema_lines: list[str]) -> list[str]:
     """Convert list of lines from an .sql file to a list of queries
 
     Args:
-        schema_lines (List[str]): list of lines from an .sql file
+        schema_lines (list[str]): list of lines from an .sql file
 
     Returns:
         list[str]: list of queries that can be executed

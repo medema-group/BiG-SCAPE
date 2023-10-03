@@ -147,6 +147,10 @@ class GBK:
 
         Arguments:
             commit: commit immediately after executing the insert query"""
+
+        if not DB.metadata:
+            raise RuntimeError("DB.metadata is None")
+
         gbk_table = DB.metadata.tables["gbk"]
         insert_query = (
             gbk_table.insert()
@@ -167,6 +171,10 @@ class GBK:
 
         # get return value
         return_row = cursor_result.fetchone()
+
+        if return_row is None:
+            raise RuntimeError("No return value from insert query")
+
         self._db_id = return_row[0]
 
         # only now that we have handled the return we can commit
@@ -192,6 +200,10 @@ class GBK:
         Returns:
             list[GBK]: _description_
         """
+
+        if not DB.metadata:
+            raise RuntimeError("DB.metadata is None")
+
         gbk_table = DB.metadata.tables["gbk"]
 
         select_query = (
@@ -235,6 +247,9 @@ class GBK:
             GBK: loaded GBK object
         """
 
+        if not DB.metadata:
+            raise RuntimeError("DB.metadata is None")
+
         gbk_table = DB.metadata.tables["gbk"]
         select_query = (
             gbk_table.select()
@@ -249,6 +264,9 @@ class GBK:
         )
 
         result = DB.execute(select_query).fetchone()
+
+        if result is None:
+            raise RuntimeError(f"No GBK with id {gbk_id}")
 
         new_gbk = GBK(Path(result.path), result.source_type)
         new_gbk._db_id = result.id
@@ -266,6 +284,9 @@ class GBK:
         Returns:
             list[GBK]: loaded GBK objects
         """
+
+        if not DB.metadata:
+            raise RuntimeError("DB.metadata is None")
 
         gbk_table = DB.metadata.tables["gbk"]
         select_query = (

@@ -10,7 +10,7 @@ from pathlib import Path
 
 # from other modules
 from big_scape.data import DB
-from big_scape.hmm import HMMer, legacy_filter_overlap
+from big_scape.hmm import HMMer, HSP
 from big_scape.parameters import RunParameters, parse_cmd
 from big_scape.diagnostics import Profiler
 from big_scape.output import (
@@ -45,6 +45,10 @@ def run_bigscape() -> None:
     # only now we can use logging.info etc to log stuff otherwise things get weird
     # initializing the logger and logger file also happens here
     run.validate()
+
+    # at this point a number of things should be non-None. we need to convince mypy of
+    # this as well
+    assert run.input.pfam_path is not None
 
     if run.legacy:
         logging.info("Using legacy mode")
@@ -115,13 +119,9 @@ def run_bigscape() -> None:
         # this sorts all CDS and then filters them using the old filtering system, which
         # is less efficient than the flitering using the CDS.add_hsp_overlap_filter
         # method. however, that method seems to be broken somehow
-        all_hsps = []
         for gbk in gbks:
             for cds in gbk.genes:
                 cds.hsps = sorted(cds.hsps)
-                all_hsps.extend(
-                    [hsp.domain for hsp in legacy_filter_overlap(cds.hsps, 0.1)]
-                )
 
         exec_time = datetime.now() - start_time
         logging.info("scan done at %f seconds", exec_time.total_seconds())
@@ -142,7 +142,7 @@ def run_bigscape() -> None:
         run_state = bs_data.find_minimum_task(gbks)
         logging.info("Next task: %s", run_state)
 
-        all_hsps = []
+        all_hsps: list[HSP] = []
         for gbk in gbks:
             for cds in gbk.genes:
                 all_hsps.extend(cds.hsps)

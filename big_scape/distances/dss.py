@@ -108,7 +108,7 @@ def get_sum_seq_dist(
     a_domain_count = len(a_domain_dict[shared_domain])
     b_domain_count = len(b_domain_dict[shared_domain])
 
-    distance_matrix = ndarray((a_domain_count, b_domain_count))
+    distance_matrix: ndarray = ndarray((a_domain_count, b_domain_count))
 
     for a_idx, a_list_idx in enumerate(a_domain_dict[shared_domain]):
         for b_idx, b_list_idx in enumerate(b_domain_dict[shared_domain]):

@@ -130,7 +130,7 @@ def make_plots(
     if stat_type not in stat_types:
         raise ValueError("Invalid stat type. Expected one of: %s" % stat_types)
 
-    stats_df = pd.DataFrame.from_dict(stats_dict, orient="index")
+    stats_df = pd.DataFrame.from_dict(stats_dict, orient="index")  # type: ignore
     stats_df = stats_df.fillna(0.0)
     main_df = stats_df.pop("MAIN")
 

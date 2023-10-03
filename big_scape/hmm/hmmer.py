@@ -1,3 +1,4 @@
+# type: ignore # mypy doesn't like pyhmmer
 """Contains methods to press an input .hmm file into more optimal formats for hmmscan
 and hmmalign
 """

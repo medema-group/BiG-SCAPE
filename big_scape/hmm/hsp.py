@@ -4,9 +4,6 @@
 from __future__ import annotations
 from typing import Optional, TYPE_CHECKING
 
-# from dependencies
-from pyhmmer.plan7 import Domain
-
 # from other modules
 from big_scape.data import DB
 
@@ -20,7 +17,7 @@ class HSP:
     """Describes a CDS - Domain relationship"""
 
     def __init__(
-        self, cds: CDS, domain: Domain, score: float, env_start: int, env_stop: int
+        self, cds: CDS, domain: str, score: float, env_start: int, env_stop: int
     ) -> None:
         self.cds = cds
         self.domain = domain
@@ -44,6 +41,9 @@ class HSP:
         if self.cds is not None and self.cds._db_id is not None:
             parent_cds_id = self.cds._db_id
 
+        if not DB.metadata:
+            raise RuntimeError("DB.metadata is None")
+
         hsp_table = DB.metadata.tables["hsp"]
         insert_query = (
             hsp_table.insert()
@@ -65,6 +65,10 @@ class HSP:
 
         # get return value
         return_row = cursor_result.fetchone()
+
+        if return_row is None:
+            raise RuntimeError("No return value from insert query")
+
         self._db_id = return_row[0]
 
         # only now that we have handled the return we can commit
@@ -130,6 +134,9 @@ class HSP:
             to populate with HSP objects from the database
         """
         cds_dict = {cds._db_id: cds for cds in cds_list}
+
+        if not DB.metadata:
+            raise RuntimeError("DB.metadata is None")
 
         hsp_table = DB.metadata.tables["hsp"]
         hsp_alignment_table = DB.metadata.tables["hsp_alignment"]
@@ -280,6 +287,9 @@ class HSPAlignment:
         parent_hsp_id = None
         if self.hsp is not None and self.hsp._db_id is not None:
             parent_hsp_id = self.hsp._db_id
+
+        if not DB.metadata:
+            raise RuntimeError("DB.metadata is None")
 
         hsp_align_table = DB.metadata.tables["hsp_alignment"]
         insert_query = hsp_align_table.insert().values(
