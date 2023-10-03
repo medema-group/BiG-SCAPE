@@ -130,7 +130,7 @@ def make_plots(
     if stat_type not in stat_types:
         raise ValueError("Invalid stat type. Expected one of: %s" % stat_types)
 
-    stats_df = pd.DataFrame.from_dict(stats_dict, orient="index")
+    stats_df = pd.DataFrame.from_dict(stats_dict, orient="index")  # type: ignore
     stats_df = stats_df.fillna(0.0)
     main_df = stats_df.pop("MAIN")
 
@@ -175,7 +175,7 @@ def collect_consumption(
 
         while threading.main_thread().is_alive():
             if not command_queue.empty():
-                command, args = command_queue.get()
+                command, _ = command_queue.get()
                 if command == 1:
                     break
 
@@ -211,8 +211,18 @@ def collect_consumption(
             cpu_dict[elapsed_time]["MAIN"] = m_cpu_percent
 
             # print 'MAIN' line to profile report
-            main_line = f"{prefix_time},MAIN,{m_cpu_percent:.2f},1,{m_mem_mb:.2f},{m_mem_percent:.2f}\n"
-            profile_log.write(main_line)
+            main_line = ",".join(
+                [
+                    prefix_time,
+                    "MAIN",
+                    str(round(m_cpu_percent, 2)),
+                    "1",
+                    str(round(m_mem_mb, 2)),
+                    str(round(m_mem_percent, 2)),
+                ]
+            )
+
+            profile_log.write(main_line + "\n")
 
             # start multi/cumulative stats
             total_cpu_percent = m_cpu_percent
@@ -223,8 +233,9 @@ def collect_consumption(
             for child_process in main_process.children(recursive=True):
                 c_pid = f"CHILD_{child_process.pid}"
                 try:
-                    # in case a child process was created between the time of generating the set_child_cpu_time_dict
-                    # and now, i.e. during the elapsed interval
+                    # in case a child process was created between the time of generating
+                    # the set_child_cpu_time_dict and now, i.e. during the elapsed
+                    # interval
                     if c_pid not in set_child_cpu_time_dict:
                         continue
 

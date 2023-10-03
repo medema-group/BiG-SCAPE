@@ -35,7 +35,8 @@ def get_mibig(mibig_version: str, bigscape_dir: Path):
         Path: path to MIBiG database (antismash processed gbks)
     """
 
-    mibig_url = f"https://dl.secondarymetabolites.org/mibig/mibig_antismash_{mibig_version}_gbk.tar.bz2"
+    mibig_url_base = "https://dl.secondarymetabolites.org/mibig/"
+    mibig_url = mibig_url_base + f"mibig_antismash_{mibig_version}_gbk.tar.bz2"
     # TODO: this only works for 3.1, update to proper link once Kai makes it available
     # https://dl.secondarymetabolites.org/mibig/mibig_antismash_3.1_gbk.tar.bz2
     # https://dl.secondarymetabolites.org/mibig/mibig_antismash_3.1_json.tar.bz2
@@ -77,25 +78,25 @@ def download_dataset(url: str, path: Path, path_compressed: Path) -> None:
     """
 
     # download
-    response = requests.get(url, stream=True)
+    response = requests.get(url, stream=True, timeout=10)
+
     if response.status_code != 200:
         raise ValueError("Could not download MIBiG file")
-    with open(path_compressed, "wb") as f:
-        f.write(response.raw.read())
+
+    with open(path_compressed, "wb") as file:
+        file.write(response.raw.read())
 
     # extract contents
-    file = tarfile.open(path_compressed)
-    file.extractall(path)
-    file.close()
-    os.remove(path_compressed)
+    with tarfile.open(path_compressed) as file:
+        file.extractall(path)
 
-    return None
+    os.remove(path_compressed)
 
 
 def load_dataset_folder(
     path: Path,
     source_type: bs_enums.SOURCE_TYPE,
-    mode: str = "recursive",
+    mode: bs_enums.INPUT_MODE = bs_enums.INPUT_MODE.RECURSIVE,
     include_gbk: Optional[List[str]] = None,
     exclude_gbk: Optional[List[str]] = None,
     cds_overlap_cutoff: Optional[float] = None,
@@ -103,13 +104,11 @@ def load_dataset_folder(
 ) -> List[GBK]:
     """Loads all gbk files in a given folder
 
-    Returns empty list if path does not point to a folder or if folder does not contain gbk files
+    Returns empty list if path does not point to a folder or if folder does not contain
+    gbk files
     """
 
-    if (
-        source_type == bs_enums.SOURCE_TYPE.QUERY
-        or source_type == bs_enums.SOURCE_TYPE.REFERENCE
-    ):
+    if source_type in (bs_enums.SOURCE_TYPE.QUERY, bs_enums.SOURCE_TYPE.REFERENCE):
         if not include_gbk:
             include_gbk = ["cluster", "region"]
 
@@ -123,10 +122,10 @@ def load_dataset_folder(
         logging.error("Dataset folder does not point to a directory!")
         raise NotADirectoryError()
 
-    if mode == "recursive":
+    if mode == bs_enums.INPUT_MODE.RECURSIVE:
         files = list(path.glob("**/*.gbk"))
 
-    if mode == "flat":
+    if mode == bs_enums.INPUT_MODE.FLAT:
         files = list(path.glob("*.gbk"))
 
     # empty folder?
@@ -137,12 +136,12 @@ def load_dataset_folder(
     filtered_files = filter_files(files, include_gbk, exclude_gbk)
     num_files = len(filtered_files)
 
-    logging.info(f"Loading {num_files} GBKs")
+    logging.info("Loading %d GBKs", num_files)
 
     gbk_list = []
     for idx, file in enumerate(filtered_files):
         if num_files > 9 and idx % floor(num_files / 10) == 0:
-            logging.info(f"Loaded {idx}/{num_files} GBKs")
+            logging.info("Loaded %d/%d GBKs", idx, num_files)
 
         gbk = load_gbk(file, source_type, cds_overlap_cutoff, legacy_mode)
 
@@ -203,7 +202,8 @@ def load_gbk(
 
     Args:
         path (Path): path to gbk file
-        source_type (bs_enums.SOURCE_TYPE): str, type of gbk file (query, mibig, reference)
+        source_type (bs_enums.SOURCE_TYPE): str, type of gbk file (query, mibig,
+            reference)
         cds_overlap_cutoff (Optional[float]): cds region overlap cutoff to use.
         Defaults to None
 
@@ -222,8 +222,18 @@ def load_gbk(
 
 
 def load_gbks(run: bs_param.RunParameters, bigscape_dir: Path) -> list[GBK]:
-    # counterintuitive, but we need to load the gbks first to see if there are any differences with
-    # the data in the database
+    """Load all gbks from the input folder and return a list of GBK objects
+
+    Args:
+        run (bs_param.RunParameters): run parameters
+        bigscape_dir (Path): path to BiG-SCAPE directory
+
+    Returns:
+        list[GBK]: list of GBK objects
+    """
+
+    # counterintuitive, but we need to load the gbks first to see if there are any
+    # differences with the data in the database
 
     input_gbks = []
 

@@ -103,10 +103,12 @@ def get_aligned_string_dist(string_a: str, string_b: str) -> float:
 def get_sum_seq_dist(
     a_domain_list, b_domain_list, a_domain_dict, b_domain_dict, shared_domain
 ) -> tuple[float, int]:  # pragma no cover
+    """Get the sum of the distances between the sequences of two domains"""
+
     a_domain_count = len(a_domain_dict[shared_domain])
     b_domain_count = len(b_domain_dict[shared_domain])
 
-    distance_matrix = ndarray((a_domain_count, b_domain_count))
+    distance_matrix: ndarray = ndarray((a_domain_count, b_domain_count))
 
     for a_idx, a_list_idx in enumerate(a_domain_dict[shared_domain]):
         for b_idx, b_list_idx in enumerate(b_domain_dict[shared_domain]):
@@ -129,11 +131,24 @@ def get_sum_seq_dist(
 
 
 def get_distance_from_shared(
-    bgc_pair: RecordPair, anchor_domains: set[str]
+    record_pair: RecordPair, anchor_domains: set[str]
 ):  # pragma no cover
-    domain_set_a, domain_set_b = bgc_pair.comparable_region.get_domain_sets()
-    a_domain_list, b_domain_list = bgc_pair.comparable_region.get_domain_lists()
-    a_domain_dict, b_domain_dict = bgc_pair.comparable_region.get_domain_dicts()
+    """Get the distance for anchor and non-anchor domains for a pair of BGCs based upon
+    the shared domains. Each domain that is shared adds a distance based upon the
+    alignment of the domain sequences
+
+    Args:
+        record_pair (RecordPair): RecordPair object to calculate this distance metric
+        for
+
+    Returns:
+        tuple[float, float]: Two scores for the distance of non-anchor domains and of
+        anchor domains, respectively
+    """
+
+    domain_set_a, domain_set_b = record_pair.comparable_region.get_domain_sets()
+    a_domain_list, b_domain_list = record_pair.comparable_region.get_domain_lists()
+    a_domain_dict, b_domain_dict = record_pair.comparable_region.get_domain_dicts()
 
     intersect = domain_set_a & domain_set_b
 
@@ -159,8 +174,19 @@ def get_distance_from_shared(
 
 
 def calc_dss_pair(
-    bgc_pair: RecordPair, anchor_domains: Optional[set[str]] = None
+    record_pair: RecordPair, anchor_domains: Optional[set[str]] = None
 ) -> float:  # pragma no cover
+    """Calculate the DSS for a pair of records
+
+    Args:
+        record_pair (RecordPair): Pair of records to calculate DSS for
+        anchor_domains (Optional[set[str]], optional): Set of anchor domains. Defaults
+            to None.
+
+    Returns:
+        float: DSS score for the pair of records
+    """
+
     # intialize an empty set of anchor domains if it is set to None
     if anchor_domains is None:
         anchor_domains = set(LEGACY_ANCHOR_DOMAINS)
@@ -168,7 +194,7 @@ def calc_dss_pair(
     # initialize the distances by getting the distances from all unshared domains, which
     # all add 1 to the difference
     distance_anchor, distance_non_anchor = get_distance_from_unshared(
-        bgc_pair, anchor_domains
+        record_pair, anchor_domains
     )
 
     # since we know we added whole numbers in the above function, we can re-use the
@@ -183,7 +209,7 @@ def calc_dss_pair(
         s_dist_non_anchor,
         s_domains_anchor,
         s_domains_non_anchor,
-    ) = get_distance_from_shared(bgc_pair, anchor_domains)
+    ) = get_distance_from_shared(record_pair, anchor_domains)
 
     distance_anchor += s_dist_anchor
     distance_non_anchor += s_dist_non_anchor

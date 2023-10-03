@@ -36,10 +36,10 @@ def edge_list_to_adj_list(
         dict[int, dict[int, float]]: adjacency list
     """
     # set up the dictionary of dictionaries
-    adj_list: dict[int, dict[int, float]] = dict()
+    adj_list: dict[int, dict[int, float]] = {}
     for edge in edge_list:
-        adj_list[edge[0]] = dict()
-        adj_list[edge[1]] = dict()
+        adj_list[edge[0]] = {}
+        adj_list[edge[1]] = {}
 
     # go through all edges
     for region_a, region_b, distance, _, _, _ in edge_list:
@@ -81,7 +81,7 @@ def adj_list_to_sim_matrix(adj_list: dict[int, dict[int, float]]) -> np.ndarray:
     matrix = np.zeros((len(adj_list), len(adj_list)))
 
     # set up a dictionary to map region ids to matrix indices
-    region_to_index = dict()
+    region_to_index = {}
     for index, region in enumerate(adj_list):
         region_to_index[region] = index
 

@@ -5,6 +5,7 @@
 from multiprocessing import Process, Pipe
 from multiprocessing.connection import Connection
 from typing import Callable
+import logging
 
 
 def start_processes(
@@ -75,6 +76,8 @@ def worker_method(
         change while the worker is active
         use_batches (bool): True if this method uses batches, false if not
     """
+
+    logging.debug(f"Starting worker {process_id}")
 
     worker_connection.send(None)
 

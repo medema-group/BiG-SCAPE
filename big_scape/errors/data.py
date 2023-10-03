@@ -6,7 +6,7 @@ class DBClosedError(Exception):
     or was never created in the first place
     """
 
-    def __init__(self):
+    def __init__(self) -> None:
         super().__init__(
             (
                 "Database was created before, but is closed now."
@@ -18,7 +18,7 @@ class DBClosedError(Exception):
 class DBAlreadyOpenError(Exception):
     """Error thrown when trying to open a database when a database is already open"""
 
-    def __init__(self):
+    def __init__(self) -> None:
         super().__init__("Database already opened!")
 
 

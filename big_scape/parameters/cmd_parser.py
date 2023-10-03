@@ -92,8 +92,9 @@ def parse_cmd(args):  # pragma: no cover
         type=str,
         choices=["1.0", "1.1", "1.2", "1.3", "1.4", "2.0", "3.0", "3.1"],
         # TODO: get rid of hardcoded versions?
-        help="MIBiG relase number (e.g. 3.1). Download (if needed) and use this version of MiBIG database. \
-            If not provided, MiBIG will not be included in the analysis. If download is required, BiG-SCAPE\
+        help="MIBiG relase number (e.g. 3.1). Download (if needed) and use this \
+            version of MiBIG database. If not provided, MiBIG will not be included in \
+            the analysis. If download is required, BiG-SCAPE \
             will download the MIBiG database to the BiG-SCAPE folder",
     )
 

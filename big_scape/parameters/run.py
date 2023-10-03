@@ -38,7 +38,8 @@ class RunParameters(Namespace):
         output: parameters.OutputParameters
     """
 
-    def __init__(self):
+    def __init__(self) -> None:
+        super().__init__()
         self.label: str = "BiG-SCAPE"
         self.cores: int = cpu_count()
         self.legacy: bool = False
@@ -63,7 +64,7 @@ class RunParameters(Namespace):
 
         return start_time
 
-    def validate(self):
+    def validate(self) -> None:
         """Executes validation on everything, setting default values and returning
         errors if anything is wrong
         Also initializes the logger
@@ -95,7 +96,7 @@ class RunParameters(Namespace):
     # this is called when argparser tries to add an attribute like "input.gbk_dir",
     # including the dot. this method ensures that instead a property will be added on
     # the input class instead
-    def __setattr__(self, name, value):
+    def __setattr__(self, name, value) -> None:
         if "." in name:
             group, name = name.split(".", 1)
             ns = getattr(self, group, RunParameters())

@@ -14,6 +14,8 @@ from big_scape.parameters.constants import (
 from big_scape.genbank import CDS, BGCRecord
 from big_scape.comparison import ComparableRegion, RecordPair
 
+import big_scape.enums as bs_enums
+
 
 def reset_expansion(
     comparable_region: ComparableRegion, a_start=0, a_stop=None, b_start=0, b_stop=None
@@ -404,7 +406,9 @@ def expand_score(
 
 
 def legacy_needs_expand_pair(
-    pair: RecordPair, alignment_mode: str, extend_slice_cutoff=MIN_LCS_LEN
+    pair: RecordPair,
+    alignment_mode: bs_enums.ALIGNMENT_MODE,
+    extend_slice_cutoff=MIN_LCS_LEN,
 ) -> bool:  # pragma no cover
     """Returns False if:
 
@@ -429,16 +433,21 @@ def legacy_needs_expand_pair(
 def legacy_needs_extend(
     region_a: BGCRecord,
     region_b: BGCRecord,
-    alignment_mode: str,
+    alignment_mode: bs_enums.ALIGNMENT_MODE,
     a_start: int,
     a_stop: int,
     extend_slice_cutoff=MIN_LCS_LEN,
 ) -> bool:  # pragma no cover
-    if alignment_mode == "global":
+    if alignment_mode == bs_enums.ALIGNMENT_MODE.GLOBAL:
         return False
 
-    if alignment_mode == "auto" and not (region_a.contig_edge and region_b.contig_edge):
+    on_contig = region_a.contig_edge and region_b.contig_edge
+
+    if alignment_mode == bs_enums.ALIGNMENT_MODE.AUTO and not on_contig:
         return False
+
+    # after above logic, alignment mode is auto and either region_a or region_b is on
+    # a contig edge, or alignment mode is local
 
     lcs_extend_len = a_stop - 1 - a_start
     if (

@@ -166,6 +166,10 @@ class CandidateCluster(BGCRecord):
             region_dict (dict[int, Region]): Dictionary of Region objects with database
             ids as keys. Used for reassembling the hierarchy
         """
+
+        if not DB.metadata:
+            raise RuntimeError("DB.metadata is None")
+
         record_table = DB.metadata.tables["bgc_record"]
 
         candidate_cluster_select_query = (

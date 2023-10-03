@@ -1,3 +1,5 @@
+"""Main file for bigscape"""
+
 # from python
 import sys
 import os
@@ -8,7 +10,7 @@ from pathlib import Path
 
 # from other modules
 from big_scape.data import DB
-from big_scape.hmm import HMMer, legacy_filter_overlap
+from big_scape.hmm import HMMer, HSP
 from big_scape.parameters import RunParameters, parse_cmd
 from big_scape.diagnostics import Profiler
 from big_scape.output import (
@@ -29,7 +31,10 @@ import big_scape.distances.mix as bs_mix
 import big_scape.distances.query as bs_query
 
 
-def run_bigscape():
+def run_bigscape() -> None:
+    """Run a bigscape analysis. This is the main function of the program that parses the
+    command line arguments, loads the data, runs the analysis and saves the output.
+    """
     bigscape_dir = Path(os.path.dirname(os.path.abspath(__file__)))
 
     # parsing needs to come first because we need it in setting up the logging
@@ -40,6 +45,10 @@ def run_bigscape():
     # only now we can use logging.info etc to log stuff otherwise things get weird
     # initializing the logger and logger file also happens here
     run.validate()
+
+    # at this point a number of things should be non-None. we need to convince mypy of
+    # this as well
+    assert run.input.pfam_path is not None
 
     if run.legacy:
         logging.info("Using legacy mode")
@@ -63,7 +72,7 @@ def run_bigscape():
     # nothing to do!
     if run_state == bs_enums.TASK.NOTHING_TO_DO:
         logging.info("Nothing to do!")
-        exit(0)
+        sys.exit(0)
 
     logging.info("First task: %s", run_state)
 
@@ -110,13 +119,9 @@ def run_bigscape():
         # this sorts all CDS and then filters them using the old filtering system, which
         # is less efficient than the flitering using the CDS.add_hsp_overlap_filter
         # method. however, that method seems to be broken somehow
-        all_hsps = []
         for gbk in gbks:
             for cds in gbk.genes:
                 cds.hsps = sorted(cds.hsps)
-                all_hsps.extend(
-                    [hsp.domain for hsp in legacy_filter_overlap(cds.hsps, 0.1)]
-                )
 
         exec_time = datetime.now() - start_time
         logging.info("scan done at %f seconds", exec_time.total_seconds())
@@ -137,7 +142,7 @@ def run_bigscape():
         run_state = bs_data.find_minimum_task(gbks)
         logging.info("Next task: %s", run_state)
 
-        all_hsps = []
+        all_hsps: list[HSP] = []
         for gbk in gbks:
             for cds in gbk.genes:
                 all_hsps.extend(cds.hsps)

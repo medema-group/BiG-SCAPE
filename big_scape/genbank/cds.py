@@ -46,7 +46,6 @@ class CDS:
         self.strand: Optional[int] = None
         self.aa_seq: str = ""
         self.hsps: list[HSP] = []
-        self.__locked = False
 
         # db specific fields
         self._db_id: Optional[int] = None
@@ -154,18 +153,15 @@ class CDS:
 
         # get return value
         return_row = cursor_result.fetchone()
+
+        if return_row is None:
+            raise RuntimeError("No return value from insert query")
+
         self._db_id = return_row[0]
 
         # only now that we have handled the return we can commit
         if commit:
             DB.commit()
-
-    def lock(self):
-        """Locks this CDS, converting the sorted list of HSPs to a regular list to support pickling
-        TOOD: remove once sortedlists are removed
-        """
-        self.__locked = True
-        self.hsps = list(self.hsps)
 
     def __eq__(self, __o) -> bool:
         if not isinstance(__o, CDS):
@@ -339,6 +335,10 @@ class CDS:
             region_dict (dict[int, GBK]): Dictionary of Region objects with database ids
             as keys. Used for parenting
         """
+
+        if not DB.metadata:
+            raise RuntimeError("DB.metadata is None")
+
         cds_table = DB.metadata.tables["cds"]
 
         region_select_query = (

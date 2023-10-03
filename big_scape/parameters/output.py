@@ -21,13 +21,13 @@ class OutputParameters:
 
     """
 
-    def __init__(self):
+    def __init__(self) -> None:
         self.output_dir: Path = Path("")
         self.db_path: Path = Path("")
         self.log_path: Path = Path("")
         self.profile_path: Path = Path("")
 
-    def validate(self):
+    def validate(self) -> None:
         """Load output arguments from commandline ArgParser object
 
         Args:

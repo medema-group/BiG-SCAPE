@@ -158,6 +158,10 @@ class ProtoCluster(BGCRecord):
             candidate_cluster_dict (dict[int, GBK]): Dictionary of CandidateCluster
             objects with database ids as keys. Used for reassembling the hierarchy
         """
+
+        if not DB.metadata:
+            raise RuntimeError("DB.metadata is None")
+
         record_table = DB.metadata.tables["bgc_record"]
 
         protocluster_select_query = (
