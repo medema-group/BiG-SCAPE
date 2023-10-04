@@ -12,6 +12,8 @@ from .legacy_workflow_alt import generate_edges
 from .legacy_bins import legacy_bin_generator, legacy_get_class
 from .utility import save_edge_to_db
 
+from . import lcs
+
 __all__ = [
     "RecordPair",
     "RecordPairGenerator",
@@ -24,4 +26,5 @@ __all__ = [
     "legacy_bin_generator",
     "legacy_get_class",
     "save_edge_to_db",
+    "lcs",
 ]
