@@ -6,6 +6,7 @@ from collections import Counter
 
 # from dependencies
 from sklearn.metrics import v_measure_score
+from scipy.stats import entropy
 
 # from other modules
 from big_scape.data import DB
@@ -15,16 +16,17 @@ class BenchmarkData:
     """Container for curated and computed GCF assignments
 
     Atrributes:
-
+        curated_path (Path): location of curated GCF assignments file
+        db_path (Path): location of BiG-SCAPE output database
     """
 
-    def __init__(self, curated_gcfs: Path, db_path: Path):
-        self.curated_gcfs = curated_gcfs
+    def __init__(self, curated_path: Path, db_path: Path):
+        self.curated_path = curated_path
         self.db_path = db_path
 
     def load_curated_labels(self):
         """Read tsv (?) file with curated GCF assignments"""
-        with open(self.curated_gcfs) as inf:
+        with open(self.curated_path) as inf:
             _ = inf.readline()
             self.curated_labels = {
                 bgc: family for line in inf for bgc, family in line.strip().split("\t")
@@ -76,3 +78,16 @@ class BenchmarkData:
             curated_labels = [self.curated_labels[bgc] for bgc in bgcs]
             max_label_occs.append(Counter(curated_labels).most_common(1)[0][1])
         return sum(max_label_occs) / total_bgcs
+
+    def calculate_entropy(self) -> dict[str, float]:
+        """Calculate entropy for each computed GCF"""
+        computed_families: dict[str, list[str]] = {}
+        for bgc, family in self.computed_labels.items():
+            computed_families.setdefault(family, []).append(bgc)
+
+        entropies: dict[str, float] = {}
+        for family, bgcs in computed_families.items():
+            curated_labels = [self.curated_labels[bgc] for bgc in bgcs]
+            pk = [curated_labels.count(label) for label in set(curated_labels)]
+            entropies[family] = entropy(pk, base=2)
+        return entropies
