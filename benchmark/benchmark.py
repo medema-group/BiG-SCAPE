@@ -4,6 +4,7 @@
 from pathlib import Path
 
 # from dependencies
+from sklearn.metrics import v_measure_score
 
 # from other modules
 from big_scape.data import DB
@@ -40,10 +41,19 @@ class BenchmarkData:
         )
 
         cursor_results = DB.execute(select_query)
-        computed_labels = {}
-        for result in cursor_results:
-            if result.family not in computed_labels:
-                computed_labels[result.family] = set([result.record_id])
-            else:
-                computed_labels[result.family].add(result.record_id)
-        self.computed_labels = computed_labels
+        self.computed_labels = {
+            result.record_id: result.family for result in cursor_results
+        }
+
+    def calculate_v_measure(self):
+        """Calculate V-measure between curated and computed GCF assignments
+
+        Following Rosenberg and Hirschberg:
+        V-measure: A conditional entropy-based external cluster evaluation measure.
+        """
+        computed_bgcs = sorted(self.computed_labels.keys())
+
+        curated_fams = [self.curated_labels[bgc] for bgc in computed_bgcs]
+        computed_fams = [self.computed_labels[bgc] for bgc in computed_bgcs]
+
+        return v_measure_score(curated_fams, computed_fams)
