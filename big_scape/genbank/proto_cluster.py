@@ -35,7 +35,9 @@ class ProtoCluster(BGCRecord):
         nt_stop: int
         product: str
         categoty: str
-        protocore: Protocore
+        proto_core: dict[int, Optional[Protocore]]
+        proto_core_cds_idx: set[int]
+
         _db_id: int | None
         _families: dict[float, int]
     """
@@ -61,6 +63,7 @@ class ProtoCluster(BGCRecord):
         )
         self.category: str = category
         self.proto_core: Dict[int, Optional[ProtoCore]] = proto_core
+        self.proto_core_cds_idx: set[int] = set()
 
     def add_proto_core(self, proto_core: ProtoCore):
         """Add a proto_core object to this region
@@ -76,6 +79,24 @@ class ProtoCluster(BGCRecord):
             raise InvalidGBKRegionChildError()
 
         self.proto_core[proto_core.number] = proto_core
+
+        # protocores may exist in isolation
+        if self.parent_gbk is None:
+            return
+
+        for idx, cds in enumerate(self.parent_gbk.genes):
+            # skip to whatever is in this protocluster
+            if cds.nt_start < self.nt_start:
+                continue
+
+            if cds.nt_stop > self.nt_stop:
+                break
+
+            if (
+                cds.nt_start >= proto_core.nt_start
+                and cds.nt_stop <= proto_core.nt_stop
+            ):
+                self.proto_core_cds_idx.add(idx)
 
     def save(self, commit=True) -> None:
         """Stores this protocluster in the database
