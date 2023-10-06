@@ -4,6 +4,9 @@
 from argparse import ArgumentParser
 from pathlib import Path
 
+# from other modules
+from big_scape.errors import InvalidArgumentError
+
 
 def parse_cmd(args):
     """Parse arguments from command line
@@ -49,3 +52,26 @@ def parse_cmd(args):
     )
 
     return parser.parse_args(args)
+
+
+def validate_args(args):
+    """validate benchmarking arguments
+
+    Args:
+        ArgumentParser: object containing all required arguments
+
+    Raises:
+        InvalidArgumentError: upon encountering an invalid argument
+    """
+    if not args.bigscape_dir.exists():
+        raise InvalidArgumentError("--bigscape_dir", args.bigscape_dir)
+
+    if not (args.bigscape_dir / "data_sqlite.db").exists():
+        raise InvalidArgumentError("--bigscape_dir", args.bigscape_dir)
+
+    if not args.curated_gcfs.exists() or not args.curated_gcfs.isfile():
+        raise InvalidArgumentError("--curated_gcfs", args.curated_gcfs)
+
+    # empty file
+    if args.curated_gcfs.stat().st_size == 0:
+        raise InvalidArgumentError("--curated_gcfs", args.curated_gcfs)
