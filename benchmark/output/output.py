@@ -6,7 +6,11 @@ from pathlib import Path
 
 
 class OutputGenerator:
-    """Class to generate output files containing benchamrking results"""
+    """Class to generate output files containing benchamrking results
+
+    Attributes:
+        output_dir (Path): Path pointing to base output directory
+    """
 
     def __init__(self, output_dir: Path) -> None:
         self.output_dir = output_dir
@@ -16,7 +20,7 @@ class OutputGenerator:
         if not self.output_dir.exists():
             os.mkdir(self.output_dir)
 
-    def output_v_measure(self, v_measure) -> None:
+    def output_v_measure(self, v_measure: float) -> None:
         """Write computed GCF V measure to output txt file"""
         filename = self.output_dir / "GCF_V_measure.txt"
 
