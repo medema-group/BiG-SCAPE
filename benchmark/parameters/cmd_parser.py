@@ -2,6 +2,7 @@
 
 # from python
 from argparse import ArgumentParser
+from pathlib import Path
 
 
 def parse_cmd(args):
@@ -23,7 +24,8 @@ def parse_cmd(args):
         "--computed_gcfs",
         dest="computed_gcfs",
         default=None,
-        type=str,
+        type=Path,
+        required=True,
         help="Path pointing to the ouput folder of a BiG-SCAPE run",
     )
 
@@ -32,7 +34,8 @@ def parse_cmd(args):
         "--curated_gcfs",
         dest="curated_gcfs",
         default=None,
-        type=str,
+        type=Path,
+        required=True,
         help="Path pointing to file with curated GCF assignments",
     )
 
@@ -40,7 +43,8 @@ def parse_cmd(args):
         "-o",
         "--output_dir",
         dest="output_dir",
-        type=str,
+        type=Path,
+        required=True,
         help="Output directory for benchmarking results",
     )
 
