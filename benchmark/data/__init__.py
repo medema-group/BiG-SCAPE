@@ -1,4 +1,4 @@
 """Contains benchmark funtionality"""
-from .benchmark import BenchmarkData
+from .load_data import BenchmarkData
 
 __all__ = ["BenchmarkData"]

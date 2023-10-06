@@ -24,12 +24,13 @@ def run_benchmark() -> None:
     data.load_computed_labels()
 
     # calculate metrics
-    # v_measure = BenchmarkMetrics.calculate_v_measure(data)
+    v_measure = BenchmarkMetrics.calculate_v_measure(data)
     purities = BenchmarkMetrics.calculate_purity(data)
     entropies = BenchmarkMetrics.calculate_entropy(data)
 
     # output
     outputter = OutputGenerator(args.output_dir)
     outputter.initialize_output_dir()
+    outputter.output_v_measure(v_measure)
     outputter.output_purities(purities)
     outputter.output_entropies(entropies)

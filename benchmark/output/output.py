@@ -16,8 +16,15 @@ class OutputGenerator:
         if not self.output_dir.exists():
             os.mkdir(self.output_dir)
 
+    def output_v_measure(self, v_measure) -> None:
+        """Write computed GCF V measure to output txt file"""
+        filename = self.output_dir / "GCF_V_measure.txt"
+
+        with open(filename, "w") as outf:
+            outf.write(f"Computed V-measure: {v_measure}\n")
+
     def output_purities(self, purities: dict[str, float]) -> None:
-        """Write sorted computed GCF entropies to output tsv file"""
+        """Write sorted computed GCF purities to output tsv file"""
         filename = self.output_dir / "GCF_purities.tsv"
 
         with open(filename, "w") as outf:
