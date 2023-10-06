@@ -256,10 +256,10 @@ def parse_cmd(args):  # pragma: no cover
         "--gcf_cutoffs",
         dest="networking.gcf_cutoffs",
         default=[0.30],
-        type=list,
+        type=float,
         nargs="+",
         help="Generate networks using multiple raw distance cutoff values. \
-            Values should be in the range [0.0, 1.0]. Example: --cutoffs 0.1 \
+            Values should be in the range [0.0, 1.0]. Example: --gcf_cutoffs 0.1 \
             0.25 0.5 1.0. Default: 0.3",
     )
 
