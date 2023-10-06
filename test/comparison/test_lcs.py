@@ -9,6 +9,7 @@ import string
 import big_scape.genbank as bs_genbank
 import big_scape.hmm as bs_hmmer
 import big_scape.comparison as bs_comparison
+import big_scape.enums as bs_enums
 
 
 def generate_random_hsp(cds: bs_genbank.CDS):
@@ -75,6 +76,25 @@ def generate_mock_cds_lists(
     return cds_a, cds_b
 
 
+def generate_mock_protocluster(cds_list: list[bs_genbank.CDS], protocore_idx: int):
+    """Generate a mock protocluster from a cds list"""
+    gbk = bs_genbank.GBK(None, bs_enums.SOURCE_TYPE.QUERY)
+    gbk.genes = cds_list
+    protocluster = bs_genbank.ProtoCluster(
+        gbk, 1, 0, len(cds_list) * 100, False, "", "", {}
+    )
+
+    protocore_start = cds_list[protocore_idx].nt_start
+    protocore_stop = cds_list[protocore_idx].nt_stop
+
+    protocore = bs_genbank.ProtoCore(gbk, 1, protocore_start, protocore_stop, False, "")
+
+    protocluster.proto_core[1] = None
+    protocluster.add_proto_core(protocore)
+
+    return protocluster
+
+
 class TestCDSLCS(unittest.TestCase):
     """Tests for the lcs module using CDS lists."""
 
@@ -82,7 +102,7 @@ class TestCDSLCS(unittest.TestCase):
         """Test lcs detection for two CDS lists"""
         cds_a, cds_b = generate_mock_cds_lists(10, 10, [1, 2, 3], [1, 2, 3], False)
 
-        lcs = bs_comparison.lcs.find_cds_lcs(cds_a, cds_b)
+        lcs = bs_comparison.lcs.find_cds_lcs_region(cds_a, cds_b)
 
         self.assertEqual(lcs, (1, 4, 1, 4, False))
 
@@ -90,7 +110,7 @@ class TestCDSLCS(unittest.TestCase):
         """Test lcs detection for two CDS lists, reverse"""
         cds_a, cds_b = generate_mock_cds_lists(10, 10, [1, 2, 3], [1, 2, 3], True)
 
-        lcs = bs_comparison.lcs.find_cds_lcs(cds_a, cds_b)
+        lcs = bs_comparison.lcs.find_cds_lcs_region(cds_a, cds_b)
 
         self.assertEqual(lcs, (1, 4, 6, 9, True))
 
@@ -98,7 +118,7 @@ class TestCDSLCS(unittest.TestCase):
         """Test lcs detection for two empty CDS lists"""
         cds_a, cds_b = generate_mock_cds_lists(0, 0, [], [], False)
 
-        lcs = bs_comparison.lcs.find_cds_lcs(cds_a, cds_b)
+        lcs = bs_comparison.lcs.find_cds_lcs_region(cds_a, cds_b)
 
         self.assertEqual(lcs, (0, 0, 0, 0, False))
 
@@ -106,7 +126,7 @@ class TestCDSLCS(unittest.TestCase):
         """Test lcs detection for two CDS lists where there are only matches of len=1"""
         cds_a, cds_b = generate_mock_cds_lists(10, 10, [1, 3, 5], [1, 3, 5], False)
 
-        lcs = bs_comparison.lcs.find_cds_lcs(cds_a, cds_b)
+        lcs = bs_comparison.lcs.find_cds_lcs_region(cds_a, cds_b)
 
         self.assertEqual(lcs, (1, 2, 1, 2, False))
 
@@ -116,7 +136,7 @@ class TestCDSLCS(unittest.TestCase):
         """
         cds_a, cds_b = generate_mock_cds_lists(10, 10, [1, 3, 5], [1, 3, 5], True)
 
-        lcs = bs_comparison.lcs.find_cds_lcs(cds_a, cds_b)
+        lcs = bs_comparison.lcs.find_cds_lcs_region(cds_a, cds_b)
 
         self.assertEqual(lcs, (1, 2, 8, 9, False))
 
@@ -126,7 +146,7 @@ class TestCDSLCS(unittest.TestCase):
             10, 10, [1, 2, 3, 5, 6], [1, 2, 3, 5, 6], False
         )
 
-        lcs = bs_comparison.lcs.find_cds_lcs(cds_a, cds_b)
+        lcs = bs_comparison.lcs.find_cds_lcs_region(cds_a, cds_b)
 
         self.assertEqual(lcs, (1, 4, 1, 4, False))
 
@@ -138,7 +158,7 @@ class TestCDSLCS(unittest.TestCase):
             10, 10, [1, 2, 3, 5, 6], [1, 2, 3, 5, 6], True
         )
 
-        lcs = bs_comparison.lcs.find_cds_lcs(cds_a, cds_b)
+        lcs = bs_comparison.lcs.find_cds_lcs_region(cds_a, cds_b)
 
         self.assertEqual(lcs, (1, 4, 6, 9, True))
 
@@ -152,7 +172,7 @@ class testDomainLCS(unittest.TestCase):
             10, 10, [1, 2, 2, 2, 3], [1, 2, 2, 2, 3], False
         )
 
-        lcs = bs_comparison.lcs.find_domain_lcs(cds_a, cds_b)
+        lcs = bs_comparison.lcs.find_domain_lcs_region(cds_a, cds_b)
 
         self.assertEqual(lcs, (1, 6, 1, 6, False))
 
@@ -162,7 +182,7 @@ class testDomainLCS(unittest.TestCase):
             10, 10, [1, 2, 2, 2, 3], [1, 2, 2, 2, 3], True
         )
 
-        lcs = bs_comparison.lcs.find_domain_lcs(cds_a, cds_b)
+        lcs = bs_comparison.lcs.find_domain_lcs_region(cds_a, cds_b)
 
         self.assertEqual(lcs, (1, 6, 6, 11, True))
 
@@ -170,7 +190,7 @@ class testDomainLCS(unittest.TestCase):
         """Test lcs detection for two empty domain lists"""
         cds_a, cds_b = generate_mock_cds_lists(0, 0, [], [], False)
 
-        lcs = bs_comparison.lcs.find_domain_lcs(cds_a, cds_b)
+        lcs = bs_comparison.lcs.find_domain_lcs_region(cds_a, cds_b)
 
         self.assertEqual(lcs, (0, 0, 0, 0, False))
 
@@ -178,7 +198,7 @@ class testDomainLCS(unittest.TestCase):
         """Test lcs detection for two domain lists where there are only matches of len=1"""
         cds_a, cds_b = generate_mock_cds_lists(10, 10, [1, 3, 5], [1, 3, 5], False)
 
-        lcs = bs_comparison.lcs.find_domain_lcs(cds_a, cds_b)
+        lcs = bs_comparison.lcs.find_domain_lcs_region(cds_a, cds_b)
 
         # should return most central, not first
         self.assertEqual(lcs, (5, 6, 5, 6, False))
@@ -189,7 +209,7 @@ class testDomainLCS(unittest.TestCase):
         """
         cds_a, cds_b = generate_mock_cds_lists(10, 10, [1, 3, 5], [1, 3, 6], True)
 
-        lcs = bs_comparison.lcs.find_domain_lcs(cds_a, cds_b)
+        lcs = bs_comparison.lcs.find_domain_lcs_region(cds_a, cds_b)
 
         # should return most central, not first
         self.assertEqual(lcs, (1, 2, 8, 9, False))
@@ -202,7 +222,7 @@ class testDomainLCS(unittest.TestCase):
             10, 10, [1, 2, 2, 3, 5, 6], [1, 2, 2, 3, 5, 6], False
         )
 
-        lcs = bs_comparison.lcs.find_domain_lcs(cds_a, cds_b)
+        lcs = bs_comparison.lcs.find_domain_lcs_region(cds_a, cds_b)
 
         self.assertEqual(lcs, (1, 5, 1, 5, False))
 
@@ -214,6 +234,61 @@ class testDomainLCS(unittest.TestCase):
             10, 10, [1, 2, 2, 3, 5, 6], [1, 2, 2, 3, 5, 6], True
         )
 
-        lcs = bs_comparison.lcs.find_domain_lcs(cds_a, cds_b)
+        lcs = bs_comparison.lcs.find_domain_lcs_region(cds_a, cds_b)
 
         self.assertEqual(lcs, (1, 5, 6, 10, True))
+
+
+class TestProtoclusterDomainLCS(unittest.TestCase):
+    """Tests for the lcs module using protocluster lists."""
+
+    def test_find_protocore_distance_before(self):
+        """Tests whether the distance to a protocore from a given index is calculated
+        correctly
+        """
+        cds_a, cds_b = generate_mock_cds_lists(
+            10, 10, [1, 2, 2, 2, 3], [1, 2, 2, 2, 3], False
+        )
+
+        # protocore is third cds
+        protocluster = generate_mock_protocluster(cds_a, 2)
+
+        expected_distance = 2
+
+        actual_distance = bs_comparison.lcs.find_protocore_distance(protocluster, 0)
+
+        self.assertEqual(expected_distance, actual_distance)
+
+    def test_find_protocore_distance_in_protocore(self):
+        """Tests whether the distance to a protocore from a given index is calculated
+        correctly
+        """
+        cds_a, cds_b = generate_mock_cds_lists(
+            10, 10, [1, 2, 2, 2, 3], [1, 2, 2, 2, 3], False
+        )
+
+        # protocore is third cds
+        protocluster = generate_mock_protocluster(cds_a, 2)
+
+        expected_distance = 0
+
+        actual_distance = bs_comparison.lcs.find_protocore_distance(protocluster, 2)
+
+        self.assertEqual(expected_distance, actual_distance)
+
+    def test_find_protocore_distance_after(self):
+        """Tests whether the distance to a protocore from a given index is calculated
+        correctly
+        """
+        cds_a, cds_b = generate_mock_cds_lists(
+            10, 10, [1, 2, 2, 2, 3], [1, 2, 2, 2, 3], False
+        )
+
+        # protocore is third cds
+        protocluster = generate_mock_protocluster(cds_a, 2)
+
+        expected_distance = 5
+
+        actual_distance = bs_comparison.lcs.find_protocore_distance(protocluster, 7)
+
+        self.assertEqual(expected_distance, actual_distance)

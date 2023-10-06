@@ -25,10 +25,36 @@ def find_lcs(list_a: list[Any], list_b: list[Any]) -> tuple[Match, list[Match]]:
     return match, matching_blocks
 
 
-def find_cds_lcs(
+def find_protocore_distance(protocluster: bs_genbank.Region, idx: int) -> int:
+    """Find the distance between a CDS and the closest protocore
+
+    Args:
+        protocluster (Region): protocluster
+        idx (int): index of CDS
+
+    Returns:
+        int: distance to closest protocore
+    """
+
+    if not isinstance(protocluster, bs_genbank.ProtoCluster):
+        raise TypeError("protocluster must be a protocluster")
+
+    min_dist = None
+    for protocore_idx in protocluster.proto_core_cds_idx:
+        dist = abs(protocore_idx - idx)
+        if min_dist is None or dist < min_dist:
+            min_dist = dist
+    return min_dist
+
+
+def find_cds_lcs_region(
     a_cds: list[bs_genbank.CDS], b_cds: list[bs_genbank.CDS]
 ) -> tuple[int, int, int, int, bool]:
     """Find the longest stretch of matching domains between two CDS lists
+
+    If there are LCS of the same length, the LCS closest to the middle of the region
+    is preferred (TODO)
+    TODO: maybe this is not useful at all
 
     Args:
         a_cds (list[CDS]): List of CDS
@@ -108,7 +134,7 @@ def find_cds_lcs(
     return a_start, a_stop, b_start, b_stop, reverse
 
 
-def find_domain_lcs(
+def find_domain_lcs_region(
     a_cds: list[bs_genbank.CDS], b_cds: list[bs_genbank.CDS]
 ) -> tuple[int, int, int, int, bool]:
     """Find the longest stretch of matching domains between two lists of domains
@@ -122,7 +148,7 @@ def find_domain_lcs(
     Returns:
         tuple[int, int, int, int, bool]: a_start, a_stop, b_start, b_stop, reverse
     """
-    # TODO: use lcs in protocore
+
     a_domains = []
     b_domains = []
     for cds in a_cds:
@@ -164,8 +190,8 @@ def find_domain_lcs(
 
         return a_start, a_stop, b_start, b_stop, reverse
 
-    # strategy here is different. if the length is 1, we want to use the most central
-    # match, not the first one
+    # equal lengths
+    # match of length 1 means we pick something in the middle
     if fwd_match_len == 1:
         # first find which region is shorter in terms of cds
         a_cds_len = len(a_cds)
