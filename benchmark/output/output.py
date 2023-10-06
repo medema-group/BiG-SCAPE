@@ -1,6 +1,7 @@
 """Contains output generation and formatting"""
 
 # from python
+import os
 from pathlib import Path
 
 
@@ -9,6 +10,20 @@ class OutputGenerator:
 
     def __init__(self, output_dir: Path) -> None:
         self.output_dir = output_dir
+
+    def initialize_output_dir(self):
+        """Set up output directory"""
+        if not self.output_dir.exists():
+            os.mkdir(self.output_dir)
+
+    def output_purities(self, purities: dict[str, float]) -> None:
+        """Write sorted computed GCF entropies to output tsv file"""
+        filename = self.output_dir / "GCF_purities.tsv"
+
+        with open(filename, "w") as outf:
+            outf.write("GCF name\tPurity\n")
+            for family in sorted(purities, key=lambda f: purities[f], reverse=True):
+                outf.write(f"{family}\t{purities[family]}\n")
 
     def output_entropies(self, entropies: dict[str, float]) -> None:
         """Write sorted computed GCF entropies to output tsv file"""

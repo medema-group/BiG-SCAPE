@@ -18,15 +18,18 @@ def run_benchmark() -> None:
     args = parse_cmd(sys.argv[1:])
 
     # load in both curated and copmuted GCF data
-    data = BenchmarkData(args.curated_gcfs, args.computed_gcfs)
+    db_path = args.computed_gcfs / "data_sqlite.db"
+    data = BenchmarkData(args.curated_gcfs, db_path)
     data.load_curated_labels()
     data.load_computed_labels()
 
     # calculate metrics
     # v_measure = BenchmarkMetrics.calculate_v_measure(data)
-    # purity = BenchmarkMetrics.calculate_purity(data)
+    purities = BenchmarkMetrics.calculate_purity(data)
     entropies = BenchmarkMetrics.calculate_entropy(data)
 
     # output
     outputter = OutputGenerator(args.output_dir)
+    outputter.initialize_output_dir()
+    outputter.output_purities(purities)
     outputter.output_entropies(entropies)
