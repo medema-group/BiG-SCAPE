@@ -8,6 +8,8 @@ import sys
 # from other modules
 from benchmark.parameters import parse_cmd
 from benchmark.data import BenchmarkData
+from benchmark.metrics import BenchmarkMetrics
+from benchmark.output import OutputGenerator
 
 
 def run_benchmark() -> None:
@@ -21,3 +23,10 @@ def run_benchmark() -> None:
     data.load_computed_labels()
 
     # calculate metrics
+    # v_measure = BenchmarkMetrics.calculate_v_measure(data)
+    # purity = BenchmarkMetrics.calculate_purity(data)
+    entropies = BenchmarkMetrics.calculate_entropy(data)
+
+    # output
+    outputter = OutputGenerator(args.output_dir)
+    outputter.output_entropies(entropies)
