@@ -1,1 +1,0 @@
-"""Contains benchmark funtionality"""

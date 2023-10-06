@@ -25,12 +25,14 @@ class BenchmarkData:
         self.db_path = db_path
 
     def load_curated_labels(self):
-        """Read tsv (?) file with curated GCF assignments"""
+        """Read tsv file with curated GCF assignments"""
         with open(self.curated_path) as inf:
             _ = inf.readline()
-            self.curated_labels = {
-                bgc: family for line in inf for bgc, family in line.strip().split("\t")
-            }
+            data = {}
+            for line in inf:
+                bgc, family = line.strip().split("t")
+                data[bgc] = family
+            self.curated_labels = data
 
     def load_computed_labels(self):
         """Load copmuted GCF assignments from database"""
