@@ -1,4 +1,4 @@
-"""Contains benchmarking functionality and evaluation"""
+"""Contains benchmark data loading and storage"""
 
 # from python
 from pathlib import Path

@@ -1,4 +1,4 @@
-"""Contains calculation of benchmarking evalutaion metrics"""
+"""Contains calculation of benchmarking evaluation metrics"""
 
 # from python
 from collections import Counter
@@ -12,7 +12,7 @@ from benchmark.data import BenchmarkData
 
 
 class BenchmarkMetrics:
-    """Class to store evaluation metrics calculation functions"""
+    """Class to store evaluation metric calculation functions"""
 
     @staticmethod
     def calculate_v_measure(data: BenchmarkData) -> float:
@@ -20,6 +20,12 @@ class BenchmarkMetrics:
 
         Following Rosenberg and Hirschberg:
         V-measure: A conditional entropy-based external cluster evaluation measure.
+
+        Args:
+            data (BenchmarkData): object containing curated and computed GCF data
+
+        Returns:
+            float: V-measure
         """
         computed_bgcs = data.computed_labels.keys()
 
@@ -30,10 +36,16 @@ class BenchmarkMetrics:
 
     @staticmethod
     def calculate_purity(data: BenchmarkData) -> dict[str, float]:
-        """Calculate purity P of computed GCFs
+        """Calculate purity P of each computed GCF
 
         A score close to 1 indicates most computed clusters contains a single label based
         on the curated group of GCFs.
+
+        Args:
+            data (BenchmarkData): object containing curated and computed GCF data
+
+        Returns:
+            dict[str, float]: dictionary containing each family and their purity
         """
         computed_families: dict[str, list[str]] = {}
         for bgc, family in data.computed_labels.items():
@@ -48,7 +60,14 @@ class BenchmarkMetrics:
 
     @staticmethod
     def calculate_entropy(data: BenchmarkData) -> dict[str, float]:
-        """Calculate entropy for each computed GCF"""
+        """Calculate entropy of each computed GCF
+
+        Args:
+            data (BenchmarkData): object containing curated and computed GCF data
+
+        Returns:
+            dict[str, float]: dictionary containing each family and their entropy
+        """
         computed_families: dict[str, list[str]] = {}
         for bgc, family in data.computed_labels.items():
             computed_families.setdefault(family, []).append(bgc)

@@ -1,4 +1,4 @@
-"""Module contains command parser for parsing benchmark workflow arguments"""
+"""Contains command parser for parsing benchmark workflow arguments"""
 
 # from python
 from argparse import ArgumentParser
@@ -8,7 +8,7 @@ from pathlib import Path
 def parse_cmd(args):
     """Parse arguments from command line
 
-    Arguments:
+    Args:
         args (list): list of command line arguments
 
     Returns:
@@ -21,12 +21,12 @@ def parse_cmd(args):
 
     parser.add_argument(
         "-i",
-        "--computed_gcfs",
-        dest="computed_gcfs",
+        "--bigscape_dir",
+        dest="bigscape_dir",
         default=None,
         type=Path,
         required=True,
-        help="Path pointing to the ouput folder of a BiG-SCAPE run",
+        help="Path pointing to the output folder of a BiG-SCAPE run",
     )
 
     parser.add_argument(

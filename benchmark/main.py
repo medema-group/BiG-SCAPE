@@ -3,8 +3,6 @@
 # from python
 import sys
 
-# from dependencies
-
 # from other modules
 from benchmark.parameters import parse_cmd
 from benchmark.data import BenchmarkData
@@ -13,13 +11,12 @@ from benchmark.output import OutputGenerator
 
 
 def run_benchmark() -> None:
-    """Run a benchmarking workflow. This will (if needed) run BiG-SCAPE on provided
-    input data and evaluate computed GCFs based on a provided curated GCFs"""
+    """Benchmark: compare BiG-SCAPE output with curated GCF assignments"""
     args = parse_cmd(sys.argv[1:])
 
     # load in both curated and copmuted GCF data
     db_path = args.computed_gcfs / "data_sqlite.db"
-    data = BenchmarkData(args.curated_gcfs, db_path)
+    data = BenchmarkData(args.bigscape_dir, db_path)
     data.load_curated_labels()
     data.load_computed_labels()
 
