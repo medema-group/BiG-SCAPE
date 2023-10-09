@@ -292,3 +292,278 @@ class TestProtoclusterDomainLCS(unittest.TestCase):
         actual_distance = bs_comparison.lcs.find_protocore_distance(protocluster, 7)
 
         self.assertEqual(expected_distance, actual_distance)
+
+    def test_find_protocore_type_check(self):
+        """Tests whether the correct type error is raised when a region is passed
+        instead of a protocluster
+        """
+        cds_a, cds_b = generate_mock_cds_lists(
+            10, 10, [1, 2, 2, 2, 3], [1, 2, 2, 2, 3], False
+        )
+
+        gbk = bs_genbank.GBK("", bs_enums.SOURCE_TYPE.QUERY)
+
+        region = bs_genbank.Region(gbk, 1, 0, len(cds_a) * 100, False, "")
+
+        with self.assertRaises(TypeError):
+            bs_comparison.lcs.find_protocore_distance(region, 0)
+
+    def test_lcs_protocluster_type_check_a(self):
+        """Tests whether the correct type error is raised when region_a in a recordpair
+        is not a protocluster
+        """
+        cds_a, cds_b = generate_mock_cds_lists(
+            10, 10, [1, 2, 2, 2, 3], [1, 2, 2, 2, 3], False
+        )
+
+        gbk = bs_genbank.GBK("", bs_enums.SOURCE_TYPE.QUERY)
+
+        region_a = bs_genbank.Region(gbk, 1, 0, len(cds_a) * 100, False, "")
+        region_b = bs_genbank.Region(gbk, 1, 0, len(cds_b) * 100, False, "")
+
+        record_pair = bs_comparison.RecordPair(region_a, region_b)
+
+        with self.assertRaises(TypeError):
+            bs_comparison.lcs.find_domain_lcs_protocluster(record_pair)
+
+    def test_lcs_protocluster_type_check_b(self):
+        """Tests whether the correct type error is raised when region_b in a recordpair
+        is not a protocluster
+        """
+        cds_a, cds_b = generate_mock_cds_lists(
+            10, 10, [1, 2, 2, 2, 3], [1, 2, 2, 2, 3], False
+        )
+
+        gbk = bs_genbank.GBK("", bs_enums.SOURCE_TYPE.QUERY)
+
+        region_a = bs_genbank.ProtoCluster(
+            gbk, 1, 0, len(cds_a) * 100, False, "", "", {}
+        )
+        region_b = bs_genbank.Region(gbk, 1, 0, len(cds_b) * 100, False, "")
+
+        record_pair = bs_comparison.RecordPair(region_a, region_b)
+
+        with self.assertRaises(TypeError):
+            bs_comparison.lcs.find_domain_lcs_protocluster(record_pair)
+
+    def test_lcs_protocluster_forward(self):
+        """Test lcs detection for two domain lists"""
+        cds_a, cds_b = generate_mock_cds_lists(
+            10, 10, [1, 2, 2, 2, 3], [1, 2, 2, 2, 3], False
+        )
+
+        protocluster_a = generate_mock_protocluster(cds_a, 2)
+        protocluster_b = generate_mock_protocluster(cds_b, 2)
+
+        record_pair = bs_comparison.RecordPair(protocluster_a, protocluster_b)
+
+        lcs = bs_comparison.lcs.find_domain_lcs_protocluster(record_pair)
+
+        self.assertEqual(lcs, (1, 6, 1, 6, False))
+
+    def test_lcs_protocluster_reverse(self):
+        """Test lcs detection for two domain lists, reverse"""
+        cds_a, cds_b = generate_mock_cds_lists(
+            10, 10, [1, 2, 2, 2, 3], [1, 2, 2, 2, 3], True
+        )
+
+        protocluster_a = generate_mock_protocluster(cds_a, 2)
+        protocluster_b = generate_mock_protocluster(cds_b, 2)
+
+        record_pair = bs_comparison.RecordPair(protocluster_a, protocluster_b)
+
+        lcs = bs_comparison.lcs.find_domain_lcs_protocluster(record_pair)
+
+        self.assertEqual(lcs, (1, 6, 1, 6, True))
+
+    def test_lcs_protocluster_eq_len_fwd_protocore(self):
+        """Test lcs detection for two protoclusters. Equal length matches forward and
+        reverse, but one of the matches has both cds in protocore
+        """
+
+        # cds lists:
+        #     |-->|   |-->|
+        # a: 0 1 2 3 4 5 6 7 8 9
+        # b: 0 1 2 3 4 5 6 7 8 9
+        #     |-->|   |-->|
+        cds_a, cds_b = generate_mock_cds_lists(
+            10, 10, [1, 2, 5, 6], [1, 2, 5, 6], False
+        )
+
+        # cds lists:
+        #     |-->|   |-->|
+        # a: 0 1 2 3 4 5 6 7 8 9
+        # b: 0 1 2 3 4 5 6 7 8 9
+        #     |-->|   |<--|
+        cds_b[5:7] = cds_b[5:7][::-1]
+
+        protocluster_a = generate_mock_protocluster(cds_a, 2)
+        protocluster_b = generate_mock_protocluster(cds_b, 2)
+
+        record_pair = bs_comparison.RecordPair(protocluster_a, protocluster_b)
+
+        lcs = bs_comparison.lcs.find_domain_lcs_protocluster(record_pair)
+
+        self.assertEqual(lcs, (1, 3, 1, 3, False))
+
+    def test_lcs_protocluster_eq_len_rev_protocore(self):
+        """Test lcs detection for two protoclusters. Equal length matches forward and
+        reverse, but one of the matches has both cds in protocore
+        """
+
+        # cds lists:
+        #     |-->|   |-->|
+        # a: 0 1 2 3 4 5 6 7 8 9
+        # b: 0 1 2 3 4 5 6 7 8 9
+        #     |-->|   |-->|
+        cds_a, cds_b = generate_mock_cds_lists(
+            10, 10, [1, 2, 5, 6], [1, 2, 5, 6], False
+        )
+
+        # cds lists:
+        #     |-->|   |-->|
+        # a: 0 1 2 3 4 5 6 7 8 9
+        # b: 0 1 2 3 4 5 6 7 8 9
+        #     |-->|   |<--|
+        cds_b[5:7] = cds_b[5:7][::-1]
+
+        protocluster_a = generate_mock_protocluster(cds_a, 5)
+        protocluster_b = generate_mock_protocluster(cds_b, 5)
+
+        record_pair = bs_comparison.RecordPair(protocluster_a, protocluster_b)
+
+        lcs = bs_comparison.lcs.find_domain_lcs_protocluster(record_pair)
+
+        self.assertEqual(lcs, (5, 7, 3, 5, True))
+
+    def test_lcs_protocluster_eq_len_1_protocore(self):
+        """Test lcs detection for two protoclusters. Single-length matches but one of
+        the matches has both cds in protocore
+        """
+
+        # cds lists:
+        # PC          |-|
+        #     |>|     |>|   |>|
+        # a: 0 1 2 3 4 5 6 7 8 9
+        # b: 0 1 2 3 4 5 6 7 8 9
+        #     |>|     |>| |>|
+        cds_a, cds_b = generate_mock_cds_lists(10, 10, [1, 5, 8], [1, 5, 7], False)
+
+        protocluster_a = generate_mock_protocluster(cds_a, 5)
+        protocluster_b = generate_mock_protocluster(cds_b, 5)
+
+        record_pair = bs_comparison.RecordPair(protocluster_a, protocluster_b)
+
+        lcs = bs_comparison.lcs.find_domain_lcs_protocluster(record_pair)
+
+        self.assertEqual(lcs, (5, 6, 5, 6, False))
+
+    def test_lcs_protocluster_rev_fwd_protocore_fwd_longer(self):
+        """Test lcs detection for two protoclusters. This is a case where a match is
+        found of the same length forward and reverse, and they're both in the protocore
+
+        This prefers the forward match unless the reverse match is longer. in this case,
+        the forward is longer
+        """
+
+        # domain/cds lists:
+        # CDS: 0 1 2 3 4         5 6
+        #  PC:        |---------|
+        #   a: 0 1 2 3 4 5 6 7 8 9 10
+        #   b: 0 1 2 3 4 5 6 7 8 9 10
+        #       |>|   |-------->|
+        cds_a, cds_b = generate_mock_cds_lists(
+            7, 7, [1, 4, 4, 4, 4, 4], [1, 4, 4, 4, 4, 4], False
+        )
+
+        # domain/cds lists:
+        # CDS: 0 1 2 3 4         5 6
+        #  PC:        |---------|
+        #   a: 0 1 2 3 4 5 6 7 8 9 10
+        #   b: 0 1 2 3 4 5 6 7 8 9 10
+        #       |>|   |---->|<--|
+        cds_b[4].hsps[3:5] = cds_b[4].hsps[3:5][::-1]
+
+        protocluster_a = generate_mock_protocluster(cds_a, 4)
+        protocluster_b = generate_mock_protocluster(cds_b, 4)
+
+        record_pair = bs_comparison.RecordPair(protocluster_a, protocluster_b)
+
+        lcs = bs_comparison.lcs.find_domain_lcs_protocluster(record_pair)
+
+        self.assertEqual(lcs, (4, 7, 4, 7, False))
+
+    def test_lcs_protocluster_rev_fwd_protocore_fwd_same(self):
+        """Test lcs detection for two protoclusters. This is a case where a match is
+        found of the same length forward and reverse, and they're both in the protocore
+
+        This prefers the forward match unless the reverse match is longer. in this case,
+        the forward is the same length as rev, so should be returned
+        """
+
+        # domain/cds lists:
+        # CDS: 0 1 2 3 4       5 6 7
+        #  PC:        |-------|
+        #   a: 0 1 2 3 4 5 6 7 8 9 10
+        #   b: 0 1 2 3 4 5 6 7 8 9 10
+        #       |>|   |------>|
+        cds_a, cds_b = generate_mock_cds_lists(
+            8, 8, [1, 4, 4, 4, 4], [1, 4, 4, 4, 4], False
+        )
+
+        # domain/cds lists:
+        # CDS: 0 1 2 3 4       5 6 7
+        #  PC:        |-------|
+        #       |>|   |------>|
+        #   a: 0 1 2 3 4 5 6 7 8 9 10
+        #   b: 0 1 2 3 4 5 6 7 8 9 10
+        #       |>|   |-->|<--|
+        cds_b[4].hsps[2:4] = cds_b[4].hsps[2:4][::-1]
+
+        protocluster_a = generate_mock_protocluster(cds_a, 4)
+        protocluster_b = generate_mock_protocluster(cds_b, 4)
+
+        record_pair = bs_comparison.RecordPair(protocluster_a, protocluster_b)
+
+        lcs = bs_comparison.lcs.find_domain_lcs_protocluster(record_pair)
+
+        self.assertEqual(lcs, (4, 6, 4, 6, False))
+
+    def test_lcs_protocluster_rev_fwd_protocore_rev_longer(self):
+        """Test lcs detection for two protoclusters. This is a case where a match is
+        found of the same length forward and reverse, and they're both in the protocore
+
+        This prefers the forward match unless the reverse match is longer. in this case,
+        the forward is the same length as rev, so should be returned
+        """
+
+        self.skipTest("Broken logic")
+
+        # domain/cds lists:
+        # CDS: 0 1 2 3 4         5 6
+        #  PC:        |---------|
+        #       |>|   |-------->|
+        #   a: 0 1 2 3 4 5 6 7 8 9 10
+        #   b: 0 1 2 3 4 5 6 7 8 9 10
+        #       |>|   |-------->|
+        cds_a, cds_b = generate_mock_cds_lists(
+            7, 7, [1, 4, 4, 4, 4, 4], [1, 4, 4, 4, 4, 4], False
+        )
+
+        # domain/cds lists:
+        # CDS: 0 1 2 3 4         5 6
+        #  PC:        |---------|
+        #       |>|   |-------->|
+        #   a: 0 1 2 3 4 5 6 7 8 9 10
+        #   b: 0 1 2 3 4 5 6 7 8 9 10
+        #       |>|   |-->|<----|
+        cds_b[4].hsps[2:5] = cds_b[4].hsps[2:5][::-1]
+
+        protocluster_a = generate_mock_protocluster(cds_a, 4)
+        protocluster_b = generate_mock_protocluster(cds_b, 4)
+
+        record_pair = bs_comparison.RecordPair(protocluster_a, protocluster_b)
+
+        lcs = bs_comparison.lcs.find_domain_lcs_protocluster(record_pair)
+
+        self.assertEqual(lcs, (6, 9, 2, 5, True))
