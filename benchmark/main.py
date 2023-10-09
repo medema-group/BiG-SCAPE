@@ -22,13 +22,21 @@ def run_benchmark() -> None:
     data.load_computed_labels()
 
     # calculate metrics
-    v_measure = BenchmarkMetrics.calculate_v_measure(data)
-    purities = BenchmarkMetrics.calculate_purity(data)
-    entropies = BenchmarkMetrics.calculate_entropy(data)
+    for fam_cutoff in data.computed_labels.keys():
+        computed_labels_in_cutoff = data.computed_labels[fam_cutoff]
+        v_measure = BenchmarkMetrics.calculate_v_measure(
+            data.curated_labels, computed_labels_in_cutoff
+        )
+        purities = BenchmarkMetrics.calculate_purity(
+            data.curated_labels, computed_labels_in_cutoff
+        )
+        entropies = BenchmarkMetrics.calculate_entropy(
+            data.curated_labels, computed_labels_in_cutoff
+        )
 
-    # output
-    outputter = OutputGenerator(args.output_dir)
-    outputter.initialize_output_dir()
-    outputter.output_v_measure(v_measure)
-    outputter.output_purities(purities)
-    outputter.output_entropies(entropies)
+        # output
+        outputter = OutputGenerator(args.output_dir / f"cutoff_{fam_cutoff}")
+        outputter.initialize_output_dir()
+        outputter.output_v_measure(v_measure)
+        outputter.output_purities(purities)
+        outputter.output_entropies(entropies)

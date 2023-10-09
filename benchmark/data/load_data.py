@@ -29,7 +29,6 @@ class BenchmarkData:
                 data[bgc] = family
             self.curated_labels = data
 
-    # TODO: loading runs with multiple GCF cutoffs
     def load_computed_labels(self):
         """Load computed GCF assignments from database"""
         DB.load_from_disk(self.db_path)
@@ -41,11 +40,12 @@ class BenchmarkData:
             fam_table.join(record_table, fam_table.c.record_id == record_table.c.id)
             .join(gbk_table, record_table.c.gbk_id == gbk_table.c.id)
             .select()
-            .add_columns(fam_table.c.record_id, fam_table.c.family, gbk_table.c.path)
+            .add_columns(fam_table.c.cutoff, fam_table.c.family, gbk_table.c.path)
             .compile()
         )
 
         cursor_results = DB.execute(select_query)
-        self.computed_labels = {
-            Path(result.path).stem: result.family for result in cursor_results
-        }
+        self.computed_labels = {}
+        for result in cursor_results:
+            bgc_name = Path(result.path).stem
+            self.computed_labels.setdefault(result.cutoff, {})[bgc_name] = result.family
