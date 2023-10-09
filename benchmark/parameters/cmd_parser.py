@@ -69,7 +69,7 @@ def validate_args(args):
     if not (args.bigscape_dir / "data_sqlite.db").exists():
         raise InvalidArgumentError("--bigscape_dir", args.bigscape_dir)
 
-    if not args.curated_gcfs.exists() or not args.curated_gcfs.isfile():
+    if not args.curated_gcfs.exists() or not args.curated_gcfs.is_file():
         raise InvalidArgumentError("--curated_gcfs", args.curated_gcfs)
 
     # empty file

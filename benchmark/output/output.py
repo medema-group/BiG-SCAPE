@@ -51,20 +51,24 @@ class OutputGenerator:
         v_measure: float,
         purities: dict[str, float],
         entropies: dict[str, float],
-        nr_cur_fams: int,
-        nr_comp_fams: int,
-        avg_cur_size: float,
-        avg_comp_size: float,
+        associations: tuple[float, float, float, float],
+        summary_stats: tuple[float, float, float, float, int, int],
     ) -> None:
         """Output summary file comparing curated and computed GCF assignments"""
         filename = self.output_dir / "Summary.tsv"
-
+        correct, wrong, present, missing = associations
+        cur_fams, comp_fams, cur_size, comp_size, cur_sing, comp_sing = summary_stats
         with open(filename, "w") as outf:
             outf.write(
                 "\tCurated_GCFs\tComputed_GCFs\n"
-                + f"Number of families\t{nr_cur_fams}\t{nr_comp_fams}\n"
-                + f"Average family size\t{avg_cur_size}\t{avg_comp_size}\n\n"
-                + f"V-measure\t{v_measure}\n"
-                + f"Average purity\t{np.average(list(purities.values()))}\n"
-                + f"Average entropy\t{np.average(list(entropies.values()))}\n"
+                + f"Number of families\t{cur_fams}\t{comp_fams}\n"
+                + f"Number of singletons\t{cur_sing}\t{comp_sing}\n"
+                + f"Average family size\t{cur_size:.2f}\t{comp_size:.2f}\n\n"
+                + f"V-measure\t{v_measure:.4f}\n"
+                + f"Average purity\t{np.average(list(purities.values())):.4f}\n"
+                + f"Average entropy\t{np.average(list(entropies.values())):.4f}\n"
+                + f"Fraction of correct associations per BGC\t{correct:.4f}\n"
+                + f"Fraction of wrong   associations per BGC\t{wrong:.4f}\n"
+                + f"Fraction of present curated associations per BGC\t{present:.4f}\n"
+                + f"Fraction of missing curated associations per BGC\t{missing:.4f}\n"
             )

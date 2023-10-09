@@ -24,23 +24,12 @@ def run_benchmark() -> None:
     # calculate metrics
     for fam_cutoff in data.computed_labels.keys():
         computed_labels_in_cutoff = data.computed_labels[fam_cutoff]
-        v_measure = BenchmarkMetrics.calculate_v_measure(
-            data.curated_labels, computed_labels_in_cutoff
-        )
-        purities = BenchmarkMetrics.calculate_purity(
-            data.curated_labels, computed_labels_in_cutoff
-        )
-        entropies = BenchmarkMetrics.calculate_entropy(
-            data.curated_labels, computed_labels_in_cutoff
-        )
-        (
-            nr_cur_fams,
-            nr_comp_fams,
-            avg_cur_size,
-            avg_comp_size,
-        ) = BenchmarkMetrics.calculate_summary(
-            data.curated_labels, computed_labels_in_cutoff
-        )
+        metrics = BenchmarkMetrics(data.curated_labels, computed_labels_in_cutoff)
+        v_measure = metrics.calculate_v_measure()
+        purities = metrics.calculate_purity()
+        entropies = metrics.calculate_entropy()
+        associations = metrics.compare_association()
+        summary_stats = metrics.calculate_summary()
 
         # output
         outputter = OutputGenerator(args.output_dir / f"cutoff_{fam_cutoff}")
@@ -49,11 +38,5 @@ def run_benchmark() -> None:
         outputter.output_purities(purities)
         outputter.output_entropies(entropies)
         outputter.output_summary(
-            v_measure,
-            purities,
-            entropies,
-            nr_cur_fams,
-            nr_comp_fams,
-            avg_cur_size,
-            avg_comp_size,
+            v_measure, purities, entropies, associations, summary_stats
         )
