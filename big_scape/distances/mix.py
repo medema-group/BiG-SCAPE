@@ -4,6 +4,7 @@
 import logging
 
 # from other modules
+import big_scape.data as bs_data
 import big_scape.parameters as bs_param
 import big_scape.genbank as bs_gbk
 import big_scape.comparison as bs_comparison
@@ -40,19 +41,21 @@ def calculate_distances_mix(
     if num_pairs > 0:
         logging.info("Calculating distances for %d pairs", num_pairs)
 
-        def callback(done_pairs):
-            if mix_bin.num_pairs() > 10:
-                mod = round(mix_bin.num_pairs() / 10)
-            else:
-                mod = 1
+        last = 0
 
-            if done_pairs % mod == 0:
+        def callback(done_pairs):
+            nonlocal last
+
+            if done_pairs - last > 10000:
                 logging.info(
                     "%d/%d (%.2f%%)",
                     done_pairs,
-                    mix_bin.num_pairs(),
-                    done_pairs / mix_bin.num_pairs() * 100,
+                    num_pairs,
+                    done_pairs / num_pairs * 100,
                 )
+                last = done_pairs
+
+            bs_data.DB.commit()
 
         mix_edges = bs_comparison.generate_edges(
             missing_edge_bin, run.comparison.alignment_mode, run.cores, callback
