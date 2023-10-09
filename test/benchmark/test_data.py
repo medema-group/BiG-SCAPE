@@ -40,6 +40,7 @@ class TestBenchmarkData(TestCase):
                 "CM000574.1.cluster030": 3,
                 "CM000578.1.cluster010": 11,
                 "CM000602.2.cluster010": 11,
+                "CM003198.1.cluster001": 6,
                 "CM003198.1.cluster026": 11,
                 "HF679024.1.cluster002": 11,
                 "HG323944.1.cluster001": 2,

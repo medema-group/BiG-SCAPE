@@ -49,3 +49,20 @@ class BenchmarkData:
         for result in cursor_results:
             bgc_name = Path(result.path).stem
             self.computed_labels.setdefault(result.cutoff, {})[bgc_name] = result.family
+
+        # add missing singletons per cutoff
+        select_query = (
+            record_table.join(gbk_table, record_table.c.gbk_id == gbk_table.c.id)
+            .select()
+            .add_columns(gbk_table.c.path, record_table.c.id)
+            .compile()
+        )
+        cursor_results = DB.execute(select_query)
+        name_to_record_id = {
+            Path(result.path).stem: result.id for result in cursor_results
+        }
+
+        for cutoff in self.computed_labels.keys():
+            for name in name_to_record_id.keys():
+                if name not in self.computed_labels[cutoff]:
+                    self.computed_labels[cutoff][name] = name_to_record_id[name]

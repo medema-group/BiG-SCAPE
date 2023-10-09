@@ -18,7 +18,7 @@ class OutputGenerator:
     def initialize_output_dir(self):
         """Set up output directory"""
         if not self.output_dir.exists():
-            os.mkdir(self.output_dir)
+            os.makedirs(self.output_dir)
 
     def output_v_measure(self, v_measure: float) -> None:
         """Write computed GCF V measure to output txt file"""

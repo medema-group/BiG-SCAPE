@@ -78,6 +78,9 @@ class BenchmarkMetrics:
         entropies: dict[str, float] = {}
         for family, bgcs in computed_families.items():
             curated_labels_in_fam = [curated_labels[bgc] for bgc in bgcs]
-            pk = [curated_labels_in_fam.count(label) for label in set(curated_labels)]
+            pk = [
+                curated_labels_in_fam.count(label)
+                for label in set(curated_labels_in_fam)
+            ]
             entropies[family] = entropy(pk, base=2)
         return entropies
