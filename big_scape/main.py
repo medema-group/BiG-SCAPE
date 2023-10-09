@@ -3,6 +3,7 @@
 # from python
 import sys
 import os
+import signal
 import logging
 from datetime import datetime
 import platform
@@ -35,7 +36,24 @@ def run_bigscape() -> None:
     """Run a bigscape analysis. This is the main function of the program that parses the
     command line arguments, loads the data, runs the analysis and saves the output.
     """
+    # root directory
     bigscape_dir = Path(os.path.dirname(os.path.abspath(__file__)))
+
+    main_pid = os.getpid()
+
+    # capture ctrl-c for database saving and other cleanup
+    def signal_handler(sig, frame):
+        nonlocal main_pid
+        # return if not main process
+        if os.getpid() != main_pid:
+            return
+        if DB.opened():
+            logging.warning("User requested SIGINT. Saving database and exiting")
+            DB.commit()
+            DB.save_to_disk(run.output.db_path)
+        sys.exit(0)
+
+    signal.signal(signal.SIGINT, signal_handler)
 
     # parsing needs to come first because we need it in setting up the logging
     run: RunParameters = parse_cmd(sys.argv[1:])
