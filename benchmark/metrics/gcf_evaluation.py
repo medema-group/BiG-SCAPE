@@ -5,7 +5,7 @@ from collections import Counter
 
 # from dependencies
 import numpy as np
-from sklearn.metrics import v_measure_score
+from sklearn.metrics import homogeneity_completeness_v_measure
 from scipy.stats import entropy
 
 
@@ -31,21 +31,21 @@ class BenchmarkMetrics:
             fam_index.setdefault(fam, []).append(bgc)
         return fam_index
 
-    def calculate_v_measure(self) -> float:
+    def calculate_v_measure(self) -> tuple[float, float, float]:
         """Calculate V-measure between curated and computed GCF assignments
 
         Following Rosenberg and Hirschberg:
         V-measure: A conditional entropy-based external cluster evaluation measure.
 
         Returns:
-            float: V-measure
+            tuple[float, float, float]: homogeneity, completeness and V-measure
         """
         computed_bgcs = self.computed_labels.keys()
 
         curated_fams = [self.curated_labels[bgc] for bgc in computed_bgcs]
         computed_fams = [self.computed_labels[bgc] for bgc in computed_bgcs]
 
-        return v_measure_score(curated_fams, computed_fams)
+        return homogeneity_completeness_v_measure(curated_fams, computed_fams)
 
     def calculate_purity(self) -> dict[str, float]:
         """Calculate purity P of each computed GCF

@@ -21,13 +21,6 @@ class OutputGenerator:
         if not self.output_dir.exists():
             os.makedirs(self.output_dir)
 
-    def output_v_measure(self, v_measure: float) -> None:
-        """Write computed GCF V measure to output txt file"""
-        filename = self.output_dir / "GCF_V_measure.txt"
-
-        with open(filename, "w") as outf:
-            outf.write(f"Computed V-measure: {v_measure}\n")
-
     def output_purities(self, purities: dict[str, float]) -> None:
         """Write sorted computed GCF purities to output tsv file"""
         filename = self.output_dir / "GCF_purities.tsv"
@@ -48,6 +41,8 @@ class OutputGenerator:
 
     def output_summary(
         self,
+        homogeneity: float,
+        completeness: float,
         v_measure: float,
         purities: dict[str, float],
         entropies: dict[str, float],
@@ -65,8 +60,10 @@ class OutputGenerator:
                 + f"Number of singletons\t{cur_sing}\t{comp_sing}\n"
                 + f"Average family size\t{cur_size:.2f}\t{comp_size:.2f}\n\n"
                 + f"V-measure\t{v_measure:.4f}\n"
+                + f"Homogeneity\t{homogeneity:.4f}\n"
+                + f"Completeness\t{completeness:.4f}\n\n"
                 + f"Average purity\t{np.average(list(purities.values())):.4f}\n"
-                + f"Average entropy\t{np.average(list(entropies.values())):.4f}\n"
+                + f"Average entropy\t{np.average(list(entropies.values())):.4f}\n\n"
                 + f"Fraction of correct associations per BGC\t{correct:.4f}\n"
                 + f"Fraction of wrong   associations per BGC\t{wrong:.4f}\n"
                 + f"Fraction of present curated associations per BGC\t{present:.4f}\n"
