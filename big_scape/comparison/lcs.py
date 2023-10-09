@@ -1,5 +1,16 @@
 """Contains functions for computing the longest common subsequence between two lists
-of domains or CDS in a RecordPair"""
+of domains or CDS in a RecordPair
+
+Into any of the main functions in this module goes a RecordPair object, which contains
+two regions. These regions can be either protoclusters or full regions. The functions
+in this module are used to find the longest common subsequence between the two regions
+in the RecordPair. This is used in extension as a "seed" for the extension.
+
+The result from the main functions are tuples with the following structure:
+    (a_start, a_stop, b_start, b_stop, reverse)
+Where a and b are the two regions in the RecordPair. Start is inclusive, stop is
+exclusive. Reverse is a boolean indicating whether the match is in reverse
+"""
 
 # from python
 from typing import Any
@@ -83,6 +94,7 @@ def get_lcs_protocores(
     # pair.region_b.proto_core_cds_idx. we need to make a similar index on domain level
     a_proto_core_domain_idx = set()
     b_proto_core_domain_idx = set()
+
     domain_idx = 0
     for idx, cds in enumerate(pair.region_a.get_cds()):
         if idx not in pair.region_a.proto_core_cds_idx:
@@ -103,34 +115,37 @@ def get_lcs_protocores(
             b_proto_core_domain_idx.add(domain_idx)
             domain_idx += 1
 
+    # we need to keep track of this to correct for the reverse later
+    b_num_domains = domain_idx
+
     for a_idx, b_idx, match_len in matching_blocks:
         # if match len > 1, check all the indexes in the match
 
         if reverse:
-            b_idx = len(pair.region_b.get_cds()) - b_idx - match_len
+            b_idx = b_num_domains - b_idx - match_len
 
         if match_len > 1:
             a_in_protocore = any(
                 [
-                    idx in pair.region_a.proto_core_cds_idx
+                    idx in a_proto_core_domain_idx
                     for idx in range(a_idx, a_idx + match_len)
                 ]
             )
             b_in_protocore = any(
                 [
-                    idx in pair.region_b.proto_core_cds_idx
+                    idx in b_proto_core_domain_idx
                     for idx in range(b_idx, b_idx + match_len)
                 ]
             )
         else:
-            a_in_protocore = a_idx in pair.region_a.proto_core_cds_idx
-            b_in_protocore = b_idx in pair.region_b.proto_core_cds_idx
+            a_in_protocore = a_idx in a_proto_core_domain_idx
+            b_in_protocore = b_idx in b_proto_core_domain_idx
 
         # exit early if both are in a protocore
         if a_in_protocore and b_in_protocore:
             # flip b_idx again
             if reverse:
-                b_idx = len(pair.region_b.get_cds()) - b_idx - match_len
+                b_idx = b_num_domains - b_idx - match_len
             return a_idx, a_idx + match_len, b_idx, b_idx + match_len, True
 
         # from this point we can assume we need to find the distance to the closest
@@ -434,51 +449,24 @@ def find_domain_lcs_protocluster(
     # if a match is found both in reverse and forward that contains protocores in both
     # regions, use the longest match. if matches are equal length, use forward
     if in_protocore_fwd and in_protocore_rev:
-        (
-            a_start_fwd,
-            a_stop_fwd,
-            b_start_fwd,
-            b_stop_fwd,
-            in_protocore_fwd,
-        ) = forward_lcs
-        (
-            a_start_rev,
-            a_stop_rev,
-            b_start_rev,
-            b_stop_rev,
-            in_protocore_rev,
-        ) = reverse_lcs
-
+        a_start_fwd, a_stop_fwd = forward_lcs[0:2]
+        a_start_rev, a_stop_rev = reverse_lcs[0:2]
         if a_stop_fwd - a_start_fwd >= a_stop_rev - a_start_rev:
             reverse = False
-            return a_start_fwd, a_stop_fwd, b_start_fwd, b_stop_fwd, reverse
+            return forward_lcs[0:4] + (reverse,)
         else:
             reverse = True
-            return a_start_rev, a_stop_rev, b_start_rev, b_stop_rev, reverse
+            return reverse_lcs[0:4] + (reverse,)
 
     # if a match is found in forward, use that
     if in_protocore_fwd:
-        (
-            a_start_fwd,
-            a_stop_fwd,
-            b_start_fwd,
-            b_stop_fwd,
-            in_protocore_fwd,
-        ) = forward_lcs
         reverse = False
-        return a_start_fwd, a_stop_fwd, b_start_fwd, b_stop_fwd, reverse
+        return forward_lcs[0:4] + (reverse,)
 
     # if a match is found in reverse, use that
     if in_protocore_rev:
-        (
-            a_start_rev,
-            a_stop_rev,
-            b_start_rev,
-            b_stop_rev,
-            in_protocore_rev,
-        ) = reverse_lcs
         reverse = True
-        return a_start_rev, a_stop_rev, b_start_rev, b_stop_rev, reverse
+        return reverse_lcs[0:4] + (reverse,)
 
     # if no match is found in either, use the longest match
     if fwd_match_len >= rev_match_len:

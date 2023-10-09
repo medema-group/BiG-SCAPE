@@ -357,9 +357,10 @@ class TestProtoclusterDomainLCS(unittest.TestCase):
 
         record_pair = bs_comparison.RecordPair(protocluster_a, protocluster_b)
 
-        lcs = bs_comparison.lcs.find_domain_lcs_protocluster(record_pair)
+        expected_lcs = (1, 6, 1, 6, False)
+        actual_lcs = bs_comparison.lcs.find_domain_lcs_protocluster(record_pair)
 
-        self.assertEqual(lcs, (1, 6, 1, 6, False))
+        self.assertEqual(expected_lcs, actual_lcs)
 
     def test_lcs_protocluster_reverse(self):
         """Test lcs detection for two domain lists, reverse"""
@@ -372,13 +373,16 @@ class TestProtoclusterDomainLCS(unittest.TestCase):
 
         record_pair = bs_comparison.RecordPair(protocluster_a, protocluster_b)
 
-        lcs = bs_comparison.lcs.find_domain_lcs_protocluster(record_pair)
+        expected_lcs = (1, 6, 1, 6, True)
+        actual_lcs = bs_comparison.lcs.find_domain_lcs_protocluster(record_pair)
 
-        self.assertEqual(lcs, (1, 6, 1, 6, True))
+        self.assertEqual(expected_lcs, actual_lcs)
 
     def test_lcs_protocluster_eq_len_fwd_protocore(self):
         """Test lcs detection for two protoclusters. Equal length matches forward and
         reverse, but one of the matches has both cds in protocore
+
+        In this case the forward match is in the protocore, so should be returned
         """
 
         # cds lists:
@@ -402,13 +406,16 @@ class TestProtoclusterDomainLCS(unittest.TestCase):
 
         record_pair = bs_comparison.RecordPair(protocluster_a, protocluster_b)
 
-        lcs = bs_comparison.lcs.find_domain_lcs_protocluster(record_pair)
+        expected_lcs = (1, 3, 1, 3, False)
+        actual_lcs = bs_comparison.lcs.find_domain_lcs_protocluster(record_pair)
 
-        self.assertEqual(lcs, (1, 3, 1, 3, False))
+        self.assertEqual(expected_lcs, actual_lcs)
 
     def test_lcs_protocluster_eq_len_rev_protocore(self):
         """Test lcs detection for two protoclusters. Equal length matches forward and
         reverse, but one of the matches has both cds in protocore
+
+        In this case the reverse match is in the protocore and should be returned
         """
 
         # cds lists:
@@ -432,9 +439,10 @@ class TestProtoclusterDomainLCS(unittest.TestCase):
 
         record_pair = bs_comparison.RecordPair(protocluster_a, protocluster_b)
 
-        lcs = bs_comparison.lcs.find_domain_lcs_protocluster(record_pair)
+        expected_lcs = (5, 7, 3, 5, True)
+        actual_lcs = bs_comparison.lcs.find_domain_lcs_protocluster(record_pair)
 
-        self.assertEqual(lcs, (5, 7, 3, 5, True))
+        self.assertEqual(expected_lcs, actual_lcs)
 
     def test_lcs_protocluster_eq_len_1_protocore(self):
         """Test lcs detection for two protoclusters. Single-length matches but one of
@@ -454,9 +462,10 @@ class TestProtoclusterDomainLCS(unittest.TestCase):
 
         record_pair = bs_comparison.RecordPair(protocluster_a, protocluster_b)
 
-        lcs = bs_comparison.lcs.find_domain_lcs_protocluster(record_pair)
+        expected_lcs = (5, 6, 5, 6, False)
+        actual_lcs = bs_comparison.lcs.find_domain_lcs_protocluster(record_pair)
 
-        self.assertEqual(lcs, (5, 6, 5, 6, False))
+        self.assertEqual(expected_lcs, actual_lcs)
 
     def test_lcs_protocluster_rev_fwd_protocore_fwd_longer(self):
         """Test lcs detection for two protoclusters. This is a case where a match is
@@ -489,9 +498,10 @@ class TestProtoclusterDomainLCS(unittest.TestCase):
 
         record_pair = bs_comparison.RecordPair(protocluster_a, protocluster_b)
 
-        lcs = bs_comparison.lcs.find_domain_lcs_protocluster(record_pair)
+        expected_lcs = (4, 7, 4, 7, False)
+        actual_lcs = bs_comparison.lcs.find_domain_lcs_protocluster(record_pair)
 
-        self.assertEqual(lcs, (4, 7, 4, 7, False))
+        self.assertEqual(expected_lcs, actual_lcs)
 
     def test_lcs_protocluster_rev_fwd_protocore_fwd_same(self):
         """Test lcs detection for two protoclusters. This is a case where a match is
@@ -525,19 +535,15 @@ class TestProtoclusterDomainLCS(unittest.TestCase):
 
         record_pair = bs_comparison.RecordPair(protocluster_a, protocluster_b)
 
-        lcs = bs_comparison.lcs.find_domain_lcs_protocluster(record_pair)
+        expected_lcs = (4, 6, 4, 6, False)
+        actual_lcs = bs_comparison.lcs.find_domain_lcs_protocluster(record_pair)
 
-        self.assertEqual(lcs, (4, 6, 4, 6, False))
+        self.assertEqual(expected_lcs, actual_lcs)
 
     def test_lcs_protocluster_rev_fwd_protocore_rev_longer(self):
-        """Test lcs detection for two protoclusters. This is a case where a match is
-        found of the same length forward and reverse, and they're both in the protocore
-
-        This prefers the forward match unless the reverse match is longer. in this case,
-        the forward is the same length as rev, so should be returned
+        """Test lcs detection for two protoclusters. This is a case where there are two
+        matches in the protocore, but the reverse is longer and should be preferred
         """
-
-        self.skipTest("Broken logic")
 
         # domain/cds lists:
         # CDS: 0 1 2 3 4         5 6
@@ -564,6 +570,7 @@ class TestProtoclusterDomainLCS(unittest.TestCase):
 
         record_pair = bs_comparison.RecordPair(protocluster_a, protocluster_b)
 
-        lcs = bs_comparison.lcs.find_domain_lcs_protocluster(record_pair)
+        expected_lcs = (6, 9, 2, 5, True)
+        actual_lcs = bs_comparison.lcs.find_domain_lcs_protocluster(record_pair)
 
-        self.assertEqual(lcs, (6, 9, 2, 5, True))
+        self.assertEqual(expected_lcs, actual_lcs)
