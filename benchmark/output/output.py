@@ -5,6 +5,9 @@ import os
 import numpy as np
 from pathlib import Path
 
+# from dependencies
+import matplotlib.pyplot as plt
+
 
 class OutputGenerator:
     """Class to generate output files containing benchamrking results
@@ -49,7 +52,17 @@ class OutputGenerator:
         associations: tuple[float, float, float, float],
         summary_stats: tuple[float, float, float, float, int, int],
     ) -> None:
-        """Output summary file comparing curated and computed GCF assignments"""
+        """Output summary file comparing curated and computed GCF assignments
+
+        Args:
+            homogeneity: scores how homogeneous formed clusters are, ie a single label
+            completeness: scores how complete curated families are in computed clusters
+            v_measure: harmonic mean of homogeneity and completeness
+            purities: similar to homogeneity, how pure are formed clusters
+            entropies: describes the level of randomness in formed clusters
+            associations: fraction of correct/wrong/present/missing assiciations per BGC
+            summary_stats: number of families and singletons, average family size
+        """
         filename = self.output_dir / "Summary.tsv"
         correct, wrong, present, missing = associations
         cur_fams, comp_fams, cur_size, comp_size, cur_sing, comp_sing = summary_stats
@@ -69,3 +82,39 @@ class OutputGenerator:
                 + f"Fraction of present curated associations per BGC\t{present:.4f}\n"
                 + f"Fraction of missing curated associations per BGC\t{missing:.4f}\n"
             )
+
+    def plot_per_cutoff(self, metrics):
+        """Plot metrics per used cutoff"""
+        cutoffs = metrics.keys()
+        homogeneity = [metrics[cut]["homogeneity"] for cut in cutoffs]
+        completeness = [metrics[cut]["completeness"] for cut in cutoffs]
+        v_measure = [metrics[cut]["v_measure"] for cut in cutoffs]
+
+        fig = plt.figure()
+        ax = fig.gca()
+
+        ax.plot(
+            cutoffs,
+            homogeneity,
+            linewidth=0.5,
+            linestyle="--",
+            c="red",
+            label="Homogeneity",
+        )
+        ax.plot(
+            cutoffs,
+            completeness,
+            linewidth=0.5,
+            linestyle="--",
+            c="blue",
+            label="Completeness",
+        )
+        ax.plot(cutoffs, v_measure, c="purple", label="V-measure")
+
+        plt.title("External cluster evaluation metrics per used cutoff")
+        plt.xlim(0, 1)
+        plt.ylim(0, 1)
+        plt.xlabel("BiG-SCAPE family cutoff")
+        plt.ylabel("Score")
+        plt.legend()
+        plt.savefig(self.output_dir / "Scores_per_cutoff.png")

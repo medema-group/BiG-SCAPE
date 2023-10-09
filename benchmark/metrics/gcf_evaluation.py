@@ -16,6 +16,23 @@ class BenchmarkMetrics:
         self.curated_labels = curated_labels
         self.computed_labels = computed_labels
 
+    def calculate_metrics(self) -> dict:
+        """Calculate all metrics"""
+        homogeneity, completeness, v_measure = self.calculate_v_measure()
+        purities = self.calculate_purity()
+        entropies = self.calculate_entropy()
+        associations = self.compare_association()
+        summary_stats = self.calculate_summary()
+        return {
+            "homogeneity": homogeneity,
+            "completeness": completeness,
+            "v_measure": v_measure,
+            "purities": purities,
+            "entropies": entropies,
+            "associations": associations,
+            "summary_stats": summary_stats,
+        }
+
     @staticmethod
     def create_fam_index(labels: dict[str, str]) -> dict[str, list[str]]:
         """Create family index linking each family to their BGC members

@@ -22,26 +22,25 @@ def run_benchmark() -> None:
     data.load_computed_labels()
 
     # calculate metrics
+    metrics = {}
     for fam_cutoff in data.computed_labels.keys():
         computed_labels_in_cutoff = data.computed_labels[fam_cutoff]
-        metrics = BenchmarkMetrics(data.curated_labels, computed_labels_in_cutoff)
-        homogeneity, completeness, v_measure = metrics.calculate_v_measure()
-        purities = metrics.calculate_purity()
-        entropies = metrics.calculate_entropy()
-        associations = metrics.compare_association()
-        summary_stats = metrics.calculate_summary()
+        calculator = BenchmarkMetrics(data.curated_labels, computed_labels_in_cutoff)
+        metrics[fam_cutoff] = calculator.calculate_metrics()
 
         # output
         outputter = OutputGenerator(args.output_dir / f"cutoff_{fam_cutoff}")
         outputter.initialize_output_dir()
-        outputter.output_purities(purities)
-        outputter.output_entropies(entropies)
+        outputter.output_purities(metrics[fam_cutoff]["purities"])
+        outputter.output_entropies(metrics[fam_cutoff]["entropies"])
         outputter.output_summary(
-            homogeneity,
-            completeness,
-            v_measure,
-            purities,
-            entropies,
-            associations,
-            summary_stats,
+            metrics[fam_cutoff]["homogeneity"],
+            metrics[fam_cutoff]["completeness"],
+            metrics[fam_cutoff]["v_measure"],
+            metrics[fam_cutoff]["purities"],
+            metrics[fam_cutoff]["entropies"],
+            metrics[fam_cutoff]["associations"],
+            metrics[fam_cutoff]["summary_stats"],
         )
+    outputter = OutputGenerator(args.output_dir)
+    outputter.plot_per_cutoff(metrics)
