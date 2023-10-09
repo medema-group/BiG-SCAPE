@@ -4,6 +4,7 @@
 from collections import Counter
 
 # from dependencies
+import numpy as np
 from sklearn.metrics import v_measure_score
 from scipy.stats import entropy
 
@@ -84,3 +85,34 @@ class BenchmarkMetrics:
             ]
             entropies[family] = entropy(pk, base=2)
         return entropies
+
+    @staticmethod
+    def calculate_summary(
+        curated_labels: dict[str, str], computed_labels: dict[str, str]
+    ) -> tuple[int, int, float, float]:
+        """Calculate summary GCF number and size for curated and computed GCFs"""
+        computed_bgcs = computed_labels.keys()
+
+        curated_labels_used = {
+            bgc: fam for bgc, fam in curated_labels.items() if bgc in computed_bgcs
+        }
+
+        curated_fams = set(curated_labels_used.values())
+        computed_fams = set(computed_labels.values())
+
+        curated_avg_size = float(
+            np.average(
+                [list(curated_labels_used.values()).count(fam) for fam in curated_fams]
+            )
+        )
+        computed_avg_size = float(
+            np.average(
+                [list(computed_labels.values()).count(fam) for fam in computed_fams]
+            )
+        )
+        return (
+            len(curated_fams),
+            len(computed_fams),
+            curated_avg_size,
+            computed_avg_size,
+        )

@@ -2,6 +2,7 @@
 
 # from python
 import os
+import numpy as np
 from pathlib import Path
 
 
@@ -44,3 +45,26 @@ class OutputGenerator:
             outf.write("GCF name\tEntropy\n")
             for family in sorted(entropies, key=lambda f: entropies[f], reverse=True):
                 outf.write(f"{family}\t{entropies[family]}\n")
+
+    def output_summary(
+        self,
+        v_measure: float,
+        purities: dict[str, float],
+        entropies: dict[str, float],
+        nr_cur_fams: int,
+        nr_comp_fams: int,
+        avg_cur_size: float,
+        avg_comp_size: float,
+    ) -> None:
+        """Output summary file comparing curated and computed GCF assignments"""
+        filename = self.output_dir / "Summary.tsv"
+
+        with open(filename, "w") as outf:
+            outf.write(
+                "\tCurated_GCFs\tComputed_GCFs\n"
+                + f"Number of families\t{nr_cur_fams}\t{nr_comp_fams}\n"
+                + f"Average family size\t{avg_cur_size}\t{avg_comp_size}\n\n"
+                + f"V-measure\t{v_measure}\n"
+                + f"Average purity\t{np.average(list(purities.values()))}\n"
+                + f"Average entropy\t{np.average(list(entropies.values()))}\n"
+            )

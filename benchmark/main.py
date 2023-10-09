@@ -33,6 +33,14 @@ def run_benchmark() -> None:
         entropies = BenchmarkMetrics.calculate_entropy(
             data.curated_labels, computed_labels_in_cutoff
         )
+        (
+            nr_cur_fams,
+            nr_comp_fams,
+            avg_cur_size,
+            avg_comp_size,
+        ) = BenchmarkMetrics.calculate_summary(
+            data.curated_labels, computed_labels_in_cutoff
+        )
 
         # output
         outputter = OutputGenerator(args.output_dir / f"cutoff_{fam_cutoff}")
@@ -40,3 +48,12 @@ def run_benchmark() -> None:
         outputter.output_v_measure(v_measure)
         outputter.output_purities(purities)
         outputter.output_entropies(entropies)
+        outputter.output_summary(
+            v_measure,
+            purities,
+            entropies,
+            nr_cur_fams,
+            nr_comp_fams,
+            avg_cur_size,
+            avg_comp_size,
+        )
