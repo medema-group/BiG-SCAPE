@@ -21,6 +21,7 @@ class BenchmarkMetrics:
         homogeneity, completeness, v_measure = self.calculate_v_measure()
         purities = self.calculate_purity()
         entropies = self.calculate_entropy()
+        conf_matrix = self.confusion_matrix()
         associations = self.compare_association()
         summary_stats = self.calculate_summary()
         return {
@@ -29,6 +30,7 @@ class BenchmarkMetrics:
             "v_measure": v_measure,
             "purities": purities,
             "entropies": entropies,
+            "conf_matrix": conf_matrix,
             "associations": associations,
             "summary_stats": summary_stats,
         }
@@ -144,6 +146,45 @@ class BenchmarkMetrics:
             float(np.average(present)),
             float(np.average(missing)),
         )
+
+    def confusion_matrix(self) -> tuple[list[list[int]], list[str], list[str]]:
+        """Confusion matrix showing member overlap between curated and computed families
+
+        Rows represent curated GCF assignments, columns computed GCF assignments. Matrix
+        is sorted based on highest overlap between curated and computed families
+
+        Returns:
+            A sorted confusion matrix and its row and column GCF labels
+        """
+        mat: list[list[int]] = []
+
+        comp_bgcs = self.computed_labels.keys()
+        curated_labels_used = {
+            bgc: fam for bgc, fam in self.curated_labels.items() if bgc in comp_bgcs
+        }
+        computed_fams = BenchmarkMetrics.create_fam_index(self.computed_labels)
+        curated_fams = BenchmarkMetrics.create_fam_index(curated_labels_used)
+
+        row_labels = sorted(curated_fams.keys())
+        col_labels = sorted(computed_fams.keys())
+        for cur_fam in row_labels:
+            row: list[int] = []
+            cur_members = set(curated_fams[cur_fam])
+            for comp_fam in col_labels:
+                comp_members = set(computed_fams[comp_fam])
+                row.append(len(cur_members.intersection(comp_members)))
+            mat.append(row)
+
+        sorted_mat: list[list[int]] = []
+        sorted_row_lab: list[str] = []
+        for idx in range(len(col_labels)):
+            col_vals = np.array([row[idx] for row in mat])
+            max_rows = np.flatnonzero(col_vals == max(col_vals))
+            for max_idx in max_rows:
+                if row_labels[max_idx] not in sorted_row_lab:
+                    sorted_mat.append(mat[max_idx])
+                    sorted_row_lab.append(row_labels[max_idx])
+        return sorted_mat, sorted_row_lab, col_labels
 
     def calculate_summary(self) -> tuple[int, int, float, float, int, int]:
         """Calculate summary GCF number and size for curated and computed GCFs

@@ -19,13 +19,17 @@ class OutputGenerator:
     def __init__(self, output_dir: Path) -> None:
         self.output_dir = output_dir
 
-    def initialize_output_dir(self):
+    def initialize_output_dir(self) -> None:
         """Set up output directory"""
         if not self.output_dir.exists():
             os.makedirs(self.output_dir)
 
     def output_purities(self, purities: dict[str, float]) -> None:
-        """Write sorted computed GCF purities to output tsv file"""
+        """Write sorted computed GCF purities to output tsv file
+
+        Args:
+            purities: dict of purity per computed GCF
+        """
         filename = self.output_dir / "GCF_purities.tsv"
 
         with open(filename, "w") as outf:
@@ -34,7 +38,11 @@ class OutputGenerator:
                 outf.write(f"{family}\t{purities[family]}\n")
 
     def output_entropies(self, entropies: dict[str, float]) -> None:
-        """Write sorted computed GCF entropies to output tsv file"""
+        """Write sorted computed GCF entropies to output tsv file
+
+        Args:
+            entropies: dict of entropy per computed GCF
+        """
         filename = self.output_dir / "GCF_entropies.tsv"
 
         with open(filename, "w") as outf:
@@ -83,8 +91,29 @@ class OutputGenerator:
                 + f"Fraction of missing curated associations per BGC\t{missing:.4f}\n"
             )
 
-    def plot_per_cutoff(self, metrics):
-        """Plot metrics per used cutoff"""
+    def output_matrix(
+        self, matrix_data: tuple[list[list[int]], list[str], list[str]]
+    ) -> None:
+        """Write confusion matrix to tsv file
+
+        Args:
+            matrix_data: contains confusion matrix, row labels and column labels
+        """
+        filename = self.output_dir / "Confusion_matrix.tsv"
+        matrix, row_lab, col_lab = matrix_data
+        with open(filename, "w") as outf:
+            col_lab_fmt = "\t".join(map(str, col_lab))
+            outf.write(f"\t{col_lab_fmt}\n")
+            for label, row in zip(row_lab, matrix):
+                row_fmt = "\t".join(map(str, row))
+                outf.write(f"{label}\t{row_fmt}\n")
+
+    def plot_per_cutoff(self, metrics: dict[str, dict[str, float]]) -> None:
+        """Plot metrics per used cutoff
+
+        Args:
+            metrics: data dictionary storing all metrics per used cutoff
+        """
         cutoffs = metrics.keys()
         homogeneity = [metrics[cut]["homogeneity"] for cut in cutoffs]
         completeness = [metrics[cut]["completeness"] for cut in cutoffs]
@@ -118,3 +147,24 @@ class OutputGenerator:
         plt.ylabel("Score")
         plt.legend()
         plt.savefig(self.output_dir / "Scores_per_cutoff.png")
+
+    def plot_conf_matrix_heatmap(
+        self, matrix_data: tuple[list[list[int]], list[str], list[str]]
+    ) -> None:
+        """Plot confusion matrix as heatmap
+
+        Args:
+            matrix_data: contains confusion matrix, row labels and column labels
+        """
+        matrix, row_lab, col_lab = matrix_data
+        plt.imshow(matrix, cmap="binary", interpolation=None)
+        ax = plt.gca()
+        ax.set_xticks(range(len(col_lab)))
+        ax.set_yticks(range(len(row_lab)))
+        ax.set_xticklabels(col_lab, fontdict={"fontsize": 5})
+        ax.set_yticklabels(row_lab, fontdict={"fontsize": 5})
+        plt.setp(ax.get_xticklabels(), rotation=90, rotation_mode="anchor")
+        plt.xlabel("Computed GCFs")
+        plt.ylabel("Curated GCFs")
+        plt.title("Overlap of curated and computed GCFs")
+        plt.savefig(self.output_dir / "Confusion_heatmap.png")

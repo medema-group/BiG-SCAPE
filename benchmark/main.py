@@ -42,5 +42,6 @@ def run_benchmark() -> None:
             metrics[fam_cutoff]["associations"],
             metrics[fam_cutoff]["summary_stats"],
         )
+        outputter.plot_conf_matrix_heatmap(metrics[fam_cutoff]["conf_matrix"])
     outputter = OutputGenerator(args.output_dir)
     outputter.plot_per_cutoff(metrics)
