@@ -33,6 +33,7 @@ def run_benchmark() -> None:
         outputter.initialize_output_dir()
         outputter.output_purities(metrics[fam_cutoff]["purities"])
         outputter.output_entropies(metrics[fam_cutoff]["entropies"])
+        outputter.output_matrix(metrics[fam_cutoff]["conf_matrix"])
         outputter.output_summary(
             metrics[fam_cutoff]["homogeneity"],
             metrics[fam_cutoff]["completeness"],

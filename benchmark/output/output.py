@@ -167,4 +167,4 @@ class OutputGenerator:
         plt.xlabel("Computed GCFs")
         plt.ylabel("Curated GCFs")
         plt.title("Overlap of curated and computed GCFs")
-        plt.savefig(self.output_dir / "Confusion_heatmap.png")
+        plt.savefig(self.output_dir / "Confusion_heatmap.png", dpi=800)
