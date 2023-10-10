@@ -2,6 +2,7 @@
 
 # from python
 from collections import Counter
+from typing import Any
 
 # from dependencies
 import numpy as np
@@ -10,14 +11,26 @@ from scipy.stats import entropy
 
 
 class BenchmarkMetrics:
-    """Class to store evaluation metric calculation functions"""
+    """Class to store evaluation metric calculation functions
+
+    Attributes:
+        curated_labels (dict[str, str]): curated GCF assignments for each BGC
+        computed_labels (dict[str, str]): computed GCF assignments for each BGC
+    """
 
     def __init__(self, curated_labels: dict[str, str], computed_labels: dict[str, str]):
         self.curated_labels = curated_labels
         self.computed_labels = computed_labels
 
-    def calculate_metrics(self) -> dict:
-        """Calculate all metrics"""
+    def calculate_metrics(self) -> dict[str, Any]:
+        """Calculate all metrics
+
+        Includes: homogeneity, completeness, v_measure, purities, entropies,
+        conf_matrix, associations and summary_stats
+
+        Returns:
+            Dictionary holding all calculated metrics
+        """
         homogeneity, completeness, v_measure = self.calculate_v_measure()
         purities = self.calculate_purity()
         entropies = self.calculate_entropy()
@@ -43,7 +56,7 @@ class BenchmarkMetrics:
             labels (dict[str, str]): dict linking each BGC to their assigned family
 
         Returns:
-        Dictionary linking each family to a list of their BGC members
+            Dictionary linking each family to a list of their BGC members
         """
         fam_index: dict[str, list[str]] = {}
         for bgc, fam in labels.items():

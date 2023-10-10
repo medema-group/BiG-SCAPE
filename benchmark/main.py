@@ -28,7 +28,7 @@ def run_benchmark() -> None:
         calculator = BenchmarkMetrics(data.curated_labels, computed_labels_in_cutoff)
         metrics[fam_cutoff] = calculator.calculate_metrics()
 
-        # output
+        # output per cutoff
         outputter = OutputGenerator(args.output_dir / f"cutoff_{fam_cutoff}")
         outputter.initialize_output_dir()
         outputter.output_purities(metrics[fam_cutoff]["purities"])
@@ -44,5 +44,6 @@ def run_benchmark() -> None:
             metrics[fam_cutoff]["summary_stats"],
         )
         outputter.plot_conf_matrix_heatmap(metrics[fam_cutoff]["conf_matrix"])
+    # output summary per cutoff
     outputter = OutputGenerator(args.output_dir)
     outputter.plot_per_cutoff(metrics)
