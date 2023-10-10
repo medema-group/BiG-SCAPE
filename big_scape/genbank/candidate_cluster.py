@@ -77,23 +77,26 @@ class CandidateCluster(BGCRecord):
 
         self.proto_clusters[proto_cluster.number] = proto_cluster
 
-    def save(self, commit=True) -> None:
+    def save(self, parent_id: int, commit=True) -> None:
         """Stores this candidate cluster in the database
 
         Arguments:
             commit: commit immediately after executing the insert query"""
-        super().save_record("cand_cluster", commit)
+        super().save_record("cand_cluster", parent_id, commit)
 
-    def save_all(self) -> None:
+    def save_all(self, parent_id: int) -> None:
         """Stores this candidate cluster and its children in the database. Does not
         commit immediately
         """
-        self.save(False)
+        self.save(parent_id, False)
         for proto_cluster in self.proto_clusters.values():
             if proto_cluster is None:
                 continue
 
-            proto_cluster.save_all()
+            if self._db_id is None:
+                raise RuntimeError("Candidate cluster has no database id!")
+
+            proto_cluster.save_all(self._db_id)
 
     @classmethod
     def parse(
