@@ -157,14 +157,16 @@ class OutputGenerator:
             matrix_data: contains confusion matrix, row labels and column labels
         """
         matrix, row_lab, col_lab = matrix_data
-        plt.imshow(matrix, cmap="binary", interpolation=None)
+        plt.imshow(matrix, cmap="binary", interpolation=None, aspect="auto")
         ax = plt.gca()
         ax.set_xticks(range(len(col_lab)))
         ax.set_yticks(range(len(row_lab)))
-        ax.set_xticklabels(col_lab, fontdict={"fontsize": 5})
-        ax.set_yticklabels(row_lab, fontdict={"fontsize": 5})
+        ax.set_xticklabels(col_lab, fontdict={"fontsize": 0.5})
+        ax.set_yticklabels(row_lab, fontdict={"fontsize": 0.5})
         plt.setp(ax.get_xticklabels(), rotation=90, rotation_mode="anchor")
         plt.xlabel("Computed GCFs")
         plt.ylabel("Curated GCFs")
         plt.title("Overlap of curated and computed GCFs")
-        plt.savefig(self.output_dir / "Confusion_heatmap.png", dpi=800)
+        plt.savefig(
+            self.output_dir / "Confusion_heatmap.png", bbox_inches="tight", dpi=700
+        )
