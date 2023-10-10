@@ -4,6 +4,7 @@
 import os
 import numpy as np
 from pathlib import Path
+from typing import Any
 
 # from dependencies
 import matplotlib.pyplot as plt
@@ -108,7 +109,7 @@ class OutputGenerator:
                 row_fmt = "\t".join(map(str, row))
                 outf.write(f"{label}\t{row_fmt}\n")
 
-    def plot_per_cutoff(self, metrics: dict[str, dict[str, float]]) -> None:
+    def plot_per_cutoff(self, metrics: dict[str, dict[str, Any]]) -> None:
         """Plot metrics per used cutoff
 
         Args:
@@ -174,3 +175,38 @@ class OutputGenerator:
         plt.savefig(
             self.output_dir / "Confusion_heatmap.png", bbox_inches="tight", dpi=700
         )
+
+    def output_summary_per_cutoff(self, metrics: dict[str, dict[str, Any]]) -> None:
+        """Write overview of evaluation metrics across all used cutoffs
+
+        Args:
+            metrics: data dictionary storing all metrics per used cutoff
+        """
+        filename = self.output_dir / "Benchmark_summary.txt"
+
+        with open(filename, "w") as outf:
+            cutoff_fmt = "\t".join(map(str, metrics.keys()))
+
+            v_fmt = "\t".join([f"{metrics[c]['v_measure']:.3f}" for c in metrics])
+            h_fmt = "\t".join([f"{metrics[c]['homogeneity']:.3f}" for c in metrics])
+            c_fmt = "\t".join([f"{metrics[c]['completeness']:.3f}" for c in metrics])
+
+            purity = [np.mean(list(metrics[c]["purities"].values())) for c in metrics]
+            p_fmt = "\t".join([f"{p:.3f}" for p in purity])
+            entropy = [np.mean(list(metrics[c]["entropies"].values())) for c in metrics]
+            e_fmt = "\t".join(f"{e:.3f}" for e in entropy)
+
+            cur_fam_nr = [metrics[c]["summary_stats"][0] for c in metrics]
+            comp_fam_nr = [metrics[c]["summary_stats"][1] for c in metrics]
+            fam_nr_diffs = [comp - cur for cur, comp in zip(cur_fam_nr, comp_fam_nr)]
+            nr_diff_fmt = "\t".join(map(str, fam_nr_diffs))
+
+            outf.write(
+                f"Used_cutoff\t{cutoff_fmt}\n"
+                + f"V-measure\t{v_fmt}\n"
+                + f"Homogeneity\t{h_fmt}\n"
+                + f"Completeness\t{c_fmt}\n"
+                + f"Purity\t{p_fmt}\n"
+                + f"Entropy\t{e_fmt}\n"
+                + f"GCF number diff\t{nr_diff_fmt}\n"
+            )

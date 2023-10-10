@@ -47,3 +47,4 @@ def run_benchmark() -> None:
     # output summary per cutoff
     outputter = OutputGenerator(args.output_dir)
     outputter.plot_per_cutoff(metrics)
+    outputter.output_summary_per_cutoff(metrics)
