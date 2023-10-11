@@ -3,6 +3,7 @@
 # from python
 import sys
 import os
+import psutil
 import signal
 import logging
 from datetime import datetime
@@ -44,13 +45,24 @@ def run_bigscape() -> None:
     # capture ctrl-c for database saving and other cleanup
     def signal_handler(sig, frame):
         nonlocal main_pid
+
         # return if not main process
         if os.getpid() != main_pid:
             return
         if DB.opened():
             logging.warning("User requested SIGINT. Saving database and exiting")
+            logging.warning("Press ctrl+c again to force exit")
+
+            # kill all child processes
+            for child in psutil.Process().children(recursive=True):
+                child.kill()
+
+            # reset to default handler in case we get another SIGINT
+            signal.signal(signal.SIGINT, signal.SIG_DFL)
+
             DB.commit()
             DB.save_to_disk(run.output.db_path)
+
         sys.exit(0)
 
     signal.signal(signal.SIGINT, signal_handler)
