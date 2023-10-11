@@ -67,11 +67,12 @@ def calculate_distances_mix(
         with tqdm.tqdm(total=num_pairs, unit="edge", desc="Calculating distances") as t:
             num_edges = 0
             save_batch = []
+            batch_size = run.cores * 100000
             for edge in mix_edges:
                 num_edges += 1
                 t.update(1)
                 save_batch.append(edge)
-                if len(save_batch) > 100000 - 1:
+                if len(save_batch) > batch_size:
                     bs_comparison.save_edges_to_db(save_batch)
                     bs_data.DB.commit()
                     save_batch = []
