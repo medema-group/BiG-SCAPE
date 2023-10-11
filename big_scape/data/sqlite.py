@@ -142,11 +142,9 @@ class DB:
         with tqdm.tqdm(total=page_count) as t:
 
             def progress(status, remaining, total):
-                t.update(1)
+                t.update(total - remaining)
 
-            raw_memory_connection.backup(
-                raw_file_connection, pages=1, progress=progress
-            )
+            raw_memory_connection.backup(raw_file_connection, progress=progress)
 
     @staticmethod
     def load_from_disk(db_path: Path) -> None:
