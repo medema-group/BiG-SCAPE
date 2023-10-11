@@ -119,35 +119,55 @@ class OutputGenerator:
         homogeneity = [metrics[cut]["homogeneity"] for cut in cutoffs]
         completeness = [metrics[cut]["completeness"] for cut in cutoffs]
         v_measure = [metrics[cut]["v_measure"] for cut in cutoffs]
+        wrong = [metrics[cut]["associations"][1] for cut in cutoffs]
+        missing = [metrics[cut]["associations"][3] for cut in cutoffs]
 
         fig = plt.figure()
         ax = fig.gca()
 
-        ax.plot(
+        h = ax.plot(
             cutoffs,
             homogeneity,
-            linewidth=0.5,
+            linewidth=0.9,
             linestyle="--",
-            c="red",
+            c="green",
             label="Homogeneity",
         )
-        ax.plot(
+        c = ax.plot(
             cutoffs,
             completeness,
-            linewidth=0.5,
+            linewidth=0.9,
             linestyle="--",
             c="blue",
             label="Completeness",
         )
-        ax.plot(cutoffs, v_measure, c="purple", label="V-measure")
+        v = ax.plot(cutoffs, v_measure, c="black", label="V-measure")
+
+        wl = ax.plot(
+            cutoffs,
+            wrong,
+            linestyle=":",
+            linewidth=0.9,
+            c="purple",
+            label="Wrong links",
+        )
+        ml = ax.plot(
+            cutoffs,
+            missing,
+            linestyle=":",
+            linewidth=0.9,
+            c="red",
+            label="Missing links",
+        )
 
         plt.title("External cluster evaluation metrics per used cutoff")
-        plt.xlim(0, 1)
-        plt.ylim(0, 1)
         plt.xlabel("BiG-SCAPE family cutoff")
         plt.ylabel("Score")
-        plt.legend()
-        plt.savefig(self.output_dir / "Scores_per_cutoff.png")
+        plots = h + c + v + wl + ml
+        ax.legend(plots, [p.get_label() for p in plots], loc=0)
+        plt.savefig(
+            self.output_dir / "Scores_per_cutoff.png", bbox_inches="tight", dpi=400
+        )
 
     def plot_conf_matrix_heatmap(
         self, matrix_data: tuple[list[list[int]], list[str], list[str]]
