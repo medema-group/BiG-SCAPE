@@ -90,7 +90,10 @@ class Region(BGCRecord):
             if candidate_cluster is None:
                 continue
 
-            candidate_cluster.save_all()
+            if self._db_id is None:
+                raise RuntimeError("Region has no database id!")
+
+            candidate_cluster.save_all(self._db_id)
 
     @classmethod
     def parse_as5(cls, feature: SeqFeature, parent_gbk: Optional[GBK] = None) -> Region:
