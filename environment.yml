@@ -16,3 +16,4 @@ dependencies:
   - sqlalchemy
   - matplotlib
   - requests
+  - tqdm

@@ -3,6 +3,9 @@
 # from python
 import logging
 
+# from dependencies
+import tqdm
+
 # from other modules
 import big_scape.data as bs_data
 import big_scape.parameters as bs_param
@@ -47,23 +50,35 @@ def calculate_distances_mix(
             nonlocal last
 
             if done_pairs - last > 10000:
-                logging.info(
-                    "%d/%d (%.2f%%)",
-                    done_pairs,
-                    num_pairs,
-                    done_pairs / num_pairs * 100,
-                )
+                # logging.info(
+                #     "%d/%d (%.2f%%)",
+                #     done_pairs,
+                #     num_pairs,
+                #     done_pairs / num_pairs * 100,
+                # )
                 last = done_pairs
 
-            bs_data.DB.commit()
+                # bs_data.DB.commit()
 
         mix_edges = bs_comparison.generate_edges(
             missing_edge_bin, run.comparison.alignment_mode, run.cores, callback
         )
 
-        num_edges = 0
-        for edge in mix_edges:
-            num_edges += 1
-            bs_comparison.save_edge_to_db(edge)
+        with tqdm.tqdm(total=num_pairs, unit="edge", desc="Calculating distances") as t:
+            num_edges = 0
+            save_batch = []
+            batch_size = run.cores * 100000
+            for edge in mix_edges:
+                num_edges += 1
+                t.update(1)
+                save_batch.append(edge)
+                if len(save_batch) > batch_size:
+                    bs_comparison.save_edges_to_db(save_batch)
+                    bs_data.DB.commit()
+                    save_batch = []
+
+        bs_comparison.save_edges_to_db(save_batch)
+
+        bs_data.DB.commit()
 
         logging.info("Generated %d edges", num_edges)

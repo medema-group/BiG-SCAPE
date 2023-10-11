@@ -130,7 +130,7 @@ class ProtoCore(BGCRecord):
                 record_table.c.nt_stop,
                 record_table.c.product,
             )
-            .where(record_table.c.record_type == "protocluster")
+            .where(record_table.c.record_type == "proto_core")
             .compile()
         )
 

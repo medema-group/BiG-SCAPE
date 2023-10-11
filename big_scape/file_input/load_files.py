@@ -4,9 +4,9 @@
 import logging
 from pathlib import Path
 from typing import List, Optional
-from math import floor
 import os
 import tarfile
+import multiprocessing
 
 # from dependencies
 import requests  # type: ignore
@@ -101,6 +101,7 @@ def load_dataset_folder(
     exclude_gbk: Optional[List[str]] = None,
     cds_overlap_cutoff: Optional[float] = None,
     legacy_mode=False,
+    cores: Optional[int] = None,
 ) -> List[GBK]:
     """Loads all gbk files in a given folder
 
@@ -138,14 +139,20 @@ def load_dataset_folder(
 
     logging.info("Loading %d GBKs", num_files)
 
+    if cores is None:
+        cores = multiprocessing.cpu_count()
+
     gbk_list = []
-    for idx, file in enumerate(filtered_files):
-        if num_files > 9 and idx % floor(num_files / 10) == 0:
-            logging.info("Loaded %d/%d GBKs", idx, num_files)
+    pool = multiprocessing.Pool(cores)
 
-        gbk = load_gbk(file, source_type, cds_overlap_cutoff, legacy_mode)
-
-        gbk_list.append(gbk)
+    # TODO: would really like to see a loading bar here
+    gbk_list = pool.starmap(
+        load_gbk,
+        [
+            (file, source_type, cds_overlap_cutoff, legacy_mode)
+            for file in filtered_files
+        ],
+    )
 
     return gbk_list
 

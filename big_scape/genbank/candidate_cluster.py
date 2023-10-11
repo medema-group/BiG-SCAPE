@@ -207,7 +207,7 @@ class CandidateCluster(BGCRecord):
                 result.nt_stop,
                 result.contig_edge,
                 result.product,
-                result.kind,
+                "",  # TODO: fix this
                 {},
             )
 

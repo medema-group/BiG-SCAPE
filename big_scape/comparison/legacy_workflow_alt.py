@@ -102,7 +102,7 @@ def generate_edges(
         jaccard, adjacency, dss)
     """
     # prepare a process pool
-    logging.info("Using %d cores", cores)
+    logging.debug("Using %d cores", cores)
 
     pairs = pair_generator.generate_pairs()
 
@@ -110,10 +110,10 @@ def generate_edges(
 
     if batch_size is None:
         batch_size = get_batch_size(cores, 10000, num_pairs)
-        logging.info("Using automatic batch size: %d", batch_size)
+        logging.debug("Using automatic batch size: %d", batch_size)
     else:
         batch_size = min(num_pairs, batch_size)
-        logging.info("Using batch size: %d", batch_size)
+        logging.debug("Using batch size: %d", batch_size)
 
     with ProcessPoolExecutor(cores) as executor:
         done_pairs = 0
