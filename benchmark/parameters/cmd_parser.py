@@ -24,12 +24,12 @@ def parse_cmd(args):
 
     parser.add_argument(
         "-i",
-        "--bigscape_dir",
-        dest="bigscape_dir",
+        "--input_dir",
+        dest="input_dir",
         default=None,
         type=Path,
         required=True,
-        help="Path pointing to the output folder of a BiG-SCAPE run",
+        help="Path pointing to the output folder of a BiG-SCAPE or BiG-SLICE run",
     )
 
     parser.add_argument(
@@ -63,11 +63,8 @@ def validate_args(args):
     Raises:
         InvalidArgumentError: upon encountering an invalid argument
     """
-    if not args.bigscape_dir.exists():
-        raise InvalidArgumentError("--bigscape_dir", args.bigscape_dir)
-
-    if not (args.bigscape_dir / "data_sqlite.db").exists():
-        raise InvalidArgumentError("--bigscape_dir", args.bigscape_dir)
+    if not args.input_dir.exists():
+        raise InvalidArgumentError("--input_dir", args.input_dir)
 
     if not args.curated_gcfs.exists() or not args.curated_gcfs.is_file():
         raise InvalidArgumentError("--curated_gcfs", args.curated_gcfs)

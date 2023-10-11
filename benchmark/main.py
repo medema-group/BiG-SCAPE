@@ -16,8 +16,7 @@ def run_benchmark() -> None:
     validate_args(args)
 
     # load in both curated and computed GCF data
-    db_path = args.bigscape_dir / "data_sqlite.db"
-    data = BenchmarkData(args.curated_gcfs, db_path)
+    data = BenchmarkData(args.curated_gcfs, args.input_dir)
     data.load_curated_labels()
     data.load_computed_labels()
 
