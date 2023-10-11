@@ -1,7 +1,8 @@
 """Contains utility functions for the comparison module"""
 
 # from python
-from typing import Generator
+from typing import Generator, cast
+import sqlite3
 
 # from dependencies
 from sqlalchemy import insert
@@ -54,16 +55,35 @@ def save_edges_to_db(edges: list[tuple[int, int, float, float, float, float]]) -
         edges (list[tuple[int, int, float, float, float, float]]): list of edges to save
     """
     # save the comparison data to the database
+    # using raw sqlite for this because sqlalchemy is not fast enough
 
-    if not DB.metadata:
-        raise RuntimeError("DB.metadata is None")
+    if not DB.opened():
+        raise RuntimeError("DB is not opened")
 
-    distance_table = DB.metadata.tables["distance"]
+    if not DB.engine:
+        raise RuntimeError("DB.engine is None")
 
-    # save the entry to the database
-    statement = insert(distance_table).values(edges).prefix_with("OR IGNORE")
+    sqlite_connection = DB.engine.raw_connection()
+    sqlite_connection = cast(sqlite3.Connection, sqlite_connection)
 
-    DB.execute(statement)
+    # create a cursor
+    cursor = sqlite_connection.cursor()
+
+    # create a query
+    query = "INSERT INTO distance VALUES (?, ?, ?, ?, ?, ?)"
+
+    cursor.executemany(query, edges)
+
+    # # execute the query. use batches of 100000 to track progress
+    # batch_size = 100000
+    # with tqdm.tqdm(total=len(edges), unit="edge", desc="Saving edges") as t:
+    #     for i in range(0, len(edges), batch_size):
+    #         if i + batch_size > len(edges):
+    #             batch_size = len(edges) - i
+
+    #         cursor.executemany(query, edges[i : i + batch_size])
+    #         sqlite_connection.commit()
+    #         t.update(batch_size)
 
 
 def edges_from_db(
