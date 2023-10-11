@@ -4,7 +4,8 @@
 import os
 import numpy as np
 from pathlib import Path
-from typing import Any
+from typing import Any, Optional
+from argparse import Namespace
 
 # from dependencies
 import matplotlib.pyplot as plt
@@ -15,15 +16,37 @@ class OutputGenerator:
 
     Attributes:
         output_dir (Path): Path pointing to base output directory
+        metadata (str): Metadata text to be writted in each output file
+        run_name (str): Dataset name and starttime added to each filename
     """
 
-    def __init__(self, output_dir: Path) -> None:
+    def __init__(self, output_dir: Path, metadata: str, run_name: str) -> None:
         self.output_dir = output_dir
+        self.metadata = metadata
+        self.name = run_name
 
     def initialize_output_dir(self) -> None:
         """Set up output directory"""
         if not self.output_dir.exists():
             os.makedirs(self.output_dir)
+
+    @staticmethod
+    def generate_metadata(
+        args: Namespace, start: str, cutoff: Optional[float] = None
+    ) -> str:
+        """Generate metadata based on the current comparison
+
+        Args:
+            args (Namespace): stored command line arguments
+            start (str): start date and time of current run
+            cutoff (float): optional cutoff value being compared
+        """
+        i = args.input_dir
+        g = args.curated_gcfs
+        meta = f"# {start}\n# Comparing input directory: {i}\n# To curated GCFs: {g}\n"
+        if cutoff is not None:
+            meta += f"# Used cutoff: {cutoff}\n"
+        return meta + "\n"
 
     def output_purities(self, purities: dict[str, float]) -> None:
         """Write sorted computed GCF purities to output tsv file
@@ -31,9 +54,10 @@ class OutputGenerator:
         Args:
             purities: dict of purity per computed GCF
         """
-        filename = self.output_dir / "GCF_purities.tsv"
+        filename = self.output_dir / f"Purities_{self.name}.tsv"
 
         with open(filename, "w") as outf:
+            outf.write(self.metadata)
             outf.write("GCF name\tPurity\n")
             for family in sorted(purities, key=lambda f: purities[f], reverse=True):
                 outf.write(f"{family}\t{purities[family]}\n")
@@ -44,9 +68,10 @@ class OutputGenerator:
         Args:
             entropies: dict of entropy per computed GCF
         """
-        filename = self.output_dir / "GCF_entropies.tsv"
+        filename = self.output_dir / f"Entropies_{self.name}.tsv"
 
         with open(filename, "w") as outf:
+            outf.write(self.metadata)
             outf.write("GCF name\tEntropy\n")
             for family in sorted(entropies, key=lambda f: entropies[f], reverse=True):
                 outf.write(f"{family}\t{entropies[family]}\n")
@@ -72,10 +97,11 @@ class OutputGenerator:
             associations: fraction of correct/wrong/present/missing assiciations per BGC
             summary_stats: number of families and singletons, average family size
         """
-        filename = self.output_dir / "Summary.tsv"
+        filename = self.output_dir / f"Summary_{self.name}.tsv"
         correct, wrong, present, missing = associations
         cur_fams, comp_fams, cur_size, comp_size, cur_sing, comp_sing = summary_stats
         with open(filename, "w") as outf:
+            outf.write(self.metadata)
             outf.write(
                 "\tCurated_GCFs\tComputed_GCFs\n"
                 + f"Number of families\t{cur_fams}\t{comp_fams}\n"
@@ -100,9 +126,10 @@ class OutputGenerator:
         Args:
             matrix_data: contains confusion matrix, row labels and column labels
         """
-        filename = self.output_dir / "Confusion_matrix.tsv"
+        filename = self.output_dir / f"Confusion_matrix_{self.name}.tsv"
         matrix, row_lab, col_lab = matrix_data
         with open(filename, "w") as outf:
+            outf.write(self.metadata)
             col_lab_fmt = "\t".join(map(str, col_lab))
             outf.write(f"\t{col_lab_fmt}\n")
             for label, row in zip(row_lab, matrix):
@@ -128,17 +155,15 @@ class OutputGenerator:
         h = ax.plot(
             cutoffs,
             homogeneity,
-            linewidth=0.9,
             linestyle="--",
-            c="green",
+            c="#FFC107",  # yellow
             label="Homogeneity",
         )
         c = ax.plot(
             cutoffs,
             completeness,
-            linewidth=0.9,
             linestyle="--",
-            c="blue",
+            c="#1E88E5",  # blue
             label="Completeness",
         )
         v = ax.plot(cutoffs, v_measure, c="black", label="V-measure")
@@ -146,17 +171,15 @@ class OutputGenerator:
         wl = ax.plot(
             cutoffs,
             wrong,
-            linestyle=":",
-            linewidth=0.9,
-            c="purple",
+            linestyle="-.",
+            c="#D81B60",  # red
             label="Wrong links",
         )
         ml = ax.plot(
             cutoffs,
             missing,
-            linestyle=":",
-            linewidth=0.9,
-            c="red",
+            linestyle="-.",
+            c="#E68981",  # pink
             label="Missing links",
         )
 
@@ -166,7 +189,9 @@ class OutputGenerator:
         plots = h + c + v + wl + ml
         ax.legend(plots, [p.get_label() for p in plots], loc=0)
         plt.savefig(
-            self.output_dir / "Scores_per_cutoff.png", bbox_inches="tight", dpi=400
+            self.output_dir / f"Scores_per_cutoff_{self.name}.png",
+            bbox_inches="tight",
+            dpi=400,
         )
 
     def plot_conf_matrix_heatmap(
@@ -193,7 +218,9 @@ class OutputGenerator:
         plt.ylabel("Curated GCFs")
         plt.title("Overlap of curated and computed GCFs")
         plt.savefig(
-            self.output_dir / "Confusion_heatmap.png", bbox_inches="tight", dpi=700
+            self.output_dir / f"Confusion_heatmap_{self.name}.png",
+            bbox_inches="tight",
+            dpi=700,
         )
 
     def output_summary_per_cutoff(self, metrics: dict[str, dict[str, Any]]) -> None:
@@ -202,9 +229,10 @@ class OutputGenerator:
         Args:
             metrics: data dictionary storing all metrics per used cutoff
         """
-        filename = self.output_dir / "Benchmark_summary.txt"
+        filename = self.output_dir / f"Benchmark_summary_{self.name}.txt"
 
         with open(filename, "w") as outf:
+            outf.write(self.metadata)
             cutoff_fmt = "\t".join(map(str, metrics.keys()))
 
             v_fmt = "\t".join([f"{metrics[c]['v_measure']:.3f}" for c in metrics])

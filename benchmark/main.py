@@ -2,6 +2,7 @@
 
 # from python
 import sys
+import time
 
 # from other modules
 from benchmark.parameters import parse_cmd, validate_args
@@ -14,6 +15,8 @@ def run_benchmark() -> None:
     """Benchmark: compare BiG-SCAPE output with curated GCF assignments"""
     args = parse_cmd(sys.argv[1:])
     validate_args(args)
+    start_time = time.strftime("%Y-%m-%d_%H-%M-%S", time.localtime())
+    run_name = args.input_dir.stem + "_" + start_time
 
     # load in both curated and computed GCF data
     data = BenchmarkData(args.curated_gcfs, args.input_dir)
@@ -28,7 +31,10 @@ def run_benchmark() -> None:
         metrics[fam_cutoff] = calculator.calculate_metrics()
 
         # output per cutoff
-        outputter = OutputGenerator(args.output_dir / f"cutoff_{fam_cutoff}")
+        metadata = OutputGenerator.generate_metadata(args, start_time, fam_cutoff)
+        outputter = OutputGenerator(
+            args.output_dir / f"cutoff_{fam_cutoff}", metadata, run_name
+        )
         outputter.initialize_output_dir()
         outputter.output_purities(metrics[fam_cutoff]["purities"])
         outputter.output_entropies(metrics[fam_cutoff]["entropies"])
@@ -44,6 +50,7 @@ def run_benchmark() -> None:
         )
         outputter.plot_conf_matrix_heatmap(metrics[fam_cutoff]["conf_matrix"])
     # output summary per cutoff
-    outputter = OutputGenerator(args.output_dir)
+    metadata = OutputGenerator.generate_metadata(args, start_time)
+    outputter = OutputGenerator(args.output_dir, metadata, run_name)
     outputter.plot_per_cutoff(metrics)
     outputter.output_summary_per_cutoff(metrics)

@@ -1,7 +1,7 @@
 """Contains command parser for parsing benchmark workflow arguments"""
 
 # from python
-from argparse import ArgumentParser
+from argparse import ArgumentParser, Namespace
 from pathlib import Path
 
 # from other modules
@@ -15,7 +15,7 @@ def parse_cmd(args):
         args (list): list of command line arguments
 
     Returns:
-        ArgumentsParser: object storing input arguments
+        Namespace: object storing input arguments
     """
     parser = ArgumentParser(
         prog="BiG-SCAPE benchmark",
@@ -54,11 +54,11 @@ def parse_cmd(args):
     return parser.parse_args(args)
 
 
-def validate_args(args):
+def validate_args(args: Namespace):
     """validate benchmarking arguments
 
     Args:
-        ArgumentParser: object containing all required arguments
+        args (Namespace): object containing all required arguments
 
     Raises:
         InvalidArgumentError: upon encountering an invalid argument
