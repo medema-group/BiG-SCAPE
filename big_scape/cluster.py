@@ -1,4 +1,4 @@
-"""Main file for bigscape"""
+"""Main file for BiG-SCAPE cluster module"""
 
 # from python
 import sys
@@ -34,6 +34,12 @@ import big_scape.network.network as bs_network
 import big_scape.network.families as bs_families
 import big_scape.distances.mix as bs_mix
 import big_scape.distances.query as bs_query
+
+
+# TODO: mock, delete later
+def run_bigscape_cluster(run: dict):
+    print("running bigscape cluster")
+    print(run)
 
 
 def run_bigscape() -> None:
