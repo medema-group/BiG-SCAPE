@@ -9,7 +9,7 @@ from pathlib import Path
 from big_scape.cluster import run_bigscape_cluster  # , run_bigscape
 
 # from this module
-from cli_validations import (
+from .cli_validations import (
     validate_not_empty_dir,
     validate_input_mode,
     validate_binning_workflow,

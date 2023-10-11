@@ -9,7 +9,7 @@ from pathlib import Path
 from big_scape.query import run_bigscape_query
 
 # from this module
-from cli_validations import (
+from .cli_validations import (
     validate_not_empty_dir,
     validate_input_mode,
     validate_skip_hmmscan,
