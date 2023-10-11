@@ -110,7 +110,7 @@ class TestProtocluster(TestCase):
 
         proto_cluster = ProtoCluster.parse(proto_cluster_feature)
 
-        proto_cluster.save()
+        proto_cluster.save(0)
 
         cursor_result = DB.execute_raw_query("SELECT * FROM bgc_record;")
 

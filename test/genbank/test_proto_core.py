@@ -67,7 +67,7 @@ class TestProtocore(TestCase):
 
         proto_core = ProtoCore.parse(feature)
 
-        proto_core.save()
+        proto_core.save(0)
 
         cursor_result = DB.execute_raw_query("SELECT * FROM bgc_record;")
 

@@ -7,7 +7,7 @@ CREATE TABLE IF NOT EXISTS gbk (
     path TEXT,
     source_type TEXT,
     nt_seq TEXT,
-    UNIQUE(id)
+    UNIQUE(path)
 );
 
 CREATE TABLE IF NOT EXISTS bgc_record (
