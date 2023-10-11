@@ -195,7 +195,15 @@ class DB:
 
         DB.reflect()
 
-        raw_file_connection.backup(raw_memory_connection)
+        page_count = raw_file_connection.execute("PRAGMA page_count;")
+        page_count = page_count.fetchone()[0]
+
+        with tqdm.tqdm(total=page_count, unit="page", desc="Loading database") as t:
+
+            def progress(status, remaining, total):
+                t.update(total - remaining)
+
+            raw_file_connection.backup(raw_memory_connection, progress=progress)
 
     @staticmethod
     def close_db() -> None:
