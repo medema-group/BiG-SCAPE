@@ -47,6 +47,25 @@ def save_edge_to_db(
     DB.execute(statement)
 
 
+def save_edges_to_db(edges: list[tuple[int, int, float, float, float, float]]) -> None:
+    """Save many edges to the database
+
+    Args:
+        edges (list[tuple[int, int, float, float, float, float]]): list of edges to save
+    """
+    # save the comparison data to the database
+
+    if not DB.metadata:
+        raise RuntimeError("DB.metadata is None")
+
+    distance_table = DB.metadata.tables["distance"]
+
+    # save the entry to the database
+    statement = insert(distance_table).values(edges).prefix_with("OR IGNORE")
+
+    DB.execute(statement)
+
+
 def edges_from_db(
     pair_generator: RecordPairGenerator,
 ) -> Generator[tuple[RecordPair, float, float, float, float], None, None]:

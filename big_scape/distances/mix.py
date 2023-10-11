@@ -61,9 +61,15 @@ def calculate_distances_mix(
             missing_edge_bin, run.comparison.alignment_mode, run.cores, callback
         )
 
+        save_batch = []
         num_edges = 0
         for edge in mix_edges:
             num_edges += 1
-            bs_comparison.save_edge_to_db(edge)
+            save_batch.append(edge)
+            if len(save_batch) > 10000:
+                bs_comparison.save_edges_to_db(save_batch)
+            save_batch = []
+
+        bs_comparison.save_edges_to_db(save_batch)
 
         logging.info("Generated %d edges", num_edges)
