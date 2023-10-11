@@ -13,7 +13,7 @@ class BenchmarkData:
 
     Atrributes:
         curated_path (Path): location of curated GCF assignments file
-        db_path (Path): location of BiG-SCAPE output database
+        in_path (Path): location of BiG-SCAPE output database
     """
 
     def __init__(self, curated_path: Path, in_path: Path):
@@ -52,7 +52,7 @@ class BenchmarkData:
         elif bsl_path.exists():
             self.load_computed_bsl_labels(bsl_path)
         else:
-            raise FileNotFoundError("Unable to locate correct ouput files")
+            raise FileNotFoundError("Unable to locate correct output files")
 
     def load_computed_bs2_labels(self, db_path):
         """Load computed GCF assignments from BS2 database to {cutoff: {bgc_name: fam}}

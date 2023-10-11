@@ -20,10 +20,10 @@ class OutputGenerator:
         run_name (str): Dataset name and starttime added to each filename
     """
 
-    def __init__(self, output_dir: Path, metadata: str, run_name: str) -> None:
+    def __init__(self, output_dir: Path, metadata: str, name: str) -> None:
         self.output_dir = output_dir
         self.metadata = metadata
-        self.name = run_name
+        self.name = name
 
     def initialize_output_dir(self) -> None:
         """Set up output directory"""
