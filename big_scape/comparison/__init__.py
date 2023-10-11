@@ -10,7 +10,7 @@ from .binning import (
 from .comparable_region import ComparableRegion
 from .legacy_workflow_alt import generate_edges
 from .legacy_bins import legacy_bin_generator, legacy_get_class
-from .utility import save_edge_to_db
+from .utility import save_edge_to_db, save_edges_to_db
 
 from . import lcs
 
@@ -27,4 +27,5 @@ __all__ = [
     "legacy_get_class",
     "save_edge_to_db",
     "lcs",
+    "save_edges_to_db",
 ]

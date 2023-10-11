@@ -219,7 +219,7 @@ class ProtoCluster(BGCRecord):
                 result.nt_stop,
                 result.contig_edge,
                 result.product,
-                result.category,
+                "",  # TODO: fix this
                 {},
             )
 
