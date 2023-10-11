@@ -10,6 +10,9 @@ from datetime import datetime
 import platform
 from pathlib import Path
 
+# from dependencies
+import tqdm
+
 # from other modules
 from big_scape.data import DB
 from big_scape.hmm import HMMer, HSP
@@ -122,10 +125,6 @@ def run_bigscape() -> None:
 
         logging.info("Scanning %d CDS", len(cds_to_scan))
 
-        def callback(tasks_done):
-            percentage = int(tasks_done / len(cds_to_scan) * 100)
-            logging.info("%d/%d (%d%%)", tasks_done, len(cds_to_scan), percentage)
-
         if platform.system() == "Darwin":
             logging.warning("Running on mac-OS: hmmsearch_simple single threaded")
             HMMer.hmmsearch_simple(cds_to_scan, 1)
@@ -136,13 +135,18 @@ def run_bigscape() -> None:
                 run.cores,
             )
 
-        # TODO: the overlap filtering in this function does not seem to work
-        HMMer.hmmsearch_multiprocess(
-            cds_to_scan,
-            domain_overlap_cutoff=run.hmmer.domain_overlap_cutoff,
-            cores=run.cores,
-            callback=callback,
-        )
+            with tqdm.tqdm(unit="CDS", desc="HMMSCAN") as t:
+
+                def callback(tasks_done):
+                    t.update(tasks_done)
+
+                # TODO: the overlap filtering in this function does not seem to work
+                HMMer.hmmsearch_multiprocess(
+                    cds_to_scan,
+                    domain_overlap_cutoff=run.hmmer.domain_overlap_cutoff,
+                    cores=run.cores,
+                    callback=callback,
+                )
 
         # TODO: move, or remove after the add_hsp_overlap function is fixed (if it is broken
         # in the first place)
@@ -187,7 +191,14 @@ def run_bigscape() -> None:
         if pfam_info is None:
             pfam_info = HMMer.get_pfam_info()
 
-        HMMer.align_simple(bs_data.get_hsp_to_align(gbks))
+        hsps_to_align = bs_data.get_hsp_to_align(gbks)
+
+        with tqdm.tqdm(unit="HSP", desc="HMMALIGN") as t:
+
+            def align_callback(tasks_done: int):
+                t.update(tasks_done)
+
+            HMMer.align_simple(hsps_to_align, align_callback)
 
         alignment_count = 0
         for gbk in gbks:
@@ -196,6 +207,7 @@ def run_bigscape() -> None:
                     if hsp.alignment is None:
                         continue
                     hsp.alignment.save(False)
+                    alignment_count += 1
 
         logging.info("%d alignments", alignment_count)
 
