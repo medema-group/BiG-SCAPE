@@ -35,14 +35,8 @@ import big_scape.distances.mix as bs_mix
 import big_scape.distances.query as bs_query
 
 
-# TODO: mock, delete later
-def run_bigscape_cluster(run: dict):
-    print("running bigscape cluster")
-    print(run)
-
-
 def run_bigscape(run: dict) -> None:
-    """Run a bigscape analysis. This is the main function of the program that parses the
+    """Run a bigscape cluster analysis. This is the main function of the program that parses the
     command line arguments, loads the data, runs the analysis and saves the output.
     """
     # root directory

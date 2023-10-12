@@ -6,7 +6,7 @@ from multiprocessing import cpu_count
 from pathlib import Path
 
 # from other modules
-from big_scape.cluster import run_bigscape_cluster, run_bigscape
+from big_scape.main import run_bigscape
 from big_scape.diagnostics import init_logger, init_logger_file
 
 # from this module
@@ -94,15 +94,6 @@ from .cli_validations import (
         "Where to look for input GBK files. Default: recursive"
         "recursive: search for gbk files recursively in input directory. "
         "flat: search for gbk files in input directory only."
-    ),
-)
-# TODO: delete once query bgc mode is ready
-@click.option(
-    "--query_bgc_path",
-    type=click.Path(exists=True, dir_okay=False, file_okay=True, path_type=Path),
-    help=(
-        "Path to query BGC file. BiG-SCAPE will compare, "
-        "all input BGCs to the query in a one-vs-all mode."
     ),
 )
 # TODO: adjust choices
@@ -297,6 +288,7 @@ def cluster(ctx, *args, **kwargs):
     """
     # get context parameters
     ctx.obj.update(ctx.params)
+    ctx.obj["query_bgc_path"] = None
 
     # workflow validations
     validate_binning_workflow(ctx)
@@ -312,5 +304,5 @@ def cluster(ctx, *args, **kwargs):
     init_logger_file(ctx.obj)
 
     # run BiG-SCAPE cluster
-    run_bigscape_cluster(ctx.obj)
+    print(ctx.obj)
     run_bigscape(ctx.obj)

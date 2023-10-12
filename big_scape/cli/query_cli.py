@@ -6,7 +6,8 @@ from multiprocessing import cpu_count
 from pathlib import Path
 
 # from other modules
-from big_scape.query import run_bigscape_query
+from big_scape.main import run_bigscape
+from big_scape.diagnostics import init_logger, init_logger_file
 
 # from this module
 from .cli_validations import (
@@ -278,6 +279,7 @@ def query(ctx, *args, **kwarg):
     """
     # get context parameters
     ctx.obj.update(ctx.params)
+    ctx.obj["no_mix"] = None
 
     # workflow validations
     validate_skip_hmmscan(ctx)
@@ -287,5 +289,10 @@ def query(ctx, *args, **kwarg):
     # set start time and label
     set_start(ctx.obj)
 
-    # run BiG-SCAPE query
-    run_bigscape_query(ctx.obj)
+    # initialize logger
+    init_logger(ctx.obj)
+    init_logger_file(ctx.obj)
+
+    # run BiG-SCAPE
+    print(ctx.obj)
+    run_bigscape(ctx.obj)
