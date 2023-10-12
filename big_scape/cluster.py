@@ -76,33 +76,24 @@ def run_bigscape(run: dict) -> None:
 
     signal.signal(signal.SIGINT, signal_handler)
 
-    # parsing needs to come first because we need it in setting up the logging
-    # run: RunParameters = parse_cmd(sys.argv[1:])
-
-    # start_time = run.start()
     start_time = run["start_time"]
 
-    # # only now we can use logging.info etc to log stuff otherwise things get weird
-    # # initializing the logger and logger file also happens here
-    # run.validate()
+    # at this point a number of things should be non-None. we need to convince mypy of
+    # this as well
+    assert run["pfam_path"] is not None
 
-    # # at this point a number of things should be non-None. we need to convince mypy of
-    # # this as well
-    # assert run.input.pfam_path is not None
+    if not HMMer.are_profiles_pressed(run["pfam_path"]):
+        logging.warning("HMM files were not pressed!")
+        HMMer.press(run["pfam_path"])
 
-    # if run.legacy:
-    #     logging.info("Using legacy mode")
+    # start profiler
+    # TODO: cant run if in macbook, fix to catch this
+    if run["profiling"]:
+        profiler = Profiler(run["profile_path"])
+        profiler.start()
+        logging.info("Profiler started")
 
-    # if not HMMer.are_profiles_pressed(run.input.pfam_path):
-    #     logging.warning("HMM files were not pressed!")
-    #     HMMer.press(run.input.pfam_path)
-
-    # # start profiler
-    # if run.diagnostics.profiling:
-    #     profiler = Profiler(run.output.profile_path)
-    #     profiler.start()
-
-    # # INPUT - load data
+    # INPUT - load data
 
     # gbks = bs_files.load_gbks(run, bigscape_dir)
 
@@ -243,14 +234,14 @@ def run_bigscape(run: dict) -> None:
 
     # # mix
 
-    # if not run.binning.no_mix and not run.binning.query_bgc_path:
+    # if not run.binning.no_mix and not run["query_bgc_path"]:
     #     bs_mix.calculate_distances_mix(run, gbks)
 
     #     DB.commit()
 
     # # query
 
-    # if run.binning.query_bgc_path:
+    # if run["query_bgc_path"]:
     #     bs_query.calculate_distances_query(run, gbks)
 
     #     DB.commit()
@@ -298,8 +289,8 @@ def run_bigscape(run: dict) -> None:
 
     # legacy_generate_bin_output(run.output.output_dir, run.label, 0.3, mix_bin)
 
-    # if run.diagnostics.profiling:
-    #     profiler.stop()
+    if run["profiling"]:
+        profiler.stop()
 
     exec_time = datetime.now() - start_time
     logging.info("All tasks done at %f seconds", exec_time.total_seconds())

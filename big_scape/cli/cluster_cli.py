@@ -94,6 +94,15 @@ from .cli_validations import (
         "flat: search for gbk files in input directory only."
     ),
 )
+# TODO: delete once query bgc mode is ready
+@click.option(
+    "--query_bgc_path",
+    type=click.Path(exists=True, dir_okay=False, file_okay=True, path_type=Path),
+    help=(
+        "Path to query BGC file. BiG-SCAPE will compare, "
+        "all input BGCs to the query in a one-vs-all mode."
+    ),
+)
 # TODO: adjust choices
 @click.option(
     "--mibig_version",
