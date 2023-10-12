@@ -19,6 +19,7 @@ from sqlalchemy import (
     select,
     text,
 )
+import tqdm
 
 # from other modules
 from big_scape.parameters.constants import DB_SCHEMA_PATH
@@ -69,6 +70,8 @@ class DB:
             raise RuntimeError("DB.connection is None")
 
         creation_queries = read_schema(Path(DB_SCHEMA_PATH))
+
+        logging.debug(creation_queries)
 
         for creation_query in creation_queries:
             DB.connection.execute(text(creation_query))
@@ -134,7 +137,14 @@ class DB:
                 + str(type(raw_file_connection))
             )
 
-        raw_memory_connection.backup(raw_file_connection)
+        page_count = DB.execute_raw_query("PRAGMA page_count;").scalar_one()
+
+        with tqdm.tqdm(total=page_count) as t:
+
+            def progress(status, remaining, total):
+                t.update(total - remaining)
+
+            raw_memory_connection.backup(raw_file_connection, progress=progress)
 
     @staticmethod
     def load_from_disk(db_path: Path) -> None:
@@ -183,7 +193,15 @@ class DB:
 
         DB.reflect()
 
-        raw_file_connection.backup(raw_memory_connection)
+        page_count = raw_file_connection.execute("PRAGMA page_count;")
+        page_count = page_count.fetchone()[0]
+
+        with tqdm.tqdm(total=page_count, unit="page", desc="Loading database") as t:
+
+            def progress(status, remaining, total):
+                t.update(total - remaining)
+
+            raw_file_connection.backup(raw_memory_connection, progress=progress)
 
     @staticmethod
     def close_db() -> None:

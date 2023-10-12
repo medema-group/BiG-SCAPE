@@ -1,6 +1,7 @@
 """Contains code to generate legacy bins based on product."""
 
 # from python
+import logging
 from typing import Iterator
 
 # from other modules
@@ -206,5 +207,5 @@ def legacy_get_class(product):  # pragma no cover
         # No product annotation. Perhaps not analyzed by antiSMASH
         return "Others"
     else:
-        print("  Warning: unknown product '{}'".format(product))
+        logging.warning("unknown product %s", product)
         return "Others"

@@ -13,6 +13,7 @@ TODO: docstrings, none typings
 import logging
 from concurrent.futures import ProcessPoolExecutor, wait
 from typing import Generator, Callable, Optional, TypeVar
+from math import ceil
 
 # from other modules
 from big_scape.distances import calc_jaccard_pair, calc_ai_pair, calc_dss_pair_legacy
@@ -53,12 +54,39 @@ def batch_generator(generator: Generator[T, None, None], batch_size: int) -> lis
     return batch
 
 
+def get_batch_size(cores: int, desired_batch_size: int, num_items: int):
+    """Get the batch size to use for a given number of cores
+
+    The idea is to maximize the number of pairs for each core while keeping the batch
+    size reasonable
+
+    Args:
+        cores (int): number of cores to use
+        desired_batch_size (int): desired batch size
+        num_items (int): number of items to generate batches for
+
+    Returns:
+        int: batch size to use
+    """
+
+    if num_items < cores:
+        return num_items
+
+    if num_items < desired_batch_size:
+        return num_items
+
+    if cores * desired_batch_size > num_items:
+        return ceil(num_items / cores)
+
+    return desired_batch_size
+
+
 def generate_edges(
     pair_generator: RecordPairGenerator,
     alignment_mode: bs_enums.ALIGNMENT_MODE,
     cores: int,
     callback: Optional[Callable] = None,
-    batch_size=100,
+    batch_size=None,
 ):  # pragma no cover
     """Generate edges for pairs generated using a pair generator
 
@@ -74,13 +102,18 @@ def generate_edges(
         jaccard, adjacency, dss)
     """
     # prepare a process pool
-    logging.info("Using %d cores", cores)
+    logging.debug("Using %d cores", cores)
 
     pairs = pair_generator.generate_pairs()
 
-    batch_size = min(pair_generator.num_pairs(), batch_size)
+    num_pairs = pair_generator.num_pairs()
 
-    logging.info("Using batch size: %d", batch_size)
+    if batch_size is None:
+        batch_size = get_batch_size(cores, 10000, num_pairs)
+        logging.debug("Using automatic batch size: %d", batch_size)
+    else:
+        batch_size = min(num_pairs, batch_size)
+        logging.debug("Using batch size: %d", batch_size)
 
     with ProcessPoolExecutor(cores) as executor:
         done_pairs = 0
