@@ -22,7 +22,7 @@ from sqlalchemy import (
 import tqdm
 
 # from other modules
-from big_scape.parameters.constants import DB_SCHEMA_PATH
+from big_scape.cli.constants import DB_SCHEMA_PATH
 from big_scape.errors import DBClosedError, DBAlreadyOpenError
 
 
@@ -70,8 +70,6 @@ class DB:
             raise RuntimeError("DB.connection is None")
 
         creation_queries = read_schema(Path(DB_SCHEMA_PATH))
-
-        logging.debug(creation_queries)
 
         for creation_query in creation_queries:
             DB.connection.execute(text(creation_query))

@@ -17,3 +17,5 @@ dependencies:
   - matplotlib=3.8.0
   - requests=2.31.0
   - tqdm=4.66.1
+  - pip:
+    - click==8.1.7
