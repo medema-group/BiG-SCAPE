@@ -16,7 +16,6 @@ import tqdm
 # from other modules
 from big_scape.data import DB
 from big_scape.hmm import HMMer, HSP
-from big_scape.parameters import RunParameters, parse_cmd
 from big_scape.diagnostics import Profiler
 from big_scape.output import (
     legacy_prepare_output,
@@ -246,48 +245,50 @@ def run_bigscape(run: dict) -> None:
 
         DB.commit()
 
-    # # FAMILIES
-    # # TODO: per cutoff
+    # TODO: make classify distance generator (legacy and AS-class)
 
-    # logging.info("Generating families")
+    # FAMILIES
+    # TODO: per cutoff
 
-    # for connected_component in bs_network.get_connected_components(0.3):
-    #     logging.debug(
-    #         "Found connected component with %d edges", len(connected_component)
-    #     )
+    logging.info("Generating families")
 
-    #     regions_families = bs_families.generate_families(connected_component)
+    for connected_component in bs_network.get_connected_components(0.3):
+        logging.debug(
+            "Found connected component with %d edges", len(connected_component)
+        )
 
-    #     # save families to database
-    #     bs_families.save_to_db(regions_families)
+        regions_families = bs_families.generate_families(connected_component)
 
-    # DB.commit()
+        # save families to database
+        bs_families.save_to_db(regions_families)
 
-    # DB.save_to_disk(run["db_path"])
+    DB.commit()
 
-    # # OUTPUT
+    DB.save_to_disk(run["db_path"])
 
-    # # if this wasn't set in scan or align, set it now
-    # if pfam_info is None:
-    #     HMMer.init(run["pfam_path"], False)
-    #     pfam_info = HMMer.get_pfam_info()
-    #     HMMer.unload()
+    # OUTPUT
 
-    # # prepare output files
-    # legacy_prepare_output(run.output.output_dir, pfam_info)
+    # if this wasn't set in scan or align, set it now
+    if pfam_info is None:
+        HMMer.init(run["pfam_path"], False)
+        pfam_info = HMMer.get_pfam_info()
+        HMMer.unload()
 
-    # # work per cutoff
-    # legacy_prepare_cutoff_output(run.output.output_dir, run.label, 0.3, gbks)
+    # prepare output files
+    legacy_prepare_output(run["output_dir"], pfam_info)
 
-    # # TODO: I don't think the bins make much sense anymore
-    # # see if we can refactor this
-    # # TODO: per cutoff
-    # mix_bin = bs_comparison.RecordPairGenerator("mix")
-    # mix_bin.add_records([gbk.region for gbk in gbks if gbk.region is not None])
+    # work per cutoff
+    legacy_prepare_cutoff_output(run["output_dir"], run["label"], 0.3, gbks)
 
-    # legacy_prepare_bin_output(run.output.output_dir, run.label, 0.3, mix_bin)
+    # TODO: I don't think the bins make much sense anymore
+    # see if we can refactor this
+    # TODO: per cutoff
+    mix_bin = bs_comparison.RecordPairGenerator("mix")
+    mix_bin.add_records([gbk.region for gbk in gbks if gbk.region is not None])
 
-    # legacy_generate_bin_output(run.output.output_dir, run.label, 0.3, mix_bin)
+    legacy_prepare_bin_output(run["output_dir"], run["label"], 0.3, mix_bin)
+
+    legacy_generate_bin_output(run["output_dir"], run["label"], 0.3, mix_bin)
 
     if run["profiling"]:
         profiler.stop()
