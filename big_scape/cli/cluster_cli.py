@@ -7,11 +7,13 @@ from pathlib import Path
 
 # from other modules
 from big_scape.cluster import run_bigscape_cluster, run_bigscape
+from big_scape.diagnostics import init_logger, init_logger_file
 
 # from this module
 from .cli_validations import (
     validate_not_empty_dir,
     validate_input_mode,
+    validate_output_paths,
     validate_binning_workflow,
     validate_skip_hmmscan,
     validate_alignment_mode,
@@ -259,18 +261,18 @@ from .cli_validations import (
 )
 @click.option(
     "--log_path",
-    type=click.Path(path_type=Path, file_okay=False),
+    type=click.Path(path_type=Path, dir_okay=False),
     help="Path to output log file directory. Default: output_dir.",
 )
 @click.option(
-    "--profile-path",
-    type=click.Path(path_type=Path, file_okay=False),
-    help="Path to output profile file directory. Default: output_dir.",
+    "--profile_path",
+    type=click.Path(path_type=Path, dir_okay=False),
+    help="Path to output profile file directory. Default: output_dir/.",
 )
 @click.option(
     "--db_path",
-    type=click.Path(path_type=Path, file_okay=False),
-    help="Path to sqlite db output directory. Default: output_dir.",
+    type=click.Path(path_type=Path, dir_okay=False),
+    help="Path to sqlite db output directory. Default: output_dir/data_sqlite.db.",
 )
 @click.pass_context
 def cluster(ctx, *args, **kwargs):
@@ -289,10 +291,15 @@ def cluster(ctx, *args, **kwargs):
     validate_binning_workflow(ctx)
     validate_skip_hmmscan(ctx)
     validate_pfam_path(ctx)
+    validate_output_paths(ctx)
 
     # set start time and run label
     set_start(ctx.obj)
 
+    # initialize logger
+    init_logger(ctx.obj)
+    init_logger_file(ctx.obj)
+
     # run BiG-SCAPE cluster
     run_bigscape_cluster(ctx.obj)
-    # run_bigscape(ctx.obj)
+    run_bigscape(ctx.obj)

@@ -12,6 +12,7 @@ from big_scape.query import run_bigscape_query
 from .cli_validations import (
     validate_not_empty_dir,
     validate_input_mode,
+    validate_output_paths,
     validate_skip_hmmscan,
     validate_alignment_mode,
     validate_includelist,
@@ -253,7 +254,7 @@ from .cli_validations import (
     help="Path to output log file directory. Default: output_dir.",
 )
 @click.option(
-    "--profile-path",
+    "--profile_path",
     type=click.Path(path_type=Path, file_okay=False),
     help="Path to output profile file directory. Default: output_dir.",
 )
@@ -279,6 +280,7 @@ def query(ctx, *args, **kwarg):
     # workflow validations
     validate_skip_hmmscan(ctx)
     validate_pfam_path(ctx)
+    validate_output_paths(ctx)
 
     # set start time and label
     set_start(ctx.obj)

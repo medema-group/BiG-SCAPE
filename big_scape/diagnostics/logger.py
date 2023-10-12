@@ -17,12 +17,12 @@ def init_logger(run) -> None:  # pragma: no cover
     # get the built in logger
     root_logger = logging.getLogger()
 
-    if run.diagnostics.verbose:
+    if run["verbose"]:
         root_logger.level = logging.DEBUG
     else:
         root_logger.level = logging.INFO
 
-    if not run.diagnostics.quiet:
+    if not run["quiet"]:
         console_handler = logging.StreamHandler()
         console_handler.setFormatter(log_formatter)
         root_logger.addHandler(console_handler)
@@ -33,6 +33,6 @@ def init_logger_file(run) -> None:  # pragma: no cover
 
     log_formatter = logging.Formatter("%(asctime)s %(levelname)-7.7s %(message)s")
     root_logger = logging.getLogger()
-    file_handler = logging.FileHandler(run.output.log_path)
+    file_handler = logging.FileHandler(run["log_path"])
     file_handler.setFormatter(log_formatter)
     root_logger.addHandler(file_handler)

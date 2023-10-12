@@ -7,6 +7,7 @@ import logging
 from pathlib import Path
 from typing import Optional
 import os
+import time
 
 # from other modules
 from big_scape.errors.input_args import InvalidArgumentError
@@ -20,8 +21,12 @@ def set_start(param_dict) -> None:
     """get start time and set label in a run parameter dict"""
 
     start_time: datetime = datetime.now()
-    timestamp = start_time.strftime("%d-%m-%Y %H_%M_%S")
-    param_dict["label"] = f"{param_dict['label']}_{timestamp}"
+    timestamp = start_time.strftime("%d-%m-%Y_%H-%M-%S")
+    if param_dict["label"]:
+        param_dict["label"] = f"{param_dict['label']}_{timestamp}"
+
+    param_dict["label"] = f"{timestamp}"
+
     param_dict["start_time"] = start_time
 
     return None
@@ -63,6 +68,31 @@ def validate_query_bgc(ctx, param, query_bgc_path) -> Path:
         raise click.BadParameter(f"Query BGC file {query_bgc_path} is not a .gbk file!")
 
     return query_bgc_path
+
+
+# output parameter validations
+
+
+def validate_output_paths(ctx) -> None:
+    """Sets the output paths to default output_dir if not provided"""
+
+    timestamp = time.strftime("%Y-%m-%d_%H-%M-%S", time.localtime())
+
+    if ctx.obj["db_path"] is None:
+        db_path = ctx.obj["output_dir"] / Path("data_sqlite.db")
+        ctx.obj["db_path"] = db_path
+
+    if ctx.obj["log_path"] is None:
+        log_filename = timestamp + ".log"
+        log_path = ctx.obj["output_dir"] / Path(log_filename)
+        ctx.obj["log_path"] = log_path
+
+    if ctx.obj["profile_path"] is None:
+        profile_filename = timestamp + ".profile"
+        profile_path = ctx.obj["output_dir"] / Path(profile_filename)
+        ctx.obj["profile_path"] = profile_path
+
+    return None
 
 
 # comparison validations
@@ -199,12 +229,12 @@ def validate_pfam_path(ctx) -> None:
 
     if ctx.obj["pfam_path"] is None and ctx.obj["db_path"] is None:
         logging.error(
-            "Missing option '--pfam_path'."
+            "Missing option '-p/--pfam_path'."
             "BiG-SCAPE database not provided, a pfam file is "
             "required in order to detect domains."
         )
         raise click.UsageError(
-            "Missing option '--pfam_path'."
+            "Missing option '-p/--pfam_path'."
             "BiG-SCAPE database not provided, a pfam file is "
             "required in order to detect domains."
         )
