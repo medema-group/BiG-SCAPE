@@ -11,6 +11,7 @@ from big_scape.diagnostics import init_logger, init_logger_file
 
 # from this module
 from .cli_validations import (
+    validate_profiling,
     validate_not_empty_dir,
     validate_input_mode,
     validate_output_paths,
@@ -54,6 +55,7 @@ from .cli_validations import (
 )
 @click.option(
     "--profiling",
+    callback=validate_profiling,
     is_flag=True,
     help="Run profiler and output profile report",
 )

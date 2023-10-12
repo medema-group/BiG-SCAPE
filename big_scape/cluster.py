@@ -97,154 +97,154 @@ def run_bigscape(run: dict) -> None:
 
     gbks = bs_files.load_gbks(run, bigscape_dir)
 
-    # # get fist task
-    # run_state = bs_data.find_minimum_task(gbks)
+    # get fist task
+    run_state = bs_data.find_minimum_task(gbks)
 
-    # # nothing to do!
-    # if run_state == bs_enums.TASK.NOTHING_TO_DO:
-    #     logging.info("Nothing to do!")
-    #     sys.exit(0)
+    # nothing to do!
+    if run_state == bs_enums.TASK.NOTHING_TO_DO:
+        logging.info("Nothing to do!")
+        sys.exit(0)
 
-    # logging.info("First task: %s", run_state)
+    logging.info("First task: %s", run_state)
 
-    # # we will need this later. this can be set in hmmscan, hmmalign or not at all
-    # pfam_info = None
+    # we will need this later. this can be set in hmmscan, hmmalign or not at all
+    pfam_info = None
 
-    # # HMMER - Search/scan
-    # if run_state == bs_enums.TASK.HMM_SCAN:
-    #     HMMer.init(run.input.pfam_path)
+    # HMMER - Search/scan
+    if run_state == bs_enums.TASK.HMM_SCAN:
+        HMMer.init(run["pfam_path"])
 
-    #     # first opportunity to set this is here
-    #     pfam_info = HMMer.get_pfam_info()
+        # first opportunity to set this is here
+        pfam_info = HMMer.get_pfam_info()
 
-    #     # we certainly need to do some sort of scan, since the run_state is on hmm_scan. but we do
-    #     # not need to do everything. Find the CDS that need scanning
-    #     cds_to_scan = bs_data.get_cds_to_scan(gbks)
+        # we certainly need to do some sort of scan, since the run_state is on hmm_scan. but we do
+        # not need to do everything. Find the CDS that need scanning
+        cds_to_scan = bs_data.get_cds_to_scan(gbks)
 
-    #     logging.info("Scanning %d CDS", len(cds_to_scan))
+        logging.info("Scanning %d CDS", len(cds_to_scan))
 
-    #     if platform.system() == "Darwin":
-    #         logging.warning("Running on mac-OS: hmmsearch_simple single threaded")
-    #         HMMer.hmmsearch_simple(cds_to_scan, 1)
-    #     else:
-    #         logging.debug(
-    #             "Running on %s: hmmsearch_multiprocess with %d cores",
-    #             platform.system(),
-    #             run.cores,
-    #         )
+        if platform.system() == "Darwin":
+            logging.warning("Running on mac-OS: hmmsearch_simple single threaded")
+            HMMer.hmmsearch_simple(cds_to_scan, 1)
+        else:
+            logging.debug(
+                "Running on %s: hmmsearch_multiprocess with %d cores",
+                platform.system(),
+                run["cores"],
+            )
 
-    #         with tqdm.tqdm(unit="CDS", desc="HMMSCAN") as t:
+            with tqdm.tqdm(unit="CDS", desc="HMMSCAN") as t:
 
-    #             def callback(tasks_done):
-    #                 t.update(tasks_done)
+                def callback(tasks_done):
+                    t.update(tasks_done)
 
-    #             # TODO: the overlap filtering in this function does not seem to work
-    #             HMMer.hmmsearch_multiprocess(
-    #                 cds_to_scan,
-    #                 domain_overlap_cutoff=run.hmmer.domain_overlap_cutoff,
-    #                 cores=run.cores,
-    #                 callback=callback,
-    #             )
+                # TODO: the overlap filtering in this function does not seem to work
+                HMMer.hmmsearch_multiprocess(
+                    cds_to_scan,
+                    domain_overlap_cutoff=run["domain_overlap_cutoff"],
+                    cores=run["cores"],
+                    callback=callback,
+                )
 
-    #     # TODO: move, or remove after the add_hsp_overlap function is fixed (if it is broken
-    #     # in the first place)
-    #     # this sorts all CDS and then filters them using the old filtering system, which
-    #     # is less efficient than the flitering using the CDS.add_hsp_overlap_filter
-    #     # method. however, that method seems to be broken somehow
-    #     for gbk in gbks:
-    #         for cds in gbk.genes:
-    #             cds.hsps = sorted(cds.hsps)
+        # TODO: move, or remove after the add_hsp_overlap function is fixed (if it is broken
+        # in the first place)
+        # this sorts all CDS and then filters them using the old filtering system, which
+        # is less efficient than the flitering using the CDS.add_hsp_overlap_filter
+        # method. however, that method seems to be broken somehow
+        for gbk in gbks:
+            for cds in gbk.genes:
+                cds.hsps = sorted(cds.hsps)
 
-    #     exec_time = datetime.now() - start_time
-    #     logging.info("scan done at %f seconds", exec_time.total_seconds())
+        exec_time = datetime.now() - start_time
+        logging.info("scan done at %f seconds", exec_time.total_seconds())
 
-    #     # save hsps to database
+        # save hsps to database
 
-    #     for cds in cds_to_scan:
-    #         for hsp in cds.hsps:
-    #             hsp.save(False)
-    #     DB.commit()
+        for cds in cds_to_scan:
+            for hsp in cds.hsps:
+                hsp.save(False)
+        DB.commit()
 
-    #     exec_time = datetime.now() - start_time
-    #     logging.info("DB: HSP save done at %f seconds", exec_time.total_seconds())
+        exec_time = datetime.now() - start_time
+        logging.info("DB: HSP save done at %f seconds", exec_time.total_seconds())
 
-    #     HMMer.unload()
+        HMMer.unload()
 
-    #     # set new run state
-    #     run_state = bs_data.find_minimum_task(gbks)
-    #     logging.info("Next task: %s", run_state)
+        # set new run state
+        run_state = bs_data.find_minimum_task(gbks)
+        logging.info("Next task: %s", run_state)
 
-    #     all_hsps: list[HSP] = []
-    #     for gbk in gbks:
-    #         for cds in gbk.genes:
-    #             all_hsps.extend(cds.hsps)
+        all_hsps: list[HSP] = []
+        for gbk in gbks:
+            for cds in gbk.genes:
+                all_hsps.extend(cds.hsps)
 
-    #     logging.info("%d hsps found in this run", len(all_hsps))
+        logging.info("%d hsps found in this run", len(all_hsps))
 
-    # # HMMER - Align
-    # if run_state == bs_enums.TASK.HMM_ALIGN:
-    #     HMMer.init(run.input.pfam_path, False)
+    # HMMER - Align
+    if run_state == bs_enums.TASK.HMM_ALIGN:
+        HMMer.init(run["pfam_path"], False)
 
-    #     # if this wasn't set before, set it now
-    #     if pfam_info is None:
-    #         pfam_info = HMMer.get_pfam_info()
+        # if this wasn't set before, set it now
+        if pfam_info is None:
+            pfam_info = HMMer.get_pfam_info()
 
-    #     hsps_to_align = bs_data.get_hsp_to_align(gbks)
+        hsps_to_align = bs_data.get_hsp_to_align(gbks)
 
-    #     with tqdm.tqdm(unit="HSP", desc="HMMALIGN") as t:
+        with tqdm.tqdm(unit="HSP", desc="HMMALIGN") as t:
 
-    #         def align_callback(tasks_done: int):
-    #             t.update(tasks_done)
+            def align_callback(tasks_done: int):
+                t.update(tasks_done)
 
-    #         HMMer.align_simple(hsps_to_align, align_callback)
+            HMMer.align_simple(hsps_to_align, align_callback)
 
-    #     alignment_count = 0
-    #     for gbk in gbks:
-    #         for gene in gbk.genes:
-    #             for hsp in gene.hsps:
-    #                 if hsp.alignment is None:
-    #                     continue
-    #                 hsp.alignment.save(False)
-    #                 alignment_count += 1
+        alignment_count = 0
+        for gbk in gbks:
+            for gene in gbk.genes:
+                for hsp in gene.hsps:
+                    if hsp.alignment is None:
+                        continue
+                    hsp.alignment.save(False)
+                    alignment_count += 1
 
-    #     logging.info("%d alignments", alignment_count)
+        logging.info("%d alignments", alignment_count)
 
-    #     exec_time = datetime.now() - start_time
-    #     logging.info("align done at %f seconds", exec_time.total_seconds())
+        exec_time = datetime.now() - start_time
+        logging.info("align done at %f seconds", exec_time.total_seconds())
 
-    #     DB.commit()
-    #     DB.save_to_disk(run["db_path"])
+        DB.commit()
+        DB.save_to_disk(run["db_path"])
 
-    #     exec_time = datetime.now() - start_time
-    #     logging.info(
-    #         "DB: HSP alignment save done at %f seconds", exec_time.total_seconds()
-    #     )
+        exec_time = datetime.now() - start_time
+        logging.info(
+            "DB: HSP alignment save done at %f seconds", exec_time.total_seconds()
+        )
 
-    #     HMMer.unload()
+        HMMer.unload()
 
-    #     # set new run state
-    #     run_state = bs_data.find_minimum_task(gbks)
-    #     logging.info("Next task: %s", run_state)
+        # set new run state
+        run_state = bs_data.find_minimum_task(gbks)
+        logging.info("Next task: %s", run_state)
 
-    # # TODO: idea: use sqlite to set distances of 1.0 for all pairs that have no domains
-    # # in common
+    # TODO: idea: use sqlite to set distances of 1.0 for all pairs that have no domains
+    # in common
 
-    # # DISTANCE GENERATION
-    # # TODO: legacy bins
+    # DISTANCE GENERATION
+    # TODO: legacy bins
 
-    # # mix
+    # mix
 
-    # if not run.binning.no_mix and not run["query_bgc_path"]:
-    #     bs_mix.calculate_distances_mix(run, gbks)
+    if not run["no_mix"] and not run["query_bgc_path"]:
+        bs_mix.calculate_distances_mix(run, gbks)
 
-    #     DB.commit()
+        DB.commit()
 
-    # # query
+    # query
 
-    # if run["query_bgc_path"]:
-    #     bs_query.calculate_distances_query(run, gbks)
+    if run["query_bgc_path"]:
+        bs_query.calculate_distances_query(run, gbks)
 
-    #     DB.commit()
+        DB.commit()
 
     # # FAMILIES
     # # TODO: per cutoff
@@ -269,7 +269,7 @@ def run_bigscape(run: dict) -> None:
 
     # # if this wasn't set in scan or align, set it now
     # if pfam_info is None:
-    #     HMMer.init(run.input.pfam_path, False)
+    #     HMMer.init(run["pfam_path"], False)
     #     pfam_info = HMMer.get_pfam_info()
     #     HMMer.unload()
 

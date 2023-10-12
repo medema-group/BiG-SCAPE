@@ -8,6 +8,7 @@ from pathlib import Path
 from typing import Optional
 import os
 import time
+import platform
 
 # from other modules
 from big_scape.errors.input_args import InvalidArgumentError
@@ -30,6 +31,18 @@ def set_start(param_dict) -> None:
     param_dict["start_time"] = start_time
 
     return None
+
+
+# meta parameter validations
+
+
+def validate_profiling(ctx, param, profiling) -> bool:
+    """Checks whether multithreading is possible, and therefore whether profiling can happen"""
+
+    if profiling and platform.system() == "Darwin":
+        logging.warning("Profiling is not supported on MacOS, please use Linux")
+
+    return False
 
 
 # input parameter validations

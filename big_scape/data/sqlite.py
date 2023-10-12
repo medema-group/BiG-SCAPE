@@ -71,8 +71,6 @@ class DB:
 
         creation_queries = read_schema(Path(DB_SCHEMA_PATH))
 
-        logging.debug(creation_queries)
-
         for creation_query in creation_queries:
             DB.connection.execute(text(creation_query))
 

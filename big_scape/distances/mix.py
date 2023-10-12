@@ -8,14 +8,11 @@ import tqdm
 
 # from other modules
 import big_scape.data as bs_data
-import big_scape.parameters as bs_param
 import big_scape.genbank as bs_gbk
 import big_scape.comparison as bs_comparison
 
 
-def calculate_distances_mix(
-    run: bs_param.RunParameters, gbks: list[bs_gbk.GBK]
-) -> None:
+def calculate_distances_mix(run: dict, gbks: list[bs_gbk.GBK]) -> None:
     """calculates distances between all records in a given dataset and saves them to the
     database
 
@@ -61,13 +58,13 @@ def calculate_distances_mix(
                 # bs_data.DB.commit()
 
         mix_edges = bs_comparison.generate_edges(
-            missing_edge_bin, run.comparison.alignment_mode, run.cores, callback
+            missing_edge_bin, run["alignment_mode"], run["cores"], callback
         )
 
         with tqdm.tqdm(total=num_pairs, unit="edge", desc="Calculating distances") as t:
             num_edges = 0
             save_batch = []
-            batch_size = run.cores * 100000
+            batch_size = run["cores"] * 100000
             for edge in mix_edges:
                 num_edges += 1
                 t.update(1)

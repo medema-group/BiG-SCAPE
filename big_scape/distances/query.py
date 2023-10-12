@@ -6,14 +6,11 @@ given dataset
 import logging
 
 # from other modules
-import big_scape.parameters as bs_param
 import big_scape.genbank as bs_gbk
 import big_scape.comparison as bs_comparison
 
 
-def calculate_distances_query(
-    run: bs_param.RunParameters, gbks: list[bs_gbk.GBK]
-) -> None:
+def calculate_distances_query(run: dict, gbks: list[bs_gbk.GBK]) -> None:
     """calculates distances between all queries and references in a given dataset and
     saves them to the database
 
@@ -44,8 +41,8 @@ def calculate_distances_query(
 
         query_edges = bs_comparison.generate_edges(
             missing_edge_bin,
-            run.comparison.alignment_mode,
-            run.cores,
+            run["alignment_mode"],
+            run["cores"],
         )
 
         num_edges = 0
@@ -87,7 +84,7 @@ def calculate_distances_query(
                 )
 
         ref_edges = bs_comparison.generate_edges(
-            ref_to_ref_bin, run.comparison.alignment_mode, run.cores, callback
+            ref_to_ref_bin, run["alignment_mode"], run["cores"], callback
         )
 
         num_edges = 0
