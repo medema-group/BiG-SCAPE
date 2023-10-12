@@ -19,6 +19,7 @@ from .cli_validations import (
     validate_filter_gbk,
     validate_query_bgc,
     validate_pfam_path,
+    set_start,
 )
 
 
@@ -272,10 +273,15 @@ def query(ctx, *args, **kwarg):
     \f
     :param click.core.Context ctx: Click context.
     """
+    # get context parameters
     ctx.obj.update(ctx.params)
 
     # workflow validations
     validate_skip_hmmscan(ctx)
     validate_pfam_path(ctx)
 
+    # set start time and label
+    set_start(ctx.obj)
+
+    # run BiG-SCAPE query
     run_bigscape_query(ctx.obj)

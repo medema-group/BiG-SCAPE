@@ -6,7 +6,7 @@ from multiprocessing import cpu_count
 from pathlib import Path
 
 # from other modules
-from big_scape.cluster import run_bigscape_cluster  # , run_bigscape
+from big_scape.cluster import run_bigscape_cluster, run_bigscape
 
 # from this module
 from .cli_validations import (
@@ -19,6 +19,7 @@ from .cli_validations import (
     validate_gcf_cutoffs,
     validate_filter_gbk,
     validate_pfam_path,
+    set_start,
 )
 
 
@@ -281,7 +282,7 @@ def cluster(ctx, *args, **kwargs):
     \f
     :param click.core.Context ctx: Click context.
     """
-
+    # get context parameters
     ctx.obj.update(ctx.params)
 
     # workflow validations
@@ -289,4 +290,9 @@ def cluster(ctx, *args, **kwargs):
     validate_skip_hmmscan(ctx)
     validate_pfam_path(ctx)
 
+    # set start time and run label
+    set_start(ctx.obj)
+
+    # run BiG-SCAPE cluster
     run_bigscape_cluster(ctx.obj)
+    # run_bigscape(ctx.obj)

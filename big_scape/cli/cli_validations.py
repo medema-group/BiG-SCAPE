@@ -1,6 +1,7 @@
 """ A module to store all CLI parameter validations """
 
 # from python
+from datetime import datetime
 import click
 import logging
 from pathlib import Path
@@ -11,6 +12,19 @@ import os
 from big_scape.errors.input_args import InvalidArgumentError
 
 import big_scape.enums as bs_enums
+
+
+# set time and label
+# TODO: not a validation, move to another module
+def set_start(param_dict) -> None:
+    """get start time and set label in a run parameter dict"""
+
+    start_time: datetime = datetime.now()
+    timestamp = start_time.strftime("%d-%m-%Y %H_%M_%S")
+    param_dict["label"] = f"{param_dict['label']}_{timestamp}"
+    param_dict["start_time"] = start_time
+
+    return None
 
 
 # input parameter validations
@@ -155,7 +169,7 @@ def validate_binning_workflow(ctx) -> None:
             "be done. Please remove either --no_mix, or add --legacy_classify/--classify"
             " in order to enable comparisons"
         )
-        raise click.BadParameter(
+        raise click.UsageError(
             "The combination of arguments you have selected for binning means no work will "
             "be done. Please remove either --no_mix, or add --legacy_classify/--classify"
             " in order to enable comparisons"
@@ -168,11 +182,13 @@ def validate_skip_hmmscan(ctx) -> None:
 
     if ctx.obj["skip_hmmscan"] and ctx.obj["db_path"] is None:
         logging.error(
-            "BiG-SCAPE database does not exist, skip_hmmscan requires "
+            "Missing option '--db_path'."
+            "BiG-SCAPE database has not been given, skip_hmmscan requires "
             "a DB of already processed gbk files."
         )
-        raise click.BadParameter(
-            "BiG-SCAPE database does not exist, skip_hmmscan requires "
+        raise click.UsageError(
+            "Missing option '--db_path'."
+            "BiG-SCAPE database has not been given, skip_hmmscan requires "
             "a DB of already processed gbk files."
         )
 
@@ -182,11 +198,13 @@ def validate_pfam_path(ctx) -> None:
     which requires already processed gbk files and hence a DB in output"""
 
     if ctx.obj["pfam_path"] is None and ctx.obj["db_path"] is None:
-        # logging.error(
-        #    "BiG-SCAPE database not provided, a pfam file is "
-        #    "required in order to detect domains."
-        # )
-        raise click.BadParameter(
+        logging.error(
+            "Missing option '--pfam_path'."
+            "BiG-SCAPE database not provided, a pfam file is "
+            "required in order to detect domains."
+        )
+        raise click.UsageError(
+            "Missing option '--pfam_path'."
             "BiG-SCAPE database not provided, a pfam file is "
             "required in order to detect domains."
         )

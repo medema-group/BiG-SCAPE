@@ -7,6 +7,7 @@ from pathlib import Path
 
 # from other modules
 from big_scape.benchmark import run_bigscape_benchmark
+from .cli_validations import set_start
 
 
 # BiG-SCAPE benchmark mode
@@ -93,5 +94,11 @@ def benchmark(ctx, query, benchmark):
     \f
     :param click.core.Context ctx: Click context.
     """
+    # get context parameters
     ctx.obj.update(ctx.params)
+
+    # set start time and label
+    set_start(ctx.obj)
+
+    # run BiG-SCAPE benchmark
     run_bigscape_benchmark(ctx.obj)
