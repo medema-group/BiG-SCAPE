@@ -22,7 +22,7 @@ from sqlalchemy import (
 import tqdm
 
 # from other modules
-from big_scape.parameters.constants import DB_SCHEMA_PATH
+from big_scape.cli.constants import DB_SCHEMA_PATH
 from big_scape.errors import DBClosedError, DBAlreadyOpenError
 
 
