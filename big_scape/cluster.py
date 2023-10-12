@@ -70,7 +70,7 @@ def run_bigscape(run: dict) -> None:
             signal.signal(signal.SIGINT, signal.SIG_DFL)
 
             DB.commit()
-            DB.save_to_disk(run.output.db_path)
+            DB.save_to_disk(run["db_path"])
 
         sys.exit(0)
 
@@ -95,7 +95,7 @@ def run_bigscape(run: dict) -> None:
 
     # INPUT - load data
 
-    # gbks = bs_files.load_gbks(run, bigscape_dir)
+    gbks = bs_files.load_gbks(run, bigscape_dir)
 
     # # get fist task
     # run_state = bs_data.find_minimum_task(gbks)
@@ -213,7 +213,7 @@ def run_bigscape(run: dict) -> None:
     #     logging.info("align done at %f seconds", exec_time.total_seconds())
 
     #     DB.commit()
-    #     DB.save_to_disk(run.output.db_path)
+    #     DB.save_to_disk(run["db_path"])
 
     #     exec_time = datetime.now() - start_time
     #     logging.info(
@@ -263,7 +263,7 @@ def run_bigscape(run: dict) -> None:
 
     # DB.commit()
 
-    # DB.save_to_disk(run.output.db_path)
+    # DB.save_to_disk(run["db_path"])
 
     # # OUTPUT
 
