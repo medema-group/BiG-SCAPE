@@ -4,15 +4,18 @@ channels:
   - bioconda
 dependencies:
   - python=3.9
-  - biopython
-  - sortedcontainers
-  - fasttree
-  - networkx
-  - numpy
-  - pandas
+  - biopython=1.81
+  - sortedcontainers=2.4.0
+  - fasttree=2.1.11
+  - networkx=3.1
+  - numpy=1.26.0
+  - pandas=2.1.1
   - pyhmmer=0.8.2
-  - scikit-learn
-  - scipy
-  - sqlalchemy
-  - matplotlib
-  - requests
+  - scikit-learn=1.3.1
+  - scipy=1.11.3
+  - sqlalchemy=2.0.2
+  - matplotlib=3.8.0
+  - requests=2.31.0
+  - tqdm=4.66.1
+  - pip:
+    - click==8.1.7

@@ -266,14 +266,14 @@ class HMMer:
             that is called whenever a set of tasks is done
 
         """
-        logging.info("Performing distributed hmmsearch on %d genes", len(cds_list))
+        logging.debug("Performing distributed hmmsearch on %d genes", len(cds_list))
         processes: list[Process] = []
         connections: list[Connection] = []
 
         # check for set batch size
         if batch_size is None:
             batch_size = HMMer.calc_batch_size(len(cds_list), cores)
-            logging.info("Using automatic batch size %d", batch_size)
+            logging.debug("Using automatic batch size %d", batch_size)
 
         task_iter = task_generator(cds_list, batch_size)
 
@@ -455,7 +455,7 @@ class HMMer:
             worker_connection.send([num_tasks] + task_output)
 
     @staticmethod
-    def align_simple(hsps: list[HSP]) -> None:
+    def align_simple(hsps: list[HSP], callback: Callable = None) -> None:
         """Aligns a list of HSPs per domain. This alters the HSP objects to include
         alignments
 
@@ -464,6 +464,8 @@ class HMMer:
         Args:
             hsps (list[HSP]): List of HSPs to align
         """
+
+        tasks_done = 0
 
         # emit a warning for people not using a certain version of pyhmmer
         version_parts = list(map(int, pyhmmer_version.split(".")))
@@ -511,6 +513,11 @@ class HMMer:
             ds_block = TextSequenceBlock(sequences).digitize(HMMer.alphabet)
 
             msa = hmmalign(domain_profile, ds_block)
+
+            tasks_done += 1
+
+            if callback is not None:
+                callback(tasks_done)
 
             for idx, alignment in enumerate(msa.alignment):
                 # name is actually the list index of the original HSP

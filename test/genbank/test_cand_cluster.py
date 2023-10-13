@@ -132,7 +132,7 @@ class TestCandidateCluster(TestCase):
 
         candidate_cluster = CandidateCluster.parse(candidate_cluster_feature)
 
-        candidate_cluster.save()
+        candidate_cluster.save(0)
 
         cursor_result = DB.execute_raw_query("SELECT * FROM bgc_record;")
 

@@ -55,12 +55,12 @@ class ProtoCore(BGCRecord):
             product,
         )
 
-    def save(self, commit=True) -> None:
+    def save(self, parent_id: int, commit=True) -> None:
         """Stores this protocore in the database
 
         Arguments:
             commit: commit immediately after executing the insert query"""
-        super().save_record("proto_core", commit)
+        super().save_record("proto_core", parent_id, commit)
 
     @classmethod
     def parse(cls, feature: SeqFeature, parent_gbk: Optional[GBK] = None) -> ProtoCore:
@@ -130,7 +130,7 @@ class ProtoCore(BGCRecord):
                 record_table.c.nt_stop,
                 record_table.c.product,
             )
-            .where(record_table.c.record_type == "protocluster")
+            .where(record_table.c.record_type == "proto_core")
             .compile()
         )
 

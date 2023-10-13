@@ -4,17 +4,15 @@
 import logging
 from pathlib import Path
 from typing import List, Optional
-from math import floor
 import os
 import tarfile
+import multiprocessing
 
 # from dependencies
 import requests  # type: ignore
 
 # from other modules
 from big_scape.genbank.gbk import GBK
-
-import big_scape.parameters as bs_param
 import big_scape.enums as bs_enums
 import big_scape.genbank as bs_gbk
 import big_scape.data as bs_data
@@ -101,6 +99,7 @@ def load_dataset_folder(
     exclude_gbk: Optional[List[str]] = None,
     cds_overlap_cutoff: Optional[float] = None,
     legacy_mode=False,
+    cores: Optional[int] = None,
 ) -> List[GBK]:
     """Loads all gbk files in a given folder
 
@@ -138,14 +137,20 @@ def load_dataset_folder(
 
     logging.info("Loading %d GBKs", num_files)
 
+    if cores is None:
+        cores = multiprocessing.cpu_count()
+
     gbk_list = []
-    for idx, file in enumerate(filtered_files):
-        if num_files > 9 and idx % floor(num_files / 10) == 0:
-            logging.info("Loaded %d/%d GBKs", idx, num_files)
+    pool = multiprocessing.Pool(cores)
 
-        gbk = load_gbk(file, source_type, cds_overlap_cutoff, legacy_mode)
-
-        gbk_list.append(gbk)
+    # TODO: would really like to see a loading bar here
+    gbk_list = pool.starmap(
+        load_gbk,
+        [
+            (file, source_type, cds_overlap_cutoff, legacy_mode)
+            for file in filtered_files
+        ],
+    )
 
     return gbk_list
 
@@ -221,7 +226,7 @@ def load_gbk(
     return GBK.parse(path, source_type, cds_overlap_cutoff, legacy_mode)
 
 
-def load_gbks(run: bs_param.RunParameters, bigscape_dir: Path) -> list[GBK]:
+def load_gbks(run: dict, bigscape_dir: Path) -> list[GBK]:
     """Load all gbks from the input folder and return a list of GBK objects
 
     Args:
@@ -237,51 +242,51 @@ def load_gbks(run: bs_param.RunParameters, bigscape_dir: Path) -> list[GBK]:
 
     input_gbks = []
 
-    if run.binning.query_bgc_path:
-        query_bgc_gbk = GBK(run.binning.query_bgc_path, bs_enums.SOURCE_TYPE.QUERY)
+    if run["query_bgc_path"]:
+        query_bgc_gbk = GBK(run["query_bgc_path"], bs_enums.SOURCE_TYPE.QUERY)
         input_gbks.append(query_bgc_gbk)
 
-        query_bgc_stem = run.binning.query_bgc_path.stem
+        query_bgc_stem = run["query_bgc_path"].stem
 
         # add the query bgc to the exclude list
-        exclude_gbk = run.input.exclude_gbk + [query_bgc_stem]
+        exclude_gbk = run["exclude_gbk"] + [query_bgc_stem]
 
         gbks = load_dataset_folder(
-            run.input.input_dir,
+            run["input_dir"],
             bs_enums.SOURCE_TYPE.REFERENCE,
-            run.input.input_mode,
-            run.input.include_gbk,
+            run["input_mode"],
+            run["include_gbk"],
             exclude_gbk,
-            run.input.cds_overlap_cutoff,
+            run["cds_overlap_cutoff"],
         )
         input_gbks.extend(gbks)
 
     else:
         gbks = load_dataset_folder(
-            run.input.input_dir,
+            run["input_dir"],
             bs_enums.SOURCE_TYPE.QUERY,
-            run.input.input_mode,
-            run.input.include_gbk,
-            run.input.exclude_gbk,
-            run.input.cds_overlap_cutoff,
+            run["input_mode"],
+            run["include_gbk"],
+            run["exclude_gbk"],
+            run["cds_overlap_cutoff"],
         )
         input_gbks.extend(gbks)
 
     # get reference if either MIBiG version or user-made reference dir passed
-    if run.input.mibig_version:
-        mibig_version_dir = get_mibig(run.input.mibig_version, bigscape_dir)
+    if run["mibig_version"]:
+        mibig_version_dir = get_mibig(run["mibig_version"], bigscape_dir)
         mibig_gbks = load_dataset_folder(mibig_version_dir, bs_enums.SOURCE_TYPE.MIBIG)
         input_gbks.extend(mibig_gbks)
 
-    if run.input.reference_dir:
+    if run["reference_dir"]:
         reference_gbks = load_dataset_folder(
-            run.input.reference_dir, bs_enums.SOURCE_TYPE.REFERENCE
+            run["reference_dir"], bs_enums.SOURCE_TYPE.REFERENCE
         )
         input_gbks.extend(reference_gbks)
 
     # find the minimum task set for these gbks
     # if there is no database, create a new one and load in all the input stuff
-    if not run.output.db_path.exists():
+    if not run["db_path"].exists():
         bs_data.DB.create_in_mem()
 
         all_cds: list[bs_gbk.CDS] = []
@@ -291,7 +296,7 @@ def load_gbks(run: bs_param.RunParameters, bigscape_dir: Path) -> list[GBK]:
 
         return input_gbks
 
-    bs_data.DB.load_from_disk(run.output.db_path)
+    bs_data.DB.load_from_disk(run["db_path"])
     task_state = bs_data.find_minimum_task(input_gbks)
 
     # if we are are not on the load_gbks task, we have all the data we need
