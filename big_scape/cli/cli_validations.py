@@ -197,10 +197,28 @@ def validate_includelist(ctx, param, domain_includelist_path) -> None:
 # workflow validations
 
 
-def validate_binning_workflow(ctx) -> None:
+def validate_binning_cluster_workflow(ctx) -> None:
     """Raise an error if the combination of parameters in this object means no work
-    will be done
+    will be done, or if the combination of parameters is invalid
     """
+
+    # --legacy_weights needs a classification method
+
+    if (
+        ctx.obj["legacy_weights"]
+        and not ctx.obj["legacy_classify"]
+        and not ctx.obj["classify"]
+    ):
+        logging.error(
+            "You have selected --legacy_weights but no classification method. "
+            "Please select --legacy_classify or --classify"
+        )
+        raise click.UsageError(
+            "You have selected --legacy_weights but no classification method. "
+            "Please select --legacy_classify or --classify"
+        )
+
+    # --no_mix needs a classification method, otherwise no work will be done
 
     if (
         ctx.obj["no_mix"] is True
@@ -216,6 +234,36 @@ def validate_binning_workflow(ctx) -> None:
             "The combination of arguments you have selected for binning means no work will "
             "be done. Please remove either --no_mix, or add --legacy_classify/--classify"
             " in order to enable comparisons"
+        )
+
+    # --legacy_classify and --classify are mutually exclusive
+    # --legacy_classify turns on --legacy_weights
+
+    if ctx.obj["legacy_classify"]:
+        if ctx.obj["classify"]:
+            logging.error(
+                "You have selected both --legacy_classify and --classify. Please select only one"
+            )
+            raise click.UsageError(
+                "You have selected both --legacy_classify and --classify. Please select only one"
+            )
+        else:
+            ctx.obj["legacy_weights"] = True
+
+
+def validate_binning_query_workflow(ctx) -> None:
+    """Raise an error if the combination of parameters is invalid"""
+
+    # legacy weights needs classify
+
+    if ctx.obj["legacy_weights"] and not ctx.obj["classify"]:
+        logging.error(
+            "You have selected --legacy_weights but no classification method. "
+            "Please select --classify, or remove this parameter"
+        )
+        raise click.UsageError(
+            "You have selected --legacy_weights but no classification method. "
+            "Please select --classify, or remove this parameter"
         )
 
 

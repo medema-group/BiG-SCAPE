@@ -16,6 +16,7 @@ from .cli_validations import (
     validate_input_mode,
     validate_output_paths,
     validate_skip_hmmscan,
+    validate_binning_query_workflow,
     validate_alignment_mode,
     validate_includelist,
     validate_gcf_cutoffs,
@@ -211,6 +212,26 @@ from .cli_validations import (
         "the listed accessions will be analysed."
     ),
 )
+@click.option(
+    "--legacy_weights",
+    is_flag=True,
+    help=(
+        "Use BiG-SCAPE v1 class-based weights in distance calculations"
+        "If not selected, the distance metric will be based on the 'mix'"
+        " weights distribution."
+    ),
+)
+@click.option(
+    "--classify",
+    is_flag=True,
+    help=(
+        "Use antiSMASH/BGC classes to select only BGCs that have the same "
+        "class as the query BGC. Can be used in combination with "
+        " --legacy_weights if BGC gbks have been produced by antiSMASH version6 or higher."
+        " For older antiSMASH versions, do not select --legacy_weights, which will "
+        "perform the weighted distance calculations based on the generic 'mix' weights."
+    ),
+)
 # comparison parameters
 # TODO: update with implementation
 @click.option(
@@ -285,6 +306,7 @@ def query(ctx, *args, **kwarg):
     validate_skip_hmmscan(ctx)
     validate_pfam_path(ctx)
     validate_output_paths(ctx)
+    validate_binning_query_workflow(ctx)
 
     # set start time and label
     set_start(ctx.obj)
@@ -294,5 +316,5 @@ def query(ctx, *args, **kwarg):
     init_logger_file(ctx.obj)
 
     # run BiG-SCAPE
-    print(ctx.obj)
+    # print(ctx.obj)
     run_bigscape(ctx.obj)
