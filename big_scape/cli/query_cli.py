@@ -254,17 +254,17 @@ from .cli_validations import (
 @click.option(
     "--log_path",
     type=click.Path(path_type=Path, file_okay=False),
-    help="Path to output log file directory. Default: output_dir.",
+    help="Path to output log file directory. Default: output_dir/timestamp.log.",
 )
 @click.option(
     "--profile_path",
     type=click.Path(path_type=Path, file_okay=False),
-    help="Path to output profile file directory. Default: output_dir.",
+    help="Path to output profile file directory. Default: output_dir/timestamp.profile.",
 )
 @click.option(
     "--db_path",
     type=click.Path(path_type=Path, file_okay=False),
-    help="Path to sqlite db output directory. Default: output_dir.",
+    help="Path to sqlite db output directory. Default: output_dir/data_sqlite.db.",
 )
 @click.pass_context
 def query(ctx, *args, **kwarg):
