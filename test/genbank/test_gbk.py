@@ -12,6 +12,7 @@ from big_scape.genbank import GBK, Region, ProtoCore, CDS
 from big_scape.errors import InvalidGBKError
 from big_scape.data import DB
 from big_scape.enums import SOURCE_TYPE
+import big_scape.enums as bs_enums
 
 
 class TestGBK(TestCase):
@@ -29,8 +30,18 @@ class TestGBK(TestCase):
         """Tests whether a GBK is instantiated correctly"""
 
         gbk_file_path = Path("test/test_data/valid_gbk_folder/valid_input_region.gbk")
+        run = {
+            "input_dir": Path("test/test_data/valid_gbk_folder/"),
+            "input_mode": bs_enums.INPUT_MODE.RECURSIVE,
+            "include_gbk": None,
+            "exclude_gbk": None,
+            "cds_overlap_cutoff": None,
+            "cores": None,
+            "classify": False,
+            "legacy_classify": False,
+        }
 
-        gbk = GBK.parse(gbk_file_path, SOURCE_TYPE.QUERY)
+        gbk = GBK.parse(gbk_file_path, SOURCE_TYPE.QUERY, run)
 
         self.assertIsInstance(gbk, GBK)
 
@@ -40,8 +51,59 @@ class TestGBK(TestCase):
         gbk_file_path = Path(
             "test/test_data/valid_gbk_folder/CM001015.1.cluster001.gbk"
         )
+        run = {
+            "input_dir": Path("test/test_data/valid_gbk_folder/"),
+            "input_mode": bs_enums.INPUT_MODE.RECURSIVE,
+            "include_gbk": None,
+            "exclude_gbk": None,
+            "cds_overlap_cutoff": None,
+            "cores": None,
+            "classify": False,
+            "legacy_classify": False,
+        }
+        gbk = GBK.parse(gbk_file_path, SOURCE_TYPE.QUERY, run)
 
-        gbk = GBK.parse(gbk_file_path, SOURCE_TYPE.QUERY)
+        self.assertIsInstance(gbk, GBK)
+
+    def test_error_parse_as4_gbk_classify_legacy_weights(self):
+        """Tests whether an error is raise when trying to parse a as4 GBK with legacy weights"""
+
+        gbk_file_path = Path(
+            "test/test_data/valid_gbk_folder/CM001015.1.cluster001.gbk"
+        )
+        run = {
+            "input_dir": Path("test/test_data/valid_gbk_folder/"),
+            "input_mode": bs_enums.INPUT_MODE.RECURSIVE,
+            "include_gbk": None,
+            "exclude_gbk": None,
+            "cds_overlap_cutoff": None,
+            "cores": None,
+            "classify": True,
+            "legacy_weights": True,
+        }
+        with self.assertRaises(InvalidGBKError):
+            GBK.parse(gbk_file_path, SOURCE_TYPE.QUERY, run)
+
+    def test_parse_as6_metagenome_gbk_classify_legacy_weights(self):
+        """Tests whether an as6 metagenome GBK is parsed with no errors
+        even when legacy weights are used
+        """
+
+        gbk_file_path = Path(
+            "test/test_data/metagenome_valid_gbk_input/as6_metagenome_valid...region001.gbk"
+        )
+        run = {
+            "input_dir": Path("test/test_data/valid_gbk_folder/"),
+            "input_mode": bs_enums.INPUT_MODE.FLAT,
+            "include_gbk": None,
+            "exclude_gbk": None,
+            "cds_overlap_cutoff": None,
+            "cores": None,
+            "classify": True,
+            "legacy_weights": True,
+        }
+
+        gbk = GBK.parse(gbk_file_path, SOURCE_TYPE.QUERY, run)
 
         self.assertIsInstance(gbk, GBK)
 
@@ -51,8 +113,17 @@ class TestGBK(TestCase):
         gbk_file_path = Path(
             "test/test_data/metagenome_valid_gbk_input/as5_metagenome_valid...region001.gbk"
         )
-
-        gbk = GBK.parse(gbk_file_path, SOURCE_TYPE.QUERY)
+        run = {
+            "input_dir": Path("test/test_data/valid_gbk_folder/"),
+            "input_mode": bs_enums.INPUT_MODE.RECURSIVE,
+            "include_gbk": None,
+            "exclude_gbk": None,
+            "cds_overlap_cutoff": None,
+            "cores": None,
+            "classify": False,
+            "legacy_classify": False,
+        }
+        gbk = GBK.parse(gbk_file_path, SOURCE_TYPE.QUERY, run)
 
         self.assertIsInstance(gbk, GBK)
 
@@ -60,8 +131,17 @@ class TestGBK(TestCase):
         """Tests whether a MIBiG bacterial gbk file, with only regions and CDSs, is instantiated correclty"""
 
         gbk_file_path = Path("test/test_data/MIBiG_gbk/BGC0002476.gbk")
-
-        gbk = GBK.parse(gbk_file_path, SOURCE_TYPE.MIBIG)
+        run = {
+            "input_dir": Path("test/test_data/valid_gbk_folder/"),
+            "input_mode": bs_enums.INPUT_MODE.RECURSIVE,
+            "include_gbk": None,
+            "exclude_gbk": None,
+            "cds_overlap_cutoff": None,
+            "cores": None,
+            "classify": False,
+            "legacy_classify": False,
+        }
+        gbk = GBK.parse(gbk_file_path, SOURCE_TYPE.MIBIG, run)
 
         self.assertIsInstance(gbk, GBK)
 
@@ -69,8 +149,17 @@ class TestGBK(TestCase):
         """Tests whether a MIBiG fungal gbk file, with only regions and CDSs, is instantiated correclty"""
 
         gbk_file_path = Path("test/test_data/MIBiG_gbk/BGC0002609.gbk")
-
-        gbk = GBK.parse(gbk_file_path, SOURCE_TYPE.MIBIG)
+        run = {
+            "input_dir": Path("test/test_data/valid_gbk_folder/"),
+            "input_mode": bs_enums.INPUT_MODE.RECURSIVE,
+            "include_gbk": None,
+            "exclude_gbk": None,
+            "cds_overlap_cutoff": None,
+            "cores": None,
+            "classify": False,
+            "legacy_classify": False,
+        }
+        gbk = GBK.parse(gbk_file_path, SOURCE_TYPE.MIBIG, run)
 
         self.assertIsInstance(gbk, GBK)
 
@@ -80,16 +169,36 @@ class TestGBK(TestCase):
         gbk_file_path = Path(
             "test/test_data/valid_gbk_multiple_regions_folder/valid_input_multiple_regions.gbk"
         )
-
-        self.assertRaises(InvalidGBKError, GBK.parse, gbk_file_path, SOURCE_TYPE.QUERY)
+        run = {
+            "input_dir": Path("test/test_data/valid_gbk_folder/"),
+            "input_mode": bs_enums.INPUT_MODE.RECURSIVE,
+            "include_gbk": None,
+            "exclude_gbk": None,
+            "cds_overlap_cutoff": None,
+            "cores": None,
+            "classify": False,
+            "legacy_classify": False,
+        }
+        self.assertRaises(
+            InvalidGBKError, GBK.parse, gbk_file_path, SOURCE_TYPE.QUERY, run
+        )
 
     def test_populate_regions(self):
         """Tests whether parsing a GBK correctly populates the underlying region"""
 
         # GBK has one region
         gbk_file_path = Path("test/test_data/valid_gbk_folder/valid_input_region.gbk")
-
-        gbk = GBK.parse(gbk_file_path, SOURCE_TYPE.QUERY)
+        run = {
+            "input_dir": Path("test/test_data/valid_gbk_folder/"),
+            "input_mode": bs_enums.INPUT_MODE.RECURSIVE,
+            "include_gbk": None,
+            "exclude_gbk": None,
+            "cds_overlap_cutoff": None,
+            "cores": None,
+            "classify": False,
+            "legacy_classify": False,
+        }
+        gbk = GBK.parse(gbk_file_path, SOURCE_TYPE.QUERY, run)
 
         self.assertIsInstance(gbk.region, Region)
 
@@ -98,8 +207,17 @@ class TestGBK(TestCase):
 
         # GBK has one region
         gbk_file_path = Path("test/test_data/valid_gbk_folder/valid_input_region.gbk")
-
-        gbk = GBK.parse(gbk_file_path, SOURCE_TYPE.QUERY)
+        run = {
+            "input_dir": Path("test/test_data/valid_gbk_folder/"),
+            "input_mode": bs_enums.INPUT_MODE.RECURSIVE,
+            "include_gbk": None,
+            "exclude_gbk": None,
+            "cds_overlap_cutoff": None,
+            "cores": None,
+            "classify": False,
+            "legacy_classify": False,
+        }
+        gbk = GBK.parse(gbk_file_path, SOURCE_TYPE.QUERY, run)
 
         self.assertIsInstance(gbk.genes[0], CDS)
 
@@ -107,8 +225,17 @@ class TestGBK(TestCase):
         """Tests whether parsing a mibig GBK correctly populates the underlying CDSs"""
 
         gbk_file_path = Path("test/test_data/MIBiG_gbk/BGC0002609.gbk")
-
-        gbk = GBK.parse(gbk_file_path, SOURCE_TYPE.MIBIG)
+        run = {
+            "input_dir": Path("test/test_data/valid_gbk_folder/"),
+            "input_mode": bs_enums.INPUT_MODE.RECURSIVE,
+            "include_gbk": None,
+            "exclude_gbk": None,
+            "cds_overlap_cutoff": None,
+            "cores": None,
+            "classify": False,
+            "legacy_classify": False,
+        }
+        gbk = GBK.parse(gbk_file_path, SOURCE_TYPE.MIBIG, run)
 
         self.assertIsInstance(gbk.genes[0], CDS)
 
@@ -117,8 +244,17 @@ class TestGBK(TestCase):
         via checking for presence of the lowest level child - proto_core"""
 
         gbk_file_path = Path("test/test_data/valid_gbk_folder/valid_input_region.gbk")
-
-        gbk = GBK.parse(gbk_file_path, SOURCE_TYPE.QUERY)
+        run = {
+            "input_dir": Path("test/test_data/valid_gbk_folder/"),
+            "input_mode": bs_enums.INPUT_MODE.RECURSIVE,
+            "include_gbk": None,
+            "exclude_gbk": None,
+            "cds_overlap_cutoff": None,
+            "cores": None,
+            "classify": False,
+            "legacy_classify": False,
+        }
+        gbk = GBK.parse(gbk_file_path, SOURCE_TYPE.QUERY, run)
 
         proto_core = gbk.region.cand_clusters[1].proto_clusters[1].proto_core[1]
 
@@ -128,8 +264,17 @@ class TestGBK(TestCase):
         """Tests whether parsing a GBK correclty has DNA sequence"""
 
         gbk_file_path = Path("test/test_data/valid_gbk_folder/valid_input_region.gbk")
-
-        gbk = GBK.parse(gbk_file_path, SOURCE_TYPE.QUERY)
+        run = {
+            "input_dir": Path("test/test_data/valid_gbk_folder/"),
+            "input_mode": bs_enums.INPUT_MODE.RECURSIVE,
+            "include_gbk": None,
+            "exclude_gbk": None,
+            "cds_overlap_cutoff": None,
+            "cores": None,
+            "classify": False,
+            "legacy_classify": False,
+        }
+        gbk = GBK.parse(gbk_file_path, SOURCE_TYPE.QUERY, run)
 
         dna_sequence = gbk.nt_seq
 
@@ -214,8 +359,18 @@ class TestGBK(TestCase):
         DB.create_in_mem()
 
         gbk_file_path = Path("test/test_data/valid_gbk_folder/valid_input_region.gbk")
+        run = {
+            "input_dir": Path("test/test_data/valid_gbk_folder/"),
+            "input_mode": bs_enums.INPUT_MODE.RECURSIVE,
+            "include_gbk": None,
+            "exclude_gbk": None,
+            "cds_overlap_cutoff": None,
+            "cores": None,
+            "classify": False,
+            "legacy_classify": False,
+        }
 
-        gbk = GBK.parse(gbk_file_path, SOURCE_TYPE.QUERY)
+        gbk = GBK.parse(gbk_file_path, SOURCE_TYPE.QUERY, run)
 
         gbk.save()
 
@@ -232,8 +387,18 @@ class TestGBK(TestCase):
         DB.create_in_mem()
 
         gbk_file_path = Path("test/test_data/valid_gbk_folder/valid_input_region.gbk")
+        run = {
+            "input_dir": Path("test/test_data/valid_gbk_folder/"),
+            "input_mode": bs_enums.INPUT_MODE.RECURSIVE,
+            "include_gbk": None,
+            "exclude_gbk": None,
+            "cds_overlap_cutoff": None,
+            "cores": None,
+            "classify": False,
+            "legacy_classify": False,
+        }
 
-        gbk = GBK.parse(gbk_file_path, SOURCE_TYPE.QUERY)
+        gbk = GBK.parse(gbk_file_path, SOURCE_TYPE.QUERY, run)
 
         gbk.save_all()
 

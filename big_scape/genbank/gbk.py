@@ -59,9 +59,7 @@ class GBK:
         # db specific fields
         self._db_id: Optional[int] = None
 
-    def add_cds_overlap_filter(
-        self, new_cds: CDS, cds_overlap_cutoff=0.1, legacy_mode=False
-    ) -> None:
+    def add_cds_overlap_filter(self, new_cds: CDS, cds_overlap_cutoff=0.1) -> None:
         """Adds a CDS to this GBK. Performs overlap cutoff filtering by calculating the
         percentage overlap of the incoming CDS with other CDS in this GBK.
 
@@ -90,9 +88,9 @@ class GBK:
         for cds_idx, old_cds in enumerate(self.genes):
             # ignore if these cds are on a different strand
             # BiG-SCAPE 1.0 does not perform this check
-            if not legacy_mode:
-                if old_cds.strand != new_cds.strand:
-                    continue
+            # if not legacy_mode:
+            if old_cds.strand != new_cds.strand:
+                continue
 
             overlap_nt = CDS.len_nt_overlap(old_cds, new_cds)
 
@@ -345,8 +343,8 @@ class GBK:
         cls,
         path: Path,
         source_type: SOURCE_TYPE,
+        run: dict,
         cds_overlap_cutoff: Optional[float] = None,
-        legacy_mode=False,
     ) -> GBK:
         """Parses a GBK file and returns a GBK object with all necessary information
 
@@ -372,10 +370,18 @@ class GBK:
         as_version = GBK.get_as_version(record)
         gbk.as_version = as_version
 
+        if int(as_version[0]) < 6 and run["classify"] and run["legacy_weights"]:
+            logging.error(
+                "The parameters --classify and --legacy_weights are not compatible with "
+                "gbks produced by antiSMASH versions under v6. You can either remove "
+                "--legacy_weights or use --legacy_classify instead."
+            )
+            raise InvalidGBKError()
+
         if int(as_version[0]) >= 5:
-            gbk.parse_as5up(record, cds_overlap_cutoff, legacy_mode)
+            gbk.parse_as5up(record, cds_overlap_cutoff)
         if int(as_version[0]) == 4:
-            gbk.parse_as4(record, cds_overlap_cutoff, legacy_mode)
+            gbk.parse_as4(record, cds_overlap_cutoff)
 
         return gbk
 
@@ -383,7 +389,6 @@ class GBK:
         self,
         record: SeqRecord,
         cds_overlap_cutoff: Optional[float] = None,
-        legacy_mode=False,
     ) -> None:
         """Parses a GBK record of AS version 4 and returns a GBK object with all
         necessary information
@@ -421,7 +426,7 @@ class GBK:
                 orf_num += 1
 
                 if cds_overlap_cutoff is not None:
-                    self.add_cds_overlap_filter(cds, cds_overlap_cutoff, legacy_mode)
+                    self.add_cds_overlap_filter(cds, cds_overlap_cutoff)
                     continue
 
                 self.genes.append(cds)
@@ -430,7 +435,6 @@ class GBK:
         self,
         record: SeqRecord,
         cds_overlap_cutoff: Optional[float] = None,
-        legacy_mode=False,
     ) -> None:
         """Parses a GBK record of AS versions 5 and up and returns a GBK object with all
         necessary information
@@ -484,7 +488,7 @@ class GBK:
                 orf_num += 1
 
                 if cds_overlap_cutoff is not None:
-                    self.add_cds_overlap_filter(cds, cds_overlap_cutoff, legacy_mode)
+                    self.add_cds_overlap_filter(cds, cds_overlap_cutoff)
                     continue
 
                 self.genes.append(cds)
