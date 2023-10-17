@@ -22,7 +22,7 @@ import big_scape.enums as bs_enums
 
 # from this module
 from .binning import RecordPairGenerator, RecordPair
-from .legacy_bins import LEGACY_BINS
+from .legacy_bins import LEGACY_WEIGHTS
 from .legacy_extend import (
     legacy_needs_expand_pair,
     expand_glocal,
@@ -264,10 +264,10 @@ def calculate_scores_pair(
             results.append((1.0, 0.0, 0.0, 0.0))
             continue
 
-        if bin_label not in LEGACY_BINS:
-            bin_weights = LEGACY_BINS["mix"]["weights"]
+        if bin_label not in LEGACY_WEIGHTS:
+            bin_weights = LEGACY_WEIGHTS["mix"]["weights"]
         else:
-            bin_weights = LEGACY_BINS[bin_label]["weights"]
+            bin_weights = LEGACY_WEIGHTS[bin_label]["weights"]
         jc_weight, ai_weight, dss_weight, anchor_boost = bin_weights
 
         jaccard = calc_jaccard_pair(pair)

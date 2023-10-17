@@ -32,6 +32,7 @@ import big_scape.comparison as bs_comparison
 import big_scape.network.network as bs_network
 import big_scape.network.families as bs_families
 import big_scape.distances.mix as bs_mix
+import big_scape.distances.legacy_classify as bs_legacy_classify
 import big_scape.distances.query as bs_query
 
 
@@ -231,6 +232,15 @@ def run_bigscape(run: dict) -> None:
         bs_mix.calculate_distances_mix(run, gbks)
 
         DB.commit()
+
+    # legacy_classify
+
+    if run["legacy_classify"]:
+        bs_legacy_classify.calculate_distances_legacy_classify(run, gbks)
+
+        DB.commit()
+
+    # classify
 
     # query
 
