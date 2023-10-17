@@ -13,7 +13,11 @@ def reset_expansion(comparable_region: ComparableRegion) -> None:
     Args:
         comparable_region: The comparable region to reset
     """
-    pass
+    comparable_region.a_start = 0
+    comparable_region.b_start = 0
+    comparable_region.a_stop = len(comparable_region.pair.region_a.get_cds())
+    comparable_region.b_stop = len(comparable_region.pair.region_b.get_cds())
+    comparable_region.reverse = False
 
 
 def check_expand(comparable_region: ComparableRegion) -> None:
