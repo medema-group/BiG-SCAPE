@@ -154,16 +154,60 @@ class TestExtend(unittest.TestCase):
 
     def test_check_expand_too_short(self):
         """Test for check_expand method"""
-        self.fail("Not implemented")
+
+        cds_a, cds_b = generate_mock_cds_lists(10, 10, [0, 1, 2], [0, 1, 2], False)
+
+        record_a = generate_mock_protocluster(cds_a, 5)
+        record_b = generate_mock_protocluster(cds_b, 5)
+
+        record_pair = bs_comp.RecordPair(record_a, record_b)
+
+        # create a comparable region starting at a single cds
+        comparable_region = bs_comp.ComparableRegion(record_pair, 5, 6, 5, 6, False)
+
+        expected_result = False
+        actual_result = bs_comp.extend.check_expand(comparable_region)
+
+        self.assertEqual(expected_result, actual_result)
 
     def test_check_expand_too_short_biosynth(self):
         """Test for check_expand method when the region contains a biosynthetic
         domain"""
-        self.fail("Not implemented")
+
+        cds_a, cds_b = generate_mock_cds_lists(10, 10, [0, 1, 2], [0, 1, 2], False)
+
+        cds_a[5].gene_kind = "biosynthetic"
+
+        record_a = generate_mock_protocluster(cds_a, 5)
+        record_b = generate_mock_protocluster(cds_b, 5)
+
+        record_pair = bs_comp.RecordPair(record_a, record_b)
+
+        # create a comparable region starting at a single cds
+        comparable_region = bs_comp.ComparableRegion(record_pair, 5, 6, 5, 6, False)
+
+        expected_result = True
+        actual_result = bs_comp.extend.check_expand(comparable_region)
+
+        self.assertEqual(expected_result, actual_result)
 
     def test_check_expand_pass(self):
-        """Test for check_expand method when the region is long enough"""
-        self.fail("Not implemented")
+        """Test for check_expand method when the region is long enough without
+        a biosynthetic cds"""
+        cds_a, cds_b = generate_mock_cds_lists(10, 10, [0, 1, 2], [0, 1, 2], False)
+
+        record_a = generate_mock_protocluster(cds_a, 5)
+        record_b = generate_mock_protocluster(cds_b, 5)
+
+        record_pair = bs_comp.RecordPair(record_a, record_b)
+
+        # create a comparable region starting at a single cds
+        comparable_region = bs_comp.ComparableRegion(record_pair, 5, 9, 5, 9, False)
+
+        expected_result = True
+        actual_result = bs_comp.extend.check_expand(comparable_region)
+
+        self.assertEqual(expected_result, actual_result)
 
     def test_check_lcs_too_short(self):
         """Test for check_lcs method when lcs is too short"""
