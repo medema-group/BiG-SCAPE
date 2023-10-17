@@ -127,7 +127,7 @@ def generate_edges(
                 break
 
             new_task = executor.submit(
-                calculate_scores_pair, (batch, alignment_mode, pair_generator.label)
+                calculate_scores_pair, (batch, alignment_mode, pair_generator.weights)
             )
             running_tasks[new_task] = batch
 
@@ -243,7 +243,7 @@ def calculate_scores_pair(
         list[tuple[float, float, float, float]]: list of scores for each pair in the
         order as the input data list
     """
-    pairs, alignment_mode, bin_label = data
+    pairs, alignment_mode, weights_label = data
 
     results = []
 
@@ -264,10 +264,10 @@ def calculate_scores_pair(
             results.append((1.0, 0.0, 0.0, 0.0))
             continue
 
-        if bin_label not in LEGACY_WEIGHTS:
+        if weights_label not in LEGACY_WEIGHTS:
             bin_weights = LEGACY_WEIGHTS["mix"]["weights"]
         else:
-            bin_weights = LEGACY_WEIGHTS[bin_label]["weights"]
+            bin_weights = LEGACY_WEIGHTS[weights_label]["weights"]
         jc_weight, ai_weight, dss_weight, anchor_boost = bin_weights
 
         jaccard = calc_jaccard_pair(pair)

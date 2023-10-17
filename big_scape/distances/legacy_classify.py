@@ -15,7 +15,7 @@ import big_scape.comparison as bs_comparison
 
 def calculate_distances_legacy_classify(run: dict, gbks: list[bs_gbk.GBK]) -> None:
     """
-    calculates distances between all records in a given dataset and saves them to the
+    calculates distances between all records in a given legacy bin and saves them to the database
     """
 
     logging.info("Generating legacy class bins")
