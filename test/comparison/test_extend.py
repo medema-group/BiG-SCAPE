@@ -108,8 +108,8 @@ def generate_mock_protocluster(cds_list: list[bs_genbank.CDS], protocore_idx: in
 class TestExtend(unittest.TestCase):
     """Tests for extension of comparableregions with region pairs"""
 
-    def test_reset_expansion_region(self):
-        """Test for reset_expansion method on a region"""
+    def test_reset_region(self):
+        """Test for reset method on a region"""
 
         cds_a, cds_b = generate_mock_cds_lists(10, 10, [0, 1, 2], [0, 1, 2], False)
 
@@ -122,7 +122,7 @@ class TestExtend(unittest.TestCase):
         comparable_region = bs_comp.ComparableRegion(record_pair, 5, 6, 5, 6, False)
 
         # reset the expansion
-        bs_comp.extend.reset_expansion(comparable_region)
+        bs_comp.extend.reset(comparable_region)
 
         expected_comparable_region = bs_comp.ComparableRegion(
             record_pair, 0, len(cds_a), 0, len(cds_b), False
@@ -130,8 +130,8 @@ class TestExtend(unittest.TestCase):
 
         self.assertEqual(expected_comparable_region, comparable_region)
 
-    def test_reset_expansion_protocluster(self):
-        """Test for reset_expansion method on a protocluster"""
+    def test_reset_protocluster(self):
+        """Test for reset method on a protocluster"""
 
         cds_a, cds_b = generate_mock_cds_lists(10, 10, [0, 1, 2], [0, 1, 2], False)
 
@@ -144,7 +144,7 @@ class TestExtend(unittest.TestCase):
         comparable_region = bs_comp.ComparableRegion(record_pair, 5, 6, 5, 6, False)
 
         # reset the expansion
-        bs_comp.extend.reset_expansion(comparable_region)
+        bs_comp.extend.reset(comparable_region)
 
         expected_comparable_region = bs_comp.ComparableRegion(
             record_pair, 0, len(cds_a), 0, len(cds_b), False
@@ -152,8 +152,10 @@ class TestExtend(unittest.TestCase):
 
         self.assertEqual(expected_comparable_region, comparable_region)
 
-    def test_check_expand_too_short(self):
-        """Test for check_expand method"""
+    def test_check_too_short(self):
+        """Test for check method when a region is too short and contains no
+        biosynthetic genes
+        """
 
         cds_a, cds_b = generate_mock_cds_lists(10, 10, [0, 1, 2], [0, 1, 2], False)
 
@@ -166,13 +168,12 @@ class TestExtend(unittest.TestCase):
         comparable_region = bs_comp.ComparableRegion(record_pair, 5, 6, 5, 6, False)
 
         expected_result = False
-        actual_result = bs_comp.extend.check_expand(comparable_region)
+        actual_result = bs_comp.extend.check(comparable_region, 3, True)
 
         self.assertEqual(expected_result, actual_result)
 
-    def test_check_expand_too_short_biosynth(self):
-        """Test for check_expand method when the region contains a biosynthetic
-        domain"""
+    def test_check_too_short_biosynth(self):
+        """Test for check method when the region contains a biosynthetic cds"""
 
         cds_a, cds_b = generate_mock_cds_lists(10, 10, [0, 1, 2], [0, 1, 2], False)
 
@@ -187,13 +188,14 @@ class TestExtend(unittest.TestCase):
         comparable_region = bs_comp.ComparableRegion(record_pair, 5, 6, 5, 6, False)
 
         expected_result = True
-        actual_result = bs_comp.extend.check_expand(comparable_region)
+        actual_result = bs_comp.extend.check(comparable_region, 3, True)
 
         self.assertEqual(expected_result, actual_result)
 
-    def test_check_expand_pass(self):
-        """Test for check_expand method when the region is long enough without
-        a biosynthetic cds"""
+    def test_check_pass(self):
+        """Test for check method when the region is long enough without a biosynthetic
+        cds
+        """
         cds_a, cds_b = generate_mock_cds_lists(10, 10, [0, 1, 2], [0, 1, 2], False)
 
         record_a = generate_mock_protocluster(cds_a, 5)
@@ -205,23 +207,10 @@ class TestExtend(unittest.TestCase):
         comparable_region = bs_comp.ComparableRegion(record_pair, 5, 9, 5, 9, False)
 
         expected_result = True
-        actual_result = bs_comp.extend.check_expand(comparable_region)
+        actual_result = bs_comp.extend.check(comparable_region, 3, True)
 
         self.assertEqual(expected_result, actual_result)
 
-    def test_check_lcs_too_short(self):
-        """Test for check_lcs method when lcs is too short"""
-        self.fail("Not implemented")
-
-    def test_check_lcs_too_short_biosynth(self):
-        """Test for check_lcs method when lcs is too short, but it contiains a
-        biosynthetic domain"""
-        self.fail("Not implemented")
-
-    def test_check_lcs_pass(self):
-        """Test for check_lcs method when lcs is long enough"""
-        self.fail("Not implemented")
-
-    def test_expand(self):
+    def test_extend(self):
         """Test for expand method"""
         self.fail("Not implemented")

@@ -7,7 +7,7 @@
 from .comparable_region import ComparableRegion
 
 
-def reset_expansion(comparable_region: ComparableRegion) -> None:
+def reset(comparable_region: ComparableRegion) -> None:
     """Resets the expansion of a comparable region
 
     Args:
@@ -20,7 +20,9 @@ def reset_expansion(comparable_region: ComparableRegion) -> None:
     comparable_region.reverse = False
 
 
-def check_expand(comparable_region: ComparableRegion, min_len=3) -> bool:
+def check(
+    comparable_region: ComparableRegion, min_len: int, biosynth_check: bool
+) -> bool:
     """Checks if a comparable region should be reset after expansion
 
     returns true if either of the following conditions are met:
@@ -29,24 +31,28 @@ def check_expand(comparable_region: ComparableRegion, min_len=3) -> bool:
 
     Args:
         comparable_region: The comparable region to check
+        min_len: The minimum length of the comparable region
+        biosynth_check: Whether to check for biosynthetic genes within the comparable
+            region
     """
-    if ComparableRegion.cds_range_contains_biosynthetic(
-        comparable_region.pair.region_a,
-        comparable_region.a_start,
-        comparable_region.a_stop,
-        False,
-        False,
-    ):
-        return True
+    if biosynth_check:
+        if ComparableRegion.cds_range_contains_biosynthetic(
+            comparable_region.pair.region_a,
+            comparable_region.a_start,
+            comparable_region.a_stop,
+            False,
+            False,
+        ):
+            return True
 
-    if ComparableRegion.cds_range_contains_biosynthetic(
-        comparable_region.pair.region_b,
-        comparable_region.b_start,
-        comparable_region.b_stop,
-        False,
-        comparable_region.reverse,
-    ):
-        return True
+        if ComparableRegion.cds_range_contains_biosynthetic(
+            comparable_region.pair.region_b,
+            comparable_region.b_start,
+            comparable_region.b_stop,
+            False,
+            comparable_region.reverse,
+        ):
+            return True
 
     a_len = comparable_region.a_stop - comparable_region.a_start
     b_len = comparable_region.b_stop - comparable_region.b_start
@@ -57,26 +63,7 @@ def check_expand(comparable_region: ComparableRegion, min_len=3) -> bool:
     return False
 
 
-def check_lcs(comparable_region: ComparableRegion, min_length=3) -> bool:
-    """Checks if a comparable region should be expanded
-
-    This returns true if the minimum length of the comparable region is
-    greater than or equal to min_length
-
-
-    Args:
-        comparable_region: The comparable region to check
-    """
-    a_len = comparable_region.a_stop - comparable_region.a_start
-    b_len = comparable_region.b_stop - comparable_region.b_start
-
-    if a_len >= min_length and b_len >= min_length:
-        return True
-
-    return False
-
-
-def expand(comparable_region: ComparableRegion) -> None:
+def extend(comparable_region: ComparableRegion) -> None:
     """Expands a comparable region
 
     Args:
