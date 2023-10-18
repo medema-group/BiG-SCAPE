@@ -633,11 +633,15 @@ def as_class_bin_generator(
         except KeyError:
             class_idx[region_class] = [gbk.region]
 
-        # get region category for weights
-        region_weight_cat = get_weight_category(gbk.region)
+        if weights == "legacy_weights":
+            # get region category for weights
+            region_weight_cat = get_weight_category(gbk.region)
 
-        if region_class not in category_idx.keys():
-            category_idx[region_class] = region_weight_cat
+            if region_class not in category_idx.keys():
+                category_idx[region_class] = region_weight_cat
+
+        elif weights == "mix":
+            category_idx[region_class] = "mix"
 
     for class_name, regions in class_idx.items():
         weight_category = category_idx[class_name]
@@ -666,8 +670,6 @@ def get_weight_category(region: Region) -> str:
                     if protocluster.product == "T1PKS":
                         pc_category = protocluster.product
 
-                    if protocluster.category == "other":
-                        pc_category = "other"
                     else:
                         pc_category = protocluster.category
 

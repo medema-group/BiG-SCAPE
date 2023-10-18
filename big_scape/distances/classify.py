@@ -26,7 +26,6 @@ def calculate_distances_classify(run: dict, gbks: list[bs_gbk.GBK]) -> None:
     else:
         weights = "mix"
 
-    # TODO: create method
     as_class_bins = bs_comparison.as_class_bin_generator(gbks, weights)
 
     for bin in as_class_bins:
@@ -47,8 +46,7 @@ def calculate_distances_classify(run: dict, gbks: list[bs_gbk.GBK]) -> None:
                 if done_pairs - last > 10000:
                     last = done_pairs
 
-            # TODO: add weights
-            legacy_class_edges = bs_comparison.generate_edges(
+            as_class_edges = bs_comparison.generate_edges(
                 missing_edge_bin, run["alignment_mode"], run["cores"], callback
             )
 
@@ -58,7 +56,7 @@ def calculate_distances_classify(run: dict, gbks: list[bs_gbk.GBK]) -> None:
                 num_edges = 0
                 save_batch = []
                 batch_size = run["cores"] * 100000
-                for edge in legacy_class_edges:
+                for edge in as_class_edges:
                     num_edges += 1
                     t.update(1)
                     save_batch.append(edge)
@@ -71,4 +69,6 @@ def calculate_distances_classify(run: dict, gbks: list[bs_gbk.GBK]) -> None:
 
             bs_data.DB.commit()
 
-            logging.info(f"Generated {num_edges} edges for {bin.label}")
+            logging.info(
+                f"Generated {num_edges} edges for {bin.label} with weights {bin.weights}"
+            )
