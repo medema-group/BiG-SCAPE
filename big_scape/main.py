@@ -244,7 +244,8 @@ def run_bigscape(run: dict) -> None:
     # classify
 
     if run["classify"]:
-        bs_classify.calculate_distances_classify(run, gbks)
+        classify_mode = run["classify"]
+        bs_classify.calculate_distances_classify(run, gbks, classify_mode)
 
         DB.commit()
 

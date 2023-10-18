@@ -11,9 +11,12 @@ import tqdm
 import big_scape.data as bs_data
 import big_scape.genbank as bs_gbk
 import big_scape.comparison as bs_comparison
+import big_scape.enums as bs_enums
 
 
-def calculate_distances_classify(run: dict, gbks: list[bs_gbk.GBK]) -> None:
+def calculate_distances_classify(
+    run: dict, gbks: list[bs_gbk.GBK], classify_mode: bs_enums.CLASSIFY_MODE
+) -> None:
     """
     calculates distances between all records in a given antismash class bin, based on either
      mix weights or legacy weights and saves them to the database
@@ -26,7 +29,7 @@ def calculate_distances_classify(run: dict, gbks: list[bs_gbk.GBK]) -> None:
     else:
         weights = "mix"
 
-    as_class_bins = bs_comparison.as_class_bin_generator(gbks, weights)
+    as_class_bins = bs_comparison.as_class_bin_generator(gbks, weights, classify_mode)
 
     for bin in as_class_bins:
         logging.info(bin)

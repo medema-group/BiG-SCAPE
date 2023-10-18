@@ -16,7 +16,7 @@ from sqlalchemy import select, func, or_
 # from other modules
 from big_scape.data import DB
 from big_scape.genbank import BGCRecord, GBK, Region
-from big_scape.enums import SOURCE_TYPE
+from big_scape.enums import SOURCE_TYPE, CLASSIFY_MODE
 
 # from this module
 from .comparable_region import ComparableRegion
@@ -478,7 +478,7 @@ class MissingRecordPairGenerator(RecordPairGenerator):
     """
 
     def __init__(self, pair_generator):
-        super().__init__(pair_generator.label)
+        super().__init__(pair_generator.label, pair_generator.weights)
         self.bin = pair_generator
 
     def num_pairs(self) -> int:
@@ -603,7 +603,7 @@ def sort_name_key(record: BGCRecord) -> str:
 
 
 def as_class_bin_generator(
-    gbks: list[GBK], weights: str
+    gbks: list[GBK], weights: str, classify_mode: CLASSIFY_MODE
 ) -> Iterator[RecordPairGenerator]:
     """Generate bins for each antiSMASH class
 
@@ -626,7 +626,11 @@ def as_class_bin_generator(
             continue
 
         # get region class for bin label and index
-        region_class = gbk.region.product
+        if classify_mode == CLASSIFY_MODE.CLASS:
+            region_class = gbk.region.product
+
+        if classify_mode == CLASSIFY_MODE.CATEGORY:
+            region_class = get_region_category(gbk.region)
 
         try:
             class_idx[region_class].append(gbk.region)
@@ -640,7 +644,7 @@ def as_class_bin_generator(
             if region_class not in category_idx.keys():
                 category_idx[region_class] = region_weight_cat
 
-        elif weights == "mix":
+        if weights == "mix":
             category_idx[region_class] = "mix"
 
     for class_name, regions in class_idx.items():
@@ -650,8 +654,37 @@ def as_class_bin_generator(
         yield bin
 
 
+def get_region_category(region: Region) -> str:
+    """Get the category of a BGC based on its antiSMASH product(s)
+
+    Args:
+        region (Region): region object
+
+    Returns:
+        str: BGC category
+    """
+
+    categories = []
+
+    # get categories from region object
+    for idx, cand_cluster in region.cand_clusters.items():
+        if cand_cluster is not None:
+            for idx, protocluster in cand_cluster.proto_clusters.items():
+                if protocluster is not None:
+                    pc_category = protocluster.category
+                    # avoid duplicates, hybrids of the same kind count as one category
+                    if pc_category not in categories:
+                        categories.append(pc_category)
+
+    if len(categories) == 0:
+        return categories[0]
+
+    return ".".join(categories)
+
+
 def get_weight_category(region: Region) -> str:
     """Get the category of a BGC based on its antiSMASH product(s)
+    and match it to the legacy weights classes
 
     Args:
         region (BGCRecord): region object
