@@ -142,7 +142,7 @@ class OutputGenerator:
         Args:
             metrics: data dictionary storing all metrics per used cutoff
         """
-        cutoffs = metrics.keys()
+        cutoffs = sorted(metrics.keys())
         homogeneity = [metrics[cut]["homogeneity"] for cut in cutoffs]
         completeness = [metrics[cut]["completeness"] for cut in cutoffs]
         v_measure = [metrics[cut]["v_measure"] for cut in cutoffs]

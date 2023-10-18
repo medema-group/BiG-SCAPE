@@ -100,7 +100,7 @@ class BenchmarkData:
         )
         cursor_results = DB.execute(select_query)
         name_to_record_id = {
-            str(Path(result.path).stem): result.id for result in cursor_results
+            str(Path(result.path).stem): str(result.id) for result in cursor_results
         }
 
         for cutoff in self.computed_labels.keys():

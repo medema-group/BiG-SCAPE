@@ -29,27 +29,27 @@ class TestBenchmarkData(TestCase):
 
         self.assertEqual(testloader.curated_labels, expected_data)
 
-    def test_computed_gcf_loading(self):
-        """Test loading of computed GCF assignments form database"""
+    def test_bs2_computed_gcf_loading(self):
+        """Test loading of BS2 computed GCF assignments form database"""
         db_path = Path("test/test_data/database/valid_family.db")
 
         expected_data = {
             0.3: {
-                "Chr1.cluster024": 1,
-                "CM000574.1.cluster001": 2,
-                "CM000574.1.cluster030": 3,
-                "CM000578.1.cluster010": 11,
-                "CM000602.2.cluster010": 11,
-                "CM003198.1.cluster001": 6,
-                "CM003198.1.cluster026": 11,
-                "HF679024.1.cluster002": 11,
-                "HG323944.1.cluster001": 2,
-                "HG323944.1.cluster030": 11,
-                "JH717896.1.cluster018": 11,
+                "Chr1.cluster024": "1",
+                "CM000574.1.cluster001": "2",
+                "CM000574.1.cluster030": "3",
+                "CM000578.1.cluster010": "11",
+                "CM000602.2.cluster010": "11",
+                "CM003198.1.cluster001": "6",
+                "CM003198.1.cluster026": "11",
+                "HF679024.1.cluster002": "11",
+                "HG323944.1.cluster001": "2",
+                "HG323944.1.cluster030": "11",
+                "JH717896.1.cluster018": "11",
             }
         }
 
-        dataloader = BenchmarkData(None, db_path)
-        dataloader.load_computed_labels()
+        dataloader = BenchmarkData(None, None)
+        dataloader.load_computed_bs2_labels(db_path)
 
         self.assertEqual(dataloader.computed_labels, expected_data)
