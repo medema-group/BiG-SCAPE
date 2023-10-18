@@ -111,6 +111,16 @@ def validate_output_paths(ctx) -> None:
 # comparison validations
 
 
+def validate_classify(ctx, param, classify) -> bool:
+    """Validates whether the classification type is set, and if not
+    sets the parameter to False"""
+
+    if classify is None:
+        classify = False
+
+    return classify
+
+
 def validate_alignment_mode(
     ctx, param, alignment_mode
 ) -> Optional[bs_enums.ALIGNMENT_MODE]:

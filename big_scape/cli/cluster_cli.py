@@ -23,6 +23,7 @@ from .cli_validations import (
     validate_filter_gbk,
     validate_pfam_path,
     set_start,
+    validate_classify,
 )
 
 
@@ -229,9 +230,10 @@ from .cli_validations import (
 )
 @click.option(
     "--classify",
-    is_flag=True,
+    type=click.Choice(["class", "category"]),
+    callback=validate_classify,
     help=(
-        "Use antiSMASH/BGC classes to run analyses on class-based bins."
+        "Use antiSMASH/BGC classes or categories to run analyses on class-based bins."
         "Can be used in combination with --legacy_weights if BGC gbks "
         "have been produced by antiSMASH version6 or higher. For older "
         "antiSMASH versions, either use --legacy_classify or do not select"

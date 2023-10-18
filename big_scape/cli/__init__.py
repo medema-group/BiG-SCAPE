@@ -11,6 +11,7 @@ from .cli_validations import (
     validate_gcf_cutoffs,
     validate_filter_gbk,
     validate_pfam_path,
+    validate_classify,
 )
 
 __all__ = [
@@ -24,4 +25,5 @@ __all__ = [
     "validate_gcf_cutoffs",
     "validate_filter_gbk",
     "validate_pfam_path",
+    "validate_classify",
 ]
