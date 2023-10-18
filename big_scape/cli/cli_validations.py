@@ -111,9 +111,16 @@ def validate_output_paths(ctx) -> None:
 # comparison validations
 
 
-def validate_classify(ctx, param, classify) -> bool:
+def validate_classify(ctx, param, classify) -> Optional[bs_enums.CLASSIFY_MODE]:
     """Validates whether the classification type is set, and if not
     sets the parameter to False"""
+
+    # check if the property matches one of the enum values
+    valid_modes = [mode.value for mode in bs_enums.CLASSIFY_MODE]
+
+    for mode in valid_modes:
+        if classify == mode:
+            return bs_enums.CLASSIFY_MODE[mode.upper()]
 
     if classify is None:
         classify = False
