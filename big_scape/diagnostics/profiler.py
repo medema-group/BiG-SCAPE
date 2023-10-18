@@ -15,7 +15,7 @@ import pandas as pd
 import matplotlib.pyplot as plt
 
 # from other modules
-from big_scape.parameters.constants import PROFILER_UPDATE_INTERVAL
+from big_scape.cli.constants import PROFILER_UPDATE_INTERVAL
 
 # to stop numpy from spitting out warnings to sys.stdout
 # TODO: remove this and resolve underlying issue

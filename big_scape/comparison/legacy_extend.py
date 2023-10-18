@@ -4,7 +4,7 @@
 import logging
 
 # from other modules
-from big_scape.parameters.constants import (
+from big_scape.cli.constants import (
     MIN_LCS_LEN,
     MIN_EXPAND_LEN,
     EXPAND_GAP_SCORE,
