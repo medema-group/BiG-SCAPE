@@ -7,7 +7,10 @@ from pathlib import Path
 
 # from other modules
 from big_scape.benchmark import run_bigscape_benchmark
-from .cli_validations import set_start
+from big_scape.diagnostics import init_logger, init_logger_file
+
+# from this module
+from .cli_validations import set_start, validate_output_paths
 
 
 # BiG-SCAPE benchmark mode
@@ -56,7 +59,7 @@ from .cli_validations import set_start
 )
 # input parameters
 @click.option(
-    "--GCF_assigment_file",
+    "--GCF_assignment_file",
     type=click.Path(exists=True, file_okay=True, path_type=Path),
     required=True,
     help=(
@@ -65,10 +68,10 @@ from .cli_validations import set_start
     ),
 )
 @click.option(
-    "--run_database",
-    type=click.Path(exists=True, file_okay=True, path_type=Path),
+    "--BiG_dir",
+    type=click.Path(exists=True, file_okay=False, path_type=Path),
     required=True,
-    help="Path to BiG-SCAPE run database.",
+    help="Path to BiG-SCAPE or BiG-SLICE output directory.",
 )
 # output parameters
 @click.option(
@@ -84,7 +87,7 @@ from .cli_validations import set_start
     help="Path to output log file directory. Default: output_dir.",
 )
 @click.pass_context
-def benchmark(ctx, query, benchmark):
+def benchmark(ctx, *args, **kwargs):
     """
     BiG-SCAPE - BENCHMARK
 
@@ -97,8 +100,15 @@ def benchmark(ctx, query, benchmark):
     # get context parameters
     ctx.obj.update(ctx.params)
 
+    # workflow validations
+    validate_output_paths(ctx)
+
     # set start time and label
     set_start(ctx.obj)
+
+    # initialize logger
+    init_logger(ctx.obj)
+    init_logger_file(ctx.obj)
 
     # run BiG-SCAPE benchmark
     run_bigscape_benchmark(ctx.obj)

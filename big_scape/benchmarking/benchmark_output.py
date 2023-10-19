@@ -5,7 +5,6 @@ import os
 import numpy as np
 from pathlib import Path
 from typing import Any, Optional
-from argparse import Namespace
 
 # from dependencies
 import matplotlib.pyplot as plt
@@ -31,19 +30,16 @@ class OutputGenerator:
             os.makedirs(self.output_dir)
 
     @staticmethod
-    def generate_metadata(
-        args: Namespace, start: str, cutoff: Optional[float] = None
-    ) -> str:
+    def generate_metadata(run: dict, cutoff: Optional[str] = None) -> str:
         """Generate metadata based on the current comparison
 
         Args:
-            args (Namespace): stored command line arguments
-            start (str): start date and time of current run
-            cutoff (float): optional cutoff value being compared
+            run (dict): stored command line arguments
+            cutoff (str): optional cutoff value being compared
         """
-        i = args.input_dir
-        g = args.curated_gcfs
-        meta = f"# {start}\n# Comparing input directory: {i}\n# To curated GCFs: {g}\n"
+        i = run["big_dir"]
+        g = run["gcf_assignment_file"]
+        meta = f"# {run['start_time']}\n# Comparing input directory: {i}\n# To curated GCFs: {g}\n"
         if cutoff is not None:
             meta += f"# Used cutoff: {cutoff}\n"
         return meta + "\n"
@@ -233,7 +229,7 @@ class OutputGenerator:
 
         with open(filename, "w") as outf:
             outf.write(self.metadata)
-            cutoff_fmt = "\t".join(map(str, metrics.keys()))
+            cutoff_fmt = "\t".join(list(metrics.keys()))
 
             v_fmt = "\t".join([f"{metrics[c]['v_measure']:.3f}" for c in metrics])
             h_fmt = "\t".join([f"{metrics[c]['homogeneity']:.3f}" for c in metrics])

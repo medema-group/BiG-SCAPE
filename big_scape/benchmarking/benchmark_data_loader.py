@@ -85,11 +85,12 @@ class BenchmarkData:
         )
 
         cursor_results = DB.execute(select_query)
-        self.computed_labels: dict[float, dict[str, str]] = {}
+        self.computed_labels: dict[str, dict[str, str]] = {}
         for result in cursor_results:
             bgc_name = str(Path(result.path).stem)
             family = str(result.family)
-            self.computed_labels.setdefault(result.cutoff, {})[bgc_name] = family
+            cutoff = str(result.cutoff)
+            self.computed_labels.setdefault(cutoff, {})[bgc_name] = family
 
         # add missing singletons per cutoff, assign record_id as family id
         select_query = (
@@ -139,7 +140,7 @@ class BenchmarkData:
 
         self.computed_labels = {}
         for clustering_file in run_path.glob("*.tsv"):
-            cutoff = float(clustering_file.stem.rpartition("c")[-1])
+            cutoff = clustering_file.stem.rpartition("c")[-1]
             self.computed_labels[cutoff] = self.read_gcf_tsv(clustering_file)
 
     def load_computed_bslice_labels(self, db_path: Path) -> None:
@@ -170,5 +171,5 @@ class BenchmarkData:
         for result in cursor_results:
             bgc_name = str(Path(result[0]).stem)
             family = str(result[1])
-            thresh = result[2]
+            thresh = str(result[2])
             self.computed_labels.setdefault(thresh, {})[bgc_name] = family
