@@ -144,35 +144,36 @@ class OutputGenerator:
         v_measure = [metrics[cut]["v_measure"] for cut in cutoffs]
         wrong = [metrics[cut]["associations"][1] for cut in cutoffs]
         missing = [metrics[cut]["associations"][3] for cut in cutoffs]
+        cutoffs_fl = list(map(float, cutoffs))
 
         fig = plt.figure()
         ax = fig.gca()
 
         h = ax.plot(
-            cutoffs,
+            cutoffs_fl,
             homogeneity,
             linestyle="--",
             c="#FFC107",  # yellow
             label="Homogeneity",
         )
         c = ax.plot(
-            cutoffs,
+            cutoffs_fl,
             completeness,
             linestyle="--",
             c="#1E88E5",  # blue
             label="Completeness",
         )
-        v = ax.plot(cutoffs, v_measure, c="black", label="V-measure")
+        v = ax.plot(cutoffs_fl, v_measure, c="black", label="V-measure")
 
         wl = ax.plot(
-            cutoffs,
+            cutoffs_fl,
             wrong,
             linestyle="-.",
             c="#D81B60",  # red
             label="Wrong links",
         )
         ml = ax.plot(
-            cutoffs,
+            cutoffs_fl,
             missing,
             linestyle="-.",
             c="#E68981",  # pink

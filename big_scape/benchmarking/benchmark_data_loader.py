@@ -4,6 +4,7 @@
 from pathlib import Path
 from datetime import datetime
 import sqlite3
+import logging
 
 # from other modules
 from big_scape.data import DB
@@ -42,6 +43,7 @@ class BenchmarkData:
 
     def load_curated_labels(self) -> None:
         """Read tsv file with curated GCF assignments"""
+        logging.debug("Loading curated GCFs: %s", self.curated_path)
         self.curated_labels = self.read_gcf_tsv(self.curated_path)
 
     def load_computed_labels(self) -> None:
@@ -68,6 +70,7 @@ class BenchmarkData:
         Args:
             db_path (Path): Path to existing BS2 database
         """
+        logging.info("Loading computed GCFs from BiG-SCAPE 2 output")
         DB.load_from_disk(db_path)
         if DB.metadata is not None:
             fam_table = DB.metadata.tables["bgc_record_family"]
@@ -108,6 +111,11 @@ class BenchmarkData:
             for name in name_to_record_id.keys():
                 if name not in self.computed_labels[cutoff]:
                     self.computed_labels[cutoff][name] = name_to_record_id[name]
+        logging.info(
+            "Found clusterings containing %s BGCs across %s cutoffs",
+            len(name_to_record_id),
+            len(self.computed_labels),
+        )
 
     def load_computed_bs1_labels(self, data_path: Path) -> None:
         """Load computed GCFs from BS1 results files to {cutoff: {bgc_name: fam}}
@@ -118,6 +126,7 @@ class BenchmarkData:
         Raises:
             FileNotFoundError: Missing BS1 results in given output directory
         """
+        logging.info("Loading computed GCFs from BiG-SCAPE 1 output")
         runs = list(data_path.glob("*"))
         if len(runs) == 0:
             raise FileNotFoundError("No BiG-SCAPE 1 output found")
@@ -143,12 +152,19 @@ class BenchmarkData:
             cutoff = clustering_file.stem.rpartition("c")[-1]
             self.computed_labels[cutoff] = self.read_gcf_tsv(clustering_file)
 
+        logging.info(
+            "Found clusterings containing %s BGCs across %s cutoffs",
+            len(self.computed_labels[cutoff]),
+            len(self.computed_labels),
+        )
+
     def load_computed_bslice_labels(self, db_path: Path) -> None:
         """Load computed GCFs from BiG-SLICE output to {threshold: {bgc: family}}
 
         Args:
             db_path (Path): Path pointing to BiG-SLICE output database
         """
+        logging.info("Loading computed GCFs from BiG-SLICE output")
         con = sqlite3.connect(db_path)
         cur = con.cursor()
 
@@ -173,3 +189,9 @@ class BenchmarkData:
             family = str(result[1])
             thresh = str(result[2])
             self.computed_labels.setdefault(thresh, {})[bgc_name] = family
+
+        logging.info(
+            "Found clusterings containing %s BGCs across %s cutoffs",
+            len(self.computed_labels[thresh]),
+            len(self.computed_labels),
+        )
