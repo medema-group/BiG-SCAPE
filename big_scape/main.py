@@ -297,9 +297,14 @@ def run_bigscape(run: dict) -> None:
     mix_bin = bs_comparison.RecordPairGenerator("mix")
     mix_bin.add_records([gbk.region for gbk in gbks if gbk.region is not None])
 
-    legacy_prepare_bin_output(run["output_dir"], run["label"], 0.3, mix_bin)
+    mix_bin2 = bs_comparison.RecordPairGenerator("mix2")
+    mix_bin2.add_records([gbk.region for gbk in gbks if gbk.region is not None])
 
+    legacy_prepare_bin_output(run["output_dir"], run["label"], 0.3, mix_bin)
     legacy_generate_bin_output(run["output_dir"], run["label"], 0.3, mix_bin)
+
+    legacy_prepare_bin_output(run["output_dir"], run["label"], 0.3, mix_bin2)
+    legacy_generate_bin_output(run["output_dir"], run["label"], 0.3, mix_bin2)
 
     if run["profiling"]:
         profiler.stop()

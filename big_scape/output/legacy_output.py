@@ -467,7 +467,7 @@ def add_bigscape_results_js_network(
     # one exception to the above values is the mix pair_generator, which uses others as a CSS class
     if pair_generator.label == "mix":
         css = "Others"
-        label = "Mixed"
+        label = "mix"
 
     bigscape_result["networks"].append(
         {
