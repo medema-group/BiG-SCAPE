@@ -2,7 +2,6 @@
 
 # from python
 import click
-from multiprocessing import cpu_count
 from pathlib import Path
 
 # from other modules
@@ -10,53 +9,13 @@ from big_scape.benchmark import run_bigscape_benchmark
 from big_scape.diagnostics import init_logger, init_logger_file
 
 # from this module
+from .cli_common_options import common_all
 from .cli_validations import set_start, validate_output_paths
 
 
 # BiG-SCAPE benchmark mode
 @click.command()
-# meta
-@click.option(
-    "--metadata_path",
-    type=click.Path(exists=True, file_okay=True, path_type=Path),
-    help="Path to metadata file.",
-)
-@click.option(
-    "--config_file_path",
-    type=click.Path(exists=True, file_okay=True, path_type=Path),
-    help="Path to BiG-SCAPE config file.",
-)
-# diagnostic parameters
-@click.option(
-    "-v",
-    "--verbose",
-    is_flag=True,
-    help=(
-        "output all kinds of logs, "
-        "including debugging log info, and write to logfile."
-    ),
-)
-@click.option(
-    "--quiet",
-    is_flag=True,
-    help="Don't print any log info to output, only write to logfile.",
-)
-# run parameters
-@click.option(
-    "--label",
-    default=None,
-    type=str,
-    help="A run label to be added to the output results folder name.",
-)
-@click.option(
-    "-c",
-    "--cores",
-    default=cpu_count(),
-    type=int,
-    help=(
-        "Set the max number of cores available" " (default: use all available cores)."
-    ),
-)
+@common_all
 # input parameters
 @click.option(
     "--GCF_assignment_file",
@@ -72,19 +31,6 @@ from .cli_validations import set_start, validate_output_paths
     type=click.Path(exists=True, file_okay=False, path_type=Path),
     required=True,
     help="Path to BiG-SCAPE or BiG-SLICE output directory.",
-)
-# output parameters
-@click.option(
-    "-o",
-    "--output_dir",
-    type=click.Path(path_type=Path),
-    required=False,
-    help="Output directory for all BiG-SCAPE results files.",
-)
-@click.option(
-    "--log_path",
-    type=click.Path(path_type=Path),
-    help="Path to output log file directory. Default: output_dir.",
 )
 @click.pass_context
 def benchmark(ctx, *args, **kwargs):
