@@ -72,6 +72,6 @@ def calculate_distances_classify(
 
             bs_data.DB.commit()
 
-            logging.info(
+            logging.debug(
                 f"Generated {num_edges} edges for {bin.label} with weights {bin.weights}"
             )

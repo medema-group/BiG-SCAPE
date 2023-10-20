@@ -63,6 +63,6 @@ def calculate_distances_legacy_classify(run: dict, gbks: list[bs_gbk.GBK]) -> No
 
             bs_data.DB.commit()
 
-            logging.info(
+            logging.debug(
                 f"Generated {num_edges} edges for {bin.label} with weights {bin.weights}"
             )

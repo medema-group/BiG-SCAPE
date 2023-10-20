@@ -702,18 +702,23 @@ def get_weight_category(region: Region) -> str:
                 if protocluster is not None:
                     if protocluster.product == "T1PKS":
                         pc_category = protocluster.product
-
                     else:
                         pc_category = protocluster.category
-
                     # avoid duplicates, hybrids of the same kind use the same weight class
                     if pc_category not in categories:
                         categories.append(pc_category)
 
     # process into legacy_weights classes
 
-    # Check if true
+    # should never happen, but just in case
     if len(categories) == 0:
+        logging.warning(
+            "No category found for %s",
+            region,
+            "This should not happen as long as antiSMASH is run with"
+            "version 6 or up, consider whether there is something"
+            "special about this region",
+        )
         category = "other"
 
     if len(categories) == 1:

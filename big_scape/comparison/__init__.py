@@ -10,6 +10,7 @@ from .binning import (
     legacy_get_class,
     as_class_bin_generator,
     get_weight_category,
+    get_region_category,
 )
 from .comparable_region import ComparableRegion
 from .legacy_workflow_alt import generate_edges
@@ -30,6 +31,7 @@ __all__ = [
     "legacy_get_class",
     "as_class_bin_generator",
     "get_weight_category",
+    "get_region_category",
     "save_edge_to_db",
     "lcs",
     "save_edges_to_db",
