@@ -39,7 +39,10 @@ class BenchmarkData:
             for line in inf:
                 bgc, family = line.strip().split("\t")
                 data[bgc] = family
-            return data
+        if len(data) == 0:
+            logging.warning("GCF assignment file is empty: %s", filename)
+        logging.debug("Loaded %s BGC <-> GCF assignments", len(data))
+        return data
 
     def load_curated_labels(self) -> None:
         """Read tsv file with curated GCF assignments"""
