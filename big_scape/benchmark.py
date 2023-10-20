@@ -28,29 +28,14 @@ def run_bigscape_benchmark(run: dict):
         # output per cutoff
         logging.info("Generating cutoff %s output", fam_cutoff)
         metadata = OutputGenerator.generate_metadata(run, fam_cutoff)
-        outputter = OutputGenerator(
-            run["output_dir"] / f"cutoff_{fam_cutoff}", metadata, run["label"]
-        )
-        outputter.initialize_output_dir()
-        outputter.output_purities(metrics[fam_cutoff]["purities"])
-        outputter.output_entropies(metrics[fam_cutoff]["entropies"])
-        outputter.output_matrix(metrics[fam_cutoff]["conf_matrix"])
-        outputter.output_summary(
-            metrics[fam_cutoff]["homogeneity"],
-            metrics[fam_cutoff]["completeness"],
-            metrics[fam_cutoff]["v_measure"],
-            metrics[fam_cutoff]["purities"],
-            metrics[fam_cutoff]["entropies"],
-            metrics[fam_cutoff]["associations"],
-            metrics[fam_cutoff]["summary_stats"],
-        )
-        outputter.plot_conf_matrix_heatmap(metrics[fam_cutoff]["conf_matrix"])
+        cutoff_path = run["output_dir"] / f"cutoff_{fam_cutoff}"
+        outputter = OutputGenerator(cutoff_path, metadata, run["label"])
+        outputter.output_metrics(metrics, fam_cutoff)
+
     logging.info("Generating summary output")
-    # output summary per cutoff
+    # output summary of all cutoffs
     metadata = OutputGenerator.generate_metadata(run)
     outputter = OutputGenerator(run["output_dir"], metadata, run["label"])
     outputter.plot_per_cutoff(metrics)
     outputter.output_summary_per_cutoff(metrics)
     logging.info("Benchmark done!")
-    # print("running bigscape benchmark")
-    # print(run)

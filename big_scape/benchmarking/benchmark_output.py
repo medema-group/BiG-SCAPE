@@ -37,12 +37,32 @@ class OutputGenerator:
             run (dict): stored command line arguments
             cutoff (str): optional cutoff value being compared
         """
+        t = run["start_time"]
         i = run["big_dir"]
         g = run["gcf_assignment_file"]
-        meta = f"# {run['start_time']}\n# Comparing input directory: {i}\n# To curated GCFs: {g}\n"
+        meta = f"# {t}\n# Comparing input directory: {i}\n# To curated GCFs: {g}\n"
         if cutoff is not None:
             meta += f"# Used cutoff: {cutoff}\n"
         return meta + "\n"
+
+    def output_metrics(
+        self, metrics: dict[str, dict[str, Any]], fam_cutoff: str
+    ) -> None:
+        """Generates output for all calculated metrics"""
+        self.initialize_output_dir()
+        self.output_purities(metrics[fam_cutoff]["purities"])
+        self.output_entropies(metrics[fam_cutoff]["entropies"])
+        self.output_matrix(metrics[fam_cutoff]["conf_matrix"])
+        self.output_summary(
+            metrics[fam_cutoff]["homogeneity"],
+            metrics[fam_cutoff]["completeness"],
+            metrics[fam_cutoff]["v_measure"],
+            metrics[fam_cutoff]["purities"],
+            metrics[fam_cutoff]["entropies"],
+            metrics[fam_cutoff]["associations"],
+            metrics[fam_cutoff]["summary_stats"],
+        )
+        self.plot_conf_matrix_heatmap(metrics[fam_cutoff]["conf_matrix"])
 
     def output_purities(self, purities: dict[str, float]) -> None:
         """Write sorted computed GCF purities to output tsv file
