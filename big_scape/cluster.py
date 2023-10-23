@@ -26,6 +26,7 @@ from big_scape.output import (
 
 
 import big_scape.file_input as bs_files
+import big_scape.genbank as bs_gbk
 import big_scape.data as bs_data
 import big_scape.enums as bs_enums
 import big_scape.comparison as bs_comparison
@@ -284,7 +285,31 @@ def run_bigscape(run: dict) -> None:
     # see if we can refactor this
     # TODO: per cutoff
     mix_bin = bs_comparison.RecordPairGenerator("mix")
-    mix_bin.add_records([gbk.region for gbk in gbks if gbk.region is not None])
+
+    mix_bgc_regions: list[bs_gbk.BGCRecord] = []
+
+    for gbk in gbks:
+        if gbk.region is not None:
+            if not run["protocluster_compare"]:
+                mix_bgc_regions.append(gbk.region)
+                continue
+
+            if gbk.region.cand_clusters is None:
+                continue
+
+            for cluster in gbk.region.cand_clusters.values():
+                # always a pleasure, mypy
+                if cluster is None:
+                    continue
+                if cluster.proto_clusters is None:
+                    continue
+
+                for proto_cluster in cluster.proto_clusters.values():
+                    if proto_cluster is None:
+                        continue
+                    mix_bgc_regions.append(proto_cluster)
+
+    mix_bin.add_records(mix_bgc_regions)
 
     legacy_prepare_bin_output(run["output_dir"], run["label"], 0.3, mix_bin)
 

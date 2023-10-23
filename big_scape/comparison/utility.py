@@ -70,7 +70,9 @@ def save_edges_to_db(edges: list[tuple[int, int, float, float, float, float]]) -
     cursor = sqlite_connection.cursor()
 
     # create a query
-    query = "INSERT INTO distance VALUES (?, ?, ?, ?, ?, ?)"
+    # TODO: this should not need ignore. it's there now because protoclusters somehow
+    # trigger an integrityerror
+    query = "INSERT OR IGNORE INTO distance VALUES (?, ?, ?, ?, ?, ?)"
 
     cursor.executemany(query, edges)
 

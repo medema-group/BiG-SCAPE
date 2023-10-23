@@ -27,7 +27,24 @@ def calculate_distances_mix(run: dict, gbks: list[bs_gbk.GBK]) -> None:
 
     for gbk in gbks:
         if gbk.region is not None:
-            mix_bgc_regions.append(gbk.region)
+            if not run["protocluster_compare"]:
+                mix_bgc_regions.append(gbk.region)
+                continue
+
+            if gbk.region.cand_clusters is None:
+                continue
+
+            for cluster in gbk.region.cand_clusters.values():
+                # always a pleasure, mypy
+                if cluster is None:
+                    continue
+                if cluster.proto_clusters is None:
+                    continue
+
+                for proto_cluster in cluster.proto_clusters.values():
+                    if proto_cluster is None:
+                        continue
+                    mix_bgc_regions.append(proto_cluster)
 
     mix_bin = bs_comparison.RecordPairGenerator("mix")
     mix_bin.add_records(mix_bgc_regions)
@@ -58,7 +75,10 @@ def calculate_distances_mix(run: dict, gbks: list[bs_gbk.GBK]) -> None:
                 # bs_data.DB.commit()
 
         mix_edges = bs_comparison.generate_edges(
-            missing_edge_bin, run["alignment_mode"], run["cores"], callback
+            missing_edge_bin,
+            run["alignment_mode"],
+            run["cores"],
+            callback,
         )
 
         with tqdm.tqdm(total=num_pairs, unit="edge", desc="Calculating distances") as t:

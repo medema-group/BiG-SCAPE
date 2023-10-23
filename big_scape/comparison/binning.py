@@ -523,8 +523,8 @@ class RecordPair:
             raise ValueError("Region in pair has no parent GBK!")
 
         # comparable regions start at the full ranges
-        a_len = len(region_a.parent_gbk.genes)
-        b_len = len(region_b.parent_gbk.genes)
+        a_len = len(region_a.get_cds())
+        b_len = len(region_b.get_cds())
 
         self.comparable_region: ComparableRegion = ComparableRegion(
             self, 0, a_len, 0, b_len, False
