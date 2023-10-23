@@ -289,6 +289,11 @@ def common_cluster_query(fn):
             type=click.Path(path_type=Path, dir_okay=False),
             help="Path to sqlite db output file. Default: output_dir/data_sqlite.db.",
         ),
+        click.option(
+            "--protocluster_compare",
+            is_flag=True,
+            help="Use protoclusters as records to compare instead of regions",
+        ),
     ]
     for opt in options[::-1]:
         fn = opt(fn)
