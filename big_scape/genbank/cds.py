@@ -394,7 +394,7 @@ def translate(feature: SeqFeature, nt_seq: Seq):
 
     transl_nt_seq = nt_seq.translate(table=transl_table, to_stop=True)
 
-    return transl_nt_seq
+    return str(transl_nt_seq)
 
 
 def trim_fuzzy(
