@@ -91,16 +91,16 @@ def validate_output_paths(ctx) -> None:
 
     timestamp = time.strftime("%Y-%m-%d_%H-%M-%S", time.localtime())
 
-    if ctx.obj["db_path"] is None:
+    if "db_path" in ctx.obj and ctx.obj["db_path"] is None:
         db_path = ctx.obj["output_dir"] / Path("data_sqlite.db")
         ctx.obj["db_path"] = db_path
 
-    if ctx.obj["log_path"] is None:
+    if "log_path" in ctx.obj and ctx.obj["log_path"] is None:
         log_filename = timestamp + ".log"
         log_path = ctx.obj["output_dir"] / Path(log_filename)
         ctx.obj["log_path"] = log_path
 
-    if ctx.obj["profile_path"] is None:
+    if "profile_path" in ctx.obj and ctx.obj["profile_path"] is None:
         profile_filename = timestamp + ".profile"
         profile_path = ctx.obj["output_dir"] / Path(profile_filename)
         ctx.obj["profile_path"] = profile_path

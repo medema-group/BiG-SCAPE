@@ -253,14 +253,14 @@ class TestCDS(TestCase):
         self.assertEqual(expected_result, actual_result)
 
     def test_translate_output_type(self):
-        """Tests whether translate correclty outputs a Seq object"""
+        """Tests whether translate correclty outputs a str object"""
 
         feature = SeqFeature(FeatureLocation(5, 10, strand=1), type="CDS")
         nt_seq = Seq("ATGCAGCAGGACGGCACACAGCAGGACCGGATCAAGCAGAGTCCCGCCCCTCTCTGA")
 
         transl_nt_seq = translate(feature, nt_seq)
 
-        self.assertIsInstance(transl_nt_seq, Seq)
+        self.assertIsInstance(transl_nt_seq, str)
 
     def test_translate_correct_output(self):
         """Tests whether translate translates correclty"""
@@ -357,8 +357,8 @@ class TestCDS(TestCase):
 
         self.assertEqual(expected_translation, translation)
 
-    def test_get_translation_return_seq_object(self):
-        """Test if get_translation returns None when given the same value (false) for both fuzzies"""
+    def test_get_translation_return_str_object(self):
+        """Test if get_translation returns a str object"""
 
         feature = SeqFeature(
             FeatureLocation(BeforePosition(5), 10, strand=1), type="CDS"
@@ -368,7 +368,7 @@ class TestCDS(TestCase):
 
         translation = get_translation(feature, nt_seq)
 
-        self.assertIsInstance(translation, Seq)
+        self.assertIsInstance(translation, str)
 
     def test_parse_translate_aa_seq_cds_1(self):
         """Tests whether an aa sequence is correclty translated from a feature
