@@ -248,6 +248,10 @@ def calculate_scores_pair(
     results = []
 
     for pair in pairs:
+        if pair.region_a.parent_gbk == pair.region_b.parent_gbk:
+            results.append((0.0, 1.0, 1.0, 1.0))
+            continue
+
         jaccard = calc_jaccard_pair(pair)
 
         if jaccard == 0.0:
