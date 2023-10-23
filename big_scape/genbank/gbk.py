@@ -506,3 +506,12 @@ class GBK:
 
     def __hash__(self) -> int:
         return hash(self.path)
+
+    def __eq__(self, other) -> bool:
+        if not isinstance(other, GBK):
+            return False
+
+        if self.path is None or other.path is None:
+            return False
+
+        return self.path == other.path
