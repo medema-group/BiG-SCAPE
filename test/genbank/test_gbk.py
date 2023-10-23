@@ -131,6 +131,12 @@ class TestGBK(TestCase):
 
         self.assertRaises(InvalidGBKError, GBK.parse, gbk_file_path, SOURCE_TYPE.QUERY)
 
+    def test_as_invalid_version_number(self):
+        """Tests whether found as version number is valid (is a number)"""
+        gbk_file_path = Path("test/test_data/invalid_gbk_folder/as_invalid_version.gbk")
+
+        self.assertRaises(InvalidGBKError, GBK.parse, gbk_file_path, SOURCE_TYPE.MIBIG)
+
     def test_populate_regions(self):
         """Tests whether parsing a GBK correctly populates the underlying region"""
 

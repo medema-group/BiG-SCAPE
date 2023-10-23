@@ -370,6 +370,10 @@ class GBK:
             gbk.metadata["organism"] = record.annotations["organism"]
 
         as_version = GBK.get_as_version(record)
+        # check if found version number is valid
+        if not as_version[0].isnumeric():
+            logging.error("%s: Invalid antiSMASH version in GBK header", gbk.path)
+            raise InvalidGBKError()
         gbk.as_version = as_version
 
         if int(as_version[0]) >= 5:
