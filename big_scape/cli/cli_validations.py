@@ -251,3 +251,13 @@ def validate_pfam_path(ctx) -> None:
             "BiG-SCAPE database not provided, a pfam file is "
             "required in order to detect domains."
         )
+
+
+def validate_record_type(ctx, _, record_type) -> Optional[bs_enums.genbank.RECORD_TYPE]:
+    """Validates whether a region_type is provided when running classify"""
+    valid_types = [mode.value for mode in bs_enums.genbank.RECORD_TYPE]
+
+    for valid_type in valid_types:
+        if record_type == valid_type:
+            return bs_enums.genbank.RECORD_TYPE[valid_type.upper()]
+    return None

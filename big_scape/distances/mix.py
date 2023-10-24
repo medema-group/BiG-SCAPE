@@ -27,24 +27,10 @@ def calculate_distances_mix(run: dict, gbks: list[bs_gbk.GBK]) -> None:
 
     for gbk in gbks:
         if gbk.region is not None:
-            if not run["protocluster_compare"]:
-                mix_bgc_regions.append(gbk.region)
-                continue
-
-            if gbk.region.cand_clusters is None:
-                continue
-
-            for cluster in gbk.region.cand_clusters.values():
-                # always a pleasure, mypy
-                if cluster is None:
-                    continue
-                if cluster.proto_clusters is None:
-                    continue
-
-                for proto_cluster in cluster.proto_clusters.values():
-                    if proto_cluster is None:
-                        continue
-                    mix_bgc_regions.append(proto_cluster)
+            gbk_records = bs_gbk.bgc_record.get_sub_records(
+                gbk.region, run["record_type"]
+            )
+            mix_bgc_regions.extend(gbk_records)
 
     mix_bin = bs_comparison.RecordPairGenerator("mix")
     mix_bin.add_records(mix_bgc_regions)

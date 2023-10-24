@@ -4,7 +4,7 @@ AntiSMASh genbank records
 
 # from python
 from __future__ import annotations
-from typing import Optional, TYPE_CHECKING
+from typing import Optional, Sequence, TYPE_CHECKING
 import logging
 
 # from dependencies
@@ -15,12 +15,16 @@ from big_scape.data import DB
 from big_scape.errors import InvalidGBKError
 from big_scape.genbank.cds import CDS
 
-# from this module
-
+import big_scape.enums as bs_enums
 
 # from circular imports
 if TYPE_CHECKING:  # pragma: no cover
-    from big_scape.genbank import GBK  # imported earlier in file_input.load_files
+    from big_scape.genbank import (
+        GBK,
+        Region,
+        ProtoCluster,
+        ProtoCore,
+    )  # imported earlier in file_input.load_files
     from big_scape.hmm import HSP  # imported earlier in genbank.CDS
 
 
@@ -321,3 +325,71 @@ class BGCRecord:
         product = BGCRecord.parse_products(products)
 
         return nt_start, nt_stop, contig_edge, product
+
+
+def get_sub_records(
+    region: Region, record_type: bs_enums.genbank.RECORD_TYPE
+) -> Sequence[BGCRecord]:
+    """Return a list of BGCRecords of the specified type from the given region
+
+    This function recurses through a record, returning any record of a given type. If
+    the record is of the specified type, it is returned. If it is not, the function
+    recurses through the record's children, returning any records of the specified type.
+
+    If a given type of record is not found, the function will return the region instead
+
+    Args:
+        region (Region): region to search
+        type (bs_enums.genbank.RECORD_TYPE): type of record to return
+
+    Returns:
+        list[BGCRecord]: list of records of the specified type
+    """
+    if region is None:
+        return []
+
+    if record_type == bs_enums.genbank.RECORD_TYPE.REGION:
+        return [region]
+
+    if region.cand_clusters is None:
+        return [region]
+
+    cand_clusters = [
+        cand_cluster
+        for cand_cluster in region.cand_clusters.values()
+        if cand_cluster is not None
+    ]
+
+    if len(cand_clusters) == 0:
+        return [region]
+
+    if record_type == bs_enums.genbank.RECORD_TYPE.CANDIDATE_CLUSTER:
+        return cand_clusters
+
+    proto_clusters: list[ProtoCluster] = []
+    for cand_cluster in cand_clusters:
+        if cand_cluster.proto_clusters is None:
+            continue
+
+        for proto_cluster in cand_cluster.proto_clusters.values():
+            if proto_cluster is not None:
+                proto_clusters.append(proto_cluster)
+
+    if len(proto_clusters) == 0:
+        return cand_clusters
+
+    if record_type == bs_enums.genbank.RECORD_TYPE.PROTO_CLUSTER:
+        return proto_clusters
+
+    proto_cores: list[ProtoCore] = []
+    for proto_cluster in proto_clusters:
+        if proto_cluster.proto_core is None:
+            continue
+        for proto_core in proto_cluster.proto_core.values():
+            if proto_core is not None:
+                proto_cores.append(proto_core)
+
+    if len(proto_cores) == 0:
+        return proto_clusters
+
+    return proto_cores

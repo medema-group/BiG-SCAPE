@@ -14,6 +14,7 @@ from .cli_validations import (
     validate_includelist,
     validate_gcf_cutoffs,
     validate_filter_gbk,
+    validate_record_type,
 )
 
 
@@ -290,9 +291,13 @@ def common_cluster_query(fn):
             help="Path to sqlite db output file. Default: output_dir/data_sqlite.db.",
         ),
         click.option(
-            "--protocluster_compare",
-            is_flag=True,
-            help="Use protoclusters as records to compare instead of regions",
+            "--record_type",
+            type=click.Choice(
+                ["region", "cand_cluster", "proto_cluster", "proto_core"]
+            ),
+            default="region",
+            callback=validate_record_type,
+            help="Use a specific type of record for comparison. Default: region",
         ),
     ]
     for opt in options[::-1]:
