@@ -77,6 +77,7 @@
     function loadOverview(name) {
       $('#contentframe').attr('src', './html_content/networks/' + name + '/overview.html');
       $('#contentframe').trigger("focus");
+      $("#clusterbuttons").append($("<option selected disabled hidden>Select Network</option>"))
     }
     function loadRun(idx) {
       var run_name = bigscape_results[idx]["label"];
@@ -92,18 +93,19 @@
       $("#clusterbuttons").on("change", function() {
         loadNetwork(run_name, this.value);
       })
-      $(".clbutton").find("a").hover(function(handler){
-          var node = $(handler.target).parent();
-          $(".clbutton:not(.selected)").addClass("inactive");
-          node.removeClass("inactive");
-        }, function(handler){
-          $(".clbutton:not(.selected)").addClass("inactive");
-      });
-      $(".clbutton").click(function(handler){
-        $(".clbutton").removeClass("selected");
-        $(handler.target).parent().addClass("selected");
-        $(".clbutton:not(.selected)").addClass("inactive");
-      })
+      // TODO: comment out temporarily, delete if no issues arise
+      // $(".clbutton").find("a").hover(function(handler){
+      //     var node = $(handler.target).parent();
+      //     $(".clbutton:not(.selected)").addClass("inactive");
+      //     node.removeClass("inactive");
+      //   }, function(handler){
+      //     $(".clbutton:not(.selected)").addClass("inactive");
+      // });
+      // $(".clbutton").click(function(handler){
+      //   $(".clbutton").removeClass("selected");
+      //   $(handler.target).parent().addClass("selected");
+      //   $(".clbutton:not(.selected)").addClass("inactive");
+      // })
       loadOverview(run_name);
     }
     $(document).ready(function(){

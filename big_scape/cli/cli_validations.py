@@ -86,6 +86,24 @@ def validate_query_bgc(ctx, param, query_bgc_path) -> Path:
 # output parameter validations
 
 
+def validate_output_dir(ctx, param, output_dir) -> Path:
+    """Validates that output directory exists"""
+
+    if not output_dir.exists():
+        parent_dir = output_dir.parent.absolute()
+        if parent_dir.exists():
+            os.makedirs(output_dir)
+        else:
+            logging.error(
+                f"Output directory {output_dir} does not exist, and parent directory neither. Please create either."
+            )
+            raise click.BadParameter(
+                f"Output directory {output_dir} does not exist, and parent directory neither. Please create either."
+            )
+
+    return output_dir
+
+
 def validate_output_paths(ctx) -> None:
     """Sets the output paths to default output_dir if not provided"""
 

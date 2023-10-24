@@ -113,7 +113,19 @@ class TestGBK(TestCase):
         gbk_file_path = Path(
             "test/test_data/invalid_gbk_folder/as4_no_cluster_feature.gbk"
         )
-        self.assertRaises(InvalidGBKError, GBK.parse, gbk_file_path, SOURCE_TYPE.QUERY)
+        run = {
+            "input_dir": Path("test/test_data/valid_gbk_folder/"),
+            "input_mode": bs_enums.INPUT_MODE.RECURSIVE,
+            "include_gbk": None,
+            "exclude_gbk": None,
+            "cds_overlap_cutoff": None,
+            "cores": None,
+            "classify": False,
+            "legacy_classify": False,
+        }
+        self.assertRaises(
+            InvalidGBKError, GBK.parse, gbk_file_path, SOURCE_TYPE.QUERY, run
+        )
 
     def test_parse_metagenome_gbk(self):
         """Tests whether a metagenome GBK is instantiated correclty"""
@@ -196,18 +208,39 @@ class TestGBK(TestCase):
         gbk_file_path = Path(
             "test/test_data/invalid_gbk_folder/as5_no_region_feature.gbk"
         )
-
-        self.assertRaises(InvalidGBKError, GBK.parse, gbk_file_path, SOURCE_TYPE.QUERY)
+        run = {
+            "input_dir": Path("test/test_data/valid_gbk_folder/"),
+            "input_mode": bs_enums.INPUT_MODE.RECURSIVE,
+            "include_gbk": None,
+            "exclude_gbk": None,
+            "cds_overlap_cutoff": None,
+            "cores": None,
+            "classify": False,
+            "legacy_classify": False,
+        }
+        self.assertRaises(
+            InvalidGBKError, GBK.parse, gbk_file_path, SOURCE_TYPE.QUERY, run
+        )
 
     def test_parse_as5_no_cand_cluster(self):
         """Tests whether a GBK file with no cand_cluster features gives warning"""
         gbk_file_path = Path(
             "test/test_data/invalid_gbk_folder/as5_no_cand_cluster_feature.gbk"
         )
+        run = {
+            "input_dir": Path("test/test_data/valid_gbk_folder/"),
+            "input_mode": bs_enums.INPUT_MODE.RECURSIVE,
+            "include_gbk": None,
+            "exclude_gbk": None,
+            "cds_overlap_cutoff": None,
+            "cores": None,
+            "classify": False,
+            "legacy_classify": False,
+        }
 
         with self.assertLogs(level=logging.INFO) as cm:
             logging.info("nonsense")
-            GBK.parse(gbk_file_path, SOURCE_TYPE.QUERY)
+            GBK.parse(gbk_file_path, SOURCE_TYPE.QUERY, run)
 
         # cm.output a list of strings of all the logs
         str = "does not contain any cand_cluster features"
@@ -220,22 +253,58 @@ class TestGBK(TestCase):
         gbk_file_path = Path(
             "test/test_data/invalid_gbk_folder/as5_missing_protocluster_feature.gbk"
         )
+        run = {
+            "input_dir": Path("test/test_data/valid_gbk_folder/"),
+            "input_mode": bs_enums.INPUT_MODE.RECURSIVE,
+            "include_gbk": None,
+            "exclude_gbk": None,
+            "cds_overlap_cutoff": None,
+            "cores": None,
+            "classify": False,
+            "legacy_classify": False,
+        }
 
-        self.assertRaises(InvalidGBKError, GBK.parse, gbk_file_path, SOURCE_TYPE.QUERY)
+        self.assertRaises(
+            InvalidGBKError, GBK.parse, gbk_file_path, SOURCE_TYPE.QUERY, run
+        )
 
     def test_parse_as5_missing_proto_core(self):
         """Tests whether a GBK file has missing proto_core feature"""
         gbk_file_path = Path(
             "test/test_data/invalid_gbk_folder/as5_missing_proto_core_feature.gbk"
         )
+        run = {
+            "input_dir": Path("test/test_data/valid_gbk_folder/"),
+            "input_mode": bs_enums.INPUT_MODE.RECURSIVE,
+            "include_gbk": None,
+            "exclude_gbk": None,
+            "cds_overlap_cutoff": None,
+            "cores": None,
+            "classify": False,
+            "legacy_classify": False,
+        }
 
-        self.assertRaises(InvalidGBKError, GBK.parse, gbk_file_path, SOURCE_TYPE.QUERY)
+        self.assertRaises(
+            InvalidGBKError, GBK.parse, gbk_file_path, SOURCE_TYPE.QUERY, run
+        )
 
     def test_as_invalid_version_number(self):
         """Tests whether found as version number is valid (is a number)"""
         gbk_file_path = Path("test/test_data/invalid_gbk_folder/as_invalid_version.gbk")
+        run = {
+            "input_dir": Path("test/test_data/valid_gbk_folder/"),
+            "input_mode": bs_enums.INPUT_MODE.RECURSIVE,
+            "include_gbk": None,
+            "exclude_gbk": None,
+            "cds_overlap_cutoff": None,
+            "cores": None,
+            "classify": False,
+            "legacy_classify": False,
+        }
 
-        self.assertRaises(InvalidGBKError, GBK.parse, gbk_file_path, SOURCE_TYPE.MIBIG)
+        self.assertRaises(
+            InvalidGBKError, GBK.parse, gbk_file_path, SOURCE_TYPE.MIBIG, run
+        )
 
     def test_populate_regions(self):
         """Tests whether parsing a GBK correctly populates the underlying region"""

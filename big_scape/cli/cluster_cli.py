@@ -16,7 +16,6 @@ from .cli_validations import (
     validate_skip_hmmscan,
     validate_pfam_path,
     set_start,
-    validate_classify,
 )
 
 
@@ -34,43 +33,6 @@ from .cli_validations import (
 )
 # binning parameters
 @click.option("--no_mix", is_flag=True, help=("Dont run the all-vs-all analysis"))
-@click.option(
-    "--legacy_classify",
-    is_flag=True,
-    help=(
-        "Does not use antiSMASH BGC classes to run analyses on "
-        "class-based bins, instead it uses BiG-SCAPE v1 predefined groups: "
-        "PKS1, PKSOther, NRPS, NRPS-PKS-hybrid, RiPP, Saccharide, Terpene, Others."
-        "Will also use BiG-SCAPEv1 legacy_weights for distance calculations."
-        "This feature is available for backwards compatibility with "
-        "antiSMASH versions up to v7. For higher antiSMASH versions, use"
-        " at your own risk, as BGC classes may have changed. All antiSMASH"
-        "classes that this legacy mode does not recognize will be grouped in"
-        " 'others'."
-    ),
-)
-@click.option(
-    "--legacy_weights",
-    is_flag=True,
-    help=(
-        "Use BiG-SCAPE v1 class-based weights in distance calculations"
-        "If not selected, the distance metric will be based on the 'mix'"
-        " weights distribution."
-    ),
-)
-@click.option(
-    "--classify",
-    type=click.Choice(["class", "category"]),
-    callback=validate_classify,
-    help=(
-        "Use antiSMASH/BGC classes or categories to run analyses on class-based bins."
-        "Can be used in combination with --legacy_weights if BGC gbks "
-        "have been produced by antiSMASH version6 or higher. For older "
-        "antiSMASH versions, either use --legacy_classify or do not select"
-        "--legacy_weights, which will perform the weighted distance calculations"
-        "based on the generic 'mix' weights."
-    ),
-)
 # networking parameters
 @click.option(
     "--include_singletons",

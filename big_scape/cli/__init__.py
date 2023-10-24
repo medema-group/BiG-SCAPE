@@ -12,6 +12,7 @@ from .cli_validations import (
     validate_filter_gbk,
     validate_pfam_path,
     validate_classify,
+    validate_output_dir,
 )
 
 __all__ = [
@@ -26,4 +27,5 @@ __all__ = [
     "validate_filter_gbk",
     "validate_pfam_path",
     "validate_classify",
+    "validate_output_dir",
 ]
