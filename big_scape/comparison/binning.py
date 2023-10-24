@@ -677,6 +677,9 @@ def get_region_category(region: Region) -> str:
                         categories.append(pc_category)
 
     if len(categories) == 0:
+        return "Categoryless"
+
+    if len(categories) == 1:
         return categories[0]
 
     return ".".join(categories)
@@ -710,7 +713,7 @@ def get_weight_category(region: Region) -> str:
 
     # process into legacy_weights classes
 
-    # should never happen, but just in case
+    # for versions that dont have category information
     if len(categories) == 0:
         logging.warning(
             "No category found for %s",
