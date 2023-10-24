@@ -3,17 +3,25 @@
 # from python
 from unittest import TestCase
 from pathlib import Path
+from collections import OrderedDict
+
+# from dependencies
+from Bio.SeqFeature import SeqFeature, FeatureLocation
 
 # from other modules
-from big_scape.genbank import GBK, BGCRecord, CDS, Region
+from big_scape.genbank import GBK, BGCRecord, CDS, Region, ProtoCluster
 from big_scape.comparison import (
     RecordPairGenerator,
     QueryToRefRecordPairGenerator,
     RefToRefRecordPairGenerator,
     RecordPair,
     save_edge_to_db,
+    get_region_category,
+    get_weight_category,
+    as_class_bin_generator,
 )
 from big_scape.comparison import generate_mix
+from big_scape.genbank.candidate_cluster import CandidateCluster
 
 import big_scape.hmm as bs_hmm
 import big_scape.data as bs_data
@@ -419,3 +427,104 @@ class TestMixComparison(TestCase):
         actual_pair_count = len(list(new_bin.generate_pairs()))
 
         self.assertEqual(expected_pair_count, actual_pair_count)
+
+
+def mock_region() -> Region:
+    """generates a mock region for testing"""
+
+    region_feature = SeqFeature(FeatureLocation(0, 100), type="region")
+    region_feature.qualifiers = {
+        "region_number": ["1"],
+        "candidate_cluster_numbers": ["1"],
+        "product": ["T1PKS"],
+    }
+
+    region = Region.parse_as5(region_feature)
+
+    candidate_cluster_feature = SeqFeature(FeatureLocation(0, 100), type="cand_cluster")
+    candidate_cluster_feature.qualifiers = {
+        "candidate_cluster_number": ["1"],
+        "kind": ["neighbouring"],
+        "protoclusters": ["1"],
+        "product": ["T1PKS"],
+    }
+
+    candidate_cluster = CandidateCluster.parse(candidate_cluster_feature)
+
+    protocluster_feature = SeqFeature(FeatureLocation(0, 100), type="protocluster")
+    protocluster_feature.qualifiers = {
+        "protocluster_number": ["1"],
+        "category": ["PKS"],
+        "product": ["T1PKS"],
+    }
+
+    protocluster = ProtoCluster.parse(protocluster_feature)
+
+    candidate_cluster.add_proto_cluster(protocluster)
+    region.add_cand_cluster(candidate_cluster)
+
+    return region
+
+
+class TestBinGenerators(TestCase):
+    """Test class for the bin generators and associated functions"""
+
+    def clean_db(self):
+        if bs_data.DB.opened():
+            bs_data.DB.close_db()
+
+    def __init__(self, methodName: str = "runTest") -> None:
+        super().__init__(methodName)
+        self.addCleanup(self.clean_db)
+
+    def test_get_region_category(self):
+        """Tests whether a category is correclty parsed from a region of version as6 or higher"""
+
+        region = mock_region()
+
+        expected_category = "PKS"
+        category = get_region_category(region)
+
+        self.assertEqual(expected_category, category)
+
+    def test_get_weight_category(self):
+        """Tests wether the correct legacy weight category is created from a region category"""
+
+        region = mock_region()
+
+        expected_category = "T1PKS"
+        category = get_weight_category(region)
+
+        self.assertEqual(expected_category, category)
+
+    def test_as_class_bin_generator(self):
+        """Tests whether an antismash bin is correclty generated given a weight label"""
+
+        "Bin 'PKS': 1 pairs from 2 BGC records"
+
+        gbk_1 = GBK(Path("test"), source_type=bs_enums.SOURCE_TYPE.QUERY)
+        gbk_1.region = mock_region()
+
+        gbk_2 = GBK(Path("test"), source_type=bs_enums.SOURCE_TYPE.QUERY)
+        gbk_2.region = mock_region()
+
+        gbks = [gbk_1, gbk_2]
+        weights = ["mix", "legacy_weights"]
+        class_modes = [bs_enums.CLASSIFY_MODE.CLASS, bs_enums.CLASSIFY_MODE.CATEGORY]
+
+        seen_dict = OrderedDict()
+        expected_dict = OrderedDict()
+
+        expected_dict = {
+            "classmix": "T1PKSmix",
+            "categorymix": "PKSmix",
+            "classlegacy_weights": "T1PKST1PKS",
+            "categorylegacy_weights": "PKST1PKS",
+        }
+
+        for weight in weights:
+            for mode in class_modes:
+                bin = next(as_class_bin_generator(gbks, weight, mode))
+                seen_dict[str(mode.value) + weight] = bin.label + bin.weights
+
+        self.assertEqual(expected_dict, seen_dict)

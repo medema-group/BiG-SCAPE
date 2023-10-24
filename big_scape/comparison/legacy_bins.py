@@ -12,7 +12,7 @@ from .binning import RecordPairGenerator
 
 
 # weights are in the order JC, AI, DSS, Anchor boost
-LEGACY_BINS = {
+LEGACY_WEIGHTS = {
     "PKSI": {"weights": (0.22, 0.02, 0.76, 1.0)},
     "PKSother": {"weights": (0.0, 0.68, 0.32, 4.0)},
     "NRPS": {"weights": (0.0, 0.0, 1.0, 4.0)},
@@ -40,7 +40,7 @@ def legacy_bin_generator(
     """
     # generate index
     class_idx: dict[str, list[BGCRecord]] = {
-        class_name: [] for class_name in LEGACY_BINS.keys() if class_name != "mix"
+        class_name: [] for class_name in LEGACY_WEIGHTS.keys() if class_name != "mix"
     }
 
     for gbk in gbks:
@@ -118,7 +118,9 @@ def legacy_get_class(product):  # pragma no cover
         "lanthipeptide-class-iv",
         "lanthipeptide-class-v",
         "ranthipeptide",
-        "redox-cofactor" "thioamitides" "epipeptide",
+        "redox-cofactor",
+        "thioamitides",
+        "epipeptide",
         "cyclic-lactone-autoinducer",
         "spliceotide",
         "RRE-containing",

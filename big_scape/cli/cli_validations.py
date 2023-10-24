@@ -86,6 +86,24 @@ def validate_query_bgc(ctx, param, query_bgc_path) -> Path:
 # output parameter validations
 
 
+def validate_output_dir(ctx, param, output_dir) -> Path:
+    """Validates that output directory exists"""
+
+    if not output_dir.exists():
+        parent_dir = output_dir.parent.absolute()
+        if parent_dir.exists():
+            os.makedirs(output_dir)
+        else:
+            logging.error(
+                f"Output directory {output_dir} does not exist, and parent directory neither. Please create either."
+            )
+            raise click.BadParameter(
+                f"Output directory {output_dir} does not exist, and parent directory neither. Please create either."
+            )
+
+    return output_dir
+
+
 def validate_output_paths(ctx) -> None:
     """Sets the output paths to default output_dir if not provided"""
 
@@ -109,6 +127,23 @@ def validate_output_paths(ctx) -> None:
 
 
 # comparison validations
+
+
+def validate_classify(ctx, param, classify) -> Optional[bs_enums.CLASSIFY_MODE]:
+    """Validates whether the classification type is set, and if not
+    sets the parameter to False"""
+
+    # check if the property matches one of the enum values
+    valid_modes = [mode.value for mode in bs_enums.CLASSIFY_MODE]
+
+    for mode in valid_modes:
+        if classify == mode:
+            return bs_enums.CLASSIFY_MODE[mode.upper()]
+
+    if classify is None:
+        classify = False
+
+    return classify
 
 
 def validate_alignment_mode(
@@ -197,10 +232,28 @@ def validate_includelist(ctx, param, domain_includelist_path) -> None:
 # workflow validations
 
 
-def validate_binning_workflow(ctx) -> None:
+def validate_binning_cluster_workflow(ctx) -> None:
     """Raise an error if the combination of parameters in this object means no work
-    will be done
+    will be done, or if the combination of parameters is invalid
     """
+
+    # --legacy_weights needs a classification method
+
+    if (
+        ctx.obj["legacy_weights"]
+        and not ctx.obj["legacy_classify"]
+        and not ctx.obj["classify"]
+    ):
+        logging.error(
+            "You have selected --legacy_weights but no classification method. "
+            "Please select --legacy_classify or --classify"
+        )
+        raise click.UsageError(
+            "You have selected --legacy_weights but no classification method. "
+            "Please select --legacy_classify or --classify"
+        )
+
+    # --no_mix needs a classification method, otherwise no work will be done
 
     if (
         ctx.obj["no_mix"] is True
@@ -216,6 +269,36 @@ def validate_binning_workflow(ctx) -> None:
             "The combination of arguments you have selected for binning means no work will "
             "be done. Please remove either --no_mix, or add --legacy_classify/--classify"
             " in order to enable comparisons"
+        )
+
+    # --legacy_classify and --classify are mutually exclusive
+    # --legacy_classify turns on --legacy_weights
+
+    if ctx.obj["legacy_classify"]:
+        if ctx.obj["classify"]:
+            logging.error(
+                "You have selected both --legacy_classify and --classify. Please select only one"
+            )
+            raise click.UsageError(
+                "You have selected both --legacy_classify and --classify. Please select only one"
+            )
+        else:
+            ctx.obj["legacy_weights"] = True
+
+
+def validate_binning_query_workflow(ctx) -> None:
+    """Raise an error if the combination of parameters is invalid"""
+
+    # legacy weights needs classify
+
+    if ctx.obj["legacy_weights"] and not ctx.obj["classify"]:
+        logging.error(
+            "You have selected --legacy_weights but no classification method. "
+            "Please select --classify, or remove this parameter"
+        )
+        raise click.UsageError(
+            "You have selected --legacy_weights but no classification method. "
+            "Please select --classify, or remove this parameter"
         )
 
 

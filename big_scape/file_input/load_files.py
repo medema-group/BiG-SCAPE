@@ -91,23 +91,23 @@ def download_dataset(url: str, path: Path, path_compressed: Path) -> None:
     os.remove(path_compressed)
 
 
-def load_dataset_folder(
-    path: Path,
-    source_type: bs_enums.SOURCE_TYPE,
-    mode: bs_enums.INPUT_MODE = bs_enums.INPUT_MODE.RECURSIVE,
-    include_gbk: Optional[List[str]] = None,
-    exclude_gbk: Optional[List[str]] = None,
-    cds_overlap_cutoff: Optional[float] = None,
-    legacy_mode=False,
-    cores: Optional[int] = None,
-) -> List[GBK]:
+def load_dataset_folder(run: dict, source_type: bs_enums.SOURCE_TYPE) -> List[GBK]:
     """Loads all gbk files in a given folder
 
     Returns empty list if path does not point to a folder or if folder does not contain
     gbk files
     """
 
+    path = run["input_dir"]
+    source_type = source_type
+    mode = run["input_mode"]
+    include_gbk = run["include_gbk"]
+    exclude_gbk = run["exclude_gbk"]
+    cds_overlap_cutoff = run["cds_overlap_cutoff"]
+    cores = run["cores"]
+
     if source_type in (bs_enums.SOURCE_TYPE.QUERY, bs_enums.SOURCE_TYPE.REFERENCE):
+        # redundant check, this should never happen if the cli is working properly
         if not include_gbk:
             include_gbk = ["cluster", "region"]
 
@@ -127,7 +127,7 @@ def load_dataset_folder(
     if mode == bs_enums.INPUT_MODE.FLAT:
         files = list(path.glob("*.gbk"))
 
-    # empty folder?
+    # TODO: empty folder? -> redundant, already checked in cli
     if len(files) == 0:
         logging.error("Folder does not contain any GBK files!")
         raise FileNotFoundError()
@@ -146,10 +146,7 @@ def load_dataset_folder(
     # TODO: would really like to see a loading bar here
     gbk_list = pool.starmap(
         load_gbk,
-        [
-            (file, source_type, cds_overlap_cutoff, legacy_mode)
-            for file in filtered_files
-        ],
+        [(file, source_type, run, cds_overlap_cutoff) for file in filtered_files],
     )
 
     return gbk_list
@@ -200,8 +197,8 @@ def is_included(path: Path, include_list: List[str]):
 def load_gbk(
     path: Path,
     source_type: bs_enums.SOURCE_TYPE,
+    run: dict,
     cds_overlap_cutoff: Optional[float] = None,
-    legacy_mode=False,
 ) -> GBK:
     """Loads a GBK file. Returns a GBK object
 
@@ -223,7 +220,7 @@ def load_gbk(
         logging.error("GBK path does not point to a file!")
         raise IsADirectoryError()
 
-    return GBK.parse(path, source_type, cds_overlap_cutoff, legacy_mode)
+    return GBK.parse(path, source_type, run, cds_overlap_cutoff)
 
 
 def load_gbks(run: dict, bigscape_dir: Path) -> list[GBK]:
@@ -249,27 +246,13 @@ def load_gbks(run: dict, bigscape_dir: Path) -> list[GBK]:
         query_bgc_stem = run["query_bgc_path"].stem
 
         # add the query bgc to the exclude list
-        exclude_gbk = run["exclude_gbk"] + [query_bgc_stem]
+        run["exclude_gbk"].append(query_bgc_stem)
 
-        gbks = load_dataset_folder(
-            run["input_dir"],
-            bs_enums.SOURCE_TYPE.REFERENCE,
-            run["input_mode"],
-            run["include_gbk"],
-            exclude_gbk,
-            run["cds_overlap_cutoff"],
-        )
+        gbks = load_dataset_folder(run, bs_enums.SOURCE_TYPE.REFERENCE)
         input_gbks.extend(gbks)
 
     else:
-        gbks = load_dataset_folder(
-            run["input_dir"],
-            bs_enums.SOURCE_TYPE.QUERY,
-            run["input_mode"],
-            run["include_gbk"],
-            run["exclude_gbk"],
-            run["cds_overlap_cutoff"],
-        )
+        gbks = load_dataset_folder(run, bs_enums.SOURCE_TYPE.QUERY)
         input_gbks.extend(gbks)
 
     # get reference if either MIBiG version or user-made reference dir passed

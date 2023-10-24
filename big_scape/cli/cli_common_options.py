@@ -15,6 +15,8 @@ from .cli_validations import (
     validate_gcf_cutoffs,
     validate_filter_gbk,
     validate_record_type,
+    validate_classify,
+    validate_output_dir,
 )
 
 
@@ -79,13 +81,16 @@ def common_all(fn):
         click.option(
             "-o",
             "--output_dir",
-            type=click.Path(path_type=Path),
-            required=False,
+            type=click.Path(path_type=Path, dir_okay=True, file_okay=False),
+            required=True,
+            callback=validate_output_dir,
             help="Output directory for all BiG-SCAPE results files.",
         ),
         click.option(
             "--log_path",
-            type=click.Path(path_type=Path, dir_okay=False),
+            type=click.Path(
+                path_type=Path(exists=False), dir_okay=True, file_okay=False
+            ),
             help="Path to output log file. Default: output_dir/timestamp.log.",
         ),
     ]
@@ -248,7 +253,43 @@ def common_cluster_query(fn):
             ),
         ),
         # comparison parameters
-        # TODO: update with implementation
+        click.option(
+            "--legacy_classify",
+            is_flag=True,
+            help=(
+                "Does not use antiSMASH BGC classes to run analyses on "
+                "class-based bins, instead it uses BiG-SCAPE v1 predefined groups: "
+                "PKS1, PKSOther, NRPS, NRPS-PKS-hybrid, RiPP, Saccharide, Terpene, Others."
+                "Will also use BiG-SCAPEv1 legacy_weights for distance calculations."
+                "This feature is available for backwards compatibility with "
+                "antiSMASH versions up to v7. For higher antiSMASH versions, use"
+                " at your own risk, as BGC classes may have changed. All antiSMASH"
+                "classes that this legacy mode does not recognize will be grouped in"
+                " 'others'."
+            ),
+        ),
+        click.option(
+            "--legacy_weights",
+            is_flag=True,
+            help=(
+                "Use BiG-SCAPE v1 class-based weights in distance calculations"
+                "If not selected, the distance metric will be based on the 'mix'"
+                " weights distribution."
+            ),
+        ),
+        click.option(
+            "--classify",
+            type=click.Choice(["class", "category"]),
+            callback=validate_classify,
+            help=(
+                "Use antiSMASH/BGC classes or categories to run analyses on class-based bins."
+                "Can be used in combination with --legacy_weights if BGC gbks "
+                "have been produced by antiSMASH version6 or higher. For older "
+                "antiSMASH versions, either use --legacy_classify or do not select"
+                "--legacy_weights, which will perform the weighted distance calculations"
+                "based on the generic 'mix' weights."
+            ),
+        ),
         click.option(
             "--alignment_mode",
             type=click.Choice(["global", "glocal", "auto"]),
