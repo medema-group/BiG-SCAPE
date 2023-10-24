@@ -29,7 +29,19 @@ def calculate_distances_classify(
     else:
         weights = "mix"
 
-    as_class_bins = bs_comparison.as_class_bin_generator(gbks, weights, classify_mode)
+    all_records: list[bs_gbk.BGCRecord] = []
+
+    for gbk in gbks:
+        if gbk.region is None:
+            continue
+        if gbk.region.product is None:
+            continue
+        gbk_records = bs_gbk.bgc_record.get_sub_records(gbk.region, run["record_type"])
+        all_records.extend(gbk_records)
+
+    as_class_bins = bs_comparison.as_class_bin_generator(
+        all_records, weights, classify_mode
+    )
 
     for bin in as_class_bins:
         logging.info(bin)
