@@ -263,15 +263,19 @@ def run_bigscape(run: dict) -> None:
 
     logging.info("Generating families")
 
-    for connected_component in bs_network.get_connected_components(0.3):
-        logging.debug(
-            "Found connected component with %d edges", len(connected_component)
-        )
+    for cutoff in run["gcf_cutoffs"]:
+        logging.info(" -- Cutoff %s", cutoff)
+        for connected_component in bs_network.get_connected_components(cutoff):
+            logging.debug(
+                "Found connected component with %d edges", len(connected_component)
+            )
 
-        regions_families = bs_families.generate_families(connected_component)
+            regions_families = bs_families.generate_families(
+                connected_component, cutoff
+            )
 
-        # save families to database
-        bs_families.save_to_db(regions_families)
+            # save families to database
+            bs_families.save_to_db(regions_families)
 
     DB.commit()
 
@@ -289,7 +293,8 @@ def run_bigscape(run: dict) -> None:
     legacy_prepare_output(run["output_dir"], pfam_info)
 
     # work per cutoff
-    legacy_prepare_cutoff_output(run["output_dir"], run["label"], 0.3, gbks)
+    for cutoff in run["gcf_cutoffs"]:
+        legacy_prepare_cutoff_output(run["output_dir"], run["label"], cutoff, gbks)
 
     # TODO: I don't think the bins make much sense anymore
     # see if we can refactor this
@@ -297,14 +302,9 @@ def run_bigscape(run: dict) -> None:
     mix_bin = bs_comparison.RecordPairGenerator("mix")
     mix_bin.add_records([gbk.region for gbk in gbks if gbk.region is not None])
 
-    mix_bin2 = bs_comparison.RecordPairGenerator("mix2")
-    mix_bin2.add_records([gbk.region for gbk in gbks if gbk.region is not None])
-
-    legacy_prepare_bin_output(run["output_dir"], run["label"], 0.3, mix_bin)
-    legacy_generate_bin_output(run["output_dir"], run["label"], 0.3, mix_bin)
-
-    legacy_prepare_bin_output(run["output_dir"], run["label"], 0.3, mix_bin2)
-    legacy_generate_bin_output(run["output_dir"], run["label"], 0.3, mix_bin2)
+    for cutoff in run["gcf_cutoffs"]:
+        legacy_prepare_bin_output(run["output_dir"], run["label"], cutoff, mix_bin)
+        legacy_generate_bin_output(run["output_dir"], run["label"], cutoff, mix_bin)
 
     if run["profiling"]:
         profiler.stop()

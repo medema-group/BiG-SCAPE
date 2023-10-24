@@ -1,6 +1,7 @@
 """Contains tests for the GBK class and functions"""
 
 # from python
+import logging
 from pathlib import Path
 from unittest import TestCase
 
@@ -107,6 +108,13 @@ class TestGBK(TestCase):
 
         self.assertIsInstance(gbk, GBK)
 
+    def test_parse_as4_no_cluster_feature(self):
+        """Tests whether an as4 gbk has no cluster feature"""
+        gbk_file_path = Path(
+            "test/test_data/invalid_gbk_folder/as4_no_cluster_feature.gbk"
+        )
+        self.assertRaises(InvalidGBKError, GBK.parse, gbk_file_path, SOURCE_TYPE.QUERY)
+
     def test_parse_metagenome_gbk(self):
         """Tests whether a metagenome GBK is instantiated correclty"""
 
@@ -182,6 +190,52 @@ class TestGBK(TestCase):
         self.assertRaises(
             InvalidGBKError, GBK.parse, gbk_file_path, SOURCE_TYPE.QUERY, run
         )
+
+    def test_parse_as5_no_region(self):
+        """Tests whether a GBK file has no region feature"""
+        gbk_file_path = Path(
+            "test/test_data/invalid_gbk_folder/as5_no_region_feature.gbk"
+        )
+
+        self.assertRaises(InvalidGBKError, GBK.parse, gbk_file_path, SOURCE_TYPE.QUERY)
+
+    def test_parse_as5_no_cand_cluster(self):
+        """Tests whether a GBK file with no cand_cluster features gives warning"""
+        gbk_file_path = Path(
+            "test/test_data/invalid_gbk_folder/as5_no_cand_cluster_feature.gbk"
+        )
+
+        with self.assertLogs(level=logging.INFO) as cm:
+            logging.info("nonsense")
+            GBK.parse(gbk_file_path, SOURCE_TYPE.QUERY)
+
+        # cm.output a list of strings of all the logs
+        str = "does not contain any cand_cluster features"
+        warning = any(str in log for log in cm.output)
+
+        self.assertEqual(warning, True)
+
+    def test_parse_as5_missing_protocluster(self):
+        """Tests whether a GBK file has missing protocluster feature"""
+        gbk_file_path = Path(
+            "test/test_data/invalid_gbk_folder/as5_missing_protocluster_feature.gbk"
+        )
+
+        self.assertRaises(InvalidGBKError, GBK.parse, gbk_file_path, SOURCE_TYPE.QUERY)
+
+    def test_parse_as5_missing_proto_core(self):
+        """Tests whether a GBK file has missing proto_core feature"""
+        gbk_file_path = Path(
+            "test/test_data/invalid_gbk_folder/as5_missing_proto_core_feature.gbk"
+        )
+
+        self.assertRaises(InvalidGBKError, GBK.parse, gbk_file_path, SOURCE_TYPE.QUERY)
+
+    def test_as_invalid_version_number(self):
+        """Tests whether found as version number is valid (is a number)"""
+        gbk_file_path = Path("test/test_data/invalid_gbk_folder/as_invalid_version.gbk")
+
+        self.assertRaises(InvalidGBKError, GBK.parse, gbk_file_path, SOURCE_TYPE.MIBIG)
 
     def test_populate_regions(self):
         """Tests whether parsing a GBK correctly populates the underlying region"""
