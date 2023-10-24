@@ -110,7 +110,7 @@ class TestGBK(TestCase):
             GBK.parse(gbk_file_path, SOURCE_TYPE.QUERY)
 
         # cm.output a list of strings of all the logs
-        str = "does contain an antiSMASH cand_cluster feature"
+        str = "does not contain any cand_cluster features"
         warning = any(str in log for log in cm.output)
 
         self.assertEqual(warning, True)

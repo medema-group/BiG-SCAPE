@@ -511,7 +511,7 @@ class GBK:
             raise InvalidGBKError()
         if not tmp_cand_clusters:
             logging.warning(
-                "%s: GBK file does contain any cand_cluster features", self.path
+                "%s: GBK file does not contain any cand_cluster features", self.path
             )
 
         # add features to parent objects
