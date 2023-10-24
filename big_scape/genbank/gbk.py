@@ -370,6 +370,10 @@ class GBK:
             gbk.metadata["organism"] = record.annotations["organism"]
 
         as_version = GBK.get_as_version(record)
+        # check if found version number is valid
+        if not as_version[0].isnumeric():
+            logging.error("%s: Invalid antiSMASH version in GBK header", gbk.path)
+            raise InvalidGBKError()
         gbk.as_version = as_version
 
         if int(as_version[0]) >= 5:
@@ -405,7 +409,9 @@ class GBK:
                 if self.region is not None:
                     # this should not happen, but just in case
                     # since we only have one region on an object
-                    logging.error("GBK file provided contains more than one region")
+                    logging.error(
+                        "%s: GBK file contains more than one region", self.path
+                    )
                     raise InvalidGBKError()
 
                 region = Region.parse_as4(feature, parent_gbk=self)
@@ -425,6 +431,12 @@ class GBK:
                     continue
 
                 self.genes.append(cds)
+        # If no cluster feature was found, GBK is invalid
+        if self.region is None:
+            logging.error(
+                "%s: GBK file does not contain an antiSMASH cluster feature", self.path
+            )
+            raise InvalidGBKError()
 
     def parse_as5up(
         self,
@@ -456,7 +468,9 @@ class GBK:
                 if self.region is not None:
                     # this should not happen, but just in case
                     # since we only have one region on an object
-                    logging.error("GBK file provided contains more than one region")
+                    logging.error(
+                        "%s: GBK file contains more than one region", self.path
+                    )
                     raise InvalidGBKError()
 
                 region = Region.parse_as5(feature, parent_gbk=self)
@@ -489,12 +503,38 @@ class GBK:
 
                 self.genes.append(cds)
 
+        # check correct GBK format
+        if self.region is None:
+            logging.error(
+                "%s: GBK file does not contain an antiSMASH region feature", self.path
+            )
+            raise InvalidGBKError()
+        if not tmp_cand_clusters:
+            logging.warning(
+                "%s: GBK file does not contain any cand_cluster features", self.path
+            )
+
         # add features to parent objects
         for proto_cluster_num, proto_cluster in tmp_proto_clusters.items():
+            if proto_cluster_num not in tmp_proto_cores:
+                logging.error(
+                    "%s: protocluster %s has missing proto_core feature",
+                    self.path,
+                    proto_cluster_num,
+                )
+                raise InvalidGBKError()
             proto_cluster.add_proto_core(tmp_proto_cores[proto_cluster_num])
 
-        for cand_cluster in tmp_cand_clusters.values():
+        for cand_cluster_num, cand_cluster in tmp_cand_clusters.items():
             for proto_cluster_num in cand_cluster.proto_clusters.keys():
+                if proto_cluster_num not in tmp_proto_clusters:
+                    logging.error(
+                        "%s: cand_cluster %s has missing protocluster %s feature",
+                        self.path,
+                        cand_cluster_num,
+                        proto_cluster_num,
+                    )
+                    raise InvalidGBKError()
                 cand_cluster.add_proto_cluster(tmp_proto_clusters[proto_cluster_num])
 
             region.add_cand_cluster(cand_cluster)
