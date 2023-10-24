@@ -5,14 +5,14 @@ import click
 from pathlib import Path
 
 # from other modules
-from big_scape.cluster import run_bigscape_cluster, run_bigscape
+from big_scape.main import run_bigscape
 from big_scape.diagnostics import init_logger, init_logger_file
 
 # from this module
 from .cli_common_options import common_all, common_cluster_query
 from .cli_validations import (
     validate_output_paths,
-    validate_binning_workflow,
+    validate_binning_cluster_workflow,
     validate_skip_hmmscan,
     validate_pfam_path,
     set_start,
@@ -33,19 +33,6 @@ from .cli_validations import (
 )
 # binning parameters
 @click.option("--no_mix", is_flag=True, help=("Dont run the all-vs-all analysis"))
-@click.option(
-    "--legacy_classify",
-    is_flag=True,
-    help=(
-        "Does not use antiSMASH/BGC classes to run analyses on "
-        "class-based bins, instead it uses BiG-SCAPEv1 predefined groups."
-    ),
-)
-@click.option(
-    "--classify",
-    is_flag=True,
-    help=("Use antiSMASH/BGC classes to run analyses on " "class-based bins."),
-)
 # networking parameters
 @click.option(
     "--include_singletons",
@@ -64,9 +51,10 @@ def cluster(ctx, *args, **kwargs):
     """
     # get context parameters
     ctx.obj.update(ctx.params)
+    ctx.obj["query_bgc_path"] = None
 
     # workflow validations
-    validate_binning_workflow(ctx)
+    validate_binning_cluster_workflow(ctx)
     validate_skip_hmmscan(ctx)
     validate_pfam_path(ctx)
     validate_output_paths(ctx)
@@ -79,5 +67,5 @@ def cluster(ctx, *args, **kwargs):
     init_logger_file(ctx.obj)
 
     # run BiG-SCAPE cluster
-    run_bigscape_cluster(ctx.obj)
+    print(ctx.obj)
     run_bigscape(ctx.obj)

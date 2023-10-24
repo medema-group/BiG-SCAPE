@@ -227,7 +227,10 @@ def generate_run_data_js(
         region_acc_idx = genomes[organism]
 
         # class id
-        region_class = legacy_get_class(gbk.region.product)
+        # product hybrids of AS4 and under dealt with here and in legacy_bin_generator
+        product = ".".join(gbk.region.product.split("-"))
+        region_class = legacy_get_class(product)
+
         if region_class not in class_idx:
             class_idx[region_class] = len(class_idx)
 
@@ -464,7 +467,7 @@ def add_bigscape_results_js_network(
     # one exception to the above values is the mix pair_generator, which uses others as a CSS class
     if pair_generator.label == "mix":
         css = "Others"
-        label = "Mixed"
+        label = "mix"
 
     bigscape_result["networks"].append(
         {

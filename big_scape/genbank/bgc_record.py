@@ -276,14 +276,16 @@ class BGCRecord:
         if len(products) == 1:
             return products.pop()
 
+        # TODO: check the status here
         # return easy hybrids
-        if "other" not in products:
-            return ".".join(products)
+        # if "other" not in products:
+        return ".".join(products)
 
+        # TODO: clean up
         # in all other cases we have an 'other' classification. for the rest of the
         # cases we can remove that and just parse the products again
-        products.remove("other")
-        return BGCRecord.parse_products(products)
+        # products.remove("other")
+        # return BGCRecord.parse_products(products)
 
     @staticmethod
     def parse_common(
@@ -316,7 +318,10 @@ class BGCRecord:
             raise InvalidGBKError()
 
         # record may have multiple products. handle them here
-        products = set(feature.qualifiers["product"][0].split("-"))
+
+        # TODO: clean up
+        # products = set(feature.qualifiers["product"][0].split("-"))
+        products = feature.qualifiers["product"]
 
         product = BGCRecord.parse_products(products)
 

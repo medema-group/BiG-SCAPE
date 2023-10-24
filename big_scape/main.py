@@ -32,17 +32,13 @@ import big_scape.comparison as bs_comparison
 import big_scape.network.network as bs_network
 import big_scape.network.families as bs_families
 import big_scape.distances.mix as bs_mix
+import big_scape.distances.legacy_classify as bs_legacy_classify
+import big_scape.distances.classify as bs_classify
 import big_scape.distances.query as bs_query
 
 
-# TODO: mock, delete later
-def run_bigscape_cluster(run: dict):
-    print("running bigscape cluster")
-    print(run)
-
-
 def run_bigscape(run: dict) -> None:
-    """Run a bigscape analysis. This is the main function of the program that parses the
+    """Run a bigscape cluster analysis. This is the main function of the program that parses the
     command line arguments, loads the data, runs the analysis and saves the output.
     """
     # root directory
@@ -238,14 +234,27 @@ def run_bigscape(run: dict) -> None:
 
         DB.commit()
 
+    # legacy_classify
+
+    if run["legacy_classify"] and not run["query_bgc_path"]:
+        bs_legacy_classify.calculate_distances_legacy_classify(run, gbks)
+
+        DB.commit()
+
+    # classify
+
+    if run["classify"] and not run["query_bgc_path"]:
+        classify_mode = run["classify"]
+        bs_classify.calculate_distances_classify(run, gbks, classify_mode)
+
+        DB.commit()
+
     # query
 
     if run["query_bgc_path"]:
         bs_query.calculate_distances_query(run, gbks)
 
         DB.commit()
-
-    # TODO: make classify distance generator (legacy and AS-class)
 
     # FAMILIES
     # TODO: per cutoff
@@ -270,7 +279,7 @@ def run_bigscape(run: dict) -> None:
 
     DB.save_to_disk(run["db_path"])
 
-    # OUTPUT
+    # OUTPUT GENERATION
 
     # if this wasn't set in scan or align, set it now
     if pfam_info is None:
@@ -281,19 +290,59 @@ def run_bigscape(run: dict) -> None:
     # prepare output files
     legacy_prepare_output(run["output_dir"], pfam_info)
 
-    # work per cutoff
+    # prepare output files per cutoff
     for cutoff in run["gcf_cutoffs"]:
         legacy_prepare_cutoff_output(run["output_dir"], run["label"], cutoff, gbks)
 
-    # TODO: I don't think the bins make much sense anymore
-    # see if we can refactor this
-    # TODO: per cutoff
-    mix_bin = bs_comparison.RecordPairGenerator("mix")
-    mix_bin.add_records([gbk.region for gbk in gbks if gbk.region is not None])
+    # mix
 
-    for cutoff in run["gcf_cutoffs"]:
-        legacy_prepare_bin_output(run["output_dir"], run["label"], cutoff, mix_bin)
-        legacy_generate_bin_output(run["output_dir"], run["label"], cutoff, mix_bin)
+    if not run["no_mix"] and not run["query_bgc_path"]:
+        mix_bin = bs_comparison.RecordPairGenerator("Mix")
+        mix_bin.add_records([gbk.region for gbk in gbks if gbk.region is not None])
+
+        for cutoff in run["gcf_cutoffs"]:
+            legacy_prepare_bin_output(run["output_dir"], run["label"], cutoff, mix_bin)
+            legacy_generate_bin_output(run["output_dir"], run["label"], cutoff, mix_bin)
+
+    # legacy_classify
+
+    if run["legacy_classify"]:
+        legacy_class_bins = bs_comparison.legacy_bin_generator(gbks)
+
+        for bin in legacy_class_bins:
+            for cutoff in run["gcf_cutoffs"]:
+                legacy_prepare_bin_output(run["output_dir"], run["label"], cutoff, bin)
+                legacy_generate_bin_output(run["output_dir"], run["label"], cutoff, bin)
+
+    # classify
+
+    if run["classify"]:
+        classify_mode = run["classify"]
+
+        if run["legacy_weights"]:
+            weights = "legacy_weights"
+        else:
+            weights = "mix"
+
+        as_class_bins = bs_comparison.as_class_bin_generator(
+            gbks, weights, classify_mode
+        )
+
+        for bin in as_class_bins:
+            for cutoff in run["gcf_cutoffs"]:
+                legacy_prepare_bin_output(run["output_dir"], run["label"], cutoff, bin)
+                legacy_generate_bin_output(run["output_dir"], run["label"], cutoff, bin)
+
+    # query
+    # TODO: implement once classes are implemented for query mode
+
+    # if run["query_bgc_path"]:
+    #     query_mix_bin = bs_comparison.RecordPairGenerator("Query")
+    #     query_mix_bin.add_records([gbk.region for gbk in gbks if gbk.region is not None])
+
+    #     for cutoff in run["gcf_cutoffs"]:
+    #         legacy_prepare_bin_output(run["output_dir"], run["label"], cutoff, query_mix_bin)
+    #         legacy_generate_bin_output(run["output_dir"], run["label"], cutoff, query_mix_bin)
 
     if run["profiling"]:
         profiler.stop()
