@@ -87,7 +87,9 @@ def generate_mock_protocluster(cds_list: list[bs_genbank.CDS], protocore_idx: in
     protocore_start = cds_list[protocore_idx].nt_start
     protocore_stop = cds_list[protocore_idx].nt_stop
 
-    protocore = bs_genbank.ProtoCore(gbk, 1, protocore_start, protocore_stop, False, "")
+    protocore = bs_genbank.ProtoCore(
+        gbk, 1, protocore_start, protocore_stop, False, "", ""
+    )
 
     protocluster.proto_core[1] = None
     protocluster.add_proto_core(protocore)

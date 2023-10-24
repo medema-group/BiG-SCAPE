@@ -295,9 +295,6 @@ def run_bigscape(run: dict) -> None:
     for cutoff in run["gcf_cutoffs"]:
         legacy_prepare_cutoff_output(run["output_dir"], run["label"], cutoff, gbks)
 
-    # TODO: I don't think the bins make much sense anymore
-    # see if we can refactor this
-    # TODO: per cutoff
     mix_bin = bs_comparison.RecordPairGenerator("mix")
 
     mix_bgc_regions: list[bs_gbk.BGCRecord] = []

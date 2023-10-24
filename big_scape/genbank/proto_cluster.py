@@ -78,6 +78,8 @@ class ProtoCluster(BGCRecord):
         if proto_core.number not in self.proto_core:
             raise InvalidGBKRegionChildError()
 
+        proto_core.category = self.category
+
         self.proto_core[proto_core.number] = proto_core
 
         # protocores may exist in isolation
