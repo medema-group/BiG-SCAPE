@@ -142,7 +142,8 @@ def generate_edges(
                     continue
 
                 new_task = executor.submit(
-                    calculate_scores_pair, (batch, alignment_mode, pair_generator.label)
+                    calculate_scores_pair,
+                    (batch, alignment_mode, pair_generator.weights),
                 )
                 running_tasks[new_task] = batch
 

@@ -25,9 +25,9 @@ def calculate_distances_classify(
     logging.info("Generating antismash class bins")
 
     if run["legacy_weights"]:
-        weights = "legacy_weights"
+        weight_type = "legacy_weights"
     else:
-        weights = "mix"
+        weight_type = "mix"
 
     all_records: list[bs_gbk.BGCRecord] = []
 
@@ -40,7 +40,7 @@ def calculate_distances_classify(
         all_records.extend(gbk_records)
 
     as_class_bins = bs_comparison.as_class_bin_generator(
-        all_records, weights, classify_mode
+        all_records, weight_type, classify_mode
     )
 
     for bin in as_class_bins:

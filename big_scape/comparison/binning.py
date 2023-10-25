@@ -15,7 +15,7 @@ from sqlalchemy import select, func, or_
 
 # from other modules
 from big_scape.data import DB
-from big_scape.genbank import BGCRecord, GBK, Region, ProtoCluster, ProtoCore
+from big_scape.genbank import BGCRecord, Region, ProtoCluster, ProtoCore
 from big_scape.enums import SOURCE_TYPE, CLASSIFY_MODE
 
 # from this module
@@ -604,13 +604,13 @@ def sort_name_key(record: BGCRecord) -> str:
 
 
 def as_class_bin_generator(
-    all_records: list[BGCRecord], weights: str, classify_mode: CLASSIFY_MODE
+    all_records: list[BGCRecord], weight_type: str, classify_mode: CLASSIFY_MODE
 ) -> Iterator[RecordPairGenerator]:
     """Generate bins for each antiSMASH class
 
     Args:
         gbks (list[GBK]): List of GBKs to generate bins for
-        weights (str): weights to use for each class
+        category_weights (str): weights to use for each class
 
     Yields:
         Iterator[RecordPairGenerator]: Generator that yields bins. Order is not guarenteed to be
@@ -633,14 +633,14 @@ def as_class_bin_generator(
         except KeyError:
             class_idx[record_class] = [record]
 
-        if weights == "legacy_weights":
+        if weight_type == "legacy_weights":
             # get region category for weights
             region_weight_cat = get_weight_category(record)
 
             if record_class not in category_weights.keys():
                 category_weights[record_class] = region_weight_cat
 
-        if weights == "mix":
+        if weight_type == "mix":
             category_weights[record_class] = "mix"
 
     for class_name, records in class_idx.items():
@@ -754,7 +754,7 @@ def get_weight_category(record: BGCRecord) -> str:
 
 
 def legacy_bin_generator(
-    gbks: list[GBK],
+    all_records: list[BGCRecord],
 ) -> Iterator[RecordPairGenerator]:  # pragma no cover
     """Generate bins for each class as they existed in the BiG-SCAPE 1.0 implementation
 
@@ -771,22 +771,22 @@ def legacy_bin_generator(
         class_name: [] for class_name in LEGACY_WEIGHTS.keys() if class_name != "mix"
     }
 
-    for gbk in gbks:
-        if gbk.region is None:
+    for record in all_records:
+        if record is None:
             continue
-        if gbk.region.product is None:
+        if record.product is None:
             continue
 
         # product hybrids of AS4 and under dealt with here and in legacy_output generate_run_data_js
-        product = ".".join(gbk.region.product.split("-"))
+        product = ".".join(record.product.split("-"))
 
         region_class = legacy_get_class(product)
 
-        class_idx[region_class].append(gbk.region)
+        class_idx[region_class].append(record)
 
-    for class_name, regions in class_idx.items():
+    for class_name, records in class_idx.items():
         bin = RecordPairGenerator(class_name)
-        bin.add_records(regions)
+        bin.add_records(records)
         yield bin
 
 
