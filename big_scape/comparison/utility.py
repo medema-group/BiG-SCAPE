@@ -13,7 +13,7 @@ from big_scape.comparison.binning import RecordPairGenerator, RecordPair
 
 
 def save_edge_to_db(
-    edge: tuple[int, int, float, float, float, float], upsert=False
+    edge: tuple[int, int, float, float, float, float, str], upsert=False
 ) -> None:
     """Save edge to the database
 
@@ -23,7 +23,7 @@ def save_edge_to_db(
         upsert (bool, optional): whether to upsert the edge into the database.
     """
 
-    region_a_id, region_b_id, distance, jaccard, adjacency, dss = edge
+    region_a_id, region_b_id, distance, jaccard, adjacency, dss, weights = edge
 
     # save the comparison data to the database
 
@@ -40,6 +40,7 @@ def save_edge_to_db(
         jaccard=jaccard,
         adjacency=adjacency,
         dss=dss,
+        weights=weights,
     )
 
     if upsert:
@@ -48,11 +49,13 @@ def save_edge_to_db(
     DB.execute(statement)
 
 
-def save_edges_to_db(edges: list[tuple[int, int, float, float, float, float]]) -> None:
+def save_edges_to_db(
+    edges: list[tuple[int, int, float, float, float, float, str]]
+) -> None:
     """Save many edges to the database
 
     Args:
-        edges (list[tuple[int, int, float, float, float, float]]): list of edges to save
+        edges (list[tuple[int, int, float, float, float, float, str]]): list of edges to save
     """
     # save the comparison data to the database
     # using raw sqlite for this because sqlalchemy is not fast enough
@@ -72,7 +75,7 @@ def save_edges_to_db(edges: list[tuple[int, int, float, float, float, float]]) -
     # create a query
     # TODO: this should not need ignore. it's there now because protoclusters somehow
     # trigger an integrityerror
-    query = "INSERT OR IGNORE INTO distance VALUES (?, ?, ?, ?, ?, ?)"
+    query = "INSERT OR IGNORE INTO distance VALUES (?, ?, ?, ?, ?, ?, ?)"
 
     cursor.executemany(query, edges)
 
@@ -134,6 +137,8 @@ def edges_from_db(
             jaccard: float = edge.jaccard
             adjacency: float = edge.adjacency
             dss: float = edge.dss
+            # TODO: check if this is needed somewhere
+            # weights: str = edge.weights
 
             # yield the distance
-            yield pair, distance, jaccard, adjacency, dss
+            yield pair, distance, jaccard, adjacency, dss  # , weights

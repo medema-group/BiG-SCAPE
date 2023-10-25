@@ -11,7 +11,7 @@ from big_scape.data import DB
 
 def get_connected_components(
     cutoff: Optional[float] = None,
-) -> Generator[list[tuple[int, int, float, float, float, float]], None, None]:
+) -> Generator[list[tuple[int, int, float, float, float, float, str]], None, None]:
     """Generate a network for each connected component in the network"""
     # the idea behind this is that the distance table is an edge list. If no
     # distance threshold is applied, any edge is itself a connected component that
@@ -72,7 +72,7 @@ def get_connected_components(
 def get_edge(
     exclude_nodes: set[int],
     cutoff: Optional[float] = None,
-) -> Optional[tuple[int, int, float, float, float, float]]:
+) -> Optional[tuple[int, int, float, float, float, float, str]]:
     """Get an edge from the database that is not connected to exclude_nodes"""
 
     if cutoff is None:
@@ -96,12 +96,12 @@ def get_edge(
     if edge is None:
         return None
 
-    return cast(tuple[int, int, float, float, float, float], edge)
+    return cast(tuple[int, int, float, float, float, float, str], edge)
 
 
 def get_edges(
     include_nodes: set[int], distance_cutoff: Optional[float] = None
-) -> list[tuple[int, int, float, float, float, float]]:
+) -> list[tuple[int, int, float, float, float, float, str]]:
     """Get all edges that are connected to include_nodes"""
     if distance_cutoff is None:
         distance_cutoff = 1.0
@@ -125,14 +125,14 @@ def get_edges(
 
     edges = DB.execute(select_statement).fetchall()
 
-    return cast(list[tuple[int, int, float, float, float, float]], edges)
+    return cast(list[tuple[int, int, float, float, float, float, str]], edges)
 
 
 def get_connected_edges(
     include_nodes: set[int],
-    connected_component: set[tuple[int, int, float, float, float, float]],
+    connected_component: set[tuple[int, int, float, float, float, float, str]],
     distance_cutoff: Optional[float] = None,
-) -> list[tuple[int, int, float, float, float, float]]:
+) -> list[tuple[int, int, float, float, float, float, str]]:
     """Get all edges that are connected to include_nodes with a certain distance"""
     if distance_cutoff is None:
         distance_cutoff = 1.0
@@ -159,6 +159,7 @@ def get_connected_edges(
                 distance_table.c.jaccard,
                 distance_table.c.adjacency,
                 distance_table.c.dss,
+                distance_table.c.weights,
             ).in_(connected_component)
         )
         # equivalent to AND distance < ...
@@ -167,4 +168,4 @@ def get_connected_edges(
 
     edges = DB.execute(select_statement).fetchall()
 
-    return cast(list[tuple[int, int, float, float, float, float]], edges)
+    return cast(list[tuple[int, int, float, float, float, float, str]], edges)

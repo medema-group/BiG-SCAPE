@@ -199,6 +199,9 @@ class BGCRecord:
 
         bgc_record_table = DB.metadata.tables["bgc_record"]
 
+        if not hasattr(self, "category"):
+            self.category: Optional[str] = None
+
         contig_edge = None
         if self.contig_edge is not None:
             contig_edge = self.contig_edge
@@ -218,6 +221,7 @@ class BGCRecord:
                 nt_start=self.nt_start,
                 nt_stop=self.nt_stop,
                 product=self.product,
+                category=self.category,
                 record_type=record_type,
             )
             .returning(bgc_record_table.c.id)

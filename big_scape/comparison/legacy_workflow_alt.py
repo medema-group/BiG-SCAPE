@@ -170,6 +170,7 @@ def generate_edges(
                         jaccard,
                         adjacency,
                         dss,
+                        pair_generator.weights,
                     )
 
                 done_pairs += len(results)

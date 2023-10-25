@@ -45,7 +45,7 @@ class ProtoCore(BGCRecord):
         nt_stop: int,
         contig_edge: Optional[bool],
         product: str,
-        category: str,
+        category: Optional[str] = None,
     ):
         super().__init__(
             parent_gbk,
@@ -56,7 +56,7 @@ class ProtoCore(BGCRecord):
             product,
         )
 
-        self.category: str = category
+        self.category: Optional[str] = category
 
     def save(self, parent_id: int, commit=True) -> None:
         """Stores this protocore in the database
@@ -91,20 +91,12 @@ class ProtoCore(BGCRecord):
             )
             raise InvalidGBKError()
 
-        category = ""
-
         proto_core_number = int(feature.qualifiers["protocluster_number"][0])
 
         nt_start, nt_stop, contig_edge, product = BGCRecord.parse_common(feature)
 
         return cls(
-            parent_gbk,
-            proto_core_number,
-            nt_start,
-            nt_stop,
-            contig_edge,
-            product,
-            category,
+            parent_gbk, proto_core_number, nt_start, nt_stop, contig_edge, product
         )
 
     def __repr__(self) -> str:
@@ -140,6 +132,7 @@ class ProtoCore(BGCRecord):
                 record_table.c.nt_start,
                 record_table.c.nt_stop,
                 record_table.c.product,
+                record_table.c.category,
             )
             .where(record_table.c.record_type == "proto_core")
             .compile()

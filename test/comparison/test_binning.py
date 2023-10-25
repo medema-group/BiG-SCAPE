@@ -260,12 +260,28 @@ class TestBGCBin(TestCase):
             # lets say two (0 and 1) of these distances are entirely similar
             if idx < 2:
                 save_edge_to_db(
-                    (query_gbk.region._db_id, ref_gbk.region._db_id, 0.0, 1.0, 1.0, 1.0)
+                    (
+                        query_gbk.region._db_id,
+                        ref_gbk.region._db_id,
+                        0.0,
+                        1.0,
+                        1.0,
+                        1.0,
+                        "mix",
+                    )
                 )
             else:
                 # the other two (2 and 3) are entirely distant
                 save_edge_to_db(
-                    (query_gbk.region._db_id, ref_gbk.region._db_id, 1.0, 0.0, 0.0, 0.0)
+                    (
+                        query_gbk.region._db_id,
+                        ref_gbk.region._db_id,
+                        1.0,
+                        0.0,
+                        0.0,
+                        0.0,
+                        "mix",
+                    )
                 )
 
         # so now we have a network where the query is connected to 2 of the reference
@@ -333,12 +349,28 @@ class TestBGCBin(TestCase):
             # lets say two (0 and 1) of these distances are entirely similar
             if idx < 2:
                 save_edge_to_db(
-                    (query_gbk.region._db_id, ref_gbk.region._db_id, 0.0, 1.0, 1.0, 1.0)
+                    (
+                        query_gbk.region._db_id,
+                        ref_gbk.region._db_id,
+                        0.0,
+                        1.0,
+                        1.0,
+                        1.0,
+                        "mix",
+                    )
                 )
             else:
                 # the other two (2 and 3) are entirely distant
                 save_edge_to_db(
-                    (query_gbk.region._db_id, ref_gbk.region._db_id, 1.0, 0.0, 0.0, 0.0)
+                    (
+                        query_gbk.region._db_id,
+                        ref_gbk.region._db_id,
+                        1.0,
+                        0.0,
+                        0.0,
+                        0.0,
+                        "mix",
+                    )
                 )
 
         # so now we have a network where the query is connected to 2 of the reference
@@ -357,18 +389,50 @@ class TestBGCBin(TestCase):
 
         # we will connect ref1 and ref3
         save_edge_to_db(
-            (ref_gbks[1].region._db_id, ref_gbks[3].region._db_id, 0.0, 1.0, 1.0, 1.0)
+            (
+                ref_gbks[1].region._db_id,
+                ref_gbks[3].region._db_id,
+                0.0,
+                1.0,
+                1.0,
+                1.0,
+                "mix",
+            )
         )
 
         # we will generate distant edges for the others
         save_edge_to_db(
-            (ref_gbks[0].region._db_id, ref_gbks[2].region._db_id, 1.0, 0.0, 0.0, 0.0)
+            (
+                ref_gbks[0].region._db_id,
+                ref_gbks[2].region._db_id,
+                1.0,
+                0.0,
+                0.0,
+                0.0,
+                "mix",
+            )
         )
         save_edge_to_db(
-            (ref_gbks[0].region._db_id, ref_gbks[3].region._db_id, 1.0, 0.0, 0.0, 0.0)
+            (
+                ref_gbks[0].region._db_id,
+                ref_gbks[3].region._db_id,
+                1.0,
+                0.0,
+                0.0,
+                0.0,
+                "mix",
+            )
         )
         save_edge_to_db(
-            (ref_gbks[1].region._db_id, ref_gbks[2].region._db_id, 1.0, 0.0, 0.0, 0.0)
+            (
+                ref_gbks[1].region._db_id,
+                ref_gbks[2].region._db_id,
+                1.0,
+                0.0,
+                0.0,
+                0.0,
+                "mix",
+            )
         )
 
         # now the networks topology is this:

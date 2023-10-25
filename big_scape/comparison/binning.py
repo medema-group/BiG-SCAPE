@@ -493,6 +493,7 @@ class MissingRecordPairGenerator(RecordPairGenerator):
             select(func.count(distance_table.c.region_a_id))
             .where(distance_table.c.region_a_id.in_(self.bin.record_ids))
             .where(distance_table.c.region_b_id.in_(self.bin.record_ids))
+            .where(distance_table.c.weights == self.bin.weights)
         )
 
         # get count
@@ -659,17 +660,18 @@ def get_record_category(record: BGCRecord) -> str:
         str: BGC category
     """
 
-    categories = []
+    categories: list[str] = []
 
     if isinstance(record, ProtoCluster) or isinstance(record, ProtoCore):
-        categories.append(record.category)
+        if record.category is not None:
+            categories.append(record.category)
 
     if isinstance(record, Region):
         # get categories from region object
         for idx, cand_cluster in record.cand_clusters.items():
             if cand_cluster is not None:
                 for idx, protocluster in cand_cluster.proto_clusters.items():
-                    if protocluster is not None:
+                    if protocluster is not None and protocluster.category is not None:
                         pc_category = protocluster.category
                         # avoid duplicates, hybrids of the same kind count as one category
                         if pc_category not in categories:
@@ -695,22 +697,25 @@ def get_weight_category(record: BGCRecord) -> str:
         str: class category to be used in weight selection
     """
 
-    categories = []
+    categories: list[str] = []
 
     if isinstance(record, ProtoCluster) or isinstance(record, ProtoCore):
         # T1PKS is the only case in which a antiSMASH category does not
         # correspond to a legacy_weights class
-        if record.product == "T1PKS":
-            categories.append(record.product)
-        else:
-            categories.append(record.category)
+        if (
+            record.category is not None
+        ):  # for typing, we assume antismash 6 and up always have it
+            if record.product == "T1PKS":
+                categories.append(record.product)
+            else:
+                categories.append(record.category)
 
     if isinstance(record, Region):
         # get categories from region object
         for idx, cand_cluster in record.cand_clusters.items():
             if cand_cluster is not None:
                 for idx, protocluster in cand_cluster.proto_clusters.items():
-                    if protocluster is not None:
+                    if protocluster is not None and protocluster.category is not None:
                         if protocluster.product == "T1PKS":
                             pc_category = protocluster.product
                         else:

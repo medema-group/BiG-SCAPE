@@ -201,6 +201,7 @@ class ProtoCluster(BGCRecord):
                 record_table.c.nt_start,
                 record_table.c.nt_stop,
                 record_table.c.product,
+                record_table.c.category,
             )
             .where(record_table.c.record_type == "protocluster")
             .compile()
@@ -221,7 +222,7 @@ class ProtoCluster(BGCRecord):
                 result.nt_stop,
                 result.contig_edge,
                 result.product,
-                "",  # TODO: fix this
+                result.category,
                 {},
             )
 

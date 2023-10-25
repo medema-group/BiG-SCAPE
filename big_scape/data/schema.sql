@@ -20,6 +20,7 @@ CREATE TABLE IF NOT EXISTS bgc_record (
     nt_start INTEGER,
     nt_stop INTEGER,
     product TEXT,
+    category TEXT,
     UNIQUE(id),
     UNIQUE(gbk_id, record_number, record_type),
     FOREIGN KEY(gbk_id) REFERENCES gbk(id)
@@ -74,6 +75,7 @@ CREATE TABLE IF NOT EXISTS distance (
     jaccard REAL NOT NULL,
     adjacency REAL NOT NULL,
     dss REAL NOT NULL,
+    weights TEXT NOT NULL,
     UNIQUE(region_a_id, region_b_id)
     FOREIGN KEY(region_a_id) REFERENCES bgc_record(id)
     FOREIGN KEY(region_b_id) REFERENCES bgc_record(id)
