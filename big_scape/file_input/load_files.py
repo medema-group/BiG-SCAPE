@@ -240,7 +240,9 @@ def load_gbks(run: dict, bigscape_dir: Path) -> list[GBK]:
     input_gbks = []
 
     if run["query_bgc_path"]:
-        query_bgc_gbk = GBK(run["query_bgc_path"], bs_enums.SOURCE_TYPE.QUERY)
+        query_bgc_gbk = GBK.parse(
+            run["query_bgc_path"], bs_enums.SOURCE_TYPE.QUERY, run
+        )
         input_gbks.append(query_bgc_gbk)
 
         query_bgc_stem = run["query_bgc_path"].stem

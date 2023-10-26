@@ -267,7 +267,8 @@ function Bigscape(bs_data, bs_families, bs_alignment, bs_similarity, network_con
 
   // options
   var intra_cutoff = options.intra_cutoff ? options.intra_cutoff : 0;
-  var inter_cutoff = options.inter_cutoff ? options.inter_cutoff : 0.25;
+  var inter_cutoff = options.inter_cutoff ? options.inter_cutoff : 0;
+  // var inter_cutoff = options.inter_cutoff ? options.inter_cutoff : 0.25;
   var fam_colors = options.fam_colors ? options.fam_colors : [];
 
   // public functions

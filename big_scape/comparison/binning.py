@@ -141,8 +141,8 @@ class QueryToRefRecordPairGenerator(RecordPairGenerator):
     ref <-> ref pairs
     """
 
-    def __init__(self, label: str):
-        super().__init__(label)
+    def __init__(self, label: str, weights: Optional[str] = None):
+        super().__init__(label, weights)
         self.reference_records: list[BGCRecord] = []
         self.query_records: list[BGCRecord] = []
 
@@ -225,10 +225,10 @@ class RefToRefRecordPairGenerator(RecordPairGenerator):
         source_records (list[BGCRecord]): List of BGC records to generate pairs from
     """
 
-    def __init__(self, label: str):
+    def __init__(self, label: str, weights: Optional[str] = None):
         self.record_id_to_obj: dict[int, BGCRecord] = {}
         self.done_record_ids: set[int] = set()
-        super().__init__(label)
+        super().__init__(label, weights)
 
     def generate_pairs(self, legacy_sorting=False) -> Generator[RecordPair, None, None]:
         """Returns an Generator for Region pairs in this bin, pairs are only generated between
@@ -315,11 +315,13 @@ class RefToRefRecordPairGenerator(RecordPairGenerator):
                         select(distance_table.c.region_a_id)
                         .distinct()
                         .where(distance_table.c.distance < 1.0)
+                        .where(distance_table.c.weights == self.weights)
                     ),
                     bgc_record_table.c.id.in_(
                         select(distance_table.c.region_b_id)
                         .distinct()
                         .where(distance_table.c.distance < 1.0)
+                        .where(distance_table.c.weights == self.weights)
                     ),
                 )
             )
@@ -364,11 +366,13 @@ class RefToRefRecordPairGenerator(RecordPairGenerator):
                         select(distance_table.c.region_a_id)
                         .distinct()
                         .where(distance_table.c.distance < 1.0)
+                        .where(distance_table.c.weights == self.weights)
                     ),
                     bgc_record_table.c.id.in_(
                         select(distance_table.c.region_b_id)
                         .distinct()
                         .where(distance_table.c.distance < 1.0)
+                        .where(distance_table.c.weights == self.weights)
                     ),
                 )
             )
@@ -406,6 +410,7 @@ class RefToRefRecordPairGenerator(RecordPairGenerator):
                     select(distance_table.c.region_a_id)
                     .distinct()
                     .where(distance_table.c.distance < 1.0)
+                    .where(distance_table.c.weights == self.weights)
                 )
             )
             .where(
@@ -413,6 +418,7 @@ class RefToRefRecordPairGenerator(RecordPairGenerator):
                     select(distance_table.c.region_b_id)
                     .distinct()
                     .where(distance_table.c.distance < 1.0)
+                    .where(distance_table.c.weights == self.weights)
                 )
             )
             .where(gbk_table.c.source_type == SOURCE_TYPE.REFERENCE.value)
@@ -513,6 +519,7 @@ class MissingRecordPairGenerator(RecordPairGenerator):
             select(distance_table.c.region_a_id, distance_table.c.region_b_id)
             .where(distance_table.c.region_a_id.in_(self.bin.record_ids))
             .where(distance_table.c.region_b_id.in_(self.bin.record_ids))
+            .where(distance_table.c.weights == self.bin.weights)
         )
 
         # generate a set of tuples of region id pairs

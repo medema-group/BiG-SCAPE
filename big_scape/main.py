@@ -93,6 +93,20 @@ def run_bigscape(run: dict) -> None:
 
     gbks = bs_files.load_gbks(run, bigscape_dir)
 
+    # get all working BGC records
+
+    all_bgc_records: list[bs_gbk.BGCRecord] = []
+
+    for gbk in gbks:
+        if gbk.region is not None:
+            gbk_records = bs_gbk.bgc_record.get_sub_records(
+                gbk.region, run["record_type"]
+            )
+            if run["query_bgc_path"]:
+                if gbk.source_type == bs_enums.SOURCE_TYPE.QUERY:
+                    query_node_id = gbk.region._db_id
+            all_bgc_records.extend(gbk_records)
+
     # get fist task
     run_state = bs_data.find_minimum_task(gbks)
 
@@ -262,9 +276,39 @@ def run_bigscape(run: dict) -> None:
 
     logging.info("Generating families")
 
-    for cutoff in run["gcf_cutoffs"]:
-        logging.info(" -- Cutoff %s", cutoff)
-        for connected_component in bs_network.get_connected_components(cutoff):
+    # cluster mode
+    if not run["query_bgc_path"]:
+        for cutoff in run["gcf_cutoffs"]:
+            logging.info(" -- Cutoff %s", cutoff)
+            for connected_component in bs_network.get_connected_components(cutoff):
+                logging.debug(
+                    "Found connected component with %d edges", len(connected_component)
+                )
+
+                regions_families = bs_families.generate_families(
+                    connected_component, cutoff
+                )
+
+                # save families to database
+                bs_families.save_to_db(regions_families)
+
+        DB.commit()
+
+        DB.save_to_disk(run["db_path"])
+
+    # query BGC mode
+    if run["query_bgc_path"]:
+        cc_cutoff: dict[str, list] = {}
+
+        for cutoff in run["gcf_cutoffs"]:
+            logging.info(" -- Cutoff %s", cutoff)
+
+            connected_component = bs_network.get_query_connected_component(
+                query_node_id, cutoff
+            )
+
+            cc_cutoff[cutoff] = connected_component
+
             logging.debug(
                 "Found connected component with %d edges", len(connected_component)
             )
@@ -276,9 +320,9 @@ def run_bigscape(run: dict) -> None:
             # save families to database
             bs_families.save_to_db(regions_families)
 
-    DB.commit()
+        DB.commit()
 
-    DB.save_to_disk(run["db_path"])
+        DB.save_to_disk(run["db_path"])
 
     # OUTPUT GENERATION
 
@@ -294,17 +338,6 @@ def run_bigscape(run: dict) -> None:
     # prepare output files per cutoff
     for cutoff in run["gcf_cutoffs"]:
         legacy_prepare_cutoff_output(run["output_dir"], run["label"], cutoff, gbks)
-
-    # get all working BGC records
-
-    all_bgc_records: list[bs_gbk.BGCRecord] = []
-
-    for gbk in gbks:
-        if gbk.region is not None:
-            gbk_records = bs_gbk.bgc_record.get_sub_records(
-                gbk.region, run["record_type"]
-            )
-            all_bgc_records.extend(gbk_records)
 
     # mix
 
@@ -348,15 +381,15 @@ def run_bigscape(run: dict) -> None:
                 legacy_generate_bin_output(run["output_dir"], run["label"], cutoff, bin)
 
     # query
-    # TODO: implement once classes are implemented for query mode
 
-    # if run["query_bgc_path"]:
-    #     query_mix_bin = bs_comparison.RecordPairGenerator("Query")
-    #     query_mix_bin.add_records([record for record in all_bgc_records if record is not None])
-
-    #     for cutoff in run["gcf_cutoffs"]:
-    #         legacy_prepare_bin_output(run["output_dir"], run["label"], cutoff, query_mix_bin)
-    #         legacy_generate_bin_output(run["output_dir"], run["label"], cutoff, query_mix_bin)
+    if run["query_bgc_path"]:
+        mix_bin = bs_comparison.RecordPairGenerator("Mix")
+        mix_bin.add_records(
+            [record for record in all_bgc_records if record is not None]
+        )
+        for cutoff in run["gcf_cutoffs"]:
+            legacy_prepare_bin_output(run["output_dir"], run["label"], cutoff, mix_bin)
+            legacy_generate_bin_output(run["output_dir"], run["label"], cutoff, mix_bin)
 
     if run["profiling"]:
         profiler.stop()

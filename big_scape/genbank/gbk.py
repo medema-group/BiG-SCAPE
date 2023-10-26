@@ -202,6 +202,8 @@ class GBK:
         if not DB.metadata:
             raise RuntimeError("DB.metadata is None")
 
+        # TODO: if do a normal run and then a query mode run, right now source types are being
+        # loaded as set in the normal run
         gbk_table = DB.metadata.tables["gbk"]
 
         select_query = (
