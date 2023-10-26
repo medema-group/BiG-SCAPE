@@ -142,7 +142,8 @@ def generate_edges(
                     continue
 
                 new_task = executor.submit(
-                    calculate_scores_pair, (batch, alignment_mode, pair_generator.label)
+                    calculate_scores_pair,
+                    (batch, alignment_mode, pair_generator.weights),
                 )
                 running_tasks[new_task] = batch
 
@@ -170,6 +171,7 @@ def generate_edges(
                         jaccard,
                         adjacency,
                         dss,
+                        pair_generator.weights,
                     )
 
                 done_pairs += len(results)
@@ -248,6 +250,10 @@ def calculate_scores_pair(
     results = []
 
     for pair in pairs:
+        if pair.region_a.parent_gbk == pair.region_b.parent_gbk:
+            results.append((0.0, 1.0, 1.0, 1.0))
+            continue
+
         jaccard = calc_jaccard_pair(pair)
 
         if jaccard == 0.0:

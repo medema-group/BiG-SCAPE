@@ -27,7 +27,10 @@ def calculate_distances_mix(run: dict, gbks: list[bs_gbk.GBK]) -> None:
 
     for gbk in gbks:
         if gbk.region is not None:
-            mix_bgc_regions.append(gbk.region)
+            gbk_records = bs_gbk.bgc_record.get_sub_records(
+                gbk.region, run["record_type"]
+            )
+            mix_bgc_regions.extend(gbk_records)
 
     mix_bin = bs_comparison.RecordPairGenerator("mix")
     mix_bin.add_records(mix_bgc_regions)
@@ -58,7 +61,10 @@ def calculate_distances_mix(run: dict, gbks: list[bs_gbk.GBK]) -> None:
                 # bs_data.DB.commit()
 
         mix_edges = bs_comparison.generate_edges(
-            missing_edge_bin, run["alignment_mode"], run["cores"], callback
+            missing_edge_bin,
+            run["alignment_mode"],
+            run["cores"],
+            callback,
         )
 
         with tqdm.tqdm(total=num_pairs, unit="edge", desc="Calculating distances") as t:

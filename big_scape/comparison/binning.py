@@ -15,7 +15,7 @@ from sqlalchemy import select, func, or_
 
 # from other modules
 from big_scape.data import DB
-from big_scape.genbank import BGCRecord, GBK, Region
+from big_scape.genbank import BGCRecord, Region, ProtoCluster, ProtoCore
 from big_scape.enums import SOURCE_TYPE, CLASSIFY_MODE
 
 # from this module
@@ -493,6 +493,7 @@ class MissingRecordPairGenerator(RecordPairGenerator):
             select(func.count(distance_table.c.region_a_id))
             .where(distance_table.c.region_a_id.in_(self.bin.record_ids))
             .where(distance_table.c.region_b_id.in_(self.bin.record_ids))
+            .where(distance_table.c.weights == self.bin.weights)
         )
 
         # get count
@@ -541,8 +542,8 @@ class RecordPair:
             raise ValueError("Region in pair has no parent GBK!")
 
         # comparable regions start at the full ranges
-        a_len = len(region_a.parent_gbk.genes)
-        b_len = len(region_b.parent_gbk.genes)
+        a_len = len(region_a.get_cds())
+        b_len = len(region_b.get_cds())
 
         self.comparable_region: ComparableRegion = ComparableRegion(
             self, 0, a_len, 0, b_len, False
@@ -603,13 +604,13 @@ def sort_name_key(record: BGCRecord) -> str:
 
 
 def as_class_bin_generator(
-    gbks: list[GBK], weights: str, classify_mode: CLASSIFY_MODE
+    all_records: list[BGCRecord], weight_type: str, classify_mode: CLASSIFY_MODE
 ) -> Iterator[RecordPairGenerator]:
     """Generate bins for each antiSMASH class
 
     Args:
         gbks (list[GBK]): List of GBKs to generate bins for
-        weights (str): weights to use for each class
+        category_weights (str): weights to use for each class
 
     Yields:
         Iterator[RecordPairGenerator]: Generator that yields bins. Order is not guarenteed to be
@@ -617,44 +618,39 @@ def as_class_bin_generator(
     """
 
     class_idx: dict[str, list[BGCRecord]] = {}
-    category_idx: dict[str, str] = {}
+    category_weights: dict[str, str] = {}
 
-    for gbk in gbks:
-        if gbk.region is None:
-            continue
-        if gbk.region.product is None:
-            continue
-
+    for record in all_records:
         # get region class for bin label and index
         if classify_mode == CLASSIFY_MODE.CLASS:
-            region_class = gbk.region.product
+            record_class = record.product
 
         if classify_mode == CLASSIFY_MODE.CATEGORY:
-            region_class = get_region_category(gbk.region)
+            record_class = get_record_category(record)
 
         try:
-            class_idx[region_class].append(gbk.region)
+            class_idx[record_class].append(record)
         except KeyError:
-            class_idx[region_class] = [gbk.region]
+            class_idx[record_class] = [record]
 
-        if weights == "legacy_weights":
+        if weight_type == "legacy_weights":
             # get region category for weights
-            region_weight_cat = get_weight_category(gbk.region)
+            region_weight_cat = get_weight_category(record)
 
-            if region_class not in category_idx.keys():
-                category_idx[region_class] = region_weight_cat
+            if record_class not in category_weights.keys():
+                category_weights[record_class] = region_weight_cat
 
-        if weights == "mix":
-            category_idx[region_class] = "mix"
+        if weight_type == "mix":
+            category_weights[record_class] = "mix"
 
-    for class_name, regions in class_idx.items():
-        weight_category = category_idx[class_name]
+    for class_name, records in class_idx.items():
+        weight_category = category_weights[class_name]
         bin = RecordPairGenerator(class_name, weight_category)
-        bin.add_records(regions)
+        bin.add_records(records)
         yield bin
 
 
-def get_region_category(region: Region) -> str:
+def get_record_category(record: BGCRecord) -> str:
     """Get the category of a BGC based on its antiSMASH product(s)
 
     Args:
@@ -664,17 +660,22 @@ def get_region_category(region: Region) -> str:
         str: BGC category
     """
 
-    categories = []
+    categories: list[str] = []
 
-    # get categories from region object
-    for idx, cand_cluster in region.cand_clusters.items():
-        if cand_cluster is not None:
-            for idx, protocluster in cand_cluster.proto_clusters.items():
-                if protocluster is not None:
-                    pc_category = protocluster.category
-                    # avoid duplicates, hybrids of the same kind count as one category
-                    if pc_category not in categories:
-                        categories.append(pc_category)
+    if isinstance(record, ProtoCluster) or isinstance(record, ProtoCore):
+        if record.category is not None:
+            categories.append(record.category)
+
+    if isinstance(record, Region):
+        # get categories from region object
+        for idx, cand_cluster in record.cand_clusters.items():
+            if cand_cluster is not None:
+                for idx, protocluster in cand_cluster.proto_clusters.items():
+                    if protocluster is not None and protocluster.category is not None:
+                        pc_category = protocluster.category
+                        # avoid duplicates, hybrids of the same kind count as one category
+                        if pc_category not in categories:
+                            categories.append(pc_category)
 
     if len(categories) == 0:
         return "Categoryless"
@@ -685,7 +686,7 @@ def get_region_category(region: Region) -> str:
     return ".".join(categories)
 
 
-def get_weight_category(region: Region) -> str:
+def get_weight_category(record: BGCRecord) -> str:
     """Get the category of a BGC based on its antiSMASH product(s)
     and match it to the legacy weights classes
 
@@ -696,20 +697,32 @@ def get_weight_category(region: Region) -> str:
         str: class category to be used in weight selection
     """
 
-    categories = []
+    categories: list[str] = []
 
-    # get categories from region object
-    for idx, cand_cluster in region.cand_clusters.items():
-        if cand_cluster is not None:
-            for idx, protocluster in cand_cluster.proto_clusters.items():
-                if protocluster is not None:
-                    if protocluster.product == "T1PKS":
-                        pc_category = protocluster.product
-                    else:
-                        pc_category = protocluster.category
-                    # avoid duplicates, hybrids of the same kind use the same weight class
-                    if pc_category not in categories:
-                        categories.append(pc_category)
+    if isinstance(record, ProtoCluster) or isinstance(record, ProtoCore):
+        # T1PKS is the only case in which a antiSMASH category does not
+        # correspond to a legacy_weights class
+        if (
+            record.category is not None
+        ):  # for typing, we assume antismash 6 and up always have it
+            if record.product == "T1PKS":
+                categories.append(record.product)
+            else:
+                categories.append(record.category)
+
+    if isinstance(record, Region):
+        # get categories from region object
+        for idx, cand_cluster in record.cand_clusters.items():
+            if cand_cluster is not None:
+                for idx, protocluster in cand_cluster.proto_clusters.items():
+                    if protocluster is not None and protocluster.category is not None:
+                        if protocluster.product == "T1PKS":
+                            pc_category = protocluster.product
+                        else:
+                            pc_category = protocluster.category
+                        # avoid duplicates, hybrids of the same kind use the same weight class
+                        if pc_category not in categories:
+                            categories.append(pc_category)
 
     # process into legacy_weights classes
 
@@ -717,7 +730,7 @@ def get_weight_category(region: Region) -> str:
     if len(categories) == 0:
         logging.warning(
             "No category found for %s",
-            region,
+            record,
             "This should not happen as long as antiSMASH is run with"
             "version 6 or up, consider whether there is something"
             "special about this region",
@@ -741,7 +754,7 @@ def get_weight_category(region: Region) -> str:
 
 
 def legacy_bin_generator(
-    gbks: list[GBK],
+    all_records: list[BGCRecord],
 ) -> Iterator[RecordPairGenerator]:  # pragma no cover
     """Generate bins for each class as they existed in the BiG-SCAPE 1.0 implementation
 
@@ -758,23 +771,22 @@ def legacy_bin_generator(
         class_name: [] for class_name in LEGACY_WEIGHTS.keys() if class_name != "mix"
     }
 
-    for gbk in gbks:
-        if gbk.region is None:
+    for record in all_records:
+        if record is None:
             continue
-
-        if gbk.region.product is None:
+        if record.product is None:
             continue
 
         # product hybrids of AS4 and under dealt with here and in legacy_output generate_run_data_js
-        product = ".".join(gbk.region.product.split("-"))
+        product = ".".join(record.product.split("-"))
 
         region_class = legacy_get_class(product)
 
-        class_idx[region_class].append(gbk.region)
+        class_idx[region_class].append(record)
 
-    for class_name, regions in class_idx.items():
+    for class_name, records in class_idx.items():
         bin = RecordPairGenerator(class_name)
-        bin.add_records(regions)
+        bin.add_records(records)
         yield bin
 
 

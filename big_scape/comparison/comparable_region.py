@@ -327,7 +327,7 @@ class ComparableRegion:
         if end_inclusive:
             stop += 1
 
-        for cds in record.get_cds_with_domains(True, reverse=reverse)[cds_start:stop]:
+        for cds in record.get_cds_with_domains(reverse=reverse)[cds_start:stop]:
             if cds.gene_kind is None:
                 continue
 

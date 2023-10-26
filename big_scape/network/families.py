@@ -15,13 +15,13 @@ from .utility import edge_list_to_adj_list, adj_list_to_sim_matrix
 
 
 def generate_families(
-    connected_component: list[tuple[int, int, float, float, float, float]],
+    connected_component: list[tuple[int, int, float, float, float, float, str]],
     cutoff: float,
 ) -> list[tuple[int, int, float]]:
     """Execute affinity propagation on a connected component
 
     Args:
-        connected_component (list[tuple[int, int, float, float, float, float]]):
+        connected_component (list[tuple[int, int, float, float, float, float, str]]):
             connected component in the form of a list of edges
         cutoff (float): cutoff used in generation of the connected_component
 

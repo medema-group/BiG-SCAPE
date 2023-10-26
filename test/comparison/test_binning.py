@@ -9,14 +9,14 @@ from collections import OrderedDict
 from Bio.SeqFeature import SeqFeature, FeatureLocation
 
 # from other modules
-from big_scape.genbank import GBK, BGCRecord, CDS, Region, ProtoCluster
+from big_scape.genbank import GBK, BGCRecord, CDS, Region, ProtoCluster, ProtoCore
 from big_scape.comparison import (
     RecordPairGenerator,
     QueryToRefRecordPairGenerator,
     RefToRefRecordPairGenerator,
     RecordPair,
     save_edge_to_db,
-    get_region_category,
+    get_record_category,
     get_weight_category,
     as_class_bin_generator,
 )
@@ -260,12 +260,28 @@ class TestBGCBin(TestCase):
             # lets say two (0 and 1) of these distances are entirely similar
             if idx < 2:
                 save_edge_to_db(
-                    (query_gbk.region._db_id, ref_gbk.region._db_id, 0.0, 1.0, 1.0, 1.0)
+                    (
+                        query_gbk.region._db_id,
+                        ref_gbk.region._db_id,
+                        0.0,
+                        1.0,
+                        1.0,
+                        1.0,
+                        "mix",
+                    )
                 )
             else:
                 # the other two (2 and 3) are entirely distant
                 save_edge_to_db(
-                    (query_gbk.region._db_id, ref_gbk.region._db_id, 1.0, 0.0, 0.0, 0.0)
+                    (
+                        query_gbk.region._db_id,
+                        ref_gbk.region._db_id,
+                        1.0,
+                        0.0,
+                        0.0,
+                        0.0,
+                        "mix",
+                    )
                 )
 
         # so now we have a network where the query is connected to 2 of the reference
@@ -333,12 +349,28 @@ class TestBGCBin(TestCase):
             # lets say two (0 and 1) of these distances are entirely similar
             if idx < 2:
                 save_edge_to_db(
-                    (query_gbk.region._db_id, ref_gbk.region._db_id, 0.0, 1.0, 1.0, 1.0)
+                    (
+                        query_gbk.region._db_id,
+                        ref_gbk.region._db_id,
+                        0.0,
+                        1.0,
+                        1.0,
+                        1.0,
+                        "mix",
+                    )
                 )
             else:
                 # the other two (2 and 3) are entirely distant
                 save_edge_to_db(
-                    (query_gbk.region._db_id, ref_gbk.region._db_id, 1.0, 0.0, 0.0, 0.0)
+                    (
+                        query_gbk.region._db_id,
+                        ref_gbk.region._db_id,
+                        1.0,
+                        0.0,
+                        0.0,
+                        0.0,
+                        "mix",
+                    )
                 )
 
         # so now we have a network where the query is connected to 2 of the reference
@@ -357,18 +389,50 @@ class TestBGCBin(TestCase):
 
         # we will connect ref1 and ref3
         save_edge_to_db(
-            (ref_gbks[1].region._db_id, ref_gbks[3].region._db_id, 0.0, 1.0, 1.0, 1.0)
+            (
+                ref_gbks[1].region._db_id,
+                ref_gbks[3].region._db_id,
+                0.0,
+                1.0,
+                1.0,
+                1.0,
+                "mix",
+            )
         )
 
         # we will generate distant edges for the others
         save_edge_to_db(
-            (ref_gbks[0].region._db_id, ref_gbks[2].region._db_id, 1.0, 0.0, 0.0, 0.0)
+            (
+                ref_gbks[0].region._db_id,
+                ref_gbks[2].region._db_id,
+                1.0,
+                0.0,
+                0.0,
+                0.0,
+                "mix",
+            )
         )
         save_edge_to_db(
-            (ref_gbks[0].region._db_id, ref_gbks[3].region._db_id, 1.0, 0.0, 0.0, 0.0)
+            (
+                ref_gbks[0].region._db_id,
+                ref_gbks[3].region._db_id,
+                1.0,
+                0.0,
+                0.0,
+                0.0,
+                "mix",
+            )
         )
         save_edge_to_db(
-            (ref_gbks[1].region._db_id, ref_gbks[2].region._db_id, 1.0, 0.0, 0.0, 0.0)
+            (
+                ref_gbks[1].region._db_id,
+                ref_gbks[2].region._db_id,
+                1.0,
+                0.0,
+                0.0,
+                0.0,
+                "mix",
+            )
         )
 
         # now the networks topology is this:
@@ -460,6 +524,15 @@ def mock_region() -> Region:
 
     protocluster = ProtoCluster.parse(protocluster_feature)
 
+    protocore_feature = SeqFeature(FeatureLocation(0, 100), type="proto_core")
+    protocore_feature.qualifiers = {
+        "protocluster_number": ["1"],
+        "product": ["T1PKS"],
+    }
+
+    protocore = ProtoCore.parse(protocore_feature)
+
+    protocluster.add_proto_core(protocore)
     candidate_cluster.add_proto_cluster(protocluster)
     region.add_cand_cluster(candidate_cluster)
 
@@ -481,9 +554,11 @@ class TestBinGenerators(TestCase):
         """Tests whether a category is correclty parsed from a region of version as6 or higher"""
 
         region = mock_region()
+        cc = region.cand_clusters[1]
+        pc = cc.proto_clusters[1]
 
         expected_category = "PKS"
-        category = get_region_category(region)
+        category = get_record_category(pc)
 
         self.assertEqual(expected_category, category)
 
@@ -491,9 +566,11 @@ class TestBinGenerators(TestCase):
         """Tests wether the correct legacy weight category is created from a region category"""
 
         region = mock_region()
+        cc = region.cand_clusters[1]
+        pc = cc.proto_clusters[1]
 
         expected_category = "T1PKS"
-        category = get_weight_category(region)
+        category = get_weight_category(pc)
 
         self.assertEqual(expected_category, category)
 
@@ -505,10 +582,21 @@ class TestBinGenerators(TestCase):
         gbk_1 = GBK(Path("test"), source_type=bs_enums.SOURCE_TYPE.QUERY)
         gbk_1.region = mock_region()
 
+        region_1 = gbk_1.region
+        cand_cluster_1 = region_1.cand_clusters[1]
+        protocluster_1 = cand_cluster_1.proto_clusters[1]
+        protocore_1 = protocluster_1.proto_core[1]
+
         gbk_2 = GBK(Path("test"), source_type=bs_enums.SOURCE_TYPE.QUERY)
         gbk_2.region = mock_region()
 
-        gbks = [gbk_1, gbk_2]
+        region_2 = gbk_2.region
+        cand_cluster_2 = region_2.cand_clusters[1]
+        protocluster_2 = cand_cluster_2.proto_clusters[1]
+        protocore_2 = protocluster_2.proto_core[1]
+
+        # gbks = [gbk_1.region, gbk_2.region]
+        gbks = [protocore_1, protocore_2]
         weights = ["mix", "legacy_weights"]
         class_modes = [bs_enums.CLASSIFY_MODE.CLASS, bs_enums.CLASSIFY_MODE.CATEGORY]
 

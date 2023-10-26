@@ -31,10 +31,10 @@ def reset_expansion(
         return
 
     if a_stop is None:
-        a_stop = len(a_gbk.genes) + 1
+        a_stop = len(comparable_region.pair.region_a.get_cds()) + 1
 
     if b_stop is None:
-        b_stop = len(b_gbk.genes) + 1
+        b_stop = len(comparable_region.pair.region_b.get_cds()) + 1
 
     comparable_region.a_start = a_start
     comparable_region.b_start = b_start

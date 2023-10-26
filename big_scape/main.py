@@ -26,6 +26,7 @@ from big_scape.output import (
 
 
 import big_scape.file_input as bs_files
+import big_scape.genbank as bs_gbk
 import big_scape.data as bs_data
 import big_scape.enums as bs_enums
 import big_scape.comparison as bs_comparison
@@ -294,11 +295,24 @@ def run_bigscape(run: dict) -> None:
     for cutoff in run["gcf_cutoffs"]:
         legacy_prepare_cutoff_output(run["output_dir"], run["label"], cutoff, gbks)
 
+    # get all working BGC records
+
+    all_bgc_records: list[bs_gbk.BGCRecord] = []
+
+    for gbk in gbks:
+        if gbk.region is not None:
+            gbk_records = bs_gbk.bgc_record.get_sub_records(
+                gbk.region, run["record_type"]
+            )
+            all_bgc_records.extend(gbk_records)
+
     # mix
 
     if not run["no_mix"] and not run["query_bgc_path"]:
         mix_bin = bs_comparison.RecordPairGenerator("Mix")
-        mix_bin.add_records([gbk.region for gbk in gbks if gbk.region is not None])
+        mix_bin.add_records(
+            [record for record in all_bgc_records if record is not None]
+        )
 
         for cutoff in run["gcf_cutoffs"]:
             legacy_prepare_bin_output(run["output_dir"], run["label"], cutoff, mix_bin)
@@ -307,7 +321,7 @@ def run_bigscape(run: dict) -> None:
     # legacy_classify
 
     if run["legacy_classify"]:
-        legacy_class_bins = bs_comparison.legacy_bin_generator(gbks)
+        legacy_class_bins = bs_comparison.legacy_bin_generator(all_bgc_records)
 
         for bin in legacy_class_bins:
             for cutoff in run["gcf_cutoffs"]:
@@ -320,12 +334,12 @@ def run_bigscape(run: dict) -> None:
         classify_mode = run["classify"]
 
         if run["legacy_weights"]:
-            weights = "legacy_weights"
+            weight_type = "legacy_weights"
         else:
-            weights = "mix"
+            weight_type = "mix"
 
         as_class_bins = bs_comparison.as_class_bin_generator(
-            gbks, weights, classify_mode
+            all_bgc_records, weight_type, classify_mode
         )
 
         for bin in as_class_bins:
@@ -338,7 +352,7 @@ def run_bigscape(run: dict) -> None:
 
     # if run["query_bgc_path"]:
     #     query_mix_bin = bs_comparison.RecordPairGenerator("Query")
-    #     query_mix_bin.add_records([gbk.region for gbk in gbks if gbk.region is not None])
+    #     query_mix_bin.add_records([record for record in all_bgc_records if record is not None])
 
     #     for cutoff in run["gcf_cutoffs"]:
     #         legacy_prepare_bin_output(run["output_dir"], run["label"], cutoff, query_mix_bin)
