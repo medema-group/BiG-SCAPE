@@ -68,6 +68,7 @@ def cluster(ctx, *args, **kwargs):
     # get context parameters
     ctx.obj.update(ctx.params)
     ctx.obj["query_bgc_path"] = None
+    ctx.obj["mode"] = "Cluster"
 
     # workflow validations
     validate_binning_cluster_workflow(ctx)

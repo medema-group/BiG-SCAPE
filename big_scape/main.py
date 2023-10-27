@@ -326,6 +326,10 @@ def run_bigscape(run: dict) -> None:
 
     # OUTPUT GENERATION
 
+    exec_time = datetime.now() - start_time
+    run["duration"] = exec_time
+    run["end_time"] = datetime.now()
+
     # if this wasn't set in scan or align, set it now
     if pfam_info is None:
         HMMer.init(run["pfam_path"], False)
@@ -338,7 +342,9 @@ def run_bigscape(run: dict) -> None:
     # prepare output files per cutoff
     for cutoff in run["gcf_cutoffs"]:
         # TODO: update to use records and not gbk regions
-        legacy_prepare_cutoff_output(run["output_dir"], run["label"], cutoff, gbks)
+        # legacy_prepare_cutoff_output(run["output_dir"], run["label"], cutoff, gbks)
+        # TODO: does it need records instead of gbks?
+        legacy_prepare_cutoff_output(run, cutoff, gbks)
 
     # mix
 
@@ -403,4 +409,7 @@ def run_bigscape(run: dict) -> None:
         profiler.stop()
 
     exec_time = datetime.now() - start_time
+    run["duration"] = exec_time
+    run["end_time"] = datetime.now()
+
     logging.info("All tasks done at %f seconds", exec_time.total_seconds())
