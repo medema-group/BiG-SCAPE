@@ -8,8 +8,7 @@ import logging
 # from other modules
 import big_scape.genbank as bs_gbk
 import big_scape.comparison as bs_comparison
-
-# import big_scape.enums as bs_enums
+import big_scape.enums as bs_enums
 
 
 def calculate_distances_query(run: dict, gbks: list[bs_gbk.GBK]) -> None:
@@ -22,7 +21,8 @@ def calculate_distances_query(run: dict, gbks: list[bs_gbk.GBK]) -> None:
     """
     logging.info("Generating query BGC mode bin")
 
-    query_bgcs_records: list[bs_gbk.BGCRecord] = []
+    bgcs_records: list[bs_gbk.BGCRecord] = []
+    query_singleton = True
 
     # get all working records
     for gbk in gbks:
@@ -30,46 +30,68 @@ def calculate_distances_query(run: dict, gbks: list[bs_gbk.GBK]) -> None:
             continue
         if gbk.region.product is None:
             continue
-        query_bgcs_records.append(gbk.region)
 
-    #     # currently query only works for regions, since users have no way to
-    #     # specify a protocluster/core in a region that has multiple
-    #     if gbk.source_type == bs_enums.SOURCE_TYPE.QUERY:
-    #         query_record = bs_gbk.bgc_record.get_sub_records(gbk.region, "region")
-    #         query_bgcs_records.extend(query_record)
-    #     if not run["classify"]:
-    #         gbk_records = bs_gbk.bgc_record.get_sub_records(gbk.region, "region")
-    #         query_bgcs_records.extend(gbk_records)
+        # query_bgcs_records.append(gbk.region)
 
-    # # if legacy weights are on, then use the legacy weights and pass as label to bin generator
-    # if run["legacy_weights"]:
-    #     weights = bs_comparison.get_weight_category(query_record)
-    # else:
-    #     weights = "mix"
+        # currently query only works for regions, since users have no way to
+        # specify a protocluster/core in a region that has multiple
+        # TODO: fix this
+        if run["record_type"] != bs_enums.RECORD_TYPE.REGION:
+            logging.info("Query BGC mode currently only works for regions, sorry!")
+            run["record_type"] = bs_enums.RECORD_TYPE.REGION
 
-    # # if classification mode is on, then us only those records which have the query class/category
-    # if run["classify"]:
-    #     classify_mode = run["classify"]
+        gbk_records = bs_gbk.bgc_record.get_sub_records(gbk.region, run["record_type"])
 
-    #     if classify_mode == bs_enums.CLASSIFY_MODE.CLASS:
-    #         query_class = gbk.region.product
-    #         for record in query_bgcs_records:
-    #             record_class = record.product
-    #             if record_class == query_class:
-    #                 query_bgcs_records.extend(record)
+        # # we need to keep the query_record separate from the rest of the records
+        # # to be able to fetch specific characteristics
+        if gbk.source_type == bs_enums.SOURCE_TYPE.QUERY:
+            # TODO: implement selection of specific query record if type is not region
+            query_record = gbk.region
+            bgcs_records.extend(gbk_records)
+            continue
+        # if classification mode is off, then use all records
+        if not run["classify"]:
+            query_singleton = False
+            bgcs_records.extend(gbk_records)
 
-    #     if classify_mode == bs_enums.CLASSIFY_MODE.CATEGORY:
-    #         query_category = bs_comparison.get_record_category(gbk.region)
-    #         for record in query_bgcs_records:
-    #             record_category = bs_comparison.get_record_category(record)
-    #             if record_category == query_category:
-    #                 query_bgcs_records.extend(record)
+        # if classification mode is on, then us only those records which have the query class/category
+        if run["classify"]:
+            classify_mode = run["classify"]
+            # now we go to all the records, of a given type, of the gbk and check
+            # if they have the same class/category as the query
+            for gbk_record in gbk_records:
+                if classify_mode == bs_enums.CLASSIFY_MODE.CLASS:
+                    query_class = query_record.product
+                    record_class = gbk_record.product
+                    if record_class == query_class:
+                        query_singleton = False
+                        bgcs_records.append(gbk_record)
+                if classify_mode == bs_enums.CLASSIFY_MODE.CATEGORY:
+                    query_category = bs_comparison.get_record_category(query_record)
+                    record_category = bs_comparison.get_record_category(gbk_record)
+                    if record_category == query_category:
+                        query_singleton = False
+                        bgcs_records.append(gbk_record)
+
+    if query_singleton:
+        logging.error(
+            "Query record is a singleton, no other input records have the same class/category"
+        )
+        raise ValueError(
+            "Query record is a singleton, no other input records have the same class/category"
+        )
+
+    # if legacy weights are on, then use the legacy weights and pass as label to bin generator
+    if run["legacy_weights"]:
+        weights = bs_comparison.get_weight_category(query_record)
+    else:
+        weights = "mix"
 
     # generate inital query -> ref pairs
     query_to_ref_bin = bs_comparison.QueryToRefRecordPairGenerator(
-        label="Query_Ref", weights="mix"
+        label="Query_Ref", weights=weights
     )
-    query_to_ref_bin.add_records(query_bgcs_records)
+    query_to_ref_bin.add_records(bgcs_records)
 
     # fetch any existing distances from database
     missing_edge_bin = bs_comparison.MissingRecordPairGenerator(query_to_ref_bin)
@@ -101,7 +123,7 @@ def calculate_distances_query(run: dict, gbks: list[bs_gbk.GBK]) -> None:
     ref_to_ref_bin = bs_comparison.RefToRefRecordPairGenerator(
         label="Ref_Ref", weights="mix"
     )
-    ref_to_ref_bin.add_records(query_bgcs_records)
+    ref_to_ref_bin.add_records(bgcs_records)
 
     while True:
         # fetches the current number of singleton ref <-> connected ref pairs from the database

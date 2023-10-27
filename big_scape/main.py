@@ -337,6 +337,7 @@ def run_bigscape(run: dict) -> None:
 
     # prepare output files per cutoff
     for cutoff in run["gcf_cutoffs"]:
+        # TODO: update to use records and not gbk regions
         legacy_prepare_cutoff_output(run["output_dir"], run["label"], cutoff, gbks)
 
     # mix
@@ -353,7 +354,7 @@ def run_bigscape(run: dict) -> None:
 
     # legacy_classify
 
-    if run["legacy_classify"]:
+    if run["legacy_classify"] and not run["query_bgc_path"]:
         legacy_class_bins = bs_comparison.legacy_bin_generator(all_bgc_records)
 
         for bin in legacy_class_bins:
@@ -363,7 +364,7 @@ def run_bigscape(run: dict) -> None:
 
     # classify
 
-    if run["classify"]:
+    if run["classify"] and not run["query_bgc_path"]:
         classify_mode = run["classify"]
 
         if run["legacy_weights"]:
@@ -384,7 +385,7 @@ def run_bigscape(run: dict) -> None:
 
     if run["query_bgc_path"]:
         query_bin = bs_comparison.ConnectedComponenetPairGenerator(
-            query_connected_component, label="Query", weights="mix"
+            query_connected_component, label="Query"
         )
         # TODO: adjust with real weights from distance calculation
         query_bin.add_records(

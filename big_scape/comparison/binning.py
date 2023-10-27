@@ -482,8 +482,8 @@ class ConnectedComponenetPairGenerator(RecordPairGenerator):
     """Generator that takes as input a conected component and generates
     all pairs from the nodes in the component"""
 
-    def __init__(self, connected_component, label: str, weights: Optional[str] = None):
-        super().__init__(label, weights)
+    def __init__(self, connected_component, label: str):
+        super().__init__(label)
         self.connected_component = connected_component
         self.record_id_to_obj: dict[int, BGCRecord] = {}
 
@@ -497,6 +497,9 @@ class ConnectedComponenetPairGenerator(RecordPairGenerator):
 
         for edge in self.connected_component:
             record_a_id, record_b_id, dist, jacc, adj, dss, weights = edge
+            # Ensure that the correct weights are used,
+            # the weights are set during the binning process
+            self.weights = weights
             cc_record_ids.add(record_a_id)
             cc_record_ids.add(record_b_id)
 
