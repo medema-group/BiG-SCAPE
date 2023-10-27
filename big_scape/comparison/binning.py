@@ -478,6 +478,61 @@ class RefToRefRecordPairGenerator(RecordPairGenerator):
         return singleton_reference_node_count
 
 
+class ConnectedComponenetPairGenerator(RecordPairGenerator):
+    """Generator that takes as input a conected component and generates
+    all pairs from the nodes in the component"""
+
+    def __init__(self, connected_component, label: str, weights: Optional[str] = None):
+        super().__init__(label, weights)
+        self.connected_component = connected_component
+        self.record_id_to_obj: dict[int, BGCRecord] = {}
+
+    def add_records(self, record_list: list[BGCRecord]):
+        """Adds BGC records to this bin and creates a generator for the pairs
+
+        also creates a dictionary of record id to record objects
+        """
+        cc_record_ids = set()
+        cc_record_list = []
+
+        for edge in self.connected_component:
+            record_a_id, record_b_id, dist, jacc, adj, dss, weights = edge
+            cc_record_ids.add(record_a_id)
+            cc_record_ids.add(record_b_id)
+
+        for record in record_list:
+            if record._db_id is None:
+                raise ValueError("Region in bin has no db id!")
+            if record._db_id not in cc_record_ids:
+                continue
+
+            self.record_id_to_obj[record._db_id] = record
+            cc_record_list.append(record)
+
+        return super().add_records(cc_record_list)
+
+    def generate_pairs(self, legacy_sorting=False) -> Generator[RecordPair, None, None]:
+        """Returns a Generator for all pairs in this bin"""
+
+        for edge in self.connected_component:
+            record_a_id, record_b_id, dist, jacc, adj, dss, weights = edge
+            if self.weights != weights:
+                logging.error(
+                    "Edge in connected component does not have the same weight as the bin!"
+                )
+
+            record_a = self.record_id_to_obj[record_a_id]
+            record_b = self.record_id_to_obj[record_b_id]
+
+            if legacy_sorting:
+                sorted_a, sorted_b = sorted((record_a, record_b), key=sort_name_key)
+                pair = RecordPair(sorted_a, sorted_b)
+            else:
+                pair = RecordPair(record_a, record_b)
+
+            yield pair
+
+
 class MissingRecordPairGenerator(RecordPairGenerator):
     """Generator that wraps around another RecordPairGenerator to exclude any distances
     already in the database

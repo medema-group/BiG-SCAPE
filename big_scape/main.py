@@ -271,8 +271,7 @@ def run_bigscape(run: dict) -> None:
 
         DB.commit()
 
-    # FAMILIES
-    # TODO: per cutoff
+    # FAMILy GENERATION
 
     logging.info("Generating families")
 
@@ -303,18 +302,19 @@ def run_bigscape(run: dict) -> None:
         for cutoff in run["gcf_cutoffs"]:
             logging.info(" -- Cutoff %s", cutoff)
 
-            connected_component = bs_network.get_query_connected_component(
+            query_connected_component = bs_network.get_query_connected_component(
                 query_node_id, cutoff
             )
 
-            cc_cutoff[cutoff] = connected_component
+            cc_cutoff[cutoff] = query_connected_component
 
             logging.debug(
-                "Found connected component with %d edges", len(connected_component)
+                "Found connected component with %d edges",
+                len(query_connected_component),
             )
 
             regions_families = bs_families.generate_families(
-                connected_component, cutoff
+                query_connected_component, cutoff
             )
 
             # save families to database
@@ -383,13 +383,20 @@ def run_bigscape(run: dict) -> None:
     # query
 
     if run["query_bgc_path"]:
-        mix_bin = bs_comparison.RecordPairGenerator("Mix")
-        mix_bin.add_records(
+        query_bin = bs_comparison.ConnectedComponenetPairGenerator(
+            query_connected_component, label="Query", weights="mix"
+        )
+        # TODO: adjust with real weights from distance calculation
+        query_bin.add_records(
             [record for record in all_bgc_records if record is not None]
         )
         for cutoff in run["gcf_cutoffs"]:
-            legacy_prepare_bin_output(run["output_dir"], run["label"], cutoff, mix_bin)
-            legacy_generate_bin_output(run["output_dir"], run["label"], cutoff, mix_bin)
+            legacy_prepare_bin_output(
+                run["output_dir"], run["label"], cutoff, query_bin
+            )
+            legacy_generate_bin_output(
+                run["output_dir"], run["label"], cutoff, query_bin
+            )
 
     if run["profiling"]:
         profiler.stop()
