@@ -197,11 +197,11 @@ def generate_run_data_js(
         if run["query_bgc_path"]
         else "NA",
         "mibig": run["mibig_version"] if run["mibig_version"] else "None",
-        "record_type": run["record_type"].name.lower(),
+        "record_type": run["record_type"].name.title(),
         "min_bgc_length": run["min_bgc_length"],
-        "classify": run["classify"] if run["classify"] else "Not Classify",
+        "classify": run["classify"].name.title() if run["classify"] else "Not Classify",
         "weights": "Legacy Weights" if run["legacy_weights"] else "Mix",
-        "alignment_mode": run["alignment_mode"].name.lower(),
+        "alignment_mode": run["alignment_mode"].name.title(),
         "input": {
             "accession": [],
             "accession_newick": [],
