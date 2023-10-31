@@ -271,7 +271,7 @@ def run_bigscape(run: dict) -> None:
 
         DB.commit()
 
-    # FAMILy GENERATION
+    # FAMILY GENERATION
 
     logging.info("Generating families")
 
