@@ -129,6 +129,50 @@ class RecordPairGenerator:
         if None in self.record_ids:
             raise ValueError("Region in bin has no db id!")
 
+    def cull_singletons(self, cutoff: float):
+        """Culls singletons for given cutoff, i.e. records which have either no edges
+        in the database, or all edges have a distance above/equal to the cutoff"""
+
+        if not DB.metadata:
+            raise RuntimeError("DB.metadata is None")
+
+        distance_table = DB.metadata.tables["distance"]
+
+        # get all distances in the table below the cutoff
+        select_statement = (
+            select(distance_table.c.region_a_id, distance_table.c.region_b_id)
+            .where(
+                distance_table.c.region_a_id.in_(self.record_ids)
+                | distance_table.c.region_b_id.in_(self.record_ids)
+            )
+            .where(distance_table.c.distance < cutoff)
+            .where(distance_table.c.weights == self.weights)
+        )
+
+        edges = set(DB.execute(select_statement).fetchall())
+
+        # get all record_ids in the edges
+        filtered_record_ids = set()
+        for edge in edges:
+            filtered_record_ids.update(edge)
+
+        records_to_remove = []
+        record_ids_to_remove = set()
+
+        # TODO: can we clean up this code?
+        for record in self.source_records:
+            record_id = record._db_id
+            if record_id not in filtered_record_ids:
+                records_to_remove.append(record)
+                record_ids_to_remove.add(record_id)
+
+        # delete those from the record_ids/records in the bin
+        for record in records_to_remove:
+            self.source_records.remove(record)
+        for record_id in record_ids_to_remove:
+            if record_id is not None:
+                self.record_ids.remove(record_id)
+
     def __repr__(self) -> str:
         return (
             f"Bin '{self.label}': {self.num_pairs()} pairs from "

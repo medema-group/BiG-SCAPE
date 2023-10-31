@@ -342,19 +342,20 @@ def run_bigscape(run: dict) -> None:
     # prepare output files per cutoff
     for cutoff in run["gcf_cutoffs"]:
         # TODO: update to use records and not gbk regions
-        # legacy_prepare_cutoff_output(run["output_dir"], run["label"], cutoff, gbks)
-        # TODO: does it need records instead of gbks?
         legacy_prepare_cutoff_output(run, cutoff, gbks)
 
     # mix
 
     if not run["no_mix"] and not run["query_bgc_path"]:
-        mix_bin = bs_comparison.RecordPairGenerator("Mix")
+        mix_bin = bs_comparison.RecordPairGenerator("Mix", "mix")
         mix_bin.add_records(
             [record for record in all_bgc_records if record is not None]
         )
 
         for cutoff in run["gcf_cutoffs"]:
+            # if not run["include_singletons"]:
+            #     mix_bin.cull_singletons(cutoff)
+
             legacy_prepare_bin_output(run["output_dir"], run["label"], cutoff, mix_bin)
             legacy_generate_bin_output(run["output_dir"], run["label"], cutoff, mix_bin)
 
@@ -365,6 +366,8 @@ def run_bigscape(run: dict) -> None:
 
         for bin in legacy_class_bins:
             for cutoff in run["gcf_cutoffs"]:
+                # if not run["include_singletons"]:
+                #     bin.cull_singletons(cutoff)
                 legacy_prepare_bin_output(run["output_dir"], run["label"], cutoff, bin)
                 legacy_generate_bin_output(run["output_dir"], run["label"], cutoff, bin)
 
@@ -384,6 +387,8 @@ def run_bigscape(run: dict) -> None:
 
         for bin in as_class_bins:
             for cutoff in run["gcf_cutoffs"]:
+                # if not run["include_singletons"]:
+                #     bin.cull_singletons(cutoff)
                 legacy_prepare_bin_output(run["output_dir"], run["label"], cutoff, bin)
                 legacy_generate_bin_output(run["output_dir"], run["label"], cutoff, bin)
 

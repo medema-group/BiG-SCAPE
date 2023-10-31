@@ -536,6 +536,79 @@ class TestBGCBin(TestCase):
 
         self.assertEqual(expected_record_ids, actual_record_ids)
 
+    def test_cull_singletons_cutoff(self):
+        """Tests whether singletons are correctly culled"""
+
+        bs_data.DB.create_in_mem()
+        query_gbk = create_mock_gbk(0, bs_enums.SOURCE_TYPE.QUERY)
+        # query -> test_path_0.gbk, rec_id 1
+        query_gbk.save_all()
+        ref_gbks = [
+            create_mock_gbk(i, bs_enums.SOURCE_TYPE.REFERENCE) for i in range(1, 5)
+        ]
+        # ref[0] -> test_path_1.gbk, rec_id 2
+        # ref[1] -> test_path_2.gbk, rec_id 3
+
+        source_records = [query_gbk.region]
+        for ref_gbk in ref_gbks:
+            source_records.append(ref_gbk.region)
+            ref_gbk.save_all()
+
+        new_bin = RecordPairGenerator("Test", "mix")
+        new_bin.add_records(source_records)
+
+        # making query <-> ref_1 edge with distance 0.0
+
+        save_edge_to_db(
+            (
+                query_gbk.region._db_id,
+                ref_gbks[0].region._db_id,
+                0.0,
+                1.0,
+                1.0,
+                1.0,
+                "mix",
+            )
+        )
+
+        save_edge_to_db(
+            (
+                query_gbk.region._db_id,
+                ref_gbks[1].region._db_id,
+                1.0,
+                0.0,
+                0.0,
+                0.0,
+                "mix",
+            )
+        )
+
+        save_edge_to_db(
+            (
+                ref_gbks[0].region._db_id,
+                ref_gbks[1].region._db_id,
+                0.0,
+                1.0,
+                1.0,
+                1.0,
+                "mix",
+            )
+        )
+
+        # edges above cutoff:
+        # query <-> ref_1 | rec_id 1 <-> rec_id 2
+        # ref_1 <-> ref_2 | rec_id 2 <-> rec_id 3
+
+        new_bin.cull_singletons(0.5)
+
+        expected_records = [source_records[0], source_records[1], source_records[2]]
+        # expected_record_ids = set([1, 2, 3])
+
+        actual_records = new_bin.source_records
+        # actual_record_ids = new_bin.record_ids
+
+        self.assertEqual(expected_records, actual_records)
+
 
 class TestMixComparison(TestCase):
     def test_mix_iter(self):
