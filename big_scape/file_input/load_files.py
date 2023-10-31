@@ -91,14 +91,16 @@ def download_dataset(url: str, path: Path, path_compressed: Path) -> None:
     os.remove(path_compressed)
 
 
-def load_dataset_folder(run: dict, source_type: bs_enums.SOURCE_TYPE) -> List[GBK]:
+def load_dataset_folder(
+    input_dir: Path, run: dict, source_type: bs_enums.SOURCE_TYPE
+) -> List[GBK]:
     """Loads all gbk files in a given folder
 
     Returns empty list if path does not point to a folder or if folder does not contain
     gbk files
     """
 
-    path = run["input_dir"]
+    path = input_dir
     source_type = source_type
     mode = run["input_mode"]
     include_gbk = run["include_gbk"]
@@ -248,22 +250,26 @@ def load_gbks(run: dict, bigscape_dir: Path) -> list[GBK]:
         # add the query bgc to the exclude list
         run["exclude_gbk"].append(query_bgc_stem)
 
-        gbks = load_dataset_folder(run, bs_enums.SOURCE_TYPE.REFERENCE)
+        gbks = load_dataset_folder(
+            run["input_dir"], run, bs_enums.SOURCE_TYPE.REFERENCE
+        )
         input_gbks.extend(gbks)
 
     else:
-        gbks = load_dataset_folder(run, bs_enums.SOURCE_TYPE.QUERY)
+        gbks = load_dataset_folder(run["input_dir"], run, bs_enums.SOURCE_TYPE.QUERY)
         input_gbks.extend(gbks)
 
     # get reference if either MIBiG version or user-made reference dir passed
     if run["mibig_version"]:
         mibig_version_dir = get_mibig(run["mibig_version"], bigscape_dir)
-        mibig_gbks = load_dataset_folder(mibig_version_dir, bs_enums.SOURCE_TYPE.MIBIG)
+        mibig_gbks = load_dataset_folder(
+            mibig_version_dir, run, bs_enums.SOURCE_TYPE.MIBIG
+        )
         input_gbks.extend(mibig_gbks)
 
     if run["reference_dir"]:
         reference_gbks = load_dataset_folder(
-            run["reference_dir"], bs_enums.SOURCE_TYPE.REFERENCE
+            run["reference_dir"], run, bs_enums.SOURCE_TYPE.REFERENCE
         )
         input_gbks.extend(reference_gbks)
 

@@ -76,6 +76,11 @@ CREATE TABLE IF NOT EXISTS distance (
     adjacency REAL NOT NULL,
     dss REAL NOT NULL,
     weights TEXT NOT NULL,
+    lcs_a_start INTEGER NOT NULL,
+    lcs_a_stop INTEGER NOT NULL,
+    lcs_b_start INTEGER NOT NULL,
+    lcs_b_stop INTEGER NOT NULL,
+    lcs_reverse BOOLEAN NOT NULL,
     UNIQUE(region_a_id, region_b_id)
     FOREIGN KEY(region_a_id) REFERENCES bgc_record(id)
     FOREIGN KEY(region_b_id) REFERENCES bgc_record(id)

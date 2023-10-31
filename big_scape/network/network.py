@@ -96,7 +96,7 @@ def get_edge(
     if edge is None:
         return None
 
-    return cast(tuple[int, int, float, float, float, float, str], edge)
+    return cast(tuple[int, int, float, float, float, float, str], edge[0:7])
 
 
 def get_edges(
@@ -123,7 +123,7 @@ def get_edges(
         .where(distance_table.c.distance < distance_cutoff)
     ).compile()
 
-    edges = DB.execute(select_statement).fetchall()
+    edges = [edge[0:7] for edge in DB.execute(select_statement).fetchall()]
 
     return cast(list[tuple[int, int, float, float, float, float, str]], edges)
 
@@ -166,6 +166,6 @@ def get_connected_edges(
         .where(distance_table.c.distance < distance_cutoff).compile()
     )
 
-    edges = DB.execute(select_statement).fetchall()
+    edges = [edge[0:7] for edge in DB.execute(select_statement).fetchall()]
 
     return cast(list[tuple[int, int, float, float, float, float, str]], edges)

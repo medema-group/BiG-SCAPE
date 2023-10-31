@@ -50,12 +50,14 @@ def save_edge_to_db(
 
 
 def save_edges_to_db(
-    edges: list[tuple[int, int, float, float, float, float, str]]
+    edges: list[
+        tuple[int, int, float, float, float, float, str, int, int, int, int, bool]
+    ]
 ) -> None:
     """Save many edges to the database
 
     Args:
-        edges (list[tuple[int, int, float, float, float, float, str]]): list of edges to save
+        edges (list[tuple[]]): list of edges to save
     """
     # save the comparison data to the database
     # using raw sqlite for this because sqlalchemy is not fast enough
@@ -75,7 +77,7 @@ def save_edges_to_db(
     # create a query
     # TODO: this should not need ignore. it's there now because protoclusters somehow
     # trigger an integrityerror
-    query = "INSERT OR IGNORE INTO distance VALUES (?, ?, ?, ?, ?, ?, ?)"
+    query = "INSERT OR IGNORE INTO distance VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"
 
     cursor.executemany(query, edges)
 

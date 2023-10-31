@@ -47,6 +47,7 @@ class ComparableRegion:
         reverse: bool,
     ):
         self.pair = pair
+        # store possibly extended comparable region
         self.a_start = a_start
         self.b_start = b_start
 
@@ -60,6 +61,12 @@ class ComparableRegion:
         self.domain_dicts: Optional[
             tuple[dict[HSP, list[int]], dict[HSP, list[int]]]
         ] = None
+        # store lcs without any extensions
+        self.lcs_a_start = a_start
+        self.lcs_b_start = b_start
+        self.lcs_a_stop = a_stop
+        self.lcs_b_stop = b_stop
+        self.lcs_reverse = reverse
 
     def get_domain_sets(
         self, regenerate=False, cache=True

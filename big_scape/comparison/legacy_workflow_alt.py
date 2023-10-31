@@ -162,8 +162,9 @@ def generate_edges(
                 if len(results) != len(task_batch):
                     raise ValueError("Mismatch between task length and result length")
 
-                for idx, pair in enumerate(task_batch):
-                    distance, jaccard, adjacency, dss = results[idx]
+                # for idx, pair in enumerate(task_batch):
+                #     distance, jaccard, adjacency, dss = results[idx]
+                for pair, distance, jaccard, adjacency, dss in results:
                     yield (
                         pair.region_a._db_id,
                         pair.region_b._db_id,
@@ -172,6 +173,11 @@ def generate_edges(
                         adjacency,
                         dss,
                         pair_generator.weights,
+                        pair.comparable_region.lcs_a_start,
+                        pair.comparable_region.lcs_a_stop,
+                        pair.comparable_region.lcs_b_start,
+                        pair.comparable_region.lcs_b_stop,
+                        pair.comparable_region.lcs_reverse,
                     )
 
                 done_pairs += len(results)
@@ -198,6 +204,11 @@ def do_lcs_pair(
     )
 
     # set the comparable region
+    pair.comparable_region.lcs_a_start = a_start
+    pair.comparable_region.lcs_a_stop = a_stop
+    pair.comparable_region.lcs_b_start = b_start
+    pair.comparable_region.lcs_b_stop = b_stop
+    pair.comparable_region.lcs_reverse = reverse
     pair.comparable_region.a_start = a_start
     pair.comparable_region.a_stop = a_stop
     pair.comparable_region.b_start = b_start
@@ -234,7 +245,7 @@ def expand_pair(pair: RecordPair) -> float:
 
 def calculate_scores_pair(
     data: tuple[list[RecordPair], bs_enums.ALIGNMENT_MODE, str]
-) -> list[tuple[float, float, float, float]]:  # pragma no cover
+) -> list[tuple[RecordPair, float, float, float, float]]:  # pragma no cover
     """Calculate the scores for a list of pairs
 
     Args:
@@ -251,13 +262,13 @@ def calculate_scores_pair(
 
     for pair in pairs:
         if pair.region_a.parent_gbk == pair.region_b.parent_gbk:
-            results.append((0.0, 1.0, 1.0, 1.0))
+            results.append((pair, 0.0, 1.0, 1.0, 1.0))
             continue
 
         jaccard = calc_jaccard_pair(pair)
 
         if jaccard == 0.0:
-            results.append((1.0, 0.0, 0.0, 0.0))
+            results.append((pair, 1.0, 0.0, 0.0, 0.0))
             continue
 
         # in the form [bool, Pair]. true bools means they need expansion, false they don't
@@ -267,7 +278,7 @@ def calculate_scores_pair(
             jaccard = expand_pair(pair)
 
         if jaccard == 0.0:
-            results.append((1.0, 0.0, 0.0, 0.0))
+            results.append((pair, 1.0, 0.0, 0.0, 0.0))
             continue
 
         if weights_label not in LEGACY_WEIGHTS:
@@ -285,6 +296,6 @@ def calculate_scores_pair(
         similarity = jaccard * jc_weight + adjacency * ai_weight + dss * dss_weight
         distance = 1 - similarity
 
-        results.append((distance, jaccard, adjacency, dss))
+        results.append((pair, distance, jaccard, adjacency, dss))
 
     return results
