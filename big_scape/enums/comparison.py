@@ -18,3 +18,8 @@ class COMPARISON_MODE(Enum):
 class LCS_MODE(Enum):
     REGION = "region"
     PROTOCLUSTER = "protocluster"
+
+
+class CLASSIFY_MODE(Enum):
+    CLASS = "class"
+    CATEGORY = "category"

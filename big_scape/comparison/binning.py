@@ -8,17 +8,32 @@ may be present in the database.
 
 # from python
 from __future__ import annotations
+import logging
 from itertools import combinations
-from typing import Generator
+from typing import Generator, Iterator, Optional
 from sqlalchemy import select, func, or_
 
 # from other modules
 from big_scape.data import DB
-from big_scape.genbank import BGCRecord
-from big_scape.enums import SOURCE_TYPE
+from big_scape.genbank import BGCRecord, Region, ProtoCluster, ProtoCore
+from big_scape.enums import SOURCE_TYPE, CLASSIFY_MODE
 
 # from this module
 from .comparable_region import ComparableRegion
+
+
+# weights are in the order JC, AI, DSS, Anchor boost
+LEGACY_WEIGHTS = {
+    "PKSI": {"weights": (0.22, 0.02, 0.76, 1.0)},
+    "PKSother": {"weights": (0.0, 0.68, 0.32, 4.0)},
+    "NRPS": {"weights": (0.0, 0.0, 1.0, 4.0)},
+    "RiPP": {"weights": (0.28, 0.01, 0.71, 1.0)},
+    "saccharide": {"weights": (0.0, 1.0, 0.0, 1.0)},
+    "terpene": {"weights": (0.2, 0.05, 0.75, 2.0)},
+    "PKS-NRP_Hybrids": {"weights": (0.0, 0.22, 0.78, 1.0)},
+    "other": {"weights": (0.01, 0.02, 0.97, 4.0)},
+    "mix": {"weights": (0.2, 0.05, 0.75, 2.0)},
+}
 
 
 class RecordPairGenerator:
@@ -29,10 +44,13 @@ class RecordPairGenerator:
         source_records (list[BGCRecord]): List of BGC records to generate pairs from
     """
 
-    def __init__(self, label: str):
+    def __init__(self, label: str, weights: Optional[str] = None):
         self.label = label
         self.source_records: list[BGCRecord] = []
         self.record_ids: set[int] = set()
+        if weights is None:
+            weights = label
+        self.weights = weights
 
     def generate_pairs(self, legacy_sorting=False) -> Generator[RecordPair, None, None]:
         """Returns a generator for all vs all Region pairs in this bins
@@ -460,7 +478,7 @@ class MissingRecordPairGenerator(RecordPairGenerator):
     """
 
     def __init__(self, pair_generator):
-        super().__init__(pair_generator.label)
+        super().__init__(pair_generator.label, pair_generator.weights)
         self.bin = pair_generator
 
     def num_pairs(self) -> int:
@@ -475,6 +493,7 @@ class MissingRecordPairGenerator(RecordPairGenerator):
             select(func.count(distance_table.c.region_a_id))
             .where(distance_table.c.region_a_id.in_(self.bin.record_ids))
             .where(distance_table.c.region_b_id.in_(self.bin.record_ids))
+            .where(distance_table.c.weights == self.bin.weights)
         )
 
         # get count
@@ -523,8 +542,8 @@ class RecordPair:
             raise ValueError("Region in pair has no parent GBK!")
 
         # comparable regions start at the full ranges
-        a_len = len(region_a.parent_gbk.genes)
-        b_len = len(region_b.parent_gbk.genes)
+        a_len = len(region_a.get_cds())
+        b_len = len(region_b.get_cds())
 
         self.comparable_region: ComparableRegion = ComparableRegion(
             self, 0, a_len, 0, b_len, False
@@ -582,3 +601,344 @@ def sort_name_key(record: BGCRecord) -> str:
         return ""
 
     return record.parent_gbk.path.name[:-4]
+
+
+def as_class_bin_generator(
+    all_records: list[BGCRecord], weight_type: str, classify_mode: CLASSIFY_MODE
+) -> Iterator[RecordPairGenerator]:
+    """Generate bins for each antiSMASH class
+
+    Args:
+        gbks (list[GBK]): List of GBKs to generate bins for
+        category_weights (str): weights to use for each class
+
+    Yields:
+        Iterator[RecordPairGenerator]: Generator that yields bins. Order is not guarenteed to be
+        consistent
+    """
+
+    class_idx: dict[str, list[BGCRecord]] = {}
+    category_weights: dict[str, str] = {}
+
+    for record in all_records:
+        # get region class for bin label and index
+        if classify_mode == CLASSIFY_MODE.CLASS:
+            record_class = record.product
+
+        if classify_mode == CLASSIFY_MODE.CATEGORY:
+            record_class = get_record_category(record)
+
+        try:
+            class_idx[record_class].append(record)
+        except KeyError:
+            class_idx[record_class] = [record]
+
+        if weight_type == "legacy_weights":
+            # get region category for weights
+            region_weight_cat = get_weight_category(record)
+
+            if record_class not in category_weights.keys():
+                category_weights[record_class] = region_weight_cat
+
+        if weight_type == "mix":
+            category_weights[record_class] = "mix"
+
+    for class_name, records in class_idx.items():
+        weight_category = category_weights[class_name]
+        bin = RecordPairGenerator(class_name, weight_category)
+        bin.add_records(records)
+        yield bin
+
+
+def get_record_category(record: BGCRecord) -> str:
+    """Get the category of a BGC based on its antiSMASH product(s)
+
+    Args:
+        region (Region): region object
+
+    Returns:
+        str: BGC category
+    """
+
+    categories: list[str] = []
+
+    if isinstance(record, ProtoCluster) or isinstance(record, ProtoCore):
+        if record.category is not None:
+            categories.append(record.category)
+
+    if isinstance(record, Region):
+        # get categories from region object
+        for idx, cand_cluster in record.cand_clusters.items():
+            if cand_cluster is not None:
+                for idx, protocluster in cand_cluster.proto_clusters.items():
+                    if protocluster is not None and protocluster.category is not None:
+                        pc_category = protocluster.category
+                        # avoid duplicates, hybrids of the same kind count as one category
+                        if pc_category not in categories:
+                            categories.append(pc_category)
+
+    if len(categories) == 0:
+        return "Categoryless"
+
+    if len(categories) == 1:
+        return categories[0]
+
+    return ".".join(categories)
+
+
+def get_weight_category(record: BGCRecord) -> str:
+    """Get the category of a BGC based on its antiSMASH product(s)
+    and match it to the legacy weights classes
+
+    Args:
+        region (BGCRecord): region object
+
+    Returns:
+        str: class category to be used in weight selection
+    """
+
+    categories: list[str] = []
+
+    if isinstance(record, ProtoCluster) or isinstance(record, ProtoCore):
+        # T1PKS is the only case in which a antiSMASH category does not
+        # correspond to a legacy_weights class
+        if (
+            record.category is not None
+        ):  # for typing, we assume antismash 6 and up always have it
+            if record.product == "T1PKS":
+                categories.append(record.product)
+            else:
+                categories.append(record.category)
+
+    if isinstance(record, Region):
+        # get categories from region object
+        for idx, cand_cluster in record.cand_clusters.items():
+            if cand_cluster is not None:
+                for idx, protocluster in cand_cluster.proto_clusters.items():
+                    if protocluster is not None and protocluster.category is not None:
+                        if protocluster.product == "T1PKS":
+                            pc_category = protocluster.product
+                        else:
+                            pc_category = protocluster.category
+                        # avoid duplicates, hybrids of the same kind use the same weight class
+                        if pc_category not in categories:
+                            categories.append(pc_category)
+
+    # process into legacy_weights classes
+
+    # for versions that dont have category information
+    if len(categories) == 0:
+        logging.warning(
+            "No category found for %s",
+            record,
+            "This should not happen as long as antiSMASH is run with"
+            "version 6 or up, consider whether there is something"
+            "special about this region",
+        )
+        category = "other"
+
+    if len(categories) == 1:
+        category = categories[0]
+
+    if len(categories) > 1:
+        if "NRPS" and ("PKS" or "T1PKS") in categories:
+            category = "PKS-NRP_Hybrids"
+
+        if "PKS" or ("PKS" and "T1PKS") in categories:
+            category = "PKSother"  # PKS hybrids
+
+        else:
+            category = "other"  # other hybrids
+
+    return category
+
+
+def legacy_bin_generator(
+    all_records: list[BGCRecord],
+) -> Iterator[RecordPairGenerator]:  # pragma no cover
+    """Generate bins for each class as they existed in the BiG-SCAPE 1.0 implementation
+
+    Args:
+        gbks (list[GBK]): List of GBKs to generate bins for
+
+    Yields:
+        Iterator[BGCBin]: Generator that yields bins. Order is not guarenteed to be
+        consistent
+        TODO: should it be consistent?
+    """
+    # generate index
+    class_idx: dict[str, list[BGCRecord]] = {
+        class_name: [] for class_name in LEGACY_WEIGHTS.keys() if class_name != "mix"
+    }
+
+    for record in all_records:
+        if record is None:
+            continue
+        if record.product is None:
+            continue
+
+        # product hybrids of AS4 and under dealt with here and in legacy_output generate_run_data_js
+        product = ".".join(record.product.split("-"))
+
+        region_class = legacy_get_class(product)
+
+        class_idx[region_class].append(record)
+
+    for class_name, records in class_idx.items():
+        bin = RecordPairGenerator(class_name)
+        bin.add_records(records)
+        yield bin
+
+
+# one of the few direct copy-and-pastes!
+def legacy_get_class(product):  # pragma no cover
+    """Sort BGC by its type. Uses AntiSMASH annotations
+    (see https://docs.antismash.secondarymetabolites.org/glossary/#cluster-types)
+
+    Args:
+        product (str): product type
+
+    Returns:
+        str: product class
+    """
+
+    # TODO: according with current (2021-05) antiSMASH rules:
+    # prodigiosin and PpyS-KS -> PKS
+    # CDPS -> NRPS
+    pks1_products = {"t1pks", "T1PKS"}
+    pksother_products = {
+        "transatpks",
+        "t2pks",
+        "t3pks",
+        "otherks",
+        "hglks",
+        "transAT-PKS",
+        "transAT-PKS-like",
+        "T2PKS",
+        "T3PKS",
+        "PKS-like",
+        "hglE-KS",
+    }
+    nrps_products = {"nrps", "NRPS", "NRPS-like", "thioamide-NRP", "NAPAA"}
+    ripps_products = {
+        "lantipeptide",
+        "thiopeptide",
+        "bacteriocin",
+        "linaridin",
+        "cyanobactin",
+        "glycocin",
+        "LAP",
+        "lassopeptide",
+        "sactipeptide",
+        "bottromycin",
+        "head_to_tail",
+        "microcin",
+        "microviridin",
+        "proteusin",
+        "lanthipeptide",
+        "lipolanthine",
+        "RaS-RiPP",
+        "fungal-RiPP",
+        "TfuA-related",
+        "guanidinotides",
+        "RiPP-like",
+        "lanthipeptide-class-i",
+        "lanthipeptide-class-ii",
+        "lanthipeptide-class-iii",
+        "lanthipeptide-class-iv",
+        "lanthipeptide-class-v",
+        "ranthipeptide",
+        "redox-cofactor",
+        "thioamitides",
+        "epipeptide",
+        "cyclic-lactone-autoinducer",
+        "spliceotide",
+        "RRE-containing",
+    }
+    saccharide_products = {
+        "amglyccycl",
+        "oligosaccharide",
+        "cf_saccharide",
+        "saccharide",
+    }
+    others_products = {
+        "acyl_amino_acids",
+        "arylpolyene",
+        "aminocoumarin",
+        "ectoine",
+        "butyrolactone",
+        "nucleoside",
+        "melanin",
+        "phosphoglycolipid",
+        "phenazine",
+        "phosphonate",
+        "other",
+        "cf_putative",
+        "resorcinol",
+        "indole",
+        "ladderane",
+        "PUFA",
+        "furan",
+        "hserlactone",
+        "fused",
+        "cf_fatty_acid",
+        "siderophore",
+        "blactam",
+        "fatty_acid",
+        "PpyS-KS",
+        "CDPS",
+        "betalactone",
+        "PBDE",
+        "tropodithietic-acid",
+        "NAGGN",
+        "halogenated",
+        "pyrrolidine",
+    }
+
+    # PKS_Type I
+    if product in pks1_products:
+        return "PKSI"
+    # PKS Other Types
+    elif product in pksother_products:
+        return "PKSother"
+    # NRPs
+    elif product in nrps_products:
+        return "NRPS"
+    # RiPPs
+    elif product in ripps_products:
+        return "RiPP"
+    # Saccharides
+    elif product in saccharide_products:
+        return "saccharide"
+    # Terpenes
+    elif product == "terpene":
+        return "terpene"
+    # PKS/NRP hybrids
+    elif len(product.split(".")) > 1:
+        # print("  Possible hybrid: (" + cluster + "): " + product)
+        # cf_fatty_acid category contains a trailing empty space
+
+        subtypes = set(s.strip() for s in product.split("."))
+        if len(subtypes - (pks1_products | pksother_products | nrps_products)) == 0:
+            if len(subtypes - nrps_products) == 0:
+                return "NRPS"
+            elif len(subtypes - (pks1_products | pksother_products)) == 0:
+                return "PKSother"  # pks hybrids
+            else:
+                return "PKS-NRP_Hybrids"
+        elif len(subtypes - ripps_products) == 0:
+            return "RiPP"
+        elif len(subtypes - saccharide_products) == 0:
+            return "saccharide"
+        else:
+            return "other"  # other hybrid
+    # Others
+    elif product in others_products:
+        return "other"
+    # ??
+    elif product == "":
+        # No product annotation. Perhaps not analyzed by antiSMASH
+        return "other"
+    else:
+        logging.warning("unknown product %s", product)
+        return "other"

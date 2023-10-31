@@ -27,6 +27,7 @@ from big_scape.genbank import (
 from big_scape.errors import InvalidGBKError
 from big_scape.data import DB
 from big_scape.enums import SOURCE_TYPE
+import big_scape.enums as bs_enums
 
 
 class TestCDS(TestCase):
@@ -53,7 +54,17 @@ class TestCDS(TestCase):
         parent_gbk_file_path = Path(
             "test/test_data/valid_gbk_folder/valid_input_region.gbk"
         )
-        parent_gbk = GBK.parse(parent_gbk_file_path, SOURCE_TYPE.QUERY)
+        run = {
+            "input_dir": Path("test/test_data/valid_gbk_folder/"),
+            "input_mode": bs_enums.INPUT_MODE.RECURSIVE,
+            "include_gbk": None,
+            "exclude_gbk": None,
+            "cds_overlap_cutoff": None,
+            "cores": None,
+            "classify": False,
+            "legacy_classify": False,
+        }
+        parent_gbk = GBK.parse(parent_gbk_file_path, SOURCE_TYPE.QUERY, run)
 
         cds = CDS.parse(feature, parent_gbk)
 
@@ -72,7 +83,17 @@ class TestCDS(TestCase):
         parent_gbk_file_path = Path(
             "test/test_data/valid_gbk_folder/valid_input_region.gbk"
         )
-        parent_gbk = GBK.parse(parent_gbk_file_path, SOURCE_TYPE.QUERY)
+        run = {
+            "input_dir": Path("test/test_data/valid_gbk_folder/"),
+            "input_mode": bs_enums.INPUT_MODE.RECURSIVE,
+            "include_gbk": None,
+            "exclude_gbk": None,
+            "cds_overlap_cutoff": None,
+            "cores": None,
+            "classify": False,
+            "legacy_classify": False,
+        }
+        parent_gbk = GBK.parse(parent_gbk_file_path, SOURCE_TYPE.QUERY, run)
 
         cds = CDS.parse(feature, parent_gbk)
 
@@ -88,7 +109,17 @@ class TestCDS(TestCase):
         parent_gbk_file_path = Path(
             "test/test_data/valid_gbk_folder/valid_input_region.gbk"
         )
-        parent_gbk = GBK.parse(parent_gbk_file_path, SOURCE_TYPE.QUERY)
+        run = {
+            "input_dir": Path("test/test_data/valid_gbk_folder/"),
+            "input_mode": bs_enums.INPUT_MODE.RECURSIVE,
+            "include_gbk": None,
+            "exclude_gbk": None,
+            "cds_overlap_cutoff": None,
+            "cores": None,
+            "classify": False,
+            "legacy_classify": False,
+        }
+        parent_gbk = GBK.parse(parent_gbk_file_path, SOURCE_TYPE.QUERY, run)
 
         self.assertRaises(InvalidGBKError, CDS.parse, feature, parent_gbk)
 
@@ -96,10 +127,19 @@ class TestCDS(TestCase):
         """Tests whether a CDS can be correctly saved to the database"""
 
         DB.create_in_mem()
-
+        run = {
+            "input_dir": Path("test/test_data/valid_gbk_folder/"),
+            "input_mode": bs_enums.INPUT_MODE.RECURSIVE,
+            "include_gbk": None,
+            "exclude_gbk": None,
+            "cds_overlap_cutoff": None,
+            "cores": None,
+            "classify": False,
+            "legacy_classify": False,
+        }
         gbk_file_path = Path("test/test_data/valid_gbk_folder/valid_input_region.gbk")
 
-        gbk = GBK.parse(gbk_file_path, SOURCE_TYPE.QUERY)
+        gbk = GBK.parse(gbk_file_path, SOURCE_TYPE.QUERY, run)
 
         gbk.save_all()
 
@@ -253,14 +293,14 @@ class TestCDS(TestCase):
         self.assertEqual(expected_result, actual_result)
 
     def test_translate_output_type(self):
-        """Tests whether translate correclty outputs a Seq object"""
+        """Tests whether translate correclty outputs a str object"""
 
         feature = SeqFeature(FeatureLocation(5, 10, strand=1), type="CDS")
         nt_seq = Seq("ATGCAGCAGGACGGCACACAGCAGGACCGGATCAAGCAGAGTCCCGCCCCTCTCTGA")
 
         transl_nt_seq = translate(feature, nt_seq)
 
-        self.assertIsInstance(transl_nt_seq, Seq)
+        self.assertIsInstance(transl_nt_seq, str)
 
     def test_translate_correct_output(self):
         """Tests whether translate translates correclty"""
@@ -357,8 +397,8 @@ class TestCDS(TestCase):
 
         self.assertEqual(expected_translation, translation)
 
-    def test_get_translation_return_seq_object(self):
-        """Test if get_translation returns None when given the same value (false) for both fuzzies"""
+    def test_get_translation_return_str_object(self):
+        """Test if get_translation returns a str object"""
 
         feature = SeqFeature(
             FeatureLocation(BeforePosition(5), 10, strand=1), type="CDS"
@@ -368,7 +408,7 @@ class TestCDS(TestCase):
 
         translation = get_translation(feature, nt_seq)
 
-        self.assertIsInstance(translation, Seq)
+        self.assertIsInstance(translation, str)
 
     def test_parse_translate_aa_seq_cds_1(self):
         """Tests whether an aa sequence is correclty translated from a feature
@@ -377,7 +417,17 @@ class TestCDS(TestCase):
         parent_gbk_file_path = Path(
             "test/test_data/valid_gbk_folder/valid_input_region_cds_no_trans.gbk"
         )
-        parent_gbk = GBK.parse(parent_gbk_file_path, SOURCE_TYPE.QUERY)
+        run = {
+            "input_dir": Path("test/test_data/valid_gbk_folder/"),
+            "input_mode": bs_enums.INPUT_MODE.RECURSIVE,
+            "include_gbk": None,
+            "exclude_gbk": None,
+            "cds_overlap_cutoff": None,
+            "cores": None,
+            "classify": False,
+            "legacy_classify": False,
+        }
+        parent_gbk = GBK.parse(parent_gbk_file_path, SOURCE_TYPE.QUERY, run)
         cds_1 = parent_gbk.genes[1]
 
         expected_translation = (
@@ -399,7 +449,17 @@ class TestCDS(TestCase):
         parent_gbk_file_path = Path(
             "test/test_data/valid_gbk_folder/valid_input_region_cds_no_trans.gbk"
         )
-        parent_gbk = GBK.parse(parent_gbk_file_path, SOURCE_TYPE.QUERY)
+        run = {
+            "input_dir": Path("test/test_data/valid_gbk_folder/"),
+            "input_mode": bs_enums.INPUT_MODE.RECURSIVE,
+            "include_gbk": None,
+            "exclude_gbk": None,
+            "cds_overlap_cutoff": None,
+            "cores": None,
+            "classify": False,
+            "legacy_classify": False,
+        }
+        parent_gbk = GBK.parse(parent_gbk_file_path, SOURCE_TYPE.QUERY, run)
         cds_0 = parent_gbk.genes[0]
 
         expected_translation = (
@@ -421,7 +481,17 @@ class TestCDS(TestCase):
         parent_gbk_file_path = Path(
             "test/test_data/valid_gbk_folder/valid_input_region_cds_no_trans.gbk"
         )
-        parent_gbk = GBK.parse(parent_gbk_file_path, SOURCE_TYPE.QUERY)
+        run = {
+            "input_dir": Path("test/test_data/valid_gbk_folder/"),
+            "input_mode": bs_enums.INPUT_MODE.RECURSIVE,
+            "include_gbk": None,
+            "exclude_gbk": None,
+            "cds_overlap_cutoff": None,
+            "cores": None,
+            "classify": False,
+            "legacy_classify": False,
+        }
+        parent_gbk = GBK.parse(parent_gbk_file_path, SOURCE_TYPE.QUERY, run)
 
         feature = SeqFeature(FeatureLocation(1536, 2156, strand=1), type="CDS")
 
@@ -449,7 +519,17 @@ class TestCDS(TestCase):
         parent_gbk_file_path = Path(
             "test/test_data/valid_gbk_folder/valid_input_region_cds_no_trans.gbk"
         )
-        parent_gbk = GBK.parse(parent_gbk_file_path, SOURCE_TYPE.QUERY)
+        run = {
+            "input_dir": Path("test/test_data/valid_gbk_folder/"),
+            "input_mode": bs_enums.INPUT_MODE.RECURSIVE,
+            "include_gbk": None,
+            "exclude_gbk": None,
+            "cds_overlap_cutoff": None,
+            "cores": None,
+            "classify": False,
+            "legacy_classify": False,
+        }
+        parent_gbk = GBK.parse(parent_gbk_file_path, SOURCE_TYPE.QUERY, run)
 
         feature = SeqFeature(FeatureLocation(1536, 2156, strand=1), type="CDS")
 
@@ -474,8 +554,19 @@ class TestCDS(TestCase):
         """Tests whether a mibig cds with an antismash translation that does not
         match a biopython translation generated no warnings"""
 
+        run = {
+            "input_dir": Path("test/test_data/valid_gbk_folder/"),
+            "input_mode": bs_enums.INPUT_MODE.RECURSIVE,
+            "include_gbk": None,
+            "exclude_gbk": None,
+            "cds_overlap_cutoff": None,
+            "cores": None,
+            "classify": False,
+            "legacy_classify": False,
+        }
+
         parent_gbk_mibig = GBK.parse(
-            "test/test_data/MIBiG_gbk/BGC0000966.gbk", SOURCE_TYPE.MIBIG
+            "test/test_data/MIBiG_gbk/BGC0000966.gbk", SOURCE_TYPE.MIBIG, run
         )
 
         feature = SeqFeature(FeatureLocation(0, 3301, strand=1), type="CDS")

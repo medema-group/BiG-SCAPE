@@ -75,7 +75,7 @@ class TestProtocluster(TestCase):
         self.assertRaises(InvalidGBKError, ProtoCluster.parse, feature)
 
     def test_add_protocore(self):
-        """Tests whether a protocore is correctly added to this protocluster"""
+        """Tests whether a protocore is correctly added to this protocluster and its category updated"""
 
         protocluster_feature = SeqFeature(FeatureLocation(0, 100), type="protocluster")
         protocluster_feature.qualifiers = {
@@ -95,6 +95,8 @@ class TestProtocluster(TestCase):
         protocore = ProtoCore.parse(protocore_feature)
 
         protocluster.add_proto_core(protocore)
+
+        self.assertEqual(protocore.category, protocluster.category)
 
     def test_save(self):
         """Tests whether a ProtoCluster object is correctly stored in the SQLite database"""

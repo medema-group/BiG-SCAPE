@@ -413,9 +413,15 @@ function Bigscape(bs_data, bs_families, bs_alignment, bs_similarity, network_con
   });
 
   graphics.link(function (link) {
-    return Viva.Graph.svg('line')
-      .attr("stroke", "#777")
-      .attr("stroke-width", link["data"]["weight"] * 10);
+
+    let line = Viva.Graph.svg('line')
+    .attr("stroke", "#777")
+    .attr("stroke-width", link["data"]["weight"] * 10);
+
+    if (graph.getNode(link.fromId).data.id === graph.getNode(link.toId).data.id) {
+      line = line.attr("stroke-dasharray", "10,10")
+    }
+    return line
   });
 
   // run renderer and forceDirected layout

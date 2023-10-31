@@ -57,8 +57,8 @@
             <div class="infocontainer">
               <h3>Network Overview</h3>
               <div>
-                <div id="network_selection" class="network-overview w3-row">
-                </div>
+                <select id="network_selection" class="network-overview w3-row">
+                </select>
                 <div class="infobar">
                   <span class="infoleft">Number of families:</span>
                   <span id="network_total_families" class="inforight"></span>
@@ -230,8 +230,12 @@
       // Network selector
       $("#network_selection").html("");
       for (var i in run_data["networks"]) {
-        var selector = $("<div>" + run_data["networks"][i]["label"] + "</div>").addClass("tablink w3-bottombar w3-hover-light-grey w3-padding").appendTo($("<a href='##' onclick='javascript:viewNetwork(" + i + ");'></a>").appendTo($("#network_selection")));
+        // var selector = $("<option>" + run_data["networks"][i]["label"] + "</option>").addClass("tablink w3-bottombar w3-hover-light-grey w3-padding").appendTo($("<a href='##' onclick='javascript:viewNetwork(" + i + ");'></a>").appendTo($("#network_selection")));
+        $("#network_selection").append($("<option value="+i+">" + run_data["networks"][i]["label"] + "</option>"))
       }
+      $("#network_selection").on("change", function() {
+        viewNetwork(parseInt(this.value));
+      });
       viewNetwork(0);
     }
 

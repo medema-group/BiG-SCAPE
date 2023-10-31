@@ -28,7 +28,7 @@ def create_mock_gbk(i) -> bs_gbk.GBK:
 
 def gen_mock_edge_list(
     edge_gbks: list[bs_gbk.GBK],
-) -> list[tuple[int, int, float, float, float, float]]:
+) -> list[tuple[int, int, float, float, float, float, str]]:
     edges = []
     for gbk_a, gbk_b in combinations(edge_gbks, 2):
         if gbk_a.region is None or gbk_b.region is None:
@@ -36,7 +36,9 @@ def gen_mock_edge_list(
         if gbk_a.region._db_id is None or gbk_b.region._db_id is None:
             continue
 
-        edges.append((gbk_a.region._db_id, gbk_b.region._db_id, 0.0, 1.0, 1.0, 1.0))
+        edges.append(
+            (gbk_a.region._db_id, gbk_b.region._db_id, 0.0, 1.0, 1.0, 1.0, "mix")
+        )
 
     return edges
 
@@ -72,7 +74,7 @@ class TestNetwork(TestCase):
 
         # providing an empty set just gets the first edge
         # which we expect to be (1, 2)
-        expected_edge = (1, 2, 0.0, 1.0, 1.0, 1.0)
+        expected_edge = (1, 2, 0.0, 1.0, 1.0, 1.0, "mix")
 
         actual_edge = bs_network.get_edge(set())
 
@@ -98,7 +100,7 @@ class TestNetwork(TestCase):
 
         # we will ignore any edges that contain node with id 2
         # so the first one should be (1, 3)
-        expected_edge = (1, 3, 0.0, 1.0, 1.0, 1.0)
+        expected_edge = (1, 3, 0.0, 1.0, 1.0, 1.0, "mix")
 
         actual_edge = bs_network.get_edge({2})
 
@@ -125,15 +127,15 @@ class TestNetwork(TestCase):
         # gen_mock_edge_list creates edges for all combinations of gbks
         # we'll include the first edge only. that should give us these edges:
         expected_edges = [
-            (1, 2, 0.0, 1.0, 1.0, 1.0),
-            (1, 3, 0.0, 1.0, 1.0, 1.0),
-            (1, 4, 0.0, 1.0, 1.0, 1.0),
-            (1, 5, 0.0, 1.0, 1.0, 1.0),
-            (1, 6, 0.0, 1.0, 1.0, 1.0),
-            (1, 7, 0.0, 1.0, 1.0, 1.0),
-            (1, 8, 0.0, 1.0, 1.0, 1.0),
-            (1, 9, 0.0, 1.0, 1.0, 1.0),
-            (1, 10, 0.0, 1.0, 1.0, 1.0),
+            (1, 2, 0.0, 1.0, 1.0, 1.0, "mix"),
+            (1, 3, 0.0, 1.0, 1.0, 1.0, "mix"),
+            (1, 4, 0.0, 1.0, 1.0, 1.0, "mix"),
+            (1, 5, 0.0, 1.0, 1.0, 1.0, "mix"),
+            (1, 6, 0.0, 1.0, 1.0, 1.0, "mix"),
+            (1, 7, 0.0, 1.0, 1.0, 1.0, "mix"),
+            (1, 8, 0.0, 1.0, 1.0, 1.0, "mix"),
+            (1, 9, 0.0, 1.0, 1.0, 1.0, "mix"),
+            (1, 10, 0.0, 1.0, 1.0, 1.0, "mix"),
         ]
 
         actual_edges = bs_network.get_edges(set([1]))
