@@ -72,6 +72,10 @@
                 <span class="infoleft">Alignment Mode:</span>
                 <span id="alignment_mode" class="inforight"></span>
               </div>
+              <div class="infobar">
+                <span class="infoleft">Include Singletons:</span>
+                <span id="include_singletons" class="inforight"></span>
+              </div>
             </div>
             <div class="infocontainer">
               <h3>Input Data</h3>
@@ -207,6 +211,7 @@
       $("#classify").html(run_data["classify"]);
       $("#weights").html(run_data["weights"]);
       $("#alignment_mode").html(run_data["alignment_mode"]);
+      $("#include_singletons").html(run_data["include_singletons"]);
       // input information
       $("#total_accession").html(run_data["input"]["accession"].length);
       $("#total_bgc").html(run_data["input"]["bgc"].length);
