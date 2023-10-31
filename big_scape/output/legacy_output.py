@@ -566,7 +566,8 @@ def generate_bs_data_js(
             "start: int,
             "end": int,
             "id": str, (e.g. AL645882.2.cluster010),
-            "source": str, (e.g. mibig, reference, or query),     # "mibig": bool,
+            "mibig": bool,
+            "source": str, (e.g. mibig, reference, or query),
             "orfs": [
                 {
                     "domains": [
