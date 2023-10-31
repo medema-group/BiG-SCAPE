@@ -24,6 +24,13 @@ def calculate_distances_query(run: dict, gbks: list[bs_gbk.GBK]) -> None:
     bgcs_records: list[bs_gbk.BGCRecord] = []
     query_singleton = True
 
+    # currently query only works for regions, since users have no way to
+    # specify a protocluster/core in a region that has multiple
+    # TODO: fix this
+    if run["record_type"] != bs_enums.RECORD_TYPE.REGION:
+        logging.info("Query BGC mode currently only works for regions, sorry!")
+        run["record_type"] = bs_enums.RECORD_TYPE.REGION
+
     # get all working records
     for gbk in gbks:
         if gbk.region is None:
@@ -32,13 +39,6 @@ def calculate_distances_query(run: dict, gbks: list[bs_gbk.GBK]) -> None:
             continue
 
         # query_bgcs_records.append(gbk.region)
-
-        # currently query only works for regions, since users have no way to
-        # specify a protocluster/core in a region that has multiple
-        # TODO: fix this
-        if run["record_type"] != bs_enums.RECORD_TYPE.REGION:
-            logging.info("Query BGC mode currently only works for regions, sorry!")
-            run["record_type"] = bs_enums.RECORD_TYPE.REGION
 
         gbk_records = bs_gbk.bgc_record.get_sub_records(gbk.region, run["record_type"])
 
