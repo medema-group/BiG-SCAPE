@@ -53,10 +53,11 @@
           bs_alignment[a].push(parseInt(bs_similarity[a][b] * 10000) - 10000);
         }
       }
-      var bs = new Bigscape(bs_data, bs_families, bs_alignment, bs_similarity, "network-container", "desc-container", {});
+      var bs = new Bigscape(run_data, bs_data, bs_families, bs_alignment, bs_similarity, "network-container", "desc-container", {});
       $(".loadingtext").addClass("hidden");
     }
   </script>
   <script type="text/javascript" src="bs_data.js" defer></script>
   <script type="text/javascript" src="bs_networks.js" defer></script>
+  <script type="text/javascript" src="../run_data.js" defer></script>
 </html>
