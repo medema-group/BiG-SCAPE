@@ -16,7 +16,6 @@ from big_scape.trees import generate_newick_tree
 
 import big_scape.network.network as bs_network
 import big_scape.network.utility as bs_network_utility
-import big_scape.comparison as bs_comparison
 
 
 def copy_base_output_templates(output_dir: Path):
@@ -721,65 +720,65 @@ def generate_bs_families_alignment(
             if bgc_db_id == family_db_id:
                 aln.append([[gene_num, 0] for gene_num in range(len(bgc_gbk.genes))])
             else:
-                # TODO: implement database storage of lcs and fetch here
-                (
-                    a_start,
-                    a_stop,
-                    b_start,
-                    b_stop,
-                    reverse,
-                ) = bs_comparison.legacy_lcs.legacy_find_cds_lcs(
-                    family_records[fam_record_idx].get_cds_with_domains(),
-                    records[bgc].get_cds_with_domains(),
+                if DB.metadata is None:
+                    raise RuntimeError("Database metadata is None!")
+                weights = pair_generator.weights
+                dist_table = DB.metadata.tables["distance"]
+                select_query = (
+                    dist_table.select()
+                    .add_columns(
+                        dist_table.c.region_a_id,
+                        dist_table.c.region_b_id,
+                        dist_table.c.lcs_a_start,
+                        dist_table.c.lcs_a_stop,
+                        dist_table.c.lcs_b_start,
+                        dist_table.c.lcs_reverse,
+                    )
+                    .where(dist_table.c.region_a_id.in_((family_db_id, bgc_db_id)))
+                    .where(dist_table.c.region_b_id.in_((family_db_id, bgc_db_id)))
+                    .where(dist_table.c.weights == weights)
+                    .compile()
                 )
-                # if DB.metadata is None:
-                #     raise RuntimeError("Database metadata is None!")
-                # dist_table = DB.metadata.tables["distance"]
-                # select_query = (
-                #     dist_table.select()
-                #     .add_columns(
-                #         dist_table.c.region_a_id,
-                #         dist_table.c.region_b_id,
-                #         dist_table.c.lcs_a_start,
-                #         dist_table.c.lcs_a_stop,
-                #         dist_table.c.lcs_b_start,
-                #         dist_table.c.lcs_b_stop,
-                #         dist_table.c.lcs_reverse,
-                #     )
-                #     .where(dist_table.c.region_a_id.in_((family_db_id, bgc_db_id)))
-                #     .where(dist_table.c.region_b_id.in_((family_db_id, bgc_db_id)))
-                #     .compile()
-                # )
-                # result = DB.execute(select_query).fetchone()
-                # if result is None:
-                #     logging.error(
-                #         "LCS not found in database (%s, %s)", family_db_id, bgc_db_id
-                #     )
-                #     raise RuntimeError()
-                # if result.region_a_id == family_db_id:
-                #     a_start: int = result.lcs_a_start
-                #     a_stop: int = result.lcs_a_stop
-                #     b_start: int = result.lcs_b_start
-                #     b_stop: int = result.lcs_b_stop
-                #     reverse: bool = result.lcs_reverse
-                # elif result.region_b_id == family_db_id:
-                #     a_start = result.lcs_b_start
-                #     a_stop = result.lcs_b_stop
-                #     b_start = result.lcs_a_start
-                #     b_stop = result.lcs_a_stop
-                #     reverse = result.lcs_reverse
+                result = DB.execute(select_query).fetchone()
+                if result is None:
+                    raise RuntimeError("LCS not found in database")
+                if result.region_a_id == family_db_id:
+                    a_start: int = result.lcs_a_start
+                    a_stop: int = result.lcs_a_stop
+                    b_start: int = result.lcs_b_start
+                    reverse: bool = result.lcs_reverse
 
-                length = abs(a_start - a_stop)  # seed length
-                a_start = domain_genes_to_all_genes[family_db_id][a_start]
-                if length == 0:
-                    pass
+                    length = abs(a_start - a_stop)  # seed length
+                    a_start = domain_genes_to_all_genes[family_db_id][a_start]
+                    if length == 0:
+                        pass
 
-                elif reverse:
-                    b_start = domain_genes_to_all_genes[bgc_db_id][
-                        len(domain_count_gene[bgc_db_id]) - b_start - 1
-                    ]
-                else:
-                    b_start = domain_genes_to_all_genes[bgc_db_id][b_start]
+                    elif reverse:
+                        b_start = domain_genes_to_all_genes[bgc_db_id][
+                            len(domain_count_gene[bgc_db_id]) - b_start - 1
+                        ]
+                    else:
+                        b_start = domain_genes_to_all_genes[bgc_db_id][b_start]
+
+                elif result.region_b_id == family_db_id:
+                    a_start = result.lcs_b_start
+                    a_stop = result.lcs_b_stop
+                    b_start = result.lcs_a_start
+                    reverse = result.lcs_reverse
+
+                    length = abs(a_start - a_stop)  # seed length
+                    if length == 0:
+                        pass
+                    elif reverse:
+                        a_start = domain_genes_to_all_genes[family_db_id][
+                            len(domain_count_gene[family_db_id]) - a_start - length
+                        ]
+                        b_start = domain_genes_to_all_genes[bgc_db_id][
+                            b_start + length - 1
+                        ]
+                    else:
+                        a_start = domain_genes_to_all_genes[family_db_id][a_start]
+                        b_start = domain_genes_to_all_genes[bgc_db_id][b_start]
 
                 if length == 0:
                     length = 1
