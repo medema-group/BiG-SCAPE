@@ -355,7 +355,11 @@ def run_bigscape(run: dict) -> None:
         for cutoff in run["gcf_cutoffs"]:
             if not run["include_singletons"]:
                 mix_bin.cull_singletons(cutoff)
-
+                if len(mix_bin.record_ids) == 0:
+                    logging.info(
+                        f"Network {mix_bin.label} with {cutoff} cutoff is empty after culling singletons"
+                    )
+                    continue
             legacy_prepare_bin_output(run["output_dir"], run["label"], cutoff, mix_bin)
             legacy_generate_bin_output(run["output_dir"], run["label"], cutoff, mix_bin)
 
@@ -368,6 +372,11 @@ def run_bigscape(run: dict) -> None:
             for cutoff in run["gcf_cutoffs"]:
                 if not run["include_singletons"]:
                     bin.cull_singletons(cutoff)
+                    if len(bin.record_ids) == 0:
+                        logging.info(
+                            f"Network '{bin.label}' with {cutoff} cutoff is empty after culling singletons"
+                        )
+                        continue
                 legacy_prepare_bin_output(run["output_dir"], run["label"], cutoff, bin)
                 legacy_generate_bin_output(run["output_dir"], run["label"], cutoff, bin)
 
@@ -389,6 +398,11 @@ def run_bigscape(run: dict) -> None:
             for cutoff in run["gcf_cutoffs"]:
                 if not run["include_singletons"]:
                     bin.cull_singletons(cutoff)
+                    if len(bin.record_ids) == 0:
+                        logging.info(
+                            f"Network '{bin.label}' with {cutoff} cutoff is empty after culling singletons"
+                        )
+                        continue
                 legacy_prepare_bin_output(run["output_dir"], run["label"], cutoff, bin)
                 legacy_generate_bin_output(run["output_dir"], run["label"], cutoff, bin)
 
@@ -398,7 +412,6 @@ def run_bigscape(run: dict) -> None:
         query_bin = bs_comparison.ConnectedComponenetPairGenerator(
             query_connected_component, label="Query"
         )
-        # TODO: adjust with real weights from distance calculation
         query_bin.add_records(
             [record for record in all_bgc_records if record is not None]
         )

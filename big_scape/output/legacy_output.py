@@ -199,7 +199,11 @@ def generate_run_data_js(
         "mibig": run["mibig_version"] if run["mibig_version"] else "None",
         "record_type": run["record_type"].name.title(),
         "min_bgc_length": run["min_bgc_length"],
-        "classify": run["classify"].name.title() if run["classify"] else "Not Classify",
+        "classify": "Legacy Groups"
+        if run["legacy_classify"]
+        else run["classify"].name.title()
+        if run["classify"]
+        else "Not Classify",
         "weights": "Legacy Weights" if run["legacy_weights"] else "Mix",
         "alignment_mode": run["alignment_mode"].name.title(),
         "include_singletons": "NA"
