@@ -149,29 +149,19 @@ class RecordPairGenerator:
             .where(distance_table.c.weights == self.weights)
         )
 
-        edges = set(DB.execute(select_statement).fetchall())
+        edges = DB.execute(select_statement).fetchall()
 
         # get all record_ids in the edges
         filtered_record_ids = set()
         for edge in edges:
             filtered_record_ids.update(edge)
 
-        records_to_remove = []
-        record_ids_to_remove = set()
-
-        # TODO: can we clean up this code?
-        for record in self.source_records:
-            record_id = record._db_id
-            if record_id not in filtered_record_ids:
-                records_to_remove.append(record)
-                record_ids_to_remove.add(record_id)
-
-        # delete those from the record_ids/records in the bin
-        for record in records_to_remove:
-            self.source_records.remove(record)
-        for record_id in record_ids_to_remove:
-            if record_id is not None:
-                self.record_ids.remove(record_id)
+        self.record_ids = filtered_record_ids
+        self.source_records = [
+            record
+            for record in self.source_records
+            if record._db_id in filtered_record_ids
+        ]
 
     def __repr__(self) -> str:
         return (
