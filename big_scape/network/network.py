@@ -169,3 +169,56 @@ def get_connected_edges(
     edges = DB.execute(select_statement).fetchall()
 
     return cast(list[tuple[int, int, float, float, float, float, str]], edges)
+
+
+def get_query_connected_component(
+    query_node_id: Optional[int],
+    cutoff: Optional[float] = None,
+) -> list[tuple[int, int, float, float, float, float, str]]:
+    "Generate a network for the query BGC mode connected component in the network"
+
+    if cutoff is None:
+        cutoff = 1.0
+
+    # first query edge
+    if not DB.metadata:
+        raise RuntimeError("DB.metadata is None")
+
+    select_statment = (
+        DB.metadata.tables["distance"]
+        .select()
+        .where(
+            (DB.metadata.tables["distance"].c.region_a_id.in_([query_node_id]))
+            | (DB.metadata.tables["distance"].c.region_b_id.in_([query_node_id]))
+        )
+        .where(DB.metadata.tables["distance"].c.distance < cutoff)
+    )
+
+    edge = DB.execute(select_statment).fetchone()
+
+    # we can represent our connected component as a set of edges
+    connected_component = set((edge,))
+
+    # list of node region ids in the connected component
+    edge_node_ids: set[int] = set()
+    edge_node_ids.add(edge[0])
+    edge_node_ids.add(edge[1])
+
+    # we can expand this by adding more edges
+    new_edges = get_connected_edges(edge_node_ids, connected_component, cutoff)
+
+    # if we have new edges, we can add them to the connected component
+    while len(new_edges) > 0:
+        edge_node_ids.update([edge[0] for edge in connected_component])
+        edge_node_ids.update([edge[1] for edge in connected_component])
+
+        connected_component.update(new_edges)
+
+        new_edges = get_connected_edges(edge_node_ids, connected_component, cutoff)
+
+        # this breaks the while loop if no new edges were found
+
+        # at some point new_edges is empty, so no more new edges were found
+        # we can now yield the connected component
+
+    return list(connected_component)

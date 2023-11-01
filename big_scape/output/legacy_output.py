@@ -133,8 +133,7 @@ def generate_pfams_js(output_dir: Path, pfam_info: list[tuple[str, str, str]]) -
 
 
 def generate_run_data_js(
-    output_dir: Path,
-    label: str,
+    run: dict,
     cutoff: float,
     gbks: list[GBK],
 ):
@@ -181,11 +180,35 @@ def generate_run_data_js(
         gbks (list[GBK]): full list of GBKs used in the analysis
     """
 
+    output_dir = run["output_dir"]
+    label = run["label"]
+
     run_data: dict[str, Any] = {
-        "duration": "Test",
-        "start_time": "Test",
-        "end_time": "Test",
-        "parameters": "Test",
+        "duration": str(run["duration"])[:-7],
+        "start_time": str(run["start_time"])[:-7],
+        "end_time": str(run["end_time"])[:-7],
+        "mode": run["mode"],
+        "input_dir": str(run["input_dir"].name) if run["input_dir"] else "None",
+        "output_dir": str(run["output_dir"].name) if run["output_dir"] else "None",
+        "reference_dir": str(run["reference_dir"].name)
+        if run["reference_dir"]
+        else "None",
+        "query_path": str(run["query_bgc_path"].name)
+        if run["query_bgc_path"]
+        else "NA",
+        "mibig": run["mibig_version"] if run["mibig_version"] else "None",
+        "record_type": run["record_type"].name.title(),
+        "min_bgc_length": run["min_bgc_length"],
+        "classify": "Legacy Groups"
+        if run["legacy_classify"]
+        else run["classify"].name.title()
+        if run["classify"]
+        else "Not Classify",
+        "weights": "Legacy Weights" if run["legacy_weights"] else "Mix",
+        "alignment_mode": run["alignment_mode"].name.title(),
+        "include_singletons": "NA"
+        if "include_singletons" not in run.keys()
+        else ("Yes" if run["include_singletons"] else "No"),
         "input": {
             "accession": [],
             "accession_newick": [],
@@ -551,6 +574,7 @@ def generate_bs_data_js(
             "end": int,
             "id": str, (e.g. AL645882.2.cluster010),
             "mibig": bool,
+            "source": str, (e.g. mibig, reference, or query),
             "orfs": [
                 {
                     "domains": [
@@ -599,6 +623,7 @@ def generate_bs_data_js(
                 "end": len(gbk.nt_seq),
                 "id": gbk.path.name,
                 "mibig": gbk.source_type == SOURCE_TYPE.MIBIG,
+                "source": gbk.source_type.name.lower(),
                 "orfs": generate_bs_data_js_orfs(gbk),
             }
         )
@@ -644,6 +669,7 @@ def generate_bs_networks_js_sim_matrix(
     # by subracting distance from 1
 
     sparse_matrix = []
+
     for record_idx, record_a in enumerate(pair_generator.source_records):
         a_record_id = record_a._db_id
 
@@ -709,6 +735,7 @@ def generate_bs_families_members(
         node_family[row.record_id] = row.family
 
     families_members: dict[int, list[int]] = {}
+
     for idx, record in enumerate(pair_generator.source_records):
         record_id = record._db_id
 
@@ -852,9 +879,7 @@ def legacy_prepare_output(
     generate_pfams_js(output_dir, pfam_info)
 
 
-def legacy_prepare_cutoff_output(
-    output_dir: Path, label: str, cutoff: float, gbks: list[GBK]
-) -> None:
+def legacy_prepare_cutoff_output(run: dict, cutoff: float, gbks: list[GBK]) -> None:
     """Prepare output data for a given cutoff value
 
     Args:
@@ -863,11 +888,11 @@ def legacy_prepare_cutoff_output(
         cutoff (float): cutoff value
         gbks (list[GBK]): list of gbks used in the analysis
     """
-    prepare_cutoff_folder(output_dir, label, cutoff)
+    prepare_cutoff_folder(run["output_dir"], run["label"], cutoff)
 
-    generate_bigscape_results_js(output_dir, label, cutoff)
+    generate_bigscape_results_js(run["output_dir"], run["label"], cutoff)
 
-    generate_run_data_js(output_dir, label, cutoff, gbks)
+    generate_run_data_js(run, cutoff, gbks)
 
 
 def legacy_prepare_bin_output(

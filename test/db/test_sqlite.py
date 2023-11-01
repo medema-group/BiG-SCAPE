@@ -62,9 +62,7 @@ class TestSQLite(TestCase):
         DB.create_in_mem()
 
         insert_row_query = (
-            "INSERT INTO gbk "
-            "(path, source_type, nt_seq) "
-            "VALUES ('test', 'test', 'test')"
+            "INSERT INTO gbk " "(path, nt_seq) " "VALUES ('test', 'test')"
         )
 
         result = DB.execute_raw_query(insert_row_query)
@@ -83,9 +81,7 @@ class TestSQLite(TestCase):
 
         for i in range(45):
             insert_row_query = (
-                "INSERT INTO gbk "
-                "(path, source_type, nt_seq) "
-                f"VALUES ('{i}.gbk', 'test', 'test')"
+                "INSERT INTO gbk " "(path, nt_seq) " f"VALUES ('{i}.gbk', 'test')"
             )
             DB.execute_raw_query(insert_row_query)
 

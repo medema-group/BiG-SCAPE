@@ -129,6 +129,40 @@ class RecordPairGenerator:
         if None in self.record_ids:
             raise ValueError("Region in bin has no db id!")
 
+    def cull_singletons(self, cutoff: float):
+        """Culls singletons for given cutoff, i.e. records which have either no edges
+        in the database, or all edges have a distance above/equal to the cutoff"""
+
+        if not DB.metadata:
+            raise RuntimeError("DB.metadata is None")
+
+        distance_table = DB.metadata.tables["distance"]
+
+        # get all distances in the table below the cutoff
+        select_statement = (
+            select(distance_table.c.region_a_id, distance_table.c.region_b_id)
+            .where(
+                distance_table.c.region_a_id.in_(self.record_ids)
+                | distance_table.c.region_b_id.in_(self.record_ids)
+            )
+            .where(distance_table.c.distance < cutoff)
+            .where(distance_table.c.weights == self.weights)
+        )
+
+        edges = DB.execute(select_statement).fetchall()
+
+        # get all record_ids in the edges
+        filtered_record_ids = set()
+        for edge in edges:
+            filtered_record_ids.update(edge)
+
+        self.record_ids = filtered_record_ids
+        self.source_records = [
+            record
+            for record in self.source_records
+            if record._db_id in filtered_record_ids
+        ]
+
     def __repr__(self) -> str:
         return (
             f"Bin '{self.label}': {self.num_pairs()} pairs from "
@@ -141,8 +175,8 @@ class QueryToRefRecordPairGenerator(RecordPairGenerator):
     ref <-> ref pairs
     """
 
-    def __init__(self, label: str):
-        super().__init__(label)
+    def __init__(self, label: str, weights: Optional[str] = None):
+        super().__init__(label, weights)
         self.reference_records: list[BGCRecord] = []
         self.query_records: list[BGCRecord] = []
 
@@ -225,10 +259,11 @@ class RefToRefRecordPairGenerator(RecordPairGenerator):
         source_records (list[BGCRecord]): List of BGC records to generate pairs from
     """
 
-    def __init__(self, label: str):
+    def __init__(self, label: str, weights: Optional[str] = None):
         self.record_id_to_obj: dict[int, BGCRecord] = {}
+        self.reference_record_ids: set[int] = set()
         self.done_record_ids: set[int] = set()
-        super().__init__(label)
+        super().__init__(label, weights)
 
     def generate_pairs(self, legacy_sorting=False) -> Generator[RecordPair, None, None]:
         """Returns an Generator for Region pairs in this bin, pairs are only generated between
@@ -288,6 +323,9 @@ class RefToRefRecordPairGenerator(RecordPairGenerator):
                 raise ValueError("Region in bin has no db id!")
 
             self.record_id_to_obj[record._db_id] = record
+            if record.parent_gbk is not None:
+                if record.parent_gbk.source_type == SOURCE_TYPE.REFERENCE:
+                    self.reference_record_ids.add(record._db_id)
 
         return super().add_records(record_list)
 
@@ -315,16 +353,18 @@ class RefToRefRecordPairGenerator(RecordPairGenerator):
                         select(distance_table.c.region_a_id)
                         .distinct()
                         .where(distance_table.c.distance < 1.0)
+                        .where(distance_table.c.weights == self.weights)
                     ),
                     bgc_record_table.c.id.in_(
                         select(distance_table.c.region_b_id)
                         .distinct()
                         .where(distance_table.c.distance < 1.0)
+                        .where(distance_table.c.weights == self.weights)
                     ),
                 )
             )
             .where(bgc_record_table.c.id.notin_(self.done_record_ids))
-            .where(gbk_table.c.source_type == SOURCE_TYPE.REFERENCE.value)
+            .where(bgc_record_table.c.id.in_(self.reference_record_ids))
             .join(gbk_table, bgc_record_table.c.gbk_id == gbk_table.c.id)
         )
 
@@ -364,16 +404,18 @@ class RefToRefRecordPairGenerator(RecordPairGenerator):
                         select(distance_table.c.region_a_id)
                         .distinct()
                         .where(distance_table.c.distance < 1.0)
+                        .where(distance_table.c.weights == self.weights)
                     ),
                     bgc_record_table.c.id.in_(
                         select(distance_table.c.region_b_id)
                         .distinct()
                         .where(distance_table.c.distance < 1.0)
+                        .where(distance_table.c.weights == self.weights)
                     ),
                 )
             )
             .where(bgc_record_table.c.id.notin_(self.done_record_ids))
-            .where(gbk_table.c.source_type == SOURCE_TYPE.REFERENCE.value)
+            .where(bgc_record_table.c.id.in_(self.reference_record_ids))
             .join(gbk_table, bgc_record_table.c.gbk_id == gbk_table.c.id)
         )
 
@@ -406,6 +448,7 @@ class RefToRefRecordPairGenerator(RecordPairGenerator):
                     select(distance_table.c.region_a_id)
                     .distinct()
                     .where(distance_table.c.distance < 1.0)
+                    .where(distance_table.c.weights == self.weights)
                 )
             )
             .where(
@@ -413,9 +456,10 @@ class RefToRefRecordPairGenerator(RecordPairGenerator):
                     select(distance_table.c.region_b_id)
                     .distinct()
                     .where(distance_table.c.distance < 1.0)
+                    .where(distance_table.c.weights == self.weights)
                 )
             )
-            .where(gbk_table.c.source_type == SOURCE_TYPE.REFERENCE.value)
+            .where(bgc_record_table.c.id.in_(self.reference_record_ids))
             .join(gbk_table, bgc_record_table.c.gbk_id == gbk_table.c.id)
         )
 
@@ -463,13 +507,71 @@ class RefToRefRecordPairGenerator(RecordPairGenerator):
                     .where(distance_table.c.distance < 1.0)
                 )
             )
-            .where(gbk_table.c.source_type == SOURCE_TYPE.REFERENCE.value)
+            .where(bgc_record_table.c.id.in_(self.reference_record_ids))
             .join(gbk_table, bgc_record_table.c.gbk_id == gbk_table.c.id)
         )
 
         singleton_reference_node_count = DB.execute(select_statement).scalar_one()
 
         return singleton_reference_node_count
+
+
+class ConnectedComponenetPairGenerator(RecordPairGenerator):
+    """Generator that takes as input a conected component and generates
+    all pairs from the nodes in the component"""
+
+    def __init__(self, connected_component, label: str):
+        super().__init__(label)
+        self.connected_component = connected_component
+        self.record_id_to_obj: dict[int, BGCRecord] = {}
+
+    def add_records(self, record_list: list[BGCRecord]):
+        """Adds BGC records to this bin and creates a generator for the pairs
+
+        also creates a dictionary of record id to record objects
+        """
+        cc_record_ids = set()
+        cc_record_list = []
+
+        for edge in self.connected_component:
+            record_a_id, record_b_id, dist, jacc, adj, dss, weights = edge
+            # Ensure that the correct weights are used,
+            # the weights are set during the binning process
+            self.weights = weights
+            cc_record_ids.add(record_a_id)
+            cc_record_ids.add(record_b_id)
+
+        for record in record_list:
+            if record._db_id is None:
+                raise ValueError("Region in bin has no db id!")
+            if record._db_id not in cc_record_ids:
+                continue
+
+            self.record_id_to_obj[record._db_id] = record
+            cc_record_list.append(record)
+
+        return super().add_records(cc_record_list)
+
+    def generate_pairs(self, legacy_sorting=False) -> Generator[RecordPair, None, None]:
+        """Returns a Generator for all pairs in this bin"""
+
+        for edge in self.connected_component:
+            record_a_id, record_b_id, dist, jacc, adj, dss, weights = edge
+            if self.weights != weights:
+                logging.error(
+                    "Edge in connected component does not have the same weight as the bin!"
+                )
+
+            record_a = self.record_id_to_obj[record_a_id]
+            record_b = self.record_id_to_obj[record_b_id]
+
+            if legacy_sorting:
+                sorted_a, sorted_b = sorted((record_a, record_b), key=sort_name_key)
+                pair = RecordPair(sorted_a, sorted_b)
+            else:
+                pair = RecordPair(record_a, record_b)
+
+            yield pair
 
 
 class MissingRecordPairGenerator(RecordPairGenerator):
@@ -513,6 +615,7 @@ class MissingRecordPairGenerator(RecordPairGenerator):
             select(distance_table.c.region_a_id, distance_table.c.region_b_id)
             .where(distance_table.c.region_a_id.in_(self.bin.record_ids))
             .where(distance_table.c.region_b_id.in_(self.bin.record_ids))
+            .where(distance_table.c.weights == self.bin.weights)
         )
 
         # generate a set of tuples of region id pairs
@@ -520,7 +623,13 @@ class MissingRecordPairGenerator(RecordPairGenerator):
 
         for pair in self.bin.generate_pairs(legacy_sorting):
             # if the pair is not in the set of existing distances, yield it
-            if (pair.region_a._db_id, pair.region_b._db_id) not in existing_distances:
+            if (
+                pair.region_a._db_id,
+                pair.region_b._db_id,
+            ) not in existing_distances and (
+                pair.region_a._db_id,
+                pair.region_b._db_id,
+            ) not in existing_distances:
                 yield pair
 
     def add_records(self, _: list[BGCRecord]):
