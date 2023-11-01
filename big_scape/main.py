@@ -353,8 +353,8 @@ def run_bigscape(run: dict) -> None:
         )
 
         for cutoff in run["gcf_cutoffs"]:
-            # if not run["include_singletons"]:
-            #     mix_bin.cull_singletons(cutoff)
+            if not run["include_singletons"]:
+                mix_bin.cull_singletons(cutoff)
 
             legacy_prepare_bin_output(run["output_dir"], run["label"], cutoff, mix_bin)
             legacy_generate_bin_output(run["output_dir"], run["label"], cutoff, mix_bin)
@@ -366,8 +366,8 @@ def run_bigscape(run: dict) -> None:
 
         for bin in legacy_class_bins:
             for cutoff in run["gcf_cutoffs"]:
-                # if not run["include_singletons"]:
-                #     bin.cull_singletons(cutoff)
+                if not run["include_singletons"]:
+                    bin.cull_singletons(cutoff)
                 legacy_prepare_bin_output(run["output_dir"], run["label"], cutoff, bin)
                 legacy_generate_bin_output(run["output_dir"], run["label"], cutoff, bin)
 
@@ -387,8 +387,8 @@ def run_bigscape(run: dict) -> None:
 
         for bin in as_class_bins:
             for cutoff in run["gcf_cutoffs"]:
-                # if not run["include_singletons"]:
-                #     bin.cull_singletons(cutoff)
+                if not run["include_singletons"]:
+                    bin.cull_singletons(cutoff)
                 legacy_prepare_bin_output(run["output_dir"], run["label"], cutoff, bin)
                 legacy_generate_bin_output(run["output_dir"], run["label"], cutoff, bin)
 

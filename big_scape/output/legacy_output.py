@@ -202,7 +202,9 @@ def generate_run_data_js(
         "classify": run["classify"].name.title() if run["classify"] else "Not Classify",
         "weights": "Legacy Weights" if run["legacy_weights"] else "Mix",
         "alignment_mode": run["alignment_mode"].name.title(),
-        "include_singletons": "Yes" if run["include_singletons"] else "No",
+        "include_singletons": "NA"
+        if "include_singletons" not in run.keys()
+        else ("Yes" if run["include_singletons"] else "No"),
         "input": {
             "accession": [],
             "accession_newick": [],
@@ -601,7 +603,6 @@ def generate_bs_data_js(
     bs_data = []
 
     # go through all gbks. no need to go through the network
-    # TODO: implement include singletons here, only write nodes if have edges
     for record in pair_generator.source_records:
         if record.parent_gbk is None:
             raise AttributeError("Record parent GBK is not set!")
@@ -664,7 +665,7 @@ def generate_bs_networks_js_sim_matrix(
     # by subracting distance from 1
 
     sparse_matrix = []
-    # TODO: implement include singletons here, only write nodes if have edges
+
     for record_idx, record_a in enumerate(pair_generator.source_records):
         a_record_id = record_a._db_id
 
@@ -730,6 +731,7 @@ def generate_bs_families_members(
         node_family[row.record_id] = row.family
 
     families_members: dict[int, list[int]] = {}
+
     for idx, record in enumerate(pair_generator.source_records):
         record_id = record._db_id
 
