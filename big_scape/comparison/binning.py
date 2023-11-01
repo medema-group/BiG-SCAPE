@@ -271,6 +271,7 @@ class RefToRefRecordPairGenerator(RecordPairGenerator):
 
     def __init__(self, label: str, weights: Optional[str] = None):
         self.record_id_to_obj: dict[int, BGCRecord] = {}
+        self.reference_record_ids: set[int] = set()
         self.done_record_ids: set[int] = set()
         super().__init__(label, weights)
 
@@ -332,6 +333,9 @@ class RefToRefRecordPairGenerator(RecordPairGenerator):
                 raise ValueError("Region in bin has no db id!")
 
             self.record_id_to_obj[record._db_id] = record
+            if record.parent_gbk is not None:
+                if record.parent_gbk.source_type == SOURCE_TYPE.REFERENCE:
+                    self.reference_record_ids.add(record._db_id)
 
         return super().add_records(record_list)
 
@@ -370,7 +374,7 @@ class RefToRefRecordPairGenerator(RecordPairGenerator):
                 )
             )
             .where(bgc_record_table.c.id.notin_(self.done_record_ids))
-            .where(gbk_table.c.source_type == SOURCE_TYPE.REFERENCE.value)
+            .where(bgc_record_table.c.id.in_(self.reference_record_ids))
             .join(gbk_table, bgc_record_table.c.gbk_id == gbk_table.c.id)
         )
 
@@ -421,7 +425,7 @@ class RefToRefRecordPairGenerator(RecordPairGenerator):
                 )
             )
             .where(bgc_record_table.c.id.notin_(self.done_record_ids))
-            .where(gbk_table.c.source_type == SOURCE_TYPE.REFERENCE.value)
+            .where(bgc_record_table.c.id.in_(self.reference_record_ids))
             .join(gbk_table, bgc_record_table.c.gbk_id == gbk_table.c.id)
         )
 
@@ -465,7 +469,7 @@ class RefToRefRecordPairGenerator(RecordPairGenerator):
                     .where(distance_table.c.weights == self.weights)
                 )
             )
-            .where(gbk_table.c.source_type == SOURCE_TYPE.REFERENCE.value)
+            .where(bgc_record_table.c.id.in_(self.reference_record_ids))
             .join(gbk_table, bgc_record_table.c.gbk_id == gbk_table.c.id)
         )
 
@@ -513,7 +517,7 @@ class RefToRefRecordPairGenerator(RecordPairGenerator):
                     .where(distance_table.c.distance < 1.0)
                 )
             )
-            .where(gbk_table.c.source_type == SOURCE_TYPE.REFERENCE.value)
+            .where(bgc_record_table.c.id.in_(self.reference_record_ids))
             .join(gbk_table, bgc_record_table.c.gbk_id == gbk_table.c.id)
         )
 

@@ -5,7 +5,6 @@
 CREATE TABLE IF NOT EXISTS gbk (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     path TEXT,
-    source_type TEXT,
     nt_seq TEXT,
     UNIQUE(path)
 );
