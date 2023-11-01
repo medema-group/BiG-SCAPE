@@ -357,7 +357,7 @@ def run_bigscape(run: dict) -> None:
                 mix_bin.cull_singletons(cutoff)
                 if len(mix_bin.record_ids) == 0:
                     logging.info(
-                        f"Network {mix_bin.label} with {cutoff} cutoff is empty after culling singletons"
+                        f"Network {mix_bin.label} with cutoff {cutoff} is empty after culling singletons"
                     )
                     continue
             legacy_prepare_bin_output(run["output_dir"], run["label"], cutoff, mix_bin)
@@ -374,7 +374,7 @@ def run_bigscape(run: dict) -> None:
                     bin.cull_singletons(cutoff)
                     if len(bin.record_ids) == 0:
                         logging.info(
-                            f"Network '{bin.label}' with {cutoff} cutoff is empty after culling singletons"
+                            f"Network '{bin.label}' with cutoff {cutoff} is empty after culling singletons"
                         )
                         continue
                 legacy_prepare_bin_output(run["output_dir"], run["label"], cutoff, bin)
@@ -400,7 +400,7 @@ def run_bigscape(run: dict) -> None:
                     bin.cull_singletons(cutoff)
                     if len(bin.record_ids) == 0:
                         logging.info(
-                            f"Network '{bin.label}' with {cutoff} cutoff is empty after culling singletons"
+                            f"Network '{bin.label}' with cutoff {cutoff} is empty after culling singletons"
                         )
                         continue
                 legacy_prepare_bin_output(run["output_dir"], run["label"], cutoff, bin)
