@@ -675,6 +675,126 @@ def generate_bs_networks_js_sim_matrix(
     return sparse_matrix
 
 
+def fetch_lcs_from_db(a_id: int, b_id: int, weights: str) -> dict[str, Any]:
+    """Find the lcs start, stop and direction for a pair of records in the database
+
+    Args:
+        a_id (int): record db id of region a
+        b_id (int): record db id of region b
+        weights (str): weights used in analysis
+    """
+    if DB.metadata is None:
+        raise RuntimeError("Database metadata is None!")
+    dist_table = DB.metadata.tables["distance"]
+    select_query = (
+        dist_table.select()
+        # .add_columns(
+        #     dist_table.c.region_a_id,
+        #     dist_table.c.region_b_id,
+        #     dist_table.c.lcs_a_start,
+        #     dist_table.c.lcs_a_stop,
+        #     dist_table.c.lcs_b_start,
+        #     dist_table.c.lcs_reverse,
+        # )
+        .where(dist_table.c.region_a_id.in_((a_id, b_id))).where(
+            dist_table.c.region_b_id.in_((a_id, b_id))
+        )
+        # .where(dist_table.c.weights == weights)
+        .compile()
+    )
+    result = DB.execute(select_query).fetchone()
+    if result is None:
+        raise RuntimeError(
+            "LCS not found in database (%s %s %s)" % (a_id, b_id, weights)
+        )
+    return dict(result._mapping)
+
+
+def adjust_lcs_to_all_genes(
+    result: dict[str, Any],
+    family_db_id: int,
+    bgc_db_id: int,
+    fam_gbk: GBK,
+    bgc_gbk: GBK,
+    domain_genes_to_all_genes: dict[int, dict[int, int]],
+    domain_count_gene: dict[int, list[int]],
+) -> tuple[int, int, bool]:
+    """Adjust boundaries of lcs from only genes with domains to all present genes
+
+    Args:
+        result (dict[str, Any]): database distance row with lcs information
+        family_db_id (int): database record id of family exemplar
+        bgc_db_id (int): database record id of family member
+        fam_gbk (GBK): family exemplar GBK
+        bgc_gbk (GBK): family member GBK
+        domain_genes_to_all_genes (dict[int, dict[int, int]]): maps indices from genes
+            with domains to all present genes
+        domain_count_gene (dict[int, list[int]]): contains the number of domains each
+            gene contains
+
+    Returns:
+        tuple[int, int, bool]: adjusted a_start, b_start and reverse
+    """
+    if result["region_a_id"] == family_db_id:
+        a_start = result["lcs_a_start"]
+        a_stop = result["lcs_a_stop"]
+        b_start = result["lcs_b_start"]
+        reverse = result["lcs_reverse"]
+
+        length = abs(a_start - a_stop)  # seed length
+        a_start = domain_genes_to_all_genes[family_db_id][a_start]
+        if length == 0:
+            pass
+
+        elif reverse:
+            b_start = domain_genes_to_all_genes[bgc_db_id][
+                len(domain_count_gene[bgc_db_id]) - b_start - 1
+            ]
+        else:
+            b_start = domain_genes_to_all_genes[bgc_db_id][b_start]
+
+    elif result["region_b_id"] == family_db_id:
+        a_start = result["lcs_b_start"]
+        a_stop = result["lcs_b_stop"]
+        b_start = result["lcs_a_start"]
+        reverse = result["lcs_reverse"]
+
+        length = abs(a_start - a_stop)  # seed length
+        if length == 0:
+            pass
+        elif reverse:
+            a_start = domain_genes_to_all_genes[family_db_id][
+                len(domain_count_gene[family_db_id]) - a_start - length
+            ]
+            b_start = domain_genes_to_all_genes[bgc_db_id][b_start + length - 1]
+        else:
+            a_start = domain_genes_to_all_genes[family_db_id][a_start]
+            b_start = domain_genes_to_all_genes[bgc_db_id][b_start]
+
+    if length == 0:
+        length = 1
+        # let's try aligning using the genes with most domains
+        # after all, they ended up being in the same GCF
+        # for some reason
+        x = max(domain_count_gene[family_db_id])
+        x = domain_count_gene[family_db_id].index(x)
+        a_start = domain_genes_to_all_genes[family_db_id][x]
+
+        y = max(list(domain_count_gene[bgc_db_id]))
+        y = domain_count_gene[bgc_db_id].index(y)
+
+        # check orientation
+        if fam_gbk.genes[x].strand == bgc_gbk.genes[y].strand:
+            b_start = domain_genes_to_all_genes[bgc_db_id][y]
+            reverse = False
+        else:
+            b_start = domain_genes_to_all_genes[bgc_db_id][
+                len(domain_count_gene[bgc_db_id]) - y - 1
+            ]
+            reverse = True
+    return a_start, b_start, reverse
+
+
 def generate_bs_families_alignment(
     bs_families: dict[int, list[int]], pair_generator: RecordPairGenerator
 ):
@@ -717,93 +837,22 @@ def generate_bs_families_alignment(
                 raise AttributeError("Record parent GBK is not set!")
             if bgc_db_id is None:
                 raise AttributeError("Record has no database id!")
+
             if bgc_db_id == family_db_id:
                 aln.append([[gene_num, 0] for gene_num in range(len(bgc_gbk.genes))])
             else:
-                if DB.metadata is None:
-                    raise RuntimeError("Database metadata is None!")
-                weights = pair_generator.weights
-                dist_table = DB.metadata.tables["distance"]
-                select_query = (
-                    dist_table.select()
-                    .add_columns(
-                        dist_table.c.region_a_id,
-                        dist_table.c.region_b_id,
-                        dist_table.c.lcs_a_start,
-                        dist_table.c.lcs_a_stop,
-                        dist_table.c.lcs_b_start,
-                        dist_table.c.lcs_reverse,
-                    )
-                    .where(dist_table.c.region_a_id.in_((family_db_id, bgc_db_id)))
-                    .where(dist_table.c.region_b_id.in_((family_db_id, bgc_db_id)))
-                    .where(dist_table.c.weights == weights)
-                    .compile()
+                result = fetch_lcs_from_db(
+                    family_db_id, bgc_db_id, pair_generator.weights
                 )
-                result = DB.execute(select_query).fetchone()
-                if result is None:
-                    raise RuntimeError(
-                        "LCS not found in database (%s %s %s)"
-                        % (family_db_id, bgc_db_id, weights)
-                    )
-                if result.region_a_id == family_db_id:
-                    a_start: int = result.lcs_a_start
-                    a_stop: int = result.lcs_a_stop
-                    b_start: int = result.lcs_b_start
-                    reverse: bool = result.lcs_reverse
-
-                    length = abs(a_start - a_stop)  # seed length
-                    a_start = domain_genes_to_all_genes[family_db_id][a_start]
-                    if length == 0:
-                        pass
-
-                    elif reverse:
-                        b_start = domain_genes_to_all_genes[bgc_db_id][
-                            len(domain_count_gene[bgc_db_id]) - b_start - 1
-                        ]
-                    else:
-                        b_start = domain_genes_to_all_genes[bgc_db_id][b_start]
-
-                elif result.region_b_id == family_db_id:
-                    a_start = result.lcs_b_start
-                    a_stop = result.lcs_b_stop
-                    b_start = result.lcs_a_start
-                    reverse = result.lcs_reverse
-
-                    length = abs(a_start - a_stop)  # seed length
-                    if length == 0:
-                        pass
-                    elif reverse:
-                        a_start = domain_genes_to_all_genes[family_db_id][
-                            len(domain_count_gene[family_db_id]) - a_start - length
-                        ]
-                        b_start = domain_genes_to_all_genes[bgc_db_id][
-                            b_start + length - 1
-                        ]
-                    else:
-                        a_start = domain_genes_to_all_genes[family_db_id][a_start]
-                        b_start = domain_genes_to_all_genes[bgc_db_id][b_start]
-
-                if length == 0:
-                    length = 1
-                    # let's try aligning using the genes with most domains
-                    # after all, they ended up being in the same GCF
-                    # for some reason
-                    x = max(domain_count_gene[family_db_id])
-                    x = domain_count_gene[family_db_id].index(x)
-                    a_start = domain_genes_to_all_genes[family_db_id][x]
-
-                    y = max(list(domain_count_gene[bgc_db_id]))
-                    y = domain_count_gene[bgc_db_id].index(y)
-
-                    # check orientation
-                    if fam_gbk.genes[x].strand == bgc_gbk.genes[y].strand:
-                        b_start = domain_genes_to_all_genes[bgc_db_id][y]
-                        reverse = False
-                    else:
-                        b_start = domain_genes_to_all_genes[bgc_db_id][
-                            len(domain_count_gene[bgc_db_id]) - y - 1
-                        ]
-                        reverse = True
+                a_start, b_start, reverse = adjust_lcs_to_all_genes(
+                    result,
+                    family_db_id,
+                    bgc_db_id,
+                    fam_gbk,
+                    bgc_gbk,
+                    domain_genes_to_all_genes,
+                    domain_count_gene,
+                )
                 ref_genes_.add(a_start)
 
                 bgc_algn = []
