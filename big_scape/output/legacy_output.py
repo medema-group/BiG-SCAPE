@@ -741,7 +741,10 @@ def generate_bs_families_alignment(
                 )
                 result = DB.execute(select_query).fetchone()
                 if result is None:
-                    raise RuntimeError("LCS not found in database")
+                    raise RuntimeError(
+                        "LCS not found in database (%s %s %s)"
+                        % (family_db_id, bgc_db_id, weights)
+                    )
                 if result.region_a_id == family_db_id:
                     a_start: int = result.lcs_a_start
                     a_stop: int = result.lcs_a_stop

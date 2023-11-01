@@ -268,6 +268,11 @@ class TestBGCBin(TestCase):
                         1.0,
                         1.0,
                         "mix",
+                        0,
+                        0,
+                        0,
+                        0,
+                        False,
                     )
                 )
             else:
@@ -281,6 +286,11 @@ class TestBGCBin(TestCase):
                         0.0,
                         0.0,
                         "mix",
+                        0,
+                        0,
+                        0,
+                        0,
+                        False,
                     )
                 )
 
@@ -357,6 +367,11 @@ class TestBGCBin(TestCase):
                         1.0,
                         1.0,
                         "mix",
+                        0,
+                        0,
+                        0,
+                        0,
+                        False,
                     )
                 )
             else:
@@ -370,6 +385,11 @@ class TestBGCBin(TestCase):
                         0.0,
                         0.0,
                         "mix",
+                        0,
+                        0,
+                        0,
+                        0,
+                        False,
                     )
                 )
 
@@ -397,6 +417,11 @@ class TestBGCBin(TestCase):
                 1.0,
                 1.0,
                 "mix",
+                0,
+                0,
+                0,
+                0,
+                False,
             )
         )
 
@@ -410,6 +435,11 @@ class TestBGCBin(TestCase):
                 0.0,
                 0.0,
                 "mix",
+                0,
+                0,
+                0,
+                0,
+                False,
             )
         )
         save_edge_to_db(
@@ -421,6 +451,11 @@ class TestBGCBin(TestCase):
                 0.0,
                 0.0,
                 "mix",
+                0,
+                0,
+                0,
+                0,
+                False,
             )
         )
         save_edge_to_db(
@@ -432,6 +467,11 @@ class TestBGCBin(TestCase):
                 0.0,
                 0.0,
                 "mix",
+                0,
+                0,
+                0,
+                0,
+                False,
             )
         )
 

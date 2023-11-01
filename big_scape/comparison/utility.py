@@ -13,7 +13,8 @@ from big_scape.comparison.binning import RecordPairGenerator, RecordPair
 
 
 def save_edge_to_db(
-    edge: tuple[int, int, float, float, float, float, str], upsert=False
+    edge: tuple[int, int, float, float, float, float, str, int, int, int, int, bool],
+    upsert=False,
 ) -> None:
     """Save edge to the database
 
@@ -23,7 +24,20 @@ def save_edge_to_db(
         upsert (bool, optional): whether to upsert the edge into the database.
     """
 
-    region_a_id, region_b_id, distance, jaccard, adjacency, dss, weights = edge
+    (
+        region_a_id,
+        region_b_id,
+        distance,
+        jaccard,
+        adjacency,
+        dss,
+        weights,
+        a_start,
+        a_stop,
+        b_start,
+        b_stop,
+        reverse,
+    ) = edge
 
     # save the comparison data to the database
 
@@ -41,6 +55,11 @@ def save_edge_to_db(
         adjacency=adjacency,
         dss=dss,
         weights=weights,
+        lcs_a_start=a_start,
+        lcs_a_stop=a_stop,
+        lcs_b_start=b_start,
+        lcs_b_stop=b_stop,
+        lcs_reverse=reverse,
     )
 
     if upsert:
