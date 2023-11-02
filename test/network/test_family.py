@@ -12,8 +12,9 @@ class TestAffinityPropagation(TestCase):
     """Contains tests for affinity propagation"""
 
     @staticmethod
-    def gen_edge_list():
-        """Generates the edge list that is used in all tests under this test case"""
+    def gen_adj_list():
+        """Generates the adjacency list that is used in all tests under this test case"""
+        adj_list: dict[int, dict[int, float]] = {}
 
         # graph topology:
         # (numbers indicate distance)
@@ -34,7 +35,9 @@ class TestAffinityPropagation(TestCase):
             [3, 6],
         ]
 
-        edge_list = []
+        for i in range(8):
+            adj_list[i] = {}
+            adj_list[i][i] = 0.0
 
         for a, b in combinations(range(8), 2):
             same_cluster = (a in c1 and b in c1) or (a in c2 and b in c2)
@@ -47,15 +50,16 @@ class TestAffinityPropagation(TestCase):
                 # don't add other edges. this is after cutoff
                 continue
 
-            edge_list.append((a, b, distance, 0, 0, 0, ""))
+            adj_list[a][b] = distance
+            adj_list[b][a] = distance
 
-        return edge_list
+        return adj_list
 
     def test_sim_matrix_from_graph(self):
         """Tests whether sim_matrix_from_graph correctly generates a similarity matrix
         from a given graph using the given edge property
         """
-        adj_list = TestAffinityPropagation.gen_edge_list()
+        adj_list = TestAffinityPropagation.gen_adj_list()
 
         expected_sim_matrix = [
             [1.0, 0.99, 0.99, 0.99, 0.0, 0.0, 0.0, 0.0],
@@ -68,9 +72,7 @@ class TestAffinityPropagation(TestCase):
             [0.0, 0.0, 0.0, 0.0, 0.99, 0.99, 0.99, 1.0],
         ]
 
-        actual_sim_matrix, _ = bs_families.edge_list_to_sim_matrix(adj_list)
-
-        actual_sim_matrix = actual_sim_matrix.tolist()
+        actual_sim_matrix = bs_families.adj_list_to_sim_matrix(adj_list)
 
         # check if the matrices have the exact same values
         self.assertListEqual(expected_sim_matrix, actual_sim_matrix)
@@ -79,9 +81,9 @@ class TestAffinityPropagation(TestCase):
         """Tests whether affinity propagation is correctly executed on a similarity
         matrix
         """
-        adj_list = TestAffinityPropagation.gen_edge_list()
+        adj_list = TestAffinityPropagation.gen_adj_list()
 
-        sim_matrix, _ = bs_families.edge_list_to_sim_matrix(adj_list)
+        sim_matrix = bs_families.adj_list_to_sim_matrix(adj_list)
 
         expected_labels = [0, 0, 0, 0, 1, 1, 1, 1]
 
