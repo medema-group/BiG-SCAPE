@@ -22,6 +22,7 @@ from big_scape.output import (
     legacy_prepare_cutoff_output,
     legacy_prepare_bin_output,
     legacy_generate_bin_output,
+    write_record_annotations_file,
 )
 
 
@@ -341,8 +342,10 @@ def run_bigscape(run: dict) -> None:
 
     # prepare output files per cutoff
     for cutoff in run["gcf_cutoffs"]:
-        # TODO: update to use records and not gbk regions
+        # TODO: update to use records and not gbk regions?
         legacy_prepare_cutoff_output(run, cutoff, gbks)
+        # write annotations file
+        write_record_annotations_file(run, cutoff, all_bgc_records)
 
     # mix
 

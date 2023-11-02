@@ -6,12 +6,14 @@ import shutil
 from distutils import dir_util
 from pathlib import Path
 from typing import Any
+from sqlalchemy import select
 
 # from other modules
 from big_scape.data import DB
 from big_scape.comparison import RecordPairGenerator, legacy_get_class
 from big_scape.genbank import GBK, CDS
 from big_scape.enums import SOURCE_TYPE
+from big_scape.comparison import get_record_category
 
 import big_scape.network.network as bs_network
 import big_scape.network.utility as bs_network_utility
@@ -934,3 +936,70 @@ def legacy_generate_bin_output(
     generate_bs_networks_js(
         output_dir, label, cutoff, pair_generator, networks_families
     )
+
+
+def write_record_annotations_file(run, cutoff, all_bgc_records):
+    """Writes the record annotations file to the output directory
+    Formerly Network_Annotations_Full.tsv"""
+
+    output_dir = run["output_dir"]
+    label = run["label"]
+    output_network_root = output_dir / "html_content/networks"
+    cutoff_path = output_network_root / f"{label}_c{cutoff}"
+    record_annotations_path = cutoff_path / "record_annotations.tsv"
+
+    if not DB.metadata:
+        raise RuntimeError("DB.metadata is None")
+    bgc_record_table = DB.metadata.tables["bgc_record"]
+    gbk_table = DB.metadata.tables["gbk"]
+
+    with open(record_annotations_path, "w") as record_annotations_file:
+        header = "\t".join(
+            [
+                "GBK",
+                "Record_Type",
+                "Record_Number",
+                "Class",
+                "Category",
+                "Organism",
+            ]
+        )
+        record_annotations_file.write(header + "\n")
+
+        for record in all_bgc_records:
+            record_id = record._db_id
+            parent_gbk = record.parent_gbk
+
+            if "organism" in parent_gbk.metadata:
+                organism = parent_gbk.metadata["organism"]
+            else:
+                organism = "Unknown"
+
+            select_statment = select(
+                bgc_record_table.c.gbk_id,
+                bgc_record_table.c.record_number,
+                bgc_record_table.c.record_type,
+                bgc_record_table.c.product,
+            ).where(bgc_record_table.c.id == record_id)
+            gbk_id, record_number, record_type, product = DB.execute(
+                select_statment
+            ).fetchone()
+
+            category = get_record_category(record)
+
+            select_statment = select(gbk_table.c.path).where(gbk_table.c.id == gbk_id)
+
+            gbk_path = DB.execute(select_statment).fetchone()[0]
+            # gbk_path = gbk_path.split("/")[-1]
+
+            row = "\t".join(
+                [
+                    str(gbk_path),
+                    record_type,
+                    str(record_number),
+                    product,
+                    category,
+                    organism,
+                ]
+            )
+            record_annotations_file.write(row + "\n")
