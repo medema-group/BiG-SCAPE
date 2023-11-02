@@ -966,18 +966,14 @@ def write_record_annotations_file(run, cutoff, all_bgc_records):
                 "Class",
                 "Category",
                 "Organism",
+                "Taxonomy",
+                "Description",
             ]
         )
         record_annotations_file.write(header + "\n")
 
         for record in all_bgc_records:
             record_id = record._db_id
-            parent_gbk = record.parent_gbk
-
-            if "organism" in parent_gbk.metadata:
-                organism = parent_gbk.metadata["organism"]
-            else:
-                organism = "Unknown"
 
             select_statment = select(
                 bgc_record_table.c.gbk_id,
@@ -991,9 +987,16 @@ def write_record_annotations_file(run, cutoff, all_bgc_records):
 
             category = get_record_category(record)
 
-            select_statment = select(gbk_table.c.path).where(gbk_table.c.id == gbk_id)
+            select_statment = select(
+                gbk_table.c.path,
+                gbk_table.c.organism,
+                gbk_table.c.taxonomy,
+                gbk_table.c.description,
+            ).where(gbk_table.c.id == gbk_id)
 
-            gbk_path = DB.execute(select_statment).fetchone()[0]
+            gbk_path, organism, taxonomy, description = DB.execute(
+                select_statment
+            ).fetchone()
             # gbk_path = gbk_path.split("/")[-1]
 
             row = "\t".join(
@@ -1004,6 +1007,8 @@ def write_record_annotations_file(run, cutoff, all_bgc_records):
                     product,
                     category,
                     organism,
+                    taxonomy,
+                    description,
                 ]
             )
             record_annotations_file.write(row + "\n")

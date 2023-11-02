@@ -143,6 +143,7 @@ class TestHMMScan(TestCase):
         )
 
         gbk = GBK("", bs_enums.SOURCE_TYPE.QUERY)
+        gbk.metadata = {"organism": "test", "taxonomy": "test", "description": "test"}
         gbk.save()
 
         cds = CDS(0, len(aa_seq) * 3)

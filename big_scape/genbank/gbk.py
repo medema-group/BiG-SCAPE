@@ -149,10 +149,20 @@ class GBK:
         if not DB.metadata:
             raise RuntimeError("DB.metadata is None")
 
+        organism = self.metadata["organism"]
+        taxonomy = self.metadata["taxonomy"]
+        description = self.metadata["description"]
+
         gbk_table = DB.metadata.tables["gbk"]
         insert_query = (
             gbk_table.insert()
-            .values(path=str(self.path), nt_seq=str(self.nt_seq))
+            .values(
+                path=str(self.path),
+                nt_seq=str(self.nt_seq),
+                organism=organism,
+                taxonomy=taxonomy,
+                description=description,
+            )
             .returning(gbk_table.c.id)
             .compile()
         )
@@ -206,6 +216,9 @@ class GBK:
                 gbk_table.c.id,
                 gbk_table.c.path,
                 gbk_table.c.nt_seq,
+                gbk_table.c.organism,
+                gbk_table.c.taxonomy,
+                gbk_table.c.description,
             )
             .compile()
         )
@@ -217,6 +230,9 @@ class GBK:
             new_gbk = GBK(Path(result.path), "")
             new_gbk._db_id = result.id
             new_gbk.nt_seq = result.nt_seq
+            new_gbk.metadata["organism"] = result.organism
+            new_gbk.metadata["taxonomy"] = result.taxonomy
+            new_gbk.metadata["description"] = result.description
             gbk_dict[result.id] = new_gbk
 
         # load GBK regions. This will also populate all record levels below region
@@ -250,6 +266,9 @@ class GBK:
                 gbk_table.c.path,
                 gbk_table.c.source_type,
                 gbk_table.c.nt_seq,
+                gbk_table.c.organism,
+                gbk_table.c.taxonomy,
+                gbk_table.c.description,
             )
             .where(gbk_table.c.id == gbk_id)
             .compile()
@@ -263,6 +282,9 @@ class GBK:
         new_gbk = GBK(Path(result.path), result.source_type)
         new_gbk._db_id = result.id
         new_gbk.nt_seq = result.nt_seq
+        new_gbk.metadata["organism"] = result.organism
+        new_gbk.metadata["taxonomy"] = result.taxonomy
+        new_gbk.metadata["description"] = result.description
 
         return new_gbk
 
@@ -288,6 +310,9 @@ class GBK:
                 gbk_table.c.path,
                 gbk_table.c.source_type,
                 gbk_table.c.nt_seq,
+                gbk_table.c.organism,
+                gbk_table.c.taxonomy,
+                gbk_table.c.description,
             )
             .where(gbk_table.c.id.in_(gbk_ids))
             .compile()
@@ -300,6 +325,9 @@ class GBK:
             new_gbk = GBK(Path(result.path), result.source_type)
             new_gbk._db_id = result.id
             new_gbk.nt_seq = result.nt_seq
+            new_gbk.metadata["organism"] = result.organism
+            new_gbk.metadata["taxonomy"] = result.taxonomy
+            new_gbk.metadata["description"] = result.description
             gbk_dict[result.id] = new_gbk
 
         # load GBK regions. This will also populate all record levels below region
@@ -358,8 +386,27 @@ class GBK:
         record: SeqRecord = next(SeqIO.parse(path, "genbank"))
         gbk.nt_seq = record.seq
 
+        gbk.metadata["description"] = record.description
+
         if "organism" in record.annotations:
-            gbk.metadata["organism"] = record.annotations["organism"]
+            if record.annotations["organism"] == "":
+                gbk.metadata["organism"] = "Unknown"
+            else:
+                gbk.metadata["organism"] = record.annotations["organism"]
+        else:
+            gbk.metadata["organism"] = "Unknown"
+
+        if "taxonomy" in record.annotations:
+            taxonomy = record.annotations["taxonomy"]
+            if len(taxonomy) == 1:
+                gbk.metadata["taxonomy"] = taxonomy[0]
+            if len(taxonomy) > 1:
+                taxonomy = ";".join(taxonomy)
+                gbk.metadata["taxonomy"] = taxonomy
+            else:
+                gbk.metadata["taxonomy"] = "Unknown"
+        else:
+            gbk.metadata["taxonomy"] = "Unknown"
 
         as_version = GBK.get_as_version(record)
         # check if found version number is valid

@@ -6,6 +6,9 @@ CREATE TABLE IF NOT EXISTS gbk (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     path TEXT,
     nt_seq TEXT,
+    organism TEXT,
+    taxonomy TEXT,
+    description TEXT,
     UNIQUE(path)
 );
 

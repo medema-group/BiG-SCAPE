@@ -23,6 +23,7 @@ def create_mock_gbk(i) -> bs_gbk.GBK:
     cds.strand = 1
     gbk.genes.append(cds)
     gbk.region = bs_gbk.Region(gbk, 1, 0, 100, False, "test")
+    gbk.metadata = {"organism": "test", "taxonomy": "test", "description": "test"}
     return gbk
 
 
