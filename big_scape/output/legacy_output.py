@@ -741,7 +741,11 @@ def generate_bs_families_members(
     for idx, record in enumerate(pair_generator.source_records):
         record_id = record._db_id
 
+        if record_id is None:
+            raise AttributeError("Record id is None!")
+
         if record_id not in node_family:
+            families_members[record_id] = [idx]
             continue
 
         family_id = node_family[record_id]
