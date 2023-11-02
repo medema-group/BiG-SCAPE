@@ -576,6 +576,8 @@ def generate_bs_data_js(
             "id": str, (e.g. AL645882.2.cluster010),
             "mibig": bool,
             "source": str, (e.g. mibig, reference, or query),
+            "record_start": int, (e.g. cds boundaries of protocluster, index starts at 1)
+            "record_stop": int,
             "orfs": [
                 {
                     "domains": [
@@ -612,6 +614,9 @@ def generate_bs_data_js(
         if record.parent_gbk is None:
             raise AttributeError("Record parent GBK is not set!")
 
+        rec_cds = record.get_cds()
+        rec_start = rec_cds[0].orf_num
+        rec_stop = rec_cds[-1].orf_num
         gbk = record.parent_gbk
         organism = "Unknown"
         if "organism" in gbk.metadata:
@@ -625,6 +630,8 @@ def generate_bs_data_js(
                 "id": gbk.path.name,
                 "mibig": gbk.source_type == SOURCE_TYPE.MIBIG,
                 "source": gbk.source_type.name.lower(),
+                "record_start": rec_start,
+                "record_stop": rec_stop,
                 "orfs": generate_bs_data_js_orfs(gbk),
             }
         )
@@ -714,18 +721,10 @@ def fetch_lcs_from_db(a_id: int, b_id: int, weights: str) -> dict[str, Any]:
     dist_table = DB.metadata.tables["distance"]
     select_query = (
         dist_table.select()
-        # .add_columns(
-        #     dist_table.c.region_a_id,
-        #     dist_table.c.region_b_id,
-        #     dist_table.c.lcs_a_start,
-        #     dist_table.c.lcs_a_stop,
-        #     dist_table.c.lcs_b_start,
-        #     dist_table.c.lcs_reverse,
-        # )
-        .where(dist_table.c.region_a_id.in_((a_id, b_id))).where(
-            dist_table.c.region_b_id.in_((a_id, b_id))
-        )
-        # .where(dist_table.c.weights == weights)
+        .where(dist_table.c.region_a_id != dist_table.c.region_b_id)
+        .where(dist_table.c.region_a_id.in_((a_id, b_id)))
+        .where(dist_table.c.region_b_id.in_((a_id, b_id)))
+        .where(dist_table.c.weights == weights)
         .compile()
     )
     result = DB.execute(select_query).fetchone()
