@@ -14,7 +14,26 @@ from big_scape.enums import ALIGNMENT_MODE
 
 
 def save_edge_to_db(
-    edge: tuple[int, int, float, float, float, float, str, int, int, int, int, bool],
+    edge: tuple[
+        int,
+        int,
+        float,
+        float,
+        float,
+        float,
+        str,
+        int,
+        int,
+        int,
+        int,
+        bool,
+        int,
+        int,
+        int,
+        int,
+        bool,
+        ALIGNMENT_MODE,
+    ],
     upsert=False,
 ) -> None:
     """Save edge to the database
@@ -33,11 +52,17 @@ def save_edge_to_db(
         adjacency,
         dss,
         weights,
-        a_start,
-        a_stop,
-        b_start,
-        b_stop,
-        reverse,
+        lcs_a_start,
+        lcs_a_stop,
+        lcs_b_start,
+        lcs_b_stop,
+        lcs_reverse,
+        ext_a_start,
+        ext_a_stop,
+        ext_b_start,
+        ext_b_stop,
+        ext_reverse,
+        alignment_mode,
     ) = edge
 
     # save the comparison data to the database
@@ -56,11 +81,17 @@ def save_edge_to_db(
         adjacency=adjacency,
         dss=dss,
         weights=weights,
-        lcs_a_start=a_start,
-        lcs_a_stop=a_stop,
-        lcs_b_start=b_start,
-        lcs_b_stop=b_stop,
-        lcs_reverse=reverse,
+        lcs_a_start=lcs_a_start,
+        lcs_a_stop=lcs_a_stop,
+        lcs_b_start=lcs_b_start,
+        lcs_b_stop=lcs_b_stop,
+        lcs_reverse=lcs_reverse,
+        ext_a_start=ext_a_start,
+        ext_a_stop=ext_a_stop,
+        ext_b_start=ext_b_start,
+        ext_b_stop=ext_b_stop,
+        ext_reverse=ext_reverse,
+        alignment_mode=alignment_mode.value,
     )
 
     if upsert:
