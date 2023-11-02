@@ -18,7 +18,6 @@ from .legacy_workflow_alt import generate_edges
 from .utility import save_edge_to_db, save_edges_to_db
 
 from . import lcs
-from . import extend
 
 __all__ = [
     "RecordPair",
@@ -37,6 +36,5 @@ __all__ = [
     "get_record_category",
     "save_edge_to_db",
     "lcs",
-    "extend",
     "save_edges_to_db",
 ]
