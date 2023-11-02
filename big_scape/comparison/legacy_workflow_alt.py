@@ -23,12 +23,7 @@ import big_scape.enums as bs_enums
 # from this module
 from .binning import RecordPairGenerator, RecordPair
 from .legacy_bins import LEGACY_WEIGHTS
-from .legacy_extend import (
-    legacy_needs_expand_pair,
-    expand_glocal,
-    check_expand,
-    reset_expansion,
-)
+from .extend import extend, reset, check
 from .legacy_lcs import legacy_find_cds_lcs
 
 T = TypeVar("T")
@@ -204,10 +199,16 @@ def do_lcs_pair(
     pair.comparable_region.b_stop = b_stop
     pair.comparable_region.reverse = reverse
 
-    if legacy_needs_expand_pair(pair, alignment_mode):
+    if alignment_mode == bs_enums.ALIGNMENT_MODE.GLOBAL:
+        return False
+
+    if alignment_mode == bs_enums.ALIGNMENT_MODE.GLOCAL:
         return True
 
-    reset_expansion(pair.comparable_region)
+    if check(pair.comparable_region, 0, True):
+        return True
+
+    reset(pair.comparable_region)
     return False
 
 
@@ -220,10 +221,10 @@ def expand_pair(pair: RecordPair) -> float:
     Returns:
         float: jaccard index
     """
-    expand_glocal(pair.comparable_region)
+    extend(pair.comparable_region)
 
-    if not check_expand(pair.comparable_region):
-        reset_expansion(pair.comparable_region)
+    if not check(pair.comparable_region, 0, True):
+        reset(pair.comparable_region)
         jc = calc_jaccard_pair(pair)
         return jc
 
