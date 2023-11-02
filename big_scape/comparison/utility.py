@@ -10,6 +10,7 @@ from sqlalchemy import insert
 # from other modules
 from big_scape.data import DB
 from big_scape.comparison.binning import RecordPairGenerator, RecordPair
+from big_scape.enums import ALIGNMENT_MODE
 
 
 def save_edge_to_db(
@@ -70,7 +71,26 @@ def save_edge_to_db(
 
 def save_edges_to_db(
     edges: list[
-        tuple[int, int, float, float, float, float, str, int, int, int, int, bool]
+        tuple[
+            int,
+            int,
+            float,
+            float,
+            float,
+            float,
+            str,
+            int,
+            int,
+            int,
+            int,
+            bool,
+            int,
+            int,
+            int,
+            int,
+            bool,
+            ALIGNMENT_MODE,
+        ]
     ]
 ) -> None:
     """Save many edges to the database
@@ -96,7 +116,7 @@ def save_edges_to_db(
     # create a query
     # TODO: this should not need ignore. it's there now because protoclusters somehow
     # trigger an integrityerror
-    query = "INSERT OR IGNORE INTO distance VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"
+    query = "INSERT OR IGNORE INTO distance VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"
 
     cursor.executemany(query, edges)
 

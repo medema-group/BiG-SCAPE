@@ -81,6 +81,12 @@ CREATE TABLE IF NOT EXISTS distance (
     lcs_b_start INTEGER NOT NULL,
     lcs_b_stop INTEGER NOT NULL,
     lcs_reverse BOOLEAN NOT NULL,
+    ext_a_start INTEGER NOT NULL,
+    ext_a_stop INTEGER NOT NULL,
+    ext_b_start INTEGER NOT NULL,
+    ext_b_stop INTEGER NOT NULL,
+    ext_reverse BOOLEAN NOT NULL,
+    alignment_mode TEXT NOT NULL,
     UNIQUE(region_a_id, region_b_id)
     FOREIGN KEY(region_a_id) REFERENCES bgc_record(id)
     FOREIGN KEY(region_b_id) REFERENCES bgc_record(id)

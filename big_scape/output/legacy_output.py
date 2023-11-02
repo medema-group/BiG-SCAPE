@@ -784,7 +784,10 @@ def adjust_lcs_to_all_genes(
         y = domain_count_gene[bgc_db_id].index(y)
 
         # check orientation
-        if fam_gbk.genes[x].strand == bgc_gbk.genes[y].strand:
+        if (
+            fam_gbk.genes[domain_genes_to_all_genes[family_db_id][x]].strand
+            == bgc_gbk.genes[domain_genes_to_all_genes[bgc_db_id][y]].strand
+        ):
             b_start = domain_genes_to_all_genes[bgc_db_id][y]
             reverse = False
         else:

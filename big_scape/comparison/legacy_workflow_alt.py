@@ -178,6 +178,12 @@ def generate_edges(
                         pair.comparable_region.lcs_b_start,
                         pair.comparable_region.lcs_b_stop,
                         pair.comparable_region.lcs_reverse,
+                        pair.comparable_region.a_start,
+                        pair.comparable_region.a_stop,
+                        pair.comparable_region.b_start,
+                        pair.comparable_region.b_stop,
+                        pair.comparable_region.reverse,
+                        pair.comparable_region.alignment_mode.value,
                     )
 
                 done_pairs += len(results)
@@ -238,6 +244,7 @@ def expand_pair(pair: RecordPair) -> float:
         jc = calc_jaccard_pair(pair)
         return jc
 
+    pair.comparable_region.alignment_mode = bs_enums.ALIGNMENT_MODE.GLOCAL
     jc = calc_jaccard_pair(pair)
 
     return jc

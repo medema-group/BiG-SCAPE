@@ -10,6 +10,7 @@ from typing import TYPE_CHECKING, Optional
 # from other modules
 from big_scape.genbank import BGCRecord
 from big_scape.hmm import HSP
+from big_scape.enums import ALIGNMENT_MODE
 
 # from this module
 from .legacy_lcs import legacy_find_cds_lcs
@@ -67,6 +68,7 @@ class ComparableRegion:
         self.lcs_a_stop = a_stop
         self.lcs_b_stop = b_stop
         self.lcs_reverse = reverse
+        self.alignment_mode: ALIGNMENT_MODE = ALIGNMENT_MODE.GLOBAL
 
     def get_domain_sets(
         self, regenerate=False, cache=True
