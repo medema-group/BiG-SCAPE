@@ -45,6 +45,7 @@ def benchmark(ctx, *args, **kwargs):
     """
     # get context parameters
     ctx.obj.update(ctx.params)
+    ctx.obj["mode"] = "Benchmark"
 
     # workflow validations
     validate_output_paths(ctx)

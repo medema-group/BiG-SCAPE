@@ -9,11 +9,12 @@ var BigscapeFunc = {
   ]
 };
 
-function Bigscape(bs_data, bs_families, bs_alignment, bs_similarity, network_container, options = {}) {
+function Bigscape(run_data, bs_data, bs_families, bs_alignment, bs_similarity, network_container, options = {}) {
   var bigscape = this;
   var graph = Viva.Graph.graph();
   var graphics = Viva.Graph.View.svgGraphics();
   var bs_data = bs_data;
+  var run_data = run_data;
   var bs_families = bs_families;
   var bs_alignment = bs_alignment;
   var bs_similarity = bs_similarity;
@@ -267,7 +268,8 @@ function Bigscape(bs_data, bs_families, bs_alignment, bs_similarity, network_con
 
   // options
   var intra_cutoff = options.intra_cutoff ? options.intra_cutoff : 0;
-  var inter_cutoff = options.inter_cutoff ? options.inter_cutoff : 0.25;
+  var inter_cutoff = options.inter_cutoff ? options.inter_cutoff : 0;
+  // var inter_cutoff = options.inter_cutoff ? options.inter_cutoff : 0.25;
   var fam_colors = options.fam_colors ? options.fam_colors : [];
 
   // public functions
@@ -320,10 +322,19 @@ function Bigscape(bs_data, bs_families, bs_alignment, bs_similarity, network_con
     var ui = Viva.Graph.svg('circle')
       .attr('r', 10)
       .attr('fill', (fam_colors[bs_to_cl[node.id]]));
-    if (bs_data[node.id]["mibig"]) {
-      ui.attr("stroke", "blue");
-      ui.attr("stroke-width", "4px");
-    }
+      if (run_data["mode"] == "Cluster") {
+        if (bs_data[node.id]["source"] == ("mibig" || "reference")) {
+          ui.attr("stroke", "blue");
+          ui.attr("stroke-width", "4px");
+        }
+      }
+      if (run_data["mode"] == "Query") {
+        if (bs_data[node.id]["source"] == "query") {
+          // ui.attr("r", "20")
+          ui.attr("stroke", "green");
+          ui.attr("stroke-width", "6px");
+        }
+      }
     $(ui).hover(function () { // mouse over
       var temp_highlight = [];
       for (var i in highlighted_nodes) {

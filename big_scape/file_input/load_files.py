@@ -242,7 +242,9 @@ def load_gbks(run: dict, bigscape_dir: Path) -> list[GBK]:
     input_gbks = []
 
     if run["query_bgc_path"]:
-        query_bgc_gbk = GBK(run["query_bgc_path"], bs_enums.SOURCE_TYPE.QUERY)
+        query_bgc_gbk = GBK.parse(
+            run["query_bgc_path"], bs_enums.SOURCE_TYPE.QUERY, run
+        )
         input_gbks.append(query_bgc_gbk)
 
         query_bgc_stem = run["query_bgc_path"].stem
@@ -292,12 +294,16 @@ def load_gbks(run: dict, bigscape_dir: Path) -> list[GBK]:
     if task_state != bs_enums.TASK.LOAD_GBKS:
         logging.info("Loading existing run from disk...")
 
-        gbks = GBK.load_all()
+        source_dict = {gbk.path: gbk.source_type for gbk in input_gbks}
 
-        for gbk in gbks:
+        gbks_from_db = GBK.load_all()
+        for gbk in gbks_from_db:
+            gbk.source_type = source_dict[gbk.path]
+
+        for gbk in gbks_from_db:
             bs_hmm.HSP.load_all(gbk.genes)
 
-        return gbks
+        return gbks_from_db
 
     # if we end up here, we are in some halfway state and need to load in the new data
     logging.info("Loading existing run from disk and adding new data...")

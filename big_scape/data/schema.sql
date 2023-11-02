@@ -5,7 +5,6 @@
 CREATE TABLE IF NOT EXISTS gbk (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     path TEXT,
-    source_type TEXT,
     nt_seq TEXT,
     UNIQUE(path)
 );
@@ -87,7 +86,7 @@ CREATE TABLE IF NOT EXISTS distance (
     ext_b_stop INTEGER NOT NULL,
     ext_reverse BOOLEAN NOT NULL,
     alignment_mode TEXT NOT NULL,
-    UNIQUE(region_a_id, region_b_id)
+    UNIQUE(region_a_id, region_b_id, weights)
     FOREIGN KEY(region_a_id) REFERENCES bgc_record(id)
     FOREIGN KEY(region_b_id) REFERENCES bgc_record(id)
 );

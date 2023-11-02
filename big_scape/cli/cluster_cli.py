@@ -31,6 +31,22 @@ from .cli_validations import (
         "all input BGCs to the query in a one-vs-all mode."
     ),
 )
+# comparison parameters
+@click.option(
+    "--legacy_classify",
+    is_flag=True,
+    help=(
+        "Does not use antiSMASH BGC classes to run analyses on "
+        "class-based bins, instead it uses BiG-SCAPE v1 predefined groups: "
+        "PKS1, PKSOther, NRPS, NRPS-PKS-hybrid, RiPP, Saccharide, Terpene, Others."
+        "Will also use BiG-SCAPEv1 legacy_weights for distance calculations."
+        "This feature is available for backwards compatibility with "
+        "antiSMASH versions up to v7. For higher antiSMASH versions, use"
+        " at your own risk, as BGC classes may have changed. All antiSMASH"
+        "classes that this legacy mode does not recognize will be grouped in"
+        " 'others'."
+    ),
+)
 # binning parameters
 @click.option("--no_mix", is_flag=True, help=("Dont run the all-vs-all analysis"))
 # networking parameters
@@ -52,6 +68,7 @@ def cluster(ctx, *args, **kwargs):
     # get context parameters
     ctx.obj.update(ctx.params)
     ctx.obj["query_bgc_path"] = None
+    ctx.obj["mode"] = "Cluster"
 
     # workflow validations
     validate_binning_cluster_workflow(ctx)

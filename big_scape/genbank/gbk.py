@@ -152,11 +152,7 @@ class GBK:
         gbk_table = DB.metadata.tables["gbk"]
         insert_query = (
             gbk_table.insert()
-            .values(
-                path=str(self.path),
-                nt_seq=str(self.nt_seq),
-                source_type=self.source_type.value,
-            )
+            .values(path=str(self.path), nt_seq=str(self.nt_seq))
             .returning(gbk_table.c.id)
             .compile()
         )
@@ -209,7 +205,6 @@ class GBK:
             .add_columns(
                 gbk_table.c.id,
                 gbk_table.c.path,
-                gbk_table.c.source_type,
                 gbk_table.c.nt_seq,
             )
             .compile()
@@ -219,8 +214,7 @@ class GBK:
 
         gbk_dict = {}
         for result in cursor_result.all():
-            source_type = SOURCE_TYPE[result.source_type.upper()]
-            new_gbk = GBK(Path(result.path), source_type)
+            new_gbk = GBK(Path(result.path), "")
             new_gbk._db_id = result.id
             new_gbk.nt_seq = result.nt_seq
             gbk_dict[result.id] = new_gbk
