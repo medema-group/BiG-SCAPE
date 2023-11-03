@@ -118,14 +118,15 @@ def save_edges_to_db(
             int,
             int,
             bool,
-            ALIGNMENT_MODE,
+            str,
         ]
     ]
 ) -> None:
     """Save many edges to the database
 
     Args:
-        edges (list[tuple[]]): list of edges to save
+        edges (list[tuple[int, int, float, float, float, float, str, int, int, int, int,
+               int, int, int, int, bool, str]]): list of edges to save
     """
     # save the comparison data to the database
     # using raw sqlite for this because sqlalchemy is not fast enough
