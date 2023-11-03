@@ -942,9 +942,18 @@ def legacy_generate_bin_output(
     )
 
 
-def write_record_annotations_file(run, cutoff, all_bgc_records):
+def write_record_annotations_file(run, cutoff, all_bgc_records) -> None:
     """Writes the record annotations file to the output directory
-    Formerly Network_Annotations_Full.tsv"""
+    Formerly Network_Annotations_Full.tsv
+
+    Args:
+        run (dict): contains the run parameters
+        cutoff (float): distance metric cutoff
+        all_bgc_records (list): contains all bgc records in this run
+
+    Raises:
+        RuntimeError: if database not available
+    """
 
     output_dir = run["output_dir"]
     label = run["label"]
@@ -1012,3 +1021,76 @@ def write_record_annotations_file(run, cutoff, all_bgc_records):
                 ]
             )
             record_annotations_file.write(row + "\n")
+
+    return None
+
+
+def write_clustering_file(run, cutoff, pair_generator) -> None:
+    """Writes the clustering file to the output directory
+    bin_clustering_cutoff.tsv"""
+
+    output_dir = run["output_dir"]
+    label = run["label"]
+    bin_label = pair_generator.label
+
+    output_network_root = output_dir / "html_content/networks"
+    cutoff_path = output_network_root / f"{label}_c{cutoff}"
+    pair_generator_path = cutoff_path / pair_generator.label
+    clustering_file_path = pair_generator_path / f"{bin_label}_clustering_c{cutoff}.tsv"
+
+    if not DB.metadata:
+        raise RuntimeError("DB.metadata is None")
+
+    gbk_table = DB.metadata.tables["gbk"]
+    bgc_record_table = DB.metadata.tables["bgc_record"]
+    record_famly_table = DB.metadata.tables["bgc_record_family"]
+
+    record_ids = pair_generator.record_ids
+
+    with open(clustering_file_path, "w") as record_annotations_file:
+        header = "\t".join(
+            [
+                "GBK",
+                "Record_Type",
+                "Record_Number",
+                "GCF_number",
+            ]
+        )
+        record_annotations_file.write(header + "\n")
+
+        select_statement = (
+            select(
+                record_famly_table.c.record_id,
+                record_famly_table.c.family,
+                record_famly_table.c.cutoff,
+            )
+            .where(record_famly_table.c.record_id.in_(record_ids))
+            .where(record_famly_table.c.cutoff == cutoff)
+        )
+
+        rows = DB.execute(select_statement).fetchall()
+
+        for row in rows:
+            record_id, gcf_number, cutoff = row
+
+            select_statment = select(
+                bgc_record_table.c.gbk_id,
+                bgc_record_table.c.record_number,
+                bgc_record_table.c.record_type,
+            ).where(bgc_record_table.c.id == record_id)
+            gbk_id, record_number, record_type = DB.execute(select_statment).fetchone()
+
+            select_statment = select(gbk_table.c.path).where(gbk_table.c.id == gbk_id)
+            gbk_path = DB.execute(select_statment).fetchone()[0]
+
+            row = "\t".join(
+                [
+                    str(gbk_path),
+                    record_type,
+                    str(record_number),
+                    str(gcf_number),
+                ]
+            )
+            record_annotations_file.write(row + "\n")
+
+    return None

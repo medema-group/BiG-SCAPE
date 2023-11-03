@@ -23,6 +23,7 @@ from big_scape.output import (
     legacy_prepare_bin_output,
     legacy_generate_bin_output,
     write_record_annotations_file,
+    write_clustering_file,
 )
 
 
@@ -365,6 +366,7 @@ def run_bigscape(run: dict) -> None:
                     continue
             legacy_prepare_bin_output(run["output_dir"], run["label"], cutoff, mix_bin)
             legacy_generate_bin_output(run["output_dir"], run["label"], cutoff, mix_bin)
+            write_clustering_file(run, cutoff, mix_bin)
 
     # legacy_classify
 
@@ -382,6 +384,7 @@ def run_bigscape(run: dict) -> None:
                         continue
                 legacy_prepare_bin_output(run["output_dir"], run["label"], cutoff, bin)
                 legacy_generate_bin_output(run["output_dir"], run["label"], cutoff, bin)
+                write_clustering_file(run, cutoff, bin)
 
     # classify
 
@@ -408,6 +411,7 @@ def run_bigscape(run: dict) -> None:
                         continue
                 legacy_prepare_bin_output(run["output_dir"], run["label"], cutoff, bin)
                 legacy_generate_bin_output(run["output_dir"], run["label"], cutoff, bin)
+                write_clustering_file(run, cutoff, bin)
 
     # query
 
@@ -425,6 +429,7 @@ def run_bigscape(run: dict) -> None:
             legacy_generate_bin_output(
                 run["output_dir"], run["label"], cutoff, query_bin
             )
+            write_clustering_file(run, cutoff, query_bin)
 
     if run["profiling"]:
         profiler.stop()
