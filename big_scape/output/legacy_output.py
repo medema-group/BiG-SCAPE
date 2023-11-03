@@ -765,7 +765,6 @@ def adjust_lcs_to_all_genes(
         a_stop = result["lcs_a_stop"]
         b_start = result["lcs_b_start"]
         reverse = result["lcs_reverse"]
-
         length = abs(a_start - a_stop)  # seed length
         a_start = domain_genes_to_all_genes[family_db_id][a_start]
         if length == 0:
@@ -783,7 +782,6 @@ def adjust_lcs_to_all_genes(
         a_stop = result["lcs_b_stop"]
         b_start = result["lcs_a_start"]
         reverse = result["lcs_reverse"]
-
         length = abs(a_start - a_stop)  # seed length
         if length == 0:
             pass
@@ -795,6 +793,11 @@ def adjust_lcs_to_all_genes(
         else:
             a_start = domain_genes_to_all_genes[family_db_id][a_start]
             b_start = domain_genes_to_all_genes[bgc_db_id][b_start]
+
+    # TODO: adjust lcs bounds for protocluster/protocore mode once lcs is implemented
+    # a_start, b_start = adjust_lcs_record_bounds(
+    #     a_start, b_start, fam_rec, bgc_rec, reverse
+    # )
 
     if length == 0:
         length = 1
