@@ -2,8 +2,10 @@
 
 # from python
 
+# from other modules
+import big_scape.genbank as bs_genbank
 
-# from this modile
+# from this module
 import logging
 from .comparable_region import ComparableRegion
 
@@ -64,7 +66,13 @@ def check(
     return False
 
 
-def extend(comparable_region: ComparableRegion) -> None:
+def extend(
+    comparable_region: ComparableRegion,
+    match: int,
+    mismatch: int,
+    gap: int,
+    max_match_dist: int,
+) -> None:
     """Expands a comparable region
 
     This will expand the included set of cds in a comparable region based on a scoring
@@ -73,6 +81,11 @@ def extend(comparable_region: ComparableRegion) -> None:
 
     Args:
         comparable_region: The comparable region to expand
+        match: The score for a match
+        mismatch: The score for a mismatch
+        gap: The score for a gap
+        max_match_dist: The maximum distance to look in the target for a match before
+        it is considered a mismatch
     """
     logging.info(comparable_region.pair)
     logging.info("before:")
@@ -94,7 +107,8 @@ def extend(comparable_region: ComparableRegion) -> None:
     # when we do not find a match, this counts as a mismatch and we add a penalty
     # when we find a match, add gap penalties for the number of gaps we have to insert
     # if we find a match before the current position, subtract a gap penalty
-    # TODO: how do we handle cases where we can have a match in other end of the cds
+    # we will only match when the position from the current extension is below a cutoff
+    # length
 
     if len(a_cds) > len(cds_b):
         query = cds_b
@@ -108,54 +122,12 @@ def extend(comparable_region: ComparableRegion) -> None:
         target = cds_b
 
     # generate an index of domain positions in the target
-    # the lists in this index will be sorted by position
-    target_index: dict[str, list[int]] = {}
-    for i, cds in enumerate(target):
-        for hsp in cds.hsps:
-            if hsp.domain not in target_index:
-                target_index[hsp.domain] = []
-            target_index[hsp.domain].append(i)
+    # the lists in this index will be sorted by position, in ascending order
+    target_index = get_target_indexes(target)
 
-    match = 5
-    mismatch = -3
-    gap = -2
-
-    # start on the right side
-    max_score = 0
-    score = 0
-    target_exp = 0
-    query_exp = 0
-
-    for query_idx, cds in enumerate(query[query_stop:]):
-        for hsp in cds.hsps:
-            if hsp.domain not in target_index:
-                score += mismatch
-                continue
-
-            for dict_idx, target_idx in enumerate(target_index[hsp.domain]):
-                if target_idx < query_stop:
-                    continue
-
-                # match. add score
-                score += match
-
-                # add gap penalties if the match is after the current position
-                if target_idx > target_exp:
-                    score += gap * (target_idx - target_exp)
-
-                # subtract gap penalties if the match is before the current position
-                if target_idx < target_exp:
-                    score -= gap
-
-                # remove the current target index from the index
-                target_index[hsp.domain].pop(dict_idx)
-
-                break
-
-            if score > max_score:
-                max_score = score
-                query_exp = query_idx
-                target_exp = target_idx
+    query_exp, target_exp, score = score_extend(
+        query, query_stop, target_index, 5, -3, -2, 0
+    )
 
     # set the new start and stop positions
     if len(a_cds) > len(cds_b):
@@ -165,48 +137,9 @@ def extend(comparable_region: ComparableRegion) -> None:
         comparable_region.a_stop += query_exp
         comparable_region.b_stop += target_exp
 
-    # left side
-    score = 0
-    target_exp = 0
-    query_exp = 0
-
-    # flip the sequences
-    query = query[::-1]
-    target = target[::-1]
-
-    # flip the start
-    query_start = len(query) - query_start
-
-    for query_idx, cds in enumerate(query[query_start:]):
-        for hsp in cds.hsps:
-            if hsp.domain not in target_index:
-                score += mismatch
-                continue
-
-            for dict_idx, target_idx in enumerate(target_index[hsp.domain]):
-                if target_idx > query_start:
-                    continue
-
-                # match. add score
-                score += match
-
-                # add gap penalties if the match is after the current position
-                if target_idx > target_exp:
-                    score += gap * (target_idx - target_exp)
-
-                # subtract gap penalties if the match is before the current position
-                if target_idx < target_exp:
-                    score -= gap
-
-                # remove the current target index from the index
-                target_index[hsp.domain].pop(dict_idx)
-
-                break
-
-            if score > max_score:
-                max_score = score
-                query_exp = query_idx
-                target_exp = target_idx
+    query_exp, target_exp, score = score_extend_rev(
+        query, query_start, target_index, 5, -3, -2, 0
+    )
 
     # expand left
     if len(a_cds) > len(cds_b):
@@ -219,3 +152,167 @@ def extend(comparable_region: ComparableRegion) -> None:
     logging.info("after:")
     logging.info(comparable_region)
     logging.info("")
+
+
+def get_target_indexes(
+    target: list[bs_genbank.CDS],
+) -> dict[str, list[tuple[int, int]]]:
+    """Generate an index of domain cds positions in the target
+
+    The dictionary that is returned will have the following structure:
+    {
+        domain: [(cds_idx, domain_idx), ...]
+    }
+
+    All indexes are sorted by position, in ascending order
+
+    Args:
+        target (list[bs_genbank.CDS]): The target cds list
+
+    Returns:
+        dict[str, list[tuple[int, int]]]: The target index dictionary
+    """
+
+    target_index: dict[str, list[tuple[int, int]]] = {}
+    domain_idx = 0
+    for cds_idx, cds in enumerate(target):
+        for hsp in cds.hsps:
+            if hsp.domain not in target_index:
+                target_index[hsp.domain] = []
+
+            target_index[hsp.domain].append((cds_idx, domain_idx))
+            domain_idx += 1
+
+    return target_index
+
+
+def score_extend(
+    query, query_start, target_index, match, mismatch, gap, max_match_dist
+):
+    """
+    Calculate the score for extending a query sequence to a target sequence.
+
+    TODO: max_match_dist
+    TODO: This is a copy of score_extend_rev. if possible, refactor to remove
+    duplication
+
+    Args:
+        query (list): A list of Cds objects representing the full query record cds
+        query_start (int): which cds to start at
+        target_index (dict): A dictionary containing tuples that correspond to the cds
+        index of a domain, and the domain index of a domain
+        match (int): The score for a match between two domains
+        mismatch (int): The penalty for a mismatch between two domains.
+        gap (int): The penalty for a gap in the alignment
+        max_match_dist (int): the maximum distance of a matching domain before it is
+        considered a mismatch
+
+    Returns:
+        tuple: A tuple containing the target expansion index, query expansion index, and the maximum score.
+    """
+    score = 0
+    max_score = 0
+    target_exp = 0
+    query_exp = 0
+
+    for query_idx, cds in enumerate(query[query_start:]):
+        for hsp in cds.hsps:
+            if hsp.domain not in target_index:
+                score += mismatch
+                continue
+
+            for dict_idx, target_idx in enumerate(target_index[hsp.domain]):
+                cds_idx, domain_idx = target_idx
+
+                if domain_idx < query_start:
+                    continue
+
+                # match. add score
+                score += match
+
+                # add gap penalties if the match is after the next position
+                if domain_idx > target_exp:
+                    score += gap * (domain_idx - (target_exp))
+
+                # subtract gap penalties if the match is before the current
+                if domain_idx < target_exp:
+                    score -= gap
+
+                # remove the current target index from the index
+                target_index[hsp.domain].pop(dict_idx)
+
+                break
+
+            if score > max_score:
+                max_score = score
+                query_exp = query_idx + 1
+                if cds_idx + 1 > target_exp:
+                    target_exp = cds_idx + 1
+
+    return target_exp, query_exp, max_score
+
+
+def score_extend_rev(
+    query, query_start, target_index, match, mismatch, gap, max_match_dist
+):
+    """
+    Calculate the score for extending a query sequence to a target sequence, in reverse
+
+    TODO: This is a copy of score_extend. if possible, refactor to remove duplication
+
+    Args:
+        query (list): A list of Cds objects representing the full query record cds
+        query_start (int): which cds to start at
+        target_index (dict): A dictionary containing tuples that correspond to the cds
+        index of a domain, and the domain index of a domain
+        match (int): The score for a match between two domains
+        mismatch (int): The penalty for a mismatch between two domains.
+        gap (int): The penalty for a gap in the alignment
+        max_match_dist (int): the maximum distance of a matching domain before it is
+        considered a mismatch
+
+    Returns:
+        tuple: A tuple containing the target expansion index, query expansion index,
+        and the maximum score.
+    """
+    score = 0
+    max_score = 0
+    target_exp = 0
+    query_exp = 0
+
+    for query_idx, cds in enumerate(query[query_start::-1]):
+        query_idx = len(query) - query_idx - 1
+        for hsp in cds.hsps:
+            if hsp.domain not in target_index:
+                score += mismatch
+                continue
+
+            for dict_idx, target_idx in enumerate(target_index[hsp.domain][::-1]):
+                cds_idx, domain_idx = target_idx
+
+                if domain_idx < query_start:
+                    continue
+
+                # match. add score
+                score += match
+
+                # add gap penalties if the match is after the next position
+                if domain_idx > target_exp:
+                    score += gap * (domain_idx - (target_exp))
+
+                # subtract gap penalties if the match is before the current
+                if domain_idx < target_exp:
+                    score -= gap
+
+                # remove the current target index from the index
+                target_index[hsp.domain].pop(dict_idx)
+
+                break
+
+            if score > max_score:
+                max_score = score
+                query_exp = query_idx + 1
+                if cds_idx + 1 > target_exp:
+                    target_exp = cds_idx + 1
+
+    return target_exp, query_exp, max_score

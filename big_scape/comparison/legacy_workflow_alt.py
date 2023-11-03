@@ -221,7 +221,7 @@ def expand_pair(pair: RecordPair) -> float:
     Returns:
         float: jaccard index
     """
-    extend(pair.comparable_region)
+    extend(pair.comparable_region, 5, -3, -2, 0)
 
     if not check(pair.comparable_region, 0, True):
         reset(pair.comparable_region)
