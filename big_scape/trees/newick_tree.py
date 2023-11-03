@@ -26,7 +26,7 @@ def generate_newick_tree(
         family_members (list[int]): list of bgc ids in one family
 
     Returns:
-        Correctly formatted newick tree
+        str: Correctly formatted newick tree
     """
     # no need for alignment
     if len(records) < 3:
@@ -62,6 +62,9 @@ def process_newick_tree(tree_file: Path) -> str:
 
     Args:
         tree_file (Path): Path to tree file
+
+    Returns:
+        str: processed newick tree
     """
     if not tree_file.exists():
         logging.error("Failed to create newick tree")
@@ -85,7 +88,7 @@ def process_newick_tree(tree_file: Path) -> str:
 def generate_gcf_alignment(
     records: list[BGCRecord], exemplar: int, family_members: list[int]
 ) -> str:
-    """Write protein domain alignment to file
+    """Generate protein domain alignment for records in GCF
 
     Args:
         records (list[BGCRecord]): Records within one GCF to align
@@ -93,7 +96,8 @@ def generate_gcf_alignment(
         family_members (list[int]): list of bgc ids in one family
 
     Returns:
-        Written file containing protein domain alignment
+        str: alignment of GCF based on protein domain
+        TODO: refactor
     """
     record_ids = list(range(len(records)))
 

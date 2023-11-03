@@ -36,6 +36,7 @@ class ComparableRegion:
         domain_lists: Optional[tuple[list[HSP], list[HSP]]]
         domain_sets: Optional[tuple[set[HSP], set[HSP]]]
         domain_dicts: Optional[tuple[dict[HSP, list[int]], dict[HSP, list[int]]]]
+        alignment_mode: ALIGNMENT_MODE
     """
 
     def __init__(
@@ -67,7 +68,6 @@ class ComparableRegion:
         self.lcs_b_start = b_start
         self.lcs_a_stop = a_stop
         self.lcs_b_stop = b_stop
-        self.lcs_reverse = reverse
         self.alignment_mode: ALIGNMENT_MODE = ALIGNMENT_MODE.GLOBAL
 
     def get_domain_sets(

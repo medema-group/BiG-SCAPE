@@ -764,7 +764,7 @@ def adjust_lcs_to_all_genes(
         a_start = result["lcs_a_start"]
         a_stop = result["lcs_a_stop"]
         b_start = result["lcs_b_start"]
-        reverse = result["lcs_reverse"]
+        reverse = result["reverse"]
         length = abs(a_start - a_stop)  # seed length
         a_start = domain_genes_to_all_genes[family_db_id][a_start]
         if length == 0:
@@ -781,7 +781,7 @@ def adjust_lcs_to_all_genes(
         a_start = result["lcs_b_start"]
         a_stop = result["lcs_b_stop"]
         b_start = result["lcs_a_start"]
-        reverse = result["lcs_reverse"]
+        reverse = result["reverse"]
         length = abs(a_start - a_stop)  # seed length
         if length == 0:
             pass

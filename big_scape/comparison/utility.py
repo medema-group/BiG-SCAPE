@@ -26,7 +26,6 @@ def save_edge_to_db(
         int,
         int,
         int,
-        bool,
         int,
         int,
         int,
@@ -39,8 +38,10 @@ def save_edge_to_db(
     """Save edge to the database
 
     Args:
-        edge (tuple[int, int, float, float, float, float]): edge tuple containing
-            region_a_id, region_b_id, distance, jaccard, adjacency, dss
+        edge (tuple[int, int, float, float, float, float, str, int, int, int, int, int,
+        int, int, int, bool, ALIGNMENT_MODE,]): edge tuple containing
+            region_a_id, region_b_id, distance, jaccard, adjacency, dss, weights,
+            lcs start/stop, extension start/stop, reverse, alignment_mode
         upsert (bool, optional): whether to upsert the edge into the database.
     """
 
@@ -56,12 +57,11 @@ def save_edge_to_db(
         lcs_a_stop,
         lcs_b_start,
         lcs_b_stop,
-        lcs_reverse,
         ext_a_start,
         ext_a_stop,
         ext_b_start,
         ext_b_stop,
-        ext_reverse,
+        reverse,
         alignment_mode,
     ) = edge
 
@@ -85,12 +85,11 @@ def save_edge_to_db(
         lcs_a_stop=lcs_a_stop,
         lcs_b_start=lcs_b_start,
         lcs_b_stop=lcs_b_stop,
-        lcs_reverse=lcs_reverse,
         ext_a_start=ext_a_start,
         ext_a_stop=ext_a_stop,
         ext_b_start=ext_b_start,
         ext_b_stop=ext_b_stop,
-        ext_reverse=ext_reverse,
+        reverse=reverse,
         alignment_mode=alignment_mode.value,
     )
 
@@ -114,7 +113,6 @@ def save_edges_to_db(
             int,
             int,
             int,
-            bool,
             int,
             int,
             int,
@@ -147,7 +145,7 @@ def save_edges_to_db(
     # create a query
     # TODO: this should not need ignore. it's there now because protoclusters somehow
     # trigger an integrityerror
-    query = "INSERT OR IGNORE INTO distance VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"
+    query = "INSERT OR IGNORE INTO distance VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"
 
     cursor.executemany(query, edges)
 
