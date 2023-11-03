@@ -11,7 +11,7 @@ from sqlalchemy import select
 # from other modules
 from big_scape.data import DB
 from big_scape.comparison import RecordPairGenerator, legacy_get_class
-from big_scape.genbank import GBK, CDS
+from big_scape.genbank import GBK, CDS, BGCRecord
 from big_scape.enums import SOURCE_TYPE
 from big_scape.comparison import get_record_category
 
@@ -902,7 +902,7 @@ def legacy_prepare_cutoff_output(run: dict, cutoff: float, gbks: list[GBK]) -> N
 
 
 def legacy_prepare_bin_output(
-    output_dir: Path, label: str, cutoff: float, pair_generator: RecordPairGenerator
+    run: dict, cutoff: float, pair_generator: RecordPairGenerator
 ) -> None:
     """Prepare output data for a given pair_generator at a given cutoff value
 
@@ -912,14 +912,17 @@ def legacy_prepare_bin_output(
         cutoff (float): cutoff value
         pair_generator (BGCBin): BGC pair_generator
     """
+
+    output_dir = run["output_dir"]
+    label = run["label"]
+
     prepare_pair_generator_folder(output_dir, label, cutoff, pair_generator)
     generate_bs_data_js(output_dir, label, cutoff, pair_generator)
     add_bigscape_results_js_network(output_dir, label, cutoff, pair_generator)
 
 
 def legacy_generate_bin_output(
-    output_dir: Path,
-    label: str,
+    run: dict,
     cutoff: float,
     pair_generator: RecordPairGenerator,
 ) -> None:
@@ -933,6 +936,9 @@ def legacy_generate_bin_output(
         pair_generator (BGCBin): BGC pair_generator
         network (BSNetwork): the network object for the pair_generator
     """
+    output_dir = run["output_dir"]
+    label = run["label"]
+
     families_members = generate_bs_families_members(cutoff, pair_generator)
     networks_families = generate_bs_networks_families(families_members)
 
@@ -940,6 +946,8 @@ def legacy_generate_bin_output(
     generate_bs_networks_js(
         output_dir, label, cutoff, pair_generator, networks_families
     )
+    write_clustering_file(run, cutoff, pair_generator)
+    write_cutoff_network_file(run, cutoff, pair_generator)
 
 
 def write_record_annotations_file(run, cutoff, all_bgc_records) -> None:
@@ -1027,7 +1035,16 @@ def write_record_annotations_file(run, cutoff, all_bgc_records) -> None:
 
 def write_clustering_file(run, cutoff, pair_generator) -> None:
     """Writes the clustering file to the output directory
-    bin_clustering_cutoff.tsv"""
+    bin_clustering_cutoff.tsv
+
+    Args:
+        run (dict): run parameters
+        cutoff (float): distance metric cutoff
+        pair_generator (RecordPairGenerator): BGC record bin
+
+    Raises:
+        RuntimeError: database not found
+    """
 
     output_dir = run["output_dir"]
     label = run["label"]
@@ -1047,7 +1064,7 @@ def write_clustering_file(run, cutoff, pair_generator) -> None:
 
     record_ids = pair_generator.record_ids
 
-    with open(clustering_file_path, "w") as record_annotations_file:
+    with open(clustering_file_path, "w") as clustering_file:
         header = "\t".join(
             [
                 "GBK",
@@ -1056,7 +1073,7 @@ def write_clustering_file(run, cutoff, pair_generator) -> None:
                 "GCF_number",
             ]
         )
-        record_annotations_file.write(header + "\n")
+        clustering_file.write(header + "\n")
 
         select_statement = (
             select(
@@ -1091,6 +1108,251 @@ def write_clustering_file(run, cutoff, pair_generator) -> None:
                     str(gcf_number),
                 ]
             )
-            record_annotations_file.write(row + "\n")
+            clustering_file.write(row + "\n")
 
     return None
+
+
+def write_network_file(
+    network_file_path: Path,
+    existing_distances: set[tuple[int, int, float, float, float, float, str]],
+) -> None:
+    """Writes a network file to the output directory
+
+    Args:
+        network_file_path (Path): path to write file to
+        existing_distances (set): edgelist to populate file
+
+    Raises:
+        RuntimeError: no db present
+
+    """
+
+    if not DB.metadata:
+        raise RuntimeError("DB.metadata is None")
+
+    gbk_table = DB.metadata.tables["gbk"]
+    bgc_record_table = DB.metadata.tables["bgc_record"]
+
+    with open(network_file_path, "w") as network_file:
+        header = "\t".join(
+            [
+                "GBK_a",
+                "Record_Type_a",
+                "Record_Number_a",
+                "GBK_b",
+                "Record_Type_b",
+                "Record_Number_b",
+                "distance",
+                "jaccard",
+                "adjacency",
+                "dss",
+                "weights",
+            ]
+        )
+
+        network_file.write(header + "\n")
+
+        for dist in existing_distances:
+            region_a_id, region_b_id, distance, jaccard, adjacency, dss, weights = dist
+
+            # for record A
+            select_statment = select(
+                bgc_record_table.c.gbk_id,
+                bgc_record_table.c.record_number,
+                bgc_record_table.c.record_type,
+            ).where(bgc_record_table.c.id == region_a_id)
+            gbk_id_a, record_number_a, record_type_a = DB.execute(
+                select_statment
+            ).fetchone()
+
+            select_statment = select(gbk_table.c.path).where(gbk_table.c.id == gbk_id_a)
+            gbk_path_a = DB.execute(select_statment).fetchone()[0]
+
+            # for record B
+            select_statment = select(
+                bgc_record_table.c.gbk_id,
+                bgc_record_table.c.record_number,
+                bgc_record_table.c.record_type,
+            ).where(bgc_record_table.c.id == region_b_id)
+            gbk_id_b, record_number_b, record_type_b = DB.execute(
+                select_statment
+            ).fetchone()
+
+            select_statment = select(gbk_table.c.path).where(gbk_table.c.id == gbk_id_b)
+            gbk_path_b = DB.execute(select_statment).fetchone()[0]
+
+            row = "\t".join(
+                [
+                    str(gbk_path_a),
+                    record_type_a,
+                    str(record_number_a),
+                    str(gbk_path_b),
+                    record_type_b,
+                    str(record_number_b),
+                    f"{distance:.2f}",
+                    f"{jaccard:.2f}",
+                    f"{adjacency:.2f}",
+                    f"{dss:.2f}",
+                    weights,
+                ]
+            )
+
+            network_file.write(row + "\n")
+
+    return None
+
+
+def write_cutoff_network_file(
+    run: dict, cutoff: float, pair_generator: RecordPairGenerator
+) -> None:
+    """Writes the cutoff network file to the output directory
+    i.e. edge list for a given bin with edges above the cutoff
+
+    Args:
+        run (dict): run parameters
+        cutoff (float): distance cutoff
+        pair_generator (RecordPairGenerator): bin with BGC records
+
+    """
+
+    output_dir = run["output_dir"]
+    label = run["label"]
+    bin_label = pair_generator.label
+
+    output_network_root = output_dir / "html_content/networks"
+    cutoff_path = output_network_root / f"{label}_c{cutoff}"
+    pair_generator_path = cutoff_path / pair_generator.label
+    cutoff_network_file_path = pair_generator_path / f"{bin_label}_c{cutoff}.network"
+
+    # get distances for this bin
+    existing_distances = get_cutoff_edgelist(run, cutoff, pair_generator)
+
+    # write file
+    write_network_file(cutoff_network_file_path, existing_distances)
+
+    return None
+
+
+def get_cutoff_edgelist(
+    run: dict, cutoff: float, pair_generator: RecordPairGenerator
+) -> set[tuple[int, int, float, float, float, float, str]]:
+    """Generate the network egdelist for a given bin with edges above the cutoff
+
+    Args:
+        run (dict): run parameters
+
+    Raises:
+        RuntimeError: no database present
+
+    Returns:
+        set: edgelist
+    """
+
+    if not DB.metadata:
+        raise RuntimeError("DB.metadata is None")
+
+    distance_table = DB.metadata.tables["distance"]
+
+    select_statement = (
+        select(
+            distance_table.c.region_a_id,
+            distance_table.c.region_b_id,
+            distance_table.c.distance,
+            distance_table.c.jaccard,
+            distance_table.c.adjacency,
+            distance_table.c.dss,
+            distance_table.c.weights,
+        )
+        .where(distance_table.c.region_a_id.in_(pair_generator.record_ids))
+        .where(distance_table.c.region_b_id.in_(pair_generator.record_ids))
+        .where(distance_table.c.weights == pair_generator.weights)
+        .where(distance_table.c.distance < cutoff)
+    )
+
+    existing_distances = set(DB.execute(select_statement).fetchall())
+
+    return existing_distances
+
+
+def write_full_network_file(run: dict, all_bgc_records: list[BGCRecord]) -> None:
+    """Writes the full network file to the output directory,
+    i.e. all edges from db that have both records in the run,
+    and for all weights relevant to the run
+
+    Args:
+        run (dict): run parameters
+        all_bgc_records (list): BGC records in this run
+    """
+
+    output_dir = run["output_dir"]
+    label = run["label"]
+
+    output_network_root = output_dir / "html_content/networks"
+    full_network_file_path = output_network_root / f"{label}_full.network"
+
+    # get distances for this set of records
+    existing_distances = get_full_network_edgelist(run, all_bgc_records)
+
+    # write file
+    write_network_file(full_network_file_path, existing_distances)
+
+
+def get_full_network_edgelist(
+    run: dict, all_bgc_records: list
+) -> set[tuple[int, int, float, float, float, float, str]]:
+    """Get all edges for the pairs of records in this run, for the weights relevant to this run
+
+    Args:
+        run (dict): run parameters
+
+    Raises:
+        RuntimeError: no database present
+
+    Returns:
+        set: edgelist
+    """
+
+    legacy_weights = [
+        "PKSI",
+        "PKSother",
+        "NRPS",
+        "RiPPs",
+        "saccharides",
+        "terpene",
+        "PKS-NRP_Hybrids",
+        "other",
+    ]
+    incl_weights = ["mix"]
+
+    if run["no_mix"]:
+        incl_weights.remove("mix")
+    if run["legacy_weights"]:
+        incl_weights.extend(legacy_weights)
+    # an empty list should never happen since no_mix and no classify are mutually exclusive in the CLI validations
+
+    record_ids = [record._db_id for record in all_bgc_records]
+
+    if not DB.metadata:
+        raise RuntimeError("DB.metadata is None")
+
+    distance_table = DB.metadata.tables["distance"]
+
+    select_statement = (
+        select(
+            distance_table.c.region_a_id,
+            distance_table.c.region_b_id,
+            distance_table.c.distance,
+            distance_table.c.jaccard,
+            distance_table.c.adjacency,
+            distance_table.c.dss,
+            distance_table.c.weights,
+        )
+        .where(distance_table.c.region_a_id.in_(record_ids))
+        .where(distance_table.c.region_b_id.in_(record_ids))
+        .where(distance_table.c.weights.in_(incl_weights))
+    )
+
+    existing_distances = set(DB.execute(select_statement).fetchall())
+
+    return existing_distances
