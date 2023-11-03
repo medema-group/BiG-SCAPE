@@ -64,7 +64,7 @@ class TestTrees(TestCase):
             "lcs_a_stop": 7,
             "lcs_b_start": 6,
             "lcs_b_stop": 9,
-            "lcs_reverse": False,
+            "reverse": False,
         }
         dom_to_gene = {0: {4: 5, 7: 9}, 1: {6: 8}}
         dom_count = {}
@@ -86,7 +86,7 @@ class TestTrees(TestCase):
             "lcs_a_stop": 3,
             "lcs_b_start": 1,
             "lcs_b_stop": 2,
-            "lcs_reverse": True,
+            "reverse": True,
         }
         dom_to_gene = {0: {0: 0, 1: 2, 2: 4}, 1: {0: 1, 1: 2, 2: 3}}
         dom_count = {0: [1, 1, 1], 1: [1, 1, 1]}
@@ -108,7 +108,7 @@ class TestTrees(TestCase):
             "lcs_a_stop": 3,
             "lcs_b_start": 1,
             "lcs_b_stop": 2,
-            "lcs_reverse": False,
+            "reverse": False,
         }
         dom_to_gene = {0: {0: 0, 1: 2, 2: 4}, 1: {0: 1, 1: 2, 2: 3}}
         dom_count = {0: [1, 1, 1], 1: [1, 1, 1]}
@@ -130,7 +130,7 @@ class TestTrees(TestCase):
             "lcs_a_stop": 3,
             "lcs_b_start": 1,
             "lcs_b_stop": 2,
-            "lcs_reverse": True,
+            "reverse": True,
         }
         dom_to_gene = {0: {0: 0, 1: 2, 2: 4}, 1: {0: 1, 1: 2, 2: 3}}
         dom_count = {0: [1, 1, 1], 1: [1, 1, 1]}
@@ -153,7 +153,7 @@ class TestTrees(TestCase):
             "lcs_a_stop": 0,
             "lcs_b_start": 0,
             "lcs_b_stop": 0,
-            "lcs_reverse": False,
+            "reverse": False,
         }
         dom_to_gene = {0: {0: 0, 1: 2, 2: 4}, 1: {0: 1, 1: 2, 2: 3}}
         dom_count = {0: [1, 2, 1], 1: [1, 1, 2]}
@@ -187,7 +187,7 @@ class TestTrees(TestCase):
             "lcs_a_stop": 0,
             "lcs_b_start": 0,
             "lcs_b_stop": 0,
-            "lcs_reverse": False,
+            "reverse": False,
         }
         dom_to_gene = {0: {0: 0, 1: 2, 2: 4}, 1: {0: 1, 1: 2, 2: 3}}
         dom_count = {0: [1, 2, 1], 1: [1, 1, 2]}
