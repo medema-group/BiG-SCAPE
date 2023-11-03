@@ -656,6 +656,17 @@ class TestBGCBin(TestCase):
                 1.0,
                 1.0,
                 "mix",
+                0,
+                0,
+                0,
+                0,
+                False,
+                0,
+                0,
+                0,
+                0,
+                False,
+                bs_enums.ALIGNMENT_MODE.GLOBAL,
             )
         )
 
@@ -668,6 +679,17 @@ class TestBGCBin(TestCase):
                 0.0,
                 0.0,
                 "mix",
+                0,
+                0,
+                0,
+                0,
+                False,
+                0,
+                0,
+                0,
+                0,
+                False,
+                bs_enums.ALIGNMENT_MODE.GLOBAL,
             )
         )
 
@@ -680,6 +702,17 @@ class TestBGCBin(TestCase):
                 1.0,
                 1.0,
                 "mix",
+                0,
+                0,
+                0,
+                0,
+                False,
+                0,
+                0,
+                0,
+                0,
+                False,
+                bs_enums.ALIGNMENT_MODE.GLOBAL,
             )
         )
 
