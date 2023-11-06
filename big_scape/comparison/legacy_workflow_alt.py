@@ -19,12 +19,13 @@ from math import ceil
 from big_scape.distances import calc_jaccard_pair, calc_ai_pair, calc_dss_pair_legacy
 
 import big_scape.enums as bs_enums
+import big_scape.genbank as bs_gbk
 
 # from this module
 from .binning import RecordPairGenerator, RecordPair
 from .legacy_bins import LEGACY_WEIGHTS
 from .extend import extend, reset, check
-from .legacy_lcs import legacy_find_cds_lcs
+from .lcs import find_domain_lcs_region, find_domain_lcs_protocluster
 
 T = TypeVar("T")
 
@@ -188,9 +189,24 @@ def do_lcs_pair(
     Returns:
         bool: True if the pair needs expansion, False if it does not
     """
-    a_start, a_stop, b_start, b_stop, reverse = legacy_find_cds_lcs(
-        pair.region_a.get_cds_with_domains(), pair.region_b.get_cds_with_domains()
-    )
+
+    if isinstance(pair.region_a, bs_gbk.Region) and isinstance(
+        pair.region_b, bs_gbk.Region
+    ):
+        find_domain_lcs_method = find_domain_lcs_region
+
+    elif isinstance(pair.region_a, bs_gbk.ProtoCluster) and isinstance(
+        pair.region_b, bs_gbk.ProtoCluster
+    ):
+        find_domain_lcs_method = find_domain_lcs_protocluster
+
+    else:
+        raise TypeError("Regions must be of the same type")
+
+    a_start, a_stop, b_start, b_stop, reverse = find_domain_lcs_method(pair)
+
+    logging.debug("before lcs:")
+    logging.debug(pair.comparable_region)
 
     # set the comparable region
     pair.comparable_region.a_start = a_start
@@ -198,6 +214,9 @@ def do_lcs_pair(
     pair.comparable_region.b_start = b_start
     pair.comparable_region.b_stop = b_stop
     pair.comparable_region.reverse = reverse
+
+    logging.debug("after lcs:")
+    logging.debug(pair.comparable_region)
 
     if alignment_mode == bs_enums.ALIGNMENT_MODE.GLOBAL:
         return False
@@ -207,6 +226,8 @@ def do_lcs_pair(
 
     if check(pair.comparable_region, 0, True):
         return True
+
+    logging.debug("resetting after extend")
 
     reset(pair.comparable_region)
     return False
@@ -224,6 +245,7 @@ def expand_pair(pair: RecordPair) -> float:
     extend(pair.comparable_region, 5, -3, -2, 0)
 
     if not check(pair.comparable_region, 0, True):
+        logging.info("resetting after extend")
         reset(pair.comparable_region)
         jc = calc_jaccard_pair(pair)
         return jc
@@ -251,6 +273,7 @@ def calculate_scores_pair(
     results = []
 
     for pair in pairs:
+        logging.debug(pair)
         if pair.region_a.parent_gbk == pair.region_b.parent_gbk:
             results.append((0.0, 1.0, 1.0, 1.0))
             continue
@@ -287,5 +310,6 @@ def calculate_scores_pair(
         distance = 1 - similarity
 
         results.append((distance, jaccard, adjacency, dss))
+        logging.debug("")
 
     return results

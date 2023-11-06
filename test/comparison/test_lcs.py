@@ -76,7 +76,7 @@ def generate_mock_cds_lists(
     return cds_a, cds_b
 
 
-def generate_mock_protocluster(cds_list: list[bs_genbank.CDS], protocore_idx: int):
+def generate_mock_protocluster(cds_list: list[bs_genbank.CDS], protocore_idx: int = -1):
     """Generate a mock protocluster from a cds list"""
     gbk = bs_genbank.GBK(None, bs_enums.SOURCE_TYPE.QUERY)
     gbk.genes = cds_list
@@ -84,13 +84,16 @@ def generate_mock_protocluster(cds_list: list[bs_genbank.CDS], protocore_idx: in
         gbk, 1, 0, len(cds_list) * 100, False, "", {}
     )
 
-    protocore_start = cds_list[protocore_idx].nt_start
-    protocore_stop = cds_list[protocore_idx].nt_stop
+    if protocore_idx > -1:
+        protocore_start = cds_list[protocore_idx].nt_start
+        protocore_stop = cds_list[protocore_idx].nt_stop
 
-    protocore = bs_genbank.ProtoCore(gbk, 1, protocore_start, protocore_stop, False, "")
+        protocore = bs_genbank.ProtoCore(
+            gbk, 1, protocore_start, protocore_stop, False, ""
+        )
 
-    protocluster.proto_core[1] = None
-    protocluster.add_proto_core(protocore)
+        protocluster.proto_core[1] = None
+        protocluster.add_proto_core(protocore)
 
     return protocluster
 
@@ -104,7 +107,11 @@ class testDomainLCS(unittest.TestCase):
             10, 10, [1, 2, 2, 2, 3], [1, 2, 2, 2, 3], False
         )
 
-        lcs = bs_comparison.lcs.find_domain_lcs_region(cds_a, cds_b)
+        pc_a = generate_mock_protocluster(cds_a, 2)
+        pc_b = generate_mock_protocluster(cds_b, 2)
+        pair = bs_comparison.RecordPair(pc_a, pc_b)
+
+        lcs = bs_comparison.lcs.find_domain_lcs_region(pair)
 
         self.assertEqual(lcs, (1, 6, 1, 6, False))
 
@@ -114,7 +121,11 @@ class testDomainLCS(unittest.TestCase):
             10, 10, [1, 2, 2, 2, 3], [1, 2, 2, 2, 3], True
         )
 
-        lcs = bs_comparison.lcs.find_domain_lcs_region(cds_a, cds_b)
+        pc_a = generate_mock_protocluster(cds_a, 2)
+        pc_b = generate_mock_protocluster(cds_b, 2)
+        pair = bs_comparison.RecordPair(pc_a, pc_b)
+
+        lcs = bs_comparison.lcs.find_domain_lcs_region(pair)
 
         self.assertEqual(lcs, (1, 6, 6, 11, True))
 
@@ -122,7 +133,11 @@ class testDomainLCS(unittest.TestCase):
         """Test lcs detection for two empty domain lists"""
         cds_a, cds_b = generate_mock_cds_lists(0, 0, [], [], False)
 
-        lcs = bs_comparison.lcs.find_domain_lcs_region(cds_a, cds_b)
+        pc_a = generate_mock_protocluster(cds_a)
+        pc_b = generate_mock_protocluster(cds_b)
+        pair = bs_comparison.RecordPair(pc_a, pc_b)
+
+        lcs = bs_comparison.lcs.find_domain_lcs_region(pair)
 
         self.assertEqual(lcs, (0, 0, 0, 0, False))
 
@@ -130,7 +145,11 @@ class testDomainLCS(unittest.TestCase):
         """Test lcs detection for two domain lists where there are only matches of len=1"""
         cds_a, cds_b = generate_mock_cds_lists(10, 10, [1, 3, 5], [1, 3, 5], False)
 
-        lcs = bs_comparison.lcs.find_domain_lcs_region(cds_a, cds_b)
+        pc_a = generate_mock_protocluster(cds_a, 2)
+        pc_b = generate_mock_protocluster(cds_b, 2)
+        pair = bs_comparison.RecordPair(pc_a, pc_b)
+
+        lcs = bs_comparison.lcs.find_domain_lcs_region(pair)
 
         # should return most central, not first
         self.assertEqual(lcs, (5, 6, 5, 6, False))
@@ -141,7 +160,11 @@ class testDomainLCS(unittest.TestCase):
         """
         cds_a, cds_b = generate_mock_cds_lists(10, 10, [1, 3, 5], [1, 3, 6], True)
 
-        lcs = bs_comparison.lcs.find_domain_lcs_region(cds_a, cds_b)
+        pc_a = generate_mock_protocluster(cds_a, 2)
+        pc_b = generate_mock_protocluster(cds_b, 2)
+        pair = bs_comparison.RecordPair(pc_a, pc_b)
+
+        lcs = bs_comparison.lcs.find_domain_lcs_region(pair)
 
         # should return most central, not first
         self.assertEqual(lcs, (1, 2, 8, 9, False))
@@ -154,7 +177,11 @@ class testDomainLCS(unittest.TestCase):
             10, 10, [1, 2, 2, 3, 5, 6], [1, 2, 2, 3, 5, 6], False
         )
 
-        lcs = bs_comparison.lcs.find_domain_lcs_region(cds_a, cds_b)
+        pc_a = generate_mock_protocluster(cds_a, 2)
+        pc_b = generate_mock_protocluster(cds_b, 2)
+        pair = bs_comparison.RecordPair(pc_a, pc_b)
+
+        lcs = bs_comparison.lcs.find_domain_lcs_region(pair)
 
         self.assertEqual(lcs, (1, 5, 1, 5, False))
 
@@ -166,7 +193,11 @@ class testDomainLCS(unittest.TestCase):
             10, 10, [1, 2, 2, 3, 5, 6], [1, 2, 2, 3, 5, 6], True
         )
 
-        lcs = bs_comparison.lcs.find_domain_lcs_region(cds_a, cds_b)
+        pc_a = generate_mock_protocluster(cds_a, 2)
+        pc_b = generate_mock_protocluster(cds_b, 2)
+        pair = bs_comparison.RecordPair(pc_a, pc_b)
+
+        lcs = bs_comparison.lcs.find_domain_lcs_region(pair)
 
         self.assertEqual(lcs, (1, 5, 6, 10, True))
 

@@ -13,6 +13,7 @@ exclusive. Reverse is a boolean indicating whether the match is in reverse
 """
 
 # from python
+import logging
 from typing import Any
 from difflib import Match, SequenceMatcher
 
@@ -193,7 +194,7 @@ def get_lcs_protocores(
 
 
 def find_domain_lcs_region(
-    a_cds: list[bs_genbank.CDS], b_cds: list[bs_genbank.CDS]
+    pair: bs_comparison.RecordPair,
 ) -> tuple[int, int, int, int, bool]:
     """Find the longest stretch of matching domains between two lists of domains
 
@@ -206,6 +207,10 @@ def find_domain_lcs_region(
     Returns:
         tuple[int, int, int, int, bool]: a_start, a_stop, b_start, b_stop, reverse
     """
+    logging.debug("region lcs")
+
+    a_cds = pair.region_a.get_cds(True)
+    b_cds = pair.region_b.get_cds(True)
 
     a_domains = []
     b_domains = []
@@ -321,6 +326,7 @@ def find_domain_lcs_protocluster(
     Returns:
         tuple[int, int, int, int, bool]: a_start, a_stop, b_start, b_stop, reverse
     """
+    logging.debug("pc lcs")
 
     # we really need protoclusters here
     if not isinstance(pair.region_a, bs_genbank.ProtoCluster):
