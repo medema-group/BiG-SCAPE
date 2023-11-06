@@ -91,7 +91,7 @@ def generate_mock_protocluster(cds_list: list[bs_genbank.CDS], protocore_idx: in
     gbk = bs_genbank.GBK(None, bs_enums.SOURCE_TYPE.QUERY)
     gbk.genes = cds_list
     protocluster = bs_genbank.ProtoCluster(
-        gbk, 1, 0, len(cds_list) * 100, False, "", "", {}
+        gbk, 1, 0, len(cds_list) * 100, False, "", {}, ""
     )
 
     protocore_start = cds_list[protocore_idx].nt_start
@@ -105,8 +105,8 @@ def generate_mock_protocluster(cds_list: list[bs_genbank.CDS], protocore_idx: in
     return protocluster
 
 
-class TestExtend(unittest.TestCase):
-    """Tests for extension of comparableregions with region pairs"""
+class TestExtendUtilities(unittest.TestCase):
+    """Tests for extension utilities"""
 
     def test_reset_region(self):
         """Test for reset method on a region"""
@@ -211,6 +211,173 @@ class TestExtend(unittest.TestCase):
 
         self.assertEqual(expected_result, actual_result)
 
-    def test_extend(self):
-        """Test for expand method"""
-        self.fail("Not implemented")
+
+class TestScoreExtend(unittest.TestCase):
+    """Tests for score extension"""
+
+    def test_get_target_indexes(self):
+        """Tests for getting target domain (cds) indexes"""
+
+        # create mock cds list
+        target = []
+        for i in range(5):
+            cds = bs_genbank.CDS(i * 100, (i + 1) * 100)
+            target.append(cds)
+
+        # add mock domains
+        target[0].hsps = [bs_hmmer.HSP(target[0], "A", 100.0, 0, 100)]
+        target[1].hsps = [bs_hmmer.HSP(target[1], "B", 100.0, 0, 100)]
+        target[2].hsps = [bs_hmmer.HSP(target[2], "C", 100.0, 0, 100)]
+        target[3].hsps = [bs_hmmer.HSP(target[3], "B", 100.0, 0, 100)]
+        # add a duplicate to the same cds
+        target[3].hsps.append(bs_hmmer.HSP(target[3], "B", 100.0, 0, 100))
+        target[4].hsps = [bs_hmmer.HSP(target[4], "A", 100.0, 0, 100)]
+        # add a duplicate to a different cds
+        target[4].hsps.append(bs_hmmer.HSP(target[4], "C", 100.0, 0, 100))
+
+        expected_target_index = {
+            "A": [(0, 0), (4, 5)],
+            "B": [(1, 1), (3, 3), (3, 4)],
+            "C": [(2, 2), (4, 6)],
+        }
+
+        actual_target_index = bs_comp.extend.get_target_indexes(target)
+
+        self.assertEqual(expected_target_index, actual_target_index)
+
+    def test_extend_all_match(self):
+        """Tests for extension with all matches"""
+        # all cds have a common domains
+        query, target = generate_mock_cds_lists(
+            5, 5, [0, 1, 2, 3, 4], [0, 1, 2, 3, 4], False
+        )
+
+        target_index = bs_comp.extend.get_target_indexes(target)
+
+        expected_extends = (5, 5, 25)
+
+        actual_extends = bs_comp.extend.score_extend(
+            query, 0, target_index, 5, -5, -3, 0
+        )
+
+        self.assertEqual(expected_extends, actual_extends)
+
+    def test_extend_large_gap(self):
+        """Tests for extension with a large gap"""
+        # only first and last have common domains
+        # so gap of 3. 3*-2 = -6 with one match = -1. so no extension
+        query = [
+            bs_genbank.CDS(0, 100),
+            bs_genbank.CDS(400, 500),
+        ]
+        target = [
+            bs_genbank.CDS(0, 100),
+            bs_genbank.CDS(100, 200),
+            bs_genbank.CDS(200, 300),
+            bs_genbank.CDS(300, 400),
+            bs_genbank.CDS(400, 500),
+        ]
+
+        # common domains
+        query[0].hsps = [bs_hmmer.HSP(query[0], "A", 100.0, 0, 100)]
+        target[0].hsps = [bs_hmmer.HSP(target[0], "A", 100.0, 0, 100)]
+        query[1].hsps = [bs_hmmer.HSP(query[1], "B", 100.0, 0, 100)]
+        target[4].hsps = [bs_hmmer.HSP(target[4], "B", 100.0, 0, 100)]
+
+        # different domains. only for target
+        target[1].hsps = [bs_hmmer.HSP(target[1], "C", 100.0, 0, 100)]
+        target[2].hsps = [bs_hmmer.HSP(target[2], "D", 100.0, 0, 100)]
+        target[3].hsps = [bs_hmmer.HSP(target[3], "E", 100.0, 0, 100)]
+
+        target_index = bs_comp.extend.get_target_indexes(target)
+
+        expected_extends = (1, 1, 5)
+
+        actual_extends = bs_comp.extend.score_extend(
+            query, 0, target_index, 5, -3, -2, 0
+        )
+
+        self.assertEqual(expected_extends, actual_extends)
+
+    def test_extend_small_gap(self):
+        """Tests for extension with a small gap"""
+        # two gaps, 3 matches. 3 * 5 + 2 * -2 = 11. so extend the full range
+        query = [
+            bs_genbank.CDS(0, 100),
+            bs_genbank.CDS(100, 200),
+            bs_genbank.CDS(400, 500),
+        ]
+        target = [
+            bs_genbank.CDS(0, 100),
+            bs_genbank.CDS(100, 200),
+            bs_genbank.CDS(200, 300),
+            bs_genbank.CDS(300, 400),
+            bs_genbank.CDS(400, 500),
+        ]
+
+        # common domains
+        query[0].hsps = [bs_hmmer.HSP(query[0], "A", 100.0, 0, 100)]
+        target[0].hsps = [bs_hmmer.HSP(target[0], "A", 100.0, 0, 100)]
+        query[1].hsps = [bs_hmmer.HSP(query[1], "B", 100.0, 0, 100)]
+        target[1].hsps = [bs_hmmer.HSP(target[1], "B", 100.0, 0, 100)]
+        query[2].hsps = [bs_hmmer.HSP(query[1], "C", 100.0, 0, 100)]
+        target[4].hsps = [bs_hmmer.HSP(target[4], "C", 100.0, 0, 100)]
+
+        # different domains. only for target
+        target[2].hsps = [bs_hmmer.HSP(target[2], "D", 100.0, 0, 100)]
+        target[3].hsps = [bs_hmmer.HSP(target[3], "E", 100.0, 0, 100)]
+
+        target_index = bs_comp.extend.get_target_indexes(target)
+
+        expected_extends = (5, 3, 11)
+
+        actual_extends = bs_comp.extend.score_extend(
+            query, 0, target_index, 5, -3, -2, 0
+        )
+
+        self.assertEqual(expected_extends, actual_extends)
+
+    def test_extend_fill_gap(self):
+        """Tests the concept of filling a gap during extend"""
+
+        # create mock cds lists
+        query = [
+            bs_genbank.CDS(0, 100),
+            bs_genbank.CDS(100, 200),
+            bs_genbank.CDS(200, 300),
+        ]
+        target = [
+            bs_genbank.CDS(0, 100),
+            bs_genbank.CDS(100, 200),
+            bs_genbank.CDS(200, 300),
+        ]
+
+        # the idea is that we have a situation like this:
+        # query:  A B C
+        # target: A C B
+        # when we see something like this, we will have a gap of 1 when we reach B in
+        # the query:
+        # query:  A - B C
+        # target: A C B
+        # but we want to "fix" it when we see that close by there is another same domain
+        # that would fill the gap
+
+        query[0].hsps = [bs_hmmer.HSP(query[0], "A", 100.0, 0, 100)]
+        target[0].hsps = [bs_hmmer.HSP(target[0], "A", 100.0, 0, 100)]
+
+        query[1].hsps = [bs_hmmer.HSP(query[1], "B", 100.0, 0, 100)]
+        target[1].hsps = [bs_hmmer.HSP(target[1], "C", 100.0, 0, 100)]
+
+        query[2].hsps = [bs_hmmer.HSP(query[2], "C", 100.0, 0, 100)]
+        target[2].hsps = [bs_hmmer.HSP(target[2], "B", 100.0, 0, 100)]
+
+        # so we expect an extension of 3 on both sides, and a score of 15
+        expected_extends = (3, 3, 15)
+
+        target_index = bs_comp.extend.get_target_indexes(target)
+
+        actual_extends = bs_comp.extend.score_extend(
+            query, 0, target_index, 5, -3, -2, 0
+        )
+
+        self.assertEqual(expected_extends, actual_extends)

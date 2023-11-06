@@ -3,17 +3,26 @@
 # from python
 from unittest import TestCase
 from pathlib import Path
+from collections import OrderedDict
+
+# from dependencies
+from Bio.SeqFeature import SeqFeature, FeatureLocation
 
 # from other modules
-from big_scape.genbank import GBK, BGCRecord, CDS, Region
+from big_scape.genbank import GBK, BGCRecord, CDS, Region, ProtoCluster, ProtoCore
 from big_scape.comparison import (
     RecordPairGenerator,
     QueryToRefRecordPairGenerator,
     RefToRefRecordPairGenerator,
+    ConnectedComponenetPairGenerator,
     RecordPair,
     save_edge_to_db,
+    get_record_category,
+    get_weight_category,
+    as_class_bin_generator,
 )
 from big_scape.comparison import generate_mix
+from big_scape.genbank.candidate_cluster import CandidateCluster
 
 import big_scape.hmm as bs_hmm
 import big_scape.data as bs_data
@@ -252,12 +261,28 @@ class TestBGCBin(TestCase):
             # lets say two (0 and 1) of these distances are entirely similar
             if idx < 2:
                 save_edge_to_db(
-                    (query_gbk.region._db_id, ref_gbk.region._db_id, 0.0, 1.0, 1.0, 1.0)
+                    (
+                        query_gbk.region._db_id,
+                        ref_gbk.region._db_id,
+                        0.0,
+                        1.0,
+                        1.0,
+                        1.0,
+                        "mix",
+                    )
                 )
             else:
                 # the other two (2 and 3) are entirely distant
                 save_edge_to_db(
-                    (query_gbk.region._db_id, ref_gbk.region._db_id, 1.0, 0.0, 0.0, 0.0)
+                    (
+                        query_gbk.region._db_id,
+                        ref_gbk.region._db_id,
+                        1.0,
+                        0.0,
+                        0.0,
+                        0.0,
+                        "mix",
+                    )
                 )
 
         # so now we have a network where the query is connected to 2 of the reference
@@ -325,12 +350,28 @@ class TestBGCBin(TestCase):
             # lets say two (0 and 1) of these distances are entirely similar
             if idx < 2:
                 save_edge_to_db(
-                    (query_gbk.region._db_id, ref_gbk.region._db_id, 0.0, 1.0, 1.0, 1.0)
+                    (
+                        query_gbk.region._db_id,
+                        ref_gbk.region._db_id,
+                        0.0,
+                        1.0,
+                        1.0,
+                        1.0,
+                        "mix",
+                    )
                 )
             else:
                 # the other two (2 and 3) are entirely distant
                 save_edge_to_db(
-                    (query_gbk.region._db_id, ref_gbk.region._db_id, 1.0, 0.0, 0.0, 0.0)
+                    (
+                        query_gbk.region._db_id,
+                        ref_gbk.region._db_id,
+                        1.0,
+                        0.0,
+                        0.0,
+                        0.0,
+                        "mix",
+                    )
                 )
 
         # so now we have a network where the query is connected to 2 of the reference
@@ -349,18 +390,50 @@ class TestBGCBin(TestCase):
 
         # we will connect ref1 and ref3
         save_edge_to_db(
-            (ref_gbks[1].region._db_id, ref_gbks[3].region._db_id, 0.0, 1.0, 1.0, 1.0)
+            (
+                ref_gbks[1].region._db_id,
+                ref_gbks[3].region._db_id,
+                0.0,
+                1.0,
+                1.0,
+                1.0,
+                "mix",
+            )
         )
 
         # we will generate distant edges for the others
         save_edge_to_db(
-            (ref_gbks[0].region._db_id, ref_gbks[2].region._db_id, 1.0, 0.0, 0.0, 0.0)
+            (
+                ref_gbks[0].region._db_id,
+                ref_gbks[2].region._db_id,
+                1.0,
+                0.0,
+                0.0,
+                0.0,
+                "mix",
+            )
         )
         save_edge_to_db(
-            (ref_gbks[0].region._db_id, ref_gbks[3].region._db_id, 1.0, 0.0, 0.0, 0.0)
+            (
+                ref_gbks[0].region._db_id,
+                ref_gbks[3].region._db_id,
+                1.0,
+                0.0,
+                0.0,
+                0.0,
+                "mix",
+            )
         )
         save_edge_to_db(
-            (ref_gbks[1].region._db_id, ref_gbks[2].region._db_id, 1.0, 0.0, 0.0, 0.0)
+            (
+                ref_gbks[1].region._db_id,
+                ref_gbks[2].region._db_id,
+                1.0,
+                0.0,
+                0.0,
+                0.0,
+                "mix",
+            )
         )
 
         # now the networks topology is this:
@@ -394,6 +467,148 @@ class TestBGCBin(TestCase):
 
         self.assertEqual(expected_pairs, actual_pairs)
 
+    def test_connected_component_pair_generator(self):
+        """Tests whether the ConnectedComponenetPairGenerator correctly generates a set of
+        pairs and memebers when given a connected component that only features a subset
+        of the total members
+        """
+
+        bs_data.DB.create_in_mem()
+        query_gbk = create_mock_gbk(0, bs_enums.SOURCE_TYPE.QUERY)
+        # query -> test_path_0.gbk, rec_id 1
+        query_gbk.save_all()
+        ref_gbks = [
+            create_mock_gbk(i, bs_enums.SOURCE_TYPE.REFERENCE) for i in range(1, 5)
+        ]
+        # ref[0] -> test_path_1.gbk, rec_id 2
+        # ref[1] -> test_path_2.gbk, rec_id 3
+
+        source_records = [query_gbk.region]
+        for ref_gbk in ref_gbks:
+            source_records.append(ref_gbk.region)
+            ref_gbk.save_all()
+
+        # making query <-> ref_1 edge with distance 0.0
+        connected_component = [
+            (
+                query_gbk.region._db_id,
+                ref_gbks[0].region._db_id,
+                0.0,
+                1.0,
+                1.0,
+                1.0,
+                "mix",
+            ),
+            (
+                query_gbk.region._db_id,
+                ref_gbks[1].region._db_id,
+                1.0,
+                0.0,
+                0.0,
+                0.0,
+                "mix",
+            ),
+            (
+                ref_gbks[0].region._db_id,
+                ref_gbks[1].region._db_id,
+                0.0,
+                1.0,
+                1.0,
+                1.0,
+                "mix",
+            ),
+        ]
+
+        # expected_pairs = set(
+        #     [
+        #         RecordPair(query_gbk.region, ref_gbks[0].region),
+        #         RecordPair(query_gbk.region, ref_gbks[1].region),
+        #         RecordPair(ref_gbks[0].region, ref_gbks[1].region),
+        #     ]
+        # )
+        expected_record_ids = [1, 2, 3]
+
+        cc_pair_generator = ConnectedComponenetPairGenerator(connected_component, "mix")
+        cc_pair_generator.add_records(source_records)
+
+        actual_record_ids = cc_pair_generator.record_ids = [1, 2, 3]
+        # actual_pairs = set(list(cc_pair_generator.generate_pairs()))
+
+        self.assertEqual(expected_record_ids, actual_record_ids)
+
+    def test_cull_singletons_cutoff(self):
+        """Tests whether singletons are correctly culled"""
+
+        bs_data.DB.create_in_mem()
+        query_gbk = create_mock_gbk(0, bs_enums.SOURCE_TYPE.QUERY)
+        # query -> test_path_0.gbk, rec_id 1
+        query_gbk.save_all()
+        ref_gbks = [
+            create_mock_gbk(i, bs_enums.SOURCE_TYPE.REFERENCE) for i in range(1, 5)
+        ]
+        # ref[0] -> test_path_1.gbk, rec_id 2
+        # ref[1] -> test_path_2.gbk, rec_id 3
+
+        source_records = [query_gbk.region]
+        for ref_gbk in ref_gbks:
+            source_records.append(ref_gbk.region)
+            ref_gbk.save_all()
+
+        new_bin = RecordPairGenerator("Test", "mix")
+        new_bin.add_records(source_records)
+
+        # making query <-> ref_1 edge with distance 0.0
+
+        save_edge_to_db(
+            (
+                query_gbk.region._db_id,
+                ref_gbks[0].region._db_id,
+                0.0,
+                1.0,
+                1.0,
+                1.0,
+                "mix",
+            )
+        )
+
+        save_edge_to_db(
+            (
+                query_gbk.region._db_id,
+                ref_gbks[1].region._db_id,
+                1.0,
+                0.0,
+                0.0,
+                0.0,
+                "mix",
+            )
+        )
+
+        save_edge_to_db(
+            (
+                ref_gbks[0].region._db_id,
+                ref_gbks[1].region._db_id,
+                0.0,
+                1.0,
+                1.0,
+                1.0,
+                "mix",
+            )
+        )
+
+        # edges above cutoff:
+        # query <-> ref_1 | rec_id 1 <-> rec_id 2
+        # ref_1 <-> ref_2 | rec_id 2 <-> rec_id 3
+
+        new_bin.cull_singletons(0.5)
+
+        expected_records = [source_records[0], source_records[1], source_records[2]]
+        # expected_record_ids = set([1, 2, 3])
+
+        actual_records = new_bin.source_records
+        # actual_record_ids = new_bin.record_ids
+
+        self.assertEqual(expected_records, actual_records)
+
 
 class TestMixComparison(TestCase):
     def test_mix_iter(self):
@@ -419,3 +634,128 @@ class TestMixComparison(TestCase):
         actual_pair_count = len(list(new_bin.generate_pairs()))
 
         self.assertEqual(expected_pair_count, actual_pair_count)
+
+
+def mock_region() -> Region:
+    """generates a mock region for testing"""
+
+    region_feature = SeqFeature(FeatureLocation(0, 100), type="region")
+    region_feature.qualifiers = {
+        "region_number": ["1"],
+        "candidate_cluster_numbers": ["1"],
+        "product": ["T1PKS"],
+    }
+
+    region = Region.parse_as5(region_feature)
+
+    candidate_cluster_feature = SeqFeature(FeatureLocation(0, 100), type="cand_cluster")
+    candidate_cluster_feature.qualifiers = {
+        "candidate_cluster_number": ["1"],
+        "kind": ["neighbouring"],
+        "protoclusters": ["1"],
+        "product": ["T1PKS"],
+    }
+
+    candidate_cluster = CandidateCluster.parse(candidate_cluster_feature)
+
+    protocluster_feature = SeqFeature(FeatureLocation(0, 100), type="protocluster")
+    protocluster_feature.qualifiers = {
+        "protocluster_number": ["1"],
+        "category": ["PKS"],
+        "product": ["T1PKS"],
+    }
+
+    protocluster = ProtoCluster.parse(protocluster_feature)
+
+    protocore_feature = SeqFeature(FeatureLocation(0, 100), type="proto_core")
+    protocore_feature.qualifiers = {
+        "protocluster_number": ["1"],
+        "product": ["T1PKS"],
+    }
+
+    protocore = ProtoCore.parse(protocore_feature)
+
+    protocluster.add_proto_core(protocore)
+    candidate_cluster.add_proto_cluster(protocluster)
+    region.add_cand_cluster(candidate_cluster)
+
+    return region
+
+
+class TestBinGenerators(TestCase):
+    """Test class for the bin generators and associated functions"""
+
+    def clean_db(self):
+        if bs_data.DB.opened():
+            bs_data.DB.close_db()
+
+    def __init__(self, methodName: str = "runTest") -> None:
+        super().__init__(methodName)
+        self.addCleanup(self.clean_db)
+
+    def test_get_region_category(self):
+        """Tests whether a category is correclty parsed from a region of version as6 or higher"""
+
+        region = mock_region()
+        cc = region.cand_clusters[1]
+        pc = cc.proto_clusters[1]
+
+        expected_category = "PKS"
+        category = get_record_category(pc)
+
+        self.assertEqual(expected_category, category)
+
+    def test_get_weight_category(self):
+        """Tests wether the correct legacy weight category is created from a region category"""
+
+        region = mock_region()
+        cc = region.cand_clusters[1]
+        pc = cc.proto_clusters[1]
+
+        expected_category = "T1PKS"
+        category = get_weight_category(pc)
+
+        self.assertEqual(expected_category, category)
+
+    def test_as_class_bin_generator(self):
+        """Tests whether an antismash bin is correclty generated given a weight label"""
+
+        "Bin 'PKS': 1 pairs from 2 BGC records"
+
+        gbk_1 = GBK(Path("test"), source_type=bs_enums.SOURCE_TYPE.QUERY)
+        gbk_1.region = mock_region()
+
+        region_1 = gbk_1.region
+        cand_cluster_1 = region_1.cand_clusters[1]
+        protocluster_1 = cand_cluster_1.proto_clusters[1]
+        protocore_1 = protocluster_1.proto_core[1]
+
+        gbk_2 = GBK(Path("test"), source_type=bs_enums.SOURCE_TYPE.QUERY)
+        gbk_2.region = mock_region()
+
+        region_2 = gbk_2.region
+        cand_cluster_2 = region_2.cand_clusters[1]
+        protocluster_2 = cand_cluster_2.proto_clusters[1]
+        protocore_2 = protocluster_2.proto_core[1]
+
+        # gbks = [gbk_1.region, gbk_2.region]
+        gbks = [protocore_1, protocore_2]
+        weights = ["mix", "legacy_weights"]
+        class_modes = [bs_enums.CLASSIFY_MODE.CLASS, bs_enums.CLASSIFY_MODE.CATEGORY]
+
+        seen_dict = OrderedDict()
+        expected_dict = OrderedDict()
+
+        expected_dict = {
+            "classmix": "T1PKSmix",
+            "categorymix": "PKSmix",
+            "classlegacy_weights": "T1PKST1PKS",
+            "categorylegacy_weights": "PKST1PKS",
+        }
+
+        for weight in weights:
+            for mode in class_modes:
+                bin = next(as_class_bin_generator(gbks, weight, mode))
+                seen_dict[str(mode.value) + weight] = bin.label + bin.weights
+
+        self.assertEqual(expected_dict, seen_dict)

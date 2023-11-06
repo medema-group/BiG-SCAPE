@@ -22,13 +22,8 @@ import big_scape.enums as bs_enums
 
 # from this module
 from .binning import RecordPairGenerator, RecordPair
-from .legacy_bins import LEGACY_BINS
-from .legacy_extend import (
-    legacy_needs_expand_pair,
-    expand_glocal,
-    check_expand,
-    reset_expansion,
-)
+from .legacy_bins import LEGACY_WEIGHTS
+from .extend import extend, reset, check
 from .legacy_lcs import legacy_find_cds_lcs
 
 T = TypeVar("T")
@@ -127,7 +122,7 @@ def generate_edges(
                 break
 
             new_task = executor.submit(
-                calculate_scores_pair, (batch, alignment_mode, pair_generator.label)
+                calculate_scores_pair, (batch, alignment_mode, pair_generator.weights)
             )
             running_tasks[new_task] = batch
 
@@ -142,7 +137,8 @@ def generate_edges(
                     continue
 
                 new_task = executor.submit(
-                    calculate_scores_pair, (batch, alignment_mode, pair_generator.label)
+                    calculate_scores_pair,
+                    (batch, alignment_mode, pair_generator.weights),
                 )
                 running_tasks[new_task] = batch
 
@@ -170,6 +166,7 @@ def generate_edges(
                         jaccard,
                         adjacency,
                         dss,
+                        pair_generator.weights,
                     )
 
                 done_pairs += len(results)
@@ -202,10 +199,16 @@ def do_lcs_pair(
     pair.comparable_region.b_stop = b_stop
     pair.comparable_region.reverse = reverse
 
-    if legacy_needs_expand_pair(pair, alignment_mode):
+    if alignment_mode == bs_enums.ALIGNMENT_MODE.GLOBAL:
+        return False
+
+    if alignment_mode == bs_enums.ALIGNMENT_MODE.GLOCAL:
         return True
 
-    reset_expansion(pair.comparable_region)
+    if check(pair.comparable_region, 0, True):
+        return True
+
+    reset(pair.comparable_region)
     return False
 
 
@@ -218,10 +221,10 @@ def expand_pair(pair: RecordPair) -> float:
     Returns:
         float: jaccard index
     """
-    expand_glocal(pair.comparable_region)
+    extend(pair.comparable_region, 5, -3, -2, 0)
 
-    if not check_expand(pair.comparable_region):
-        reset_expansion(pair.comparable_region)
+    if not check(pair.comparable_region, 0, True):
+        reset(pair.comparable_region)
         jc = calc_jaccard_pair(pair)
         return jc
 
@@ -243,11 +246,15 @@ def calculate_scores_pair(
         list[tuple[float, float, float, float]]: list of scores for each pair in the
         order as the input data list
     """
-    pairs, alignment_mode, bin_label = data
+    pairs, alignment_mode, weights_label = data
 
     results = []
 
     for pair in pairs:
+        if pair.region_a.parent_gbk == pair.region_b.parent_gbk:
+            results.append((0.0, 1.0, 1.0, 1.0))
+            continue
+
         jaccard = calc_jaccard_pair(pair)
 
         if jaccard == 0.0:
@@ -264,10 +271,10 @@ def calculate_scores_pair(
             results.append((1.0, 0.0, 0.0, 0.0))
             continue
 
-        if bin_label not in LEGACY_BINS:
-            bin_weights = LEGACY_BINS["mix"]["weights"]
+        if weights_label not in LEGACY_WEIGHTS:
+            bin_weights = LEGACY_WEIGHTS["mix"]["weights"]
         else:
-            bin_weights = LEGACY_BINS[bin_label]["weights"]
+            bin_weights = LEGACY_WEIGHTS[weights_label]["weights"]
         jc_weight, ai_weight, dss_weight, anchor_boost = bin_weights
 
         jaccard = calc_jaccard_pair(pair)

@@ -11,7 +11,7 @@ from big_scape.data import DB
 
 def get_connected_components(
     cutoff: Optional[float] = None,
-) -> Generator[list[tuple[int, int, float, float, float, float]], None, None]:
+) -> Generator[list[tuple[int, int, float, float, float, float, str]], None, None]:
     """Generate a network for each connected component in the network"""
     # the idea behind this is that the distance table is an edge list. If no
     # distance threshold is applied, any edge is itself a connected component that
@@ -72,7 +72,7 @@ def get_connected_components(
 def get_edge(
     exclude_nodes: set[int],
     cutoff: Optional[float] = None,
-) -> Optional[tuple[int, int, float, float, float, float]]:
+) -> Optional[tuple[int, int, float, float, float, float, str]]:
     """Get an edge from the database that is not connected to exclude_nodes"""
 
     if cutoff is None:
@@ -96,12 +96,12 @@ def get_edge(
     if edge is None:
         return None
 
-    return cast(tuple[int, int, float, float, float, float], edge)
+    return cast(tuple[int, int, float, float, float, float, str], edge)
 
 
 def get_edges(
     include_nodes: set[int], distance_cutoff: Optional[float] = None
-) -> list[tuple[int, int, float, float, float, float]]:
+) -> list[tuple[int, int, float, float, float, float, str]]:
     """Get all edges that are connected to include_nodes"""
     if distance_cutoff is None:
         distance_cutoff = 1.0
@@ -125,14 +125,14 @@ def get_edges(
 
     edges = DB.execute(select_statement).fetchall()
 
-    return cast(list[tuple[int, int, float, float, float, float]], edges)
+    return cast(list[tuple[int, int, float, float, float, float, str]], edges)
 
 
 def get_connected_edges(
     include_nodes: set[int],
-    connected_component: set[tuple[int, int, float, float, float, float]],
+    connected_component: set[tuple[int, int, float, float, float, float, str]],
     distance_cutoff: Optional[float] = None,
-) -> list[tuple[int, int, float, float, float, float]]:
+) -> list[tuple[int, int, float, float, float, float, str]]:
     """Get all edges that are connected to include_nodes with a certain distance"""
     if distance_cutoff is None:
         distance_cutoff = 1.0
@@ -159,6 +159,7 @@ def get_connected_edges(
                 distance_table.c.jaccard,
                 distance_table.c.adjacency,
                 distance_table.c.dss,
+                distance_table.c.weights,
             ).in_(connected_component)
         )
         # equivalent to AND distance < ...
@@ -167,4 +168,57 @@ def get_connected_edges(
 
     edges = DB.execute(select_statement).fetchall()
 
-    return cast(list[tuple[int, int, float, float, float, float]], edges)
+    return cast(list[tuple[int, int, float, float, float, float, str]], edges)
+
+
+def get_query_connected_component(
+    query_node_id: Optional[int],
+    cutoff: Optional[float] = None,
+) -> list[tuple[int, int, float, float, float, float, str]]:
+    "Generate a network for the query BGC mode connected component in the network"
+
+    if cutoff is None:
+        cutoff = 1.0
+
+    # first query edge
+    if not DB.metadata:
+        raise RuntimeError("DB.metadata is None")
+
+    select_statment = (
+        DB.metadata.tables["distance"]
+        .select()
+        .where(
+            (DB.metadata.tables["distance"].c.region_a_id.in_([query_node_id]))
+            | (DB.metadata.tables["distance"].c.region_b_id.in_([query_node_id]))
+        )
+        .where(DB.metadata.tables["distance"].c.distance < cutoff)
+    )
+
+    edge = DB.execute(select_statment).fetchone()
+
+    # we can represent our connected component as a set of edges
+    connected_component = set((edge,))
+
+    # list of node region ids in the connected component
+    edge_node_ids: set[int] = set()
+    edge_node_ids.add(edge[0])
+    edge_node_ids.add(edge[1])
+
+    # we can expand this by adding more edges
+    new_edges = get_connected_edges(edge_node_ids, connected_component, cutoff)
+
+    # if we have new edges, we can add them to the connected component
+    while len(new_edges) > 0:
+        edge_node_ids.update([edge[0] for edge in connected_component])
+        edge_node_ids.update([edge[1] for edge in connected_component])
+
+        connected_component.update(new_edges)
+
+        new_edges = get_connected_edges(edge_node_ids, connected_component, cutoff)
+
+        # this breaks the while loop if no new edges were found
+
+        # at some point new_edges is empty, so no more new edges were found
+        # we can now yield the connected component
+
+    return list(connected_component)

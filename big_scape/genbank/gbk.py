@@ -59,9 +59,7 @@ class GBK:
         # db specific fields
         self._db_id: Optional[int] = None
 
-    def add_cds_overlap_filter(
-        self, new_cds: CDS, cds_overlap_cutoff=0.1, legacy_mode=False
-    ) -> None:
+    def add_cds_overlap_filter(self, new_cds: CDS, cds_overlap_cutoff=0.1) -> None:
         """Adds a CDS to this GBK. Performs overlap cutoff filtering by calculating the
         percentage overlap of the incoming CDS with other CDS in this GBK.
 
@@ -90,9 +88,9 @@ class GBK:
         for cds_idx, old_cds in enumerate(self.genes):
             # ignore if these cds are on a different strand
             # BiG-SCAPE 1.0 does not perform this check
-            if not legacy_mode:
-                if old_cds.strand != new_cds.strand:
-                    continue
+            # if not legacy_mode:
+            if old_cds.strand != new_cds.strand:
+                continue
 
             overlap_nt = CDS.len_nt_overlap(old_cds, new_cds)
 
@@ -154,11 +152,7 @@ class GBK:
         gbk_table = DB.metadata.tables["gbk"]
         insert_query = (
             gbk_table.insert()
-            .values(
-                path=str(self.path),
-                nt_seq=str(self.nt_seq),
-                source_type=self.source_type.value,
-            )
+            .values(path=str(self.path), nt_seq=str(self.nt_seq))
             .returning(gbk_table.c.id)
             .compile()
         )
@@ -211,7 +205,6 @@ class GBK:
             .add_columns(
                 gbk_table.c.id,
                 gbk_table.c.path,
-                gbk_table.c.source_type,
                 gbk_table.c.nt_seq,
             )
             .compile()
@@ -221,8 +214,7 @@ class GBK:
 
         gbk_dict = {}
         for result in cursor_result.all():
-            source_type = SOURCE_TYPE[result.source_type.upper()]
-            new_gbk = GBK(Path(result.path), source_type)
+            new_gbk = GBK(Path(result.path), "")
             new_gbk._db_id = result.id
             new_gbk.nt_seq = result.nt_seq
             gbk_dict[result.id] = new_gbk
@@ -345,8 +337,8 @@ class GBK:
         cls,
         path: Path,
         source_type: SOURCE_TYPE,
+        run: dict,
         cds_overlap_cutoff: Optional[float] = None,
-        legacy_mode=False,
     ) -> GBK:
         """Parses a GBK file and returns a GBK object with all necessary information
 
@@ -370,12 +362,24 @@ class GBK:
             gbk.metadata["organism"] = record.annotations["organism"]
 
         as_version = GBK.get_as_version(record)
+        # check if found version number is valid
+        if not as_version[0].isnumeric():
+            logging.error("%s: Invalid antiSMASH version in GBK header", gbk.path)
+            raise InvalidGBKError()
         gbk.as_version = as_version
 
+        if int(as_version[0]) < 6 and run["classify"] and run["legacy_weights"]:
+            logging.error(
+                "The parameters --classify and --legacy_weights are not compatible with "
+                "gbks produced by antiSMASH versions under v6. You can either remove "
+                "--legacy_weights or use --legacy_classify instead."
+            )
+            raise InvalidGBKError()
+
         if int(as_version[0]) >= 5:
-            gbk.parse_as5up(record, cds_overlap_cutoff, legacy_mode)
+            gbk.parse_as5up(record, cds_overlap_cutoff)
         if int(as_version[0]) == 4:
-            gbk.parse_as4(record, cds_overlap_cutoff, legacy_mode)
+            gbk.parse_as4(record, cds_overlap_cutoff)
 
         return gbk
 
@@ -383,7 +387,6 @@ class GBK:
         self,
         record: SeqRecord,
         cds_overlap_cutoff: Optional[float] = None,
-        legacy_mode=False,
     ) -> None:
         """Parses a GBK record of AS version 4 and returns a GBK object with all
         necessary information
@@ -405,7 +408,9 @@ class GBK:
                 if self.region is not None:
                     # this should not happen, but just in case
                     # since we only have one region on an object
-                    logging.error("GBK file provided contains more than one region")
+                    logging.error(
+                        "%s: GBK file contains more than one region", self.path
+                    )
                     raise InvalidGBKError()
 
                 region = Region.parse_as4(feature, parent_gbk=self)
@@ -421,16 +426,21 @@ class GBK:
                 orf_num += 1
 
                 if cds_overlap_cutoff is not None:
-                    self.add_cds_overlap_filter(cds, cds_overlap_cutoff, legacy_mode)
+                    self.add_cds_overlap_filter(cds, cds_overlap_cutoff)
                     continue
 
                 self.genes.append(cds)
+        # If no cluster feature was found, GBK is invalid
+        if self.region is None:
+            logging.error(
+                "%s: GBK file does not contain an antiSMASH cluster feature", self.path
+            )
+            raise InvalidGBKError()
 
     def parse_as5up(
         self,
         record: SeqRecord,
         cds_overlap_cutoff: Optional[float] = None,
-        legacy_mode=False,
     ) -> None:
         """Parses a GBK record of AS versions 5 and up and returns a GBK object with all
         necessary information
@@ -456,7 +466,9 @@ class GBK:
                 if self.region is not None:
                     # this should not happen, but just in case
                     # since we only have one region on an object
-                    logging.error("GBK file provided contains more than one region")
+                    logging.error(
+                        "%s: GBK file contains more than one region", self.path
+                    )
                     raise InvalidGBKError()
 
                 region = Region.parse_as5(feature, parent_gbk=self)
@@ -484,17 +496,43 @@ class GBK:
                 orf_num += 1
 
                 if cds_overlap_cutoff is not None:
-                    self.add_cds_overlap_filter(cds, cds_overlap_cutoff, legacy_mode)
+                    self.add_cds_overlap_filter(cds, cds_overlap_cutoff)
                     continue
 
                 self.genes.append(cds)
 
+        # check correct GBK format
+        if self.region is None:
+            logging.error(
+                "%s: GBK file does not contain an antiSMASH region feature", self.path
+            )
+            raise InvalidGBKError()
+        if not tmp_cand_clusters:
+            logging.warning(
+                "%s: GBK file does not contain any cand_cluster features", self.path
+            )
+
         # add features to parent objects
         for proto_cluster_num, proto_cluster in tmp_proto_clusters.items():
+            if proto_cluster_num not in tmp_proto_cores:
+                logging.error(
+                    "%s: protocluster %s has missing proto_core feature",
+                    self.path,
+                    proto_cluster_num,
+                )
+                raise InvalidGBKError()
             proto_cluster.add_proto_core(tmp_proto_cores[proto_cluster_num])
 
-        for cand_cluster in tmp_cand_clusters.values():
+        for cand_cluster_num, cand_cluster in tmp_cand_clusters.items():
             for proto_cluster_num in cand_cluster.proto_clusters.keys():
+                if proto_cluster_num not in tmp_proto_clusters:
+                    logging.error(
+                        "%s: cand_cluster %s has missing protocluster %s feature",
+                        self.path,
+                        cand_cluster_num,
+                        proto_cluster_num,
+                    )
+                    raise InvalidGBKError()
                 cand_cluster.add_proto_cluster(tmp_proto_clusters[proto_cluster_num])
 
             region.add_cand_cluster(cand_cluster)
@@ -506,3 +544,12 @@ class GBK:
 
     def __hash__(self) -> int:
         return hash(self.path)
+
+    def __eq__(self, other) -> bool:
+        if not isinstance(other, GBK):
+            return False
+
+        if self.path is None or other.path is None:
+            return False
+
+        return self.path == other.path

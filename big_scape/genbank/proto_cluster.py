@@ -50,8 +50,8 @@ class ProtoCluster(BGCRecord):
         nt_stop: int,
         contig_edge: Optional[bool],
         product: str,
-        category: str,
         proto_core: dict[int, Optional[ProtoCore]],
+        category: Optional[str] = None,
     ):
         super().__init__(
             parent_gbk,
@@ -61,7 +61,7 @@ class ProtoCluster(BGCRecord):
             contig_edge,
             product,
         )
-        self.category: str = category
+        self.category: Optional[str] = category
         self.proto_core: Dict[int, Optional[ProtoCore]] = proto_core
         self.proto_core_cds_idx: set[int] = set()
 
@@ -77,6 +77,8 @@ class ProtoCluster(BGCRecord):
 
         if proto_core.number not in self.proto_core:
             raise InvalidGBKRegionChildError()
+
+        proto_core.category = self.category
 
         self.proto_core[proto_core.number] = proto_core
 
@@ -151,7 +153,7 @@ class ProtoCluster(BGCRecord):
 
         proto_core: dict[int, Optional[ProtoCore]] = {proto_cluster_number: None}
 
-        category = ""
+        category = None
         if "category" in feature.qualifiers:
             category = feature.qualifiers["category"][0]
 
@@ -164,8 +166,8 @@ class ProtoCluster(BGCRecord):
             nt_stop,
             contig_edge,
             product,
-            category,
             proto_core,
+            category,
         )
 
     def __repr__(self) -> str:
@@ -199,6 +201,7 @@ class ProtoCluster(BGCRecord):
                 record_table.c.nt_start,
                 record_table.c.nt_stop,
                 record_table.c.product,
+                record_table.c.category,
             )
             .where(record_table.c.record_type == "protocluster")
             .compile()
@@ -219,8 +222,8 @@ class ProtoCluster(BGCRecord):
                 result.nt_stop,
                 result.contig_edge,
                 result.product,
-                "",  # TODO: fix this
                 {},
+                result.category,
             )
 
             new_proto_cluster._db_id = result.id

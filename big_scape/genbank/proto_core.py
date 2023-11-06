@@ -45,6 +45,7 @@ class ProtoCore(BGCRecord):
         nt_stop: int,
         contig_edge: Optional[bool],
         product: str,
+        category: Optional[str] = None,
     ):
         super().__init__(
             parent_gbk,
@@ -54,6 +55,8 @@ class ProtoCore(BGCRecord):
             contig_edge,
             product,
         )
+
+        self.category: Optional[str] = category
 
     def save(self, parent_id: int, commit=True) -> None:
         """Stores this protocore in the database
@@ -129,6 +132,7 @@ class ProtoCore(BGCRecord):
                 record_table.c.nt_start,
                 record_table.c.nt_stop,
                 record_table.c.product,
+                record_table.c.category,
             )
             .where(record_table.c.record_type == "proto_core")
             .compile()
@@ -147,6 +151,7 @@ class ProtoCore(BGCRecord):
                 result.nt_stop,
                 result.contig_edge,
                 result.product,
+                result.category,
             )
 
             new_proto_core._db_id = result.id

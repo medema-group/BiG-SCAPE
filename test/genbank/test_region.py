@@ -11,6 +11,7 @@ from big_scape.genbank import Region, CandidateCluster, GBK
 from big_scape.errors import InvalidGBKError
 from big_scape.data import DB
 from big_scape.enums import SOURCE_TYPE
+import big_scape.enums as bs_enums
 
 
 class TestRegion(TestCase):
@@ -79,8 +80,18 @@ class TestRegion(TestCase):
         gbk_file_path = Path(
             "test/test_data/metagenome_valid_gbk_input/as5_metagenome_valid...region001.gbk"
         )
+        run = {
+            "input_dir": Path("test/test_data/valid_gbk_folder/"),
+            "input_mode": bs_enums.INPUT_MODE.RECURSIVE,
+            "include_gbk": None,
+            "exclude_gbk": None,
+            "cds_overlap_cutoff": None,
+            "cores": None,
+            "classify": False,
+            "legacy_classify": False,
+        }
 
-        parent_gbk = GBK.parse(gbk_file_path, SOURCE_TYPE.QUERY)
+        parent_gbk = GBK.parse(gbk_file_path, SOURCE_TYPE.QUERY, run)
 
         self.assertRaises(InvalidGBKError, Region.parse_as5, feature, parent_gbk)
 

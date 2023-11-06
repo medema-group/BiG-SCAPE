@@ -11,17 +11,19 @@ from sklearn.exceptions import ConvergenceWarning
 from big_scape.data import DB
 
 # from this module
-from .utility import edge_list_to_adj_list, adj_list_to_sim_matrix
+from .utility import edge_list_to_sim_matrix
 
 
 def generate_families(
-    connected_component: list[tuple[int, int, float, float, float, float]],
+    connected_component: list[tuple[int, int, float, float, float, float, str]],
+    cutoff: float,
 ) -> list[tuple[int, int, float]]:
     """Execute affinity propagation on a connected component
 
     Args:
-        connected_component (list[tuple[int, int, float, float, float, float]]):
+        connected_component (list[tuple[int, int, float, float, float, float, str]]):
             connected component in the form of a list of edges
+        cutoff (float): cutoff used in generation of the connected_component
 
     Returns:
         list[tuple[int, int, float]]: list of (region_id, family, cutoff) tuples
@@ -36,18 +38,12 @@ def generate_families(
         family_id = connected_component[0][0]
 
         for edge in connected_component:
-            regions_families.append((edge[0], family_id, 0.3))
-            regions_families.append((edge[1], family_id, 0.3))
+            regions_families.append((edge[0], family_id, cutoff))
+            regions_families.append((edge[1], family_id, cutoff))
 
         return regions_families
 
-    adj_list = edge_list_to_adj_list(connected_component)
-
-    # this list is going to be in the same order as the distance matrix rows/col
-    # and the list of labels after AP
-    node_ids = list(adj_list.keys())
-
-    distance_matrix = adj_list_to_sim_matrix(adj_list)
+    distance_matrix, node_ids = edge_list_to_sim_matrix(connected_component)
 
     labels, centers = aff_sim_matrix(distance_matrix)
 
@@ -61,7 +57,7 @@ def generate_families(
         center = centers[label]
         family = node_ids[center]
 
-        regions_families.append((region_id, family, 0.3))
+        regions_families.append((region_id, family, cutoff))
 
     return regions_families
 

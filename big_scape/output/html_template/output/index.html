@@ -25,9 +25,13 @@
     </div>
     <div class="page">
       <div id="buttons">
-        <span id="cluster-type" style="float: left; padding-top: 0.2em;">Networks:</span>
-        <ul id="clusterbuttons" style="float: left;">
-        </ul>
+        <span id="cluster-type" style="float: left; padding-top: 0.2em; padding-right: 1em">
+          Networks:
+          <ul id="overviewbutton" style="float: left; padding-right: 2em">
+          </ul>
+          <select id="clusterbuttons" style="float: right">
+          </select>
+        </span>
         <span id="cluster-type" style="float: right; padding-top: 0.2em; padding-left: 1em;">
           Runs:
           <select id="bigscape-runs">
@@ -73,27 +77,35 @@
     function loadOverview(name) {
       $('#contentframe').attr('src', './html_content/networks/' + name + '/overview.html');
       $('#contentframe').trigger("focus");
+      $("#clusterbuttons").append($("<option selected disabled hidden>Select Network</option>"))
     }
     function loadRun(idx) {
       var run_name = bigscape_results[idx]["label"];
+      $("#overviewbutton").html("");
+      $("#overviewbutton").append($("<li class='clbutton overview selected'><a href='javascript:loadOverview(\"" + run_name + "\");'>Overview</a></li>"));
       $("#clusterbuttons").html("");
-      $("#clusterbuttons").append($("<li class='clbutton overview selected'><a href='javascript:loadOverview(\"" + run_name + "\");'>Overview</a></li>"));
+      $("#clusterbuttons").append($("<option selected disabled hidden>Select Network</option>"))
+      // $("#clusterbuttons").append($("<li class='clbutton overview selected'><a href='javascript:loadOverview(\"" + run_name + "\");'>Overview</a></li>"));
       for (var i in bigscape_results[idx]["networks"]) {
         var sub = bigscape_results[idx]["networks"][i];
-        $("#clusterbuttons").append($("<li class='clbutton " + sub["css"] + " inactive'><a href='javascript:loadNetwork(\"" + run_name + "\",\"" + sub["name"] + "\");'>" + sub["label"] + "</a></li>"));
+        $("#clusterbuttons").append($("<option class='clbutton " + sub["css"] + " inactive'><a href='javascript:loadNetwork(\"" + run_name + "\",\"" + sub["name"] + "\");'>" + sub["label"] + "</a></option>"));
       }
-      $(".clbutton").find("a").hover(function(handler){
-          var node = $(handler.target).parent();
-          $(".clbutton:not(.selected)").addClass("inactive");
-          node.removeClass("inactive");
-        }, function(handler){
-          $(".clbutton:not(.selected)").addClass("inactive");
-      });
-      $(".clbutton").click(function(handler){
-        $(".clbutton").removeClass("selected");
-        $(handler.target).parent().addClass("selected");
-        $(".clbutton:not(.selected)").addClass("inactive");
+      $("#clusterbuttons").on("change", function() {
+        loadNetwork(run_name, this.value);
       })
+      // TODO: comment out temporarily, delete if no issues arise
+      // $(".clbutton").find("a").hover(function(handler){
+      //     var node = $(handler.target).parent();
+      //     $(".clbutton:not(.selected)").addClass("inactive");
+      //     node.removeClass("inactive");
+      //   }, function(handler){
+      //     $(".clbutton:not(.selected)").addClass("inactive");
+      // });
+      // $(".clbutton").click(function(handler){
+      //   $(".clbutton").removeClass("selected");
+      //   $(handler.target).parent().addClass("selected");
+      //   $(".clbutton:not(.selected)").addClass("inactive");
+      // })
       loadOverview(run_name);
     }
     $(document).ready(function(){
