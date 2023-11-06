@@ -87,9 +87,9 @@ def extend(
         max_match_dist: The maximum distance to look in the target for a match before
         it is considered a mismatch
     """
-    logging.info(comparable_region.pair)
-    logging.info("before:")
-    logging.info(comparable_region)
+
+    logging.debug("before extend:")
+    logging.debug(comparable_region)
 
     # get the cds lists
     a_cds = comparable_region.pair.region_a.get_cds(True)
@@ -149,9 +149,8 @@ def extend(
         comparable_region.a_start -= query_exp
         comparable_region.b_start -= target_exp
 
-    logging.info("after:")
-    logging.info(comparable_region)
-    logging.info("")
+    logging.debug("after extend:")
+    logging.debug(comparable_region)
 
 
 def get_target_indexes(
