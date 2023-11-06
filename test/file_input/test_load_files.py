@@ -28,7 +28,7 @@ class TestLoadGBK(TestCase):
         }
 
         with self.assertRaises(NotADirectoryError):
-            load_dataset_folder(run, SOURCE_TYPE.QUERY)
+            load_dataset_folder(run["input_dir"], run, SOURCE_TYPE.QUERY)
 
     def test_gbk_path_valid(self):
         """Tests whether loading a given path returns none"""
@@ -45,7 +45,7 @@ class TestLoadGBK(TestCase):
             "legacy_classify": False,
         }
 
-        load_result = load_dataset_folder(run, SOURCE_TYPE.QUERY)
+        load_result = load_dataset_folder(run["input_dir"], run, SOURCE_TYPE.QUERY)
 
         expected_count = 3
         actual_count = len(load_result)
@@ -68,7 +68,7 @@ class TestLoadGBK(TestCase):
         }
 
         with self.assertRaises(FileNotFoundError):
-            load_dataset_folder(run, SOURCE_TYPE.QUERY)
+            load_dataset_folder(run["input_dir"], run, SOURCE_TYPE.QUERY)
 
     def test_load_gbk_not_a_file(self):
         """Tests whether the load_gbk function correctly returns none when input is not a file"""
@@ -122,7 +122,7 @@ class TestLoadGBK(TestCase):
             "legacy_classify": False,
         }
 
-        load_result = load_dataset_folder(run, SOURCE_TYPE.QUERY)
+        load_result = load_dataset_folder(run["input_dir"], run, SOURCE_TYPE.QUERY)
 
         expected_count = 1
         actual_count = len(load_result)
@@ -143,7 +143,7 @@ class TestLoadGBK(TestCase):
             "legacy_classify": False,
         }
 
-        load_result = load_dataset_folder(run, SOURCE_TYPE.QUERY)
+        load_result = load_dataset_folder(run["input_dir"], run, SOURCE_TYPE.QUERY)
 
         expected_count = 3
         actual_count = len(load_result)

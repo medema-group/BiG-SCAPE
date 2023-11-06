@@ -3,7 +3,7 @@
 
 # from dependencies
 from typing import Optional, Generator, cast
-from sqlalchemy import tuple_
+from sqlalchemy import tuple_, select
 
 # from other modules
 from big_scape.data import DB
@@ -82,13 +82,20 @@ def get_edge(
 
     if not DB.metadata:
         raise RuntimeError("DB.metadata is None")
-
+    distance_table = DB.metadata.tables["distance"]
     select_statment = (
-        DB.metadata.tables["distance"]
-        .select()
-        .where(DB.metadata.tables["distance"].c.region_a_id.notin_(exclude_nodes))
-        .where(DB.metadata.tables["distance"].c.region_b_id.notin_(exclude_nodes))
-        .where(DB.metadata.tables["distance"].c.distance < cutoff)
+        select(
+            distance_table.c.region_a_id,
+            distance_table.c.region_b_id,
+            distance_table.c.distance,
+            distance_table.c.jaccard,
+            distance_table.c.adjacency,
+            distance_table.c.dss,
+            distance_table.c.weights,
+        )
+        .where(distance_table.c.region_a_id.notin_(exclude_nodes))
+        .where(distance_table.c.region_b_id.notin_(exclude_nodes))
+        .where(distance_table.c.distance < cutoff)
     )
 
     edge = DB.execute(select_statment).fetchone()
@@ -113,7 +120,15 @@ def get_edges(
 
     distance_table = DB.metadata.tables["distance"]
     select_statement = (
-        distance_table.select()
+        select(
+            distance_table.c.region_a_id,
+            distance_table.c.region_b_id,
+            distance_table.c.distance,
+            distance_table.c.jaccard,
+            distance_table.c.adjacency,
+            distance_table.c.dss,
+            distance_table.c.weights,
+        )
         # equivalent to WHERE (region_a_id in (...) OR region_b_id in (...))
         .where(
             distance_table.c.region_a_id.in_(include_nodes)
@@ -144,7 +159,15 @@ def get_connected_edges(
 
     distance_table = DB.metadata.tables["distance"]
     select_statement = (
-        distance_table.select()
+        select(
+            distance_table.c.region_a_id,
+            distance_table.c.region_b_id,
+            distance_table.c.distance,
+            distance_table.c.jaccard,
+            distance_table.c.adjacency,
+            distance_table.c.dss,
+            distance_table.c.weights,
+        )
         # equivalent to WHERE (region_a_id in (...) OR region_b_id in (...))
         .where(
             distance_table.c.region_a_id.in_(include_nodes)

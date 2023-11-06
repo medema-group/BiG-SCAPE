@@ -21,9 +21,29 @@ function Bigscape(run_data, bs_data, bs_families, bs_alignment, bs_similarity, n
   var bs_to_cl = [];
   var bs_svg = [];
   for (var i in bs_data) {
-    var svg = $(Arrower.drawClusterSVG(bs_data[i]));
+    var cl_data = bs_data[i];
+    var ext_start = cl_data.record_start ? cl_data.record_start - 1 : 0;
+    var ext_stop = cl_data.record_stop ? cl_data.record_stop - 1 : cl_data.orfs.length;
+    var svg = $(Arrower.drawClusterSVG(cl_data));
     svg.css("clear", "both");
     svg.addClass("arrower-svg");
+    // opacity for domains/orfs outside of compared region
+    if ((ext_start !== 0) || (ext_stop !== cl_data.orfs.length)) {
+      var outside_ext_bounds = false
+      svg.find("polygon").each(function () {
+        if ((outside_ext_bounds) && ($(this).attr("class") === "arrower-domain")) {
+          $(this).css("opacity", "0.4")
+        } else if (
+          ($(this).attr("class") === "arrower-orf") &&
+          (($(this).attr("idx") < ext_start) || ($(this).attr("idx") > ext_stop))
+        ) {
+          $(this).css("opacity", "0.4")
+          outside_ext_bounds = true
+        } else {
+          outside_ext_bounds = false
+        }
+      })
+    }
     bs_svg.push(svg);
   }
   // for search optimization
@@ -322,19 +342,19 @@ function Bigscape(run_data, bs_data, bs_families, bs_alignment, bs_similarity, n
     var ui = Viva.Graph.svg('circle')
       .attr('r', 10)
       .attr('fill', (fam_colors[bs_to_cl[node.id]]));
-      if (run_data["mode"] == "Cluster") {
-        if (bs_data[node.id]["source"] == ("mibig" || "reference")) {
-          ui.attr("stroke", "blue");
-          ui.attr("stroke-width", "4px");
-        }
+    if (run_data["mode"] == "Cluster") {
+      if (bs_data[node.id]["source"] == ("mibig" || "reference")) {
+        ui.attr("stroke", "blue");
+        ui.attr("stroke-width", "4px");
       }
-      if (run_data["mode"] == "Query") {
-        if (bs_data[node.id]["source"] == "query") {
-          // ui.attr("r", "20")
-          ui.attr("stroke", "green");
-          ui.attr("stroke-width", "6px");
-        }
+    }
+    if (run_data["mode"] == "Query") {
+      if (bs_data[node.id]["source"] == "query") {
+        // ui.attr("r", "20")
+        ui.attr("stroke", "green");
+        ui.attr("stroke-width", "6px");
       }
+    }
     $(ui).hover(function () { // mouse over
       var temp_highlight = [];
       for (var i in highlighted_nodes) {
@@ -426,8 +446,8 @@ function Bigscape(run_data, bs_data, bs_families, bs_alignment, bs_similarity, n
   graphics.link(function (link) {
 
     let line = Viva.Graph.svg('line')
-    .attr("stroke", "#777")
-    .attr("stroke-width", link["data"]["weight"] * 10);
+      .attr("stroke", "#777")
+      .attr("stroke-width", link["data"]["weight"] * 10);
 
     if (graph.getNode(link.fromId).data.id === graph.getNode(link.toId).data.id) {
       line = line.attr("stroke-dasharray", "10,10")
