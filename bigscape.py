@@ -2072,8 +2072,7 @@ def CMD_parser():
 
     return parser.parse_args()
 
-
-if __name__=="__main__":
+def main():
     options = CMD_parser()
     
     class bgc_data:
@@ -3344,4 +3343,6 @@ if __name__=="__main__":
     with open(os.path.join(log_folder, "runtimes.txt"), 'a') as timings_file:
         timings_file.write(runtime_string + "\n")
     print(runtime_string)
-    
+
+if __name__=="__main__":
+    main()

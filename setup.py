@@ -12,17 +12,19 @@ def generate_package_data():
     data_files.append('anchor_domains.txt')
     data_files.append('domain_includelist.txt')
     data_files.append('domains_color_file.tsv')
-    package_data={'BiG-SCAPE': data_files}
+    package_data={'bigscape': data_files}
     return package_data
 
 setup(
-     name='BiG-SCAPE',
-     version='1.1.4',
+     name='bigscape',
+     version='1.1.5',
      py_modules=['functions','ArrowerSVG'],
-     packages=['BiG-SCAPE'],
-     package_dir={'BiG-SCAPE': '.'},
+     packages=['bigscape'],
+     package_dir={'bigscape': '.'},
      package_data=generate_package_data(),
-     scripts=['bigscape.py'],
+     entry_points={
+         'console_scripts': ['bigscape=bigscape.bigscape:main']
+     },
      description='Biosynthetic Genes Similarity Clustering and Prospecting Engine.',
      keywords=['secondary metabolites', 'natural products', 'genome mining'],
      url='https://github.com/medema-group/BiG-SCAPE',
