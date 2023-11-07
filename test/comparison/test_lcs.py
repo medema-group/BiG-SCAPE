@@ -130,16 +130,17 @@ class testDomainLCS(unittest.TestCase):
         self.assertEqual(lcs, (1, 6, 6, 11, True))
 
     def test_lcs_domains_empty(self):
-        """Test lcs detection for two empty domain lists"""
+        """Test lcs detection for two empty domain lists
+
+        this should throw a runtime error"""
         cds_a, cds_b = generate_mock_cds_lists(0, 0, [], [], False)
 
         pc_a = generate_mock_protocluster(cds_a)
         pc_b = generate_mock_protocluster(cds_b)
         pair = bs_comparison.RecordPair(pc_a, pc_b)
 
-        lcs = bs_comparison.lcs.find_domain_lcs_region(pair)
-
-        self.assertEqual(lcs, (0, 0, 0, 0, False))
+        with self.assertRaises(RuntimeError):
+            bs_comparison.lcs.find_domain_lcs_region(pair)
 
     def test_lcs_domains_len_one(self):
         """Test lcs detection for two domain lists where there are only matches of len=1"""

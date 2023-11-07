@@ -125,6 +125,9 @@ class HSP:
 
     @staticmethod
     def sanitize_accession(accession: str):
+        if len(accession) < 8:
+            return accession
+
         if accession[7] == ".":
             return accession[:7]
 

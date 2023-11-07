@@ -60,6 +60,6 @@ class TestHMMSetup(TestCase):
 
         HMMer.init(hmm_path)
 
-        profile = HMMer.get_profile("PF00457.19")
+        profile = HMMer.get_profile("PF00457")
 
         self.assertIsInstance(profile, OptimizedProfile)
