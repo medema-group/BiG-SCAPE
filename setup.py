@@ -23,7 +23,7 @@ setup(
      package_dir={'bigscape': '.'},
      package_data=generate_package_data(),
      entry_points={
-         'console_scripts': ['bigscape=bigscape.bigscape:main']
+         'console_scripts': ['bigscape=bigscape.__main__:main']
      },
      description='Biosynthetic Genes Similarity Clustering and Prospecting Engine.',
      keywords=['secondary metabolites', 'natural products', 'genome mining'],
