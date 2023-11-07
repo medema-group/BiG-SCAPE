@@ -723,9 +723,9 @@ def fetch_lcs_from_db(a_id: int, b_id: int, weights: str) -> dict[str, Any]:
     dist_table = DB.metadata.tables["distance"]
     select_query = (
         dist_table.select()
-        .where(dist_table.c.region_a_id != dist_table.c.region_b_id)
-        .where(dist_table.c.region_a_id.in_((a_id, b_id)))
-        .where(dist_table.c.region_b_id.in_((a_id, b_id)))
+        .where(dist_table.c.record_a_id != dist_table.c.record_b_id)
+        .where(dist_table.c.record_a_id.in_((a_id, b_id)))
+        .where(dist_table.c.record_b_id.in_((a_id, b_id)))
         .where(dist_table.c.weights == weights)
         .compile()
     )
@@ -762,7 +762,7 @@ def adjust_lcs_to_all_genes(
     Returns:
         tuple[int, int, bool]: adjusted a_start, b_start and reverse
     """
-    if result["region_a_id"] == family_db_id:
+    if result["record_a_id"] == family_db_id:
         a_start = result["lcs_a_start"]
         a_stop = result["lcs_a_stop"]
         b_start = result["lcs_b_start"]
@@ -779,7 +779,7 @@ def adjust_lcs_to_all_genes(
         else:
             b_start = domain_genes_to_all_genes[bgc_db_id][b_start]
 
-    elif result["region_b_id"] == family_db_id:
+    elif result["record_b_id"] == family_db_id:
         a_start = result["lcs_b_start"]
         a_stop = result["lcs_b_stop"]
         b_start = result["lcs_a_start"]
@@ -1376,8 +1376,8 @@ def write_network_file(
 
         for dist in existing_distances:
             (
-                region_a_id,
-                region_b_id,
+                record_a_id,
+                record_b_id,
                 distance,
                 jaccard,
                 adjacency,
@@ -1395,7 +1395,7 @@ def write_network_file(
                 bgc_record_table.c.gbk_id,
                 bgc_record_table.c.record_number,
                 bgc_record_table.c.record_type,
-            ).where(bgc_record_table.c.id == region_a_id)
+            ).where(bgc_record_table.c.id == record_a_id)
             gbk_id_a, record_number_a, record_type_a = DB.execute(
                 select_statment
             ).fetchone()
@@ -1408,7 +1408,7 @@ def write_network_file(
                 bgc_record_table.c.gbk_id,
                 bgc_record_table.c.record_number,
                 bgc_record_table.c.record_type,
-            ).where(bgc_record_table.c.id == region_b_id)
+            ).where(bgc_record_table.c.id == record_b_id)
             gbk_id_b, record_number_b, record_type_b = DB.execute(
                 select_statment
             ).fetchone()
@@ -1493,8 +1493,8 @@ def get_cutoff_edgelist(
 
     select_statement = (
         select(
-            distance_table.c.region_a_id,
-            distance_table.c.region_b_id,
+            distance_table.c.record_a_id,
+            distance_table.c.record_b_id,
             distance_table.c.distance,
             distance_table.c.jaccard,
             distance_table.c.adjacency,
@@ -1506,8 +1506,8 @@ def get_cutoff_edgelist(
             distance_table.c.ext_b_stop,
             distance_table.c.alignment_mode,
         )
-        .where(distance_table.c.region_a_id.in_(pair_generator.record_ids))
-        .where(distance_table.c.region_b_id.in_(pair_generator.record_ids))
+        .where(distance_table.c.record_a_id.in_(pair_generator.record_ids))
+        .where(distance_table.c.record_b_id.in_(pair_generator.record_ids))
         .where(distance_table.c.weights == pair_generator.weights)
         .where(distance_table.c.distance < cutoff)
     )
@@ -1582,8 +1582,8 @@ def get_full_network_edgelist(
 
     select_statement = (
         select(
-            distance_table.c.region_a_id,
-            distance_table.c.region_b_id,
+            distance_table.c.record_a_id,
+            distance_table.c.record_b_id,
             distance_table.c.distance,
             distance_table.c.jaccard,
             distance_table.c.adjacency,
@@ -1595,8 +1595,8 @@ def get_full_network_edgelist(
             distance_table.c.ext_b_stop,
             distance_table.c.alignment_mode,
         )
-        .where(distance_table.c.region_a_id.in_(record_ids))
-        .where(distance_table.c.region_b_id.in_(record_ids))
+        .where(distance_table.c.record_a_id.in_(record_ids))
+        .where(distance_table.c.record_b_id.in_(record_ids))
         .where(distance_table.c.weights.in_(incl_weights))
     )
 

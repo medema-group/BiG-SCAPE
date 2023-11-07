@@ -71,8 +71,8 @@ CREATE TABLE IF NOT EXISTS hsp_alignment (
 );
 
 CREATE TABLE IF NOT EXISTS distance (
-    region_a_id INTEGER NOT NULL,
-    region_b_id INTEGER NOT NULL,
+    record_a_id INTEGER NOT NULL,
+    record_b_id INTEGER NOT NULL,
     distance REAL NOT NULL,
     jaccard REAL NOT NULL,
     adjacency REAL NOT NULL,
@@ -88,7 +88,7 @@ CREATE TABLE IF NOT EXISTS distance (
     ext_b_stop INTEGER NOT NULL,
     reverse BOOLEAN NOT NULL,
     alignment_mode TEXT NOT NULL,
-    UNIQUE(region_a_id, region_b_id, weights)
-    FOREIGN KEY(region_a_id) REFERENCES bgc_record(id)
-    FOREIGN KEY(region_b_id) REFERENCES bgc_record(id)
+    UNIQUE(record_a_id, record_b_id, weights)
+    FOREIGN KEY(record_a_id) REFERENCES bgc_record(id)
+    FOREIGN KEY(record_b_id) REFERENCES bgc_record(id)
 );
