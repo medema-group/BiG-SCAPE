@@ -1,6 +1,7 @@
 """Contains methods for extension of comparable regions with record pairs"""
 
 # from python
+import math
 
 # from other modules
 import big_scape.genbank as bs_genbank
@@ -71,7 +72,7 @@ def extend(
     match: int,
     mismatch: int,
     gap: int,
-    max_match_dist: int,
+    max_match_dist_perc: float,
 ) -> None:
     """Expands a comparable region
 
@@ -84,8 +85,7 @@ def extend(
         match: The score for a match
         mismatch: The score for a mismatch
         gap: The score for a gap
-        max_match_dist: The maximum distance to look in the target for a match before
-        it is considered a mismatch
+        max_match_dist_perc: The maximum distance of a matching domain before it is
     """
 
     logging.debug("before extend:")
@@ -93,11 +93,14 @@ def extend(
 
     # get the cds lists
     a_cds = comparable_region.pair.region_a.get_cds(True)
-    cds_b = comparable_region.pair.region_b.get_cds(True)
+    b_cds = comparable_region.pair.region_b.get_cds(True)
+
+    a_max_dist = math.floor(len(a_cds) * max_match_dist_perc)
+    b_max_dist = math.floor(len(b_cds) * max_match_dist_perc)
 
     # reverse b if necessary. This might be true after LCS
     if comparable_region.reverse:
-        cds_b = cds_b[::-1]
+        b_cds = b_cds[::-1]
 
     # we will try the following approach:
     # the shorter cds is the query
@@ -110,27 +113,29 @@ def extend(
     # we will only match when the position from the current extension is below a cutoff
     # length
 
-    if len(a_cds) > len(cds_b):
-        query = cds_b
+    if len(a_cds) > len(b_cds):
+        query = b_cds
         query_start = comparable_region.b_start
         query_stop = comparable_region.b_stop
         target = a_cds
+        max_match_dist = a_max_dist
     else:
         query = a_cds
         query_start = comparable_region.a_start
         query_stop = comparable_region.a_stop
-        target = cds_b
+        target = b_cds
+        max_match_dist = b_max_dist
 
     # generate an index of domain positions in the target
     # the lists in this index will be sorted by position, in ascending order
     target_index = get_target_indexes(target)
 
     query_exp, target_exp, score = score_extend(
-        query, query_stop, target_index, 5, -3, -2, 0
+        query, query_stop, target_index, match, mismatch, gap, max_match_dist
     )
 
     # set the new start and stop positions
-    if len(a_cds) > len(cds_b):
+    if len(a_cds) > len(b_cds):
         comparable_region.b_stop += query_exp
         comparable_region.a_stop += target_exp
     else:
@@ -138,11 +143,11 @@ def extend(
         comparable_region.b_stop += target_exp
 
     query_exp, target_exp, score = score_extend_rev(
-        query, query_start, target_index, 5, -3, -2, 0
+        query, query_start, target_index, match, mismatch, gap, max_match_dist
     )
 
     # expand left
-    if len(a_cds) > len(cds_b):
+    if len(a_cds) > len(b_cds):
         comparable_region.b_start -= query_exp
         comparable_region.a_start -= target_exp
     else:

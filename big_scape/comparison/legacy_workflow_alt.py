@@ -20,6 +20,7 @@ from big_scape.distances import calc_jaccard_pair, calc_ai_pair, calc_dss_pair_l
 
 import big_scape.enums as bs_enums
 import big_scape.genbank as bs_gbk
+import big_scape.cli.constants as bs_constants
 
 # from this module
 from .binning import RecordPairGenerator, RecordPair
@@ -193,17 +194,17 @@ def do_lcs_pair(
     if isinstance(pair.region_a, bs_gbk.Region) and isinstance(
         pair.region_b, bs_gbk.Region
     ):
-        find_domain_lcs_method = find_domain_lcs_region
+        logging.debug("Using region lcs")
+        a_start, a_stop, b_start, b_stop, reverse = find_domain_lcs_region(pair)
 
     elif isinstance(pair.region_a, bs_gbk.ProtoCluster) and isinstance(
         pair.region_b, bs_gbk.ProtoCluster
     ):
-        find_domain_lcs_method = find_domain_lcs_protocluster
+        logging.debug("Using protocluster lcs")
+        a_start, a_stop, b_start, b_stop, reverse = find_domain_lcs_protocluster(pair)
 
     else:
         raise TypeError("Regions must be of the same type")
-
-    a_start, a_stop, b_start, b_stop, reverse = find_domain_lcs_method(pair)
 
     logging.debug("before lcs:")
     logging.debug(pair.comparable_region)
@@ -242,7 +243,13 @@ def expand_pair(pair: RecordPair) -> float:
     Returns:
         float: jaccard index
     """
-    extend(pair.comparable_region, 5, -3, -2, 0)
+    extend(
+        pair.comparable_region,
+        bs_constants.EXPAND_MATCH_SCORE,
+        bs_constants.EXPAND_MISMATCH_SCORE,
+        bs_constants.EXPAND_GAP_SCORE,
+        bs_constants.EXPAND_MAX_MATCH_PERC,
+    )
 
     if not check(pair.comparable_region, 0, True):
         logging.info("resetting after extend")
@@ -274,6 +281,8 @@ def calculate_scores_pair(
 
     for pair in pairs:
         logging.debug(pair)
+        pair.comparable_region.log_comparable_region()
+        logging.debug("")
         if pair.region_a.parent_gbk == pair.region_b.parent_gbk:
             results.append((0.0, 1.0, 1.0, 1.0))
             continue
