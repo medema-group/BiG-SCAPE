@@ -84,5 +84,4 @@ def cluster(ctx, *args, **kwargs):
     init_logger_file(ctx.obj)
 
     # run BiG-SCAPE cluster
-    # print(ctx.obj)
     run_bigscape(ctx.obj)

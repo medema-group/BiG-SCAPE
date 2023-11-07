@@ -6,7 +6,7 @@ import shutil
 from distutils import dir_util
 from pathlib import Path
 from typing import Any
-from sqlalchemy import select
+from sqlalchemy import select, alias
 
 # from other modules
 from big_scape.data import DB
@@ -1332,7 +1332,24 @@ def write_clustering_file(run, cutoff, pair_generator) -> None:
 def write_network_file(
     network_file_path: Path,
     existing_distances: set[
-        tuple[int, int, float, float, float, float, str, int, int, int, int, str]
+        tuple[
+            str,
+            str,
+            int,
+            str,
+            str,
+            int,
+            float,
+            float,
+            float,
+            float,
+            str,
+            int,
+            int,
+            int,
+            int,
+            str,
+        ]
     ],
 ) -> None:
     """Writes a network file to the output directory
@@ -1346,38 +1363,37 @@ def write_network_file(
 
     """
 
-    if not DB.metadata:
-        raise RuntimeError("DB.metadata is None")
-
-    gbk_table = DB.metadata.tables["gbk"]
-    bgc_record_table = DB.metadata.tables["bgc_record"]
-
     with open(network_file_path, "w") as network_file:
         header = "\t".join(
             [
                 "GBK_a",
                 "Record_Type_a",
                 "Record_Number_a",
+                "ORF_coords_a",
                 "GBK_b",
                 "Record_Type_b",
                 "Record_Number_b",
+                "ORF_coords_b",
                 "distance",
                 "jaccard",
                 "adjacency",
                 "dss",
                 "weights",
                 "aligmnent_mode",
-                "ORF_coords_a",
-                "ORF_coords_b",
             ]
         )
 
         network_file.write(header + "\n")
 
+        # TODO: optimize this, get all info from db in one query without passing existing distances as intermediate step
         for dist in existing_distances:
             (
-                region_a_id,
-                region_b_id,
+                gbk_path_a,
+                record_type_a,
+                record_number_a,
+                gbk_path_b,
+                record_type_b,
+                record_number_b,
                 distance,
                 jaccard,
                 adjacency,
@@ -1390,48 +1406,22 @@ def write_network_file(
                 alignment_mode,
             ) = dist
 
-            # for record A
-            select_statment = select(
-                bgc_record_table.c.gbk_id,
-                bgc_record_table.c.record_number,
-                bgc_record_table.c.record_type,
-            ).where(bgc_record_table.c.id == region_a_id)
-            gbk_id_a, record_number_a, record_type_a = DB.execute(
-                select_statment
-            ).fetchone()
-
-            select_statment = select(gbk_table.c.path).where(gbk_table.c.id == gbk_id_a)
-            gbk_path_a = DB.execute(select_statment).fetchone()[0]
-
-            # for record B
-            select_statment = select(
-                bgc_record_table.c.gbk_id,
-                bgc_record_table.c.record_number,
-                bgc_record_table.c.record_type,
-            ).where(bgc_record_table.c.id == region_b_id)
-            gbk_id_b, record_number_b, record_type_b = DB.execute(
-                select_statment
-            ).fetchone()
-
-            select_statment = select(gbk_table.c.path).where(gbk_table.c.id == gbk_id_b)
-            gbk_path_b = DB.execute(select_statment).fetchone()[0]
-
             row = "\t".join(
                 [
                     str(gbk_path_a),
                     record_type_a,
                     str(record_number_a),
+                    f"{ext_a_start}:{ext_a_stop}",
                     str(gbk_path_b),
                     record_type_b,
                     str(record_number_b),
+                    f"{ext_b_start}:{ext_b_stop}",
                     f"{distance:.2f}",
                     f"{jaccard:.2f}",
                     f"{adjacency:.2f}",
                     f"{dss:.2f}",
                     weights,
                     alignment_mode,
-                    f"{ext_a_start}:{ext_a_stop}",
-                    f"{ext_b_start}:{ext_b_stop}",
                 ]
             )
 
@@ -1473,7 +1463,26 @@ def write_cutoff_network_file(
 
 def get_cutoff_edgelist(
     run: dict, cutoff: float, pair_generator: RecordPairGenerator
-) -> set[tuple[int, int, float, float, float, float, str, int, int, int, int, str]]:
+) -> set[
+    tuple[
+        str,
+        str,
+        int,
+        str,
+        str,
+        int,
+        float,
+        float,
+        float,
+        float,
+        str,
+        int,
+        int,
+        int,
+        int,
+        str,
+    ]
+]:
     """Generate the network egdelist for a given bin with edges above the cutoff
 
     Args:
@@ -1490,11 +1499,22 @@ def get_cutoff_edgelist(
         raise RuntimeError("DB.metadata is None")
 
     distance_table = DB.metadata.tables["distance"]
+    gbk_table = DB.metadata.tables["gbk"]
+    bgc_record_table = DB.metadata.tables["bgc_record"]
+
+    bgc_record_a = alias(bgc_record_table)
+    bgc_record_b = alias(bgc_record_table)
+    gbk_a = alias(gbk_table)
+    gbk_b = alias(gbk_table)
 
     select_statement = (
         select(
-            distance_table.c.region_a_id,
-            distance_table.c.region_b_id,
+            gbk_a.c.path,
+            bgc_record_a.c.record_type,
+            bgc_record_a.c.record_number,
+            gbk_b.c.path,
+            bgc_record_b.c.record_type,
+            bgc_record_b.c.record_number,
             distance_table.c.distance,
             distance_table.c.jaccard,
             distance_table.c.adjacency,
@@ -1506,15 +1526,19 @@ def get_cutoff_edgelist(
             distance_table.c.ext_b_stop,
             distance_table.c.alignment_mode,
         )
+        .join(bgc_record_a, distance_table.c.region_a_id == bgc_record_a.c.id)
+        .join(bgc_record_b, distance_table.c.region_b_id == bgc_record_b.c.id)
+        .join(gbk_a, bgc_record_a.c.gbk_id == gbk_a.c.id)
+        .join(gbk_b, bgc_record_b.c.gbk_id == gbk_b.c.id)
         .where(distance_table.c.region_a_id.in_(pair_generator.record_ids))
         .where(distance_table.c.region_b_id.in_(pair_generator.record_ids))
         .where(distance_table.c.weights == pair_generator.weights)
         .where(distance_table.c.distance < cutoff)
     )
 
-    existing_distances = set(DB.execute(select_statement).fetchall())
+    edgelist = set(DB.execute(select_statement).fetchall())
 
-    return existing_distances
+    return edgelist
 
 
 def write_full_network_file(run: dict, all_bgc_records: list[BGCRecord]) -> None:
@@ -1534,15 +1558,34 @@ def write_full_network_file(run: dict, all_bgc_records: list[BGCRecord]) -> None
     full_network_file_path = output_network_root / f"{label}_full.network"
 
     # get distances for this set of records
-    existing_distances = get_full_network_edgelist(run, all_bgc_records)
+    edgelist = get_full_network_edgelist(run, all_bgc_records)
 
     # write file
-    write_network_file(full_network_file_path, existing_distances)
+    write_network_file(full_network_file_path, edgelist)
 
 
 def get_full_network_edgelist(
     run: dict, all_bgc_records: list
-) -> set[tuple[int, int, float, float, float, float, str, int, int, int, int, str]]:
+) -> set[
+    tuple[
+        str,
+        str,
+        int,
+        str,
+        str,
+        int,
+        float,
+        float,
+        float,
+        float,
+        str,
+        int,
+        int,
+        int,
+        int,
+        str,
+    ]
+]:
     """Get all edges for the pairs of records in this run, for the weights relevant to this run
 
     Args:
@@ -1579,11 +1622,22 @@ def get_full_network_edgelist(
         raise RuntimeError("DB.metadata is None")
 
     distance_table = DB.metadata.tables["distance"]
+    gbk_table = DB.metadata.tables["gbk"]
+    bgc_record_table = DB.metadata.tables["bgc_record"]
+
+    bgc_record_a = alias(bgc_record_table)
+    bgc_record_b = alias(bgc_record_table)
+    gbk_a = alias(gbk_table)
+    gbk_b = alias(gbk_table)
 
     select_statement = (
         select(
-            distance_table.c.region_a_id,
-            distance_table.c.region_b_id,
+            gbk_a.c.path,
+            bgc_record_a.c.record_type,
+            bgc_record_a.c.record_number,
+            gbk_b.c.path,
+            bgc_record_b.c.record_type,
+            bgc_record_b.c.record_number,
             distance_table.c.distance,
             distance_table.c.jaccard,
             distance_table.c.adjacency,
@@ -1595,11 +1649,15 @@ def get_full_network_edgelist(
             distance_table.c.ext_b_stop,
             distance_table.c.alignment_mode,
         )
+        .join(bgc_record_a, distance_table.c.region_a_id == bgc_record_a.c.id)
+        .join(bgc_record_b, distance_table.c.region_b_id == bgc_record_b.c.id)
+        .join(gbk_a, bgc_record_a.c.gbk_id == gbk_a.c.id)
+        .join(gbk_b, bgc_record_b.c.gbk_id == gbk_b.c.id)
         .where(distance_table.c.region_a_id.in_(record_ids))
         .where(distance_table.c.region_b_id.in_(record_ids))
         .where(distance_table.c.weights.in_(incl_weights))
     )
 
-    existing_distances = set(DB.execute(select_statement).fetchall())
+    edgelist = set(DB.execute(select_statement).fetchall())
 
-    return existing_distances
+    return edgelist
