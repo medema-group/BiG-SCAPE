@@ -875,10 +875,15 @@ def generate_bs_families_alignment(
                 result = fetch_lcs_from_db(
                     family_db_id, bgc_db_id, pair_generator.weights
                 )
-                a_start = result["lcs_a_start"]
-                b_start = result["lcs_b_start"]
-                reverse = result["reverse"]
-
+                a_start, b_start, reverse = adjust_lcs_to_all_genes(
+                    result,
+                    family_db_id,
+                    bgc_db_id,
+                    fam_gbk,
+                    bgc_gbk,
+                    domain_genes_to_all_genes,
+                    domain_count_gene,
+                )
                 ref_genes_.add(a_start)
 
                 bgc_algn = []
