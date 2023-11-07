@@ -723,9 +723,9 @@ def fetch_lcs_from_db(a_id: int, b_id: int, weights: str) -> dict[str, Any]:
     dist_table = DB.metadata.tables["distance"]
     select_query = (
         dist_table.select()
-        .where(dist_table.c.region_a_id != dist_table.c.region_b_id)
-        .where(dist_table.c.region_a_id.in_((a_id, b_id)))
-        .where(dist_table.c.region_b_id.in_((a_id, b_id)))
+        .where(dist_table.c.record_a_id != dist_table.c.record_b_id)
+        .where(dist_table.c.record_a_id.in_((a_id, b_id)))
+        .where(dist_table.c.record_b_id.in_((a_id, b_id)))
         .where(dist_table.c.weights == weights)
         .compile()
     )
@@ -762,7 +762,7 @@ def adjust_lcs_to_all_genes(
     Returns:
         tuple[int, int, bool]: adjusted a_start, b_start and reverse
     """
-    if result["region_a_id"] == family_db_id:
+    if result["record_a_id"] == family_db_id:
         a_start = result["lcs_a_start"]
         a_stop = result["lcs_a_stop"]
         b_start = result["lcs_b_start"]
@@ -779,7 +779,7 @@ def adjust_lcs_to_all_genes(
         else:
             b_start = domain_genes_to_all_genes[bgc_db_id][b_start]
 
-    elif result["region_b_id"] == family_db_id:
+    elif result["record_b_id"] == family_db_id:
         a_start = result["lcs_b_start"]
         a_stop = result["lcs_b_stop"]
         b_start = result["lcs_a_start"]
@@ -1526,12 +1526,12 @@ def get_cutoff_edgelist(
             distance_table.c.ext_b_stop,
             distance_table.c.alignment_mode,
         )
-        .join(bgc_record_a, distance_table.c.region_a_id == bgc_record_a.c.id)
-        .join(bgc_record_b, distance_table.c.region_b_id == bgc_record_b.c.id)
+        .join(bgc_record_a, distance_table.c.record_a_id == bgc_record_a.c.id)
+        .join(bgc_record_b, distance_table.c.record_b_id == bgc_record_b.c.id)
         .join(gbk_a, bgc_record_a.c.gbk_id == gbk_a.c.id)
         .join(gbk_b, bgc_record_b.c.gbk_id == gbk_b.c.id)
-        .where(distance_table.c.region_a_id.in_(pair_generator.record_ids))
-        .where(distance_table.c.region_b_id.in_(pair_generator.record_ids))
+        .where(distance_table.c.record_a_id.in_(pair_generator.record_ids))
+        .where(distance_table.c.record_b_id.in_(pair_generator.record_ids))
         .where(distance_table.c.weights == pair_generator.weights)
         .where(distance_table.c.distance < cutoff)
     )
@@ -1649,12 +1649,12 @@ def get_full_network_edgelist(
             distance_table.c.ext_b_stop,
             distance_table.c.alignment_mode,
         )
-        .join(bgc_record_a, distance_table.c.region_a_id == bgc_record_a.c.id)
-        .join(bgc_record_b, distance_table.c.region_b_id == bgc_record_b.c.id)
+        .join(bgc_record_a, distance_table.c.record_a_id == bgc_record_a.c.id)
+        .join(bgc_record_b, distance_table.c.record_b_id == bgc_record_b.c.id)
         .join(gbk_a, bgc_record_a.c.gbk_id == gbk_a.c.id)
         .join(gbk_b, bgc_record_b.c.gbk_id == gbk_b.c.id)
-        .where(distance_table.c.region_a_id.in_(record_ids))
-        .where(distance_table.c.region_b_id.in_(record_ids))
+        .where(distance_table.c.record_a_id.in_(record_ids))
+        .where(distance_table.c.record_b_id.in_(record_ids))
         .where(distance_table.c.weights.in_(incl_weights))
     )
 
