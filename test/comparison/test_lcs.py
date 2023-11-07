@@ -113,7 +113,7 @@ class testDomainLCS(unittest.TestCase):
 
         lcs = bs_comparison.lcs.find_domain_lcs_region(pair)
 
-        self.assertEqual(lcs, (1, 6, 1, 6, False))
+        self.assertEqual(lcs, (1, 4, 1, 4, False))
 
     def test_lcs_domains_reverse(self):
         """Test lcs detection for two domain lists, reverse"""
@@ -127,7 +127,7 @@ class testDomainLCS(unittest.TestCase):
 
         lcs = bs_comparison.lcs.find_domain_lcs_region(pair)
 
-        self.assertEqual(lcs, (1, 6, 6, 11, True))
+        self.assertEqual(lcs, (1, 4, 6, 9, True))
 
     def test_lcs_domains_empty(self):
         """Test lcs detection for two empty domain lists
@@ -184,7 +184,7 @@ class testDomainLCS(unittest.TestCase):
 
         lcs = bs_comparison.lcs.find_domain_lcs_region(pair)
 
-        self.assertEqual(lcs, (1, 5, 1, 5, False))
+        self.assertEqual(lcs, (1, 4, 1, 4, False))
 
     def test_lcs_domains_len_multiple_reverse(self):
         """Test lcs detection for two domain lists where there are equal matches of
@@ -200,7 +200,7 @@ class testDomainLCS(unittest.TestCase):
 
         lcs = bs_comparison.lcs.find_domain_lcs_region(pair)
 
-        self.assertEqual(lcs, (1, 5, 6, 10, True))
+        self.assertEqual(lcs, (1, 4, 6, 9, True))
 
 
 class TestProtoclusterDomainLCS(unittest.TestCase):

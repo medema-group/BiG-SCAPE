@@ -271,7 +271,7 @@ def find_domain_lcs_region(
         b_cds_start = b_domain_cds_idx[b_start]
         b_cds_stop = b_domain_cds_idx[b_stop - 1] + 1
 
-        return a_cds_start, a_cds_stop, b_cds_start, b_cds_stop, False
+        return a_cds_start, a_cds_stop, b_cds_start, b_cds_stop, reverse
 
     if rev_larger:
         reverse = True
@@ -286,7 +286,7 @@ def find_domain_lcs_region(
         b_cds_start = b_domain_cds_idx[b_start]
         b_cds_stop = b_domain_cds_idx[b_stop - 1] + 1
 
-        return a_cds_start, a_cds_stop, b_cds_start, b_cds_stop, False
+        return a_cds_start, a_cds_stop, b_cds_start, b_cds_stop, reverse
 
     # equal lengths
     # match of length 1 means we pick something in the middle
