@@ -29,7 +29,27 @@ def create_mock_gbk(i) -> bs_gbk.GBK:
 
 def gen_mock_edge_list(
     edge_gbks: list[bs_gbk.GBK],
-) -> list[tuple[int, int, float, float, float, float, str]]:
+) -> list[
+    tuple[
+        int,
+        int,
+        float,
+        float,
+        float,
+        float,
+        str,
+        int,
+        int,
+        int,
+        int,
+        int,
+        int,
+        int,
+        int,
+        bool,
+        bs_enums.ALIGNMENT_MODE,
+    ]
+]:
     edges = []
     for gbk_a, gbk_b in combinations(edge_gbks, 2):
         if gbk_a.region is None or gbk_b.region is None:
@@ -38,7 +58,25 @@ def gen_mock_edge_list(
             continue
 
         edges.append(
-            (gbk_a.region._db_id, gbk_b.region._db_id, 0.0, 1.0, 1.0, 1.0, "mix")
+            (
+                gbk_a.region._db_id,
+                gbk_b.region._db_id,
+                0.0,
+                1.0,
+                1.0,
+                1.0,
+                "mix",
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                False,
+                bs_enums.ALIGNMENT_MODE.GLOBAL,
+            )
         )
 
     return edges
