@@ -843,6 +843,9 @@ def generate_bs_families_alignment(
         # collects records within this GCF
         family_records = [records[bgc_num] for bgc_num in family_members]
         family_member_db_ids = [rec._db_id for rec in family_records]
+        if family_db_id not in family_member_db_ids:
+            continue
+        # TODO: get rid of this once bug in fam assignment fixed
         fam_record_idx = family_member_db_ids.index(family_db_id)
         fam_gbk = family_records[fam_record_idx].parent_gbk
         if fam_gbk is None:
@@ -1328,7 +1331,9 @@ def write_clustering_file(run, cutoff, pair_generator) -> None:
 
 def write_network_file(
     network_file_path: Path,
-    existing_distances: set[tuple[int, int, float, float, float, float, str]],
+    existing_distances: set[
+        tuple[int, int, float, float, float, float, str, int, int, int, int, str]
+    ],
 ) -> None:
     """Writes a network file to the output directory
 
@@ -1361,13 +1366,29 @@ def write_network_file(
                 "adjacency",
                 "dss",
                 "weights",
+                "aligmnent_mode",
+                "ORF_coords_a",
+                "ORF_coords_b",
             ]
         )
 
         network_file.write(header + "\n")
 
         for dist in existing_distances:
-            region_a_id, region_b_id, distance, jaccard, adjacency, dss, weights = dist
+            (
+                region_a_id,
+                region_b_id,
+                distance,
+                jaccard,
+                adjacency,
+                dss,
+                weights,
+                ext_a_start,
+                ext_a_stop,
+                ext_b_start,
+                ext_b_stop,
+                alignment_mode,
+            ) = dist
 
             # for record A
             select_statment = select(
@@ -1408,6 +1429,9 @@ def write_network_file(
                     f"{adjacency:.2f}",
                     f"{dss:.2f}",
                     weights,
+                    alignment_mode,
+                    f"{ext_a_start}:{ext_a_stop}",
+                    f"{ext_b_start}:{ext_b_stop}",
                 ]
             )
 
@@ -1449,7 +1473,7 @@ def write_cutoff_network_file(
 
 def get_cutoff_edgelist(
     run: dict, cutoff: float, pair_generator: RecordPairGenerator
-) -> set[tuple[int, int, float, float, float, float, str]]:
+) -> set[tuple[int, int, float, float, float, float, str, int, int, int, int, str]]:
     """Generate the network egdelist for a given bin with edges above the cutoff
 
     Args:
@@ -1476,6 +1500,11 @@ def get_cutoff_edgelist(
             distance_table.c.adjacency,
             distance_table.c.dss,
             distance_table.c.weights,
+            distance_table.c.ext_a_start,
+            distance_table.c.ext_a_stop,
+            distance_table.c.ext_b_start,
+            distance_table.c.ext_b_stop,
+            distance_table.c.alignment_mode,
         )
         .where(distance_table.c.region_a_id.in_(pair_generator.record_ids))
         .where(distance_table.c.region_b_id.in_(pair_generator.record_ids))
@@ -1513,7 +1542,7 @@ def write_full_network_file(run: dict, all_bgc_records: list[BGCRecord]) -> None
 
 def get_full_network_edgelist(
     run: dict, all_bgc_records: list
-) -> set[tuple[int, int, float, float, float, float, str]]:
+) -> set[tuple[int, int, float, float, float, float, str, int, int, int, int, str]]:
     """Get all edges for the pairs of records in this run, for the weights relevant to this run
 
     Args:
@@ -1560,6 +1589,11 @@ def get_full_network_edgelist(
             distance_table.c.adjacency,
             distance_table.c.dss,
             distance_table.c.weights,
+            distance_table.c.ext_a_start,
+            distance_table.c.ext_a_stop,
+            distance_table.c.ext_b_start,
+            distance_table.c.ext_b_stop,
+            distance_table.c.alignment_mode,
         )
         .where(distance_table.c.region_a_id.in_(record_ids))
         .where(distance_table.c.region_b_id.in_(record_ids))
