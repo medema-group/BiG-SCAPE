@@ -20,6 +20,7 @@ from difflib import Match, SequenceMatcher
 # from other modules
 import big_scape.genbank as bs_genbank
 import big_scape.comparison as bs_comparison
+import big_scape.hmm as bs_hmm
 
 
 def find_lcs(list_a: list[Any], list_b: list[Any]) -> tuple[Match, list[Match]]:
@@ -32,7 +33,7 @@ def find_lcs(list_a: list[Any], list_b: list[Any]) -> tuple[Match, list[Match]]:
     Returns:
         tuple[int, int, int]: start, stop and length of longest common substring
     """
-    seqmatch = SequenceMatcher(None, list_a, list_b)
+    seqmatch = SequenceMatcher(None, list_a, list_b, False)
     match = seqmatch.find_longest_match(0, len(list_a), 0, len(list_b))
     matching_blocks = seqmatch.get_matching_blocks()
     return match, matching_blocks
@@ -69,6 +70,9 @@ def get_lcs_protocores(
 ) -> tuple[int, int, int, int, bool]:
     """Find the longest stretch of matching domains between two protocluster regions,
     preferring matches which are closest to a protocore
+
+    Returns the cds indexes of start and stop, whether the match is in reverse,
+    and whether the match is in the protocore
 
     Args:
         pair (RecordPair): RecordPair object
@@ -209,15 +213,28 @@ def find_domain_lcs_region(
     """
     logging.debug("region lcs")
 
+    # these are regions, so we can get the full range of CDS
     a_cds = pair.region_a.get_cds(True)
     b_cds = pair.region_b.get_cds(True)
 
-    a_domains = []
-    b_domains = []
-    for cds in a_cds:
+    # get lists of domains and assemble a dictionary of domain idx to cds idx
+    # so that we can return the cds indexes later
+    a_domains: list[bs_hmm.HSP] = []
+    a_domain_cds_idx = {}
+
+    b_domains: list[bs_hmm.HSP] = []
+    b_domain_cds_idx = {}
+
+    for cds_idx, cds in enumerate(a_cds):
+        for i in range(len(a_domains), len(a_domains) + len(cds.hsps)):
+            a_domain_cds_idx[i] = cds_idx
         a_domains.extend(cds.hsps)
-    for cds in b_cds:
+
+    for cds_idx, cds in enumerate(b_cds):
+        for i in range(len(b_domains), len(b_domains) + len(cds.hsps)):
+            b_domain_cds_idx[i] = cds_idx
         b_domains.extend(cds.hsps)
+
     # forward
     match, matching_blocks = find_lcs(a_domains, b_domains)
     a_start_fwd = match[0]
@@ -233,6 +250,14 @@ def find_domain_lcs_region(
     fwd_larger = fwd_match_len > rev_match_len
     rev_larger = fwd_match_len < rev_match_len
 
+    if fwd_match_len == 0 and rev_match_len == 0:
+        logging.error(
+            "No match found in LCS. This should not happen after first jaccard"
+        )
+        logging.error("a domains: %s", a_domains)
+        logging.error("b domains: %s", b_domains)
+        raise RuntimeError("No match found in LCS.")
+
     if fwd_larger:
         reverse = False
         a_start = a_start_fwd
@@ -241,7 +266,12 @@ def find_domain_lcs_region(
         b_start = b_start_fwd
         b_stop = b_start_fwd + fwd_match_len
 
-        return a_start, a_stop, b_start, b_stop, reverse
+        a_cds_start = a_domain_cds_idx[a_start]
+        a_cds_stop = a_domain_cds_idx[a_stop - 1] + 1
+        b_cds_start = b_domain_cds_idx[b_start]
+        b_cds_stop = b_domain_cds_idx[b_stop - 1] + 1
+
+        return a_cds_start, a_cds_stop, b_cds_start, b_cds_stop, False
 
     if rev_larger:
         reverse = True
@@ -251,7 +281,12 @@ def find_domain_lcs_region(
         b_start = len(b_domains) - b_start_rev - rev_match_len
         b_stop = len(b_domains) - b_start_rev
 
-        return a_start, a_stop, b_start, b_stop, reverse
+        a_cds_start = a_domain_cds_idx[a_start]
+        a_cds_stop = a_domain_cds_idx[a_stop - 1] + 1
+        b_cds_start = b_domain_cds_idx[b_start]
+        b_cds_stop = b_domain_cds_idx[b_stop - 1] + 1
+
+        return a_cds_start, a_cds_stop, b_cds_start, b_cds_stop, False
 
     # equal lengths
     # match of length 1 means we pick something in the middle
@@ -297,7 +332,12 @@ def find_domain_lcs_region(
                 b_start = matching_block[1]
                 b_stop = matching_block[1] + matching_block[2]
 
-        return a_start, a_stop, b_start, b_stop, False
+        a_cds_start = a_domain_cds_idx[a_start]
+        a_cds_stop = a_domain_cds_idx[a_stop - 1] + 1
+        b_cds_start = b_domain_cds_idx[b_start]
+        b_cds_stop = b_domain_cds_idx[b_stop - 1] + 1
+
+        return a_cds_start, a_cds_stop, b_cds_start, b_cds_stop, False
 
     # equal length, but not 1
     # default to forward
@@ -311,7 +351,12 @@ def find_domain_lcs_region(
     b_start = b_start_fwd
     b_stop = b_start_fwd + fwd_match_len
 
-    return a_start, a_stop, b_start, b_stop, reverse
+    a_cds_start = a_domain_cds_idx[a_start]
+    a_cds_stop = a_domain_cds_idx[a_stop - 1] + 1
+    b_cds_start = b_domain_cds_idx[b_start]
+    b_cds_stop = b_domain_cds_idx[b_stop - 1] + 1
+
+    return a_cds_start, a_cds_stop, b_cds_start, b_cds_stop, reverse
 
 
 def find_domain_lcs_protocluster(
