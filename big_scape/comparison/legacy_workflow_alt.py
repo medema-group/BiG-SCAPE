@@ -159,17 +159,7 @@ def generate_edges(
                 if len(results) != len(task_batch):
                     raise ValueError("Mismatch between task length and result length")
 
-                for idx, pair in enumerate(task_batch):
-                    distance, jaccard, adjacency, dss = results[idx]
-                    yield (
-                        pair.region_a._db_id,
-                        pair.region_b._db_id,
-                        distance,
-                        jaccard,
-                        adjacency,
-                        dss,
-                        pair_generator.weights,
-                    )
+                yield from results
 
                 done_pairs += len(results)
                 if callback:
@@ -210,6 +200,10 @@ def do_lcs_pair(
     logging.debug(pair.comparable_region)
 
     # set the comparable region
+    pair.comparable_region.lcs_a_start = a_start
+    pair.comparable_region.lcs_a_stop = a_stop
+    pair.comparable_region.lcs_b_start = b_start
+    pair.comparable_region.lcs_b_stop = b_stop
     pair.comparable_region.a_start = a_start
     pair.comparable_region.a_stop = a_stop
     pair.comparable_region.b_start = b_start
@@ -257,6 +251,7 @@ def expand_pair(pair: RecordPair) -> float:
         jc = calc_jaccard_pair(pair)
         return jc
 
+    pair.comparable_region.alignment_mode = bs_enums.ALIGNMENT_MODE.GLOCAL
     jc = calc_jaccard_pair(pair)
 
     return jc
@@ -264,7 +259,27 @@ def expand_pair(pair: RecordPair) -> float:
 
 def calculate_scores_pair(
     data: tuple[list[RecordPair], bs_enums.ALIGNMENT_MODE, str]
-) -> list[tuple[float, float, float, float]]:  # pragma no cover
+) -> list[
+    tuple[
+        Optional[int],
+        Optional[int],
+        float,
+        float,
+        float,
+        float,
+        str,
+        int,
+        int,
+        int,
+        int,
+        int,
+        int,
+        int,
+        int,
+        bool,
+        str,
+    ]
+]:  # pragma no cover
     """Calculate the scores for a list of pairs
 
     Args:
@@ -272,8 +287,9 @@ def calculate_scores_pair(
         label
 
     Returns:
-        list[tuple[float, float, float, float]]: list of scores for each pair in the
-        order as the input data list
+        list[tuple[int, int, float, float, float, float, int, int, int, int, int, int,
+        int, int, bool, str,]]: list of scores for each pair in the
+        order as the input data list, including lcs and extension coordinates
     """
     pairs, alignment_mode, weights_label = data
 
@@ -284,13 +300,53 @@ def calculate_scores_pair(
         pair.comparable_region.log_comparable_region()
         logging.debug("")
         if pair.region_a.parent_gbk == pair.region_b.parent_gbk:
-            results.append((0.0, 1.0, 1.0, 1.0))
+            results.append(
+                (
+                    pair.region_a._db_id,
+                    pair.region_b._db_id,
+                    0.0,
+                    1.0,
+                    1.0,
+                    1.0,
+                    weights_label,
+                    pair.comparable_region.lcs_a_start,
+                    pair.comparable_region.lcs_a_stop,
+                    pair.comparable_region.lcs_b_start,
+                    pair.comparable_region.lcs_b_stop,
+                    pair.comparable_region.a_start,
+                    pair.comparable_region.a_stop,
+                    pair.comparable_region.b_start,
+                    pair.comparable_region.b_stop,
+                    pair.comparable_region.reverse,
+                    pair.comparable_region.alignment_mode.value,
+                )
+            )
             continue
 
         jaccard = calc_jaccard_pair(pair)
 
         if jaccard == 0.0:
-            results.append((1.0, 0.0, 0.0, 0.0))
+            results.append(
+                (
+                    pair.region_a._db_id,
+                    pair.region_b._db_id,
+                    1.0,
+                    0.0,
+                    0.0,
+                    0.0,
+                    weights_label,
+                    pair.comparable_region.lcs_a_start,
+                    pair.comparable_region.lcs_a_stop,
+                    pair.comparable_region.lcs_b_start,
+                    pair.comparable_region.lcs_b_stop,
+                    pair.comparable_region.a_start,
+                    pair.comparable_region.a_stop,
+                    pair.comparable_region.b_start,
+                    pair.comparable_region.b_stop,
+                    pair.comparable_region.reverse,
+                    pair.comparable_region.alignment_mode.value,
+                )
+            )
             continue
 
         # in the form [bool, Pair]. true bools means they need expansion, false they don't
@@ -300,7 +356,27 @@ def calculate_scores_pair(
             jaccard = expand_pair(pair)
 
         if jaccard == 0.0:
-            results.append((1.0, 0.0, 0.0, 0.0))
+            results.append(
+                (
+                    pair.region_a._db_id,
+                    pair.region_b._db_id,
+                    1.0,
+                    0.0,
+                    0.0,
+                    0.0,
+                    weights_label,
+                    pair.comparable_region.lcs_a_start,
+                    pair.comparable_region.lcs_a_stop,
+                    pair.comparable_region.lcs_b_start,
+                    pair.comparable_region.lcs_b_stop,
+                    pair.comparable_region.a_start,
+                    pair.comparable_region.a_stop,
+                    pair.comparable_region.b_start,
+                    pair.comparable_region.b_stop,
+                    pair.comparable_region.reverse,
+                    pair.comparable_region.alignment_mode.value,
+                )
+            )
             continue
 
         if weights_label not in LEGACY_WEIGHTS:
@@ -318,7 +394,27 @@ def calculate_scores_pair(
         similarity = jaccard * jc_weight + adjacency * ai_weight + dss * dss_weight
         distance = 1 - similarity
 
-        results.append((distance, jaccard, adjacency, dss))
+        results.append(
+            (
+                pair.region_a._db_id,
+                pair.region_b._db_id,
+                distance,
+                jaccard,
+                adjacency,
+                dss,
+                weights_label,
+                pair.comparable_region.lcs_a_start,
+                pair.comparable_region.lcs_a_stop,
+                pair.comparable_region.lcs_b_start,
+                pair.comparable_region.lcs_b_stop,
+                pair.comparable_region.a_start,
+                pair.comparable_region.a_stop,
+                pair.comparable_region.b_start,
+                pair.comparable_region.b_stop,
+                pair.comparable_region.reverse,
+                pair.comparable_region.alignment_mode.value,
+            )
+        )
         logging.debug("")
 
     return results
