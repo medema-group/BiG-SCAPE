@@ -189,7 +189,7 @@ class TestBGCBin(TestCase):
         ]
 
         actual_pair_list = [
-            tuple([pair.region_a, pair.region_b])
+            tuple([pair.record_a, pair.record_b])
             for pair in new_bin.generate_pairs(legacy_sorting=True)
         ]
 

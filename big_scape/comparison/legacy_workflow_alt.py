@@ -184,7 +184,7 @@ def do_lcs_pair(
         bool: True if the pair needs expansion, False if it does not
     """
     a_start, a_stop, b_start, b_stop, reverse = legacy_find_cds_lcs(
-        pair.region_a.get_cds_with_domains(), pair.region_b.get_cds_with_domains()
+        pair.record_a.get_cds_with_domains(), pair.record_b.get_cds_with_domains()
     )
 
     # set the comparable region
@@ -266,11 +266,11 @@ def calculate_scores_pair(
     results = []
 
     for pair in pairs:
-        if pair.region_a.parent_gbk == pair.region_b.parent_gbk:
+        if pair.record_a.parent_gbk == pair.record_b.parent_gbk:
             results.append(
                 (
-                    pair.region_a._db_id,
-                    pair.region_b._db_id,
+                    pair.record_a._db_id,
+                    pair.record_b._db_id,
                     0.0,
                     1.0,
                     1.0,
@@ -295,8 +295,8 @@ def calculate_scores_pair(
         if jaccard == 0.0:
             results.append(
                 (
-                    pair.region_a._db_id,
-                    pair.region_b._db_id,
+                    pair.record_a._db_id,
+                    pair.record_b._db_id,
                     1.0,
                     0.0,
                     0.0,
@@ -325,8 +325,8 @@ def calculate_scores_pair(
         if jaccard == 0.0:
             results.append(
                 (
-                    pair.region_a._db_id,
-                    pair.region_b._db_id,
+                    pair.record_a._db_id,
+                    pair.record_b._db_id,
                     1.0,
                     0.0,
                     0.0,
@@ -363,8 +363,8 @@ def calculate_scores_pair(
 
         results.append(
             (
-                pair.region_a._db_id,
-                pair.region_b._db_id,
+                pair.record_a._db_id,
+                pair.record_b._db_id,
                 distance,
                 jaccard,
                 adjacency,

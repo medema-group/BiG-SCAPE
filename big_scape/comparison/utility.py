@@ -178,11 +178,11 @@ def edges_from_db(
 
     # iterate over the pair generator in batches of distance_batch_size
     for pair_batch in pair_generator.generate_batch(distance_batch_size):
-        # generate a dict of pairs to their ids for region_a and region_b in pair
+        # generate a dict of pairs to their ids for record_a and record_b in pair
         region_ids = {}
         for pair in pair_batch:
-            region_ids[pair.region_a._db_id] = pair.region_a
-            region_ids[pair.region_b._db_id] = pair.region_b
+            region_ids[pair.record_a._db_id] = pair.record_a
+            region_ids[pair.record_b._db_id] = pair.record_b
 
         # get the distances from the database
 
@@ -199,9 +199,9 @@ def edges_from_db(
         # yield the distances
         for edge in edges:
             # get the pair
-            region_a = region_ids[edge.record_a_id]
-            region_b = region_ids[edge.record_b_id]
-            pair = RecordPair(region_a, region_b)
+            record_a = region_ids[edge.record_a_id]
+            record_b = region_ids[edge.record_b_id]
+            pair = RecordPair(record_a, record_b)
 
             # get the distances
             distance: float = edge.distance

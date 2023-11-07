@@ -250,7 +250,7 @@ def generate_run_data_js(
             )
 
         # acc id of gbk
-        region_acc_idx = genomes[organism]
+        record_acc_idx = genomes[organism]
 
         # class id
         # product hybrids of AS4 and under dealt with here and in legacy_bin_generator
@@ -266,7 +266,7 @@ def generate_run_data_js(
 
         # add to list of bgc
         run_data["input"]["bgc"].append(
-            {"acc": region_acc_idx, "class": region_class_idx, "id": region_id}
+            {"acc": record_acc_idx, "class": region_class_idx, "id": region_id}
         )
 
         if cutoff not in gbk.region._families:

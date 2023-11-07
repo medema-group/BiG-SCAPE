@@ -624,11 +624,11 @@ class MissingRecordPairGenerator(RecordPairGenerator):
         for pair in self.bin.generate_pairs(legacy_sorting):
             # if the pair is not in the set of existing distances, yield it
             if (
-                pair.region_a._db_id,
-                pair.region_b._db_id,
+                pair.record_a._db_id,
+                pair.record_b._db_id,
             ) not in existing_distances and (
-                pair.region_a._db_id,
-                pair.region_b._db_id,
+                pair.record_a._db_id,
+                pair.record_b._db_id,
             ) not in existing_distances:
                 yield pair
 
@@ -643,27 +643,27 @@ class RecordPair:
     to generate the scores
     """
 
-    def __init__(self, region_a: BGCRecord, region_b: BGCRecord):
-        self.region_a = region_a
-        self.region_b = region_b
+    def __init__(self, record_a: BGCRecord, record_b: BGCRecord):
+        self.record_a = record_a
+        self.record_b = record_b
 
-        if region_a.parent_gbk is None or region_b.parent_gbk is None:
+        if record_a.parent_gbk is None or record_b.parent_gbk is None:
             raise ValueError("Region in pair has no parent GBK!")
 
         # comparable regions start at the full ranges
-        a_len = len(region_a.get_cds())
-        b_len = len(region_b.get_cds())
+        a_len = len(record_a.get_cds())
+        b_len = len(record_b.get_cds())
 
         self.comparable_region: ComparableRegion = ComparableRegion(
             self, 0, a_len, 0, b_len, False
         )
 
     def __repr__(self) -> str:
-        return f"Pair {self.region_a} - {self.region_b}"
+        return f"Pair {self.record_a} - {self.record_b}"
 
     def __hash__(self) -> int:
-        a_hash = hash(self.region_a)
-        b_hash = hash(self.region_b)
+        a_hash = hash(self.record_a)
+        b_hash = hash(self.record_b)
 
         # order doesn't matter
         return a_hash + b_hash
@@ -672,9 +672,9 @@ class RecordPair:
         if not isinstance(_o, RecordPair):
             return False
 
-        if self.region_a == _o.region_a and self.region_b == _o.region_b:
+        if self.record_a == _o.record_a and self.record_b == _o.record_b:
             return True
-        if self.region_a == _o.region_b and self.region_b == _o.region_a:
+        if self.record_a == _o.record_b and self.record_b == _o.record_a:
             return True
 
         return False

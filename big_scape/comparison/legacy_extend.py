@@ -24,17 +24,17 @@ def reset_expansion(
 
     If no arguments beyond comparable region are given, resets to the full range
     """
-    a_gbk = comparable_region.pair.region_a.parent_gbk
-    b_gbk = comparable_region.pair.region_b.parent_gbk
+    a_gbk = comparable_region.pair.record_a.parent_gbk
+    b_gbk = comparable_region.pair.record_b.parent_gbk
 
     if a_gbk is None or b_gbk is None:
         return
 
     if a_stop is None:
-        a_stop = len(comparable_region.pair.region_a.get_cds()) + 1
+        a_stop = len(comparable_region.pair.record_a.get_cds()) + 1
 
     if b_stop is None:
-        b_stop = len(comparable_region.pair.region_b.get_cds()) + 1
+        b_stop = len(comparable_region.pair.record_b.get_cds()) + 1
 
     comparable_region.a_start = a_start
     comparable_region.b_start = b_start
@@ -64,7 +64,7 @@ def expand_glocal(
     match_len = comparable_region.a_stop - comparable_region.a_start
     if match_len < min_lcs_len:
         if not ComparableRegion.cds_range_contains_biosynthetic(
-            comparable_region.pair.region_a,
+            comparable_region.pair.record_a,
             comparable_region.a_start,
             comparable_region.a_stop,
             True,
@@ -97,12 +97,12 @@ def check_expand(
     # final checks: did we expand enough?
     a_start = comparable_region.a_start
     a_stop = comparable_region.a_stop
-    cds_list_a = comparable_region.pair.region_a.get_cds_with_domains()[a_start:a_stop]
+    cds_list_a = comparable_region.pair.record_a.get_cds_with_domains()[a_start:a_stop]
     expansion_len_a = len([cds for cds in cds_list_a if len(cds.hsps) > 0])
 
     b_start = comparable_region.b_start
     b_stop = comparable_region.b_stop
-    cds_list_b = comparable_region.pair.region_b.get_cds_with_domains()[b_start:b_stop]
+    cds_list_b = comparable_region.pair.record_b.get_cds_with_domains()[b_start:b_stop]
     expansion_len_b = len([cds for cds in cds_list_b if len(cds.hsps) > 0])
 
     if min(expansion_len_a, expansion_len_b) < min_expand_len:
@@ -110,7 +110,7 @@ def check_expand(
 
     # do both slices contain a biosynthetic gene?
     if not ComparableRegion.cds_range_contains_biosynthetic(
-        comparable_region.pair.region_a,
+        comparable_region.pair.record_a,
         comparable_region.a_start,
         comparable_region.a_stop,
         end_inclusive=True,
@@ -118,7 +118,7 @@ def check_expand(
         return False
 
     if not ComparableRegion.cds_range_contains_biosynthetic(
-        comparable_region.pair.region_b,
+        comparable_region.pair.record_b,
         comparable_region.b_start,
         comparable_region.b_stop,
         end_inclusive=True,
@@ -179,13 +179,13 @@ def expand_glocal_left(comparable_region: ComparableRegion) -> None:  # pragma n
     # the legacy implementation of comparable region expansion first checks the number
     # of genes that are left of the current comparable region
 
-    cds_list_a = comparable_region.pair.region_a.get_cds_with_domains()
+    cds_list_a = comparable_region.pair.record_a.get_cds_with_domains()
 
     a_left_stop = comparable_region.a_start
     left_cds_a = list(reversed(cds_list_a[:a_left_stop]))
     left_domain_cds_a = len([cds for cds in left_cds_a if len(cds.hsps) > 0])
 
-    cds_list_b = comparable_region.pair.region_b.get_cds_with_domains(
+    cds_list_b = comparable_region.pair.record_b.get_cds_with_domains(
         reverse=comparable_region.reverse
     )
 
@@ -289,13 +289,13 @@ def expand_glocal_right(comparable_region: ComparableRegion) -> None:  # pragma 
     # the legacy implementation of comparable region expansion first checks the number
     # of genes that are right of the current comparable region
 
-    cds_list_a = comparable_region.pair.region_a.get_cds_with_domains()
+    cds_list_a = comparable_region.pair.record_a.get_cds_with_domains()
 
     a_right_start = comparable_region.a_stop
     right_cds_a = cds_list_a[a_right_start:]
     right_domain_cds_a = len([cds for cds in right_cds_a if len(cds.hsps) > 0])
 
-    cds_list_b = comparable_region.pair.region_b.get_cds_with_domains(
+    cds_list_b = comparable_region.pair.record_b.get_cds_with_domains(
         reverse=comparable_region.reverse
     )
 
@@ -414,15 +414,15 @@ def legacy_needs_expand_pair(
 
     - alignment_mode is global
     - alignment mode is auto, and:
-        pair.region_a and pair_region_b are both not on a contig edge
-    - region_a does not contain a biosynthetic gene and:
+        pair.record_a and pair_record_b are both not on a contig edge
+    - record_a does not contain a biosynthetic gene and:
         comparable region length of a is less than extend_slice_cutoff
         (at this point, this should be the LCS length)
 
     """
     return legacy_needs_extend(
-        pair.region_a,
-        pair.region_b,
+        pair.record_a,
+        pair.record_b,
         alignment_mode,
         pair.comparable_region.a_start,
         pair.comparable_region.a_stop,
@@ -431,8 +431,8 @@ def legacy_needs_expand_pair(
 
 
 def legacy_needs_extend(
-    region_a: BGCRecord,
-    region_b: BGCRecord,
+    record_a: BGCRecord,
+    record_b: BGCRecord,
     alignment_mode: bs_enums.ALIGNMENT_MODE,
     a_start: int,
     a_stop: int,
@@ -441,19 +441,19 @@ def legacy_needs_extend(
     if alignment_mode == bs_enums.ALIGNMENT_MODE.GLOBAL:
         return False
 
-    on_contig = region_a.contig_edge and region_b.contig_edge
+    on_contig = record_a.contig_edge and record_b.contig_edge
 
     if alignment_mode == bs_enums.ALIGNMENT_MODE.AUTO and not on_contig:
         return False
 
-    # after above logic, alignment mode is auto and either region_a or region_b is on
+    # after above logic, alignment mode is auto and either record_a or record_b is on
     # a contig edge, or alignment mode is local
 
     lcs_extend_len = a_stop - 1 - a_start
     if (
         lcs_extend_len < extend_slice_cutoff
         and not ComparableRegion.cds_range_contains_biosynthetic(
-            region_a,
+            record_a,
             a_start,
             a_stop,
             end_inclusive=True,  # technically wrong, but 1.0 behavior

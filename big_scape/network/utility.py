@@ -42,20 +42,20 @@ def edge_list_to_adj_list(
         adj_list[edge[1]] = {}
 
     # go through all edges
-    for region_a, region_b, distance, _, _, _, _ in edge_list:
-        adj_list[region_a][region_b] = 1 - distance
-        adj_list[region_b][region_a] = 1 - distance
+    for record_a, record_b, distance, _, _, _, _ in edge_list:
+        adj_list[record_a][record_b] = 1 - distance
+        adj_list[record_b][record_a] = 1 - distance
 
     # add any missing adjacencies by setting them to similarity of 0
-    for region_a in adj_list:
-        for region_b in adj_list:
-            if region_b not in adj_list[region_a]:
-                adj_list[region_a][region_b] = 0.0
-            if region_a not in adj_list[region_b]:
-                adj_list[region_b][region_a] = 0.0
+    for record_a in adj_list:
+        for record_b in adj_list:
+            if record_b not in adj_list[record_a]:
+                adj_list[record_a][record_b] = 0.0
+            if record_a not in adj_list[record_b]:
+                adj_list[record_b][record_a] = 0.0
 
         # self similarity
-        adj_list[region_a][region_a] = 1.0
+        adj_list[record_a][record_a] = 1.0
 
     return adj_list
 
@@ -86,11 +86,11 @@ def adj_list_to_sim_matrix(adj_list: dict[int, dict[int, float]]) -> np.ndarray:
         region_to_index[region] = index
 
     # go through all regions
-    for region_a in adj_list:
-        a_matrix_idx = region_to_index[region_a]
-        for region_b in adj_list[region_a]:
-            b_matrix_idx = region_to_index[region_b]
-            matrix[a_matrix_idx][b_matrix_idx] = 1 - adj_list[region_a][region_b]
+    for record_a in adj_list:
+        a_matrix_idx = region_to_index[record_a]
+        for record_b in adj_list[record_a]:
+            b_matrix_idx = region_to_index[record_b]
+            matrix[a_matrix_idx][b_matrix_idx] = 1 - adj_list[record_a][record_b]
 
     return matrix.tolist()
 

@@ -258,5 +258,5 @@ def get_missing_distances(
 
     for pair in pair_generator.generate_pairs():
         # if the pair is not in the set of existing distances, yield it
-        if (pair.region_a._db_id, pair.region_b._db_id) not in existing_distances:
+        if (pair.record_a._db_id, pair.record_b._db_id) not in existing_distances:
             yield pair
