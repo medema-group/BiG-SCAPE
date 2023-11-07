@@ -214,11 +214,11 @@ def get_comparison_data_state(gbks: list[GBK]) -> bs_enums.COMPARISON_TASK:
 
     distance_table = DB.metadata.tables["distance"]
 
-    select_statement = select(distance_table.c.record_a_id).distinct()
+    select_statement = select(distance_table.c.region_a_id).distinct()
 
     regions_a = set(DB.execute(select_statement).fetchall())
 
-    select_statement = select(distance_table.c.record_b_id).distinct()
+    select_statement = select(distance_table.c.region_b_id).distinct()
 
     regions_b = set(DB.execute(select_statement).fetchall())
 
@@ -248,9 +248,9 @@ def get_missing_distances(
 
     # get all region._db_id in the bin
     select_statement = (
-        select(distance_table.c.record_a_id, distance_table.c.record_b_id)
-        .where(distance_table.c.record_a_id.in_(pair_generator.record_ids))
-        .where(distance_table.c.record_b_id.in_(pair_generator.record_ids))
+        select(distance_table.c.region_a_id, distance_table.c.region_b_id)
+        .where(distance_table.c.region_a_id.in_(pair_generator.record_ids))
+        .where(distance_table.c.region_b_id.in_(pair_generator.record_ids))
     )
 
     # generate a set of tuples of region id pairs

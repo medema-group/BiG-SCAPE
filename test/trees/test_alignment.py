@@ -58,8 +58,8 @@ class TestTrees(TestCase):
     def test_lcs_adjust_ex2mem(self):
         """Tests adjusted lcs exemplar to member not reversed"""
         mock_result = {
-            "record_a_id": 0,
-            "record_b_id": 1,
+            "region_a_id": 0,
+            "region_b_id": 1,
             "lcs_a_start": 4,
             "lcs_a_stop": 7,
             "lcs_b_start": 6,
@@ -80,8 +80,8 @@ class TestTrees(TestCase):
     def test_lcs_adjust_ex2mem_reverse(self):
         """Tests adjusted lcs exemplar to member with reverse"""
         mock_result = {
-            "record_a_id": 0,
-            "record_b_id": 1,
+            "region_a_id": 0,
+            "region_b_id": 1,
             "lcs_a_start": 2,
             "lcs_a_stop": 3,
             "lcs_b_start": 1,
@@ -102,8 +102,8 @@ class TestTrees(TestCase):
     def test_lcs_adjust_mem2ex(self):
         """Tests adjusted lcs member to exemplar not reversed"""
         mock_result = {
-            "record_a_id": 0,
-            "record_b_id": 1,
+            "region_a_id": 0,
+            "region_b_id": 1,
             "lcs_a_start": 2,
             "lcs_a_stop": 3,
             "lcs_b_start": 1,
@@ -124,8 +124,8 @@ class TestTrees(TestCase):
     def test_lcs_adjust_mem2ex_reverse(self):
         """Tests adjusted lcs member to exemplar with reverse"""
         mock_result = {
-            "record_a_id": 0,
-            "record_b_id": 1,
+            "region_a_id": 0,
+            "region_b_id": 1,
             "lcs_a_start": 2,
             "lcs_a_stop": 3,
             "lcs_b_start": 1,
@@ -147,8 +147,8 @@ class TestTrees(TestCase):
         """Tests adjusted lcs for lcs with length 0"""
 
         mock_result = {
-            "record_a_id": 0,
-            "record_b_id": 1,
+            "region_a_id": 0,
+            "region_b_id": 1,
             "lcs_a_start": 0,
             "lcs_a_stop": 0,
             "lcs_b_start": 0,
@@ -181,8 +181,8 @@ class TestTrees(TestCase):
         """Tests adjusted lcs for lcs with length 0"""
 
         mock_result = {
-            "record_a_id": 0,
-            "record_b_id": 1,
+            "region_a_id": 0,
+            "region_b_id": 1,
             "lcs_a_start": 0,
             "lcs_a_stop": 0,
             "lcs_b_start": 0,
