@@ -5,8 +5,10 @@ import logging
 
 # from dependencies
 import tqdm
+from sqlalchemy import select
 
 # from other modules
+from big_scape.data import DB
 import big_scape.data as bs_data
 import big_scape.genbank as bs_gbk
 import big_scape.comparison as bs_comparison
@@ -23,6 +25,33 @@ def calculate_distances_mix(run: dict, gbks: list[bs_gbk.GBK]) -> None:
 
     logging.info("Generating mix bin")
 
+    # get edge params id if available, else create a new one
+    if not DB.metadata:
+        raise RuntimeError("DB.metadata is None")
+
+    alignment_mode = run["alignment_mode"]
+    weights = "mix"
+
+    edge_params_table = DB.metadata.tables["edge_params"]
+    edge_params_query = (
+        select(edge_params_table.c.id)
+        .where(edge_params_table.c.alignment_mode == alignment_mode.name)
+        .where(edge_params_table.c.weights == weights)
+    )
+    edge_param_id = DB.execute(edge_params_query).fetchone()
+
+    if edge_param_id is None:
+        edge_params_insert = (
+            edge_params_table.insert()
+            .values(alignment_mode=alignment_mode.name, weights=weights)
+            .returning(edge_params_table.c.id)
+            .compile()
+        )
+        cursor_result = DB.execute(edge_params_insert, False)
+        edge_param_id = cursor_result.fetchone()[0]
+
+    logging.debug("Edge params id: %d", edge_param_id)
+
     mix_bgc_regions: list[bs_gbk.BGCRecord] = []
 
     for gbk in gbks:
@@ -32,7 +61,7 @@ def calculate_distances_mix(run: dict, gbks: list[bs_gbk.GBK]) -> None:
             )
             mix_bgc_regions.extend(gbk_records)
 
-    mix_bin = bs_comparison.RecordPairGenerator("mix")
+    mix_bin = bs_comparison.RecordPairGenerator("mix", edge_param_id)
     mix_bin.add_records(mix_bgc_regions)
 
     logging.info(mix_bin)

@@ -48,7 +48,7 @@ def add_mock_hsp_alignment_hsp(hsp: HSP) -> None:
 
 def gen_mock_edge_list(
     edge_gbks: list[GBK],
-) -> list[tuple[int, int, float, float, float, float, str]]:
+) -> list[tuple[int, int, float, float, float, float, str, int]]:
     edges = []
     for gbk_a, gbk_b in combinations(edge_gbks, 2):
         if gbk_a.region is None or gbk_b.region is None:
@@ -57,7 +57,7 @@ def gen_mock_edge_list(
             continue
 
         edges.append(
-            (gbk_a.region._db_id, gbk_b.region._db_id, 0.0, 0.0, 0.0, 0.0, "mix")
+            (gbk_a.region._db_id, gbk_b.region._db_id, 0.0, 0.0, 0.0, 0.0, "mix", 1)
         )
 
     return edges
@@ -474,7 +474,7 @@ class TestPartialComparison(TestCase):
             bs_comparison.save_edge_to_db(edge)
 
         # all-vs-all bin
-        mix_bin = bs_comparison.RecordPairGenerator("mix")
+        mix_bin = bs_comparison.RecordPairGenerator("mix", 1)
         mix_bin.add_records([gbk.region for gbk in gbks])
 
         expected_missing_pairs = [
@@ -482,7 +482,7 @@ class TestPartialComparison(TestCase):
             bs_comparison.RecordPair(gbks[1].region, gbks[2].region),
         ]
 
-        pair_generator = bs_comparison.RecordPairGenerator("mix")
+        pair_generator = bs_comparison.RecordPairGenerator("mix", 1)
         pair_generator.add_records([gbk.region for gbk in gbks])
 
         missing_edge_generator = bs_comparison.MissingRecordPairGenerator(
@@ -520,12 +520,12 @@ class TestPartialComparison(TestCase):
             bs_comparison.save_edge_to_db(edge)
 
         # all-vs-all bin
-        mix_bin = bs_comparison.RecordPairGenerator("mix")
+        mix_bin = bs_comparison.RecordPairGenerator("mix", 1)
         mix_bin.add_records([gbk.region for gbk in gbks])
 
         expected_missing_count = 2
 
-        pair_generator = bs_comparison.RecordPairGenerator("mix")
+        pair_generator = bs_comparison.RecordPairGenerator("mix", 1)
         pair_generator.add_records([gbk.region for gbk in gbks])
 
         missing_edge_generator = bs_comparison.MissingRecordPairGenerator(

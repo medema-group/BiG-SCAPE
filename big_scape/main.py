@@ -90,6 +90,10 @@ def run_bigscape(run: dict) -> None:
         logging.info("Profiler started")
 
     # INPUT - load data
+    # TODO: check/implement loading a subset of DB behaviour
+    # attention: each gbk is unique by its path, so if user copies a gbk for a
+    # subset, it wont be loaded from db
+    # TODO: gbk id should be made a hash of the content
 
     gbks = bs_files.load_gbks(run, bigscape_dir)
 
@@ -240,7 +244,6 @@ def run_bigscape(run: dict) -> None:
     # in common
 
     # DISTANCE GENERATION
-    # TODO: legacy bins
 
     # mix
 
@@ -272,7 +275,7 @@ def run_bigscape(run: dict) -> None:
         DB.commit()
 
     # FAMILY GENERATION
-
+    # TODO: implement include nodes in cc component
     logging.info("Generating families")
 
     # cluster mode

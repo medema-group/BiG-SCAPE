@@ -15,9 +15,9 @@ from concurrent.futures import ProcessPoolExecutor, wait
 from typing import Generator, Callable, Optional, TypeVar
 from math import ceil
 
+
 # from other modules
 from big_scape.distances import calc_jaccard_pair, calc_ai_pair, calc_dss_pair_legacy
-
 import big_scape.enums as bs_enums
 
 # from this module
@@ -172,6 +172,7 @@ def generate_edges(
                         adjacency,
                         dss,
                         pair_generator.weights,
+                        pair_generator.edge_param_id,
                     )
 
                 done_pairs += len(results)

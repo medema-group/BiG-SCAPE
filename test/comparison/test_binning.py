@@ -109,7 +109,7 @@ class TestBGCBin(TestCase):
 
         bgc_list = [bgc_a, bgc_b, bgc_c]
 
-        new_bin = RecordPairGenerator("test")
+        new_bin = RecordPairGenerator("test", 1)
 
         new_bin.add_records(bgc_list)
 
@@ -126,7 +126,7 @@ class TestBGCBin(TestCase):
         gbk_a = GBK(Path("test1.gbk"), "test")
         bgc_a = BGCRecord(gbk_a, 0, 0, 10, False, "")
 
-        new_bin = RecordPairGenerator("test")
+        new_bin = RecordPairGenerator("test", 1)
 
         new_bin.add_records([bgc_a])
 
@@ -172,7 +172,7 @@ class TestBGCBin(TestCase):
         # bgc_c, bgc_b
         bgc_list = [bgc_a, bgc_c, bgc_b]
 
-        new_bin = RecordPairGenerator("test")
+        new_bin = RecordPairGenerator("test", 1)
 
         new_bin.add_records(bgc_list)
 
@@ -232,7 +232,7 @@ class TestBGCBin(TestCase):
             create_mock_gbk(i, bs_enums.SOURCE_TYPE.REFERENCE) for i in range(1, 5)
         ]
 
-        ref_to_ref_pair_generator = RefToRefRecordPairGenerator("mix")
+        ref_to_ref_pair_generator = RefToRefRecordPairGenerator("mix", 1)
         source_records = [query_gbk.region]
         for ref_gbk in ref_gbks:
             source_records.append(ref_gbk.region)
@@ -269,6 +269,7 @@ class TestBGCBin(TestCase):
                         1.0,
                         1.0,
                         "mix",
+                        1,
                     )
                 )
             else:
@@ -282,6 +283,7 @@ class TestBGCBin(TestCase):
                         0.0,
                         0.0,
                         "mix",
+                        1,
                     )
                 )
 
@@ -320,7 +322,7 @@ class TestBGCBin(TestCase):
             create_mock_gbk(i, bs_enums.SOURCE_TYPE.REFERENCE) for i in range(1, 5)
         ]
 
-        ref_to_ref_pair_generator = RefToRefRecordPairGenerator("mix")
+        ref_to_ref_pair_generator = RefToRefRecordPairGenerator("mix", 1)
         source_records = [query_gbk.region]
         for ref_gbk in ref_gbks:
             source_records.append(ref_gbk.region)
@@ -358,6 +360,7 @@ class TestBGCBin(TestCase):
                         1.0,
                         1.0,
                         "mix",
+                        1,
                     )
                 )
             else:
@@ -371,6 +374,7 @@ class TestBGCBin(TestCase):
                         0.0,
                         0.0,
                         "mix",
+                        1,
                     )
                 )
 
@@ -398,6 +402,7 @@ class TestBGCBin(TestCase):
                 1.0,
                 1.0,
                 "mix",
+                1,
             )
         )
 
@@ -411,6 +416,7 @@ class TestBGCBin(TestCase):
                 0.0,
                 0.0,
                 "mix",
+                1,
             )
         )
         save_edge_to_db(
@@ -422,6 +428,7 @@ class TestBGCBin(TestCase):
                 0.0,
                 0.0,
                 "mix",
+                1,
             )
         )
         save_edge_to_db(
@@ -433,6 +440,7 @@ class TestBGCBin(TestCase):
                 0.0,
                 0.0,
                 "mix",
+                1,
             )
         )
 
@@ -498,6 +506,7 @@ class TestBGCBin(TestCase):
                 1.0,
                 1.0,
                 "mix",
+                1,
             ),
             (
                 query_gbk.region._db_id,
@@ -507,6 +516,7 @@ class TestBGCBin(TestCase):
                 0.0,
                 0.0,
                 "mix",
+                1,
             ),
             (
                 ref_gbks[0].region._db_id,
@@ -516,6 +526,7 @@ class TestBGCBin(TestCase):
                 1.0,
                 1.0,
                 "mix",
+                1,
             ),
         ]
 
@@ -528,7 +539,9 @@ class TestBGCBin(TestCase):
         # )
         expected_record_ids = [1, 2, 3]
 
-        cc_pair_generator = ConnectedComponenetPairGenerator(connected_component, "mix")
+        cc_pair_generator = ConnectedComponenetPairGenerator(
+            connected_component, "mix", 1
+        )
         cc_pair_generator.add_records(source_records)
 
         actual_record_ids = cc_pair_generator.record_ids = [1, 2, 3]
@@ -554,7 +567,7 @@ class TestBGCBin(TestCase):
             source_records.append(ref_gbk.region)
             ref_gbk.save_all()
 
-        new_bin = RecordPairGenerator("Test", "mix")
+        new_bin = RecordPairGenerator("Test", weights="mix", edge_param_id=1)
         new_bin.add_records(source_records)
 
         # making query <-> ref_1 edge with distance 0.0
@@ -568,6 +581,7 @@ class TestBGCBin(TestCase):
                 1.0,
                 1.0,
                 "mix",
+                1,
             )
         )
 
@@ -580,6 +594,7 @@ class TestBGCBin(TestCase):
                 0.0,
                 0.0,
                 "mix",
+                1,
             )
         )
 
@@ -592,6 +607,7 @@ class TestBGCBin(TestCase):
                 1.0,
                 1.0,
                 "mix",
+                1,
             )
         )
 
@@ -626,7 +642,7 @@ class TestMixComparison(TestCase):
 
         bgc_list = [bgc_a, bgc_b, bgc_c]
 
-        new_bin = generate_mix(bgc_list)
+        new_bin = generate_mix(bgc_list, 1)
 
         # expected representation of the bin object
         expected_pair_count = 3

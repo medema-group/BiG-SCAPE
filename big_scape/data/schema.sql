@@ -75,7 +75,18 @@ CREATE TABLE IF NOT EXISTS distance (
     adjacency REAL NOT NULL,
     dss REAL NOT NULL,
     weights TEXT NOT NULL,
+    edge_param_id INTEGER NOT NULL,
     UNIQUE(region_a_id, region_b_id, weights)
     FOREIGN KEY(region_a_id) REFERENCES bgc_record(id)
     FOREIGN KEY(region_b_id) REFERENCES bgc_record(id)
+    FOREIGN KEY(edge_param_id) REFERENCES edge_params(id)
+
+);
+
+CREATE TABLE IF NOT EXISTS edge_params (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    weights TEXT NOT NULL,
+    alignment_mode TEXT NOT NULL,
+    UNIQUE(id),
+    UNIQUE(weights, alignment_mode)
 );
