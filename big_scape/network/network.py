@@ -85,16 +85,16 @@ def get_edge(
     distance_table = DB.metadata.tables["distance"]
     select_statment = (
         select(
-            distance_table.c.region_a_id,
-            distance_table.c.region_b_id,
+            distance_table.c.record_a_id,
+            distance_table.c.record_b_id,
             distance_table.c.distance,
             distance_table.c.jaccard,
             distance_table.c.adjacency,
             distance_table.c.dss,
             distance_table.c.weights,
         )
-        .where(distance_table.c.region_a_id.notin_(exclude_nodes))
-        .where(distance_table.c.region_b_id.notin_(exclude_nodes))
+        .where(distance_table.c.record_a_id.notin_(exclude_nodes))
+        .where(distance_table.c.record_b_id.notin_(exclude_nodes))
         .where(distance_table.c.distance < cutoff)
     )
 
@@ -121,18 +121,18 @@ def get_edges(
     distance_table = DB.metadata.tables["distance"]
     select_statement = (
         select(
-            distance_table.c.region_a_id,
-            distance_table.c.region_b_id,
+            distance_table.c.record_a_id,
+            distance_table.c.record_b_id,
             distance_table.c.distance,
             distance_table.c.jaccard,
             distance_table.c.adjacency,
             distance_table.c.dss,
             distance_table.c.weights,
         )
-        # equivalent to WHERE (region_a_id in (...) OR region_b_id in (...))
+        # equivalent to WHERE (record_a_id in (...) OR record_b_id in (...))
         .where(
-            distance_table.c.region_a_id.in_(include_nodes)
-            | distance_table.c.region_b_id.in_(include_nodes)
+            distance_table.c.record_a_id.in_(include_nodes)
+            | distance_table.c.record_b_id.in_(include_nodes)
         )
         # equivalent to AND distance < ...
         .where(distance_table.c.distance < distance_cutoff)
@@ -160,24 +160,24 @@ def get_connected_edges(
     distance_table = DB.metadata.tables["distance"]
     select_statement = (
         select(
-            distance_table.c.region_a_id,
-            distance_table.c.region_b_id,
+            distance_table.c.record_a_id,
+            distance_table.c.record_b_id,
             distance_table.c.distance,
             distance_table.c.jaccard,
             distance_table.c.adjacency,
             distance_table.c.dss,
             distance_table.c.weights,
         )
-        # equivalent to WHERE (region_a_id in (...) OR region_b_id in (...))
+        # equivalent to WHERE (record_a_id in (...) OR record_b_id in (...))
         .where(
-            distance_table.c.region_a_id.in_(include_nodes)
-            | distance_table.c.region_b_id.in_(include_nodes)
+            distance_table.c.record_a_id.in_(include_nodes)
+            | distance_table.c.record_b_id.in_(include_nodes)
         )
-        # equivalent to AND (region_a_id, region_b_id, ...) NOT IN (connected components)
+        # equivalent to AND (record_a_id, record_b_id, ...) NOT IN (connected components)
         .filter(
             ~tuple_(
-                distance_table.c.region_a_id,
-                distance_table.c.region_b_id,
+                distance_table.c.record_a_id,
+                distance_table.c.record_b_id,
                 distance_table.c.distance,
                 distance_table.c.jaccard,
                 distance_table.c.adjacency,
@@ -211,8 +211,8 @@ def get_query_connected_component(
         DB.metadata.tables["distance"]
         .select()
         .where(
-            (DB.metadata.tables["distance"].c.region_a_id.in_([query_node_id]))
-            | (DB.metadata.tables["distance"].c.region_b_id.in_([query_node_id]))
+            (DB.metadata.tables["distance"].c.record_a_id.in_([query_node_id]))
+            | (DB.metadata.tables["distance"].c.record_b_id.in_([query_node_id]))
         )
         .where(DB.metadata.tables["distance"].c.distance < cutoff)
     )

@@ -273,7 +273,7 @@ class TestProtoclusterDomainLCS(unittest.TestCase):
             bs_comparison.lcs.find_protocore_distance(region, 0)
 
     def test_lcs_protocluster_type_check_a(self):
-        """Tests whether the correct type error is raised when region_a in a recordpair
+        """Tests whether the correct type error is raised when record_a in a recordpair
         is not a protocluster
         """
         cds_a, cds_b = generate_mock_cds_lists(
@@ -282,16 +282,16 @@ class TestProtoclusterDomainLCS(unittest.TestCase):
 
         gbk = bs_genbank.GBK("", bs_enums.SOURCE_TYPE.QUERY)
 
-        region_a = bs_genbank.Region(gbk, 1, 0, len(cds_a) * 100, False, "")
-        region_b = bs_genbank.Region(gbk, 1, 0, len(cds_b) * 100, False, "")
+        record_a = bs_genbank.Region(gbk, 1, 0, len(cds_a) * 100, False, "")
+        record_b = bs_genbank.Region(gbk, 1, 0, len(cds_b) * 100, False, "")
 
-        record_pair = bs_comparison.RecordPair(region_a, region_b)
+        record_pair = bs_comparison.RecordPair(record_a, record_b)
 
         with self.assertRaises(TypeError):
             bs_comparison.lcs.find_domain_lcs_protocluster(record_pair)
 
     def test_lcs_protocluster_type_check_b(self):
-        """Tests whether the correct type error is raised when region_b in a recordpair
+        """Tests whether the correct type error is raised when record_b in a recordpair
         is not a protocluster
         """
         cds_a, cds_b = generate_mock_cds_lists(
@@ -300,12 +300,12 @@ class TestProtoclusterDomainLCS(unittest.TestCase):
 
         gbk = bs_genbank.GBK("", bs_enums.SOURCE_TYPE.QUERY)
 
-        region_a = bs_genbank.ProtoCluster(
+        record_a = bs_genbank.ProtoCluster(
             gbk, 1, 0, len(cds_a) * 100, False, "", "", {}
         )
-        region_b = bs_genbank.Region(gbk, 1, 0, len(cds_b) * 100, False, "")
+        record_b = bs_genbank.Region(gbk, 1, 0, len(cds_b) * 100, False, "")
 
-        record_pair = bs_comparison.RecordPair(region_a, region_b)
+        record_pair = bs_comparison.RecordPair(record_a, record_b)
 
         with self.assertRaises(TypeError):
             bs_comparison.lcs.find_domain_lcs_protocluster(record_pair)

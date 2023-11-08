@@ -11,7 +11,7 @@ from pyhmmer.easel import TextSequence
 
 # from other modules
 from big_scape.data import DB
-from big_scape.hmm.hmmer import HMMer, cds_to_input_task
+from big_scape.hmm import HMMer, cds_to_input_task
 from big_scape.genbank import GBK, CDS
 from big_scape.hmm import HSP
 
@@ -143,6 +143,7 @@ class TestHMMScan(TestCase):
         )
 
         gbk = GBK("", bs_enums.SOURCE_TYPE.QUERY)
+        gbk.metadata = {"organism": "test", "taxonomy": "test", "description": "test"}
         gbk.save()
 
         cds = CDS(0, len(aa_seq) * 3)

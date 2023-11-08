@@ -37,6 +37,11 @@ def create_mock_gbk(i, source_type: bs_enums.SOURCE_TYPE) -> GBK:
     cds.strand = 1
     gbk.genes.append(cds)
     gbk.region = Region(gbk, 1, 0, 100, False, "test")
+    gbk.metadata = {
+        "organism": "banana",
+        "taxonomy": "bananus;fruticus",
+        "description": "you can eat it",
+    }
     return gbk
 
 
@@ -184,7 +189,7 @@ class TestBGCBin(TestCase):
         ]
 
         actual_pair_list = [
-            tuple([pair.region_a, pair.region_b])
+            tuple([pair.record_a, pair.record_b])
             for pair in new_bin.generate_pairs(legacy_sorting=True)
         ]
 

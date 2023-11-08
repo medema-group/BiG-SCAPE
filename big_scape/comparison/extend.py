@@ -20,10 +20,10 @@ def reset(comparable_region: ComparableRegion) -> None:
     comparable_region.a_start = 0
     comparable_region.b_start = 0
     comparable_region.a_stop = len(
-        comparable_region.pair.region_a.get_cds_with_domains()
+        comparable_region.pair.record_a.get_cds_with_domains()
     )
     comparable_region.b_stop = len(
-        comparable_region.pair.region_b.get_cds_with_domains()
+        comparable_region.pair.record_b.get_cds_with_domains()
     )
     comparable_region.reverse = False
 
@@ -45,7 +45,7 @@ def check(
     """
     if biosynth_check:
         if ComparableRegion.cds_range_contains_biosynthetic(
-            comparable_region.pair.region_a,
+            comparable_region.pair.record_a,
             comparable_region.a_start,
             comparable_region.a_stop,
             False,
@@ -54,7 +54,7 @@ def check(
             return True
 
         if ComparableRegion.cds_range_contains_biosynthetic(
-            comparable_region.pair.region_b,
+            comparable_region.pair.record_b,
             comparable_region.b_start,
             comparable_region.b_stop,
             False,
@@ -99,8 +99,8 @@ def extend(
     logging.debug(comparable_region)
 
     # get the cds lists
-    a_cds = comparable_region.pair.region_a.get_cds_with_domains(True)
-    b_cds = comparable_region.pair.region_b.get_cds_with_domains(True)
+    a_cds = comparable_region.pair.record_a.get_cds_with_domains(True)
+    b_cds = comparable_region.pair.record_b.get_cds_with_domains(True)
 
     a_max_dist = math.floor(len(a_cds) * max_match_dist_perc)
     b_max_dist = math.floor(len(b_cds) * max_match_dist_perc)

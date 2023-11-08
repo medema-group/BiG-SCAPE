@@ -181,14 +181,14 @@ def do_lcs_pair(
         bool: True if the pair needs expansion, False if it does not
     """
 
-    if isinstance(pair.region_a, bs_gbk.Region) and isinstance(
-        pair.region_b, bs_gbk.Region
+    if isinstance(pair.record_a, bs_gbk.Region) and isinstance(
+        pair.record_b, bs_gbk.Region
     ):
         logging.debug("Using region lcs")
         a_start, a_stop, b_start, b_stop, reverse = find_domain_lcs_region(pair)
 
-    elif isinstance(pair.region_a, bs_gbk.ProtoCluster) and isinstance(
-        pair.region_b, bs_gbk.ProtoCluster
+    elif isinstance(pair.record_a, bs_gbk.ProtoCluster) and isinstance(
+        pair.record_b, bs_gbk.ProtoCluster
     ):
         logging.debug("Using protocluster lcs")
         a_start, a_stop, b_start, b_stop, reverse = find_domain_lcs_protocluster(pair)
@@ -300,11 +300,11 @@ def calculate_scores_pair(
         logging.debug(pair)
         pair.comparable_region.log_comparable_region()
         logging.debug("")
-        if pair.region_a.parent_gbk == pair.region_b.parent_gbk:
+        if pair.record_a.parent_gbk == pair.record_b.parent_gbk:
             results.append(
                 (
-                    pair.region_a._db_id,
-                    pair.region_b._db_id,
+                    pair.record_a._db_id,
+                    pair.record_b._db_id,
                     0.0,
                     1.0,
                     1.0,
@@ -329,8 +329,8 @@ def calculate_scores_pair(
         if jaccard == 0.0:
             results.append(
                 (
-                    pair.region_a._db_id,
-                    pair.region_b._db_id,
+                    pair.record_a._db_id,
+                    pair.record_b._db_id,
                     1.0,
                     0.0,
                     0.0,
@@ -359,8 +359,8 @@ def calculate_scores_pair(
         if jaccard == 0.0:
             results.append(
                 (
-                    pair.region_a._db_id,
-                    pair.region_b._db_id,
+                    pair.record_a._db_id,
+                    pair.record_b._db_id,
                     1.0,
                     0.0,
                     0.0,
@@ -401,8 +401,8 @@ def calculate_scores_pair(
 
         results.append(
             (
-                pair.region_a._db_id,
-                pair.region_b._db_id,
+                pair.record_a._db_id,
+                pair.record_b._db_id,
                 distance,
                 jaccard,
                 adjacency,
