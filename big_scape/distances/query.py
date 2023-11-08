@@ -87,7 +87,7 @@ def calculate_distances_query(run: dict, gbks: list[bs_gbk.GBK]) -> None:
     else:
         weights = "mix"
 
-    edge_param_id = bs_comparison.get_edge_params(run, weights)
+    edge_param_id = bs_comparison.get_edge_param_id(run, weights)
 
     # generate inital query -> ref pairs
     query_to_ref_bin = bs_comparison.QueryToRefRecordPairGenerator(

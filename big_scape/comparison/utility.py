@@ -155,7 +155,7 @@ def edges_from_db(
             yield pair, distance, jaccard, adjacency, dss  # , weights
 
 
-def get_edge_params(run, weights) -> int:
+def get_edge_param_id(run, weights) -> int:
     """get edge params id if available, else create a new one
 
     Args:

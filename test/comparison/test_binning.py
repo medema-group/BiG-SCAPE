@@ -27,6 +27,7 @@ from big_scape.genbank.candidate_cluster import CandidateCluster
 import big_scape.hmm as bs_hmm
 import big_scape.data as bs_data
 import big_scape.enums as bs_enums
+import big_scape.comparison as bs_comparison
 
 
 def create_mock_gbk(i, source_type: bs_enums.SOURCE_TYPE) -> GBK:
@@ -783,3 +784,37 @@ class TestBinGenerators(TestCase):
         seen_combo = bin.label + bin.weights
 
         self.assertEqual(expected_combo, seen_combo)
+
+    def test_get_edge_params_id_insert(self):
+        """Tests insertion of edge params into the database when not there"""
+
+        bs_data.DB.create_in_mem()
+        run = {
+            "alignment_mode": bs_enums.ALIGNMENT_MODE.AUTO,
+            "legacy_weights": True,
+            "classify": bs_enums.CLASSIFY_MODE.CATEGORY,
+        }
+        weights = "mix"
+
+        expected_id = 1
+        actual_id = bs_comparison.get_edge_param_id(run, weights)
+
+        self.assertEqual(expected_id, actual_id)
+
+    def test_get_edge_params_id_fetch(self):
+        """Tests getting edge params from the database when already there"""
+
+        bs_data.DB.create_in_mem()
+        run = {
+            "alignment_mode": bs_enums.ALIGNMENT_MODE.AUTO,
+            "legacy_weights": True,
+            "classify": bs_enums.CLASSIFY_MODE.CATEGORY,
+        }
+
+        first_id = bs_comparison.get_edge_param_id(run, "mix")
+        list([first_id])
+        second_id = bs_comparison.get_edge_param_id(run, "mix")
+
+        expected_id = 1
+
+        self.assertEqual(expected_id, second_id)

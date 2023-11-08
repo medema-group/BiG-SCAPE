@@ -349,7 +349,7 @@ def run_bigscape(run: dict) -> None:
     # mix
 
     if not run["no_mix"] and not run["query_bgc_path"]:
-        edge_param_id = bs_comparison.get_edge_params(run, "mix")
+        edge_param_id = bs_comparison.get_edge_param_id(run, "mix")
         mix_bin = bs_comparison.generate_mix_bin(all_bgc_records, edge_param_id)
 
         for cutoff in run["gcf_cutoffs"]:

@@ -15,7 +15,7 @@ from .binning import (
 )
 from .comparable_region import ComparableRegion
 from .legacy_workflow_alt import generate_edges
-from .utility import save_edge_to_db, save_edges_to_db, get_edge_params
+from .utility import save_edge_to_db, save_edges_to_db, get_edge_param_id
 
 from . import lcs
 
@@ -37,5 +37,5 @@ __all__ = [
     "save_edge_to_db",
     "lcs",
     "save_edges_to_db",
-    "get_edge_params",
+    "get_edge_param_id",
 ]

@@ -780,7 +780,7 @@ def as_class_bin_generator(
 
     for class_name, records in class_idx.items():
         weight_category = category_weights[class_name]
-        edge_param_id = bs_comparison.get_edge_params(run, weight_category)
+        edge_param_id = bs_comparison.get_edge_param_id(run, weight_category)
         bin = RecordPairGenerator(class_name, edge_param_id, weight_category)
         bin.add_records(records)
         yield bin
@@ -922,7 +922,7 @@ def legacy_bin_generator(
             class_idx[record_class] = [record]
 
     for class_name, records in class_idx.items():
-        edge_param_id = bs_comparison.get_edge_params(run, class_name)
+        edge_param_id = bs_comparison.get_edge_param_id(run, class_name)
         bin = RecordPairGenerator(class_name, edge_param_id, class_name)
         bin.add_records(records)
         yield bin
