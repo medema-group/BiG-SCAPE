@@ -19,8 +19,12 @@ def reset(comparable_region: ComparableRegion) -> None:
     """
     comparable_region.a_start = 0
     comparable_region.b_start = 0
-    comparable_region.a_stop = len(comparable_region.pair.region_a.get_cds())
-    comparable_region.b_stop = len(comparable_region.pair.region_b.get_cds())
+    comparable_region.a_stop = len(
+        comparable_region.pair.region_a.get_cds_with_domains()
+    )
+    comparable_region.b_stop = len(
+        comparable_region.pair.region_b.get_cds_with_domains()
+    )
     comparable_region.reverse = False
 
 
@@ -80,6 +84,9 @@ def extend(
     mechanism. If the pair in the comparable region consists of protoclusters, the
     this will not be limited to the bounds of those protoclusters
 
+    NOTE: The start-stop slices returned from this function correspond to CDS slices,
+    without domains only.
+
     Args:
         comparable_region: The comparable region to expand
         match: The score for a match
@@ -92,8 +99,8 @@ def extend(
     logging.debug(comparable_region)
 
     # get the cds lists
-    a_cds = comparable_region.pair.region_a.get_cds(True)
-    b_cds = comparable_region.pair.region_b.get_cds(True)
+    a_cds = comparable_region.pair.region_a.get_cds_with_domains(True)
+    b_cds = comparable_region.pair.region_b.get_cds_with_domains(True)
 
     a_max_dist = math.floor(len(a_cds) * max_match_dist_perc)
     b_max_dist = math.floor(len(b_cds) * max_match_dist_perc)

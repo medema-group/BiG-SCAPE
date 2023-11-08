@@ -251,6 +251,7 @@ def expand_pair(pair: RecordPair) -> float:
         jc = calc_jaccard_pair(pair)
         return jc
 
+    # TODO: check this
     pair.comparable_region.alignment_mode = bs_enums.ALIGNMENT_MODE.GLOCAL
     jc = calc_jaccard_pair(pair)
 
@@ -393,6 +394,10 @@ def calculate_scores_pair(
 
         similarity = jaccard * jc_weight + adjacency * ai_weight + dss * dss_weight
         distance = 1 - similarity
+
+        # at the very end, we need to inflate the comparable region coordinates to
+        # include CDS without domains
+        pair.comparable_region.inflate()
 
         results.append(
             (

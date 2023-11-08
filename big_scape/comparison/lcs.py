@@ -10,6 +10,8 @@ The result from the main functions are tuples with the following structure:
     (a_start, a_stop, b_start, b_stop, reverse)
 Where a and b are the two regions in the RecordPair. Start is inclusive, stop is
 exclusive. Reverse is a boolean indicating whether the match is in reverse
+
+NOTE: The matches correspond to slices of region CDS that do not have domains!
 """
 
 # from python
@@ -74,6 +76,9 @@ def get_lcs_protocores(
     Returns the cds indexes of start and stop, whether the match is in reverse,
     and whether the match is in the protocore
 
+    NOTE: The LCS correspond to slices of region CDS that do not have domains!
+    These slices are converted to full CDS ranges after extend, not here in LCS
+
     Args:
         pair (RecordPair): RecordPair object
         matching_blocks (list[Match]): list of matching blocks
@@ -101,7 +106,7 @@ def get_lcs_protocores(
     b_proto_core_domain_idx = set()
 
     domain_idx = 0
-    for idx, cds in enumerate(pair.region_a.get_cds()):
+    for idx, cds in enumerate(pair.region_a.get_cds_with_domains()):
         if idx not in pair.region_a.proto_core_cds_idx:
             domain_idx += len(cds.hsps)
             continue
@@ -111,7 +116,7 @@ def get_lcs_protocores(
             domain_idx += 1
 
     domain_idx = 0
-    for idx, cds in enumerate(pair.region_b.get_cds()):
+    for idx, cds in enumerate(pair.region_b.get_cds_with_domains()):
         if idx not in pair.region_b.proto_core_cds_idx:
             domain_idx += len(cds.hsps)
             continue
@@ -204,6 +209,9 @@ def find_domain_lcs_region(
 
     This takes CDS as arguments, but uses the domains within the CDS to find the LCS
 
+    NOTE: The LCS correspond to slices of region CDS that do not have domains!
+    These slices need to be converted to full CDS ranges later
+
     Args:
         a_cds (list[CDS]): List of CDS
         b_cds (list[CDS]): List of CDS
@@ -214,8 +222,8 @@ def find_domain_lcs_region(
     logging.debug("region lcs")
 
     # these are regions, so we can get the full range of CDS
-    a_cds = pair.region_a.get_cds(True)
-    b_cds = pair.region_b.get_cds(True)
+    a_cds = pair.region_a.get_cds_with_domains(True)
+    b_cds = pair.region_b.get_cds_with_domains(True)
 
     # get lists of domains and assemble a dictionary of domain idx to cds idx
     # so that we can return the cds indexes later
@@ -365,6 +373,9 @@ def find_domain_lcs_protocluster(
     """Find the longest stretch of matching domains between two protocluster records,
     using domains
 
+    NOTE: The LCS correspond to slices of region CDS that do not have domains!
+    These slices need to be converted to full CDS ranges later
+
     Args:
         pair (RecordPair): RecordPair object
 
@@ -380,8 +391,8 @@ def find_domain_lcs_protocluster(
     if not isinstance(pair.region_b, bs_genbank.ProtoCluster):
         raise TypeError("region_b must be a protocluster")
 
-    a_cds = pair.region_a.get_cds()
-    b_cds = pair.region_b.get_cds()
+    a_cds = pair.region_a.get_cds_with_domains()
+    b_cds = pair.region_b.get_cds_with_domains()
 
     a_domains = []
     b_domains = []

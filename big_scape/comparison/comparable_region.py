@@ -67,6 +67,74 @@ class ComparableRegion:
         self.lcs_b_stop = b_stop
         self.alignment_mode: ALIGNMENT_MODE = ALIGNMENT_MODE.GLOBAL
 
+    def inflate_a(self) -> None:
+        """Inflates the A region start and stop to include all CDS, including those
+        without domains.
+
+        This should be done once after LCS/Extend. There is no way to know if this
+        comparable region has already been inflated, so this method should only be
+        called once.
+        """
+        # quit early if length is 1
+        if self.a_start == self.a_stop - 1:
+            return
+
+        a_cds_list = self.pair.region_a.get_cds()
+
+        # find the number of cds without domains before the start and stop
+        empty_cds_count = 0
+        for idx, cds in enumerate(a_cds_list):
+            if len(cds.hsps) == 0:
+                empty_cds_count += 1
+
+            if idx - empty_cds_count == self.a_start:
+                self.a_start += empty_cds_count
+
+            if idx - empty_cds_count == self.a_stop:
+                self.a_stop += empty_cds_count
+                break
+
+    def inflate_b(self) -> None:
+        """Inflates the B region start and stop to include all CDS, including those
+        without domains.
+
+        This should be done once after LCS/Extend. There is no way to know if this
+        comparable region has already been inflated, so this method should only be
+        called once.
+        """
+        # quit early if length is 1
+        if self.b_start == self.b_stop - 1:
+            return
+
+        b_cds_list = self.pair.region_a.get_cds()
+
+        if self.reverse:
+            b_cds_list = b_cds_list[::-1]
+
+        # find the number of cds without domains before the start and stop
+        empty_cds_count = 0
+        for idx, cds in enumerate(b_cds_list):
+            if len(cds.hsps) == 0:
+                empty_cds_count += 1
+
+            if idx - empty_cds_count == self.a_start:
+                self.b_start += empty_cds_count
+
+            if idx - empty_cds_count == self.a_stop:
+                self.b_stop += empty_cds_count
+                break
+
+    def inflate(self):
+        """Inflates the comparable region to include all CDS, including those without
+        domains.
+
+        This should be done once after LCS/Extend. There is no way to know if this
+        comparable region has already been inflated, so this method should only be
+        called once.
+        """
+        self.inflate_a()
+        self.inflate_b()
+
     def get_domain_sets(
         self, regenerate=False, cache=True
     ) -> tuple[set[HSP], set[HSP]]:

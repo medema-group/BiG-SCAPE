@@ -841,6 +841,8 @@ def generate_bs_families_alignment(
         # collects records within this GCF
         family_records = [records[bgc_num] for bgc_num in family_members]
         family_member_db_ids = [rec._db_id for rec in family_records]
+        if family_db_id not in family_member_db_ids:
+            continue
         fam_record_idx = family_member_db_ids.index(family_db_id)
         fam_gbk = family_records[fam_record_idx].parent_gbk
         if fam_gbk is None:
@@ -875,15 +877,10 @@ def generate_bs_families_alignment(
                 result = fetch_lcs_from_db(
                     family_db_id, bgc_db_id, pair_generator.weights
                 )
-                a_start, b_start, reverse = adjust_lcs_to_all_genes(
-                    result,
-                    family_db_id,
-                    bgc_db_id,
-                    fam_gbk,
-                    bgc_gbk,
-                    domain_genes_to_all_genes,
-                    domain_count_gene,
-                )
+                a_start = result["lcs_a_start"]
+                b_start = result["lcs_b_start"]
+                reverse = result["reverse"]
+
                 ref_genes_.add(a_start)
 
                 bgc_algn = []
