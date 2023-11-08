@@ -257,7 +257,7 @@ class TestScoreExtend(unittest.TestCase):
         expected_extends = (5, 5, 25)
 
         actual_extends = bs_comp.extend.score_extend(
-            query, 0, target_index, 5, -5, -3, 0
+            query, 0, target_index, 5, -5, -3, 10
         )
 
         self.assertEqual(expected_extends, actual_extends)
@@ -294,7 +294,7 @@ class TestScoreExtend(unittest.TestCase):
         expected_extends = (1, 1, 5)
 
         actual_extends = bs_comp.extend.score_extend(
-            query, 0, target_index, 5, -3, -2, 0
+            query, 0, target_index, 5, -3, -2, 10
         )
 
         self.assertEqual(expected_extends, actual_extends)
@@ -332,7 +332,7 @@ class TestScoreExtend(unittest.TestCase):
         expected_extends = (5, 3, 11)
 
         actual_extends = bs_comp.extend.score_extend(
-            query, 0, target_index, 5, -3, -2, 0
+            query, 0, target_index, 5, -3, -2, 10
         )
 
         self.assertEqual(expected_extends, actual_extends)
@@ -377,7 +377,7 @@ class TestScoreExtend(unittest.TestCase):
         target_index = bs_comp.extend.get_target_indexes(target)
 
         actual_extends = bs_comp.extend.score_extend(
-            query, 0, target_index, 5, -3, -2, 0
+            query, 0, target_index, 5, -3, -2, 10
         )
 
         self.assertEqual(expected_extends, actual_extends)

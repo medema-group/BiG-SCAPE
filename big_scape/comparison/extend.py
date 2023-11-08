@@ -203,7 +203,6 @@ def score_extend(
     """
     Calculate the score for extending a query sequence to a target sequence.
 
-    TODO: max_match_dist
     TODO: This is a copy of score_extend_rev. if possible, refactor to remove
     duplication
 
@@ -234,6 +233,11 @@ def score_extend(
 
             for dict_idx, target_idx in enumerate(target_index[hsp.domain]):
                 cds_idx, domain_idx = target_idx
+
+                # mismatch if the domain is too far away
+                if domain_idx - query_idx > max_match_dist:
+                    score += mismatch
+                    break
 
                 if domain_idx < query_start:
                     continue
@@ -300,6 +304,11 @@ def score_extend_rev(
 
             for dict_idx, target_idx in enumerate(target_index[hsp.domain][::-1]):
                 cds_idx, domain_idx = target_idx
+
+                # mismatch if the domain is too far away
+                if domain_idx - query_idx > max_match_dist:
+                    score += mismatch
+                    break
 
                 if domain_idx < query_start:
                     continue
