@@ -22,7 +22,7 @@ import big_scape.enums as bs_enums
 
 # from this module
 from .binning import RecordPairGenerator, RecordPair
-from .legacy_bins import LEGACY_WEIGHTS
+from .binning import LEGACY_WEIGHTS
 from .legacy_extend import (
     legacy_needs_expand_pair,
     expand_glocal,
