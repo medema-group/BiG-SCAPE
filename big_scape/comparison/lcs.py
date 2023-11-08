@@ -79,11 +79,11 @@ def get_lcs_protocores(
         match in protocore
     """
 
-    if not isinstance(pair.region_a, bs_genbank.ProtoCluster):
-        raise TypeError("region_a must be a protocluster")
+    if not isinstance(pair.record_a, bs_genbank.ProtoCluster):
+        raise TypeError("record_a must be a protocluster")
 
-    if not isinstance(pair.region_b, bs_genbank.ProtoCluster):
-        raise TypeError("region_b must be a protocluster")
+    if not isinstance(pair.record_b, bs_genbank.ProtoCluster):
+        raise TypeError("record_b must be a protocluster")
 
     a_min_dist = None
     b_min_dist = None
@@ -91,13 +91,13 @@ def get_lcs_protocores(
     b_best = None
 
     # we need to know if the domains are in the protocore, but all we have is the
-    # pair.region_b.proto_core_cds_idx. we need to make a similar index on domain level
+    # pair.record_b.proto_core_cds_idx. we need to make a similar index on domain level
     a_proto_core_domain_idx = set()
     b_proto_core_domain_idx = set()
 
     domain_idx = 0
-    for idx, cds in enumerate(pair.region_a.get_cds()):
-        if idx not in pair.region_a.proto_core_cds_idx:
+    for idx, cds in enumerate(pair.record_a.get_cds()):
+        if idx not in pair.record_a.proto_core_cds_idx:
             domain_idx += len(cds.hsps)
             continue
 
@@ -106,8 +106,8 @@ def get_lcs_protocores(
             domain_idx += 1
 
     domain_idx = 0
-    for idx, cds in enumerate(pair.region_b.get_cds()):
-        if idx not in pair.region_b.proto_core_cds_idx:
+    for idx, cds in enumerate(pair.record_b.get_cds()):
+        if idx not in pair.record_b.proto_core_cds_idx:
             domain_idx += len(cds.hsps)
             continue
 
@@ -153,16 +153,16 @@ def get_lcs_protocores(
 
         # if match_len > 1, use whichever is closest to a protocore
         if match_len > 1:
-            left_dist = find_protocore_distance(pair.region_a, a_idx)
-            right_dist = find_protocore_distance(pair.region_a, a_idx + match_len - 1)
+            left_dist = find_protocore_distance(pair.record_a, a_idx)
+            right_dist = find_protocore_distance(pair.record_a, a_idx + match_len - 1)
             a_dist = min(left_dist, right_dist)
 
-            left_dist = find_protocore_distance(pair.region_b, b_idx)
-            right_dist = find_protocore_distance(pair.region_b, b_idx + match_len - 1)
+            left_dist = find_protocore_distance(pair.record_b, b_idx)
+            right_dist = find_protocore_distance(pair.record_b, b_idx + match_len - 1)
             b_dist = min(left_dist, right_dist)
         else:
-            a_dist = find_protocore_distance(pair.region_a, a_idx)
-            b_dist = find_protocore_distance(pair.region_b, b_idx)
+            a_dist = find_protocore_distance(pair.record_a, a_idx)
+            b_dist = find_protocore_distance(pair.record_b, b_idx)
 
         a_better = False
         if a_min_dist is None or a_dist < a_min_dist:
@@ -323,14 +323,14 @@ def find_domain_lcs_protocluster(
     """
 
     # we really need protoclusters here
-    if not isinstance(pair.region_a, bs_genbank.ProtoCluster):
-        raise TypeError("region_a must be a protocluster")
+    if not isinstance(pair.record_a, bs_genbank.ProtoCluster):
+        raise TypeError("record_a must be a protocluster")
 
-    if not isinstance(pair.region_b, bs_genbank.ProtoCluster):
-        raise TypeError("region_b must be a protocluster")
+    if not isinstance(pair.record_b, bs_genbank.ProtoCluster):
+        raise TypeError("record_b must be a protocluster")
 
-    a_cds = pair.region_a.get_cds()
-    b_cds = pair.region_b.get_cds()
+    a_cds = pair.record_a.get_cds()
+    b_cds = pair.record_b.get_cds()
 
     a_domains = []
     b_domains = []

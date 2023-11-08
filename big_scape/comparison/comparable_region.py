@@ -129,8 +129,8 @@ class ComparableRegion:
             b_start = self.b_start
             b_stop = self.b_stop
 
-            a_cds_list = self.pair.region_a.get_cds_with_domains()[a_start:a_stop]
-            b_cds_list = self.pair.region_b.get_cds_with_domains(reverse=self.reverse)[
+            a_cds_list = self.pair.record_a.get_cds_with_domains()[a_start:a_stop]
+            b_cds_list = self.pair.record_b.get_cds_with_domains(reverse=self.reverse)[
                 b_start:b_stop
             ]
 
@@ -201,8 +201,8 @@ class ComparableRegion:
             tuple[int]: tuple of integers corresponding to:
             [a_lcs_start, a_lcs_stop, b_lcs_start, b_lcs_stop]
         """
-        a_cds = self.pair.region_a.get_cds_with_domains()
-        b_cds = self.pair.region_b.get_cds_with_domains()
+        a_cds = self.pair.record_a.get_cds_with_domains()
+        b_cds = self.pair.record_b.get_cds_with_domains()
 
         a_start, a_stop, b_start, b_stop, reverse = legacy_find_cds_lcs(a_cds, b_cds)
 
@@ -221,8 +221,8 @@ class ComparableRegion:
         if logging.getLogger().level > logging.DEBUG:
             return
 
-        a_cds_list = self.pair.region_a.get_cds_with_domains()
-        b_cds_list = self.pair.region_b.get_cds_with_domains(reverse=self.reverse)
+        a_cds_list = self.pair.record_a.get_cds_with_domains()
+        b_cds_list = self.pair.record_b.get_cds_with_domains(reverse=self.reverse)
 
         b_start = self.b_start
         b_stop = self.b_stop

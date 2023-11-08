@@ -49,30 +49,30 @@ def get_distance_from_unshared(
     b_domains_bot: defaultdict[str, int] = defaultdict(int)
     b_domains_top: defaultdict[str, int] = defaultdict(int)
 
-    for hsp in bgc_pair.region_a.get_hsps():
+    for hsp in bgc_pair.record_a.get_hsps():
         a_domains_bot.setdefault(hsp.domain, 0)
         a_domains_top.setdefault(hsp.domain, 0)
         a_domains_top[hsp.domain] += 1
 
-    for hsp in bgc_pair.region_b.get_hsps():
+    for hsp in bgc_pair.record_b.get_hsps():
         b_domains_bot.setdefault(hsp.domain, 0)
         b_domains_top.setdefault(hsp.domain, 0)
         b_domains_top[hsp.domain] += 1
 
     # increase bot slices with the counts of domains found in before the comparable region
-    a_cds_list = bgc_pair.region_a.get_cds_with_domains()
-    region_a_start = bgc_pair.comparable_region.a_start
-    region_a_stop = bgc_pair.comparable_region.a_stop
-    for cds in a_cds_list[:region_a_start]:
+    a_cds_list = bgc_pair.record_a.get_cds_with_domains()
+    record_a_start = bgc_pair.comparable_region.a_start
+    record_a_stop = bgc_pair.comparable_region.a_stop
+    for cds in a_cds_list[:record_a_start]:
         for hsp in cds.hsps:
             a_domains_bot[hsp.domain] += 1
 
     # we have to flip the orientation here
-    b_cds_list = bgc_pair.region_b.get_cds_with_domains()
+    b_cds_list = bgc_pair.record_b.get_cds_with_domains()
     num_cds = len(b_cds_list)
-    region_b_start = num_cds - bgc_pair.comparable_region.b_stop
-    region_b_stop = num_cds - bgc_pair.comparable_region.b_start
-    for cds in b_cds_list[:region_b_start]:
+    record_b_start = num_cds - bgc_pair.comparable_region.b_stop
+    record_b_stop = num_cds - bgc_pair.comparable_region.b_start
+    for cds in b_cds_list[:record_b_start]:
         for hsp in cds.hsps:
             b_domains_bot[hsp.domain] += 1
 
@@ -87,11 +87,11 @@ def get_distance_from_unshared(
         b_domains_top[hsp.domain] = b_domains_bot[hsp.domain]
 
     # increase top with whatever hsps are in the sets
-    for cds in a_cds_list[region_a_start:region_a_stop]:
+    for cds in a_cds_list[record_a_start:record_a_stop]:
         for hsp in cds.hsps:
             a_domains_top[hsp.domain] += 1
 
-    for cds in b_cds_list[region_b_start:region_b_stop]:
+    for cds in b_cds_list[record_b_start:record_b_stop]:
         for hsp in cds.hsps:
             b_domains_top[hsp.domain] += 1
 

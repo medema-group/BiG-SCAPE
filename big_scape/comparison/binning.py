@@ -140,10 +140,10 @@ class RecordPairGenerator:
 
         # get all distances in the table below the cutoff
         select_statement = (
-            select(distance_table.c.region_a_id, distance_table.c.region_b_id)
+            select(distance_table.c.record_a_id, distance_table.c.record_b_id)
             .where(
-                distance_table.c.region_a_id.in_(self.record_ids)
-                | distance_table.c.region_b_id.in_(self.record_ids)
+                distance_table.c.record_a_id.in_(self.record_ids)
+                | distance_table.c.record_b_id.in_(self.record_ids)
             )
             .where(distance_table.c.distance < cutoff)
             .where(distance_table.c.weights == self.weights)
@@ -350,13 +350,13 @@ class RefToRefRecordPairGenerator(RecordPairGenerator):
             .where(
                 or_(
                     bgc_record_table.c.id.in_(
-                        select(distance_table.c.region_a_id)
+                        select(distance_table.c.record_a_id)
                         .distinct()
                         .where(distance_table.c.distance < 1.0)
                         .where(distance_table.c.weights == self.weights)
                     ),
                     bgc_record_table.c.id.in_(
-                        select(distance_table.c.region_b_id)
+                        select(distance_table.c.record_b_id)
                         .distinct()
                         .where(distance_table.c.distance < 1.0)
                         .where(distance_table.c.weights == self.weights)
@@ -401,13 +401,13 @@ class RefToRefRecordPairGenerator(RecordPairGenerator):
             .where(
                 or_(
                     bgc_record_table.c.id.in_(
-                        select(distance_table.c.region_a_id)
+                        select(distance_table.c.record_a_id)
                         .distinct()
                         .where(distance_table.c.distance < 1.0)
                         .where(distance_table.c.weights == self.weights)
                     ),
                     bgc_record_table.c.id.in_(
-                        select(distance_table.c.region_b_id)
+                        select(distance_table.c.record_b_id)
                         .distinct()
                         .where(distance_table.c.distance < 1.0)
                         .where(distance_table.c.weights == self.weights)
@@ -445,7 +445,7 @@ class RefToRefRecordPairGenerator(RecordPairGenerator):
             )
             .where(
                 bgc_record_table.c.id.notin_(
-                    select(distance_table.c.region_a_id)
+                    select(distance_table.c.record_a_id)
                     .distinct()
                     .where(distance_table.c.distance < 1.0)
                     .where(distance_table.c.weights == self.weights)
@@ -453,7 +453,7 @@ class RefToRefRecordPairGenerator(RecordPairGenerator):
             )
             .where(
                 bgc_record_table.c.id.notin_(
-                    select(distance_table.c.region_b_id)
+                    select(distance_table.c.record_b_id)
                     .distinct()
                     .where(distance_table.c.distance < 1.0)
                     .where(distance_table.c.weights == self.weights)
@@ -495,14 +495,14 @@ class RefToRefRecordPairGenerator(RecordPairGenerator):
             )
             .where(
                 bgc_record_table.c.id.notin_(
-                    select(distance_table.c.region_a_id)
+                    select(distance_table.c.record_a_id)
                     .distinct()
                     .where(distance_table.c.distance < 1.0)
                 )
             )
             .where(
                 bgc_record_table.c.id.notin_(
-                    select(distance_table.c.region_b_id)
+                    select(distance_table.c.record_b_id)
                     .distinct()
                     .where(distance_table.c.distance < 1.0)
                 )
@@ -589,12 +589,12 @@ class MissingRecordPairGenerator(RecordPairGenerator):
 
         distance_table = DB.metadata.tables["distance"]
 
-        # get all region._db_id in the bin where the region_a_id and region_b_id are in the
+        # get all region._db_id in the bin where the record_a_id and record_b_id are in the
         # bin
         select_statement = (
-            select(func.count(distance_table.c.region_a_id))
-            .where(distance_table.c.region_a_id.in_(self.bin.record_ids))
-            .where(distance_table.c.region_b_id.in_(self.bin.record_ids))
+            select(func.count(distance_table.c.record_a_id))
+            .where(distance_table.c.record_a_id.in_(self.bin.record_ids))
+            .where(distance_table.c.record_b_id.in_(self.bin.record_ids))
             .where(distance_table.c.weights == self.bin.weights)
         )
 
@@ -612,9 +612,9 @@ class MissingRecordPairGenerator(RecordPairGenerator):
 
         # get all region._db_id in the bin
         select_statement = (
-            select(distance_table.c.region_a_id, distance_table.c.region_b_id)
-            .where(distance_table.c.region_a_id.in_(self.bin.record_ids))
-            .where(distance_table.c.region_b_id.in_(self.bin.record_ids))
+            select(distance_table.c.record_a_id, distance_table.c.record_b_id)
+            .where(distance_table.c.record_a_id.in_(self.bin.record_ids))
+            .where(distance_table.c.record_b_id.in_(self.bin.record_ids))
             .where(distance_table.c.weights == self.bin.weights)
         )
 
@@ -624,11 +624,11 @@ class MissingRecordPairGenerator(RecordPairGenerator):
         for pair in self.bin.generate_pairs(legacy_sorting):
             # if the pair is not in the set of existing distances, yield it
             if (
-                pair.region_a._db_id,
-                pair.region_b._db_id,
+                pair.record_a._db_id,
+                pair.record_b._db_id,
             ) not in existing_distances and (
-                pair.region_a._db_id,
-                pair.region_b._db_id,
+                pair.record_a._db_id,
+                pair.record_b._db_id,
             ) not in existing_distances:
                 yield pair
 
@@ -643,27 +643,27 @@ class RecordPair:
     to generate the scores
     """
 
-    def __init__(self, region_a: BGCRecord, region_b: BGCRecord):
-        self.region_a = region_a
-        self.region_b = region_b
+    def __init__(self, record_a: BGCRecord, record_b: BGCRecord):
+        self.record_a = record_a
+        self.record_b = record_b
 
-        if region_a.parent_gbk is None or region_b.parent_gbk is None:
+        if record_a.parent_gbk is None or record_b.parent_gbk is None:
             raise ValueError("Region in pair has no parent GBK!")
 
         # comparable regions start at the full ranges
-        a_len = len(region_a.get_cds())
-        b_len = len(region_b.get_cds())
+        a_len = len(record_a.get_cds())
+        b_len = len(record_b.get_cds())
 
         self.comparable_region: ComparableRegion = ComparableRegion(
             self, 0, a_len, 0, b_len, False
         )
 
     def __repr__(self) -> str:
-        return f"Pair {self.region_a} - {self.region_b}"
+        return f"Pair {self.record_a} - {self.record_b}"
 
     def __hash__(self) -> int:
-        a_hash = hash(self.region_a)
-        b_hash = hash(self.region_b)
+        a_hash = hash(self.record_a)
+        b_hash = hash(self.record_b)
 
         # order doesn't matter
         return a_hash + b_hash
@@ -672,9 +672,9 @@ class RecordPair:
         if not isinstance(_o, RecordPair):
             return False
 
-        if self.region_a == _o.region_a and self.region_b == _o.region_b:
+        if self.record_a == _o.record_a and self.record_b == _o.record_b:
             return True
-        if self.region_a == _o.region_b and self.region_b == _o.region_a:
+        if self.record_a == _o.record_b and self.record_b == _o.record_a:
             return True
 
         return False
