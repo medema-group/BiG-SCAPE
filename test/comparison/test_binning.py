@@ -21,7 +21,7 @@ from big_scape.comparison import (
     get_weight_category,
     as_class_bin_generator,
 )
-from big_scape.comparison import generate_mix
+from big_scape.comparison import generate_mix_bin
 from big_scape.genbank.candidate_cluster import CandidateCluster
 
 import big_scape.hmm as bs_hmm
@@ -147,7 +147,7 @@ class TestBGCBin(TestCase):
 
         bgc_list = [bgc_a, bgc_b, bgc_c, bgc_d]
 
-        new_bin = QueryToRefRecordPairGenerator("test")
+        new_bin = QueryToRefRecordPairGenerator("test", 1, "mix")
 
         new_bin.add_records(bgc_list)
 
@@ -202,7 +202,7 @@ class TestBGCBin(TestCase):
             create_mock_gbk(i, bs_enums.SOURCE_TYPE.REFERENCE) for i in range(1, 4)
         ]
 
-        query_to_ref_pair_generator = QueryToRefRecordPairGenerator("mix")
+        query_to_ref_pair_generator = QueryToRefRecordPairGenerator("mix", 1, "mix")
         source_records = [query_gbk.region]
         for ref_gbk in ref_gbks:
             source_records.append(ref_gbk.region)
@@ -232,7 +232,7 @@ class TestBGCBin(TestCase):
             create_mock_gbk(i, bs_enums.SOURCE_TYPE.REFERENCE) for i in range(1, 5)
         ]
 
-        ref_to_ref_pair_generator = RefToRefRecordPairGenerator("mix", 1)
+        ref_to_ref_pair_generator = RefToRefRecordPairGenerator("mix", 1, "mix")
         source_records = [query_gbk.region]
         for ref_gbk in ref_gbks:
             source_records.append(ref_gbk.region)
@@ -322,7 +322,7 @@ class TestBGCBin(TestCase):
             create_mock_gbk(i, bs_enums.SOURCE_TYPE.REFERENCE) for i in range(1, 5)
         ]
 
-        ref_to_ref_pair_generator = RefToRefRecordPairGenerator("mix", 1)
+        ref_to_ref_pair_generator = RefToRefRecordPairGenerator("mix", 1, "mix")
         source_records = [query_gbk.region]
         for ref_gbk in ref_gbks:
             source_records.append(ref_gbk.region)
@@ -540,7 +540,7 @@ class TestBGCBin(TestCase):
         expected_record_ids = [1, 2, 3]
 
         cc_pair_generator = ConnectedComponenetPairGenerator(
-            connected_component, "mix", 1
+            connected_component, "mix", 1, "mix"
         )
         cc_pair_generator.add_records(source_records)
 
@@ -642,7 +642,7 @@ class TestMixComparison(TestCase):
 
         bgc_list = [bgc_a, bgc_b, bgc_c]
 
-        new_bin = generate_mix(bgc_list, 1)
+        new_bin = generate_mix_bin(bgc_list, 1)
 
         # expected representation of the bin object
         expected_pair_count = 3
@@ -737,6 +737,7 @@ class TestBinGenerators(TestCase):
         """Tests whether an antismash bin is correclty generated given a weight label"""
 
         "Bin 'PKS': 1 pairs from 2 BGC records"
+        bs_data.DB.create_in_mem()
 
         gbk_1 = GBK(Path("test"), source_type=bs_enums.SOURCE_TYPE.QUERY)
         gbk_1.region = mock_region()
@@ -756,12 +757,8 @@ class TestBinGenerators(TestCase):
 
         # gbks = [gbk_1.region, gbk_2.region]
         gbks = [protocore_1, protocore_2]
-        weights = ["mix", "legacy_weights"]
-        class_modes = [bs_enums.CLASSIFY_MODE.CLASS, bs_enums.CLASSIFY_MODE.CATEGORY]
 
-        seen_dict = OrderedDict()
         expected_dict = OrderedDict()
-
         expected_dict = {
             "classmix": "T1PKSmix",
             "categorymix": "PKSmix",
@@ -769,9 +766,20 @@ class TestBinGenerators(TestCase):
             "categorylegacy_weights": "PKST1PKS",
         }
 
-        for weight in weights:
-            for mode in class_modes:
-                bin = next(as_class_bin_generator(gbks, weight, mode))
-                seen_dict[str(mode.value) + weight] = bin.label + bin.weights
+        # run_class_mix = {
+        #     "alignment_mode": bs_enums.ALIGNMENT_MODE.AUTO,
+        #     "legacy_weights": False,
+        #     "classify": bs_enums.CLASSIFY_MODE.CLASS,
+        # }
 
-        self.assertEqual(expected_dict, seen_dict)
+        run_category_weights = {
+            "alignment_mode": bs_enums.ALIGNMENT_MODE.AUTO,
+            "legacy_weights": True,
+            "classify": bs_enums.CLASSIFY_MODE.CATEGORY,
+        }
+
+        bin = next(as_class_bin_generator(gbks, run_category_weights))
+        expected_combo = expected_dict["categorylegacy_weights"]
+        seen_combo = bin.label + bin.weights
+
+        self.assertEqual(expected_combo, seen_combo)

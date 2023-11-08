@@ -15,7 +15,7 @@ from .utility import edge_list_to_adj_list, adj_list_to_sim_matrix
 
 
 def generate_families(
-    connected_component: list[tuple[int, int, float, float, float, float, str]],
+    connected_component: list[tuple[int, int, float, float, float, float, str, int]],
     cutoff: float,
 ) -> list[tuple[int, int, float]]:
     """Execute affinity propagation on a connected component

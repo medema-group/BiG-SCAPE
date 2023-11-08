@@ -248,22 +248,21 @@ def run_bigscape(run: dict) -> None:
     # mix
 
     if not run["no_mix"] and not run["query_bgc_path"]:
-        bs_mix.calculate_distances_mix(run, gbks)
+        bs_mix.calculate_distances_mix(run, all_bgc_records)
 
         DB.commit()
 
     # legacy_classify
 
     if run["legacy_classify"] and not run["query_bgc_path"]:
-        bs_legacy_classify.calculate_distances_legacy_classify(run, gbks)
+        bs_legacy_classify.calculate_distances_legacy_classify(run, all_bgc_records)
 
         DB.commit()
 
     # classify
 
     if run["classify"] and not run["query_bgc_path"]:
-        classify_mode = run["classify"]
-        bs_classify.calculate_distances_classify(run, gbks, classify_mode)
+        bs_classify.calculate_distances_classify(run, all_bgc_records)
 
         DB.commit()
 
@@ -350,10 +349,8 @@ def run_bigscape(run: dict) -> None:
     # mix
 
     if not run["no_mix"] and not run["query_bgc_path"]:
-        mix_bin = bs_comparison.RecordPairGenerator("Mix", "mix")
-        mix_bin.add_records(
-            [record for record in all_bgc_records if record is not None]
-        )
+        edge_param_id = bs_comparison.get_edge_params(run, "mix")
+        mix_bin = bs_comparison.generate_mix_bin(all_bgc_records, edge_param_id)
 
         for cutoff in run["gcf_cutoffs"]:
             if not run["include_singletons"]:
@@ -369,7 +366,7 @@ def run_bigscape(run: dict) -> None:
     # legacy_classify
 
     if run["legacy_classify"] and not run["query_bgc_path"]:
-        legacy_class_bins = bs_comparison.legacy_bin_generator(all_bgc_records)
+        legacy_class_bins = bs_comparison.legacy_bin_generator(all_bgc_records, run)
 
         for bin in legacy_class_bins:
             for cutoff in run["gcf_cutoffs"]:
@@ -386,16 +383,7 @@ def run_bigscape(run: dict) -> None:
     # classify
 
     if run["classify"] and not run["query_bgc_path"]:
-        classify_mode = run["classify"]
-
-        if run["legacy_weights"]:
-            weight_type = "legacy_weights"
-        else:
-            weight_type = "mix"
-
-        as_class_bins = bs_comparison.as_class_bin_generator(
-            all_bgc_records, weight_type, classify_mode
-        )
+        as_class_bins = bs_comparison.as_class_bin_generator(all_bgc_records, run)
 
         for bin in as_class_bins:
             for cutoff in run["gcf_cutoffs"]:
@@ -412,8 +400,10 @@ def run_bigscape(run: dict) -> None:
     # query
 
     if run["query_bgc_path"]:
+        edge_param_id = query_connected_component[0][-1]
+        weights = query_connected_component[0][-2]
         query_bin = bs_comparison.ConnectedComponenetPairGenerator(
-            query_connected_component, label="Query"
+            query_connected_component, "Query", edge_param_id, weights
         )
         query_bin.add_records(
             [record for record in all_bgc_records if record is not None]

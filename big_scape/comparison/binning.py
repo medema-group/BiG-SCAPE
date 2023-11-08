@@ -17,6 +17,7 @@ from sqlalchemy import select, func, or_
 from big_scape.data import DB
 from big_scape.genbank import BGCRecord, Region, ProtoCluster, ProtoCore
 from big_scape.enums import SOURCE_TYPE, CLASSIFY_MODE
+import big_scape.comparison as bs_comparison
 
 # from this module
 from .comparable_region import ComparableRegion
@@ -176,8 +177,8 @@ class QueryToRefRecordPairGenerator(RecordPairGenerator):
     ref <-> ref pairs
     """
 
-    def __init__(self, label: str, edge_param_id: int):
-        super().__init__(label, edge_param_id)
+    def __init__(self, label: str, edge_param_id: int, weights: str):
+        super().__init__(label, edge_param_id, weights)
         self.reference_records: list[BGCRecord] = []
         self.query_records: list[BGCRecord] = []
 
@@ -260,11 +261,11 @@ class RefToRefRecordPairGenerator(RecordPairGenerator):
         source_records (list[BGCRecord]): List of BGC records to generate pairs from
     """
 
-    def __init__(self, label: str, edge_param_id: int):
+    def __init__(self, label: str, edge_param_id: int, weights: str):
         self.record_id_to_obj: dict[int, BGCRecord] = {}
         self.reference_record_ids: set[int] = set()
         self.done_record_ids: set[int] = set()
-        super().__init__(label, edge_param_id)
+        super().__init__(label, edge_param_id, weights)
 
     def generate_pairs(self, legacy_sorting=False) -> Generator[RecordPair, None, None]:
         """Returns an Generator for Region pairs in this bin, pairs are only generated between
@@ -521,10 +522,13 @@ class ConnectedComponenetPairGenerator(RecordPairGenerator):
     """Generator that takes as input a conected component and generates
     all pairs from the nodes in the component"""
 
-    def __init__(self, connected_component, label: str, edge_param_id: int):
-        super().__init__(label, edge_param_id)
+    def __init__(
+        self, connected_component, label: str, edge_param_id: int, weights: str
+    ):
+        super().__init__(label, edge_param_id, weights)
         self.connected_component = connected_component
         self.record_id_to_obj: dict[int, BGCRecord] = {}
+        self.edge_param_id = connected_component[0][-1]
 
     def add_records(self, record_list: list[BGCRecord]):
         """Adds BGC records to this bin and creates a generator for the pairs
@@ -548,6 +552,7 @@ class ConnectedComponenetPairGenerator(RecordPairGenerator):
             # Ensure that the correct weights are used,
             # the weights are set during the binning process
             self.weights = weights
+            self.edge_param_id = edge_param_id
             cc_record_ids.add(record_a_id)
             cc_record_ids.add(record_b_id)
 
@@ -590,7 +595,9 @@ class MissingRecordPairGenerator(RecordPairGenerator):
     """
 
     def __init__(self, pair_generator):
-        super().__init__(pair_generator.label, pair_generator.weights)
+        super().__init__(
+            pair_generator.label, pair_generator.edge_param_id, pair_generator.weights
+        )
         self.bin = pair_generator
 
     def num_pairs(self) -> int:
@@ -690,7 +697,9 @@ class RecordPair:
         return False
 
 
-def generate_mix(bgc_list: list[BGCRecord], edge_param_id: int) -> RecordPairGenerator:
+def generate_mix_bin(
+    record_list: list[BGCRecord], edge_param_id: int
+) -> RecordPairGenerator:
     """Generate an all-vs-all bin of the supplied BGC records
 
     Args:
@@ -699,9 +708,10 @@ def generate_mix(bgc_list: list[BGCRecord], edge_param_id: int) -> RecordPairGen
     Returns:
         BGCBin: The all-vs-all BGC bin
     """
+
     mix_bin = RecordPairGenerator(label="mix", edge_param_id=edge_param_id)
 
-    mix_bin.add_records(bgc_list)
+    mix_bin.add_records([record for record in record_list if record is not None])
 
     return mix_bin
 
@@ -723,7 +733,7 @@ def sort_name_key(record: BGCRecord) -> str:
 
 
 def as_class_bin_generator(
-    all_records: list[BGCRecord], weight_type: str, classify_mode: CLASSIFY_MODE
+    all_records: list[BGCRecord], run: dict
 ) -> Iterator[RecordPairGenerator]:
     """Generate bins for each antiSMASH class
 
@@ -735,6 +745,12 @@ def as_class_bin_generator(
         Iterator[RecordPairGenerator]: Generator that yields bins. Order is not guarenteed to be
         consistent
     """
+    if run["legacy_weights"]:
+        weight_type = "legacy_weights"
+    else:
+        weight_type = "mix"
+
+    classify_mode = run["classify"]
 
     class_idx: dict[str, list[BGCRecord]] = {}
     category_weights: dict[str, str] = {}
@@ -764,7 +780,8 @@ def as_class_bin_generator(
 
     for class_name, records in class_idx.items():
         weight_category = category_weights[class_name]
-        bin = RecordPairGenerator(class_name, weight_category)
+        edge_param_id = bs_comparison.get_edge_params(run, weight_category)
+        bin = RecordPairGenerator(class_name, edge_param_id, weight_category)
         bin.add_records(records)
         yield bin
 
@@ -873,7 +890,7 @@ def get_weight_category(record: BGCRecord) -> str:
 
 
 def legacy_bin_generator(
-    all_records: list[BGCRecord],
+    all_records: list[BGCRecord], run: dict
 ) -> Iterator[RecordPairGenerator]:  # pragma no cover
     """Generate bins for each class as they existed in the BiG-SCAPE 1.0 implementation
 
@@ -886,9 +903,7 @@ def legacy_bin_generator(
         TODO: should it be consistent?
     """
     # generate index
-    class_idx: dict[str, list[BGCRecord]] = {
-        class_name: [] for class_name in LEGACY_WEIGHTS.keys() if class_name != "mix"
-    }
+    class_idx: dict[str, list[BGCRecord]] = {}
 
     for record in all_records:
         if record is None:
@@ -899,12 +914,16 @@ def legacy_bin_generator(
         # product hybrids of AS4 and under dealt with here and in legacy_output generate_run_data_js
         product = ".".join(record.product.split("-"))
 
-        region_class = legacy_get_class(product)
+        record_class = legacy_get_class(product)
 
-        class_idx[region_class].append(record)
+        try:
+            class_idx[record_class].append(record)
+        except KeyError:
+            class_idx[record_class] = [record]
 
     for class_name, records in class_idx.items():
-        bin = RecordPairGenerator(class_name)
+        edge_param_id = bs_comparison.get_edge_params(run, class_name)
+        bin = RecordPairGenerator(class_name, edge_param_id, class_name)
         bin.add_records(records)
         yield bin
 

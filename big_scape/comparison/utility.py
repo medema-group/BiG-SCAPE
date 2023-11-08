@@ -1,11 +1,12 @@
 """Contains utility functions for the comparison module"""
 
 # from python
+import logging
 from typing import Generator, cast
 import sqlite3
 
 # from dependencies
-from sqlalchemy import insert
+from sqlalchemy import insert, select
 
 # from other modules
 from big_scape.data import DB
@@ -152,3 +153,46 @@ def edges_from_db(
 
             # yield the distance
             yield pair, distance, jaccard, adjacency, dss  # , weights
+
+
+def get_edge_params(run, weights) -> int:
+    """get edge params id if available, else create a new one
+
+    Args:
+        run (dict): run parameters
+        weights (str): weights category
+
+    Raises:
+        RuntimeError: no dabatase
+
+    Returns:
+        int: id of the edge param entry
+    """
+
+    if not DB.metadata:
+        raise RuntimeError("DB.metadata is None")
+
+    alignment_mode = run["alignment_mode"]
+
+    edge_params_table = DB.metadata.tables["edge_params"]
+    edge_params_query = (
+        select(edge_params_table.c.id)
+        .where(edge_params_table.c.alignment_mode == alignment_mode.name)
+        .where(edge_params_table.c.weights == weights)
+    )
+
+    edge_param_id = DB.execute(edge_params_query).fetchone()
+
+    if edge_param_id is None:
+        edge_params_insert = (
+            edge_params_table.insert()
+            .values(alignment_mode=alignment_mode.name, weights=weights)
+            .returning(edge_params_table.c.id)
+            .compile()
+        )
+        cursor_result = DB.execute(edge_params_insert, False)
+        edge_param_id = cursor_result.fetchone()
+
+    logging.debug("Edge params id: %d", edge_param_id[0])
+
+    return edge_param_id[0]

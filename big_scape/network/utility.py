@@ -22,7 +22,7 @@ def sim_matrix_from_graph(graph: nx.Graph, edge_property: str) -> np.ndarray:
 
 
 def edge_list_to_adj_list(
-    edge_list: list[tuple[int, int, float, float, float, float, str]]
+    edge_list: list[tuple[int, int, float, float, float, float, str, int]]
 ) -> dict[int, dict[int, float]]:
     """Return an adjacency list from a list of edges
 
@@ -42,7 +42,7 @@ def edge_list_to_adj_list(
         adj_list[edge[1]] = {}
 
     # go through all edges
-    for region_a, region_b, distance, _, _, _, _ in edge_list:
+    for region_a, region_b, distance, _, _, _, _, _ in edge_list:
         adj_list[region_a][region_b] = 1 - distance
         adj_list[region_b][region_a] = 1 - distance
 
