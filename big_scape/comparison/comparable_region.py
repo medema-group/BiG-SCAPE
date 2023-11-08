@@ -12,9 +12,6 @@ from big_scape.genbank import BGCRecord
 from big_scape.hmm import HSP
 from big_scape.enums import ALIGNMENT_MODE
 
-# from this module
-from .legacy_lcs import legacy_find_cds_lcs
-
 
 # from circular imports
 if TYPE_CHECKING:  # pragma: no cover
@@ -190,27 +187,6 @@ class ComparableRegion:
             self.domain_dicts = (domain_dict_a, domain_dict_b)
 
         return self.domain_dicts
-
-    def find_lcs(self):
-        """Retrieve the longest common subsequence of domains for a pair of BGC records
-
-        Args:
-            pair (BGCPair): Pair of BGCs to retrieve the LCS for
-
-        Returns:
-            tuple[int]: tuple of integers corresponding to:
-            [a_lcs_start, a_lcs_stop, b_lcs_start, b_lcs_stop]
-        """
-        a_cds = self.pair.region_a.get_cds_with_domains()
-        b_cds = self.pair.region_b.get_cds_with_domains()
-
-        a_start, a_stop, b_start, b_stop, reverse = legacy_find_cds_lcs(a_cds, b_cds)
-
-        self.a_start = a_start
-        self.a_stop = a_stop
-        self.b_start = b_start
-        self.b_stop = b_stop
-        self.reverse = reverse
 
     def log_comparable_region(self, label="<") -> None:  # pragma: no cover
         """Prints a debug level log of the comparable region
