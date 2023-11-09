@@ -98,11 +98,14 @@ def generate_mock_protocluster(cds_list: list[bs_genbank.CDS], protocore_idx: in
     return protocluster
 
 
-class testDomainLCS(unittest.TestCase):
-    """Tests for the lcs module using domain lists."""
+class TestRegionDomainLCS(unittest.TestCase):
+    """Tests for the lcs module using region domain lists."""
 
     def test_lcs_domains_forward(self):
-        """Test lcs detection for two domain lists"""
+        """Test lcs detection for two domain lists
+
+        should return the longest match, not the most central
+        """
         cds_a, cds_b = generate_mock_cds_lists(
             10, 10, [1, 2, 2, 2, 3], [1, 2, 2, 2, 3], False
         )
@@ -116,7 +119,10 @@ class testDomainLCS(unittest.TestCase):
         self.assertEqual(lcs, (1, 4, 1, 4, False))
 
     def test_lcs_domains_reverse(self):
-        """Test lcs detection for two domain lists, reverse"""
+        """Test lcs detection for two domain lists, reverse
+
+        should return the longest match, not the most central
+        """
         cds_a, cds_b = generate_mock_cds_lists(
             10, 10, [1, 2, 2, 2, 3], [1, 2, 2, 2, 3], True
         )
@@ -143,7 +149,10 @@ class testDomainLCS(unittest.TestCase):
             bs_comparison.lcs.find_domain_lcs_region(pair)
 
     def test_lcs_domains_len_one(self):
-        """Test lcs detection for two domain lists where there are only matches of len=1"""
+        """Test lcs detection for two domain lists where there are only matches of len=1
+
+        should return the most central match, not the first
+        """
         cds_a, cds_b = generate_mock_cds_lists(10, 10, [1, 3, 5], [1, 3, 5], False)
 
         pc_a = generate_mock_protocluster(cds_a, 2)
@@ -158,6 +167,8 @@ class testDomainLCS(unittest.TestCase):
     def test_lcs_domains_len_one_reverse(self):
         """Test lcs detection for two domain lists where there are only matches of
         len=1, reverse
+
+        should return the most central match, not the first
         """
         cds_a, cds_b = generate_mock_cds_lists(10, 10, [1, 3, 5], [1, 3, 6], True)
 
