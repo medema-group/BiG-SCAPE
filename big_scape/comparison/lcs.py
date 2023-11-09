@@ -203,15 +203,34 @@ def get_lcs_protocores(
 
 
 def find_middle_lcs(
-    a_cds,
-    b_cds,
-    a_domains,
-    b_domains,
-    matching_blocks,
-    matching_blocks_rev,
-    a_domain_cds_idx,
-    b_domain_cds_idx,
-):
+    a_cds: list[bs_genbank.CDS],
+    b_cds: list[bs_genbank.CDS],
+    a_domains: list[bs_hmm.HSP],
+    b_domains: list[bs_hmm.HSP],
+    matching_blocks: list[Match],
+    matching_blocks_rev: list[Match],
+    a_domain_cds_idx: dict[int, int],
+    b_domain_cds_idx: dict[int, int],
+) -> tuple[int, int, int, int, bool]:
+    """Find the most central match out of all LCS matches
+
+    This is done by first selecting the shorter record in terms of CDS, and then
+    finding the match that is closest to the middle of the CDS
+
+    Args:
+        a_cds (list[CDS]): List of CDS for A
+        b_cds (list[CDS]): List of CDS for B
+        a_domains (list[HSP]): List of domains for A
+        b_domains (list[HSP]): List of domains for B
+        matching_blocks (list[Match]): List of matching blocks
+        matching_blocks_rev (list[Match]): List of matching blocks in reverse
+        a_domain_cds_idx (dict[int, int]): Dictionary of domain idx to cds idx for A
+        b_domain_cds_idx (dict[int, int]): Dictionary of domain idx to cds idx for B
+
+    Returns:
+        tuple[int, int, int, int, bool]: a_start, a_stop, b_start, b_stop, reverse
+    """
+
     # first find which region is shorter in terms of cds
     a_cds_len = len(a_cds)
     b_cds_len = len(b_cds)
