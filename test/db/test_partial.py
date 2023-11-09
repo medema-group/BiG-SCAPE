@@ -33,6 +33,11 @@ def create_mock_gbk(i) -> GBK:
     cds.strand = 1
     gbk.genes.append(cds)
     gbk.region = Region(gbk, 1, 0, 100, False, "test")
+    gbk.metadata = {
+        "organism": "banana",
+        "taxonomy": "bananus;fruticus",
+        "description": "you can eat it",
+    }
     return gbk
 
 
@@ -48,7 +53,26 @@ def add_mock_hsp_alignment_hsp(hsp: HSP) -> None:
 
 def gen_mock_edge_list(
     edge_gbks: list[GBK],
-) -> list[tuple[int, int, float, float, float, float, int]]:
+) -> list[
+    tuple[
+        int,
+        int,
+        float,
+        float,
+        float,
+        float,
+        int,
+        int,
+        int,
+        int,
+        int,
+        int,
+        int,
+        int,
+        int,
+        bool,
+    ]
+]:
     edges = []
     for gbk_a, gbk_b in combinations(edge_gbks, 2):
         if gbk_a.region is None or gbk_b.region is None:
@@ -56,7 +80,26 @@ def gen_mock_edge_list(
         if gbk_a.region._db_id is None or gbk_b.region._db_id is None:
             continue
 
-        edges.append((gbk_a.region._db_id, gbk_b.region._db_id, 0.0, 0.0, 0.0, 0.0, 1))
+        edges.append(
+            (
+                gbk_a.region._db_id,
+                gbk_b.region._db_id,
+                0.0,
+                0.0,
+                0.0,
+                0.0,
+                1,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                False,
+            )
+        )
 
     return edges
 
@@ -415,7 +458,7 @@ class TestPartialComparison(TestCase):
         self.assertEqual(expected_state, actual_state)
 
     def test_no_new_comparisons(self):
-        self.skipTest("TODO")
+        self.skipTest("Broken")
         DB.create_in_mem()
 
         gbks = [create_mock_gbk(i) for i in range(3)]
@@ -436,9 +479,10 @@ class TestPartialComparison(TestCase):
             HMMer.set_hmm_scanned(gbk.genes[0])
             gbk.genes[0].hsps[0].alignment.save()
 
-        # all distances done (1-2, 1-3, 2-3)
-        network = gen_mock_network(gbks, gbks)
-        network.export_distances_to_db()
+        # only one distance done. (1-2, missing 1-3 and 2-3)
+        edges = gen_mock_edge_list(gbks[0:3])
+        for edge in edges:
+            bs_comparison.save_edge_to_db(edge)
 
         expected_state = bs_enums.COMPARISON_TASK.ALL_DONE
         actual_state = get_comparison_data_state(gbks)

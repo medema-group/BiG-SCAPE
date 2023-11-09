@@ -127,7 +127,13 @@ def generate_edges(
                 break
 
             new_task = executor.submit(
-                calculate_scores_pair, (batch, alignment_mode, pair_generator.weights)
+                calculate_scores_pair,
+                (
+                    batch,
+                    alignment_mode,
+                    pair_generator.edge_param_id,
+                    pair_generator.weights,
+                ),
             )
             running_tasks[new_task] = batch
 
@@ -143,7 +149,12 @@ def generate_edges(
 
                 new_task = executor.submit(
                     calculate_scores_pair,
-                    (batch, alignment_mode, pair_generator.weights),
+                    (
+                        batch,
+                        alignment_mode,
+                        pair_generator.edge_param_id,
+                        pair_generator.weights,
+                    ),
                 )
                 running_tasks[new_task] = batch
 
@@ -162,17 +173,7 @@ def generate_edges(
                 if len(results) != len(task_batch):
                     raise ValueError("Mismatch between task length and result length")
 
-                for idx, pair in enumerate(task_batch):
-                    distance, jaccard, adjacency, dss = results[idx]
-                    yield (
-                        pair.region_a._db_id,
-                        pair.region_b._db_id,
-                        distance,
-                        jaccard,
-                        adjacency,
-                        dss,
-                        pair_generator.edge_param_id,
-                    )
+                yield from results
 
                 done_pairs += len(results)
                 if callback:
@@ -194,10 +195,14 @@ def do_lcs_pair(
         bool: True if the pair needs expansion, False if it does not
     """
     a_start, a_stop, b_start, b_stop, reverse = legacy_find_cds_lcs(
-        pair.region_a.get_cds_with_domains(), pair.region_b.get_cds_with_domains()
+        pair.record_a.get_cds_with_domains(), pair.record_b.get_cds_with_domains()
     )
 
     # set the comparable region
+    pair.comparable_region.lcs_a_start = a_start
+    pair.comparable_region.lcs_a_stop = a_stop
+    pair.comparable_region.lcs_b_start = b_start
+    pair.comparable_region.lcs_b_stop = b_stop
     pair.comparable_region.a_start = a_start
     pair.comparable_region.a_stop = a_stop
     pair.comparable_region.b_start = b_start
@@ -227,14 +232,34 @@ def expand_pair(pair: RecordPair) -> float:
         jc = calc_jaccard_pair(pair)
         return jc
 
+    pair.comparable_region.alignment_mode = bs_enums.ALIGNMENT_MODE.GLOCAL
     jc = calc_jaccard_pair(pair)
 
     return jc
 
 
 def calculate_scores_pair(
-    data: tuple[list[RecordPair], bs_enums.ALIGNMENT_MODE, str]
-) -> list[tuple[float, float, float, float]]:  # pragma no cover
+    data: tuple[list[RecordPair], bs_enums.ALIGNMENT_MODE, int, str]
+) -> list[
+    tuple[
+        Optional[int],
+        Optional[int],
+        float,
+        float,
+        float,
+        float,
+        int,
+        int,
+        int,
+        int,
+        int,
+        int,
+        int,
+        int,
+        int,
+        bool,
+    ]
+]:  # pragma no cover
     """Calculate the scores for a list of pairs
 
     Args:
@@ -242,22 +267,65 @@ def calculate_scores_pair(
         label
 
     Returns:
-        list[tuple[float, float, float, float]]: list of scores for each pair in the
-        order as the input data list
+        list[tuple[int, int, float, float, float, float, int, int, int, int, int, int,
+        int, int, bool, str,]]: list of scores for each pair in the
+        order as the input data list, including lcs and extension coordinates
     """
-    pairs, alignment_mode, weights_label = data
+    pairs, alignment_mode, edge_param_id, weights_label = data
 
     results = []
 
+    # TODO: this fails since DB getting accessed from child processes
+    # seems to be a problem with the DB connection (for mac?)
+    # weights_label = bs_comparison.get_edge_weight(edge_param_id)
+
     for pair in pairs:
-        if pair.region_a.parent_gbk == pair.region_b.parent_gbk:
-            results.append((0.0, 1.0, 1.0, 1.0))
+        if pair.record_a.parent_gbk == pair.record_b.parent_gbk:
+            results.append(
+                (
+                    pair.record_a._db_id,
+                    pair.record_b._db_id,
+                    0.0,
+                    1.0,
+                    1.0,
+                    1.0,
+                    edge_param_id,
+                    pair.comparable_region.lcs_a_start,
+                    pair.comparable_region.lcs_a_stop,
+                    pair.comparable_region.lcs_b_start,
+                    pair.comparable_region.lcs_b_stop,
+                    pair.comparable_region.a_start,
+                    pair.comparable_region.a_stop,
+                    pair.comparable_region.b_start,
+                    pair.comparable_region.b_stop,
+                    pair.comparable_region.reverse,
+                )
+            )
             continue
 
         jaccard = calc_jaccard_pair(pair)
 
         if jaccard == 0.0:
-            results.append((1.0, 0.0, 0.0, 0.0))
+            results.append(
+                (
+                    pair.record_a._db_id,
+                    pair.record_b._db_id,
+                    1.0,
+                    0.0,
+                    0.0,
+                    0.0,
+                    edge_param_id,
+                    pair.comparable_region.lcs_a_start,
+                    pair.comparable_region.lcs_a_stop,
+                    pair.comparable_region.lcs_b_start,
+                    pair.comparable_region.lcs_b_stop,
+                    pair.comparable_region.a_start,
+                    pair.comparable_region.a_stop,
+                    pair.comparable_region.b_start,
+                    pair.comparable_region.b_stop,
+                    pair.comparable_region.reverse,
+                )
+            )
             continue
 
         # in the form [bool, Pair]. true bools means they need expansion, false they don't
@@ -267,7 +335,26 @@ def calculate_scores_pair(
             jaccard = expand_pair(pair)
 
         if jaccard == 0.0:
-            results.append((1.0, 0.0, 0.0, 0.0))
+            results.append(
+                (
+                    pair.record_a._db_id,
+                    pair.record_b._db_id,
+                    1.0,
+                    0.0,
+                    0.0,
+                    0.0,
+                    edge_param_id,
+                    pair.comparable_region.lcs_a_start,
+                    pair.comparable_region.lcs_a_stop,
+                    pair.comparable_region.lcs_b_start,
+                    pair.comparable_region.lcs_b_stop,
+                    pair.comparable_region.a_start,
+                    pair.comparable_region.a_stop,
+                    pair.comparable_region.b_start,
+                    pair.comparable_region.b_stop,
+                    pair.comparable_region.reverse,
+                )
+            )
             continue
 
         if weights_label not in LEGACY_WEIGHTS:
@@ -285,6 +372,25 @@ def calculate_scores_pair(
         similarity = jaccard * jc_weight + adjacency * ai_weight + dss * dss_weight
         distance = 1 - similarity
 
-        results.append((distance, jaccard, adjacency, dss))
+        results.append(
+            (
+                pair.record_a._db_id,
+                pair.record_b._db_id,
+                distance,
+                jaccard,
+                adjacency,
+                dss,
+                edge_param_id,
+                pair.comparable_region.lcs_a_start,
+                pair.comparable_region.lcs_a_stop,
+                pair.comparable_region.lcs_b_start,
+                pair.comparable_region.lcs_b_stop,
+                pair.comparable_region.a_start,
+                pair.comparable_region.a_stop,
+                pair.comparable_region.b_start,
+                pair.comparable_region.b_stop,
+                pair.comparable_region.reverse,
+            )
+        )
 
     return results

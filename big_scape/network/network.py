@@ -3,7 +3,7 @@
 
 # from dependencies
 from typing import Optional, Generator, cast
-from sqlalchemy import tuple_
+from sqlalchemy import tuple_, select
 
 # from other modules
 from big_scape.data import DB
@@ -46,8 +46,8 @@ def get_connected_components(
 
         # if we have new edges, we can add them to the connected component
         while len(new_edges) > 0:
-            edge_node_ids.update([edge[0] for edge in connected_component])
-            edge_node_ids.update([edge[1] for edge in connected_component])
+            edge_node_ids.update([edge[0] for edge in new_edges])
+            edge_node_ids.update([edge[1] for edge in new_edges])
 
             connected_component.update(new_edges)
 
@@ -82,13 +82,20 @@ def get_edge(
 
     if not DB.metadata:
         raise RuntimeError("DB.metadata is None")
-
+    distance_table = DB.metadata.tables["distance"]
     select_statment = (
-        DB.metadata.tables["distance"]
-        .select()
-        .where(DB.metadata.tables["distance"].c.region_a_id.notin_(exclude_nodes))
-        .where(DB.metadata.tables["distance"].c.region_b_id.notin_(exclude_nodes))
-        .where(DB.metadata.tables["distance"].c.distance < cutoff)
+        select(
+            distance_table.c.record_a_id,
+            distance_table.c.record_b_id,
+            distance_table.c.distance,
+            distance_table.c.jaccard,
+            distance_table.c.adjacency,
+            distance_table.c.dss,
+            distance_table.c.edge_param_id,
+        )
+        .where(distance_table.c.record_a_id.notin_(exclude_nodes))
+        .where(distance_table.c.record_b_id.notin_(exclude_nodes))
+        .where(distance_table.c.distance < cutoff)
     )
 
     edge = DB.execute(select_statment).fetchone()
@@ -113,11 +120,19 @@ def get_edges(
 
     distance_table = DB.metadata.tables["distance"]
     select_statement = (
-        distance_table.select()
-        # equivalent to WHERE (region_a_id in (...) OR region_b_id in (...))
+        select(
+            distance_table.c.record_a_id,
+            distance_table.c.record_b_id,
+            distance_table.c.distance,
+            distance_table.c.jaccard,
+            distance_table.c.adjacency,
+            distance_table.c.dss,
+            distance_table.c.edge_param_id,
+        )
+        # equivalent to WHERE (record_a_id in (...) OR record_b_id in (...))
         .where(
-            distance_table.c.region_a_id.in_(include_nodes)
-            | distance_table.c.region_b_id.in_(include_nodes)
+            distance_table.c.record_a_id.in_(include_nodes)
+            | distance_table.c.record_b_id.in_(include_nodes)
         )
         # equivalent to AND distance < ...
         .where(distance_table.c.distance < distance_cutoff)
@@ -128,6 +143,7 @@ def get_edges(
     return cast(list[tuple[int, int, float, float, float, float, int]], edges)
 
 
+# TODO: check if tested, else test
 def get_connected_edges(
     include_nodes: set[int],
     connected_component: set[tuple[int, int, float, float, float, float, int]],
@@ -144,17 +160,25 @@ def get_connected_edges(
 
     distance_table = DB.metadata.tables["distance"]
     select_statement = (
-        distance_table.select()
-        # equivalent to WHERE (region_a_id in (...) OR region_b_id in (...))
-        .where(
-            distance_table.c.region_a_id.in_(include_nodes)
-            | distance_table.c.region_b_id.in_(include_nodes)
+        select(
+            distance_table.c.record_a_id,
+            distance_table.c.record_b_id,
+            distance_table.c.distance,
+            distance_table.c.jaccard,
+            distance_table.c.adjacency,
+            distance_table.c.dss,
+            distance_table.c.edge_param_id,
         )
-        # equivalent to AND (region_a_id, region_b_id, ...) NOT IN (connected components)
+        # equivalent to WHERE (record_a_id in (...) OR record_b_id in (...))
+        .where(
+            distance_table.c.record_a_id.in_(include_nodes)
+            | distance_table.c.record_b_id.in_(include_nodes)
+        )
+        # equivalent to AND (record_a_id, record_b_id, ...) NOT IN (connected components)
         .filter(
             ~tuple_(
-                distance_table.c.region_a_id,
-                distance_table.c.region_b_id,
+                distance_table.c.record_a_id,
+                distance_table.c.record_b_id,
                 distance_table.c.distance,
                 distance_table.c.jaccard,
                 distance_table.c.adjacency,
@@ -171,6 +195,7 @@ def get_connected_edges(
     return cast(list[tuple[int, int, float, float, float, float, int]], edges)
 
 
+# TODO: test
 def get_query_connected_component(
     query_node_id: Optional[int],
     cutoff: Optional[float] = None,
@@ -183,13 +208,21 @@ def get_query_connected_component(
     # first query edge
     if not DB.metadata:
         raise RuntimeError("DB.metadata is None")
+    distance_table = DB.metadata.tables["distance"]
 
     select_statment = (
-        DB.metadata.tables["distance"]
-        .select()
+        select(
+            distance_table.c.record_a_id,
+            distance_table.c.record_b_id,
+            distance_table.c.distance,
+            distance_table.c.jaccard,
+            distance_table.c.adjacency,
+            distance_table.c.dss,
+            distance_table.c.edge_param_id,
+        )
         .where(
-            (DB.metadata.tables["distance"].c.region_a_id.in_([query_node_id]))
-            | (DB.metadata.tables["distance"].c.region_b_id.in_([query_node_id]))
+            (DB.metadata.tables["distance"].c.record_a_id.in_([query_node_id]))
+            | (DB.metadata.tables["distance"].c.record_b_id.in_([query_node_id]))
         )
         .where(DB.metadata.tables["distance"].c.distance < cutoff)
     )
@@ -209,8 +242,8 @@ def get_query_connected_component(
 
     # if we have new edges, we can add them to the connected component
     while len(new_edges) > 0:
-        edge_node_ids.update([edge[0] for edge in connected_component])
-        edge_node_ids.update([edge[1] for edge in connected_component])
+        edge_node_ids.update([edge[0] for edge in new_edges])
+        edge_node_ids.update([edge[1] for edge in new_edges])
 
         connected_component.update(new_edges)
 

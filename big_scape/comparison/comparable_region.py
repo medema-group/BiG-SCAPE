@@ -10,6 +10,7 @@ from typing import TYPE_CHECKING, Optional
 # from other modules
 from big_scape.genbank import BGCRecord
 from big_scape.hmm import HSP
+from big_scape.enums import ALIGNMENT_MODE
 
 # from this module
 from .legacy_lcs import legacy_find_cds_lcs
@@ -35,6 +36,7 @@ class ComparableRegion:
         domain_lists: Optional[tuple[list[HSP], list[HSP]]]
         domain_sets: Optional[tuple[set[HSP], set[HSP]]]
         domain_dicts: Optional[tuple[dict[HSP, list[int]], dict[HSP, list[int]]]]
+        alignment_mode: ALIGNMENT_MODE
     """
 
     def __init__(
@@ -47,6 +49,7 @@ class ComparableRegion:
         reverse: bool,
     ):
         self.pair = pair
+        # store possibly extended comparable region
         self.a_start = a_start
         self.b_start = b_start
 
@@ -60,6 +63,12 @@ class ComparableRegion:
         self.domain_dicts: Optional[
             tuple[dict[HSP, list[int]], dict[HSP, list[int]]]
         ] = None
+        # store lcs without any extensions
+        self.lcs_a_start = a_start
+        self.lcs_b_start = b_start
+        self.lcs_a_stop = a_stop
+        self.lcs_b_stop = b_stop
+        self.alignment_mode: ALIGNMENT_MODE = ALIGNMENT_MODE.GLOBAL
 
     def get_domain_sets(
         self, regenerate=False, cache=True
@@ -120,8 +129,8 @@ class ComparableRegion:
             b_start = self.b_start
             b_stop = self.b_stop
 
-            a_cds_list = self.pair.region_a.get_cds_with_domains()[a_start:a_stop]
-            b_cds_list = self.pair.region_b.get_cds_with_domains(reverse=self.reverse)[
+            a_cds_list = self.pair.record_a.get_cds_with_domains()[a_start:a_stop]
+            b_cds_list = self.pair.record_b.get_cds_with_domains(reverse=self.reverse)[
                 b_start:b_stop
             ]
 
@@ -192,8 +201,8 @@ class ComparableRegion:
             tuple[int]: tuple of integers corresponding to:
             [a_lcs_start, a_lcs_stop, b_lcs_start, b_lcs_stop]
         """
-        a_cds = self.pair.region_a.get_cds_with_domains()
-        b_cds = self.pair.region_b.get_cds_with_domains()
+        a_cds = self.pair.record_a.get_cds_with_domains()
+        b_cds = self.pair.record_b.get_cds_with_domains()
 
         a_start, a_stop, b_start, b_stop, reverse = legacy_find_cds_lcs(a_cds, b_cds)
 
@@ -212,8 +221,8 @@ class ComparableRegion:
         if logging.getLogger().level > logging.DEBUG:
             return
 
-        a_cds_list = self.pair.region_a.get_cds_with_domains()
-        b_cds_list = self.pair.region_b.get_cds_with_domains(reverse=self.reverse)
+        a_cds_list = self.pair.record_a.get_cds_with_domains()
+        b_cds_list = self.pair.record_b.get_cds_with_domains(reverse=self.reverse)
 
         b_start = self.b_start
         b_stop = self.b_stop

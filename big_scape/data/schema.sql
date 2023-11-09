@@ -6,6 +6,9 @@ CREATE TABLE IF NOT EXISTS gbk (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     path TEXT,
     nt_seq TEXT,
+    organism TEXT,
+    taxonomy TEXT,
+    description TEXT,
     UNIQUE(path)
 );
 
@@ -68,16 +71,25 @@ CREATE TABLE IF NOT EXISTS hsp_alignment (
 );
 
 CREATE TABLE IF NOT EXISTS distance (
-    region_a_id INTEGER NOT NULL,
-    region_b_id INTEGER NOT NULL,
+    record_a_id INTEGER NOT NULL,
+    record_b_id INTEGER NOT NULL,
     distance REAL NOT NULL,
     jaccard REAL NOT NULL,
     adjacency REAL NOT NULL,
     dss REAL NOT NULL,
     edge_param_id INTEGER NOT NULL,
-    UNIQUE(region_a_id, region_b_id, edge_param_id)
-    FOREIGN KEY(region_a_id) REFERENCES bgc_record(id)
-    FOREIGN KEY(region_b_id) REFERENCES bgc_record(id)
+    lcs_a_start INTEGER NOT NULL,
+    lcs_a_stop INTEGER NOT NULL,
+    lcs_b_start INTEGER NOT NULL,
+    lcs_b_stop INTEGER NOT NULL,
+    ext_a_start INTEGER NOT NULL,
+    ext_a_stop INTEGER NOT NULL,
+    ext_b_start INTEGER NOT NULL,
+    ext_b_stop INTEGER NOT NULL,
+    reverse BOOLEAN NOT NULL,
+    UNIQUE(record_a_id, record_b_id, edge_param_id)
+    FOREIGN KEY(record_a_id) REFERENCES bgc_record(id)
+    FOREIGN KEY(record_b_id) REFERENCES bgc_record(id)
     FOREIGN KEY(edge_param_id) REFERENCES edge_params(id)
 
 );

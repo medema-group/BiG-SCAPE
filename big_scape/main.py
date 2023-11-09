@@ -22,6 +22,8 @@ from big_scape.output import (
     legacy_prepare_cutoff_output,
     legacy_prepare_bin_output,
     legacy_generate_bin_output,
+    write_record_annotations_file,
+    write_full_network_file,
 )
 
 
@@ -342,10 +344,15 @@ def run_bigscape(run: dict) -> None:
     # prepare output files
     legacy_prepare_output(run["output_dir"], pfam_info)
 
+    # write full network file
+    write_full_network_file(run, all_bgc_records)
+
     # prepare output files per cutoff
     for cutoff in run["gcf_cutoffs"]:
-        # TODO: update to use records and not gbk regions
+        # TODO: update to use records and not gbk regions?
         legacy_prepare_cutoff_output(run, cutoff, gbks)
+        # write annotations file
+        write_record_annotations_file(run, cutoff, all_bgc_records)
 
     # mix
 
@@ -361,8 +368,8 @@ def run_bigscape(run: dict) -> None:
                         f"Network {mix_bin.label} with cutoff {cutoff} is empty after culling singletons"
                     )
                     continue
-            legacy_prepare_bin_output(run["output_dir"], run["label"], cutoff, mix_bin)
-            legacy_generate_bin_output(run["output_dir"], run["label"], cutoff, mix_bin)
+            legacy_prepare_bin_output(run, cutoff, mix_bin)
+            legacy_generate_bin_output(run, cutoff, mix_bin)
 
     # legacy_classify
 
@@ -378,8 +385,8 @@ def run_bigscape(run: dict) -> None:
                             f"Network '{bin.label}' with cutoff {cutoff} is empty after culling singletons"
                         )
                         continue
-                legacy_prepare_bin_output(run["output_dir"], run["label"], cutoff, bin)
-                legacy_generate_bin_output(run["output_dir"], run["label"], cutoff, bin)
+                legacy_prepare_bin_output(run, cutoff, bin)
+                legacy_generate_bin_output(run, cutoff, bin)
 
     # classify
 
@@ -395,8 +402,8 @@ def run_bigscape(run: dict) -> None:
                             f"Network '{bin.label}' with cutoff {cutoff} is empty after culling singletons"
                         )
                         continue
-                legacy_prepare_bin_output(run["output_dir"], run["label"], cutoff, bin)
-                legacy_generate_bin_output(run["output_dir"], run["label"], cutoff, bin)
+                legacy_prepare_bin_output(run, cutoff, bin)
+                legacy_generate_bin_output(run, cutoff, bin)
 
     # query
 
@@ -408,12 +415,8 @@ def run_bigscape(run: dict) -> None:
             [record for record in all_bgc_records if record is not None]
         )
         for cutoff in run["gcf_cutoffs"]:
-            legacy_prepare_bin_output(
-                run["output_dir"], run["label"], cutoff, query_bin
-            )
-            legacy_generate_bin_output(
-                run["output_dir"], run["label"], cutoff, query_bin
-            )
+            legacy_prepare_bin_output(run, cutoff, query_bin)
+            legacy_generate_bin_output(run, cutoff, query_bin)
 
     if run["profiling"]:
         profiler.stop()

@@ -14,24 +14,53 @@ from big_scape.comparison.binning import RecordPairGenerator, RecordPair
 
 
 def save_edge_to_db(
-    edge: tuple[int, int, float, float, float, float, int], upsert=False
+    edge: tuple[
+        int,
+        int,
+        float,
+        float,
+        float,
+        float,
+        int,
+        int,
+        int,
+        int,
+        int,
+        int,
+        int,
+        int,
+        int,
+        bool,
+    ],
+    upsert=False,
 ) -> None:
     """Save edge to the database
 
     Args:
-        edge (tuple[int, int, float, float, float, float]): edge tuple containing
-            region_a_id, region_b_id, distance, jaccard, adjacency, dss
+        edge (tuple[int, int, float, float, float, float, str, int, int, int, int, int,
+        int, int, int, bool, ALIGNMENT_MODE,]): edge tuple containing
+            record_a_id, record_b_id, distance, jaccard, adjacency, dss, weights,
+            lcs start/stop, extension start/stop, reverse, alignment_mode
         upsert (bool, optional): whether to upsert the edge into the database.
     """
 
     (
-        region_a_id,
-        region_b_id,
+        record_a_id,
+        record_b_id,
         distance,
         jaccard,
         adjacency,
         dss,
         edge_param_id,
+        lcs_a_start,
+        lcs_a_stop,
+        lcs_b_start,
+        lcs_b_stop,
+        ext_a_start,
+        ext_a_stop,
+        ext_b_start,
+        ext_b_stop,
+        reverse,
     ) = edge
 
     # save the comparison data to the database
@@ -43,13 +72,22 @@ def save_edge_to_db(
 
     # save the entry to the database
     statement = insert(distance_table).values(
-        region_a_id=region_a_id,
-        region_b_id=region_b_id,
+        record_a_id=record_a_id,
+        record_b_id=record_b_id,
         distance=distance,
         jaccard=jaccard,
         adjacency=adjacency,
         dss=dss,
         edge_param_id=edge_param_id,
+        lcs_a_start=lcs_a_start,
+        lcs_a_stop=lcs_a_stop,
+        lcs_b_start=lcs_b_start,
+        lcs_b_stop=lcs_b_stop,
+        ext_a_start=ext_a_start,
+        ext_a_stop=ext_a_stop,
+        ext_b_start=ext_b_start,
+        ext_b_stop=ext_b_stop,
+        reverse=reverse,
     )
 
     if upsert:
@@ -59,12 +97,31 @@ def save_edge_to_db(
 
 
 def save_edges_to_db(
-    edges: list[tuple[int, int, float, float, float, float, int]]
+    edges: list[
+        tuple[
+            int,
+            int,
+            float,
+            float,
+            float,
+            float,
+            int,
+            int,
+            int,
+            int,
+            int,
+            int,
+            int,
+            int,
+            bool,
+        ]
+    ]
 ) -> None:
     """Save many edges to the database
 
     Args:
-        edges (list[tuple[int, int, float, float, float, float, int]]): list of edges to save
+        edges (list[tuple[int, int, float, float, float, float, int, int, int, int,
+               int, int, int, int, bool]]): list of edges to save
     """
     # save the comparison data to the database
     # using raw sqlite for this because sqlalchemy is not fast enough
@@ -84,7 +141,7 @@ def save_edges_to_db(
     # create a query
     # TODO: this should not need ignore. it's there now because protoclusters somehow
     # trigger an integrityerror
-    query = "INSERT OR IGNORE INTO distance VALUES (?, ?, ?, ?, ?, ?, ?)"
+    query = "INSERT OR IGNORE INTO distance VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"
 
     cursor.executemany(query, edges)
 
@@ -116,11 +173,11 @@ def edges_from_db(
 
     # iterate over the pair generator in batches of distance_batch_size
     for pair_batch in pair_generator.generate_batch(distance_batch_size):
-        # generate a dict of pairs to their ids for region_a and region_b in pair
+        # generate a dict of pairs to their ids for record_a and record_b in pair
         region_ids = {}
         for pair in pair_batch:
-            region_ids[pair.region_a._db_id] = pair.region_a
-            region_ids[pair.region_b._db_id] = pair.region_b
+            region_ids[pair.record_a._db_id] = pair.record_a
+            region_ids[pair.record_b._db_id] = pair.record_b
 
         # get the distances from the database
 
@@ -129,17 +186,17 @@ def edges_from_db(
 
         distance_table = DB.metadata.tables["distance"]
         distance_query = distance_table.select().where(
-            distance_table.c.region_a_id.in_(region_ids)
-            & distance_table.c.region_b_id.in_(region_ids)
+            distance_table.c.record_a_id.in_(region_ids)
+            & distance_table.c.record_b_id.in_(region_ids)
         )
         edges = DB.execute(distance_query).fetchall()
 
         # yield the distances
         for edge in edges:
             # get the pair
-            region_a = region_ids[edge.region_a_id]
-            region_b = region_ids[edge.region_b_id]
-            pair = RecordPair(region_a, region_b)
+            record_a = region_ids[edge.record_a_id]
+            record_b = region_ids[edge.record_b_id]
+            pair = RecordPair(record_a, record_b)
 
             # get the distances
             distance: float = edge.distance
@@ -200,7 +257,7 @@ def get_edge_param_id(run, weights) -> int:
 def get_edge_weight(edge_param_id: int) -> str:
     """Get edge weights form param ID"""
 
-    if not DB.metadata:
+    if DB.metadata is None:
         raise RuntimeError("DB.metadata is None")
 
     edge_params_table = DB.metadata.tables["edge_params"]

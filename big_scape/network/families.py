@@ -11,7 +11,7 @@ from sklearn.exceptions import ConvergenceWarning
 from big_scape.data import DB
 
 # from this module
-from .utility import edge_list_to_adj_list, adj_list_to_sim_matrix
+from .utility import edge_list_to_sim_matrix
 
 
 def generate_families(
@@ -43,13 +43,7 @@ def generate_families(
 
         return regions_families
 
-    adj_list = edge_list_to_adj_list(connected_component)
-
-    # this list is going to be in the same order as the distance matrix rows/col
-    # and the list of labels after AP
-    node_ids = list(adj_list.keys())
-
-    distance_matrix = adj_list_to_sim_matrix(adj_list)
+    distance_matrix, node_ids = edge_list_to_sim_matrix(connected_component)
 
     labels, centers = aff_sim_matrix(distance_matrix)
 
