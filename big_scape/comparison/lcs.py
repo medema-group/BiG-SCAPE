@@ -202,6 +202,87 @@ def get_lcs_protocores(
     return a_start, a_stop, b_start, b_stop, False
 
 
+def find_middle_lcs(
+    a_cds,
+    b_cds,
+    a_domains,
+    b_domains,
+    matching_blocks,
+    matching_blocks_rev,
+    a_domain_cds_idx,
+    b_domain_cds_idx,
+):
+    # first find which region is shorter in terms of cds
+    a_cds_len = len(a_cds)
+    b_cds_len = len(b_cds)
+
+    # default to A. if B is shorter, use B
+    if a_cds_len <= b_cds_len:
+        use_cds = a_cds
+        use_domains = a_domains
+        matching_block_idx = 0
+    else:
+        use_cds = b_cds
+        use_domains = b_domains
+        matching_block_idx = 1
+
+    # generate a CDS to index dict
+    cds_idx_dict = {cds: i for i, cds in enumerate(use_cds)}
+
+    # go through all LCS matches and find the one with the most central CDS
+    middle = len(use_cds) / 2
+    min = None
+    for matching_block in matching_blocks:
+        # I don't even know why there is a match of len 0 when there are matches
+        # of len 1
+        if matching_block[2] == 0:
+            continue
+
+        idx = matching_block[matching_block_idx]
+
+        domain = use_domains[idx]
+        cds_idx = cds_idx_dict[domain.cds]
+
+        # find the distance to the middle
+        distance = abs(middle - cds_idx)
+
+        if min is None or distance < min:
+            min = distance
+            a_start = matching_block[0]
+            a_stop = matching_block[0] + matching_block[2]
+            b_start = matching_block[1]
+            b_stop = matching_block[1] + matching_block[2]
+            reverse = False
+
+    # go through all reverse, too
+    for matching_block in matching_blocks_rev:
+        if matching_block[2] == 0:
+            continue
+
+        idx = matching_block[matching_block_idx]
+
+        domain = use_domains[idx]
+        cds_idx = cds_idx_dict[domain.cds]
+
+        # find the distance to the middle
+        distance = abs(middle - cds_idx)
+
+        if min is None or distance < min:
+            min = distance
+            a_start = matching_block[0]
+            a_stop = matching_block[0] + matching_block[2]
+            b_start = len(b_domains) - matching_block[1] - matching_block[2]
+            b_stop = len(b_domains) - matching_block[1]
+            reverse = True
+
+    a_cds_start = a_domain_cds_idx[a_start]
+    a_cds_stop = a_domain_cds_idx[a_stop - 1] + 1
+    b_cds_start = b_domain_cds_idx[b_start]
+    b_cds_stop = b_domain_cds_idx[b_stop - 1] + 1
+
+    return a_cds_start, a_cds_stop, b_cds_start, b_cds_stop, reverse
+
+
 def find_domain_lcs_region(
     pair: bs_comparison.RecordPair,
 ) -> tuple[int, int, int, int, bool]:
@@ -299,72 +380,44 @@ def find_domain_lcs_region(
     # equal lengths
     # match of length 1 means we pick something in the middle
     if fwd_match_len == 1:
-        # first find which region is shorter in terms of cds
-        a_cds_len = len(a_cds)
-        b_cds_len = len(b_cds)
+        return find_middle_lcs(
+            a_cds,
+            b_cds,
+            a_domains,
+            b_domains,
+            matching_blocks,
+            matching_blocks_rev,
+            a_domain_cds_idx,
+            b_domain_cds_idx,
+        )
 
-        # default to A. if B is shorter, use B
-        if a_cds_len <= b_cds_len:
-            use_cds = a_cds
-            use_domains = a_domains
-            matching_block_idx = 0
-        else:
-            use_cds = b_cds
-            use_domains = b_domains
-            matching_block_idx = 1
-
-        # generate a CDS to index dict
-        cds_idx_dict = {cds: i for i, cds in enumerate(use_cds)}
-
-        # go through all LCS matches and find the one with the most central CDS
-        middle = len(use_cds) / 2
-        min = None
-        for matching_block in matching_blocks:
-            # I don't even know why there is a match of len 0 when there are matches
-            # of len 1
-            if matching_block[2] == 0:
-                continue
-
-            idx = matching_block[matching_block_idx]
-
-            domain = use_domains[idx]
-            cds_idx = cds_idx_dict[domain.cds]
-
-            # find the distance to the middle
-            distance = abs(middle - cds_idx)
-
-            if min is None or distance < min:
-                min = distance
-                a_start = matching_block[0]
-                a_stop = matching_block[0] + matching_block[2]
-                b_start = matching_block[1]
-                b_stop = matching_block[1] + matching_block[2]
+    # at this point there is one or more LCS of length > 1, and they are equal length
+    # if there is just one LCS, use that
+    if len(matching_blocks) == 1:
+        a_start = matching_blocks[0][0]
+        a_stop = matching_blocks[0][0] + matching_blocks[0][2]
+        b_start = matching_blocks[0][1]
+        b_stop = matching_blocks[0][1] + matching_blocks[0][2]
 
         a_cds_start = a_domain_cds_idx[a_start]
         a_cds_stop = a_domain_cds_idx[a_stop - 1] + 1
         b_cds_start = b_domain_cds_idx[b_start]
         b_cds_stop = b_domain_cds_idx[b_stop - 1] + 1
 
-        return a_cds_start, a_cds_stop, b_cds_start, b_cds_stop, False
+        return a_cds_start, a_cds_stop, b_cds_start, b_cds_stop, reverse
 
-    # equal length, but not 1
-    # default to forward
-    # default to first match
-    # TODO: should probably return most central
-
-    reverse = False
-    a_start = a_start_fwd
-    a_stop = a_start_fwd + fwd_match_len
-
-    b_start = b_start_fwd
-    b_stop = b_start_fwd + fwd_match_len
-
-    a_cds_start = a_domain_cds_idx[a_start]
-    a_cds_stop = a_domain_cds_idx[a_stop - 1] + 1
-    b_cds_start = b_domain_cds_idx[b_start]
-    b_cds_stop = b_domain_cds_idx[b_stop - 1] + 1
-
-    return a_cds_start, a_cds_stop, b_cds_start, b_cds_stop, reverse
+    # at this point there are multiple LCS of length > 1, and they are equal length
+    # find the middle lcs again
+    return find_middle_lcs(
+        a_cds,
+        b_cds,
+        a_domains,
+        b_domains,
+        matching_blocks,
+        matching_blocks_rev,
+        a_domain_cds_idx,
+        b_domain_cds_idx,
+    )
 
 
 def find_domain_lcs_protocluster(

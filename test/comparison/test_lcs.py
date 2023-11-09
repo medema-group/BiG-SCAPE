@@ -167,8 +167,7 @@ class testDomainLCS(unittest.TestCase):
 
         lcs = bs_comparison.lcs.find_domain_lcs_region(pair)
 
-        # should return most central, not first
-        self.assertEqual(lcs, (1, 2, 8, 9, False))
+        self.assertEqual(lcs, (5, 6, 3, 4, True))
 
     def test_lcs_domains_len_multiple(self):
         """Test lcs detection for two domain lists where there are equal matches of
