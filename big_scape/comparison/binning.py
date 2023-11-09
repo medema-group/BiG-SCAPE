@@ -518,17 +518,18 @@ class RefToRefRecordPairGenerator(RecordPairGenerator):
         return singleton_reference_node_count
 
 
-class ConnectedComponenetPairGenerator(RecordPairGenerator):
+class ConnectedComponentPairGenerator(RecordPairGenerator):
     """Generator that takes as input a conected component and generates
     all pairs from the nodes in the component"""
 
-    def __init__(
-        self, connected_component, label: str, edge_param_id: int, weights: str
-    ):
+    def __init__(self, connected_component, label: str):
+        # getting the first one, assume consistent edge param id for all cc
+        edge_param_id = connected_component[0][-1]
+        weights = bs_comparison.get_edge_weight(edge_param_id)
+
         super().__init__(label, edge_param_id, weights)
         self.connected_component = connected_component
         self.record_id_to_obj: dict[int, BGCRecord] = {}
-        self.edge_param_id = connected_component[0][-1]
 
     def add_records(self, record_list: list[BGCRecord]):
         """Adds BGC records to this bin and creates a generator for the pairs
@@ -546,13 +547,8 @@ class ConnectedComponenetPairGenerator(RecordPairGenerator):
                 jacc,
                 adj,
                 dss,
-                weights,
                 edge_param_id,
             ) = edge
-            # Ensure that the correct weights are used,
-            # the weights are set during the binning process
-            self.weights = weights
-            self.edge_param_id = edge_param_id
             cc_record_ids.add(record_a_id)
             cc_record_ids.add(record_b_id)
 
@@ -571,11 +567,7 @@ class ConnectedComponenetPairGenerator(RecordPairGenerator):
         """Returns a Generator for all pairs in this bin"""
 
         for edge in self.connected_component:
-            record_a_id, record_b_id, dist, jacc, adj, dss, weights = edge
-            if self.weights != weights:
-                logging.error(
-                    "Edge in connected component does not have the same weight as the bin!"
-                )
+            record_a_id, record_b_id, dist, jacc, adj, dss, edge_param_id = edge
 
             record_a = self.record_id_to_obj[record_a_id]
             record_b = self.record_id_to_obj[record_b_id]

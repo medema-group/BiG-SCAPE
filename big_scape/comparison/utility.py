@@ -14,7 +14,7 @@ from big_scape.comparison.binning import RecordPairGenerator, RecordPair
 
 
 def save_edge_to_db(
-    edge: tuple[int, int, float, float, float, float, str, int], upsert=False
+    edge: tuple[int, int, float, float, float, float, int], upsert=False
 ) -> None:
     """Save edge to the database
 
@@ -31,7 +31,6 @@ def save_edge_to_db(
         jaccard,
         adjacency,
         dss,
-        weights,
         edge_param_id,
     ) = edge
 
@@ -50,7 +49,6 @@ def save_edge_to_db(
         jaccard=jaccard,
         adjacency=adjacency,
         dss=dss,
-        weights=weights,
         edge_param_id=edge_param_id,
     )
 
@@ -61,12 +59,12 @@ def save_edge_to_db(
 
 
 def save_edges_to_db(
-    edges: list[tuple[int, int, float, float, float, float, str, int]]
+    edges: list[tuple[int, int, float, float, float, float, int]]
 ) -> None:
     """Save many edges to the database
 
     Args:
-        edges (list[tuple[int, int, float, float, float, float, str, int]]): list of edges to save
+        edges (list[tuple[int, int, float, float, float, float, int]]): list of edges to save
     """
     # save the comparison data to the database
     # using raw sqlite for this because sqlalchemy is not fast enough
@@ -86,7 +84,7 @@ def save_edges_to_db(
     # create a query
     # TODO: this should not need ignore. it's there now because protoclusters somehow
     # trigger an integrityerror
-    query = "INSERT OR IGNORE INTO distance VALUES (?, ?, ?, ?, ?, ?, ?, ?)"
+    query = "INSERT OR IGNORE INTO distance VALUES (?, ?, ?, ?, ?, ?, ?)"
 
     cursor.executemany(query, edges)
 
@@ -104,14 +102,14 @@ def save_edges_to_db(
 
 def edges_from_db(
     pair_generator: RecordPairGenerator,
-) -> Generator[tuple[RecordPair, float, float, float, float], None, None]:
+) -> Generator[tuple[RecordPair, float, float, float, float, int], None, None]:
     """Reconstruct distances from the database instead of recalculating them
 
     Args:
         pair_generator (RecordPairGenerator): pair_generator to regenerate distances for
 
     Yields:
-        Generator[tuple[BGCPair, float, float, float, float]]: generator of distances
+        Generator[tuple[BGCPair, float, float, float, float], None]: generator of distances
     """
     # batch size to select database for
     distance_batch_size = 100
@@ -148,11 +146,12 @@ def edges_from_db(
             jaccard: float = edge.jaccard
             adjacency: float = edge.adjacency
             dss: float = edge.dss
-            # TODO: check if this is needed somewhere
-            # weights: str = edge.weights
+
+            # get the edge param id
+            edge_param_id: int = edge.edge_param_id
 
             # yield the distance
-            yield pair, distance, jaccard, adjacency, dss  # , weights
+            yield pair, distance, jaccard, adjacency, dss, edge_param_id
 
 
 def get_edge_param_id(run, weights) -> int:
@@ -196,3 +195,20 @@ def get_edge_param_id(run, weights) -> int:
     logging.debug("Edge params id: %d", edge_param_id[0])
 
     return edge_param_id[0]
+
+
+def get_edge_weight(edge_param_id: int) -> str:
+    """Get edge weights form param ID"""
+
+    if not DB.metadata:
+        raise RuntimeError("DB.metadata is None")
+
+    edge_params_table = DB.metadata.tables["edge_params"]
+
+    edge_weight_query = select(edge_params_table.c.weights).where(
+        edge_params_table.c.id == edge_param_id
+    )
+
+    weights = DB.execute(edge_weight_query).fetchone()[0]
+
+    return weights

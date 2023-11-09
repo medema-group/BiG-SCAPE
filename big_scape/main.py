@@ -274,7 +274,8 @@ def run_bigscape(run: dict) -> None:
         DB.commit()
 
     # FAMILY GENERATION
-    # TODO: implement include nodes in cc component
+    # TODO: implement include nodes (all bgc records of this run) in cc component
+    # & egde param id (account for weights/alignment mode) to use only correct edges
     logging.info("Generating families")
 
     # cluster mode
@@ -400,10 +401,8 @@ def run_bigscape(run: dict) -> None:
     # query
 
     if run["query_bgc_path"]:
-        edge_param_id = query_connected_component[0][-1]
-        weights = query_connected_component[0][-2]
-        query_bin = bs_comparison.ConnectedComponenetPairGenerator(
-            query_connected_component, "Query", edge_param_id, weights
+        query_bin = bs_comparison.ConnectedComponentPairGenerator(
+            query_connected_component, "Query"
         )
         query_bin.add_records(
             [record for record in all_bgc_records if record is not None]

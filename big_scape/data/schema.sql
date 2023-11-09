@@ -74,9 +74,8 @@ CREATE TABLE IF NOT EXISTS distance (
     jaccard REAL NOT NULL,
     adjacency REAL NOT NULL,
     dss REAL NOT NULL,
-    weights TEXT NOT NULL,
     edge_param_id INTEGER NOT NULL,
-    UNIQUE(region_a_id, region_b_id, weights)
+    UNIQUE(region_a_id, region_b_id, edge_param_id)
     FOREIGN KEY(region_a_id) REFERENCES bgc_record(id)
     FOREIGN KEY(region_b_id) REFERENCES bgc_record(id)
     FOREIGN KEY(edge_param_id) REFERENCES edge_params(id)

@@ -5,7 +5,7 @@ from .binning import (
     QueryToRefRecordPairGenerator,
     RefToRefRecordPairGenerator,
     MissingRecordPairGenerator,
-    ConnectedComponenetPairGenerator,
+    ConnectedComponentPairGenerator,
     generate_mix_bin,
     legacy_bin_generator,
     legacy_get_class,
@@ -15,7 +15,12 @@ from .binning import (
 )
 from .comparable_region import ComparableRegion
 from .legacy_workflow_alt import generate_edges
-from .utility import save_edge_to_db, save_edges_to_db, get_edge_param_id
+from .utility import (
+    save_edge_to_db,
+    save_edges_to_db,
+    get_edge_param_id,
+    get_edge_weight,
+)
 
 from . import lcs
 
@@ -25,7 +30,7 @@ __all__ = [
     "QueryToRefRecordPairGenerator",
     "RefToRefRecordPairGenerator",
     "MissingRecordPairGenerator",
-    "ConnectedComponenetPairGenerator",
+    "ConnectedComponentPairGenerator",
     "generate_mix_bin",
     "ComparableRegion",
     "generate_edges",
@@ -38,4 +43,5 @@ __all__ = [
     "lcs",
     "save_edges_to_db",
     "get_edge_param_id",
+    "get_edge_weight",
 ]

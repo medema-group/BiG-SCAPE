@@ -14,7 +14,7 @@ from big_scape.comparison import (
     RecordPairGenerator,
     QueryToRefRecordPairGenerator,
     RefToRefRecordPairGenerator,
-    ConnectedComponenetPairGenerator,
+    ConnectedComponentPairGenerator,
     RecordPair,
     save_edge_to_db,
     get_record_category,
@@ -269,7 +269,6 @@ class TestBGCBin(TestCase):
                         1.0,
                         1.0,
                         1.0,
-                        "mix",
                         1,
                     )
                 )
@@ -283,7 +282,6 @@ class TestBGCBin(TestCase):
                         0.0,
                         0.0,
                         0.0,
-                        "mix",
                         1,
                     )
                 )
@@ -360,7 +358,6 @@ class TestBGCBin(TestCase):
                         1.0,
                         1.0,
                         1.0,
-                        "mix",
                         1,
                     )
                 )
@@ -374,7 +371,6 @@ class TestBGCBin(TestCase):
                         0.0,
                         0.0,
                         0.0,
-                        "mix",
                         1,
                     )
                 )
@@ -402,7 +398,6 @@ class TestBGCBin(TestCase):
                 1.0,
                 1.0,
                 1.0,
-                "mix",
                 1,
             )
         )
@@ -416,7 +411,6 @@ class TestBGCBin(TestCase):
                 0.0,
                 0.0,
                 0.0,
-                "mix",
                 1,
             )
         )
@@ -428,7 +422,6 @@ class TestBGCBin(TestCase):
                 0.0,
                 0.0,
                 0.0,
-                "mix",
                 1,
             )
         )
@@ -440,7 +433,6 @@ class TestBGCBin(TestCase):
                 0.0,
                 0.0,
                 0.0,
-                "mix",
                 1,
             )
         )
@@ -483,6 +475,17 @@ class TestBGCBin(TestCase):
         """
 
         bs_data.DB.create_in_mem()
+
+        run = {
+            "alignment_mode": bs_enums.ALIGNMENT_MODE.AUTO,
+            "legacy_weights": True,
+            "classify": bs_enums.CLASSIFY_MODE.CATEGORY,
+        }
+        weights = "mix"
+
+        edge_param_id = bs_comparison.get_edge_param_id(run, weights)
+        list([edge_param_id])
+
         query_gbk = create_mock_gbk(0, bs_enums.SOURCE_TYPE.QUERY)
         # query -> test_path_0.gbk, rec_id 1
         query_gbk.save_all()
@@ -506,7 +509,6 @@ class TestBGCBin(TestCase):
                 1.0,
                 1.0,
                 1.0,
-                "mix",
                 1,
             ),
             (
@@ -516,7 +518,6 @@ class TestBGCBin(TestCase):
                 0.0,
                 0.0,
                 0.0,
-                "mix",
                 1,
             ),
             (
@@ -526,7 +527,6 @@ class TestBGCBin(TestCase):
                 1.0,
                 1.0,
                 1.0,
-                "mix",
                 1,
             ),
         ]
@@ -540,9 +540,7 @@ class TestBGCBin(TestCase):
         # )
         expected_record_ids = [1, 2, 3]
 
-        cc_pair_generator = ConnectedComponenetPairGenerator(
-            connected_component, "mix", 1, "mix"
-        )
+        cc_pair_generator = ConnectedComponentPairGenerator(connected_component, "mix")
         cc_pair_generator.add_records(source_records)
 
         actual_record_ids = cc_pair_generator.record_ids = [1, 2, 3]
@@ -581,7 +579,6 @@ class TestBGCBin(TestCase):
                 1.0,
                 1.0,
                 1.0,
-                "mix",
                 1,
             )
         )
@@ -594,7 +591,6 @@ class TestBGCBin(TestCase):
                 0.0,
                 0.0,
                 0.0,
-                "mix",
                 1,
             )
         )
@@ -607,7 +603,6 @@ class TestBGCBin(TestCase):
                 1.0,
                 1.0,
                 1.0,
-                "mix",
                 1,
             )
         )
@@ -818,3 +813,22 @@ class TestBinGenerators(TestCase):
         expected_id = 1
 
         self.assertEqual(expected_id, second_id)
+
+    def test_get_edge_weight(self):
+        """Tests whether an edge weight gets correctly fetched from the database"""
+
+        bs_data.DB.create_in_mem()
+        run = {
+            "alignment_mode": bs_enums.ALIGNMENT_MODE.AUTO,
+            "legacy_weights": True,
+            "classify": bs_enums.CLASSIFY_MODE.CATEGORY,
+        }
+
+        first_id = bs_comparison.get_edge_param_id(run, "mix")
+        second_id = bs_comparison.get_edge_param_id(run, "other")
+        list([first_id, second_id])
+
+        weights = bs_comparison.get_edge_weight(second_id)
+        expected_weights = "other"
+
+        self.assertEqual(expected_weights, weights)
