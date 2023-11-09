@@ -15,14 +15,14 @@ from concurrent.futures import ProcessPoolExecutor, wait
 from typing import Generator, Callable, Optional, TypeVar
 from math import ceil
 
+
 # from other modules
 from big_scape.distances import calc_jaccard_pair, calc_ai_pair, calc_dss_pair_legacy
-
 import big_scape.enums as bs_enums
 
 # from this module
 from .binning import RecordPairGenerator, RecordPair
-from .legacy_bins import LEGACY_WEIGHTS
+from .binning import LEGACY_WEIGHTS
 from .legacy_extend import (
     legacy_needs_expand_pair,
     expand_glocal,
@@ -127,7 +127,13 @@ def generate_edges(
                 break
 
             new_task = executor.submit(
-                calculate_scores_pair, (batch, alignment_mode, pair_generator.weights)
+                calculate_scores_pair,
+                (
+                    batch,
+                    alignment_mode,
+                    pair_generator.edge_param_id,
+                    pair_generator.weights,
+                ),
             )
             running_tasks[new_task] = batch
 
@@ -143,7 +149,12 @@ def generate_edges(
 
                 new_task = executor.submit(
                     calculate_scores_pair,
-                    (batch, alignment_mode, pair_generator.weights),
+                    (
+                        batch,
+                        alignment_mode,
+                        pair_generator.edge_param_id,
+                        pair_generator.weights,
+                    ),
                 )
                 running_tasks[new_task] = batch
 
@@ -228,7 +239,7 @@ def expand_pair(pair: RecordPair) -> float:
 
 
 def calculate_scores_pair(
-    data: tuple[list[RecordPair], bs_enums.ALIGNMENT_MODE, str]
+    data: tuple[list[RecordPair], bs_enums.ALIGNMENT_MODE, int, str]
 ) -> list[
     tuple[
         Optional[int],
@@ -237,7 +248,7 @@ def calculate_scores_pair(
         float,
         float,
         float,
-        str,
+        int,
         int,
         int,
         int,
@@ -247,7 +258,6 @@ def calculate_scores_pair(
         int,
         int,
         bool,
-        str,
     ]
 ]:  # pragma no cover
     """Calculate the scores for a list of pairs
@@ -261,9 +271,13 @@ def calculate_scores_pair(
         int, int, bool, str,]]: list of scores for each pair in the
         order as the input data list, including lcs and extension coordinates
     """
-    pairs, alignment_mode, weights_label = data
+    pairs, alignment_mode, edge_param_id, weights_label = data
 
     results = []
+
+    # TODO: this fails since DB getting accessed from child processes
+    # seems to be a problem with the DB connection (for mac?)
+    # weights_label = bs_comparison.get_edge_weight(edge_param_id)
 
     for pair in pairs:
         if pair.record_a.parent_gbk == pair.record_b.parent_gbk:
@@ -275,7 +289,7 @@ def calculate_scores_pair(
                     1.0,
                     1.0,
                     1.0,
-                    weights_label,
+                    edge_param_id,
                     pair.comparable_region.lcs_a_start,
                     pair.comparable_region.lcs_a_stop,
                     pair.comparable_region.lcs_b_start,
@@ -285,7 +299,6 @@ def calculate_scores_pair(
                     pair.comparable_region.b_start,
                     pair.comparable_region.b_stop,
                     pair.comparable_region.reverse,
-                    pair.comparable_region.alignment_mode.value,
                 )
             )
             continue
@@ -301,7 +314,7 @@ def calculate_scores_pair(
                     0.0,
                     0.0,
                     0.0,
-                    weights_label,
+                    edge_param_id,
                     pair.comparable_region.lcs_a_start,
                     pair.comparable_region.lcs_a_stop,
                     pair.comparable_region.lcs_b_start,
@@ -311,7 +324,6 @@ def calculate_scores_pair(
                     pair.comparable_region.b_start,
                     pair.comparable_region.b_stop,
                     pair.comparable_region.reverse,
-                    pair.comparable_region.alignment_mode.value,
                 )
             )
             continue
@@ -331,7 +343,7 @@ def calculate_scores_pair(
                     0.0,
                     0.0,
                     0.0,
-                    weights_label,
+                    edge_param_id,
                     pair.comparable_region.lcs_a_start,
                     pair.comparable_region.lcs_a_stop,
                     pair.comparable_region.lcs_b_start,
@@ -341,7 +353,6 @@ def calculate_scores_pair(
                     pair.comparable_region.b_start,
                     pair.comparable_region.b_stop,
                     pair.comparable_region.reverse,
-                    pair.comparable_region.alignment_mode.value,
                 )
             )
             continue
@@ -369,7 +380,7 @@ def calculate_scores_pair(
                 jaccard,
                 adjacency,
                 dss,
-                weights_label,
+                edge_param_id,
                 pair.comparable_region.lcs_a_start,
                 pair.comparable_region.lcs_a_stop,
                 pair.comparable_region.lcs_b_start,
@@ -379,7 +390,6 @@ def calculate_scores_pair(
                 pair.comparable_region.b_start,
                 pair.comparable_region.b_stop,
                 pair.comparable_region.reverse,
-                pair.comparable_region.alignment_mode.value,
             )
         )
 

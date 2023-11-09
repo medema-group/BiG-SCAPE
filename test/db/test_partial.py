@@ -61,7 +61,7 @@ def gen_mock_edge_list(
         float,
         float,
         float,
-        str,
+        int,
         int,
         int,
         int,
@@ -71,7 +71,6 @@ def gen_mock_edge_list(
         int,
         int,
         bool,
-        bs_enums.ALIGNMENT_MODE,
     ]
 ]:
     edges = []
@@ -89,7 +88,7 @@ def gen_mock_edge_list(
                 0.0,
                 0.0,
                 0.0,
-                "mix",
+                1,
                 0,
                 0,
                 0,
@@ -99,7 +98,6 @@ def gen_mock_edge_list(
                 0,
                 0,
                 False,
-                bs_enums.ALIGNMENT_MODE.GLOBAL,
             )
         )
 
@@ -460,7 +458,7 @@ class TestPartialComparison(TestCase):
         self.assertEqual(expected_state, actual_state)
 
     def test_no_new_comparisons(self):
-        self.skipTest("TODO")
+        self.skipTest("Broken")
         DB.create_in_mem()
 
         gbks = [create_mock_gbk(i) for i in range(3)]
@@ -481,9 +479,10 @@ class TestPartialComparison(TestCase):
             HMMer.set_hmm_scanned(gbk.genes[0])
             gbk.genes[0].hsps[0].alignment.save()
 
-        # all distances done (1-2, 1-3, 2-3)
-        network = gen_mock_network(gbks, gbks)
-        network.export_distances_to_db()
+        # only one distance done. (1-2, missing 1-3 and 2-3)
+        edges = gen_mock_edge_list(gbks[0:3])
+        for edge in edges:
+            bs_comparison.save_edge_to_db(edge)
 
         expected_state = bs_enums.COMPARISON_TASK.ALL_DONE
         actual_state = get_comparison_data_state(gbks)
@@ -517,7 +516,7 @@ class TestPartialComparison(TestCase):
             bs_comparison.save_edge_to_db(edge)
 
         # all-vs-all bin
-        mix_bin = bs_comparison.RecordPairGenerator("mix")
+        mix_bin = bs_comparison.RecordPairGenerator("mix", 1)
         mix_bin.add_records([gbk.region for gbk in gbks])
 
         expected_missing_pairs = [
@@ -525,7 +524,7 @@ class TestPartialComparison(TestCase):
             bs_comparison.RecordPair(gbks[1].region, gbks[2].region),
         ]
 
-        pair_generator = bs_comparison.RecordPairGenerator("mix")
+        pair_generator = bs_comparison.RecordPairGenerator("mix", 1)
         pair_generator.add_records([gbk.region for gbk in gbks])
 
         missing_edge_generator = bs_comparison.MissingRecordPairGenerator(
@@ -563,12 +562,12 @@ class TestPartialComparison(TestCase):
             bs_comparison.save_edge_to_db(edge)
 
         # all-vs-all bin
-        mix_bin = bs_comparison.RecordPairGenerator("mix")
+        mix_bin = bs_comparison.RecordPairGenerator("mix", 1)
         mix_bin.add_records([gbk.region for gbk in gbks])
 
         expected_missing_count = 2
 
-        pair_generator = bs_comparison.RecordPairGenerator("mix")
+        pair_generator = bs_comparison.RecordPairGenerator("mix", 1)
         pair_generator.add_records([gbk.region for gbk in gbks])
 
         missing_edge_generator = bs_comparison.MissingRecordPairGenerator(

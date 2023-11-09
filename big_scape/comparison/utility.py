@@ -1,16 +1,16 @@
 """Contains utility functions for the comparison module"""
 
 # from python
+import logging
 from typing import Generator, cast
 import sqlite3
 
 # from dependencies
-from sqlalchemy import insert
+from sqlalchemy import insert, select
 
 # from other modules
 from big_scape.data import DB
 from big_scape.comparison.binning import RecordPairGenerator, RecordPair
-from big_scape.enums import ALIGNMENT_MODE
 
 
 def save_edge_to_db(
@@ -21,7 +21,7 @@ def save_edge_to_db(
         float,
         float,
         float,
-        str,
+        int,
         int,
         int,
         int,
@@ -31,7 +31,6 @@ def save_edge_to_db(
         int,
         int,
         bool,
-        ALIGNMENT_MODE,
     ],
     upsert=False,
 ) -> None:
@@ -52,7 +51,7 @@ def save_edge_to_db(
         jaccard,
         adjacency,
         dss,
-        weights,
+        edge_param_id,
         lcs_a_start,
         lcs_a_stop,
         lcs_b_start,
@@ -62,7 +61,6 @@ def save_edge_to_db(
         ext_b_start,
         ext_b_stop,
         reverse,
-        alignment_mode,
     ) = edge
 
     # save the comparison data to the database
@@ -80,7 +78,7 @@ def save_edge_to_db(
         jaccard=jaccard,
         adjacency=adjacency,
         dss=dss,
-        weights=weights,
+        edge_param_id=edge_param_id,
         lcs_a_start=lcs_a_start,
         lcs_a_stop=lcs_a_stop,
         lcs_b_start=lcs_b_start,
@@ -90,7 +88,6 @@ def save_edge_to_db(
         ext_b_start=ext_b_start,
         ext_b_stop=ext_b_stop,
         reverse=reverse,
-        alignment_mode=alignment_mode.value,
     )
 
     if upsert:
@@ -108,7 +105,6 @@ def save_edges_to_db(
             float,
             float,
             float,
-            str,
             int,
             int,
             int,
@@ -118,15 +114,14 @@ def save_edges_to_db(
             int,
             int,
             bool,
-            str,
         ]
     ]
 ) -> None:
     """Save many edges to the database
 
     Args:
-        edges (list[tuple[int, int, float, float, float, float, str, int, int, int, int,
-               int, int, int, int, bool, str]]): list of edges to save
+        edges (list[tuple[int, int, float, float, float, float, int, int, int, int,
+               int, int, int, int, bool]]): list of edges to save
     """
     # save the comparison data to the database
     # using raw sqlite for this because sqlalchemy is not fast enough
@@ -146,7 +141,7 @@ def save_edges_to_db(
     # create a query
     # TODO: this should not need ignore. it's there now because protoclusters somehow
     # trigger an integrityerror
-    query = "INSERT OR IGNORE INTO distance VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"
+    query = "INSERT OR IGNORE INTO distance VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"
 
     cursor.executemany(query, edges)
 
@@ -164,14 +159,14 @@ def save_edges_to_db(
 
 def edges_from_db(
     pair_generator: RecordPairGenerator,
-) -> Generator[tuple[RecordPair, float, float, float, float], None, None]:
+) -> Generator[tuple[RecordPair, float, float, float, float, int], None, None]:
     """Reconstruct distances from the database instead of recalculating them
 
     Args:
         pair_generator (RecordPairGenerator): pair_generator to regenerate distances for
 
     Yields:
-        Generator[tuple[BGCPair, float, float, float, float]]: generator of distances
+        Generator[tuple[BGCPair, float, float, float, float], None]: generator of distances
     """
     # batch size to select database for
     distance_batch_size = 100
@@ -208,8 +203,69 @@ def edges_from_db(
             jaccard: float = edge.jaccard
             adjacency: float = edge.adjacency
             dss: float = edge.dss
-            # TODO: check if this is needed somewhere
-            # weights: str = edge.weights
+
+            # get the edge param id
+            edge_param_id: int = edge.edge_param_id
 
             # yield the distance
-            yield pair, distance, jaccard, adjacency, dss  # , weights
+            yield pair, distance, jaccard, adjacency, dss, edge_param_id
+
+
+def get_edge_param_id(run, weights) -> int:
+    """get edge params id if available, else create a new one
+
+    Args:
+        run (dict): run parameters
+        weights (str): weights category
+
+    Raises:
+        RuntimeError: no dabatase
+
+    Returns:
+        int: id of the edge param entry
+    """
+
+    if not DB.metadata:
+        raise RuntimeError("DB.metadata is None")
+
+    alignment_mode = run["alignment_mode"]
+
+    edge_params_table = DB.metadata.tables["edge_params"]
+    edge_params_query = (
+        select(edge_params_table.c.id)
+        .where(edge_params_table.c.alignment_mode == alignment_mode.name)
+        .where(edge_params_table.c.weights == weights)
+    )
+
+    edge_param_id = DB.execute(edge_params_query).fetchone()
+
+    if edge_param_id is None:
+        edge_params_insert = (
+            edge_params_table.insert()
+            .values(alignment_mode=alignment_mode.name, weights=weights)
+            .returning(edge_params_table.c.id)
+            .compile()
+        )
+        cursor_result = DB.execute(edge_params_insert, False)
+        edge_param_id = cursor_result.fetchone()
+
+    logging.debug("Edge params id: %d", edge_param_id[0])
+
+    return edge_param_id[0]
+
+
+def get_edge_weight(edge_param_id: int) -> str:
+    """Get edge weights form param ID"""
+
+    if DB.metadata is None:
+        raise RuntimeError("DB.metadata is None")
+
+    edge_params_table = DB.metadata.tables["edge_params"]
+
+    edge_weight_query = select(edge_params_table.c.weights).where(
+        edge_params_table.c.id == edge_param_id
+    )
+
+    weights = DB.execute(edge_weight_query).fetchone()[0]
+
+    return weights

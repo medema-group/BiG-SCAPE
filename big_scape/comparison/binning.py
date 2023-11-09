@@ -17,6 +17,7 @@ from sqlalchemy import select, func, or_
 from big_scape.data import DB
 from big_scape.genbank import BGCRecord, Region, ProtoCluster, ProtoCore
 from big_scape.enums import SOURCE_TYPE, CLASSIFY_MODE
+import big_scape.comparison as bs_comparison
 
 # from this module
 from .comparable_region import ComparableRegion
@@ -44,8 +45,9 @@ class RecordPairGenerator:
         source_records (list[BGCRecord]): List of BGC records to generate pairs from
     """
 
-    def __init__(self, label: str, weights: Optional[str] = None):
+    def __init__(self, label: str, edge_param_id: int, weights: Optional[str] = None):
         self.label = label
+        self.edge_param_id = edge_param_id
         self.source_records: list[BGCRecord] = []
         self.record_ids: set[int] = set()
         if weights is None:
@@ -146,7 +148,7 @@ class RecordPairGenerator:
                 | distance_table.c.record_b_id.in_(self.record_ids)
             )
             .where(distance_table.c.distance < cutoff)
-            .where(distance_table.c.weights == self.weights)
+            .where(distance_table.c.edge_param_id == self.edge_param_id)
         )
 
         edges = DB.execute(select_statement).fetchall()
@@ -175,8 +177,8 @@ class QueryToRefRecordPairGenerator(RecordPairGenerator):
     ref <-> ref pairs
     """
 
-    def __init__(self, label: str, weights: Optional[str] = None):
-        super().__init__(label, weights)
+    def __init__(self, label: str, edge_param_id: int, weights: str):
+        super().__init__(label, edge_param_id, weights)
         self.reference_records: list[BGCRecord] = []
         self.query_records: list[BGCRecord] = []
 
@@ -259,11 +261,11 @@ class RefToRefRecordPairGenerator(RecordPairGenerator):
         source_records (list[BGCRecord]): List of BGC records to generate pairs from
     """
 
-    def __init__(self, label: str, weights: Optional[str] = None):
+    def __init__(self, label: str, edge_param_id: int, weights: str):
         self.record_id_to_obj: dict[int, BGCRecord] = {}
         self.reference_record_ids: set[int] = set()
         self.done_record_ids: set[int] = set()
-        super().__init__(label, weights)
+        super().__init__(label, edge_param_id, weights)
 
     def generate_pairs(self, legacy_sorting=False) -> Generator[RecordPair, None, None]:
         """Returns an Generator for Region pairs in this bin, pairs are only generated between
@@ -353,13 +355,13 @@ class RefToRefRecordPairGenerator(RecordPairGenerator):
                         select(distance_table.c.record_a_id)
                         .distinct()
                         .where(distance_table.c.distance < 1.0)
-                        .where(distance_table.c.weights == self.weights)
+                        .where(distance_table.c.edge_param_id == self.edge_param_id)
                     ),
                     bgc_record_table.c.id.in_(
                         select(distance_table.c.record_b_id)
                         .distinct()
                         .where(distance_table.c.distance < 1.0)
-                        .where(distance_table.c.weights == self.weights)
+                        .where(distance_table.c.edge_param_id == self.edge_param_id)
                     ),
                 )
             )
@@ -404,13 +406,13 @@ class RefToRefRecordPairGenerator(RecordPairGenerator):
                         select(distance_table.c.record_a_id)
                         .distinct()
                         .where(distance_table.c.distance < 1.0)
-                        .where(distance_table.c.weights == self.weights)
+                        .where(distance_table.c.edge_param_id == self.edge_param_id)
                     ),
                     bgc_record_table.c.id.in_(
                         select(distance_table.c.record_b_id)
                         .distinct()
                         .where(distance_table.c.distance < 1.0)
-                        .where(distance_table.c.weights == self.weights)
+                        .where(distance_table.c.edge_param_id == self.edge_param_id)
                     ),
                 )
             )
@@ -448,7 +450,7 @@ class RefToRefRecordPairGenerator(RecordPairGenerator):
                     select(distance_table.c.record_a_id)
                     .distinct()
                     .where(distance_table.c.distance < 1.0)
-                    .where(distance_table.c.weights == self.weights)
+                    .where(distance_table.c.edge_param_id == self.edge_param_id)
                 )
             )
             .where(
@@ -456,7 +458,7 @@ class RefToRefRecordPairGenerator(RecordPairGenerator):
                     select(distance_table.c.record_b_id)
                     .distinct()
                     .where(distance_table.c.distance < 1.0)
-                    .where(distance_table.c.weights == self.weights)
+                    .where(distance_table.c.edge_param_id == self.edge_param_id)
                 )
             )
             .where(bgc_record_table.c.id.in_(self.reference_record_ids))
@@ -516,12 +518,16 @@ class RefToRefRecordPairGenerator(RecordPairGenerator):
         return singleton_reference_node_count
 
 
-class ConnectedComponenetPairGenerator(RecordPairGenerator):
+class ConnectedComponentPairGenerator(RecordPairGenerator):
     """Generator that takes as input a conected component and generates
     all pairs from the nodes in the component"""
 
     def __init__(self, connected_component, label: str):
-        super().__init__(label)
+        # getting the first one, assume consistent edge param id for all cc
+        edge_param_id = connected_component[0][6]
+        weights = bs_comparison.get_edge_weight(edge_param_id)
+
+        super().__init__(label, edge_param_id, weights)
         self.connected_component = connected_component
         self.record_id_to_obj: dict[int, BGCRecord] = {}
 
@@ -534,10 +540,15 @@ class ConnectedComponenetPairGenerator(RecordPairGenerator):
         cc_record_list = []
 
         for edge in self.connected_component:
-            record_a_id, record_b_id, dist, jacc, adj, dss, weights = edge
-            # Ensure that the correct weights are used,
-            # the weights are set during the binning process
-            self.weights = weights
+            (
+                record_a_id,
+                record_b_id,
+                dist,
+                jacc,
+                adj,
+                dss,
+                edge_param_id,
+            ) = edge
             cc_record_ids.add(record_a_id)
             cc_record_ids.add(record_b_id)
 
@@ -556,11 +567,7 @@ class ConnectedComponenetPairGenerator(RecordPairGenerator):
         """Returns a Generator for all pairs in this bin"""
 
         for edge in self.connected_component:
-            record_a_id, record_b_id, dist, jacc, adj, dss, weights = edge
-            if self.weights != weights:
-                logging.error(
-                    "Edge in connected component does not have the same weight as the bin!"
-                )
+            record_a_id, record_b_id, dist, jacc, adj, dss, edge_param_id = edge
 
             record_a = self.record_id_to_obj[record_a_id]
             record_b = self.record_id_to_obj[record_b_id]
@@ -580,7 +587,9 @@ class MissingRecordPairGenerator(RecordPairGenerator):
     """
 
     def __init__(self, pair_generator):
-        super().__init__(pair_generator.label, pair_generator.weights)
+        super().__init__(
+            pair_generator.label, pair_generator.edge_param_id, pair_generator.weights
+        )
         self.bin = pair_generator
 
     def num_pairs(self) -> int:
@@ -595,7 +604,7 @@ class MissingRecordPairGenerator(RecordPairGenerator):
             select(func.count(distance_table.c.record_a_id))
             .where(distance_table.c.record_a_id.in_(self.bin.record_ids))
             .where(distance_table.c.record_b_id.in_(self.bin.record_ids))
-            .where(distance_table.c.weights == self.bin.weights)
+            .where(distance_table.c.edge_param_id == self.bin.edge_param_id)
         )
 
         # get count
@@ -615,7 +624,7 @@ class MissingRecordPairGenerator(RecordPairGenerator):
             select(distance_table.c.record_a_id, distance_table.c.record_b_id)
             .where(distance_table.c.record_a_id.in_(self.bin.record_ids))
             .where(distance_table.c.record_b_id.in_(self.bin.record_ids))
-            .where(distance_table.c.weights == self.bin.weights)
+            .where(distance_table.c.edge_param_id == self.bin.edge_param_id)
         )
 
         # generate a set of tuples of region id pairs
@@ -680,7 +689,9 @@ class RecordPair:
         return False
 
 
-def generate_mix(bgc_list: list[BGCRecord]) -> RecordPairGenerator:
+def generate_mix_bin(
+    record_list: list[BGCRecord], edge_param_id: int
+) -> RecordPairGenerator:
     """Generate an all-vs-all bin of the supplied BGC records
 
     Args:
@@ -689,9 +700,10 @@ def generate_mix(bgc_list: list[BGCRecord]) -> RecordPairGenerator:
     Returns:
         BGCBin: The all-vs-all BGC bin
     """
-    mix_bin = RecordPairGenerator("mix")
 
-    mix_bin.add_records(bgc_list)
+    mix_bin = RecordPairGenerator(label="mix", edge_param_id=edge_param_id)
+
+    mix_bin.add_records([record for record in record_list if record is not None])
 
     return mix_bin
 
@@ -713,7 +725,7 @@ def sort_name_key(record: BGCRecord) -> str:
 
 
 def as_class_bin_generator(
-    all_records: list[BGCRecord], weight_type: str, classify_mode: CLASSIFY_MODE
+    all_records: list[BGCRecord], run: dict
 ) -> Iterator[RecordPairGenerator]:
     """Generate bins for each antiSMASH class
 
@@ -725,6 +737,12 @@ def as_class_bin_generator(
         Iterator[RecordPairGenerator]: Generator that yields bins. Order is not guarenteed to be
         consistent
     """
+    if run["legacy_weights"]:
+        weight_type = "legacy_weights"
+    else:
+        weight_type = "mix"
+
+    classify_mode = run["classify"]
 
     class_idx: dict[str, list[BGCRecord]] = {}
     category_weights: dict[str, str] = {}
@@ -754,7 +772,8 @@ def as_class_bin_generator(
 
     for class_name, records in class_idx.items():
         weight_category = category_weights[class_name]
-        bin = RecordPairGenerator(class_name, weight_category)
+        edge_param_id = bs_comparison.get_edge_param_id(run, weight_category)
+        bin = RecordPairGenerator(class_name, edge_param_id, weight_category)
         bin.add_records(records)
         yield bin
 
@@ -863,7 +882,7 @@ def get_weight_category(record: BGCRecord) -> str:
 
 
 def legacy_bin_generator(
-    all_records: list[BGCRecord],
+    all_records: list[BGCRecord], run: dict
 ) -> Iterator[RecordPairGenerator]:  # pragma no cover
     """Generate bins for each class as they existed in the BiG-SCAPE 1.0 implementation
 
@@ -876,9 +895,7 @@ def legacy_bin_generator(
         TODO: should it be consistent?
     """
     # generate index
-    class_idx: dict[str, list[BGCRecord]] = {
-        class_name: [] for class_name in LEGACY_WEIGHTS.keys() if class_name != "mix"
-    }
+    class_idx: dict[str, list[BGCRecord]] = {}
 
     for record in all_records:
         if record is None:
@@ -889,12 +906,16 @@ def legacy_bin_generator(
         # product hybrids of AS4 and under dealt with here and in legacy_output generate_run_data_js
         product = ".".join(record.product.split("-"))
 
-        region_class = legacy_get_class(product)
+        record_class = legacy_get_class(product)
 
-        class_idx[region_class].append(record)
+        try:
+            class_idx[record_class].append(record)
+        except KeyError:
+            class_idx[record_class] = [record]
 
     for class_name, records in class_idx.items():
-        bin = RecordPairGenerator(class_name)
+        edge_param_id = bs_comparison.get_edge_param_id(run, class_name)
+        bin = RecordPairGenerator(class_name, edge_param_id, class_name)
         bin.add_records(records)
         yield bin
 
