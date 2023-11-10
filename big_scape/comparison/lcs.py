@@ -490,20 +490,21 @@ def find_domain_lcs_region(
 
     relevant_match = matchin_block_dirs[match_idx]
     a_start = relevant_match[0]
-    a_stop = relevant_match[0] + relevant_match[2] - 1
+    a_stop = relevant_match[0] + relevant_match[2]
     b_start = relevant_match[1]
-    b_stop = relevant_match[1] + relevant_match[2] - 1
+    b_stop = relevant_match[1] + relevant_match[2]
     reverse = relevant_match[3]
 
     # fix b start and stop if in reverse
     if reverse:
-        b_start = len(b_domains) - b_start - relevant_match[2]
-        b_stop = len(b_domains) - b_stop
+        old_start = b_start
+        b_start = len(b_domains) - b_stop
+        b_stop = len(b_domains) - old_start
 
     a_cds_start = a_domain_cds_idx[a_start]
-    a_cds_stop = a_domain_cds_idx[a_stop] + 1
+    a_cds_stop = a_domain_cds_idx[a_stop]
     b_cds_start = b_domain_cds_idx[b_start]
-    b_cds_stop = b_domain_cds_idx[b_stop] + 1
+    b_cds_stop = b_domain_cds_idx[b_stop]
 
     return a_cds_start, a_cds_stop, b_cds_start, b_cds_stop, reverse
 
