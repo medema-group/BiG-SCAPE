@@ -280,6 +280,8 @@ def run_bigscape(run: dict) -> None:
     # & egde param id (account for weights/alignment mode) to use only correct edges
     logging.info("Generating families")
 
+    bs_families.reset_db_families()
+
     # cluster mode
     if not run["query_bgc_path"]:
         for cutoff in run["gcf_cutoffs"]:

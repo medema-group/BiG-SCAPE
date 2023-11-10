@@ -102,3 +102,11 @@ def save_to_db(regions_families):
     )
 
     DB.execute(insert_statement)
+
+
+def reset_db_families():
+    """Clear previous family assignments from database"""
+    bgc_record_family_table = DB.metadata.tables["bgc_record_family"]
+    clear_statement = bgc_record_family_table.delete()
+
+    DB.execute(clear_statement)
