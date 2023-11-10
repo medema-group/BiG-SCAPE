@@ -16,8 +16,9 @@ from .utility import edge_list_to_sim_matrix
 
 def generate_families(
     connected_component: list[tuple[int, int, float, float, float, float, int]],
+    edge_param_id: int,
     cutoff: float,
-) -> list[tuple[int, int, float]]:
+) -> list[tuple[int, int, float, int]]:
     """Execute affinity propagation on a connected component
 
     Args:
@@ -26,10 +27,11 @@ def generate_families(
         cutoff (float): cutoff used in generation of the connected_component
 
     Returns:
-        list[tuple[int, int, float]]: list of (region_id, family, cutoff) tuples
+        list[tuple[int, int, float, int]]: list of
+            (region_id, family, cutoff, edge_param_id) tuples
     """
-    # assemble list of (region_id, family, cutoff) tuples for easy insertion
-    # into db
+    # assemble list of (region_id, family, cutoff, edge_param_id) tuples for easy
+    # insertion into db
     regions_families = []
 
     # if there are only one or two edges, this can all be the same family
@@ -38,8 +40,8 @@ def generate_families(
         family_id = connected_component[0][0]
 
         for edge in connected_component:
-            regions_families.append((edge[0], family_id, cutoff))
-            regions_families.append((edge[1], family_id, cutoff))
+            regions_families.append((edge[0], family_id, cutoff, edge_param_id))
+            regions_families.append((edge[1], family_id, cutoff, edge_param_id))
 
         return regions_families
 
@@ -57,7 +59,7 @@ def generate_families(
         center = centers[label]
         family = node_ids[center]
 
-        regions_families.append((region_id, family, cutoff))
+        regions_families.append((region_id, family, cutoff, edge_param_id))
 
     return regions_families
 

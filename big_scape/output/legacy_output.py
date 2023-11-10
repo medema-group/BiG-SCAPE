@@ -846,9 +846,6 @@ def generate_bs_families_alignment(
         # collects records within this GCF
         family_records = [records[bgc_num] for bgc_num in family_members]
         family_member_db_ids = [rec._db_id for rec in family_records]
-        if family_db_id not in family_member_db_ids:
-            continue
-        # TODO: get rid of this once bug in fam assignment fixed
         fam_record_idx = family_member_db_ids.index(family_db_id)
         fam_gbk = family_records[fam_record_idx].parent_gbk
         if fam_gbk is None:
