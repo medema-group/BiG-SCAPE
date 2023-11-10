@@ -102,6 +102,9 @@ class TestNetwork(TestCase):
             gbks.append(gbk)
             gbk.save_all()
 
+        # gather all database ids to include
+        gbk_db_ids = set(gbk.region._db_id for gbk in gbks)
+
         # create a bunch of edges
         edges = gen_mock_edge_list(gbks)
 
@@ -113,7 +116,7 @@ class TestNetwork(TestCase):
         # which we expect to be (1, 2)
         expected_edge = (1, 2, 0.0, 1.0, 1.0, 1.0, 1)
 
-        actual_edge = bs_network.get_edge(set())
+        actual_edge = bs_network.get_edge(include_nodes=gbk_db_ids, exclude_nodes=set())
 
         self.assertEqual(expected_edge, actual_edge)
 
@@ -128,6 +131,9 @@ class TestNetwork(TestCase):
             gbks.append(gbk)
             gbk.save_all()
 
+        # gather all database ids to include
+        gbk_db_ids = set(gbk.region._db_id for gbk in gbks)
+
         # create a bunch of edges
         edges = gen_mock_edge_list(gbks)
 
@@ -139,7 +145,36 @@ class TestNetwork(TestCase):
         # so the first one should be (1, 3)
         expected_edge = (1, 3, 0.0, 1.0, 1.0, 1.0, 1)
 
-        actual_edge = bs_network.get_edge({2})
+        actual_edge = bs_network.get_edge(include_nodes=gbk_db_ids, exclude_nodes={2})
+
+        self.assertEqual(expected_edge, actual_edge)
+
+    def test_get_edge_with_subselection(self):
+        """Test the get_edge function with a subselection of included nodes"""
+        bs_data.DB.create_in_mem()
+
+        # create a bunch of gbk files
+        gbks = []
+        for i in range(10):
+            gbk = create_mock_gbk(i)
+            gbks.append(gbk)
+            gbk.save_all()
+
+        # gather half of database ids to include
+        gbk_db_ids = set(gbk.region._db_id for gbk in gbks[5:])
+
+        # create a bunch of edges
+        edges = gen_mock_edge_list(gbks)
+
+        # save the edges
+        for edge in edges:
+            bs_comparison.save_edge_to_db(edge)
+
+        # we will not ignore any edges but only include half of gbks
+        # so the first one should be (6, 7)
+        expected_edge = (6, 7, 0.0, 1.0, 1.0, 1.0, 1)
+
+        actual_edge = bs_network.get_edge(include_nodes=gbk_db_ids, exclude_nodes={})
 
         self.assertEqual(expected_edge, actual_edge)
 
@@ -178,3 +213,120 @@ class TestNetwork(TestCase):
         actual_edges = bs_network.get_edges(set([1]))
 
         self.assertEqual(expected_edges, actual_edges)
+
+    def test_get_connected_edges(self):
+        """Test the get_connected_edges function"""
+        bs_data.DB.create_in_mem()
+
+        # create a bunch of gbk files
+        gbks = []
+        for i in range(3):
+            gbk = create_mock_gbk(i)
+            gbks.append(gbk)
+            gbk.save_all()
+
+        # gather all database ids to include
+        gbk_db_ids = set(gbk.region._db_id for gbk in gbks)
+
+        # create a bunch of edges
+        edges = gen_mock_edge_list(gbks)
+
+        # save the edges
+        for edge in edges:
+            bs_comparison.save_edge_to_db(edge)
+
+        # take the first edge (1,2) as starting point
+        seed_edge = bs_network.get_edge(include_nodes=gbk_db_ids, exclude_nodes=set())
+
+        # nodes connected to starting edge to find new edges for: 1, 2
+        connected_nodes = set(list(seed_edge[:2]))
+        connected_component = set((seed_edge,))
+
+        # find all edges connected to nodes 1 and 2, excluding starting edge (1,2)
+        connected_edges = bs_network.get_connected_edges(
+            include_nodes=gbk_db_ids,
+            connected_nodes=connected_nodes,
+            connected_component=connected_component,
+        )
+
+        # all edges connected to only nodes 1 and 2 are therefore (1,3) and (2,3)
+        expected_edges = [(1, 3, 0.0, 1.0, 1.0, 1.0, 1), (2, 3, 0.0, 1.0, 1.0, 1.0, 1)]
+
+        self.assertEqual(expected_edges, connected_edges)
+
+    def test_get_connected_edges_with_subselection(self):
+        """Test the get_connected_edges function"""
+        bs_data.DB.create_in_mem()
+
+        # create a bunch of gbk files
+        gbks = []
+        for i in range(4):
+            gbk = create_mock_gbk(i)
+            gbks.append(gbk)
+            gbk.save_all()
+
+        # gather database ids to include, exclude the last gbk entry
+        gbk_db_ids = set(gbk.region._db_id for gbk in gbks[:-1])
+
+        # create a bunch of edges
+        edges = gen_mock_edge_list(gbks)
+
+        # save the edges
+        for edge in edges:
+            bs_comparison.save_edge_to_db(edge)
+
+        # take the first edge (1,2) as starting point
+        seed_edge = bs_network.get_edge(include_nodes=gbk_db_ids, exclude_nodes=set())
+
+        # nodes connected to starting edge to find new edges for: 1, 2
+        connected_nodes = set(list(seed_edge[:2]))
+        connected_component = set((seed_edge,))
+
+        # find all edges connected to nodes 1 and 2, excluding starting edge (1,2)
+        # since gbk 4 is not in include_nodes, its connected edges are not returned
+        connected_edges = bs_network.get_connected_edges(
+            include_nodes=gbk_db_ids,
+            connected_nodes=connected_nodes,
+            connected_component=connected_component,
+        )
+
+        # all edges connected to only nodes 1 and 2 are therefore (1,3) and (2,3)
+        expected_edges = [(1, 3, 0.0, 1.0, 1.0, 1.0, 1), (2, 3, 0.0, 1.0, 1.0, 1.0, 1)]
+
+        self.assertEqual(expected_edges, connected_edges)
+
+    def test_get_query_connected_component(self):
+        """Test get_query_connected_component function"""
+        bs_data.DB.create_in_mem()
+
+        # create a bunch of gbk files
+        gbks = []
+        for i in range(6):
+            gbk = create_mock_gbk(i)
+            gbks.append(gbk)
+            gbk.save_all()
+
+        # gather all records to include
+        gbk_regions = [gbk.region for gbk in gbks]
+
+        # create two connected components
+        edges = gen_mock_edge_list(gbks[:3])
+        edges = gen_mock_edge_list(gbks[3:])
+
+        # save the edges
+        for edge in edges:
+            bs_comparison.save_edge_to_db(edge)
+
+        # find cc for query record 5
+        query_cc = bs_network.get_query_connected_component(
+            include_records=gbk_regions, query_node_id=5
+        )
+
+        # only cc containing query should contain records 4, 5 and 6
+        expected_cc = [
+            (4, 5, 0.0, 1.0, 1.0, 1.0, 1),
+            (4, 6, 0.0, 1.0, 1.0, 1.0, 1),
+            (5, 6, 0.0, 1.0, 1.0, 1.0, 1),
+        ]
+
+        self.assertEqual(expected_cc, query_cc)

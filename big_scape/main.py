@@ -286,7 +286,9 @@ def run_bigscape(run: dict) -> None:
     if not run["query_bgc_path"]:
         for cutoff in run["gcf_cutoffs"]:
             logging.info(" -- Cutoff %s", cutoff)
-            for connected_component in bs_network.get_connected_components(cutoff):
+            for connected_component in bs_network.get_connected_components(
+                all_bgc_records, cutoff
+            ):
                 logging.debug(
                     "Found connected component with %d edges", len(connected_component)
                 )
@@ -304,13 +306,14 @@ def run_bigscape(run: dict) -> None:
 
     # query BGC mode
     if run["query_bgc_path"]:
+        # TODO: cc_cutoff does not seem to be used -> use to select largest cc later on?
         cc_cutoff: dict[str, list] = {}
 
         for cutoff in run["gcf_cutoffs"]:
             logging.info(" -- Cutoff %s", cutoff)
 
             query_connected_component = bs_network.get_query_connected_component(
-                query_node_id, cutoff
+                all_bgc_records, query_node_id, cutoff
             )
 
             cc_cutoff[cutoff] = query_connected_component
@@ -410,6 +413,7 @@ def run_bigscape(run: dict) -> None:
     # query
 
     if run["query_bgc_path"]:
+        # TODO: make sure the largest cc is used to construct bin
         query_bin = bs_comparison.ConnectedComponentPairGenerator(
             query_connected_component, "Query"
         )
