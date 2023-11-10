@@ -7,6 +7,7 @@ import logging
 # from enum import Enum
 from pathlib import Path
 from typing import Dict, Optional
+import hashlib
 
 
 # from dependencies
@@ -47,8 +48,9 @@ class GBK:
         source_type: SOURCE_TYPE
     """
 
-    def __init__(self, path, source_type) -> None:
+    def __init__(self, path, hash, source_type) -> None:
         self.path: Path = path
+        self.hash: str = hash
         self.metadata: Dict[str, str] = {}
         self.region: Optional[Region] = None
         self.nt_seq: SeqRecord.seq = None
@@ -158,6 +160,7 @@ class GBK:
             gbk_table.insert()
             .values(
                 path=str(self.path),
+                hash=str(self.hash),
                 nt_seq=str(self.nt_seq),
                 organism=organism,
                 taxonomy=taxonomy,
@@ -214,6 +217,7 @@ class GBK:
             gbk_table.select()
             .add_columns(
                 gbk_table.c.id,
+                gbk_table.c.hash,
                 gbk_table.c.path,
                 gbk_table.c.nt_seq,
                 gbk_table.c.organism,
@@ -227,7 +231,7 @@ class GBK:
 
         gbk_dict = {}
         for result in cursor_result.all():
-            new_gbk = GBK(Path(result.path), "")
+            new_gbk = GBK(Path(result.path), result.hash, "")
             new_gbk._db_id = result.id
             new_gbk.nt_seq = result.nt_seq
             new_gbk.metadata["organism"] = result.organism
@@ -263,6 +267,7 @@ class GBK:
             gbk_table.select()
             .add_columns(
                 gbk_table.c.id,
+                gbk_table.c.hash,
                 gbk_table.c.path,
                 gbk_table.c.source_type,
                 gbk_table.c.nt_seq,
@@ -279,7 +284,7 @@ class GBK:
         if result is None:
             raise RuntimeError(f"No GBK with id {gbk_id}")
 
-        new_gbk = GBK(Path(result.path), result.source_type)
+        new_gbk = GBK(Path(result.path), result.hash, "")
         new_gbk._db_id = result.id
         new_gbk.nt_seq = result.nt_seq
         new_gbk.metadata["organism"] = result.organism
@@ -307,6 +312,7 @@ class GBK:
             gbk_table.select()
             .add_columns(
                 gbk_table.c.id,
+                gbk_table.c.hash,
                 gbk_table.c.path,
                 gbk_table.c.source_type,
                 gbk_table.c.nt_seq,
@@ -322,7 +328,7 @@ class GBK:
 
         gbk_dict = {}
         for result in cursor_result.all():
-            new_gbk = GBK(Path(result.path), result.source_type)
+            new_gbk = GBK(Path(result.path), result.hash, "")
             new_gbk._db_id = result.id
             new_gbk.nt_seq = result.nt_seq
             new_gbk.metadata["organism"] = result.organism
@@ -380,7 +386,14 @@ class GBK:
             GBK: GBK object
         """
 
-        gbk = cls(path, source_type)
+        # get unique content hash
+        f = open(path, "r")
+        data = f.read()
+        f.close()
+        data = data.encode("utf-8")  # type: ignore
+        hash = hashlib.sha256(data).hexdigest()  # type: ignore
+
+        gbk = cls(path, hash, source_type)
 
         # get record. should only ever be one for Antismash GBK
         record: SeqRecord = next(SeqIO.parse(path, "genbank"))
@@ -590,13 +603,13 @@ class GBK:
         return f"GBK {self.path.name}, {len(self.genes)} genes"
 
     def __hash__(self) -> int:
-        return hash(self.path)
+        return hash(self.hash)
 
     def __eq__(self, other) -> bool:
         if not isinstance(other, GBK):
             return False
 
-        if self.path is None or other.path is None:
+        if self.hash is None or other.hash is None:
             return False
 
-        return self.path == other.path
+        return self.hash == other.hash

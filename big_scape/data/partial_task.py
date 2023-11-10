@@ -30,6 +30,7 @@ def find_minimum_task(gbks: list[GBK]):
     input_data_state = get_input_data_state(gbks)
 
     if input_data_state.value < bs_enums.INPUT_TASK.SAME_DATA.value:
+        # gbks from input need to be loaded into the in-memory database
         return bs_enums.TASK.LOAD_GBKS
 
     hmm_data_state = get_hmm_data_state(gbks)
