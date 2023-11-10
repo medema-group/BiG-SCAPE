@@ -506,6 +506,14 @@ def find_domain_lcs_region(
     b_cds_start = b_domain_cds_idx[b_start]
     b_cds_stop = b_domain_cds_idx[b_stop]
 
+    # final check: it could happen that the start and stop of the domain LCS is in the
+    # same CDS. in this case, the stop needs to be incremented by one
+    if a_cds_start == a_cds_stop:
+        a_cds_stop += 1
+
+    if b_cds_start == b_cds_stop:
+        b_cds_stop += 1
+
     return a_cds_start, a_cds_stop, b_cds_start, b_cds_stop, reverse
 
 
