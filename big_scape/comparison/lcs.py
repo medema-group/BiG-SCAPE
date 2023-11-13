@@ -493,7 +493,11 @@ def find_domain_lcs_region(
     a_cds_start = a_domain_cds_idx[a_start]
     a_cds_stop = a_domain_cds_idx[a_stop]
 
-    # fix b start and stop if in reverse
+    a_cds_start = a_domain_cds_idx[a_start]
+    a_cds_stop = a_domain_cds_idx[a_stop]
+
+    # fix b start and stop if in reverse. this means first flipping the domain indexes, getting the
+    # cds index, and then flipping the cds index. yay.
     if reverse:
         old_start = b_start
         b_start = len(b_domains) - b_stop
@@ -502,7 +506,10 @@ def find_domain_lcs_region(
     b_cds_start = b_domain_cds_idx[b_start]
     b_cds_stop = b_domain_cds_idx[b_stop]
 
-    # now fix the b cds start and stop
+    if reverse:
+        old_cds_start = b_cds_start
+        b_cds_start = len(b_cds) - b_cds_stop
+        b_cds_stop = len(b_cds) - old_cds_start
 
     # final check: it could happen that the start and stop of the domain LCS is in the
     # same CDS. in this case, the stop needs to be incremented by one
@@ -620,7 +627,7 @@ def find_domain_lcs_protocluster(
 
         # select for biosynthetic or normal list
         use_longest_list = longest_protocore if in_protocore else longest
-        use_central_list = longest_protocore if in_protocore else central
+        use_central_list = central_protocore if in_protocore else central
 
         # Length
 
@@ -686,16 +693,23 @@ def find_domain_lcs_protocluster(
     b_stop = relevant_match[1] + relevant_match[2]
     reverse = relevant_match[3]
 
-    # fix b start and stop if in reverse
+    a_cds_start = a_domain_cds_idx[a_start]
+    a_cds_stop = a_domain_cds_idx[a_stop]
+
+    # fix b start and stop if in reverse. this means first flipping the domain indexes, getting the
+    # cds index, and then flipping the cds index. yay.
     if reverse:
         old_start = b_start
         b_start = len(b_domains) - b_stop
         b_stop = len(b_domains) - old_start
 
-    a_cds_start = a_domain_cds_idx[a_start]
-    a_cds_stop = a_domain_cds_idx[a_stop]
     b_cds_start = b_domain_cds_idx[b_start]
     b_cds_stop = b_domain_cds_idx[b_stop]
+
+    if reverse:
+        old_cds_start = b_cds_start
+        b_cds_start = len(b_cds) - b_cds_stop
+        b_cds_stop = len(b_cds) - old_cds_start
 
     # final check: it could happen that the start and stop of the domain LCS is in the
     # same CDS. in this case, the stop needs to be incremented by one

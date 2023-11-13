@@ -133,7 +133,7 @@ class TestRegionDomainLCS(unittest.TestCase):
 
         lcs = bs_comparison.lcs.find_domain_lcs_region(pair)
 
-        self.assertEqual(lcs, (1, 4, 6, 9, True))
+        self.assertEqual(lcs, (1, 4, 1, 4, True))
 
     def test_lcs_domains_empty(self):
         """Test lcs detection for two empty domain lists
@@ -170,7 +170,7 @@ class TestRegionDomainLCS(unittest.TestCase):
 
         should return the most central match, not the first
         """
-        cds_a, cds_b = generate_mock_cds_lists(10, 10, [1, 3, 5], [1, 3, 6], True)
+        cds_a, cds_b = generate_mock_cds_lists(10, 10, [1, 3, 5], [1, 3, 5], True)
 
         pc_a = generate_mock_protocluster(cds_a, 2)
         pc_b = generate_mock_protocluster(cds_b, 2)
@@ -413,7 +413,7 @@ class TestProtoclusterDomainLCS(unittest.TestCase):
 
         record_pair = bs_comparison.RecordPair(protocluster_a, protocluster_b)
 
-        expected_lcs = (5, 7, 5, 7, True)
+        expected_lcs = (5, 7, 3, 5, True)
         actual_lcs = bs_comparison.lcs.find_domain_lcs_protocluster(record_pair)
 
         self.assertEqual(expected_lcs, actual_lcs)
@@ -481,8 +481,8 @@ class TestProtoclusterDomainLCS(unittest.TestCase):
         """Test lcs detection for two protoclusters. This is a case where a match is
         found of the same length forward and reverse, and they're both in the protocore
 
-        This prefers the forward match unless the reverse match is longer. in this case,
-        the forward is the same length as rev, so should be returned
+        This prefers the match closer to the center of the shortest domainlist. Since the lists are
+        of the same length, this defaults to A. In any case, the forward match should be chosen.
         """
 
         # domain/cds lists:
