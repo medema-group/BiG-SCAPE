@@ -12,7 +12,9 @@ import big_scape.genbank as bs_gbk
 import big_scape.comparison as bs_comparison
 
 
-def calculate_distances_mix(run: dict, gbks: list[bs_gbk.GBK]) -> None:
+def calculate_distances_mix(
+    run: dict, list_bgc_records: list[bs_gbk.BGCRecord]
+) -> None:
     """calculates distances between all records in a given dataset and saves them to the
     database
 
@@ -23,17 +25,9 @@ def calculate_distances_mix(run: dict, gbks: list[bs_gbk.GBK]) -> None:
 
     logging.info("Generating mix bin")
 
-    mix_bgc_regions: list[bs_gbk.BGCRecord] = []
+    edge_param_id = bs_comparison.get_edge_param_id(run, "mix")
 
-    for gbk in gbks:
-        if gbk.region is not None:
-            gbk_records = bs_gbk.bgc_record.get_sub_records(
-                gbk.region, run["record_type"]
-            )
-            mix_bgc_regions.extend(gbk_records)
-
-    mix_bin = bs_comparison.RecordPairGenerator("mix")
-    mix_bin.add_records(mix_bgc_regions)
+    mix_bin = bs_comparison.generate_mix_bin(list_bgc_records, edge_param_id)
 
     logging.info(mix_bin)
 

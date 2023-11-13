@@ -14,19 +14,20 @@ from big_scape.comparison import (
     RecordPairGenerator,
     QueryToRefRecordPairGenerator,
     RefToRefRecordPairGenerator,
-    ConnectedComponenetPairGenerator,
+    ConnectedComponentPairGenerator,
     RecordPair,
     save_edge_to_db,
     get_record_category,
     get_weight_category,
     as_class_bin_generator,
 )
-from big_scape.comparison import generate_mix
+from big_scape.comparison import generate_mix_bin
 from big_scape.genbank.candidate_cluster import CandidateCluster
 
 import big_scape.hmm as bs_hmm
 import big_scape.data as bs_data
 import big_scape.enums as bs_enums
+import big_scape.comparison as bs_comparison
 
 
 def create_mock_gbk(i, source_type: bs_enums.SOURCE_TYPE) -> GBK:
@@ -114,7 +115,7 @@ class TestBGCBin(TestCase):
 
         bgc_list = [bgc_a, bgc_b, bgc_c]
 
-        new_bin = RecordPairGenerator("test")
+        new_bin = RecordPairGenerator("test", 1)
 
         new_bin.add_records(bgc_list)
 
@@ -131,7 +132,7 @@ class TestBGCBin(TestCase):
         gbk_a = GBK(Path("test1.gbk"), "test")
         bgc_a = BGCRecord(gbk_a, 0, 0, 10, False, "")
 
-        new_bin = RecordPairGenerator("test")
+        new_bin = RecordPairGenerator("test", 1)
 
         new_bin.add_records([bgc_a])
 
@@ -152,7 +153,7 @@ class TestBGCBin(TestCase):
 
         bgc_list = [bgc_a, bgc_b, bgc_c, bgc_d]
 
-        new_bin = QueryToRefRecordPairGenerator("test")
+        new_bin = QueryToRefRecordPairGenerator("test", 1, "mix")
 
         new_bin.add_records(bgc_list)
 
@@ -177,7 +178,7 @@ class TestBGCBin(TestCase):
         # bgc_c, bgc_b
         bgc_list = [bgc_a, bgc_c, bgc_b]
 
-        new_bin = RecordPairGenerator("test")
+        new_bin = RecordPairGenerator("test", 1)
 
         new_bin.add_records(bgc_list)
 
@@ -207,14 +208,15 @@ class TestBGCBin(TestCase):
             create_mock_gbk(i, bs_enums.SOURCE_TYPE.REFERENCE) for i in range(1, 4)
         ]
 
-        query_to_ref_pair_generator = QueryToRefRecordPairGenerator("mix")
+        query_to_ref_pair_generator = QueryToRefRecordPairGenerator("mix", 1, "mix")
         source_records = [query_gbk.region]
         for ref_gbk in ref_gbks:
             source_records.append(ref_gbk.region)
 
         query_to_ref_pair_generator.add_records(source_records)
 
-        # expected edges
+        # expected edges    def test_ref_to_ref_pair_generator_first_iteration(self):
+
         expected_pairs = []
         for ref_gbk in ref_gbks:
             expected_pair = RecordPair(query_gbk.region, ref_gbk.region)
@@ -237,7 +239,7 @@ class TestBGCBin(TestCase):
             create_mock_gbk(i, bs_enums.SOURCE_TYPE.REFERENCE) for i in range(1, 5)
         ]
 
-        ref_to_ref_pair_generator = RefToRefRecordPairGenerator("mix")
+        ref_to_ref_pair_generator = RefToRefRecordPairGenerator("mix", 1, "mix")
         source_records = [query_gbk.region]
         for ref_gbk in ref_gbks:
             source_records.append(ref_gbk.region)
@@ -273,7 +275,7 @@ class TestBGCBin(TestCase):
                         1.0,
                         1.0,
                         1.0,
-                        "mix",
+                        1,
                         0,
                         0,
                         0,
@@ -283,7 +285,6 @@ class TestBGCBin(TestCase):
                         0,
                         0,
                         False,
-                        bs_enums.ALIGNMENT_MODE.GLOBAL,
                     )
                 )
             else:
@@ -296,7 +297,7 @@ class TestBGCBin(TestCase):
                         0.0,
                         0.0,
                         0.0,
-                        "mix",
+                        1,
                         0,
                         0,
                         0,
@@ -306,7 +307,6 @@ class TestBGCBin(TestCase):
                         0,
                         0,
                         False,
-                        bs_enums.ALIGNMENT_MODE.GLOBAL,
                     )
                 )
 
@@ -345,7 +345,7 @@ class TestBGCBin(TestCase):
             create_mock_gbk(i, bs_enums.SOURCE_TYPE.REFERENCE) for i in range(1, 5)
         ]
 
-        ref_to_ref_pair_generator = RefToRefRecordPairGenerator("mix")
+        ref_to_ref_pair_generator = RefToRefRecordPairGenerator("mix", 1, "mix")
         source_records = [query_gbk.region]
         for ref_gbk in ref_gbks:
             source_records.append(ref_gbk.region)
@@ -382,7 +382,7 @@ class TestBGCBin(TestCase):
                         1.0,
                         1.0,
                         1.0,
-                        "mix",
+                        1,
                         0,
                         0,
                         0,
@@ -392,7 +392,6 @@ class TestBGCBin(TestCase):
                         0,
                         0,
                         False,
-                        bs_enums.ALIGNMENT_MODE.GLOBAL,
                     )
                 )
             else:
@@ -405,7 +404,7 @@ class TestBGCBin(TestCase):
                         0.0,
                         0.0,
                         0.0,
-                        "mix",
+                        1,
                         0,
                         0,
                         0,
@@ -415,7 +414,6 @@ class TestBGCBin(TestCase):
                         0,
                         0,
                         False,
-                        bs_enums.ALIGNMENT_MODE.GLOBAL,
                     )
                 )
 
@@ -442,7 +440,7 @@ class TestBGCBin(TestCase):
                 1.0,
                 1.0,
                 1.0,
-                "mix",
+                1,
                 0,
                 0,
                 0,
@@ -452,7 +450,6 @@ class TestBGCBin(TestCase):
                 0,
                 0,
                 False,
-                bs_enums.ALIGNMENT_MODE.GLOBAL,
             )
         )
 
@@ -465,7 +462,7 @@ class TestBGCBin(TestCase):
                 0.0,
                 0.0,
                 0.0,
-                "mix",
+                1,
                 0,
                 0,
                 0,
@@ -475,7 +472,6 @@ class TestBGCBin(TestCase):
                 0,
                 0,
                 False,
-                bs_enums.ALIGNMENT_MODE.GLOBAL,
             )
         )
         save_edge_to_db(
@@ -486,7 +482,7 @@ class TestBGCBin(TestCase):
                 0.0,
                 0.0,
                 0.0,
-                "mix",
+                1,
                 0,
                 0,
                 0,
@@ -496,7 +492,6 @@ class TestBGCBin(TestCase):
                 0,
                 0,
                 False,
-                bs_enums.ALIGNMENT_MODE.GLOBAL,
             )
         )
         save_edge_to_db(
@@ -507,7 +502,7 @@ class TestBGCBin(TestCase):
                 0.0,
                 0.0,
                 0.0,
-                "mix",
+                1,
                 0,
                 0,
                 0,
@@ -517,7 +512,6 @@ class TestBGCBin(TestCase):
                 0,
                 0,
                 False,
-                bs_enums.ALIGNMENT_MODE.GLOBAL,
             )
         )
 
@@ -559,6 +553,17 @@ class TestBGCBin(TestCase):
         """
 
         bs_data.DB.create_in_mem()
+
+        run = {
+            "alignment_mode": bs_enums.ALIGNMENT_MODE.AUTO,
+            "legacy_weights": True,
+            "classify": bs_enums.CLASSIFY_MODE.CATEGORY,
+        }
+        weights = "mix"
+
+        edge_param_id = bs_comparison.get_edge_param_id(run, weights)
+        list([edge_param_id])
+
         query_gbk = create_mock_gbk(0, bs_enums.SOURCE_TYPE.QUERY)
         # query -> test_path_0.gbk, rec_id 1
         query_gbk.save_all()
@@ -582,7 +587,7 @@ class TestBGCBin(TestCase):
                 1.0,
                 1.0,
                 1.0,
-                "mix",
+                1,
             ),
             (
                 query_gbk.region._db_id,
@@ -591,7 +596,7 @@ class TestBGCBin(TestCase):
                 0.0,
                 0.0,
                 0.0,
-                "mix",
+                1,
             ),
             (
                 ref_gbks[0].region._db_id,
@@ -600,7 +605,7 @@ class TestBGCBin(TestCase):
                 1.0,
                 1.0,
                 1.0,
-                "mix",
+                1,
             ),
         ]
 
@@ -613,7 +618,7 @@ class TestBGCBin(TestCase):
         # )
         expected_record_ids = [1, 2, 3]
 
-        cc_pair_generator = ConnectedComponenetPairGenerator(connected_component, "mix")
+        cc_pair_generator = ConnectedComponentPairGenerator(connected_component, "mix")
         cc_pair_generator.add_records(source_records)
 
         actual_record_ids = cc_pair_generator.record_ids = [1, 2, 3]
@@ -639,7 +644,7 @@ class TestBGCBin(TestCase):
             source_records.append(ref_gbk.region)
             ref_gbk.save_all()
 
-        new_bin = RecordPairGenerator("Test", "mix")
+        new_bin = RecordPairGenerator("Test", weights="mix", edge_param_id=1)
         new_bin.add_records(source_records)
 
         # making query <-> ref_1 edge with distance 0.0
@@ -652,7 +657,7 @@ class TestBGCBin(TestCase):
                 1.0,
                 1.0,
                 1.0,
-                "mix",
+                1,
                 0,
                 0,
                 0,
@@ -662,7 +667,6 @@ class TestBGCBin(TestCase):
                 0,
                 0,
                 False,
-                bs_enums.ALIGNMENT_MODE.GLOBAL,
             )
         )
 
@@ -674,7 +678,7 @@ class TestBGCBin(TestCase):
                 0.0,
                 0.0,
                 0.0,
-                "mix",
+                1,
                 0,
                 0,
                 0,
@@ -684,7 +688,6 @@ class TestBGCBin(TestCase):
                 0,
                 0,
                 False,
-                bs_enums.ALIGNMENT_MODE.GLOBAL,
             )
         )
 
@@ -696,7 +699,7 @@ class TestBGCBin(TestCase):
                 1.0,
                 1.0,
                 1.0,
-                "mix",
+                1,
                 0,
                 0,
                 0,
@@ -706,7 +709,6 @@ class TestBGCBin(TestCase):
                 0,
                 0,
                 False,
-                bs_enums.ALIGNMENT_MODE.GLOBAL,
             )
         )
 
@@ -741,7 +743,7 @@ class TestMixComparison(TestCase):
 
         bgc_list = [bgc_a, bgc_b, bgc_c]
 
-        new_bin = generate_mix(bgc_list)
+        new_bin = generate_mix_bin(bgc_list, 1)
 
         # expected representation of the bin object
         expected_pair_count = 3
@@ -836,6 +838,7 @@ class TestBinGenerators(TestCase):
         """Tests whether an antismash bin is correclty generated given a weight label"""
 
         "Bin 'PKS': 1 pairs from 2 BGC records"
+        bs_data.DB.create_in_mem()
 
         gbk_1 = GBK(Path("test"), source_type=bs_enums.SOURCE_TYPE.QUERY)
         gbk_1.region = mock_region()
@@ -855,12 +858,8 @@ class TestBinGenerators(TestCase):
 
         # gbks = [gbk_1.region, gbk_2.region]
         gbks = [protocore_1, protocore_2]
-        weights = ["mix", "legacy_weights"]
-        class_modes = [bs_enums.CLASSIFY_MODE.CLASS, bs_enums.CLASSIFY_MODE.CATEGORY]
 
-        seen_dict = OrderedDict()
         expected_dict = OrderedDict()
-
         expected_dict = {
             "classmix": "T1PKSmix",
             "categorymix": "PKSmix",
@@ -868,9 +867,73 @@ class TestBinGenerators(TestCase):
             "categorylegacy_weights": "PKST1PKS",
         }
 
-        for weight in weights:
-            for mode in class_modes:
-                bin = next(as_class_bin_generator(gbks, weight, mode))
-                seen_dict[str(mode.value) + weight] = bin.label + bin.weights
+        # run_class_mix = {
+        #     "alignment_mode": bs_enums.ALIGNMENT_MODE.AUTO,
+        #     "legacy_weights": False,
+        #     "classify": bs_enums.CLASSIFY_MODE.CLASS,
+        # }
 
-        self.assertEqual(expected_dict, seen_dict)
+        run_category_weights = {
+            "alignment_mode": bs_enums.ALIGNMENT_MODE.AUTO,
+            "legacy_weights": True,
+            "classify": bs_enums.CLASSIFY_MODE.CATEGORY,
+        }
+
+        bin = next(as_class_bin_generator(gbks, run_category_weights))
+        expected_combo = expected_dict["categorylegacy_weights"]
+        seen_combo = bin.label + bin.weights
+
+        self.assertEqual(expected_combo, seen_combo)
+
+    def test_get_edge_params_id_insert(self):
+        """Tests insertion of edge params into the database when not there"""
+
+        bs_data.DB.create_in_mem()
+        run = {
+            "alignment_mode": bs_enums.ALIGNMENT_MODE.AUTO,
+            "legacy_weights": True,
+            "classify": bs_enums.CLASSIFY_MODE.CATEGORY,
+        }
+        weights = "mix"
+
+        expected_id = 1
+        actual_id = bs_comparison.get_edge_param_id(run, weights)
+
+        self.assertEqual(expected_id, actual_id)
+
+    def test_get_edge_params_id_fetch(self):
+        """Tests getting edge params from the database when already there"""
+
+        bs_data.DB.create_in_mem()
+        run = {
+            "alignment_mode": bs_enums.ALIGNMENT_MODE.AUTO,
+            "legacy_weights": True,
+            "classify": bs_enums.CLASSIFY_MODE.CATEGORY,
+        }
+
+        first_id = bs_comparison.get_edge_param_id(run, "mix")
+        list([first_id])
+        second_id = bs_comparison.get_edge_param_id(run, "mix")
+
+        expected_id = 1
+
+        self.assertEqual(expected_id, second_id)
+
+    def test_get_edge_weight(self):
+        """Tests whether an edge weight gets correctly fetched from the database"""
+
+        bs_data.DB.create_in_mem()
+        run = {
+            "alignment_mode": bs_enums.ALIGNMENT_MODE.AUTO,
+            "legacy_weights": True,
+            "classify": bs_enums.CLASSIFY_MODE.CATEGORY,
+        }
+
+        first_id = bs_comparison.get_edge_param_id(run, "mix")
+        second_id = bs_comparison.get_edge_param_id(run, "other")
+        list([first_id, second_id])
+
+        weights = bs_comparison.get_edge_weight(second_id)
+        expected_weights = "other"
+
+        self.assertEqual(expected_weights, weights)

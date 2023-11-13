@@ -87,9 +87,11 @@ def calculate_distances_query(run: dict, gbks: list[bs_gbk.GBK]) -> None:
     else:
         weights = "mix"
 
+    edge_param_id = bs_comparison.get_edge_param_id(run, weights)
+
     # generate inital query -> ref pairs
     query_to_ref_bin = bs_comparison.QueryToRefRecordPairGenerator(
-        label="Query_Ref", weights=weights
+        "Query_Ref", edge_param_id, weights
     )
     query_to_ref_bin.add_records(bgcs_records)
 
@@ -121,7 +123,7 @@ def calculate_distances_query(run: dict, gbks: list[bs_gbk.GBK]) -> None:
     # now we expand these edges from reference to other reference
     # TODO: see if we can implement missing for these
     ref_to_ref_bin = bs_comparison.RefToRefRecordPairGenerator(
-        label="Ref_Ref", weights="mix"
+        "Ref_Ref", edge_param_id, weights
     )
     ref_to_ref_bin.add_records(bgcs_records)
 
