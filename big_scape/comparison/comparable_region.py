@@ -23,6 +23,20 @@ if TYPE_CHECKING:  # pragma: no cover
 class ComparableRegion:
     """Class describing the comparable region between a pair of BGCs
 
+    Important notes:
+
+    This class is used to store the comparable region between two records. It is used to
+    calculate the JC, AI, and DSS scores between two records. The start and stop of the
+    comparable region correspond to the CDS indexes of each record.
+
+    Comparable regions are initialized with coordinates CDS including domains. This is used in LCS
+    and extend to determine the comparable region. After LCS and extend, the comparable region is
+    recalculated to include all CDS, including those without domains using the inflate method.
+
+    Reverse indicates whether, before working on the CDS lists, the CDS list for record B should be
+    reversed. This is detected in LCS. The B CDS start and stop do not change, and reflect the start
+    and stop once the list is already reversed.
+
     Properties:
         pair: BGCPair
         a_start: int
