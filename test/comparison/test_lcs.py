@@ -178,7 +178,7 @@ class TestRegionDomainLCS(unittest.TestCase):
 
         lcs = bs_comparison.lcs.find_domain_lcs_region(pair)
 
-        self.assertEqual(lcs, (5, 6, 3, 4, True))
+        self.assertEqual(lcs, (5, 6, 5, 6, True))
 
     def test_lcs_domains_len_multiple(self):
         """Test lcs detection for two domain lists where there are equal matches of
@@ -210,7 +210,7 @@ class TestRegionDomainLCS(unittest.TestCase):
 
         lcs = bs_comparison.lcs.find_domain_lcs_region(pair)
 
-        self.assertEqual(lcs, (1, 4, 6, 9, True))
+        self.assertEqual(lcs, (1, 4, 1, 4, True))
 
 
 class TestProtoclusterDomainLCS(unittest.TestCase):
@@ -331,7 +331,7 @@ class TestProtoclusterDomainLCS(unittest.TestCase):
 
         record_pair = bs_comparison.RecordPair(protocluster_a, protocluster_b)
 
-        expected_lcs = (1, 6, 1, 6, False)
+        expected_lcs = (1, 4, 1, 4, False)
         actual_lcs = bs_comparison.lcs.find_domain_lcs_protocluster(record_pair)
 
         self.assertEqual(expected_lcs, actual_lcs)
@@ -347,7 +347,7 @@ class TestProtoclusterDomainLCS(unittest.TestCase):
 
         record_pair = bs_comparison.RecordPair(protocluster_a, protocluster_b)
 
-        expected_lcs = (1, 6, 1, 6, True)
+        expected_lcs = (1, 4, 1, 4, True)
         actual_lcs = bs_comparison.lcs.find_domain_lcs_protocluster(record_pair)
 
         self.assertEqual(expected_lcs, actual_lcs)
@@ -413,7 +413,7 @@ class TestProtoclusterDomainLCS(unittest.TestCase):
 
         record_pair = bs_comparison.RecordPair(protocluster_a, protocluster_b)
 
-        expected_lcs = (5, 7, 3, 5, True)
+        expected_lcs = (5, 7, 5, 7, True)
         actual_lcs = bs_comparison.lcs.find_domain_lcs_protocluster(record_pair)
 
         self.assertEqual(expected_lcs, actual_lcs)
@@ -472,7 +472,7 @@ class TestProtoclusterDomainLCS(unittest.TestCase):
 
         record_pair = bs_comparison.RecordPair(protocluster_a, protocluster_b)
 
-        expected_lcs = (4, 7, 4, 7, False)
+        expected_lcs = (4, 5, 4, 5, False)
         actual_lcs = bs_comparison.lcs.find_domain_lcs_protocluster(record_pair)
 
         self.assertEqual(expected_lcs, actual_lcs)
@@ -509,7 +509,7 @@ class TestProtoclusterDomainLCS(unittest.TestCase):
 
         record_pair = bs_comparison.RecordPair(protocluster_a, protocluster_b)
 
-        expected_lcs = (4, 6, 4, 6, False)
+        expected_lcs = (4, 5, 4, 5, False)
         actual_lcs = bs_comparison.lcs.find_domain_lcs_protocluster(record_pair)
 
         self.assertEqual(expected_lcs, actual_lcs)
@@ -544,7 +544,7 @@ class TestProtoclusterDomainLCS(unittest.TestCase):
 
         record_pair = bs_comparison.RecordPair(protocluster_a, protocluster_b)
 
-        expected_lcs = (6, 9, 2, 5, True)
+        expected_lcs = (4, 5, 2, 3, True)
         actual_lcs = bs_comparison.lcs.find_domain_lcs_protocluster(record_pair)
 
         self.assertEqual(expected_lcs, actual_lcs)
