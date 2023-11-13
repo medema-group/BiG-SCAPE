@@ -299,7 +299,7 @@ def run_bigscape(run: dict) -> None:
                 )
 
                 regions_families = bs_families.generate_families(
-                    connected_component, edge_param_id, cutoff
+                    connected_component, "mix", cutoff
                 )
 
                 # save families to database
@@ -316,10 +316,10 @@ def run_bigscape(run: dict) -> None:
             for cutoff in run["gcf_cutoffs"]:
                 logging.info(" -- Cutoff %s", cutoff)
                 for connected_component in bs_network.get_connected_components(
-                    all_bgc_records, edge_param_id, cutoff
+                    bin.source_records, edge_param_id, cutoff
                 ):
                     regions_families = bs_families.generate_families(
-                        connected_component, edge_param_id, cutoff
+                        connected_component, bin.label, cutoff
                     )
                     bs_families.save_to_db(regions_families)
         DB.commit()
@@ -333,10 +333,10 @@ def run_bigscape(run: dict) -> None:
             for cutoff in run["gcf_cutoffs"]:
                 logging.info(" -- Cutoff %s", cutoff)
                 for connected_component in bs_network.get_connected_components(
-                    all_bgc_records, edge_param_id, cutoff
+                    bin.source_records, edge_param_id, cutoff
                 ):
                     regions_families = bs_families.generate_families(
-                        connected_component, edge_param_id, cutoff
+                        connected_component, bin.label, cutoff
                     )
                     bs_families.save_to_db(regions_families)
         DB.commit()
@@ -365,7 +365,7 @@ def run_bigscape(run: dict) -> None:
             )
 
             regions_families = bs_families.generate_families(
-                query_connected_component, edge_param_id, cutoff
+                query_connected_component, weights, cutoff
             )
 
             # save families to database

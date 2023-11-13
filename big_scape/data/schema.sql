@@ -32,10 +32,9 @@ CREATE TABLE IF NOT EXISTS bgc_record_family (
     record_id INTEGER NOT NULL,
     family INTEGER NOT NULL,
     cutoff REAL NOT NULL,
-    edge_param_id INTEGER NOT NULL,
-    UNIQUE(record_id, family, cutoff, edge_param_id),
+    bin_label TEXT NOT NULL,
+    UNIQUE(record_id, family, cutoff, bin_label),
     FOREIGN KEY(record_id) REFERENCES bgc_record(id)
-    FOREIGN KEY(edge_param_id) REFERENCES edge_params(id)
 );
 
 CREATE TABLE IF NOT EXISTS scanned_cds (

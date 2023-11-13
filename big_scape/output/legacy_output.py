@@ -947,6 +947,7 @@ def generate_bs_families_members(
         bgc_families_table.select()
         .where(bgc_families_table.c.record_id.in_(pair_generator.record_ids))
         .where(bgc_families_table.c.cutoff == cutoff)
+        .where(bgc_families_table.c.bin_label == pair_generator.label)
     )
 
     result = DB.execute(select_statement).fetchall()
@@ -1302,6 +1303,7 @@ def write_clustering_file(run, cutoff, pair_generator) -> None:
             )
             .where(record_famly_table.c.record_id.in_(record_ids))
             .where(record_famly_table.c.cutoff == cutoff)
+            .where(record_famly_table.c.bin_label == bin_label)
         )
 
         rows = DB.execute(select_statement).fetchall()

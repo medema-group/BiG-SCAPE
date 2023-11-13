@@ -16,14 +16,15 @@ from .utility import edge_list_to_sim_matrix
 
 def generate_families(
     connected_component: list[tuple[int, int, float, float, float, float, int]],
-    edge_param_id: int,
+    bin_label: str,
     cutoff: float,
-) -> list[tuple[int, int, float, int]]:
+) -> list[tuple[int, int, float, str]]:
     """Execute affinity propagation on a connected component
 
     Args:
         connected_component (list[tuple[int, int, float, float, float, float, str]]):
             connected component in the form of a list of edges
+        bin_label (str): name of current bin to generate families for
         cutoff (float): cutoff used in generation of the connected_component
 
     Returns:
@@ -40,8 +41,8 @@ def generate_families(
         family_id = connected_component[0][0]
 
         for edge in connected_component:
-            regions_families.append((edge[0], family_id, cutoff, edge_param_id))
-            regions_families.append((edge[1], family_id, cutoff, edge_param_id))
+            regions_families.append((edge[0], family_id, cutoff, bin_label))
+            regions_families.append((edge[1], family_id, cutoff, bin_label))
 
         return regions_families
 
@@ -59,7 +60,7 @@ def generate_families(
         center = centers[label]
         family = node_ids[center]
 
-        regions_families.append((region_id, family, cutoff, edge_param_id))
+        regions_families.append((region_id, family, cutoff, bin_label))
 
     return regions_families
 
