@@ -7,7 +7,6 @@ import logging
 # from enum import Enum
 from pathlib import Path
 from typing import Dict, Optional
-import hashlib
 
 
 # from dependencies
@@ -48,9 +47,8 @@ class GBK:
         source_type: SOURCE_TYPE
     """
 
-    def __init__(self, path, hash, source_type) -> None:
+    def __init__(self, path, source_type) -> None:
         self.path: Path = path
-        self.hash: str = hash
         self.metadata: Dict[str, str] = {}
         self.region: Optional[Region] = None
         self.nt_seq: SeqRecord.seq = None
@@ -161,7 +159,6 @@ class GBK:
             .prefix_with("OR REPLACE")
             .values(
                 path=str(self.path),
-                hash=str(self.hash),
                 nt_seq=str(self.nt_seq),
                 organism=organism,
                 taxonomy=taxonomy,
@@ -218,7 +215,6 @@ class GBK:
             gbk_table.select()
             .add_columns(
                 gbk_table.c.id,
-                gbk_table.c.hash,
                 gbk_table.c.path,
                 gbk_table.c.nt_seq,
                 gbk_table.c.organism,
@@ -232,7 +228,7 @@ class GBK:
 
         gbk_dict = {}
         for result in cursor_result.all():
-            new_gbk = GBK(Path(result.path), result.hash, "")
+            new_gbk = GBK(Path(result.path), "")
             new_gbk._db_id = result.id
             new_gbk.nt_seq = result.nt_seq
             new_gbk.metadata["organism"] = result.organism
@@ -250,17 +246,15 @@ class GBK:
         return list(gbk_dict.values())
 
     @staticmethod
-    def load_many(input_gbks: list[GBK]) -> list[GBK]:
-        """Load a list of GBK objects from the database
+    def load_one(gbk_id: int) -> GBK:
+        """Load a single GBK object from the database
 
         Args:
-            gbk_ids (list[int]): list of ids of gbk to load
+            gbk_id (int): id of gbk to load
 
         Returns:
-            list[GBK]: loaded GBK objects
+            GBK: loaded GBK object
         """
-
-        input_gbk_hashes = [gbk.hash for gbk in input_gbks]
 
         if not DB.metadata:
             raise RuntimeError("DB.metadata is None")
@@ -270,14 +264,58 @@ class GBK:
             gbk_table.select()
             .add_columns(
                 gbk_table.c.id,
-                gbk_table.c.hash,
                 gbk_table.c.path,
+                gbk_table.c.source_type,
                 gbk_table.c.nt_seq,
                 gbk_table.c.organism,
                 gbk_table.c.taxonomy,
                 gbk_table.c.description,
             )
-            .where(gbk_table.c.hash.in_(input_gbk_hashes))
+            .where(gbk_table.c.id == gbk_id)
+            .compile()
+        )
+
+        result = DB.execute(select_query).fetchone()
+
+        if result is None:
+            raise RuntimeError(f"No GBK with id {gbk_id}")
+
+        new_gbk = GBK(Path(result.path), result.source_type)
+        new_gbk._db_id = result.id
+        new_gbk.nt_seq = result.nt_seq
+        new_gbk.metadata["organism"] = result.organism
+        new_gbk.metadata["taxonomy"] = result.taxonomy
+        new_gbk.metadata["description"] = result.description
+
+        return new_gbk
+
+    @staticmethod
+    def load_many(gbk_ids: list[int]) -> list[GBK]:
+        """Load a list of GBK objects from the database
+
+        Args:
+            gbk_ids (list[int]): list of ids of gbk to load
+
+        Returns:
+            list[GBK]: loaded GBK objects
+        """
+
+        if not DB.metadata:
+            raise RuntimeError("DB.metadata is None")
+
+        gbk_table = DB.metadata.tables["gbk"]
+        select_query = (
+            gbk_table.select()
+            .add_columns(
+                gbk_table.c.id,
+                gbk_table.c.path,
+                gbk_table.c.source_type,
+                gbk_table.c.nt_seq,
+                gbk_table.c.organism,
+                gbk_table.c.taxonomy,
+                gbk_table.c.description,
+            )
+            .where(gbk_table.c.id.in_(gbk_ids))
             .compile()
         )
 
@@ -285,7 +323,7 @@ class GBK:
 
         gbk_dict = {}
         for result in cursor_result.all():
-            new_gbk = GBK(Path(result.path), result.hash, "")
+            new_gbk = GBK(Path(result.path), result.source_type)
             new_gbk._db_id = result.id
             new_gbk.nt_seq = result.nt_seq
             new_gbk.metadata["organism"] = result.organism
@@ -343,14 +381,7 @@ class GBK:
             GBK: GBK object
         """
 
-        # get unique content hash
-        f = open(path, "r")
-        data = f.read()
-        f.close()
-        data = data.encode("utf-8")  # type: ignore
-        hash = hashlib.sha256(data).hexdigest()  # type: ignore
-
-        gbk = cls(path, hash, source_type)
+        gbk = cls(path, source_type)
 
         # get record. should only ever be one for Antismash GBK
         record: SeqRecord = next(SeqIO.parse(path, "genbank"))
@@ -560,13 +591,13 @@ class GBK:
         return f"GBK {self.path.name}, {len(self.genes)} genes"
 
     def __hash__(self) -> int:
-        return hash(self.hash)
+        return hash(self.path)
 
     def __eq__(self, other) -> bool:
         if not isinstance(other, GBK):
             return False
 
-        if self.hash is None or other.hash is None:
+        if self.path is None or other.path is None:
             return False
 
-        return self.hash == other.hash
+        return self.path == other.path

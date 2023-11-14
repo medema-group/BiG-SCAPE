@@ -31,7 +31,7 @@ import big_scape.comparison as bs_comparison
 
 
 def create_mock_gbk(i, source_type: bs_enums.SOURCE_TYPE) -> GBK:
-    gbk = GBK(Path(f"test_path_{i}.gbk"), str(i), source_type)
+    gbk = GBK(Path(f"test_path_{i}.gbk"), source_type)
     cds = CDS(0, 100)
     cds.parent_gbk = gbk
     cds.orf_num = 1
@@ -63,7 +63,7 @@ class TestBGCPair(TestCase):
         """Tests whether calling str() on a bin object returns an expected string
         representation of the object
         """
-        gbk = GBK(Path("test"), "test", bs_enums.SOURCE_TYPE.QUERY)
+        gbk = GBK(Path("test"), bs_enums.SOURCE_TYPE.QUERY)
 
         bgc_a = BGCRecord(gbk, 0, 0, 10, False, "")
         bgc_b = BGCRecord(gbk, 0, 10, 20, False, "")
@@ -83,7 +83,7 @@ class TestBGCPair(TestCase):
         """Tests whether initialization of a BGC pair where one of the BGCs does not
         have a parent GBK correctly throws a ValueError
         """
-        gbk = GBK("", "", "test")
+        gbk = GBK("", "")
 
         bgc_a = BGCRecord(gbk, 0, 0, 10, False, "")
 
@@ -108,7 +108,7 @@ class TestBGCBin(TestCase):
         """Tests whether calling str() on a bin object returns an expected string
         representation of the object
         """
-        parent_gbk = GBK(Path("test"), "test", source_type=bs_enums.SOURCE_TYPE.QUERY)
+        parent_gbk = GBK(Path("test"), source_type=bs_enums.SOURCE_TYPE.QUERY)
         bgc_a = BGCRecord(parent_gbk, 0, 0, 10, False, "")
         bgc_b = BGCRecord(parent_gbk, 0, 0, 10, False, "")
         bgc_c = BGCRecord(parent_gbk, 0, 0, 10, False, "")
@@ -129,7 +129,7 @@ class TestBGCBin(TestCase):
     def test_num_pairs_too_few_records(self):
         """tests if bin.num_pairs() correctly returns 0 if there is only one record in the bin"""
 
-        gbk_a = GBK(Path("test1.gbk"), "test", "test")
+        gbk_a = GBK(Path("test1.gbk"), "test")
         bgc_a = BGCRecord(gbk_a, 0, 0, 10, False, "")
 
         new_bin = RecordPairGenerator("test", 1)
@@ -144,12 +144,8 @@ class TestBGCBin(TestCase):
     def test_num_pairs_correct_with_query_ref(self):
         """Tests whether bin.num_pairs() correctly returns all query and ref but not ref <-> ref pairs"""
 
-        parent_gbk_query = GBK(
-            Path("test"), "test", source_type=bs_enums.SOURCE_TYPE.QUERY
-        )
-        parent_gbk_ref = GBK(
-            Path("test"), "test", source_type=bs_enums.SOURCE_TYPE.REFERENCE
-        )
+        parent_gbk_query = GBK(Path("test"), source_type=bs_enums.SOURCE_TYPE.QUERY)
+        parent_gbk_ref = GBK(Path("test"), source_type=bs_enums.SOURCE_TYPE.REFERENCE)
         bgc_a = BGCRecord(parent_gbk_query, 0, 0, 10, False, "")
         bgc_b = BGCRecord(parent_gbk_query, 0, 0, 10, False, "")
         bgc_c = BGCRecord(parent_gbk_ref, 0, 0, 10, False, "")
@@ -169,11 +165,11 @@ class TestBGCBin(TestCase):
     def test_legacy_sorting(self):
         """Tests whether the legacy sorting option in bin.pairs() correctly orders the pairs"""
 
-        gbk_a = GBK(Path("test1.gbk"), "test", "test")
+        gbk_a = GBK(Path("test1.gbk"), "test")
         bgc_a = BGCRecord(gbk_a, 0, 0, 10, False, "")
-        gbk_b = GBK(Path("test2.gbk"), "test", "test")
+        gbk_b = GBK(Path("test2.gbk"), "test")
         bgc_b = BGCRecord(gbk_b, 0, 0, 10, False, "")
-        gbk_c = GBK(Path("test3.gbk"), "test", "test")
+        gbk_c = GBK(Path("test3.gbk"), "test")
         bgc_c = BGCRecord(gbk_c, 0, 0, 10, False, "")
 
         # due to the order, this should generate a list of pairs as follows without legacy sort:
@@ -734,7 +730,7 @@ class TestBGCBin(TestCase):
 class TestMixComparison(TestCase):
     def test_mix_iter(self):
         """Tests whether a new mix bin can be created for comparison"""
-        gbk = GBK(Path("test"), "test", source_type=bs_enums.SOURCE_TYPE.QUERY)
+        gbk = GBK(Path("test"), source_type=bs_enums.SOURCE_TYPE.QUERY)
 
         bgc_a = BGCRecord(gbk, 0, 0, 10, False, "")
         bgc_a.parent_gbk = gbk
@@ -844,7 +840,7 @@ class TestBinGenerators(TestCase):
         "Bin 'PKS': 1 pairs from 2 BGC records"
         bs_data.DB.create_in_mem()
 
-        gbk_1 = GBK(Path("test"), "test", source_type=bs_enums.SOURCE_TYPE.QUERY)
+        gbk_1 = GBK(Path("test"), source_type=bs_enums.SOURCE_TYPE.QUERY)
         gbk_1.region = mock_region()
 
         region_1 = gbk_1.region
@@ -852,7 +848,7 @@ class TestBinGenerators(TestCase):
         protocluster_1 = cand_cluster_1.proto_clusters[1]
         protocore_1 = protocluster_1.proto_core[1]
 
-        gbk_2 = GBK(Path("test"), "test", source_type=bs_enums.SOURCE_TYPE.QUERY)
+        gbk_2 = GBK(Path("test"), source_type=bs_enums.SOURCE_TYPE.QUERY)
         gbk_2.region = mock_region()
 
         region_2 = gbk_2.region
