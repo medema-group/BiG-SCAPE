@@ -70,7 +70,7 @@ class TestHMMAlign(TestCase):
             "IMATEGYQSSGSSNITVSG"
         )
 
-        gbk = GBK("", "", bs_enums.SOURCE_TYPE.QUERY)
+        gbk = GBK("", bs_enums.SOURCE_TYPE.QUERY)
         gbk.metadata = {"organism": "test", "taxonomy": "test", "description": "test"}
         gbk.save()
 

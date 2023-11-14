@@ -188,7 +188,6 @@ class CandidateCluster(BGCRecord):
                 record_table.c.product,
             )
             .where(record_table.c.record_type == "cand_cluster")
-            .where(record_table.c.parent_id.in_(region_dict.keys()))
             .compile()
         )
 

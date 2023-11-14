@@ -62,7 +62,7 @@ class TestJaccard(TestCase):
         a_domains = [""]
         b_domains = [""]
 
-        gbk_a = GBK("", "", "")
+        gbk_a = GBK("", "")
         gbk_a.region = Region(gbk_a, 0, 0, 100, False, "")
 
         for a_domain in a_domains:
@@ -70,7 +70,7 @@ class TestJaccard(TestCase):
             gbk_a.genes.append(cds_a)
             cds_a.hsps.append(HSP(cds_a, a_domain, 100, 0, 30))
 
-        gbk_b = GBK("", "", "")
+        gbk_b = GBK("", "")
         gbk_b.region = Region(gbk_b, 0, 0, 100, False, "")
 
         for b_domain in b_domains:
@@ -112,7 +112,7 @@ class TestJaccard(TestCase):
             "PF00005",
         ]
 
-        gbk_a = GBK("", "", "")
+        gbk_a = GBK("", "")
         gbk_a.region = Region(gbk_a, 0, 0, 100, False, "")
 
         for a_domain in a_domains:
@@ -120,7 +120,7 @@ class TestJaccard(TestCase):
             gbk_a.genes.append(cds_a)
             cds_a.hsps.append(HSP(cds_a, a_domain, 100, 0, 30))
 
-        gbk_b = GBK("", "", "")
+        gbk_b = GBK("", "")
         gbk_b.region = Region(gbk_b, 0, 0, 100, False, "")
 
         for b_domain in b_domains:
@@ -160,7 +160,7 @@ class TestJaccard(TestCase):
             "PF00004",
         ]
 
-        gbk_a = GBK("", "", "")
+        gbk_a = GBK("", "")
         gbk_a.region = Region(gbk_a, 0, 0, 100, False, "")
         gbk_a.region.parent_gbk = gbk_a
 
@@ -169,7 +169,7 @@ class TestJaccard(TestCase):
             gbk_a.genes.append(cds_a)
             cds_a.hsps.append(HSP(cds_a, a_domain, 100, 0, 30))
 
-        gbk_b = GBK("", "", "")
+        gbk_b = GBK("", "")
         gbk_b.region = Region(gbk_b, 0, 0, 100, False, "")
         gbk_b.region.parent_gbk = gbk_b
 
@@ -266,10 +266,10 @@ class TestAdjacency(TestCase):
             "PF00003",
         ]
 
-        gbk_a = GBK("", "", "")
+        gbk_a = GBK("", "")
         gbk_a.region = Region(gbk_a, 0, 0, 100, False, "")
 
-        gbk_b = GBK("", "", "")
+        gbk_b = GBK("", "")
         gbk_b.region = Region(gbk_b, 0, 0, 100, False, "")
 
         for shared_domain in shared_domains:
@@ -301,10 +301,10 @@ class TestDSS(TestCase):
         a_domains = ["A", "B", "C"]
         b_domains = ["A", "B", "C"]
 
-        gbk_a = GBK("", "", "")
+        gbk_a = GBK("", "")
         gbk_a.region = Region(gbk_a, 0, 0, 100, False, "")
 
-        gbk_b = GBK("", "", "")
+        gbk_b = GBK("", "")
         gbk_b.region = Region(gbk_b, 0, 0, 100, False, "")
 
         for a_domain in a_domains:
@@ -333,10 +333,10 @@ class TestDSS(TestCase):
         a_domains = ["A", "B", "C"]
         b_domains = ["C", "D", "E"]
 
-        gbk_a = GBK("", "", "")
+        gbk_a = GBK("", "")
         gbk_a.region = Region(gbk_a, 0, 0, 100, False, "")
 
-        gbk_b = GBK("", "", "")
+        gbk_b = GBK("", "")
         gbk_b.region = Region(gbk_b, 0, 0, 100, False, "")
 
         for a_domain in a_domains:
@@ -366,10 +366,10 @@ class TestDSS(TestCase):
 
         anchor_domains_set = set(["A", "E"])
 
-        gbk_a = GBK("", "", "")
+        gbk_a = GBK("", "")
         gbk_a.region = Region(gbk_a, 0, 0, 100, False, "")
 
-        gbk_b = GBK("", "", "")
+        gbk_b = GBK("", "")
         gbk_b.region = Region(gbk_b, 0, 0, 100, False, "")
 
         for a_domain in a_domains:
