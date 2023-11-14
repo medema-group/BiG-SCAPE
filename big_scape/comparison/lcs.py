@@ -491,10 +491,11 @@ def find_domain_lcs_region(
     reverse = relevant_match[3]
 
     a_cds_start = a_domain_cds_idx[a_start]
-    a_cds_stop = a_domain_cds_idx[a_stop]
-
-    a_cds_start = a_domain_cds_idx[a_start]
-    a_cds_stop = a_domain_cds_idx[a_stop]
+    # cds stop may be end of cds
+    if a_stop == len(a_domains):
+        a_cds_stop = len(a_cds)
+    else:
+        a_cds_stop = a_domain_cds_idx[a_stop]
 
     # fix b start and stop if in reverse. this means first flipping the domain indexes, getting the
     # cds index, and then flipping the cds index. yay.
@@ -504,7 +505,12 @@ def find_domain_lcs_region(
         b_stop = len(b_domains) - old_start
 
     b_cds_start = b_domain_cds_idx[b_start]
-    b_cds_stop = b_domain_cds_idx[b_stop]
+
+    # cds stop may be end of cds
+    if b_stop == len(b_domains):
+        b_cds_stop = len(b_cds)
+    else:
+        b_cds_stop = b_domain_cds_idx[b_stop]
 
     if reverse:
         old_cds_start = b_cds_start
@@ -694,7 +700,11 @@ def find_domain_lcs_protocluster(
     reverse = relevant_match[3]
 
     a_cds_start = a_domain_cds_idx[a_start]
-    a_cds_stop = a_domain_cds_idx[a_stop]
+    # cds stop may be end of cds
+    if a_stop == len(a_domains):
+        a_cds_stop = len(a_cds)
+    else:
+        a_cds_stop = a_domain_cds_idx[a_stop]
 
     # fix b start and stop if in reverse. this means first flipping the domain indexes, getting the
     # cds index, and then flipping the cds index. yay.
@@ -704,7 +714,12 @@ def find_domain_lcs_protocluster(
         b_stop = len(b_domains) - old_start
 
     b_cds_start = b_domain_cds_idx[b_start]
-    b_cds_stop = b_domain_cds_idx[b_stop]
+
+    # cds stop may be end of cds
+    if b_stop == len(b_domains):
+        b_cds_stop = len(b_cds)
+    else:
+        b_cds_stop = b_domain_cds_idx[b_stop]
 
     if reverse:
         old_cds_start = b_cds_start
