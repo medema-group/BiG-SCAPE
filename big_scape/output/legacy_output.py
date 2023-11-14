@@ -972,9 +972,6 @@ def generate_bs_families_members(
     if not DB.metadata:
         raise RuntimeError("DB.metadata is None")
 
-    # SELECT bgc_record_family.record_id, family.center_id, family.cutoff, family.bin_label
-    # FROM bgc_record_family
-    # INNER JOIN family ON bgc_record_family.family_id == family.id
     # get all families from the database
     family_table = DB.metadata.tables["family"]
     bgc_families_table = DB.metadata.tables["bgc_record_family"]
