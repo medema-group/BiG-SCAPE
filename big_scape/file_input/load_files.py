@@ -275,11 +275,20 @@ def load_gbks(run: dict, bigscape_dir: Path) -> list[GBK]:
         )
         input_gbks.extend(reference_gbks)
 
+    # remove eventual duplicates from input gbks
+    unique_gbks = set()
+    for gbk in input_gbks:
+        if gbk in unique_gbks:
+            logging.info("Skipping duplicate %s", gbk)
+            continue
+        unique_gbks.add(gbk)
+
+    input_gbks = list(unique_gbks)
+
     # find the minimum task set for these gbks
     # if there is no database, create a new one and load in all the input stuff
     if not run["db_path"].exists():
         bs_data.DB.create_in_mem()
-
         all_cds: list[bs_gbk.CDS] = []
         for gbk in input_gbks:
             gbk.save_all()

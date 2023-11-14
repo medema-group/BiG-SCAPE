@@ -158,6 +158,7 @@ class GBK:
         gbk_table = DB.metadata.tables["gbk"]
         insert_query = (
             gbk_table.insert()
+            .prefix_with("OR REPLACE")
             .values(
                 path=str(self.path),
                 hash=str(self.hash),
