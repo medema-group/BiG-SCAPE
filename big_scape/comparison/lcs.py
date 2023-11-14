@@ -381,12 +381,12 @@ def find_domain_lcs_region(
     # now we need to do something silly. we want to assemble a list of these matching
     # blocks, but we want to keep track of whether they are in reverse or not. this will
     # make it so we can do everything we need to do in one loop later
-    matchin_block_dirs = []
+    matching_block_dirs = []
     for matching_block in matching_blocks_fwd:
-        matchin_block_dirs.append((matching_block + (False,)))
+        matching_block_dirs.append((matching_block + (False,)))
 
     for matching_block in matching_blocks_rev:
-        matchin_block_dirs.append((matching_block + (True,)))
+        matching_block_dirs.append((matching_block + (True,)))
 
     # this is where the fun begins. we will use these lists to decide which match to
     # return later
@@ -398,7 +398,7 @@ def find_domain_lcs_region(
     central_biosynthetic: list[tuple[int, int, bool]] = []
     central: list[tuple[int, int, bool]] = []
 
-    for match_idx, matching_block_dir in enumerate(matchin_block_dirs):
+    for match_idx, matching_block_dir in enumerate(matching_block_dirs):
         start_a = matching_block_dir[0]
         stop_a = matching_block_dir[0] + matching_block_dir[2]
         start_b = matching_block_dir[1]
@@ -483,7 +483,7 @@ def find_domain_lcs_region(
         # this should never happen
         raise RuntimeError("No match found in LCS.")
 
-    relevant_match = matchin_block_dirs[match_idx]
+    relevant_match = matching_block_dirs[match_idx]
     a_start = relevant_match[0]
     a_stop = relevant_match[0] + relevant_match[2]
     b_start = relevant_match[1]
