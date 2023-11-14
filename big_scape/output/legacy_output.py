@@ -972,20 +972,30 @@ def generate_bs_families_members(
     if not DB.metadata:
         raise RuntimeError("DB.metadata is None")
 
+    # SELECT bgc_record_family.record_id, family.center_id, family.cutoff, family.bin_label
+    # FROM bgc_record_family
+    # INNER JOIN family ON bgc_record_family.family_id == family.id
     # get all families from the database
+    family_table = DB.metadata.tables["family"]
     bgc_families_table = DB.metadata.tables["bgc_record_family"]
 
     select_statement = (
-        bgc_families_table.select()
+        select(
+            bgc_families_table.c.record_id,
+            family_table.c.center_id,
+            family_table.c.cutoff,
+            family_table.c.bin_label,
+        )
+        .join(family_table, bgc_families_table.c.family_id == family_table.c.id)
         .where(bgc_families_table.c.record_id.in_(pair_generator.record_ids))
-        .where(bgc_families_table.c.cutoff == cutoff)
-        .where(bgc_families_table.c.bin_label == pair_generator.label)
+        .where(family_table.c.cutoff == cutoff)
+        .where(family_table.c.bin_label == pair_generator.label)
     )
 
     result = DB.execute(select_statement).fetchall()
 
     for row in result:
-        node_family[row.record_id] = row.family
+        node_family[row.record_id] = row.center_id
 
     families_members: dict[int, list[int]] = {}
 
@@ -1313,6 +1323,7 @@ def write_clustering_file(run, cutoff, pair_generator) -> None:
 
     gbk_table = DB.metadata.tables["gbk"]
     bgc_record_table = DB.metadata.tables["bgc_record"]
+    family_table = DB.metadata.tables["family"]
     record_famly_table = DB.metadata.tables["bgc_record_family"]
 
     record_ids = pair_generator.record_ids
@@ -1331,18 +1342,18 @@ def write_clustering_file(run, cutoff, pair_generator) -> None:
         select_statement = (
             select(
                 record_famly_table.c.record_id,
-                record_famly_table.c.family,
-                record_famly_table.c.cutoff,
+                record_famly_table.c.family_id,
             )
+            .join(family_table, record_famly_table.c.family_id == family_table.c.id)
             .where(record_famly_table.c.record_id.in_(record_ids))
-            .where(record_famly_table.c.cutoff == cutoff)
-            .where(record_famly_table.c.bin_label == bin_label)
+            .where(family_table.c.cutoff == cutoff)
+            .where(family_table.c.bin_label == bin_label)
         )
 
         rows = DB.execute(select_statement).fetchall()
 
         for row in rows:
-            record_id, gcf_number, cutoff = row
+            record_id, gcf_number = row
 
             select_statment = select(
                 bgc_record_table.c.gbk_id,

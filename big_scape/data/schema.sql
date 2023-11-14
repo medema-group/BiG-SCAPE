@@ -30,11 +30,19 @@ CREATE TABLE IF NOT EXISTS bgc_record (
 
 CREATE TABLE IF NOT EXISTS bgc_record_family (
     record_id INTEGER NOT NULL,
-    family INTEGER NOT NULL,
+    family_id INTEGER NOT NULL,
+    UNIQUE(record_id, family_id),
+    FOREIGN KEY(record_id) REFERENCES bgc_record(id)
+    FOREIGN KEY(family_id) REFERENCES family(id)
+);
+
+CREATE TABLE IF NOT EXISTS family (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    center_id INTEGER NOT NULL,
     cutoff REAL NOT NULL,
     bin_label TEXT NOT NULL,
-    UNIQUE(record_id, family, cutoff, bin_label),
-    FOREIGN KEY(record_id) REFERENCES bgc_record(id)
+    UNIQUE(id),
+    UNIQUE(center_id, cutoff, bin_label)
 );
 
 CREATE TABLE IF NOT EXISTS scanned_cds (

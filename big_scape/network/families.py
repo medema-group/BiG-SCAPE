@@ -6,6 +6,7 @@ import warnings
 # from dependencies
 from sklearn.cluster import AffinityPropagation
 from sklearn.exceptions import ConvergenceWarning
+from sqlalchemy import select
 
 # from other modules
 from big_scape.data import DB
@@ -97,19 +98,43 @@ def save_to_db(regions_families):
         regions_families (list[tuple[int, int, float]]): list of (region_id, family,
         cutoff) tuples
     """
+    family_table = DB.metadata.tables["family"]
     bgc_record_family_table = DB.metadata.tables["bgc_record_family"]
-    insert_statement = (
-        bgc_record_family_table.insert()
-        .values(regions_families)
-        .prefix_with("OR REPLACE")
-    )
 
-    DB.execute(insert_statement)
+    for region_id, family, cutoff, bin_label in regions_families:
+        # obtain unique family id if present
+        fam_id_query = (
+            select(family_table.c.id)
+            .where(family_table.c.center_id == family)
+            .where(family_table.c.cutoff == cutoff)
+            .where(family_table.c.bin_label == bin_label)
+        )
+        family_id = DB.execute(fam_id_query).fetchone()
+
+        # if not yet present, insert it
+        if family_id is None:
+            insert_query = (
+                family_table.insert()
+                .returning(family_table.c.id)
+                .values(center_id=family, cutoff=cutoff, bin_label=bin_label)
+                .compile()
+            )
+
+            cursor_result = DB.execute(insert_query, False)
+            family_id = cursor_result.fetchone()
+            if family_id is None:
+                raise RuntimeError("No return value from insert query")
+
+        insert_statement = (
+            bgc_record_family_table.insert()
+            .values(record_id=region_id, family_id=family_id[0])
+            .prefix_with("OR REPLACE")
+        )
+
+        DB.execute(insert_statement)
 
 
 def reset_db_families():
     """Clear previous family assignments from database"""
-    bgc_record_family_table = DB.metadata.tables["bgc_record_family"]
-    clear_statement = bgc_record_family_table.delete()
-
-    DB.execute(clear_statement)
+    DB.execute(DB.metadata.tables["bgc_record_family"].delete())
+    DB.execute(DB.metadata.tables["family"].delete())
