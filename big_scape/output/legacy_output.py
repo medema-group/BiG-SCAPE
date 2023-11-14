@@ -83,6 +83,10 @@ def prepare_pair_generator_folder(
 
     pair_generator_path.mkdir(exist_ok=True)
 
+    tree_path = pair_generator_path / Path("GCF_trees")
+
+    tree_path.mkdir(exist_ok=True)
+
     template_root = Path("big_scape/output/html_template")
     pair_generator_template = template_root / "index_html"
 
@@ -832,9 +836,36 @@ def adjust_lcs_to_all_genes(
 
 
 def generate_bs_families_alignment(
-    bs_families: dict[int, list[int]], pair_generator: RecordPairGenerator
-):
-    """Generate list of dictionaries with information on bgc alignment of family members"""
+    bs_families: dict[int, list[int]],
+    pair_generator: RecordPairGenerator,
+    tree_path: Path,
+) -> list[dict[str, Any]]:
+    """Generate list of dictionaries with information on bgc alignment of family members
+
+    Args:
+        bs_families (dict[int, list[int]]): family assignments {exemplar_db_id: members}
+            NOTE: members are indices of pair_generator.source_records
+        pair_generator (RecordPairGenerator): object associated with current bin
+        tree_path (Path): folder to store made alignments and trees
+
+    Returns:
+        bs_families_alignment: information on alignments of bgcs within each family
+
+        structure:
+        [
+            {
+                "id": family_id, (e.g. FAM00001)
+                "ref": index of family exemplar/reference,
+                "newick": tree of family members,
+                "ref_genes": [
+                    indices of reference genes used in alignment
+                             ],
+                "aln": [
+                    alignment of genes to reference for each member
+                       ],
+            }
+        ]
+    """
     bs_families_alignment = []
     records = pair_generator.source_records
     # dictionary maps bgc to all orfs that contain domains
@@ -907,11 +938,12 @@ def generate_bs_families_alignment(
 
         ref_genes = list(ref_genes_)
 
+        family_name = "FAM_{:05d}".format(family_db_id)
         fam_alignment = {
-            "id": "FAM_{:05d}".format(family_db_id),
+            "id": family_name,
             "ref": family_members[fam_record_idx],
             "newick": generate_newick_tree(
-                family_records, fam_record_idx, family_members
+                family_records, fam_record_idx, family_members, family_name, tree_path
             ),
             "ref_genes": ref_genes,
             "aln": aln,
@@ -1029,6 +1061,7 @@ def generate_bs_networks_js(
     output_network_root = output_dir / Path("html_content/networks")
     cutoff_path = output_network_root / Path(f"{label}_c{cutoff}")
     pair_generator_path = cutoff_path / pair_generator.label
+    gcf_trees_path = pair_generator_path / Path("GCF_trees")
 
     bs_networks_js_path = pair_generator_path / "bs_networks.js"
 
@@ -1038,7 +1071,7 @@ def generate_bs_networks_js(
         cutoff, pair_generator
     )
     bs_families_alignment: list[Any] = generate_bs_families_alignment(
-        bs_families, pair_generator
+        bs_families, pair_generator, gcf_trees_path
     )
     bs_similarity_families: list[Any] = []
 
