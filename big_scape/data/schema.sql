@@ -5,11 +5,12 @@
 CREATE TABLE IF NOT EXISTS gbk (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     path TEXT,
+    hash TEXT,
     nt_seq TEXT,
     organism TEXT,
     taxonomy TEXT,
     description TEXT,
-    UNIQUE(path)
+    UNIQUE(hash)
 );
 
 CREATE TABLE IF NOT EXISTS bgc_record (

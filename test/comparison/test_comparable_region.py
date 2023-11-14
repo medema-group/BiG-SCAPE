@@ -27,7 +27,7 @@ class TestComparibleRegions(TestCase):
             "PF00005",
         ]
 
-        gbk_a = GBK("", "")
+        gbk_a = GBK("", "", "")
         gbk_a.region = Region(gbk_a, 0, 0, 100, False, "")
 
         for a_domain in a_domains:
@@ -35,7 +35,7 @@ class TestComparibleRegions(TestCase):
             gbk_a.genes.append(cds_a)
             cds_a.hsps.append(HSP(cds_a, a_domain, 100, 0, 30))
 
-        gbk_b = GBK("", "")
+        gbk_b = GBK("", "", "")
         gbk_b.region = Region(gbk_b, 0, 0, 100, False, "")
 
         for b_domain in b_domains:
@@ -77,7 +77,7 @@ class TestComparibleRegions(TestCase):
             "PF00004",
         ]
 
-        gbk_a = GBK("", "")
+        gbk_a = GBK("", "", "")
         gbk_a.region = Region(gbk_a, 0, 0, 100, False, "")
 
         for a_domain in a_domains:
@@ -85,7 +85,7 @@ class TestComparibleRegions(TestCase):
             gbk_a.genes.append(cds_a)
             cds_a.hsps.append(HSP(cds_a, a_domain, 100, 0, 30))
 
-        gbk_b = GBK("", "")
+        gbk_b = GBK("", "", "")
         gbk_b.region = Region(gbk_b, 0, 0, 100, False, "")
 
         for b_domain in b_domains:
@@ -144,7 +144,7 @@ class TestComparibleRegions(TestCase):
         record in which a region contains a biosynthetic gene
         """
 
-        gbk = GBK(None, "test")
+        gbk = GBK(None, "test", "test")
 
         record = Region(gbk, 0, 0, 0, False, "")
 
@@ -181,7 +181,7 @@ class TestComparibleRegions(TestCase):
         record in which a region contains a biosynthetic gene
         """
 
-        gbk = GBK(None, "test")
+        gbk = GBK(None, "test", "test")
 
         record = Region(gbk, 0, 0, 0, False, "")
 
@@ -225,7 +225,7 @@ class TestComparibleRegions(TestCase):
             "PF00004",
         ]
 
-        gbk_a = GBK("", "")
+        gbk_a = GBK("", "", "")
         gbk_a.region = Region(gbk_a, 0, 0, 100, False, "")
 
         for a_domain in a_domains:
@@ -235,7 +235,7 @@ class TestComparibleRegions(TestCase):
             env_stop = env_start + 10
             cds_a.hsps.append(HSP(cds_a, a_domain, 100, env_start, env_stop))
 
-        gbk_b = GBK("", "")
+        gbk_b = GBK("", "", "")
         gbk_b.region = Region(gbk_b, 0, 0, 100, False, "")
 
         for b_domain in b_domains:

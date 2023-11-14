@@ -406,7 +406,7 @@ class TestGBK(TestCase):
     def test_filter_overlap_over_threshold(self):
         """Test whether add_cds_filter_overlap correctly throws out a cds"""
 
-        gbk = GBK("", "")
+        gbk = GBK("", "", "")
 
         cds_a = CDS(0, 18)
         cds_a.aa_seq = "M" * 6
@@ -433,7 +433,7 @@ class TestGBK(TestCase):
         another CDS but under the cutoff threshold
         """
 
-        gbk = GBK("", "")
+        gbk = GBK("", "", "")
 
         cds_a = CDS(0, 18)
         cds_a.aa_seq = "M" * 6
@@ -456,7 +456,7 @@ class TestGBK(TestCase):
         cutoff threshold, but is on a different strand
         """
 
-        gbk = GBK("", "")
+        gbk = GBK("", "", "")
 
         cds_a = CDS(0, 18)
         cds_a.aa_seq = "M" * 6
@@ -553,6 +553,32 @@ class TestGBK(TestCase):
         actual_gbk_count = len(GBK.load_all())
 
         self.assertEqual(expected_gbk_count, actual_gbk_count)
+
+    def test_load_many(self):
+        """Tests whether a set of GBKs can be recreated from a database
+        using load many
+        """
+        DB.create_in_mem()
+
+        gbk_file_path = Path("test/test_data/valid_gbk_folder/valid_input_region.gbk")
+        run = {
+            "input_dir": Path("test/test_data/valid_gbk_folder/"),
+            "input_mode": bs_enums.INPUT_MODE.RECURSIVE,
+            "include_gbk": None,
+            "exclude_gbk": None,
+            "cds_overlap_cutoff": None,
+            "cores": None,
+            "classify": False,
+            "legacy_classify": False,
+        }
+
+        gbk = GBK.parse(gbk_file_path, SOURCE_TYPE.QUERY, run)
+
+        gbk.save()
+
+        loaded_gbks = GBK.load_many([gbk])
+
+        self.assertEqual(gbk, loaded_gbks[0])
 
     def test_load_all_has_regions(self):
         """Tests whether the region objects were correctly loaded when loading GBKs"""

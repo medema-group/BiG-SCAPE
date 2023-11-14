@@ -323,7 +323,7 @@ function Bigscape(run_data, bs_data, bs_families, bs_alignment, bs_similarity, n
   // construct the graph
   for (var i = 0; i < bs_data.length; i++) {
     var bs_obj = bs_data[i];
-    graph.addNode(i, { id: bs_obj["id"], cl: bs_to_cl[i] });
+    graph.addNode(i, { id: bs_obj["id"], hash: bs_obj["hash"], cl: bs_to_cl[i] });
   }
   for (var a = 0; a < bs_data.length; a++) {
     for (var b = 0; b < bs_data.length; b++) {
@@ -449,7 +449,7 @@ function Bigscape(run_data, bs_data, bs_families, bs_alignment, bs_similarity, n
       .attr("stroke", "#777")
       .attr("stroke-width", link["data"]["weight"] * 10);
 
-    if (graph.getNode(link.fromId).data.id === graph.getNode(link.toId).data.id) {
+    if (graph.getNode(link.fromId).data.hash === graph.getNode(link.toId).data.hash) {
       line = line.attr("stroke-dasharray", "10,10")
     }
     return line
