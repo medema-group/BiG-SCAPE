@@ -294,7 +294,6 @@ class GBK:
 
         # load GBK regions. This will also populate all record levels below region
         # e.g. candidate cluster, protocore if they exist
-        print(gbk_dict)
 
         Region.load_all(gbk_dict)
 

@@ -576,6 +576,7 @@ def generate_bs_data_js(
             "start: int,
             "end": int,
             "id": str, (e.g. AL645882.2.cluster010),
+            "hash": str,
             "mibig": bool,
             "source": str, (e.g. mibig, reference, or query),
             "record_start": int, (e.g. cds boundaries of protocluster, index starts at 1)
@@ -630,6 +631,7 @@ def generate_bs_data_js(
                 "start": 1,
                 "end": len(gbk.nt_seq),
                 "id": gbk.path.name,
+                "hash": gbk.hash,
                 "mibig": gbk.source_type == SOURCE_TYPE.MIBIG,
                 "source": gbk.source_type.name.lower(),
                 "record_start": rec_start,
