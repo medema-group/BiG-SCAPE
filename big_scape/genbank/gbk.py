@@ -249,52 +249,7 @@ class GBK:
         return list(gbk_dict.values())
 
     @staticmethod
-    def load_one(gbk_id: int) -> GBK:
-        """Load a single GBK object from the database
-
-        Args:
-            gbk_id (int): id of gbk to load
-
-        Returns:
-            GBK: loaded GBK object
-        """
-
-        if not DB.metadata:
-            raise RuntimeError("DB.metadata is None")
-
-        gbk_table = DB.metadata.tables["gbk"]
-        select_query = (
-            gbk_table.select()
-            .add_columns(
-                gbk_table.c.id,
-                gbk_table.c.hash,
-                gbk_table.c.path,
-                gbk_table.c.source_type,
-                gbk_table.c.nt_seq,
-                gbk_table.c.organism,
-                gbk_table.c.taxonomy,
-                gbk_table.c.description,
-            )
-            .where(gbk_table.c.id == gbk_id)
-            .compile()
-        )
-
-        result = DB.execute(select_query).fetchone()
-
-        if result is None:
-            raise RuntimeError(f"No GBK with id {gbk_id}")
-
-        new_gbk = GBK(Path(result.path), result.hash, "")
-        new_gbk._db_id = result.id
-        new_gbk.nt_seq = result.nt_seq
-        new_gbk.metadata["organism"] = result.organism
-        new_gbk.metadata["taxonomy"] = result.taxonomy
-        new_gbk.metadata["description"] = result.description
-
-        return new_gbk
-
-    @staticmethod
-    def load_many(gbk_ids: list[int]) -> list[GBK]:
+    def load_many(input_gbks: list[GBK]) -> list[GBK]:
         """Load a list of GBK objects from the database
 
         Args:
@@ -304,6 +259,8 @@ class GBK:
             list[GBK]: loaded GBK objects
         """
 
+        input_gbk_hashes = [gbk.hash for gbk in input_gbks]
+
         if not DB.metadata:
             raise RuntimeError("DB.metadata is None")
 
@@ -314,13 +271,12 @@ class GBK:
                 gbk_table.c.id,
                 gbk_table.c.hash,
                 gbk_table.c.path,
-                gbk_table.c.source_type,
                 gbk_table.c.nt_seq,
                 gbk_table.c.organism,
                 gbk_table.c.taxonomy,
                 gbk_table.c.description,
             )
-            .where(gbk_table.c.id.in_(gbk_ids))
+            .where(gbk_table.c.hash.in_(input_gbk_hashes))
             .compile()
         )
 
@@ -338,6 +294,7 @@ class GBK:
 
         # load GBK regions. This will also populate all record levels below region
         # e.g. candidate cluster, protocore if they exist
+        print(gbk_dict)
 
         Region.load_all(gbk_dict)
 
