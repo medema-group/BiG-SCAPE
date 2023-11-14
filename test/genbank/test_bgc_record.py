@@ -19,7 +19,7 @@ class TestBGCRecord(TestCase):
         nt_start and nt_stop coordinates
         """
 
-        gbk = GBK("", "", "")
+        gbk = GBK("", "")
         record = BGCRecord(gbk, 0, 10, 90, False, "")
 
         # 10 total
@@ -50,7 +50,7 @@ class TestBGCRecord(TestCase):
         parameter set to True
         """
 
-        gbk = GBK("", "", "")
+        gbk = GBK("", "")
         record = BGCRecord(gbk, 0, 10, 90, False, "")
 
         gbk.genes = [
@@ -81,7 +81,7 @@ class TestBGCRecord(TestCase):
         """
         domains = ["PF00001", "PF00002", "PF00003", "PF00004", "PF00005"]
 
-        gbk = GBK("", "", "")
+        gbk = GBK("", "")
         gbk.region = Region(gbk, 0, 0, 100, False, "")
         cds = CDS(10, 90)
         gbk.genes.append(cds)
@@ -116,7 +116,7 @@ class TestBGCRecord(TestCase):
         cds_list[4].hsps = [HSP(cds_list[0], "test", 1.0, 0, 100)]
         cds_list[6].hsps = [HSP(cds_list[0], "test", 1.0, 0, 100)]
 
-        gbk = GBK("", "", "test")
+        gbk = GBK("", "test")
         gbk.genes = cds_list
         region = BGCRecord(gbk, 0, 0, 100, False, "")
 

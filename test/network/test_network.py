@@ -16,9 +16,7 @@ import big_scape.enums as bs_enums
 
 
 def create_mock_gbk(i) -> bs_gbk.GBK:
-    gbk = bs_gbk.GBK(
-        pathlib.Path(f"test_path_{i}.gbk"), str(i), bs_enums.SOURCE_TYPE.QUERY
-    )
+    gbk = bs_gbk.GBK(pathlib.Path(f"test_path_{i}.gbk"), bs_enums.SOURCE_TYPE.QUERY)
     cds = bs_gbk.CDS(0, 100)
     cds.parent_gbk = gbk
     cds.orf_num = 1

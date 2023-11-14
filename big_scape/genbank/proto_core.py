@@ -135,7 +135,6 @@ class ProtoCore(BGCRecord):
                 record_table.c.category,
             )
             .where(record_table.c.record_type == "proto_core")
-            .where(record_table.c.parent_id.in_(protocluster_dict.keys()))
             .compile()
         )
 

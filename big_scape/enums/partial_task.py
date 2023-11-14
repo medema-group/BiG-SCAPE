@@ -4,7 +4,7 @@ from enum import Enum
 
 
 class TASK(Enum):
-    SAVE_GBKS = 0
+    LOAD_GBKS = 0
     HMM_SCAN = 1
     HMM_ALIGN = 2
     COMPARISON = 3

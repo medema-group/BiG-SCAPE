@@ -241,7 +241,6 @@ class Region(BGCRecord):
                 record_table.c.product,
             )
             .where(record_table.c.record_type == "region")
-            .where(record_table.c.gbk_id.in_(gbk_dict.keys()))
             .compile()
         )
 

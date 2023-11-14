@@ -18,8 +18,8 @@ class TestTrees(TestCase):
         """Tests generated tree for families with less than three members"""
 
         records = [
-            BGCRecord(GBK("", "", ""), 0, 0, 0, False, ""),
-            BGCRecord(GBK("", "", ""), 0, 0, 0, False, ""),
+            BGCRecord(GBK("", ""), 0, 0, 0, False, ""),
+            BGCRecord(GBK("", ""), 0, 0, 0, False, ""),
         ]
         exemplar = 0
         mock_family = [0, 1]
@@ -31,8 +31,8 @@ class TestTrees(TestCase):
 
     def test_gcf_alignment(self):
         """Tests alignment of GCF HSP alignments"""
-        gbk_a = GBK("", "", "")
-        gbk_b = GBK("", "", "")
+        gbk_a = GBK("", "")
+        gbk_b = GBK("", "")
         cds_a = CDS(0, 20)
         cds_b = CDS(0, 20)
         hsp_a = HSP(cds_a, "PF1", 1, 0, 10)
@@ -72,7 +72,7 @@ class TestTrees(TestCase):
         expected_lcs = (5, 8, False)
 
         new_lcs = adjust_lcs_to_all_genes(
-            mock_result, 0, 1, GBK("", "", ""), GBK("", "", ""), dom_to_gene, dom_count
+            mock_result, 0, 1, GBK("", ""), GBK("", ""), dom_to_gene, dom_count
         )
 
         self.assertEqual(new_lcs, expected_lcs)
@@ -94,7 +94,7 @@ class TestTrees(TestCase):
         expected_lcs = (4, 2, True)
 
         new_lcs = adjust_lcs_to_all_genes(
-            mock_result, 0, 1, GBK("", "", ""), GBK("", "", ""), dom_to_gene, dom_count
+            mock_result, 0, 1, GBK("", ""), GBK("", ""), dom_to_gene, dom_count
         )
 
         self.assertEqual(new_lcs, expected_lcs)
@@ -116,7 +116,7 @@ class TestTrees(TestCase):
         expected_lcs = (2, 4, False)
 
         new_lcs = adjust_lcs_to_all_genes(
-            mock_result, 1, 0, GBK("", "", ""), GBK("", "", ""), dom_to_gene, dom_count
+            mock_result, 1, 0, GBK("", ""), GBK("", ""), dom_to_gene, dom_count
         )
 
         self.assertEqual(new_lcs, expected_lcs)
@@ -138,7 +138,7 @@ class TestTrees(TestCase):
         expected_lcs = (2, 4, True)
 
         new_lcs = adjust_lcs_to_all_genes(
-            mock_result, 1, 0, GBK("", "", ""), GBK("", "", ""), dom_to_gene, dom_count
+            mock_result, 1, 0, GBK("", ""), GBK("", ""), dom_to_gene, dom_count
         )
 
         self.assertEqual(new_lcs, expected_lcs)
@@ -163,10 +163,10 @@ class TestTrees(TestCase):
         fill_cds = CDS(10, 20)
         fill_cds.strand = -1
 
-        exempl_gbk = GBK("", "", "")
+        exempl_gbk = GBK("", "")
         exempl_gbk.genes = [fill_cds, fill_cds, max_dom_cds, fill_cds, fill_cds]
 
-        mem_gbk = GBK("", "", "")
+        mem_gbk = GBK("", "")
         mem_gbk.genes = [CDS(0, 1), CDS(2, 3), CDS(4, 5), max_dom_cds]
 
         expected_lcs = (2, 3, False)
@@ -197,12 +197,12 @@ class TestTrees(TestCase):
         fill_cds = CDS(0, 0)
         fill_cds.strand = -1
 
-        exempl_gbk = GBK("", "", "")
+        exempl_gbk = GBK("", "")
         exempl_gbk.genes = [fill_cds, fill_cds, max_dom_cds, fill_cds, fill_cds]
 
         max_dom_cds_rev = CDS(0, 0)
         max_dom_cds_rev.strand = -1
-        mem_gbk = GBK("", "", "")
+        mem_gbk = GBK("", "")
         mem_gbk.genes = [CDS(0, 0), CDS(0, 0), CDS(0, 0), max_dom_cds_rev]
 
         expected_lcs = (2, 1, True)
