@@ -354,6 +354,7 @@ class CDS:
                 cds_table.c.aa_seq,
             )
             .order_by(cds_table.c.orf_num)
+            .where(cds_table.c.gbk_id.in_(gbk_dict.keys()))
             .compile()
         )
 

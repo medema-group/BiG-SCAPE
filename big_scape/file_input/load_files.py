@@ -290,20 +290,20 @@ def load_gbks(run: dict, bigscape_dir: Path) -> list[GBK]:
     bs_data.DB.load_from_disk(run["db_path"])
     task_state = bs_data.find_minimum_task(input_gbks)
 
-    # if we are are not on the load_gbks task, we have all the data we need
-    if task_state != bs_enums.TASK.LOAD_GBKS:
+    source_dict = {gbk.hash: gbk.source_type for gbk in input_gbks}
+
+    # if we are are not on the save_gbks task, we have all the data we need in the database
+    # and can just load it all into the correct python objects
+    if task_state != bs_enums.TASK.SAVE_GBKS:
+        # here we dont save anything to DB, data goes DB -> python objects
         logging.info("Loading existing run from disk...")
 
-        source_dict = {gbk.path: gbk.source_type for gbk in input_gbks}
-
-        gbks_from_db = GBK.load_all()
-        for gbk in gbks_from_db:
-            gbk.source_type = source_dict[gbk.path]
-
-        for gbk in gbks_from_db:
+        input_gbks_from_db = GBK.load_many(input_gbks)
+        for gbk in input_gbks_from_db:
+            gbk.source_type = source_dict[gbk.hash]
             bs_hmm.HSP.load_all(gbk.genes)
 
-        return gbks_from_db
+        return input_gbks_from_db
 
     # if we end up here, we are in some halfway state and need to load in the new data
     logging.info("Loading existing run from disk and adding new data...")
@@ -313,5 +313,11 @@ def load_gbks(run: dict, bigscape_dir: Path) -> list[GBK]:
     for gbk in missing_gbks:
         gbk.save_all()
 
-    # still return the full set
-    return input_gbks
+    # now we have all new data in the database, we can load it all in to the correct
+    # python objects
+    input_gbks_from_db = GBK.load_many(input_gbks)
+    for gbk in input_gbks_from_db:
+        gbk.source_type = source_dict[gbk.hash]
+        bs_hmm.HSP.load_all(gbk.genes)
+
+    return input_gbks_from_db
