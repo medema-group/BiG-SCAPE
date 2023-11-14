@@ -204,6 +204,7 @@ class ProtoCluster(BGCRecord):
                 record_table.c.category,
             )
             .where(record_table.c.record_type == "protocluster")
+            .where(record_table.c.parent_id.in_(candidate_cluster_dict.keys()))
             .compile()
         )
 
