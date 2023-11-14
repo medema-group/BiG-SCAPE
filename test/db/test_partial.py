@@ -26,7 +26,7 @@ import big_scape.enums as bs_enums
 
 
 def create_mock_gbk(i) -> GBK:
-    gbk = GBK(Path(f"test_path_{i}.gbk"), bs_enums.SOURCE_TYPE.QUERY)
+    gbk = GBK(Path(f"test_path_{i}.gbk"), str(i), bs_enums.SOURCE_TYPE.QUERY)
     cds = CDS(0, 100)
     cds.parent_gbk = gbk
     cds.orf_num = 1
@@ -116,7 +116,7 @@ class TestPartial(TestCase):
 
     def test_min_task_data(self):
         DB.create_in_mem()
-        expected_min_task = bs_enums.TASK.LOAD_GBKS
+        expected_min_task = bs_enums.TASK.SAVE_GBKS
 
         gbks = [create_mock_gbk(1)]
 
@@ -223,7 +223,7 @@ class TestPartialInputs(TestCase):
         gbk_not_in_db = create_mock_gbk(2)
         gbks = [gbk_in_db, gbk_not_in_db]
 
-        expected_state = bs_enums.INPUT_TASK.NEW_DATA
+        expected_state = bs_enums.INPUT_TASK.MIXED_DATA
         actual_state = get_input_data_state(gbks)
 
         self.assertEqual(expected_state, actual_state)

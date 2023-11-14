@@ -78,7 +78,7 @@ def generate_mock_cds_lists(
 
 def generate_mock_protocluster(cds_list: list[bs_genbank.CDS], protocore_idx: int = -1):
     """Generate a mock protocluster from a cds list"""
-    gbk = bs_genbank.GBK(None, bs_enums.SOURCE_TYPE.QUERY)
+    gbk = bs_genbank.GBK(None, "test", bs_enums.SOURCE_TYPE.QUERY)
     gbk.genes = cds_list
     protocluster = bs_genbank.ProtoCluster(
         gbk, 1, 0, len(cds_list) * 100, False, "", {}
@@ -224,7 +224,7 @@ class TestProtoclusterDomainLCS(unittest.TestCase):
             10, 10, [1, 2, 2, 2, 3], [1, 2, 2, 2, 3], False
         )
 
-        gbk = bs_genbank.GBK("", bs_enums.SOURCE_TYPE.QUERY)
+        gbk = bs_genbank.GBK("", "", bs_enums.SOURCE_TYPE.QUERY)
 
         record_a = bs_genbank.Region(gbk, 1, 0, len(cds_a) * 100, False, "")
         record_b = bs_genbank.Region(gbk, 1, 0, len(cds_b) * 100, False, "")
@@ -242,7 +242,7 @@ class TestProtoclusterDomainLCS(unittest.TestCase):
             10, 10, [1, 2, 2, 2, 3], [1, 2, 2, 2, 3], False
         )
 
-        gbk = bs_genbank.GBK("", bs_enums.SOURCE_TYPE.QUERY)
+        gbk = bs_genbank.GBK("", "", bs_enums.SOURCE_TYPE.QUERY)
 
         record_a = bs_genbank.ProtoCluster(
             gbk, 1, 0, len(cds_a) * 100, False, "", "", {}

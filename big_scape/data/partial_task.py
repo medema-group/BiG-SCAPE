@@ -29,8 +29,14 @@ def find_minimum_task(gbks: list[GBK]):
     """
     input_data_state = get_input_data_state(gbks)
 
-    if input_data_state.value < bs_enums.INPUT_TASK.SAME_DATA.value:
-        return bs_enums.TASK.LOAD_GBKS
+    # new data or mixed data
+    if (
+        input_data_state.value == bs_enums.INPUT_TASK.NEW_DATA.value
+        or input_data_state.value == bs_enums.INPUT_TASK.MIXED_DATA.value
+        or input_data_state.value == bs_enums.INPUT_TASK.NO_DATA.value
+    ):
+        # gbks from input need to be loaded into the in-memory database
+        return bs_enums.TASK.SAVE_GBKS
 
     hmm_data_state = get_hmm_data_state(gbks)
 
@@ -62,20 +68,20 @@ def get_input_data_state(gbks: list[GBK]) -> bs_enums.INPUT_TASK:
 
     # get set of gbks in database
     db_gbk_rows = DB.execute(gbk_table.select()).all()
-    db_gbk_paths: set[str] = {db_gbk_row[1] for db_gbk_row in db_gbk_rows}
-    input_gbk_paths: set[str] = {str(gbk.path) for gbk in gbks}
+    db_gbk_hashes: set[str] = {db_gbk_row[2] for db_gbk_row in db_gbk_rows}
+    input_gbk_hashes: set[str] = {str(gbk.hash) for gbk in gbks}
 
-    if db_gbk_paths == input_gbk_paths:
+    if db_gbk_hashes == input_gbk_hashes:
         return bs_enums.INPUT_TASK.SAME_DATA
 
-    sym_dif = db_gbk_paths.symmetric_difference(input_gbk_paths)
+    union = db_gbk_hashes & input_gbk_hashes
 
-    # still same amount in db. new data
-    if len(sym_dif) == len(db_gbk_paths):
+    # all new data
+    if len(union) == 0:
         return bs_enums.INPUT_TASK.NEW_DATA
 
-    # same amount in new data. there was more in db than in new data
-    if len(sym_dif) == len(input_gbk_paths):
+    # only partial data which is already in database
+    if len(union) == len(input_gbk_hashes):
         return bs_enums.INPUT_TASK.PARTIAL_DATA
 
     # otherwise there is some new data, some old data is missing
@@ -92,7 +98,7 @@ def get_missing_gbks(gbks: list[GBK]) -> list[GBK]:
         list[GBK]: List of GBKs that are missing from the database
     """
     # dictionary of gbk path to gbk object
-    gbk_dict = {str(gbk.path): gbk for gbk in gbks}
+    gbk_dict = {str(gbk.hash): gbk for gbk in gbks}
 
     if not DB.metadata:
         raise RuntimeError("DB.metadata is None")
@@ -101,13 +107,13 @@ def get_missing_gbks(gbks: list[GBK]) -> list[GBK]:
 
     # get set of gbks in database
     db_gbk_rows = DB.execute(gbk_table.select()).all()
-    db_gbk_paths: set[int] = {db_gbk_row[1] for db_gbk_row in db_gbk_rows}
+    db_gbk_hashes: set[int] = {db_gbk_row[2] for db_gbk_row in db_gbk_rows}
 
     missing_gbks = []
 
-    for gbk_path in gbk_dict:
-        if gbk_path not in db_gbk_paths:
-            missing_gbks.append(gbk_dict[gbk_path])
+    for gbk_hash in gbk_dict:
+        if gbk_hash not in db_gbk_hashes:
+            missing_gbks.append(gbk_dict[gbk_hash])
 
     return missing_gbks
 

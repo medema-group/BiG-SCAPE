@@ -78,7 +78,7 @@ def generate_mock_cds_lists(
 
 def generate_mock_region(cds_list: list[bs_genbank.CDS]) -> bs_genbank.Region:
     """Generate a mock region from a cds list"""
-    gbk = bs_genbank.GBK(None, bs_enums.SOURCE_TYPE.QUERY)
+    gbk = bs_genbank.GBK(None, "", bs_enums.SOURCE_TYPE.QUERY)
     gbk.genes = cds_list
 
     region = bs_genbank.Region(gbk, 1, 0, len(cds_list) * 100, False, "")
@@ -88,7 +88,7 @@ def generate_mock_region(cds_list: list[bs_genbank.CDS]) -> bs_genbank.Region:
 
 def generate_mock_protocluster(cds_list: list[bs_genbank.CDS], protocore_idx: int):
     """Generate a mock protocluster from a cds list"""
-    gbk = bs_genbank.GBK(None, bs_enums.SOURCE_TYPE.QUERY)
+    gbk = bs_genbank.GBK(None, "", bs_enums.SOURCE_TYPE.QUERY)
     gbk.genes = cds_list
     protocluster = bs_genbank.ProtoCluster(
         gbk, 1, 0, len(cds_list) * 100, False, "", {}, ""
