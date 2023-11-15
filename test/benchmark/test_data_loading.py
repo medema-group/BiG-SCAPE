@@ -73,17 +73,12 @@ class TestBenchmarkData(TestCase):
 
         expected_data = {
             "0.3": {
-                "Chr1.cluster024": "1",
-                "CM000574.1.cluster001": "2",
-                "CM000574.1.cluster030": "3",
-                "CM000578.1.cluster010": "11",
-                "CM000602.2.cluster010": "11",
-                "CM003198.1.cluster001": "6",
-                "CM003198.1.cluster026": "11",
-                "HF679024.1.cluster002": "11",
-                "HG323944.1.cluster001": "2",
-                "HG323944.1.cluster030": "11",
-                "JH717896.1.cluster018": "11",
+                "HF679024.1.cluster018": "2",
+                "CM000578.1.cluster042": "2",
+                "HG323944.1.cluster039": "3",
+                "CM003198.1.cluster037": "6",
+                "Chr1.cluster034": "6",
+                "CM000574.1.cluster043": "6",
             }
         }
 

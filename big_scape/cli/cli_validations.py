@@ -179,7 +179,7 @@ def validate_gcf_cutoffs(ctx, param, gcf_cutoffs) -> list[float]:
         if cutoff < 0.0 or cutoff > 1.0:
             raise click.BadParameter("Invalid GCF cutoff value(s) provided!")
 
-    return gcf_cutoffs
+    return sorted(gcf_cutoffs, reverse=True)
 
 
 def validate_filter_gbk(ctx, param, filter_str) -> list[str]:

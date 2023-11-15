@@ -1,7 +1,6 @@
 """Module to generate newick GCF trees"""
 
 # from python
-import tempfile
 import subprocess
 import logging
 import numpy as np
@@ -16,7 +15,11 @@ from big_scape.genbank import BGCRecord
 
 
 def generate_newick_tree(
-    records: list[BGCRecord], exemplar: int, family_members: list[int]
+    records: list[BGCRecord],
+    exemplar: int,
+    family_members: list[int],
+    family_name: str,
+    output_path: Path,
 ) -> str:
     """Generate newick formatted tree for each GCF
 
@@ -24,24 +27,24 @@ def generate_newick_tree(
         records (list[BGCRecord]): list of records within GCF
         exemplar (int): index of exemplar to use during alignment
         family_members (list[int]): list of bgc ids in one family
+        family_name (str): name of current family
+        output_path (Path): folder to store alignments and trees
 
     Returns:
         str: Correctly formatted newick tree
     """
     # no need for alignment
     if len(records) < 3:
-        return f"({','.join([str(bgc_id)+':0.0' for bgc_id in family_members])}):0.01;"
-
-    algn = generate_gcf_alignment(records, exemplar, family_members)
-    with tempfile.TemporaryDirectory() as tmpdir:
-        tmppath = Path(tmpdir)
-        tmp_algn = tmppath / Path("alignment.fasta")
-        tmp_newick = tmppath / Path("alignment.newick")
-        with open(tmp_algn, "w") as tmp_a:
-            tmp_a.write(algn)
-        with open(tmp_newick, "w") as tmp_n:
-            run_fasttree(tmp_algn, tmp_n)
-        tree = process_newick_tree(tmp_newick)
+        tree = f"({','.join([str(bgc_id)+':0.0' for bgc_id in family_members])}):0.01;"
+    else:
+        algn = generate_gcf_alignment(records, exemplar, family_members)
+        algn_filename = output_path / Path(family_name + "_alignment.fasta")
+        with open(algn_filename, "w") as out_algn:
+            out_algn.write(algn)
+        tree_filename = output_path / Path(family_name + ".newick")
+        with open(tree_filename, "w") as out_newick:
+            run_fasttree(algn_filename, out_newick)
+        tree = process_newick_tree(tree_filename)
     return tree
 
 

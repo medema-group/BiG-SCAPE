@@ -25,7 +25,7 @@ class TestTrees(TestCase):
         mock_family = [0, 1]
 
         expected_tree = "(0:0.0,1:0.0):0.01;"
-        tree = generate_newick_tree(records, exemplar, mock_family)
+        tree = generate_newick_tree(records, exemplar, mock_family, "", "")
 
         self.assertEqual(tree, expected_tree)
 

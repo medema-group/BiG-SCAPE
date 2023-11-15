@@ -110,7 +110,9 @@ def run_bigscape(run: dict) -> None:
             )
             if run["query_bgc_path"]:
                 if gbk.source_type == bs_enums.SOURCE_TYPE.QUERY:
+                    # TODO: allow query mode on protocluster/protocores?
                     query_node_id = gbk.region._db_id
+                    query_record = gbk.region
             all_bgc_records.extend(gbk_records)
 
     # get fist task
@@ -280,17 +282,24 @@ def run_bigscape(run: dict) -> None:
     # & egde param id (account for weights/alignment mode) to use only correct edges
     logging.info("Generating families")
 
-    # cluster mode
-    if not run["query_bgc_path"]:
+    bs_families.reset_db_families()
+
+    # mix
+
+    if not run["no_mix"] and not run["query_bgc_path"]:
+        logging.info("-- Bin 'mix'")
+        edge_param_id = bs_comparison.get_edge_param_id(run, "mix")
         for cutoff in run["gcf_cutoffs"]:
             logging.info(" -- Cutoff %s", cutoff)
-            for connected_component in bs_network.get_connected_components(cutoff):
+            for connected_component in bs_network.get_connected_components(
+                all_bgc_records, edge_param_id, cutoff
+            ):
                 logging.debug(
                     "Found connected component with %d edges", len(connected_component)
                 )
 
                 regions_families = bs_families.generate_families(
-                    connected_component, cutoff
+                    connected_component, "mix", cutoff
                 )
 
                 # save families to database
@@ -298,17 +307,54 @@ def run_bigscape(run: dict) -> None:
 
         DB.commit()
 
-        DB.save_to_disk(run["db_path"])
+    # legacy_classify
+
+    if run["legacy_classify"] and not run["query_bgc_path"]:
+        for bin in bs_comparison.legacy_bin_generator(all_bgc_records, run):
+            logging.info("-- Bin '%s'", bin.label)
+            edge_param_id = bs_comparison.get_edge_param_id(run, bin.weights)
+            for cutoff in run["gcf_cutoffs"]:
+                logging.info(" -- Cutoff %s", cutoff)
+                for connected_component in bs_network.get_connected_components(
+                    bin.source_records, edge_param_id, cutoff
+                ):
+                    regions_families = bs_families.generate_families(
+                        connected_component, bin.label, cutoff
+                    )
+                    bs_families.save_to_db(regions_families)
+        DB.commit()
+
+    # classify
+
+    if run["classify"] and not run["query_bgc_path"]:
+        for bin in bs_comparison.as_class_bin_generator(all_bgc_records, run):
+            logging.info("-- Bin '%s'", bin.label)
+            edge_param_id = bs_comparison.get_edge_param_id(run, bin.weights)
+            for cutoff in run["gcf_cutoffs"]:
+                logging.info(" -- Cutoff %s", cutoff)
+                for connected_component in bs_network.get_connected_components(
+                    bin.source_records, edge_param_id, cutoff
+                ):
+                    regions_families = bs_families.generate_families(
+                        connected_component, bin.label, cutoff
+                    )
+                    bs_families.save_to_db(regions_families)
+        DB.commit()
 
     # query BGC mode
     if run["query_bgc_path"]:
         cc_cutoff: dict[str, list] = {}
+        if run["legacy_weights"]:
+            weights = bs_comparison.get_weight_category(query_record)
+        else:
+            weights = "mix"
+        edge_param_id = bs_comparison.get_edge_param_id(run, weights)
 
         for cutoff in run["gcf_cutoffs"]:
             logging.info(" -- Cutoff %s", cutoff)
 
             query_connected_component = bs_network.get_query_connected_component(
-                query_node_id, cutoff
+                all_bgc_records, query_node_id, edge_param_id, cutoff
             )
 
             cc_cutoff[cutoff] = query_connected_component
@@ -319,7 +365,7 @@ def run_bigscape(run: dict) -> None:
             )
 
             regions_families = bs_families.generate_families(
-                query_connected_component, cutoff
+                query_connected_component, weights, cutoff
             )
 
             # save families to database
@@ -327,7 +373,7 @@ def run_bigscape(run: dict) -> None:
 
         DB.commit()
 
-        DB.save_to_disk(run["db_path"])
+    DB.save_to_disk(run["db_path"])
 
     # OUTPUT GENERATION
 
@@ -408,13 +454,14 @@ def run_bigscape(run: dict) -> None:
     # query
 
     if run["query_bgc_path"]:
-        query_bin = bs_comparison.ConnectedComponentPairGenerator(
-            query_connected_component, "Query"
-        )
-        query_bin.add_records(
-            [record for record in all_bgc_records if record is not None]
-        )
+        # TODO: select largest cc once, instead of rebuilding bins?
         for cutoff in run["gcf_cutoffs"]:
+            query_bin = bs_comparison.ConnectedComponentPairGenerator(
+                cc_cutoff[cutoff], "Query"
+            )
+            query_bin.add_records(
+                [record for record in all_bgc_records if record is not None]
+            )
             legacy_prepare_bin_output(run, cutoff, query_bin)
             legacy_generate_bin_output(run, cutoff, query_bin)
 

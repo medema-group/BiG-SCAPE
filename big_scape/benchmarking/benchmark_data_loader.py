@@ -76,17 +76,21 @@ class BenchmarkData:
         logging.info("Loading computed GCFs from BiG-SCAPE 2 output")
         DB.load_from_disk(db_path)
         if DB.metadata is not None:
-            fam_table = DB.metadata.tables["bgc_record_family"]
+            fam_table = DB.metadata.tables["family"]
+            record_fam_table = DB.metadata.tables["bgc_record_family"]
             record_table = DB.metadata.tables["bgc_record"]
             gbk_table = DB.metadata.tables["gbk"]
         else:
             raise RuntimeError("DB.metadata is None")
 
         select_query = (
-            fam_table.join(record_table, fam_table.c.record_id == record_table.c.id)
+            record_fam_table.join(
+                record_table, record_fam_table.c.record_id == record_table.c.id
+            )
             .join(gbk_table, record_table.c.gbk_id == gbk_table.c.id)
+            .join(fam_table, record_fam_table.c.family_id == fam_table.c.id)
             .select()
-            .add_columns(fam_table.c.cutoff, fam_table.c.family, gbk_table.c.path)
+            .add_columns(fam_table.c.cutoff, fam_table.c.center_id, gbk_table.c.path)
             .compile()
         )
 
@@ -94,7 +98,7 @@ class BenchmarkData:
         self.computed_labels: dict[str, dict[str, str]] = {}
         for result in cursor_results:
             bgc_name = str(Path(result.path).stem)
-            family = str(result.family)
+            family = str(result.center_id)
             cutoff = str(result.cutoff)
             self.computed_labels.setdefault(cutoff, {})[bgc_name] = family
 
