@@ -545,7 +545,7 @@ def gen_profile_index(profiles: list[OptimizedProfile]) -> dict[str, int]:
     """
     index = {}
     for idx, profile in enumerate(profiles):
-        index[profile.accession.decode()] = idx
+        index[profile.accession.decode()[:7]] = idx
 
     return index
 

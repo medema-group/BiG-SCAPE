@@ -11,7 +11,7 @@ from pyhmmer.easel import TextSequence
 
 # from other modules
 from big_scape.data import DB
-from big_scape.hmm.hmmer import HMMer, cds_to_input_task
+from big_scape.hmm import HMMer, cds_to_input_task
 from big_scape.genbank import GBK, CDS
 from big_scape.hmm import HSP
 
@@ -93,7 +93,7 @@ class TestHMMScan(TestCase):
         # by it
         hmm_path = Path("test/test_data/hmm/PF00457.19.hmm")
 
-        expected_result = HSP(cds, "PF00457.19", 249.32315063476562, 0, 0)
+        expected_result = HSP(cds, "PF00457", 249.32315063476562, 0, 0)
 
         HMMer.init(hmm_path)
 
@@ -123,7 +123,7 @@ class TestHMMScan(TestCase):
 
         HMMer.init(hmm_path)
 
-        expected_result = HSP(cds, "PF00457.19", 249.32315063476562, 0, 0)
+        expected_result = HSP(cds, "PF00457", 249.32315063476562, 0, 0)
 
         HMMer.hmmsearch_multiprocess([cds], batch_size=1)
 
@@ -153,7 +153,7 @@ class TestHMMScan(TestCase):
         cds.parent_gbk = gbk
         cds.save()
 
-        hsp = HSP(cds, "PF00457.19", 249.32315063476562, 0, 0)
+        hsp = HSP(cds, "PF00457", 249.32315063476562, 0, 0)
         hsp.save()
 
         expected_row_count = 1

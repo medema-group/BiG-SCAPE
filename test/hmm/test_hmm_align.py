@@ -40,7 +40,7 @@ class TestHMMAlign(TestCase):
         # by it
         hmm_path = Path("test/test_data/hmm/PF00457.19.hmm")
 
-        hsp = HSP(cds, "PF00457.19", 249.32315063476562, 0, len(aa_seq))
+        hsp = HSP(cds, "PF00457", 249.32315063476562, 0, len(aa_seq))
 
         HMMer.init(hmm_path, False)
 
@@ -81,7 +81,7 @@ class TestHMMAlign(TestCase):
         cds.parent_gbk = gbk
         cds.save()
 
-        hsp = HSP(cds, "PF00457.19", 249.32315063476562, 0, 0)
+        hsp = HSP(cds, "PF00457", 249.32315063476562, 0, 0)
         hsp.save()
 
         hsp_alignment = HSPAlignment(hsp, "")

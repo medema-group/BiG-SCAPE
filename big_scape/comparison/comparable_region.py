@@ -12,9 +12,6 @@ from big_scape.genbank import BGCRecord
 from big_scape.hmm import HSP
 from big_scape.enums import ALIGNMENT_MODE
 
-# from this module
-from .legacy_lcs import legacy_find_cds_lcs
-
 
 # from circular imports
 if TYPE_CHECKING:  # pragma: no cover
@@ -25,6 +22,20 @@ if TYPE_CHECKING:  # pragma: no cover
 
 class ComparableRegion:
     """Class describing the comparable region between a pair of BGCs
+
+    Important notes:
+
+    This class is used to store the comparable region between two records. It is used to
+    calculate the JC, AI, and DSS scores between two records. The start and stop of the
+    comparable region correspond to the CDS indexes of each record.
+
+    Comparable regions are initialized with coordinates CDS including domains. This is used in LCS
+    and extend to determine the comparable region. After LCS and extend, the comparable region is
+    recalculated to include all CDS, including those without domains using the inflate method.
+
+    Reverse indicates whether, before working on the CDS lists, the CDS list for record B should be
+    reversed. This is detected in LCS. The B CDS start and stop do not change, and reflect the start
+    and stop once the list is already reversed.
 
     Properties:
         pair: BGCPair
@@ -69,6 +80,74 @@ class ComparableRegion:
         self.lcs_a_stop = a_stop
         self.lcs_b_stop = b_stop
         self.alignment_mode: ALIGNMENT_MODE = ALIGNMENT_MODE.GLOBAL
+
+    def inflate_a(self) -> None:
+        """Inflates the A region start and stop to include all CDS, including those
+        without domains.
+
+        This should be done once after LCS/Extend. There is no way to know if this
+        comparable region has already been inflated, so this method should only be
+        called once.
+        """
+        # quit early if length is 1
+        if self.a_start == self.a_stop - 1:
+            return
+
+        a_cds_list = self.pair.record_a.get_cds()
+
+        # find the number of cds without domains before the start and stop
+        empty_cds_count = 0
+        for idx, cds in enumerate(a_cds_list):
+            if len(cds.hsps) == 0:
+                empty_cds_count += 1
+
+            if idx - empty_cds_count == self.a_start:
+                self.a_start += empty_cds_count
+
+            if idx - empty_cds_count == self.a_stop:
+                self.a_stop += empty_cds_count
+                break
+
+    def inflate_b(self) -> None:
+        """Inflates the B region start and stop to include all CDS, including those
+        without domains.
+
+        This should be done once after LCS/Extend. There is no way to know if this
+        comparable region has already been inflated, so this method should only be
+        called once.
+        """
+        # quit early if length is 1
+        if self.b_start == self.b_stop - 1:
+            return
+
+        b_cds_list = self.pair.record_b.get_cds()
+
+        if self.reverse:
+            b_cds_list = b_cds_list[::-1]
+
+        # find the number of cds without domains before the start and stop
+        empty_cds_count = 0
+        for idx, cds in enumerate(b_cds_list):
+            if len(cds.hsps) == 0:
+                empty_cds_count += 1
+
+            if idx - empty_cds_count == self.b_start:
+                self.b_start += empty_cds_count
+
+            if idx - empty_cds_count == self.b_stop:
+                self.b_stop += empty_cds_count
+                break
+
+    def inflate(self):
+        """Inflates the comparable region to include all CDS, including those without
+        domains.
+
+        This should be done once after LCS/Extend. There is no way to know if this
+        comparable region has already been inflated, so this method should only be
+        called once.
+        """
+        self.inflate_a()
+        self.inflate_b()
 
     def get_domain_sets(
         self, regenerate=False, cache=True
@@ -190,27 +269,6 @@ class ComparableRegion:
             self.domain_dicts = (domain_dict_a, domain_dict_b)
 
         return self.domain_dicts
-
-    def find_lcs(self):
-        """Retrieve the longest common subsequence of domains for a pair of BGC records
-
-        Args:
-            pair (BGCPair): Pair of BGCs to retrieve the LCS for
-
-        Returns:
-            tuple[int]: tuple of integers corresponding to:
-            [a_lcs_start, a_lcs_stop, b_lcs_start, b_lcs_stop]
-        """
-        a_cds = self.pair.record_a.get_cds_with_domains()
-        b_cds = self.pair.record_b.get_cds_with_domains()
-
-        a_start, a_stop, b_start, b_stop, reverse = legacy_find_cds_lcs(a_cds, b_cds)
-
-        self.a_start = a_start
-        self.a_stop = a_stop
-        self.b_start = b_start
-        self.b_stop = b_stop
-        self.reverse = reverse
 
     def log_comparable_region(self, label="<") -> None:  # pragma: no cover
         """Prints a debug level log of the comparable region

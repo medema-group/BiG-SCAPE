@@ -23,6 +23,7 @@ from .utility import (
 )
 
 from . import lcs
+from . import extend
 
 __all__ = [
     "RecordPair",
@@ -40,8 +41,9 @@ __all__ = [
     "get_weight_category",
     "get_record_category",
     "save_edge_to_db",
-    "lcs",
     "save_edges_to_db",
+    "lcs",
+    "extend",
     "get_edge_param_id",
     "get_edge_weight",
 ]

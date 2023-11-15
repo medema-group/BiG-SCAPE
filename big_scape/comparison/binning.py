@@ -659,9 +659,9 @@ class RecordPair:
         if record_a.parent_gbk is None or record_b.parent_gbk is None:
             raise ValueError("Region in pair has no parent GBK!")
 
-        # comparable regions start at the full ranges
-        a_len = len(record_a.get_cds())
-        b_len = len(record_b.get_cds())
+        # comparable regions start "deflated", meaning only CDS with domains
+        a_len = len(record_a.get_cds_with_domains())
+        b_len = len(record_b.get_cds_with_domains())
 
         self.comparable_region: ComparableRegion = ComparableRegion(
             self, 0, a_len, 0, b_len, False

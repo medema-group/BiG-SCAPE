@@ -19,17 +19,14 @@ from math import ceil
 # from other modules
 from big_scape.distances import calc_jaccard_pair, calc_ai_pair, calc_dss_pair_legacy
 import big_scape.enums as bs_enums
+import big_scape.genbank as bs_gbk
+import big_scape.cli.constants as bs_constants
 
 # from this module
 from .binning import RecordPairGenerator, RecordPair
 from .binning import LEGACY_WEIGHTS
-from .legacy_extend import (
-    legacy_needs_expand_pair,
-    expand_glocal,
-    check_expand,
-    reset_expansion,
-)
-from .legacy_lcs import legacy_find_cds_lcs
+from .extend import extend, reset, check
+from .lcs import find_domain_lcs_region, find_domain_lcs_protocluster
 
 T = TypeVar("T")
 
@@ -194,9 +191,24 @@ def do_lcs_pair(
     Returns:
         bool: True if the pair needs expansion, False if it does not
     """
-    a_start, a_stop, b_start, b_stop, reverse = legacy_find_cds_lcs(
-        pair.record_a.get_cds_with_domains(), pair.record_b.get_cds_with_domains()
-    )
+
+    if isinstance(pair.record_a, bs_gbk.Region) and isinstance(
+        pair.record_b, bs_gbk.Region
+    ):
+        logging.debug("Using region lcs")
+        a_start, a_stop, b_start, b_stop, reverse = find_domain_lcs_region(pair)
+
+    elif isinstance(pair.record_a, bs_gbk.ProtoCluster) and isinstance(
+        pair.record_b, bs_gbk.ProtoCluster
+    ):
+        logging.debug("Using protocluster lcs")
+        a_start, a_stop, b_start, b_stop, reverse = find_domain_lcs_protocluster(pair)
+
+    else:
+        raise TypeError("Regions must be of the same type")
+
+    logging.debug("before lcs:")
+    logging.debug(pair.comparable_region)
 
     # set the comparable region
     pair.comparable_region.lcs_a_start = a_start
@@ -209,10 +221,21 @@ def do_lcs_pair(
     pair.comparable_region.b_stop = b_stop
     pair.comparable_region.reverse = reverse
 
-    if legacy_needs_expand_pair(pair, alignment_mode):
+    logging.debug("after lcs:")
+    logging.debug(pair.comparable_region)
+
+    if alignment_mode == bs_enums.ALIGNMENT_MODE.GLOBAL:
+        return False
+
+    if alignment_mode == bs_enums.ALIGNMENT_MODE.GLOCAL:
         return True
 
-    reset_expansion(pair.comparable_region)
+    if check(pair.comparable_region, 0, True):
+        return True
+
+    logging.debug("resetting after extend")
+
+    reset(pair.comparable_region)
     return False
 
 
@@ -225,13 +248,21 @@ def expand_pair(pair: RecordPair) -> float:
     Returns:
         float: jaccard index
     """
-    expand_glocal(pair.comparable_region)
+    extend(
+        pair.comparable_region,
+        bs_constants.EXPAND_MATCH_SCORE,
+        bs_constants.EXPAND_MISMATCH_SCORE,
+        bs_constants.EXPAND_GAP_SCORE,
+        bs_constants.EXPAND_MAX_MATCH_PERC,
+    )
 
-    if not check_expand(pair.comparable_region):
-        reset_expansion(pair.comparable_region)
+    if not check(pair.comparable_region, 0, True):
+        logging.info("resetting after extend")
+        reset(pair.comparable_region)
         jc = calc_jaccard_pair(pair)
         return jc
 
+    # TODO: check this
     pair.comparable_region.alignment_mode = bs_enums.ALIGNMENT_MODE.GLOCAL
     jc = calc_jaccard_pair(pair)
 
@@ -280,6 +311,9 @@ def calculate_scores_pair(
     # weights_label = bs_comparison.get_edge_weight(edge_param_id)
 
     for pair in pairs:
+        logging.debug(pair)
+        pair.comparable_region.log_comparable_region()
+        logging.debug("")
         if pair.record_a.parent_gbk == pair.record_b.parent_gbk:
             results.append(
                 (
@@ -372,6 +406,10 @@ def calculate_scores_pair(
         similarity = jaccard * jc_weight + adjacency * ai_weight + dss * dss_weight
         distance = 1 - similarity
 
+        # at the very end, we need to inflate the comparable region coordinates to
+        # include CDS without domains
+        pair.comparable_region.inflate()
+
         results.append(
             (
                 pair.record_a._db_id,
@@ -392,5 +430,6 @@ def calculate_scores_pair(
                 pair.comparable_region.reverse,
             )
         )
+        logging.debug("")
 
     return results

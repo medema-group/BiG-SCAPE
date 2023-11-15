@@ -42,7 +42,7 @@ def create_mock_gbk(i) -> GBK:
 
 
 def add_mock_hsp_cds(cds: CDS) -> None:
-    hsp = HSP(cds, "PF01234.12", 1.0, 0, 100)
+    hsp = HSP(cds, "PF01234", 1.0, 0, 100)
     cds.hsps.append(hsp)
 
 

@@ -20,7 +20,7 @@ class HSP:
         self, cds: CDS, domain: str, score: float, env_start: int, env_stop: int
     ) -> None:
         self.cds = cds
-        self.domain = domain
+        self.domain = HSP.sanitize_accession(domain)
         self.score = score
         self.env_start = env_start
         self.env_stop = env_stop
@@ -113,7 +113,7 @@ class HSP:
         # special case if we are comparing this to a string
         if isinstance(__o, str):
             # we do not care about version numbers in this comparison, so strip it
-            return self.domain[:7] == __o[:7]
+            return self.domain == __o
 
         if not isinstance(__o, HSP):
             raise NotImplementedError()
@@ -121,7 +121,17 @@ class HSP:
         return __o.domain == self.domain
 
     def __hash__(self) -> int:
-        return hash((self.domain))
+        return hash(self.domain)
+
+    @staticmethod
+    def sanitize_accession(accession: str):
+        if len(accession) < 8:
+            return accession
+
+        if accession[7] == ".":
+            return accession[:7]
+
+        return accession
 
     @staticmethod
     def load_all(cds_list: list[CDS]) -> None:
