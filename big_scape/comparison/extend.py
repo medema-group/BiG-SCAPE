@@ -2,12 +2,12 @@
 
 # from python
 import math
+import logging
 
 # from other modules
 import big_scape.genbank as bs_genbank
 
 # from this module
-import logging
 from .comparable_region import ComparableRegion
 
 

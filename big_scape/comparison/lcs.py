@@ -149,7 +149,7 @@ def find_domain_lcs_region(
 
     This takes CDS as arguments, but uses the domains within the CDS to find the LCS
 
-    NOTE: The LCS correspond to slices of region CDS that do not have domains!
+    NOTE: The LCS correspond to slices of region CDS that have domains only!
     These slices need to be converted to full CDS ranges later
 
     Approach:
@@ -373,7 +373,7 @@ def find_domain_lcs_protocluster(
     """Find the longest stretch of matching domains between two protocluster records,
     using domains
 
-    NOTE: The LCS correspond to slices of region CDS that do not have domains!
+    NOTE: The LCS correspond to slices of region CDS that have domains only!
     These slices need to be converted to full CDS ranges later
 
     Args:
