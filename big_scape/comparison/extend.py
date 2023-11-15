@@ -225,6 +225,8 @@ def score_extend(
     target_exp = 0
     query_exp = 0
 
+    last_domain_idx = 0
+
     for query_idx, cds in enumerate(query[query_start:]):
         for hsp in cds.hsps:
             if hsp.domain not in target_index:
@@ -235,12 +237,15 @@ def score_extend(
                 cds_idx, domain_idx = target_idx
 
                 # mismatch if the domain is too far away
-                if domain_idx - query_idx > max_match_dist:
+                if abs(domain_idx - last_domain_idx) > max_match_dist:
                     score += mismatch
                     break
 
                 if domain_idx < query_start:
                     continue
+
+                if domain_idx > last_domain_idx:
+                    last_domain_idx = domain_idx
 
                 # match. add score
                 score += match
