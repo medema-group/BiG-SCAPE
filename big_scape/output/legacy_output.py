@@ -257,8 +257,7 @@ def generate_run_data_js(
         record_acc_idx = genomes[organism]
 
         # class id
-        # product hybrids of AS4 and under dealt with here and in legacy_bin_generator
-        product = ".".join(gbk.region.product.split("-"))
+        product = gbk.region.product
         region_class = legacy_get_class(product)
 
         if region_class not in class_idx:

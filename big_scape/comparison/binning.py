@@ -755,20 +755,27 @@ def as_class_bin_generator(
         if classify_mode == CLASSIFY_MODE.CATEGORY:
             record_class = get_record_category(record)
 
-        try:
-            class_idx[record_class].append(record)
-        except KeyError:
-            class_idx[record_class] = [record]
+        if run["hybrids_off"]:
+            record_classes = record_class.split(".")
+        else:
+            record_classes = [record_class]
 
-        if weight_type == "legacy_weights":
-            # get region category for weights
-            region_weight_cat = get_weight_category(record)
+        for record_class in record_classes:
+            try:
+                if record not in class_idx[record_class]:
+                    class_idx[record_class].append(record)
+            except KeyError:
+                class_idx[record_class] = [record]
 
-            if record_class not in category_weights.keys():
-                category_weights[record_class] = region_weight_cat
+            if weight_type == "legacy_weights":
+                # get region category for weights
+                region_weight_cat = get_weight_category(record)
 
-        if weight_type == "mix":
-            category_weights[record_class] = "mix"
+                if record_class not in category_weights.keys():
+                    category_weights[record_class] = region_weight_cat
+
+            if weight_type == "mix":
+                category_weights[record_class] = "mix"
 
     for class_name, records in class_idx.items():
         weight_category = category_weights[class_name]
@@ -903,15 +910,22 @@ def legacy_bin_generator(
         if record.product is None:
             continue
 
-        # product hybrids of AS4 and under dealt with here and in legacy_output generate_run_data_js
-        product = ".".join(record.product.split("-"))
+        product = record.product
 
-        record_class = legacy_get_class(product)
+        if run["hybrids_off"]:
+            record_products = product.split(".")
 
-        try:
-            class_idx[record_class].append(record)
-        except KeyError:
-            class_idx[record_class] = [record]
+        else:
+            record_products = [product]
+
+        for product in record_products:
+            record_class = legacy_get_class(product)
+
+            try:
+                if record not in class_idx[record_class]:
+                    class_idx[record_class].append(record)
+            except KeyError:
+                class_idx[record_class] = [record]
 
     for class_name, records in class_idx.items():
         edge_param_id = bs_comparison.get_edge_param_id(run, class_name)

@@ -881,6 +881,7 @@ class TestBinGenerators(TestCase):
             "alignment_mode": bs_enums.ALIGNMENT_MODE.AUTO,
             "legacy_weights": True,
             "classify": bs_enums.CLASSIFY_MODE.CATEGORY,
+            "hybrids_off": False,
         }
 
         bin = next(as_class_bin_generator(gbks, run_category_weights))
