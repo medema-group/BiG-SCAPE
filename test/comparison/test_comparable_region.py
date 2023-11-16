@@ -203,19 +203,19 @@ class TestComparibleRegions(TestCase):
 
         pair = RecordPair(gbk_a.region, gbk_b.region)
 
-        # set mock lcs and extend bounds
+        # set mock lcs and extend bounds (stops are exclusive)
         pair.comparable_region.lcs_a_start = 0
         pair.comparable_region.lcs_a_stop = 2
-        pair.comparable_region.a_start = 0
-        pair.comparable_region.a_stop = 2
+        pair.comparable_region.a_start = 1
+        pair.comparable_region.a_stop = 3
 
         pair.comparable_region.lcs_b_start = 0
-        pair.comparable_region.lcs_b_stop = 1
+        pair.comparable_region.lcs_b_stop = 2
         pair.comparable_region.b_start = 0
-        pair.comparable_region.b_stop = 1
+        pair.comparable_region.b_stop = 2
         pair.comparable_region.reverse = False
 
-        expected_inflate = (1, 3, 1, 3, 0, 4, 0, 4)
+        expected_inflate = (1, 3, 2, 4, 0, 5, 0, 5)
 
         pair.comparable_region.inflate()
 
@@ -248,14 +248,14 @@ class TestComparibleRegions(TestCase):
 
         pair = RecordPair(gbk_a.region, gbk_b.region)
 
-        # only interested in B, reverse=True
+        # only interested in B, reverse=True (stops are exclusive)
         pair.comparable_region.lcs_b_start = 0
-        pair.comparable_region.lcs_b_stop = 1
+        pair.comparable_region.lcs_b_stop = 2
         pair.comparable_region.b_start = 0
-        pair.comparable_region.b_stop = 1
+        pair.comparable_region.b_stop = 2
         pair.comparable_region.reverse = True
 
-        expected_inflate = (2, 3, 2, 3)
+        expected_inflate = (2, 4, 2, 4)
 
         pair.comparable_region.inflate_b()
 

@@ -47,9 +47,11 @@ def generate_mock_cds_lists(
     for i in range(max(len_a, len_b)):
         if i < len_a:
             a = bs_genbank.CDS(i * 100, (i + 1) * 100)
+            a.strand = 1
             cds_a.append(a)
         if i < len_b:
             b = bs_genbank.CDS(i * 100, (i + 1) * 100)
+            b.strand = 1
             cds_b.append(b)
 
         if i not in common_a:
