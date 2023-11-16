@@ -89,23 +89,25 @@ class ComparableRegion:
         comparable region has already been inflated, so this method should only be
         called once.
         """
-        # quit early if length is 1
-        if self.a_start == self.a_stop - 1:
-            return
-
         a_cds_list = self.pair.record_a.get_cds()
+        a_cds_with_domains = self.pair.record_a.get_cds_with_domains()
+        lcs_a_start_orf_num = a_cds_with_domains[self.lcs_a_start].orf_num
+        lcs_a_stop_orf_num = a_cds_with_domains[self.lcs_a_stop].orf_num
+        a_start_orf_num = a_cds_with_domains[self.a_start].orf_num
+        a_stop_orf_num = a_cds_with_domains[self.a_stop].orf_num
 
-        # find the number of cds without domains before the start and stop
-        empty_cds_count = 0
         for idx, cds in enumerate(a_cds_list):
-            if len(cds.hsps) == 0:
-                empty_cds_count += 1
+            if cds.orf_num == lcs_a_start_orf_num:
+                self.lcs_a_start = idx
 
-            if idx - empty_cds_count == self.a_start:
-                self.a_start += empty_cds_count
+            if cds.orf_num == a_start_orf_num:
+                self.a_start = idx
 
-            if idx - empty_cds_count == self.a_stop:
-                self.a_stop += empty_cds_count
+            if cds.orf_num == lcs_a_stop_orf_num:
+                self.lcs_a_stop = idx
+
+            if cds.orf_num == a_stop_orf_num:
+                self.a_stop = idx
                 break
 
     def inflate_b(self) -> None:
@@ -116,26 +118,30 @@ class ComparableRegion:
         comparable region has already been inflated, so this method should only be
         called once.
         """
-        # quit early if length is 1
-        if self.b_start == self.b_stop - 1:
-            return
-
         b_cds_list = self.pair.record_b.get_cds()
+        b_cds_with_domains = self.pair.record_b.get_cds_with_domains()
 
         if self.reverse:
             b_cds_list = b_cds_list[::-1]
+            b_cds_with_domains = b_cds_with_domains[::-1]
 
-        # find the number of cds without domains before the start and stop
-        empty_cds_count = 0
+        lcs_b_start_orf_num = b_cds_with_domains[self.lcs_b_start].orf_num
+        lcs_b_stop_orf_num = b_cds_with_domains[self.lcs_b_stop].orf_num
+        b_start_orf_num = b_cds_with_domains[self.b_start].orf_num
+        b_stop_orf_num = b_cds_with_domains[self.b_stop].orf_num
+
         for idx, cds in enumerate(b_cds_list):
-            if len(cds.hsps) == 0:
-                empty_cds_count += 1
+            if cds.orf_num == lcs_b_start_orf_num:
+                self.lcs_b_start = idx
 
-            if idx - empty_cds_count == self.b_start:
-                self.b_start += empty_cds_count
+            if cds.orf_num == b_start_orf_num:
+                self.b_start = idx
 
-            if idx - empty_cds_count == self.b_stop:
-                self.b_stop += empty_cds_count
+            if cds.orf_num == lcs_b_stop_orf_num:
+                self.lcs_b_stop = idx
+
+            if cds.orf_num == b_stop_orf_num:
+                self.b_stop = idx
                 break
 
     def inflate(self):

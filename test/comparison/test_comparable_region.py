@@ -175,3 +175,95 @@ class TestComparibleRegions(TestCase):
         actual_dicts = pair.comparable_region.get_domain_dicts()
 
         self.assertEqual(expected_dicts, actual_dicts)
+
+    def test_inflate(self):
+        """Tests inflate function of comparable region"""
+        # Two gbks with five cds
+        # only middle gbk A cds contain domains
+        gbk_a = GBK("", "", "test")
+        gbk_a.region = Region(gbk_a, 0, 0, 100, False, "")
+        cds_a = [CDS(10, 20), CDS(30, 40), CDS(50, 60), CDS(70, 80), CDS(80, 90)]
+        # assign orf numbers
+        for idx, cds in enumerate(cds_a):
+            cds.orf_num = idx + 1
+        cds_a[1].hsps.append(HSP(cds_a[1], "PF1", 100, 0, 10))
+        cds_a[2].hsps.append(HSP(cds_a[2], "PF1", 100, 0, 10))
+        cds_a[3].hsps.append(HSP(cds_a[3], "PF1", 100, 0, 10))
+        gbk_a.genes = cds_a
+
+        # repeat for gbk B, only start and end cds of gbk_b contain domain
+        gbk_b = GBK("", "", "test")
+        gbk_b.region = Region(gbk_b, 0, 0, 100, False, "")
+        cds_b = [CDS(10, 20), CDS(30, 40), CDS(50, 60), CDS(70, 80), CDS(80, 90)]
+        for idx, cds in enumerate(cds_b):
+            cds.orf_num = idx + 1
+        cds_b[0].hsps.append(HSP(cds_b[0], "PF1", 100, 0, 10))
+        cds_b[4].hsps.append(HSP(cds_b[4], "PF1", 100, 0, 10))
+        gbk_b.genes = cds_b
+
+        pair = RecordPair(gbk_a.region, gbk_b.region)
+
+        # set mock lcs and extend bounds
+        pair.comparable_region.lcs_a_start = 0
+        pair.comparable_region.lcs_a_stop = 2
+        pair.comparable_region.a_start = 0
+        pair.comparable_region.a_stop = 2
+
+        pair.comparable_region.lcs_b_start = 0
+        pair.comparable_region.lcs_b_stop = 1
+        pair.comparable_region.b_start = 0
+        pair.comparable_region.b_stop = 1
+        pair.comparable_region.reverse = False
+
+        expected_inflate = (1, 3, 1, 3, 0, 4, 0, 4)
+
+        pair.comparable_region.inflate()
+
+        actual_inflate = (
+            pair.comparable_region.lcs_a_start,
+            pair.comparable_region.lcs_a_stop,
+            pair.comparable_region.a_start,
+            pair.comparable_region.a_stop,
+            pair.comparable_region.lcs_b_start,
+            pair.comparable_region.lcs_b_stop,
+            pair.comparable_region.b_start,
+            pair.comparable_region.b_stop,
+        )
+
+        self.assertEqual(expected_inflate, actual_inflate)
+
+    def test_inflate_b_reverse(self):
+        """Tests infate_b when reverse is true"""
+        gbk_a = GBK("", "", "test")
+        gbk_a.region = Region(gbk_a, 0, 0, 100, False, "")
+
+        gbk_b = GBK("", "", "test")
+        gbk_b.region = Region(gbk_b, 0, 0, 100, False, "")
+        cds_b = [CDS(10, 20), CDS(30, 40), CDS(50, 60), CDS(70, 80), CDS(80, 90)]
+        for idx, cds in enumerate(cds_b):
+            cds.orf_num = idx + 1
+        cds_b[1].hsps.append(HSP(cds_b[1], "PF1", 100, 0, 10))
+        cds_b[2].hsps.append(HSP(cds_b[2], "PF1", 100, 0, 10))
+        gbk_b.genes = cds_b
+
+        pair = RecordPair(gbk_a.region, gbk_b.region)
+
+        # only interested in B, reverse=True
+        pair.comparable_region.lcs_b_start = 0
+        pair.comparable_region.lcs_b_stop = 1
+        pair.comparable_region.b_start = 0
+        pair.comparable_region.b_stop = 1
+        pair.comparable_region.reverse = True
+
+        expected_inflate = (2, 3, 2, 3)
+
+        pair.comparable_region.inflate_b()
+
+        actual_inflate = (
+            pair.comparable_region.lcs_b_start,
+            pair.comparable_region.lcs_b_stop,
+            pair.comparable_region.b_start,
+            pair.comparable_region.b_stop,
+        )
+
+        self.assertEqual(expected_inflate, actual_inflate)
