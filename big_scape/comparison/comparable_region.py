@@ -92,9 +92,9 @@ class ComparableRegion:
         a_cds_list = self.pair.record_a.get_cds()
         a_cds_with_domains = self.pair.record_a.get_cds_with_domains()
         lcs_a_start_orf_num = a_cds_with_domains[self.lcs_a_start].orf_num
-        lcs_a_stop_orf_num = a_cds_with_domains[self.lcs_a_stop].orf_num
+        lcs_a_stop_orf_num = a_cds_with_domains[self.lcs_a_stop - 1].orf_num
         a_start_orf_num = a_cds_with_domains[self.a_start].orf_num
-        a_stop_orf_num = a_cds_with_domains[self.a_stop].orf_num
+        a_stop_orf_num = a_cds_with_domains[self.a_stop - 1].orf_num
 
         for idx, cds in enumerate(a_cds_list):
             if cds.orf_num == lcs_a_start_orf_num:
@@ -104,10 +104,10 @@ class ComparableRegion:
                 self.a_start = idx
 
             if cds.orf_num == lcs_a_stop_orf_num:
-                self.lcs_a_stop = idx
+                self.lcs_a_stop = idx + 1
 
             if cds.orf_num == a_stop_orf_num:
-                self.a_stop = idx
+                self.a_stop = idx + 1
                 break
 
     def inflate_b(self) -> None:
@@ -126,9 +126,9 @@ class ComparableRegion:
             b_cds_with_domains = b_cds_with_domains[::-1]
 
         lcs_b_start_orf_num = b_cds_with_domains[self.lcs_b_start].orf_num
-        lcs_b_stop_orf_num = b_cds_with_domains[self.lcs_b_stop].orf_num
+        lcs_b_stop_orf_num = b_cds_with_domains[self.lcs_b_stop - 1].orf_num
         b_start_orf_num = b_cds_with_domains[self.b_start].orf_num
-        b_stop_orf_num = b_cds_with_domains[self.b_stop].orf_num
+        b_stop_orf_num = b_cds_with_domains[self.b_stop - 1].orf_num
 
         for idx, cds in enumerate(b_cds_list):
             if cds.orf_num == lcs_b_start_orf_num:
@@ -138,10 +138,10 @@ class ComparableRegion:
                 self.b_start = idx
 
             if cds.orf_num == lcs_b_stop_orf_num:
-                self.lcs_b_stop = idx
+                self.lcs_b_stop = idx + 1
 
             if cds.orf_num == b_stop_orf_num:
-                self.b_stop = idx
+                self.b_stop = idx + 1
                 break
 
     def inflate(self):
