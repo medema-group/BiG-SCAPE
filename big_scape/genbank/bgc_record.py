@@ -181,6 +181,35 @@ class BGCRecord:
                 domains.extend(cds.hsps)
         return domains
 
+    def get_cds_start_stop(self) -> tuple[int, int]:
+        """Get cds number of record start and stop with respect to full region
+
+        Obtained cds slice starts counting at one and is inclusive
+
+        Args:
+            record (BGCRecord): record to find bounds for
+
+        Returns:
+            tuple[int, int]: start and stop of record in cds number
+        """
+        if self.parent_gbk is None:
+            raise AttributeError("Record parent GBK is not set!")
+
+        gbk = self.parent_gbk
+        all_cds = gbk.genes
+
+        # check if record contains all cds
+        if all_cds[0].nt_start >= self.nt_start and all_cds[-1].nt_stop <= self.nt_stop:
+            return 1, len(all_cds)
+
+        for idx, cds in enumerate(all_cds):
+            if cds.nt_start <= self.nt_start:
+                record_start = idx + 1
+            if cds.nt_stop >= self.nt_stop:
+                record_stop = idx + 1
+                break
+        return record_start, record_stop
+
     def save_record(
         self, record_type: str, parent_id: Optional[int] = None, commit=True
     ) -> None:

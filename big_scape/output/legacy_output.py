@@ -621,9 +621,7 @@ def generate_bs_data_js(
         if record.parent_gbk is None:
             raise AttributeError("Record parent GBK is not set!")
 
-        rec_cds = record.get_cds()
-        rec_start = rec_cds[0].orf_num
-        rec_stop = rec_cds[-1].orf_num
+        rec_start, rec_stop = record.get_cds_start_stop()
         gbk = record.parent_gbk
         organism = "Unknown"
         if "organism" in gbk.metadata:
