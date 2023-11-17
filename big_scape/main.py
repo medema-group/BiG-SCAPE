@@ -273,7 +273,7 @@ def run_bigscape(run: dict) -> None:
     # query
 
     if run["query_bgc_path"]:
-        bs_query.calculate_distances_query(run, gbks)
+        query_records = bs_query.calculate_distances_query(run, gbks)
 
         DB.commit()
 
@@ -351,7 +351,7 @@ def run_bigscape(run: dict) -> None:
             logging.info("Query BGC Bin: cutoff %s", cutoff)
 
             query_connected_component = bs_network.get_query_connected_component(
-                all_bgc_records, query_node_id, edge_param_id, cutoff
+                query_records, query_node_id, edge_param_id, cutoff
             )
 
             cc_cutoff[cutoff] = query_connected_component
@@ -457,7 +457,7 @@ def run_bigscape(run: dict) -> None:
                 cc_cutoff[cutoff], "Query"
             )
             query_bin.add_records(
-                [record for record in all_bgc_records if record is not None]
+                [record for record in query_records if record is not None]
             )
             legacy_prepare_bin_output(run, cutoff, query_bin)
             legacy_generate_bin_output(run, cutoff, query_bin)

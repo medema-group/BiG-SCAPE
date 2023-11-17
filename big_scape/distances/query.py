@@ -11,7 +11,9 @@ import big_scape.comparison as bs_comparison
 import big_scape.enums as bs_enums
 
 
-def calculate_distances_query(run: dict, gbks: list[bs_gbk.GBK]) -> None:
+def calculate_distances_query(
+    run: dict, gbks: list[bs_gbk.GBK]
+) -> list[bs_gbk.BGCRecord]:
     """calculates distances between all queries and references in a given dataset and
     saves them to the database
 
@@ -195,3 +197,5 @@ def calculate_distances_query(run: dict, gbks: list[bs_gbk.GBK]) -> None:
             break
 
         logging.info("Generated %d edges", num_edges)
+
+    return bgcs_records
