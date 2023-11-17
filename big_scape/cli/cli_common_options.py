@@ -93,6 +93,13 @@ def common_all(fn):
             ),
             help="Path to output log file. Default: output_dir/timestamp.log.",
         ),
+        click.option(
+            "--no-db-dump",
+            type=bool,
+            is_flag=True,
+            default=False,
+            help="Do not dump the sqlite database to disk",
+        ),
     ]
     for opt in options[::-1]:
         fn = opt(fn)
