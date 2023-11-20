@@ -774,15 +774,40 @@ def adjust_lcs_to_family_reference(
         reverse = lcs_data["reverse"]
 
         if reverse:
-            # to keep consistent family reference genes flip a back to forward
+            # to keep consistent family reference genes flip A back to forward
             a_stop = lcs_data["lcs_b_stop"]
             a_start = fam_cds_num - a_stop
 
-            # now we just need to correct for the exclusive stop in b
+            # now we just need to correct for the exclusive stop in B
             b_stop = lcs_data["lcs_a_stop"]
             b_start = b_stop - 1
 
     return a_start, b_start, reverse
+
+
+def adjust_lcs_to_full_region(
+    a_start: int,
+    b_start: int,
+    fam_record: BGCRecord,
+    bgc_record: BGCRecord,
+) -> tuple[int, int]:
+    """Adjusts lcs start to full region if needed
+
+    Args:
+        a_start (int): family reference lcs start
+        b_start (int): family member lcs start
+        fam_record (BGCRecord): family reference record
+        bgc_record (BGCRecord): family member record
+
+    Returns:
+        tuple[int, int]: adjusted lcs starts
+    """
+    fam_record_start, _ = fam_record.get_cds_start_stop()
+    bgc_record_start, _ = bgc_record.get_cds_start_stop()
+
+    a_start = a_start + fam_record_start - 1
+    b_start = b_start + bgc_record_start - 1
+    return a_start, b_start
 
 
 def generate_bs_families_alignment(
@@ -823,14 +848,13 @@ def generate_bs_families_alignment(
         family_records = [records[bgc_num] for bgc_num in family_members]
         family_member_db_ids = [rec._db_id for rec in family_records]
         fam_record_idx = family_member_db_ids.index(family_db_id)
-        fam_gbk = family_records[fam_record_idx].parent_gbk
-        if fam_gbk is None:
-            raise AttributeError("Record parent GBK is not set!")
+        fam_record = family_records[fam_record_idx]
 
         ref_genes_ = set()
         aln = []
         for bgc, bgc_db_id in zip(family_members, family_member_db_ids):
-            bgc_gbk = records[bgc].parent_gbk
+            bgc_record = records[bgc]
+            bgc_gbk = bgc_record.parent_gbk
             if bgc_gbk is None:
                 raise AttributeError("Record parent GBK is not set!")
             if bgc_db_id is None:
@@ -838,6 +862,11 @@ def generate_bs_families_alignment(
 
             if bgc_db_id == family_db_id:
                 aln.append([[gene_num, 0] for gene_num in range(len(bgc_gbk.genes))])
+
+            # protoclusters from the same record don't need aligning
+            elif bgc_gbk == fam_record.parent_gbk:
+                aln.append([[gene_num, 100] for gene_num in range(len(bgc_gbk.genes))])
+
             else:
                 lcs_data = fetch_lcs_from_db(
                     family_db_id,
@@ -846,7 +875,14 @@ def generate_bs_families_alignment(
                 )
 
                 a_start, b_start, reverse = adjust_lcs_to_family_reference(
-                    lcs_data, family_db_id, len(fam_gbk.genes), len(bgc_gbk.genes)
+                    lcs_data,
+                    family_db_id,
+                    len(fam_record.get_cds()),
+                    len(bgc_record.get_cds()),
+                )
+
+                a_start, b_start = adjust_lcs_to_full_region(
+                    a_start, b_start, fam_record, bgc_record
                 )
 
                 ref_genes_.add(a_start)

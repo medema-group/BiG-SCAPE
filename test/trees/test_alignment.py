@@ -8,7 +8,10 @@ from big_scape.genbank import GBK, BGCRecord, CDS
 from big_scape.hmm import HSP, HSPAlignment
 from big_scape.trees import generate_newick_tree
 from big_scape.trees.newick_tree import generate_gcf_alignment
-from big_scape.output.legacy_output import adjust_lcs_to_all_genes
+from big_scape.output.legacy_output import (
+    adjust_lcs_to_family_reference,
+    adjust_lcs_to_full_region,
+)
 
 
 class TestTrees(TestCase):
@@ -55,7 +58,7 @@ class TestTrees(TestCase):
 
         self.assertEqual(algn, expected_alignment)
 
-    def test_lcs_adjust_ex2mem(self):
+    def test_lcs_adjust_fwd(self):
         """Tests adjusted lcs exemplar to member not reversed"""
         mock_result = {
             "record_a_id": 0,
@@ -66,149 +69,114 @@ class TestTrees(TestCase):
             "lcs_b_stop": 9,
             "reverse": False,
         }
-        dom_to_gene = {0: {4: 5, 7: 9}, 1: {6: 8}}
-        dom_count = {}
 
-        expected_lcs = (5, 8, False)
+        expected_lcs = (4, 6, False)
 
-        new_lcs = adjust_lcs_to_all_genes(
-            mock_result, 0, 1, GBK("", "", ""), GBK("", "", ""), dom_to_gene, dom_count
-        )
+        new_lcs = adjust_lcs_to_family_reference(mock_result, 0, 10, 10)
 
         self.assertEqual(new_lcs, expected_lcs)
 
-    def test_lcs_adjust_ex2mem_reverse(self):
+    def test_lcs_adjust_rev(self):
         """Tests adjusted lcs exemplar to member with reverse"""
         mock_result = {
             "record_a_id": 0,
             "record_b_id": 1,
-            "lcs_a_start": 2,
-            "lcs_a_stop": 3,
-            "lcs_b_start": 1,
-            "lcs_b_stop": 2,
+            "lcs_a_start": 4,
+            "lcs_a_stop": 7,
+            "lcs_b_start": 6,
+            "lcs_b_stop": 9,
             "reverse": True,
         }
-        dom_to_gene = {0: {0: 0, 1: 2, 2: 4}, 1: {0: 1, 1: 2, 2: 3}}
-        dom_count = {0: [1, 1, 1], 1: [1, 1, 1]}
 
-        expected_lcs = (4, 2, True)
+        expected_lcs = (4, 3, True)
 
-        new_lcs = adjust_lcs_to_all_genes(
-            mock_result, 0, 1, GBK("", "", ""), GBK("", "", ""), dom_to_gene, dom_count
-        )
+        new_lcs = adjust_lcs_to_family_reference(mock_result, 0, 10, 10)
 
         self.assertEqual(new_lcs, expected_lcs)
 
-    def test_lcs_adjust_mem2ex(self):
+    def test_lcs_adjust_mem2ex_fwd(self):
         """Tests adjusted lcs member to exemplar not reversed"""
         mock_result = {
             "record_a_id": 0,
             "record_b_id": 1,
-            "lcs_a_start": 2,
-            "lcs_a_stop": 3,
-            "lcs_b_start": 1,
-            "lcs_b_stop": 2,
+            "lcs_a_start": 6,
+            "lcs_a_stop": 9,
+            "lcs_b_start": 4,
+            "lcs_b_stop": 7,
             "reverse": False,
         }
-        dom_to_gene = {0: {0: 0, 1: 2, 2: 4}, 1: {0: 1, 1: 2, 2: 3}}
-        dom_count = {0: [1, 1, 1], 1: [1, 1, 1]}
 
-        expected_lcs = (2, 4, False)
+        expected_lcs = (4, 6, False)
 
-        new_lcs = adjust_lcs_to_all_genes(
-            mock_result, 1, 0, GBK("", "", ""), GBK("", "", ""), dom_to_gene, dom_count
-        )
+        new_lcs = adjust_lcs_to_family_reference(mock_result, 1, 10, 10)
 
         self.assertEqual(new_lcs, expected_lcs)
 
-    def test_lcs_adjust_mem2ex_reverse(self):
+    def test_lcs_adjust_mem2ex_rev(self):
         """Tests adjusted lcs member to exemplar with reverse"""
         mock_result = {
             "record_a_id": 0,
             "record_b_id": 1,
-            "lcs_a_start": 2,
-            "lcs_a_stop": 3,
-            "lcs_b_start": 1,
-            "lcs_b_stop": 2,
+            "lcs_a_start": 6,
+            "lcs_a_stop": 9,
+            "lcs_b_start": 4,
+            "lcs_b_stop": 7,
             "reverse": True,
         }
-        dom_to_gene = {0: {0: 0, 1: 2, 2: 4}, 1: {0: 1, 1: 2, 2: 3}}
-        dom_count = {0: [1, 1, 1], 1: [1, 1, 1]}
 
-        expected_lcs = (2, 4, True)
+        # because the exemplar B was reversed, B is flipped back again, now
+        # domain B3 corresponds to the stop in A which is corrected for exclusive start
+        expected_lcs = (3, 8, True)
 
-        new_lcs = adjust_lcs_to_all_genes(
-            mock_result, 1, 0, GBK("", "", ""), GBK("", "", ""), dom_to_gene, dom_count
-        )
+        new_lcs = adjust_lcs_to_family_reference(mock_result, 1, 10, 10)
 
         self.assertEqual(new_lcs, expected_lcs)
 
-    def test_lcs_adjust_zero_length_not_reversed(self):
-        """Tests adjusted lcs for lcs with length 0"""
+    def test_adjust_lcs_to_full_region_region(self):
+        """Tests adjusted lcs to full regions for a region"""
+        gbk_a = GBK("", "", "")
+        cds_a = [CDS(100, 200), CDS(300, 550)]
+        gbk_a.genes = cds_a
 
-        mock_result = {
-            "record_a_id": 0,
-            "record_b_id": 1,
-            "lcs_a_start": 0,
-            "lcs_a_stop": 0,
-            "lcs_b_start": 0,
-            "lcs_b_stop": 0,
-            "reverse": False,
-        }
-        dom_to_gene = {0: {0: 0, 1: 2, 2: 4}, 1: {0: 1, 1: 2, 2: 3}}
-        dom_count = {0: [1, 2, 1], 1: [1, 1, 2]}
+        region_a = BGCRecord(gbk_a, 0, 0, 600, "", "")
 
-        max_dom_cds = CDS(20, 30)
-        max_dom_cds.strand = 1
-        fill_cds = CDS(10, 20)
-        fill_cds.strand = -1
+        gbk_b = GBK("", "", "")
+        cds_b = [CDS(100, 200), CDS(300, 550), CDS(550, 700)]
+        gbk_b.genes = cds_b
 
-        exempl_gbk = GBK("", "", "")
-        exempl_gbk.genes = [fill_cds, fill_cds, max_dom_cds, fill_cds, fill_cds]
+        region_b = BGCRecord(gbk_b, 1, 100, 700, "", "")
 
-        mem_gbk = GBK("", "", "")
-        mem_gbk.genes = [CDS(0, 1), CDS(2, 3), CDS(4, 5), max_dom_cds]
+        a_start, b_start = (1, 1)
 
-        expected_lcs = (2, 3, False)
+        expected_adjusted = (1, 1)
 
-        new_lcs = adjust_lcs_to_all_genes(
-            mock_result, 0, 1, exempl_gbk, mem_gbk, dom_to_gene, dom_count
+        actual_adjusted = adjust_lcs_to_full_region(
+            a_start, b_start, region_a, region_b
         )
 
-        self.assertEqual(new_lcs, expected_lcs)
+        self.assertEqual(expected_adjusted, actual_adjusted)
 
-    def test_lcs_adjust_zero_length_reversed(self):
-        """Tests adjusted lcs for lcs with length 0"""
+    def test_adjust_lcs_to_full_region_protocluster(self):
+        """Tests adjusted lcs to full regions for a region"""
+        gbk_a = GBK("", "", "")
+        cds_a = [CDS(100, 200), CDS(300, 550)]
+        gbk_a.genes = cds_a
 
-        mock_result = {
-            "record_a_id": 0,
-            "record_b_id": 1,
-            "lcs_a_start": 0,
-            "lcs_a_stop": 0,
-            "lcs_b_start": 0,
-            "lcs_b_stop": 0,
-            "reverse": False,
-        }
-        dom_to_gene = {0: {0: 0, 1: 2, 2: 4}, 1: {0: 1, 1: 2, 2: 3}}
-        dom_count = {0: [1, 2, 1], 1: [1, 1, 2]}
+        region_a = BGCRecord(gbk_a, 0, 0, 350, "", "")
 
-        max_dom_cds = CDS(0, 0)
-        max_dom_cds.strand = 1
-        fill_cds = CDS(0, 0)
-        fill_cds.strand = -1
+        gbk_b = GBK("", "", "")
+        cds_b = [CDS(100, 200), CDS(300, 550), CDS(550, 700)]
+        gbk_b.genes = cds_b
 
-        exempl_gbk = GBK("", "", "")
-        exempl_gbk.genes = [fill_cds, fill_cds, max_dom_cds, fill_cds, fill_cds]
+        # region_b starts after the first cds
+        region_b = BGCRecord(gbk_b, 1, 150, 700, "", "")
 
-        max_dom_cds_rev = CDS(0, 0)
-        max_dom_cds_rev.strand = -1
-        mem_gbk = GBK("", "", "")
-        mem_gbk.genes = [CDS(0, 0), CDS(0, 0), CDS(0, 0), max_dom_cds_rev]
+        a_start, b_start = (1, 1)
 
-        expected_lcs = (2, 1, True)
+        expected_adjusted = (1, 2)
 
-        new_lcs = adjust_lcs_to_all_genes(
-            mock_result, 0, 1, exempl_gbk, mem_gbk, dom_to_gene, dom_count
+        actual_adjusted = adjust_lcs_to_full_region(
+            a_start, b_start, region_a, region_b
         )
 
-        self.assertEqual(new_lcs, expected_lcs)
+        self.assertEqual(expected_adjusted, actual_adjusted)
