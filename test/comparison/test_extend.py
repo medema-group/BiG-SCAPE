@@ -240,10 +240,16 @@ class TestScoreExtend(unittest.TestCase):
             "B": [(1, 1), (3, 3), (3, 4)],
             "C": [(2, 2), (4, 6)],
         }
+        expected_cds_to_dom_index = {0: 0, 1: 1, 2: 2, 3: 3, 4: 5}
 
-        actual_target_index = bs_comp.extend.get_target_indexes(target)
+        actual_target_index, actual_cds_to_dom = bs_comp.extend.get_target_indexes(
+            target
+        )
 
-        self.assertEqual(expected_target_index, actual_target_index)
+        self.assertEqual(
+            (expected_target_index, expected_cds_to_dom_index),
+            (actual_target_index, actual_cds_to_dom),
+        )
 
     def test_extend_all_match(self):
         """Tests for extension with all matches"""
@@ -252,12 +258,12 @@ class TestScoreExtend(unittest.TestCase):
             5, 5, [0, 1, 2, 3, 4], [0, 1, 2, 3, 4], False
         )
 
-        target_index = bs_comp.extend.get_target_indexes(target)
+        target_index, _ = bs_comp.extend.get_target_indexes(target)
 
         expected_extends = (5, 5, 25)
 
         actual_extends = bs_comp.extend.score_extend(
-            query, 0, target_index, 5, -5, -3, 10
+            query, 0, target_index, 0, 0, 5, -5, -3, 10
         )
 
         self.assertEqual(expected_extends, actual_extends)
@@ -289,12 +295,12 @@ class TestScoreExtend(unittest.TestCase):
         target[2].hsps = [bs_hmmer.HSP(target[2], "D", 100.0, 0, 100)]
         target[3].hsps = [bs_hmmer.HSP(target[3], "E", 100.0, 0, 100)]
 
-        target_index = bs_comp.extend.get_target_indexes(target)
+        target_index, _ = bs_comp.extend.get_target_indexes(target)
 
         expected_extends = (1, 1, 5)
 
         actual_extends = bs_comp.extend.score_extend(
-            query, 0, target_index, 5, -3, -2, 10
+            query, 0, target_index, 0, 0, 5, -3, -2, 10
         )
 
         self.assertEqual(expected_extends, actual_extends)
@@ -327,12 +333,12 @@ class TestScoreExtend(unittest.TestCase):
         target[2].hsps = [bs_hmmer.HSP(target[2], "D", 100.0, 0, 100)]
         target[3].hsps = [bs_hmmer.HSP(target[3], "E", 100.0, 0, 100)]
 
-        target_index = bs_comp.extend.get_target_indexes(target)
+        target_index, _ = bs_comp.extend.get_target_indexes(target)
 
-        expected_extends = (5, 3, 11)
+        expected_extends = (3, 5, 11)
 
         actual_extends = bs_comp.extend.score_extend(
-            query, 0, target_index, 5, -3, -2, 10
+            query, 0, target_index, 0, 0, 5, -3, -2, 10
         )
 
         self.assertEqual(expected_extends, actual_extends)
@@ -374,10 +380,458 @@ class TestScoreExtend(unittest.TestCase):
         # so we expect an extension of 3 on both sides, and a score of 15
         expected_extends = (3, 3, 15)
 
-        target_index = bs_comp.extend.get_target_indexes(target)
+        target_index, _ = bs_comp.extend.get_target_indexes(target)
 
         actual_extends = bs_comp.extend.score_extend(
-            query, 0, target_index, 5, -3, -2, 10
+            query, 0, target_index, 0, 0, 5, -3, -2, 10
+        )
+
+        self.assertEqual(expected_extends, actual_extends)
+
+    def test_extend_middle_lcs(self):
+        """Tests correct start of extension when lcs is in middle of sequence"""
+        query = [
+            bs_genbank.CDS(0, 100),  # mock lcs
+            bs_genbank.CDS(100, 200),  # mock lcs
+            bs_genbank.CDS(200, 300),  # expected extension
+            bs_genbank.CDS(300, 400),  # expected extension
+            bs_genbank.CDS(400, 500),  # expected extension
+        ]
+        target = [
+            bs_genbank.CDS(0, 100),  # mock lcs
+            bs_genbank.CDS(100, 200),  # mock lcs
+            bs_genbank.CDS(200, 300),  # expected extension
+            bs_genbank.CDS(300, 400),  # expected extension
+            bs_genbank.CDS(400, 500),  # expected extension
+            bs_genbank.CDS(500, 600),
+        ]
+        target[0].hsps = [bs_hmmer.HSP(target[0], "X", 100.0, 0, 100)]
+        target[1].hsps = [bs_hmmer.HSP(target[1], "X", 100.0, 0, 100)]
+
+        query[2].hsps = [bs_hmmer.HSP(query[2], "A", 100.0, 0, 100)]
+        target[2].hsps = [bs_hmmer.HSP(target[2], "A", 100.0, 0, 100)]
+
+        query[3].hsps = [bs_hmmer.HSP(query[3], "B", 100.0, 0, 100)]
+        target[3].hsps = [bs_hmmer.HSP(target[3], "B", 100.0, 0, 100)]
+
+        query[4].hsps = [bs_hmmer.HSP(query[4], "C", 100.0, 0, 100)]
+        target[4].hsps = [bs_hmmer.HSP(target[4], "C", 100.0, 0, 100)]
+
+        target_index, cds_to_dom = bs_comp.extend.get_target_indexes(target)
+        target_dom_start = cds_to_dom[2]
+
+        expected_extends = (3, 3, 15)
+
+        actual_extends = bs_comp.extend.score_extend(
+            query, 2, target_index, 2, target_dom_start, 5, -3, -2, 10
+        )
+
+        self.assertEqual(expected_extends, actual_extends)
+
+    def test_extend_middle_lcs_fill_gap(self):
+        """Tests correct gap filling with lcs"""
+        query = [
+            bs_genbank.CDS(0, 100),  # mock lcs
+            bs_genbank.CDS(100, 200),  # mock lcs
+            bs_genbank.CDS(200, 300),  # expected extension
+            bs_genbank.CDS(300, 400),  # expected extension
+            bs_genbank.CDS(400, 500),  # expected extension
+        ]
+        target = [
+            bs_genbank.CDS(0, 100),  # mock lcs
+            bs_genbank.CDS(100, 200),  # mock lcs
+            bs_genbank.CDS(200, 300),  # expected extension
+            bs_genbank.CDS(300, 400),  # expected extension
+            bs_genbank.CDS(400, 500),  # expected extension
+            bs_genbank.CDS(500, 600),
+        ]
+        target[0].hsps = [bs_hmmer.HSP(target[0], "X", 100.0, 0, 100)]
+        target[1].hsps = [bs_hmmer.HSP(target[1], "X", 100.0, 0, 100)]
+
+        query[2].hsps = [bs_hmmer.HSP(query[2], "A", 100.0, 0, 100)]
+        target[2].hsps = [bs_hmmer.HSP(target[2], "A", 100.0, 0, 100)]
+
+        query[3].hsps = [bs_hmmer.HSP(query[3], "B", 100.0, 0, 100)]
+        target[3].hsps = [bs_hmmer.HSP(target[3], "C", 100.0, 0, 100)]
+
+        query[4].hsps = [bs_hmmer.HSP(query[4], "C", 100.0, 0, 100)]
+        target[4].hsps = [bs_hmmer.HSP(target[4], "B", 100.0, 0, 100)]
+
+        target_index, cds_to_dom = bs_comp.extend.get_target_indexes(target)
+        target_domain_start = cds_to_dom[2]
+
+        expected_extends = (3, 3, 15)
+
+        actual_extends = bs_comp.extend.score_extend(
+            query, 2, target_index, 2, target_domain_start, 5, -3, -2, 10
+        )
+
+        self.assertEqual(expected_extends, actual_extends)
+
+    def test_extend_middle_lcs_duplicated_domain(self):
+        """Tests correct lcs extension ignores domains before lcs"""
+        query = [
+            bs_genbank.CDS(0, 100),  # mock lcs
+            bs_genbank.CDS(100, 200),  # mock lcs
+            bs_genbank.CDS(200, 300),  # expected extension
+            bs_genbank.CDS(300, 400),  # expected extension
+            bs_genbank.CDS(400, 500),  # expected extension
+        ]
+        target = [
+            bs_genbank.CDS(0, 50),  # matching domain before lcs
+            bs_genbank.CDS(50, 100),  # mock lcs
+            bs_genbank.CDS(100, 200),  # mock lcs
+            bs_genbank.CDS(200, 300),  # no domain
+            bs_genbank.CDS(300, 400),  # expected extension
+            bs_genbank.CDS(400, 500),  # expected extension
+            bs_genbank.CDS(500, 600),
+        ]
+        target[0].hsps = [bs_hmmer.HSP(target[0], "A", 100.0, 0, 100)]
+
+        target[1].hsps = [bs_hmmer.HSP(target[1], "X", 100.0, 0, 100)]
+        target[2].hsps = [bs_hmmer.HSP(target[2], "X", 100.0, 0, 100)]
+
+        query[2].hsps = [bs_hmmer.HSP(query[2], "A", 100.0, 0, 100)]
+
+        query[3].hsps = [bs_hmmer.HSP(query[3], "B", 100.0, 0, 100)]
+        target[3].hsps = [bs_hmmer.HSP(target[3], "B", 100.0, 0, 100)]
+
+        query[4].hsps = [bs_hmmer.HSP(query[4], "C", 100.0, 0, 100)]
+        target[4].hsps = [bs_hmmer.HSP(target[4], "C", 100.0, 0, 100)]
+
+        target_index, cds_to_domain = bs_comp.extend.get_target_indexes(target)
+        target_domain_start = cds_to_domain[3]
+
+        # B and C match, A mismatch -> 5+5-3 = 7
+        expected_extends = (3, 2, 7)
+
+        actual_extends = bs_comp.extend.score_extend(
+            query, 2, target_index, 3, target_domain_start, 5, -3, -2, 10
+        )
+
+        self.assertEqual(expected_extends, actual_extends)
+
+    def test_score_extend_multi_domain_query(self):
+        """Tests extension on cds with multiple domains"""
+        query = [
+            bs_genbank.CDS(0, 100),  # mock lcs
+            bs_genbank.CDS(100, 200),  # mock lcs
+            bs_genbank.CDS(200, 300),  # expected extension
+        ]
+        target = [
+            bs_genbank.CDS(0, 100),  # mock lcs
+            bs_genbank.CDS(100, 200),  # mock lcs
+            bs_genbank.CDS(200, 300),  # expected extension
+            bs_genbank.CDS(300, 400),  # expected extension
+            bs_genbank.CDS(400, 500),  # expected extension
+        ]
+
+        query[2].hsps = [
+            bs_hmmer.HSP(query[2], "A", 100.0, 0, 100),
+            bs_hmmer.HSP(query[2], "B", 100.0, 100, 200),
+            bs_hmmer.HSP(query[2], "C", 100.0, 200, 300),
+        ]
+
+        target[0].hsps = [bs_hmmer.HSP(target[0], "X", 100.0, 0, 100)]
+        target[1].hsps = [bs_hmmer.HSP(target[1], "X", 100.0, 0, 100)]
+
+        target[2].hsps = [bs_hmmer.HSP(target[2], "A", 100.0, 0, 100)]
+        target[3].hsps = [bs_hmmer.HSP(target[3], "B", 100.0, 0, 100)]
+        target[4].hsps = [bs_hmmer.HSP(target[4], "C", 100.0, 0, 100)]
+
+        target_index, cds_to_domain = bs_comp.extend.get_target_indexes(target)
+        target_domain_start = cds_to_domain[2]
+
+        expected_extends = (1, 3, 15)
+
+        actual_extends = bs_comp.extend.score_extend(
+            query, 2, target_index, 2, target_domain_start, 5, -3, -2, 10
+        )
+
+        self.assertEqual(expected_extends, actual_extends)
+
+    def test_score_extend_multi_domain_target(self):
+        """Tests extension on cds with multiple domains"""
+        query = [
+            bs_genbank.CDS(0, 100),  # mock lcs
+            bs_genbank.CDS(100, 200),  # mock lcs
+            bs_genbank.CDS(200, 300),  # expected extension
+            bs_genbank.CDS(300, 400),  # expected extension
+            bs_genbank.CDS(400, 500),  # expected extension
+        ]
+
+        target = [
+            bs_genbank.CDS(0, 100),  # mock lcs
+            bs_genbank.CDS(100, 200),  # mock lcs
+            bs_genbank.CDS(200, 300),  # expected extension
+        ]
+
+        query[2].hsps = [bs_hmmer.HSP(query[2], "A", 100.0, 0, 100)]
+        query[3].hsps = [bs_hmmer.HSP(query[3], "B", 100.0, 0, 100)]
+        query[4].hsps = [bs_hmmer.HSP(query[4], "C", 100.0, 0, 100)]
+
+        target[0].hsps = [bs_hmmer.HSP(target[0], "X", 100.0, 0, 100)]
+        target[1].hsps = [bs_hmmer.HSP(target[1], "X", 100.0, 0, 100)]
+
+        target[2].hsps = [
+            bs_hmmer.HSP(target[2], "A", 100.0, 0, 100),
+            bs_hmmer.HSP(target[2], "B", 100.0, 100, 200),
+            bs_hmmer.HSP(target[2], "C", 100.0, 200, 300),
+        ]
+
+        target_index, cds_to_domain = bs_comp.extend.get_target_indexes(target)
+        target_domain_start = cds_to_domain[2]
+
+        expected_extends = (3, 1, 15)
+
+        actual_extends = bs_comp.extend.score_extend(
+            query, 2, target_index, 2, target_domain_start, 5, -3, -2, 10
+        )
+
+        self.assertEqual(expected_extends, actual_extends)
+
+    def test_score_extend_multidomain_combinations(self):
+        """Tests extend on a combination of query and target multidomain cds"""
+        query = [
+            bs_genbank.CDS(0, 100),
+            bs_genbank.CDS(100, 150),  # mock lcs
+            bs_genbank.CDS(150, 200),  # mock lcs
+            bs_genbank.CDS(200, 300),  # expected extension
+            bs_genbank.CDS(300, 400),  # expected extension
+            bs_genbank.CDS(400, 500),  # expected extension
+        ]
+
+        target = [
+            bs_genbank.CDS(0, 100),  # mock lcs
+            bs_genbank.CDS(100, 200),  # mock lcs
+            bs_genbank.CDS(200, 300),  # expected extension
+            bs_genbank.CDS(300, 400),  # expected extension
+            bs_genbank.CDS(400, 500),  # expected extension
+        ]
+
+        query[3].hsps = [bs_hmmer.HSP(query[3], "Q", 100.0, 0, 100)]
+        query[4].hsps = [
+            bs_hmmer.HSP(query[4], "A", 100.0, 0, 100),
+            bs_hmmer.HSP(query[4], "B", 100.0, 0, 100),
+        ]
+        query[5].hsps = [
+            bs_hmmer.HSP(query[5], "C", 100.0, 0, 100),
+            bs_hmmer.HSP(query[5], "D", 100.0, 0, 100),
+            bs_hmmer.HSP(query[5], "E", 100.0, 0, 100),
+        ]
+
+        target[0].hsps = [bs_hmmer.HSP(target[0], "X", 100.0, 0, 100)]
+        target[1].hsps = [
+            bs_hmmer.HSP(target[1], "X", 100.0, 0, 100),
+            bs_hmmer.HSP(target[1], "X", 100.0, 0, 100),
+            bs_hmmer.HSP(target[1], "X", 100.0, 0, 100),
+        ]
+
+        target[2].hsps = [bs_hmmer.HSP(target[2], "A", 100.0, 0, 100)]
+        target[3].hsps = [
+            bs_hmmer.HSP(target[3], "D", 100.0, 0, 100),
+            bs_hmmer.HSP(target[3], "B", 100.0, 0, 100),
+        ]
+        target[4].hsps = [bs_hmmer.HSP(target[4], "E", 100.0, 0, 100)]
+
+        target_index, cds_to_domain = bs_comp.extend.get_target_indexes(target)
+        target_domain_start = cds_to_domain[2]
+
+        # 4 matches ABDE, 2 mismatches QC, : 4*5 - 2*3 = 14
+        expected_extends = (3, 3, 14)
+
+        actual_extends = bs_comp.extend.score_extend(
+            query, 3, target_index, 2, target_domain_start, 5, -3, -2, 10
+        )
+
+        self.assertEqual(expected_extends, actual_extends)
+
+    def test_score_extend_rev(self):
+        """Tests correct expansion in reverse"""
+        query = [
+            bs_genbank.CDS(0, 100),  # expected extension
+            bs_genbank.CDS(100, 200),  # expected extension
+            bs_genbank.CDS(200, 300),  # expected extension
+            bs_genbank.CDS(300, 400),  # mock lcs
+            bs_genbank.CDS(400, 500),  # mock lcs
+        ]
+        target = [
+            bs_genbank.CDS(0, 50),  # expected extension
+            bs_genbank.CDS(50, 100),  # expected extension
+            bs_genbank.CDS(100, 200),  # expected extension
+            bs_genbank.CDS(300, 400),  # mock lcs
+            bs_genbank.CDS(400, 500),  # mock lcs
+            bs_genbank.CDS(500, 600),
+        ]
+        target[0].hsps = [bs_hmmer.HSP(target[0], "A", 100.0, 0, 100)]
+        query[0].hsps = [bs_hmmer.HSP(query[0], "A", 100.0, 0, 100)]
+
+        query[1].hsps = [bs_hmmer.HSP(query[1], "B", 100.0, 0, 100)]
+        target[1].hsps = [bs_hmmer.HSP(target[1], "B", 100.0, 0, 100)]
+
+        query[2].hsps = [bs_hmmer.HSP(query[2], "C", 100.0, 0, 100)]
+        target[2].hsps = [bs_hmmer.HSP(target[2], "C", 100.0, 0, 100)]
+
+        target[3].hsps = [bs_hmmer.HSP(target[3], "X", 100.0, 0, 100)]
+        query[3].hsps = [bs_hmmer.HSP(query[3], "X", 100.0, 0, 100)]
+        target[4].hsps = [bs_hmmer.HSP(target[4], "X", 100.0, 0, 100)]
+        query[4].hsps = [bs_hmmer.HSP(query[4], "X", 100.0, 0, 100)]
+
+        target_index, cds_to_dom = bs_comp.extend.get_target_indexes(target)
+        target_domain_start = cds_to_dom[3]
+
+        expected_extends = (3, 3, 15)
+
+        actual_extends = bs_comp.extend.score_extend_rev(
+            query, 3, target_index, 3, target_domain_start, 5, -3, -2, 10
+        )
+
+        self.assertEqual(expected_extends, actual_extends)
+
+    def test_extend_rev_no_match_before_lcs(self):
+        """Tests correct expansion in reverse"""
+        query = [
+            bs_genbank.CDS(0, 100),  # expected extension
+            bs_genbank.CDS(100, 200),  # expected extension
+            bs_genbank.CDS(200, 300),  # expected extension
+            bs_genbank.CDS(300, 400),  # mock lcs
+            bs_genbank.CDS(400, 500),  # mock lcs
+        ]
+        target = [
+            bs_genbank.CDS(0, 50),  # expected extension
+            bs_genbank.CDS(50, 100),  # expected extension
+            bs_genbank.CDS(100, 200),  # no domain
+            bs_genbank.CDS(300, 400),  # mock lcs
+            bs_genbank.CDS(400, 500),  # mock lcs
+            bs_genbank.CDS(500, 600),
+        ]
+        target[0].hsps = [bs_hmmer.HSP(target[0], "A", 100.0, 0, 100)]
+        query[0].hsps = [bs_hmmer.HSP(query[0], "A", 100.0, 0, 100)]
+
+        query[1].hsps = [bs_hmmer.HSP(query[1], "B", 100.0, 0, 100)]
+        target[1].hsps = [bs_hmmer.HSP(target[1], "B", 100.0, 0, 100)]
+
+        query[2].hsps = [bs_hmmer.HSP(query[2], "C", 100.0, 0, 100)]
+
+        target[2].hsps = [bs_hmmer.HSP(target[3], "X", 100.0, 0, 100)]
+        target[3].hsps = [bs_hmmer.HSP(target[4], "X", 100.0, 0, 100)]
+
+        target[4].hsps = [bs_hmmer.HSP(target[5], "C", 100.0, 0, 100)]
+
+        target_index, cds_to_dom = bs_comp.extend.get_target_indexes(target)
+        target_domain_start = cds_to_dom[2]
+
+        expected_extends = (3, 2, 7)
+
+        actual_extends = bs_comp.extend.score_extend_rev(
+            query, 3, target_index, 2, target_domain_start, 5, -3, -2, 10
+        )
+
+        self.assertEqual(expected_extends, actual_extends)
+
+    def test_extend_rev_multidomain_combinations(self):
+        """Tests extend reverse on a combination of query and target multidomain cds"""
+        query = [
+            bs_genbank.CDS(0, 100),
+            bs_genbank.CDS(100, 150),  # expected extension
+            bs_genbank.CDS(150, 200),  # expected extension
+            bs_genbank.CDS(200, 300),  # mock lcs
+            bs_genbank.CDS(300, 400),  # mock lcs
+            bs_genbank.CDS(400, 500),
+        ]
+
+        target = [
+            bs_genbank.CDS(0, 100),  # expected extension
+            bs_genbank.CDS(100, 200),  # expected extension
+            bs_genbank.CDS(200, 300),  # expected extension
+            bs_genbank.CDS(300, 400),  # expected extension
+            bs_genbank.CDS(400, 500),  # mock lcs
+            bs_genbank.CDS(400, 500),  # mock lcs
+            bs_genbank.CDS(400, 500),
+        ]
+
+        query[0].hsps = [bs_hmmer.HSP(query[0], "Q", 100.0, 0, 100)]
+        query[1].hsps = [
+            bs_hmmer.HSP(query[1], "E", 100.0, 0, 100),
+            bs_hmmer.HSP(query[1], "A", 100.0, 0, 100),
+        ]
+        query[2].hsps = [
+            bs_hmmer.HSP(query[2], "C", 100.0, 0, 100),
+            bs_hmmer.HSP(query[2], "D", 100.0, 0, 100),
+        ]
+
+        target[0].hsps = [bs_hmmer.HSP(target[0], "E", 100.0, 0, 100)]
+        target[1].hsps = [bs_hmmer.HSP(target[1], "D", 100.0, 0, 100)]
+        target[2].hsps = [
+            bs_hmmer.HSP(target[2], "C", 100.0, 0, 100),
+            bs_hmmer.HSP(target[2], "B", 100.0, 0, 100),
+        ]
+        target[3].hsps = [bs_hmmer.HSP(target[3], "A", 100.0, 0, 100)]
+
+        target[4].hsps = [
+            bs_hmmer.HSP(target[4], "X", 100.0, 0, 100),
+            bs_hmmer.HSP(target[4], "X", 100.0, 0, 100),
+            bs_hmmer.HSP(target[4], "X", 100.0, 0, 100),
+        ]
+        target[5].hsps = [bs_hmmer.HSP(target[5], "X", 100.0, 0, 100)]
+
+        target_index, cds_to_domain = bs_comp.extend.get_target_indexes(target)
+        target_domain_start = cds_to_domain[4]
+
+        # 4 matches ACDE, 1 gap B: 4*5 - 2 = 18
+        expected_extends = (2, 4, 18)
+
+        actual_extends = bs_comp.extend.score_extend_rev(
+            query, 3, target_index, 4, target_domain_start, 5, -3, -2, 10
+        )
+
+        self.assertEqual(expected_extends, actual_extends)
+
+    def test_extend_rev_double_domains(self):
+        """Tests correct expansion in reverse with double domains"""
+        query = [
+            bs_genbank.CDS(0, 100),  # expected extension
+            bs_genbank.CDS(100, 200),  # expected extension
+            bs_genbank.CDS(200, 300),  # expected extension
+            bs_genbank.CDS(300, 400),  # mock lcs
+            bs_genbank.CDS(400, 500),  # mock lcs
+        ]
+        target = [
+            bs_genbank.CDS(0, 50),  # expected extension
+            bs_genbank.CDS(50, 100),  # expected extension
+            bs_genbank.CDS(100, 200),  # expected extension
+            bs_genbank.CDS(300, 400),  # mock lcs
+            bs_genbank.CDS(400, 500),  # mock lcs
+            bs_genbank.CDS(500, 600),
+        ]
+        target[0].hsps = [bs_hmmer.HSP(target[0], "A", 100.0, 0, 100)]
+        query[0].hsps = [bs_hmmer.HSP(query[0], "A", 100.0, 0, 100)]
+
+        query[1].hsps = [
+            bs_hmmer.HSP(query[1], "B", 100.0, 0, 100),
+            bs_hmmer.HSP(query[1], "B", 100.0, 0, 100),
+        ]
+        target[1].hsps = [bs_hmmer.HSP(target[1], "B", 100.0, 0, 100)]
+
+        query[2].hsps = [bs_hmmer.HSP(query[2], "C", 100.0, 0, 100)]
+        target[2].hsps = [
+            bs_hmmer.HSP(target[2], "C", 100.0, 0, 100),
+            bs_hmmer.HSP(target[2], "C", 100.0, 0, 100),
+        ]
+
+        target[3].hsps = [bs_hmmer.HSP(target[3], "X", 100.0, 0, 100)]
+        query[3].hsps = [bs_hmmer.HSP(query[3], "X", 100.0, 0, 100)]
+        target[4].hsps = [bs_hmmer.HSP(target[4], "X", 100.0, 0, 100)]
+        query[4].hsps = [bs_hmmer.HSP(query[4], "X", 100.0, 0, 100)]
+
+        target_index, cds_to_dom = bs_comp.extend.get_target_indexes(target)
+        target_domain_start = cds_to_dom[3]
+
+        # 3 matches ABC, 1 gap C, 1 mismatch B: 3*5 - 2 - 3 = 10
+        expected_extends = (3, 3, 10)
+
+        actual_extends = bs_comp.extend.score_extend_rev(
+            query, 3, target_index, 3, target_domain_start, 5, -3, -2, 10
         )
 
         self.assertEqual(expected_extends, actual_extends)
