@@ -169,7 +169,7 @@ def extend(
 
         query_exp, target_exp, score = score_extend_rev(
             query,
-            query_start - 1,
+            query_start,
             target_index,
             target_start,
             target_cds_to_domain_index[target_start],
@@ -359,8 +359,10 @@ def score_extend_rev(
     target_exp = 0
     query_exp = 0
 
+    # correct for inclusive start
     last_domain_idx = target_domain_start
-    target_start = target_start - 1  # correct for inclusive start
+    target_start = target_start - 1
+    query_start = query_start - 1
 
     for query_idx, cds in enumerate(query[query_start::-1]):
         for hsp in cds.hsps[::-1]:
