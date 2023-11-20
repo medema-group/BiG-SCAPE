@@ -162,3 +162,41 @@ class TestBGCRecord(TestCase):
         actual_slice = protocluster.get_cds_start_stop()
 
         self.assertEqual(expected_slice, actual_slice)
+
+    def test_get_cds_start_stop_partial_region_end(self):
+        """Tests partial region bounds"""
+        gbk = GBK("", "", "test")
+        cds = [
+            CDS(0, 20),
+            CDS(20, 30),
+            CDS(30, 40),
+            CDS(40, 50),
+            CDS(50, 60),
+            CDS(80, 100),
+        ]
+        gbk.genes = cds
+        region = BGCRecord(gbk, 0, 0, 55, False, "")
+
+        expected_slice = (1, 4)
+        actual_slice = region.get_cds_start_stop()
+
+        self.assertEqual(expected_slice, actual_slice)
+
+    def test_get_cds_start_stop_partial_region_start(self):
+        """Tests partial region bounds"""
+        gbk = GBK("", "", "test")
+        cds = [
+            CDS(0, 20),
+            CDS(20, 30),
+            CDS(30, 40),
+            CDS(40, 50),
+            CDS(50, 60),
+            CDS(80, 100),
+        ]
+        gbk.genes = cds
+        region = BGCRecord(gbk, 0, 5, 100, False, "")
+
+        expected_slice = (2, 6)
+        actual_slice = region.get_cds_start_stop()
+
+        self.assertEqual(expected_slice, actual_slice)

@@ -182,9 +182,9 @@ class BGCRecord:
         return domains
 
     def get_cds_start_stop(self) -> tuple[int, int]:
-        """Get cds number of record start and stop with respect to full region
+        """Get cds ORF number of record start and stop with respect to full region
 
-        Obtained cds slice starts counting at one and is inclusive
+        Obtained cds slice starts counting at one and is __inclusive__
 
         Args:
             record (BGCRecord): record to find bounds for
@@ -198,15 +198,17 @@ class BGCRecord:
         gbk = self.parent_gbk
         all_cds = gbk.genes
 
+        record_start = 1
+        record_stop = len(all_cds)
         # check if record contains all cds
         if all_cds[0].nt_start >= self.nt_start and all_cds[-1].nt_stop <= self.nt_stop:
-            return 1, len(all_cds)
+            return record_start, record_stop
 
         for idx, cds in enumerate(all_cds):
-            if cds.nt_start <= self.nt_start:
-                record_start = idx + 1
-            if cds.nt_stop >= self.nt_stop:
-                record_stop = idx + 1
+            if cds.nt_start < self.nt_start:
+                record_start = idx + 2
+            if cds.nt_stop > self.nt_stop:
+                record_stop = idx
                 break
         return record_start, record_stop
 
