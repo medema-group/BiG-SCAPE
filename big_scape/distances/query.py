@@ -137,7 +137,7 @@ def calculate_distances_query(
         query_edges = bs_comparison.generate_edges(
             missing_edge_bin,
             run["alignment_mode"],
-            run["cores"],
+            run["cores"], run["cores"] * 2,
         )
 
         num_edges = 0
@@ -183,7 +183,7 @@ def calculate_distances_query(
 
         # generate edges for these pairs
         ref_edges = bs_comparison.generate_edges(
-            ref_to_ref_bin, run["alignment_mode"], run["cores"], callback
+            ref_to_ref_bin, run["alignment_mode"], run["cores"], run["cores"] * 2, callback
         )
 
         num_edges = 0
