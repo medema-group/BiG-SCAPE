@@ -761,11 +761,11 @@ def as_class_bin_generator(
             record_classes = [record_class]
 
         for record_class in record_classes:
-            try:
-                if record not in class_idx[record_class]:
-                    class_idx[record_class].append(record)
-            except KeyError:
+            if record_class not in class_idx:
                 class_idx[record_class] = [record]
+
+            if record_class in class_idx and record not in class_idx[record_class]:
+                class_idx[record_class].append(record)
 
             if weight_type == "legacy_weights":
                 # get region category for weights
@@ -921,11 +921,11 @@ def legacy_bin_generator(
         for product in record_products:
             record_class = legacy_get_class(product)
 
-            try:
-                if record not in class_idx[record_class]:
-                    class_idx[record_class].append(record)
-            except KeyError:
+            if record_class not in class_idx:
                 class_idx[record_class] = [record]
+
+            if record_class in class_idx and record not in class_idx[record_class]:
+                class_idx[record_class].append(record)
 
     for class_name, records in class_idx.items():
         edge_param_id = bs_comparison.get_edge_param_id(run, class_name)
