@@ -169,11 +169,11 @@ class TestBGCBin(TestCase):
     def test_legacy_sorting(self):
         """Tests whether the legacy sorting option in bin.pairs() correctly orders the pairs"""
 
-        gbk_a = GBK(Path("test1.gbk"), "test", "test")
+        gbk_a = GBK(Path("test1.gbk"), "test1", "test")
         bgc_a = BGCRecord(gbk_a, 0, 0, 10, False, "")
-        gbk_b = GBK(Path("test2.gbk"), "test", "test")
+        gbk_b = GBK(Path("test2.gbk"), "test2", "test")
         bgc_b = BGCRecord(gbk_b, 0, 0, 10, False, "")
-        gbk_c = GBK(Path("test3.gbk"), "test", "test")
+        gbk_c = GBK(Path("test3.gbk"), "test3", "test")
         bgc_c = BGCRecord(gbk_c, 0, 0, 10, False, "")
 
         # due to the order, this should generate a list of pairs as follows without legacy sort:
@@ -734,16 +734,18 @@ class TestBGCBin(TestCase):
 class TestMixComparison(TestCase):
     def test_mix_iter(self):
         """Tests whether a new mix bin can be created for comparison"""
-        gbk = GBK(Path("test"), "test", source_type=bs_enums.SOURCE_TYPE.QUERY)
+        gbk1 = GBK(Path("test"), "test1", source_type=bs_enums.SOURCE_TYPE.QUERY)
+        gbk2 = GBK(Path("test"), "test2", source_type=bs_enums.SOURCE_TYPE.QUERY)
+        gbk3 = GBK(Path("test"), "test3", source_type=bs_enums.SOURCE_TYPE.QUERY)
 
-        bgc_a = BGCRecord(gbk, 0, 0, 10, False, "")
-        bgc_a.parent_gbk = gbk
+        bgc_a = BGCRecord(gbk1, 0, 0, 10, False, "")
+        bgc_a.parent_gbk = gbk1
 
-        bgc_b = BGCRecord(gbk, 0, 0, 10, False, "")
-        bgc_b.parent_gbk = gbk
+        bgc_b = BGCRecord(gbk2, 0, 0, 10, False, "")
+        bgc_b.parent_gbk = gbk2
 
-        bgc_c = BGCRecord(gbk, 0, 0, 10, False, "")
-        bgc_c.parent_gbk = gbk
+        bgc_c = BGCRecord(gbk3, 0, 0, 10, False, "")
+        bgc_c.parent_gbk = gbk3
 
         bgc_list = [bgc_a, bgc_b, bgc_c]
 

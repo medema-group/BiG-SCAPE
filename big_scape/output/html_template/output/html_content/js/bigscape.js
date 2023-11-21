@@ -327,12 +327,18 @@ function Bigscape(run_data, bs_data, bs_families, bs_alignment, bs_similarity, n
   }
   for (var a = 0; a < bs_data.length; a++) {
     for (var b = 0; b < bs_data.length; b++) {
-      if ((a > b) && (bs_similarity[a][b] > intra_cutoff)) {
-        if ((bs_to_cl[a] !== bs_to_cl[b]) && (bs_similarity[a][b] < inter_cutoff)) {
-          continue;
+      // addind a topo link
+      if (bs_data[a]["hash"] == bs_data[b]["hash"]) {
+        graph.addLink(a, b, { weight: 0.01 });
+      }
+      else{
+        if ((a > b) && (bs_similarity[a][b] > intra_cutoff)) {
+          if ((bs_to_cl[a] !== bs_to_cl[b]) && (bs_similarity[a][b] < inter_cutoff)) {
+            continue;
+          }
+          var weight = bs_similarity[a][b];
+          graph.addLink(a, b, { weight: weight });
         }
-        var weight = bs_similarity[a][b];
-        graph.addLink(a, b, { weight: weight });
       }
     }
   }
@@ -450,7 +456,7 @@ function Bigscape(run_data, bs_data, bs_families, bs_alignment, bs_similarity, n
       .attr("stroke-width", link["data"]["weight"] * 10);
 
     if (graph.getNode(link.fromId).data.hash === graph.getNode(link.toId).data.hash) {
-      line = line.attr("stroke-dasharray", "10,10")
+      line = line.attr("stroke-dasharray", "10,10").attr("stroke-width", link["data"]["weight"] * 500);
     }
     return line
   });
