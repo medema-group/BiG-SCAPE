@@ -304,6 +304,7 @@ def run_bigscape(run: dict) -> None:
 
                 # save families to database
                 bs_families.save_to_db(regions_families)
+            bs_families.save_singletons(run["record_type"], cutoff, "mix")
 
         DB.commit()
 
@@ -322,6 +323,8 @@ def run_bigscape(run: dict) -> None:
                         connected_component, bin.label, cutoff
                     )
                     bs_families.save_to_db(regions_families)
+                bs_families.save_singletons(run["record_type"], cutoff, bin.label)
+
         DB.commit()
 
     # classify
@@ -339,6 +342,8 @@ def run_bigscape(run: dict) -> None:
                         connected_component, bin.label, cutoff
                     )
                     bs_families.save_to_db(regions_families)
+                bs_families.save_singletons(run["record_type"], cutoff, bin.label)
+
         DB.commit()
 
     # query BGC mode

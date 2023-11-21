@@ -10,6 +10,7 @@ from sqlalchemy import select
 
 # from other modules
 from big_scape.data import DB
+from big_scape.enums import RECORD_TYPE
 
 # from this module
 from .utility import edge_list_to_sim_matrix
@@ -138,3 +139,51 @@ def reset_db_families():
     """Clear previous family assignments from database"""
     DB.execute(DB.metadata.tables["bgc_record_family"].delete())
     DB.execute(DB.metadata.tables["family"].delete())
+
+
+def save_singletons(record_type: RECORD_TYPE, cutoff: float, bin_label: str) -> None:
+    """Create unique family for any singletons and save to database
+
+    Args:
+        record_type (RECORD_TYPE): record type to create families for
+        cutoff (float): cutoff value to create families for
+        bin_label (str): label of the bin to create families for
+    """
+    # TODO: fix protocluster spelling in RECORD_TYPE enum
+    if record_type == RECORD_TYPE.PROTO_CLUSTER:
+        record_type_str = "protocluster"
+    else:
+        record_type_str = record_type.value
+
+    if DB.metadata is None:
+        raise RuntimeError("DB metadata is None!")
+
+    family_table = DB.metadata.tables["family"]
+    bgc_record_family_table = DB.metadata.tables["bgc_record_family"]
+    record_table = DB.metadata.tables["bgc_record"]
+
+    singleton_query = (
+        select(record_table.c.id)
+        .where(record_table.c.record_type == record_type_str)
+        .where(
+            record_table.c.id.not_in(
+                select(bgc_record_family_table.c.record_id)
+                .join(
+                    family_table,
+                    family_table.c.id == bgc_record_family_table.c.family_id,
+                )
+                .where(family_table.c.cutoff == cutoff)
+                .where(family_table.c.bin_label == bin_label)
+            )
+        )
+    )
+
+    singletons = DB.execute(singleton_query)
+    if singletons is None:
+        return
+
+    singleton_regions = []
+    for singleton in singletons.fetchall():
+        singleton_regions.append((singleton, singleton, cutoff, bin_label))
+
+    save_to_db(singleton_regions)
