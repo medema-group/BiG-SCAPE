@@ -257,8 +257,7 @@ def generate_run_data_js(
         record_acc_idx = genomes[organism]
 
         # class id
-        # product hybrids of AS4 and under dealt with here and in legacy_bin_generator
-        product = ".".join(gbk.region.product.split("-"))
+        product = gbk.region.product
         region_class = legacy_get_class(product)
 
         if region_class not in class_idx:
@@ -436,7 +435,7 @@ def generate_bigscape_results_js(output_dir: Path, label: str, cutoff: float) ->
         bigscape_results = []
 
     # check if run is already there. if so we can re use it
-    cutoff_label = f"{label}_c{cutoff:.1f}"
+    cutoff_label = f"{label}_c{cutoff}"
     bigscape_result = None
     for existing_result in bigscape_results:
         if existing_result["label"] == cutoff_label:
@@ -482,7 +481,7 @@ def add_bigscape_results_js_network(
     bigscape_results = read_bigscape_results_js(bigscape_results_js_path)
 
     # check if run is already there. if so we can re use it
-    cutoff_label = f"{label}_c{cutoff:.1f}"
+    cutoff_label = f"{label}_c{cutoff}"
     bigscape_result: dict[str, Any] = {"label": cutoff_label, "networks": []}
 
     for existing_result in bigscape_results:

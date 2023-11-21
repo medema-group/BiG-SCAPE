@@ -253,6 +253,8 @@ def get_query_connected_component(
             distance_table.c.dss,
             distance_table.c.edge_param_id,
         )
+        .where(distance_table.c.record_a_id.in_(include_nodes))
+        .where(distance_table.c.record_b_id.in_(include_nodes))
         .where(
             (DB.metadata.tables["distance"].c.record_a_id.in_([query_node_id]))
             | (DB.metadata.tables["distance"].c.record_b_id.in_([query_node_id]))

@@ -282,6 +282,17 @@ def common_cluster_query(fn):
             ),
         ),
         click.option(
+            "--hybrids_off",
+            is_flag=True,
+            help=(
+                "Toggle to add BGCs with hybrid predicted classes/categories to each"
+                "subclass instead of a hybrid class/network (e.g. a 'terpene-nrps' BGC "
+                "would be added to both the terpene and NRPS classes/networks instead of"
+                " the terpene.nrps network)."
+                " Only works if --classify/--legacy_classify is selected."
+            ),
+        ),
+        click.option(
             "--alignment_mode",
             type=click.Choice(["global", "glocal", "auto"]),
             # TODO: define proper default

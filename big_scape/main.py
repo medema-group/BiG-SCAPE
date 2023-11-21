@@ -273,7 +273,7 @@ def run_bigscape(run: dict) -> None:
     # query
 
     if run["query_bgc_path"]:
-        bs_query.calculate_distances_query(run, gbks)
+        query_records = bs_query.calculate_distances_query(run, gbks)
 
         DB.commit()
 
@@ -287,10 +287,9 @@ def run_bigscape(run: dict) -> None:
     # mix
 
     if not run["no_mix"] and not run["query_bgc_path"]:
-        logging.info("-- Bin 'mix'")
         edge_param_id = bs_comparison.get_edge_param_id(run, "mix")
         for cutoff in run["gcf_cutoffs"]:
-            logging.info(" -- Cutoff %s", cutoff)
+            logging.debug("Bin 'mix': cutoff %s", cutoff)
             for connected_component in bs_network.get_connected_components(
                 all_bgc_records, edge_param_id, cutoff
             ):
@@ -311,10 +310,9 @@ def run_bigscape(run: dict) -> None:
 
     if run["legacy_classify"] and not run["query_bgc_path"]:
         for bin in bs_comparison.legacy_bin_generator(all_bgc_records, run):
-            logging.info("-- Bin '%s'", bin.label)
             edge_param_id = bs_comparison.get_edge_param_id(run, bin.weights)
             for cutoff in run["gcf_cutoffs"]:
-                logging.info(" -- Cutoff %s", cutoff)
+                logging.debug("Bin '%s': cutoff %s", bin.label, cutoff)
                 for connected_component in bs_network.get_connected_components(
                     bin.source_records, edge_param_id, cutoff
                 ):
@@ -328,10 +326,9 @@ def run_bigscape(run: dict) -> None:
 
     if run["classify"] and not run["query_bgc_path"]:
         for bin in bs_comparison.as_class_bin_generator(all_bgc_records, run):
-            logging.info("-- Bin '%s'", bin.label)
             edge_param_id = bs_comparison.get_edge_param_id(run, bin.weights)
             for cutoff in run["gcf_cutoffs"]:
-                logging.info(" -- Cutoff %s", cutoff)
+                logging.debug("Bin '%s': cutoff %s", bin.label, cutoff)
                 for connected_component in bs_network.get_connected_components(
                     bin.source_records, edge_param_id, cutoff
                 ):
@@ -351,10 +348,10 @@ def run_bigscape(run: dict) -> None:
         edge_param_id = bs_comparison.get_edge_param_id(run, weights)
 
         for cutoff in run["gcf_cutoffs"]:
-            logging.info(" -- Cutoff %s", cutoff)
+            logging.info("Query BGC Bin: cutoff %s", cutoff)
 
             query_connected_component = bs_network.get_query_connected_component(
-                all_bgc_records, query_node_id, edge_param_id, cutoff
+                query_records, query_node_id, edge_param_id, cutoff
             )
 
             cc_cutoff[cutoff] = query_connected_component
@@ -460,7 +457,7 @@ def run_bigscape(run: dict) -> None:
                 cc_cutoff[cutoff], "Query"
             )
             query_bin.add_records(
-                [record for record in all_bgc_records if record is not None]
+                [record for record in query_records if record is not None]
             )
             legacy_prepare_bin_output(run, cutoff, query_bin)
             legacy_generate_bin_output(run, cutoff, query_bin)

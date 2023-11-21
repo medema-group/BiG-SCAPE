@@ -64,5 +64,4 @@ def query(ctx, *args, **kwarg):
     init_logger_file(ctx.obj)
 
     # run BiG-SCAPE
-    print(ctx.obj)
     run_bigscape(ctx.obj)
