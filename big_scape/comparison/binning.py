@@ -140,13 +140,12 @@ class RecordPairGenerator:
 
         distance_table = DB.metadata.tables["distance"]
 
-        # get all distances in the table below the cutoff
+        # get all distances/edges in the table for the records in this bin and
+        # with distances below the cutoff
         select_statement = (
             select(distance_table.c.record_a_id, distance_table.c.record_b_id)
-            .where(
-                distance_table.c.record_a_id.in_(self.record_ids)
-                | distance_table.c.record_b_id.in_(self.record_ids)
-            )
+            .where(distance_table.c.record_a_id.in_(self.record_ids))
+            .where(distance_table.c.record_b_id.in_(self.record_ids))
             .where(distance_table.c.distance < cutoff)
             .where(distance_table.c.edge_param_id == self.edge_param_id)
         )
