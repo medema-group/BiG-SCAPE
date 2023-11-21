@@ -69,6 +69,8 @@ class RecordPairGenerator:
             Generator[RegionPair]: Generator for Region pairs in this bin
         """
         for record_a, record_b in combinations(self.source_records, 2):
+            if record_a.parent_gbk == record_b.parent_gbk:
+                continue
             if legacy_sorting:
                 sorted_a, sorted_b = sorted((record_a, record_b), key=sort_name_key)
                 pair = RecordPair(sorted_a, sorted_b)
@@ -289,14 +291,16 @@ class RefToRefRecordPairGenerator(RecordPairGenerator):
                 continue
             self.done_record_ids.add(region._db_id)
 
-        for bgc_a in connected_reference_regions:
-            for bgc_b in singleton_reference_regions:
+        for region_a in connected_reference_regions:
+            for region_b in singleton_reference_regions:
+                if region_a.parent_gbk == region_b.parent_gbk:
+                    continue
                 if legacy_sorting:
-                    sorted_a, sorted_b = sorted((bgc_a, bgc_b), key=sort_name_key)
+                    sorted_a, sorted_b = sorted((region_a, region_b), key=sort_name_key)
                     pair = RecordPair(sorted_a, sorted_b)
 
                 else:
-                    pair = RecordPair(bgc_a, bgc_b)
+                    pair = RecordPair(region_a, region_b)
 
                 yield pair
 
@@ -571,6 +575,9 @@ class ConnectedComponentPairGenerator(RecordPairGenerator):
             record_a = self.record_id_to_obj[record_a_id]
             record_b = self.record_id_to_obj[record_b_id]
 
+            if record_a.parent_gbk == record_b.parent_gbk:
+                continue
+
             if legacy_sorting:
                 sorted_a, sorted_b = sorted((record_a, record_b), key=sort_name_key)
                 pair = RecordPair(sorted_a, sorted_b)
@@ -630,6 +637,10 @@ class MissingRecordPairGenerator(RecordPairGenerator):
         existing_distances = set(DB.execute(select_statement).fetchall())
 
         for pair in self.bin.generate_pairs(legacy_sorting):
+            # this should never happen, since no edges should be generated for
+            # records of the same parent gbk
+            if pair.record_a.parent_gbk == pair.record_b.parent_gbk:
+                continue
             # if the pair is not in the set of existing distances, yield it
             if (
                 pair.record_a._db_id,
