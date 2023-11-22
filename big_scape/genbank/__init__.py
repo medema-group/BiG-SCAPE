@@ -3,7 +3,7 @@ from .gbk import GBK
 from .region import Region
 from .candidate_cluster import CandidateCluster
 from .proto_cluster import ProtoCluster
-from .proto_core import ProtoCore
+from .proto_core import ProtoCore, MergedProtoCore
 from .cds import (
     CDS,
     check_translation,
@@ -19,6 +19,7 @@ __all__ = [
     "CandidateCluster",
     "ProtoCluster",
     "ProtoCore",
+    "MergedProtoCore",
     "CDS",
     "check_translation",
     "get_translation",

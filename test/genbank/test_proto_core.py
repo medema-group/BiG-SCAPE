@@ -7,7 +7,7 @@ from unittest import TestCase
 from Bio.SeqFeature import SeqFeature, FeatureLocation
 
 # from other modules
-from big_scape.genbank import ProtoCore
+from big_scape.genbank import ProtoCore, MergedProtoCore
 from big_scape.errors import InvalidGBKError
 from big_scape.data import DB
 
@@ -75,3 +75,22 @@ class TestProtocore(TestCase):
         actual_row_count = len(cursor_result.fetchall())
 
         self.assertEqual(expected_row_count, actual_row_count)
+
+    def test_merge(self):
+        """Tests whether two protocores are correclty merged"""
+
+        feature_a = SeqFeature(FeatureLocation(0, 100), type="proto_core")
+        feature_a.qualifiers["protocluster_number"] = [str(1)]
+        feature_a.qualifiers["product"] = ["NRPS"]
+        proto_core_a = ProtoCore.parse(feature_a)
+
+        feature_b = SeqFeature(FeatureLocation(0, 100), type="proto_core")
+        feature_b.qualifiers["protocluster_number"] = [str(2)]
+        feature_b.qualifiers["product"] = ["PKS"]
+        proto_core_b = ProtoCore.parse(feature_b)
+
+        merged = MergedProtoCore.merge(proto_core_a, proto_core_b)
+
+        expected_number = "1_2"
+
+        self.assertEqual(expected_number, merged.merged_number)

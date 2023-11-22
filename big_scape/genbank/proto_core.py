@@ -145,6 +145,9 @@ class ProtoCore(BGCRecord):
             parent_proto_cluster = protocluster_dict[result.parent_id]
             parent_gbk = parent_proto_cluster.parent_gbk
 
+            # if merged = True load as MergedProtoCore and load merged number as string
+            # if false load as normal protocore
+
             new_proto_core = ProtoCore(
                 parent_gbk,
                 result.record_number,
@@ -159,3 +162,68 @@ class ProtoCore(BGCRecord):
 
             # add to parent ProtoCluster protocore dict
             parent_proto_cluster.proto_core[result.record_number] = new_proto_core
+
+
+class MergedProtoCore(ProtoCore):
+    """Class to described a merged protocore within an Antismash GBK
+
+    Args:
+        ProtoCore (_type_): _description_
+    """
+
+    def __init__(
+        self,
+        parent_gbk: Optional[GBK],
+        merged_number: str,
+        nt_start: int,
+        nt_stop: int,
+        contig_edge: Optional[bool],
+        product: str,
+        category: Optional[str] = None,
+    ):
+        super().__init__(
+            parent_gbk,
+            0,
+            nt_start,
+            nt_stop,
+            contig_edge,
+            product,
+            category,
+        )
+
+        self.merged_number = merged_number
+
+    @staticmethod
+    def merge(protocore_a, protocore_b) -> MergedProtoCore:
+        """Merges two protocores into a single merged protocore
+
+        Args:
+            protocore_a (_type_): _description_
+            protocore_b (_type_): _description_
+
+        Returns:
+            MergedProtoCore: _description_
+        """
+
+        if protocore_a.parent_gbk != protocore_b.parent_gbk:
+            raise ValueError("Cannot merge protocores from different GBKs")
+
+        parent_gbk = protocore_a.parent_gbk
+        merged_number = f"{protocore_a.number}_{protocore_b.number}"
+        category = f"{protocore_a.category}.{protocore_b.category}"
+        product = f"{protocore_a.product}.{protocore_b.product}"
+        contig_edge = protocore_a.contig_edge or protocore_b.contig_edge
+        nt_start = min(protocore_a.nt_start, protocore_b.nt_start)
+        nt_stop = max(protocore_a.nt_stop, protocore_b.nt_stop)
+
+        merged_proto_core = MergedProtoCore(
+            parent_gbk,
+            merged_number,
+            nt_start,
+            nt_stop,
+            contig_edge,
+            product,
+            category,
+        )
+
+        return merged_proto_core
