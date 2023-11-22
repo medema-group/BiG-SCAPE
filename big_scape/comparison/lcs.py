@@ -144,7 +144,7 @@ def find_bio_or_middle_lcs(
 
 def find_domain_lcs_region(
     pair: bs_comparison.RecordPair,
-) -> tuple[int, int, int, int, bool]:
+) -> tuple[int, int, int, int, int, int, int, int, bool]:
     """Find the longest stretch of matching domains between two lists of domains
 
     This takes CDS as arguments, but uses the domains within the CDS to find the LCS
@@ -165,7 +165,8 @@ def find_domain_lcs_region(
         b_cds (list[CDS]): List of CDS
 
     Returns:
-        tuple[int, int, int, int, bool]: a_start, a_stop, b_start, b_stop, reverse
+        tuple[int, int, int, int, int, int, int, int, bool]: a_start, a_stop,
+            b_start, b_stop, a_cds_start, a_cds_stop, b_cds_start, b_cds_stop, reverse
     """
     logging.debug("region lcs")
 
@@ -352,6 +353,7 @@ def find_domain_lcs_region(
     # cds index, and then flipping the cds index. yay.
     if reverse:
         old_start = b_start
+        old_stop = b_stop
         b_start = len(b_domains) - b_stop - 1
         b_stop = len(b_domains) - old_start - 1  # inclusive stop
 
@@ -376,12 +378,29 @@ def find_domain_lcs_region(
     if b_cds_start == b_cds_stop:
         b_cds_stop += 1
 
-    return a_cds_start, a_cds_stop, b_cds_start, b_cds_stop, reverse
+    # revert inclusive domain stop and index flipping before returning
+    if reverse:
+        b_start = old_start
+        b_stop = old_stop
+    a_stop += 1
+    b_stop += 1
+
+    return (
+        a_start,
+        a_stop,
+        b_start,
+        b_stop,
+        a_cds_start,
+        a_cds_stop,
+        b_cds_start,
+        b_cds_stop,
+        reverse,
+    )
 
 
 def find_domain_lcs_protocluster(
     pair: bs_comparison.RecordPair,
-) -> tuple[int, int, int, int, bool]:
+) -> tuple[int, int, int, int, int, int, int, int, bool]:
     """Find the longest stretch of matching domains between two protocluster records,
     using domains
 
@@ -392,7 +411,8 @@ def find_domain_lcs_protocluster(
         pair (RecordPair): RecordPair object
 
     Returns:
-        tuple[int, int, int, int, bool]: a_start, a_stop, b_start, b_stop, reverse
+        tuple[int, int, int, int, int, int, int, int, bool]: a_start, a_stop,
+            b_start, b_stop, a_cds_start, a_cds_stop, b_cds_start, b_cds_stop, reverse
     """
     logging.debug("pc lcs")
 
@@ -571,6 +591,7 @@ def find_domain_lcs_protocluster(
     # cds index, and then flipping the cds index. yay.
     if reverse:
         old_start = b_start
+        old_stop = b_stop
         b_start = len(b_domains) - b_stop - 1
         b_stop = len(b_domains) - old_start - 1  # inclusive stop
 
@@ -595,4 +616,21 @@ def find_domain_lcs_protocluster(
     if b_cds_start == b_cds_stop:
         b_cds_stop += 1
 
-    return a_cds_start, a_cds_stop, b_cds_start, b_cds_stop, reverse
+    # revert inclusive domain stop and index flipping before returning
+    if reverse:
+        b_start = old_start
+        b_stop = old_stop
+    a_stop += 1
+    b_stop += 1
+
+    return (
+        a_start,
+        a_stop,
+        b_start,
+        b_stop,
+        a_cds_start,
+        a_cds_stop,
+        b_cds_start,
+        b_cds_stop,
+        reverse,
+    )

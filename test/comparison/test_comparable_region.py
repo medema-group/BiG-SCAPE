@@ -16,7 +16,7 @@ class TestComparibleRegions(TestCase):
         """Tests the comparable region object string representation when B is not
         reversed
         """
-        comparable_region = ComparableRegion(None, 0, 5, 3, 8, False)
+        comparable_region = ComparableRegion(None, 0, 5, 3, 8, 0, 0, 0, 0, False)
 
         expected_repr = "Comparable region: A 0-5, B 3-8, B is not reversed"
 
@@ -28,7 +28,7 @@ class TestComparibleRegions(TestCase):
         """Tests the comparable region object string representation when B is not
         reversed
         """
-        comparable_region = ComparableRegion(None, 0, 5, 3, 8, True)
+        comparable_region = ComparableRegion(None, 0, 5, 3, 8, 0, 0, 0, 0, True)
 
         expected_repr = "Comparable region: A 0-5, B 3-8, B is reversed"
 

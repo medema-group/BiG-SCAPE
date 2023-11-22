@@ -10,8 +10,6 @@ from typing import TYPE_CHECKING, Optional
 # from other modules
 from big_scape.genbank import BGCRecord
 from big_scape.hmm import HSP
-from big_scape.enums import ALIGNMENT_MODE
-
 
 # from circular imports
 if TYPE_CHECKING:  # pragma: no cover
@@ -43,6 +41,10 @@ class ComparableRegion:
         a_start: int
         b_start: int
         b_stop: int
+        domain_a_start: int
+        domain_b_start: int
+        domain_a_stop: int
+        domain_b_stop: int
         reverse: bool
         domain_lists: Optional[tuple[list[HSP], list[HSP]]]
         domain_sets: Optional[tuple[set[HSP], set[HSP]]]
@@ -57,15 +59,37 @@ class ComparableRegion:
         a_stop: int,
         b_start: int,
         b_stop: int,
+        domain_a_start: int,
+        domain_b_start: int,
+        domain_a_stop: int,
+        domain_b_stop: int,
         reverse: bool,
     ):
         self.pair = pair
-        # store possibly extended comparable region
+
+        # store lcs cds without any extensions
+        self.lcs_a_start = a_start
+        self.lcs_b_start = b_start
+        self.lcs_a_stop = a_stop
+        self.lcs_b_stop = b_stop
+
+        # store lcs domain
+        self.lcs_domain_a_start = domain_a_start
+        self.lcs_domain_b_start = domain_b_start
+        self.lcs_domain_a_stop = domain_a_stop
+        self.lcs_domain_b_stop = domain_b_stop
+
+        # store possibly extended comparable region cds
         self.a_start = a_start
         self.b_start = b_start
-
         self.a_stop = a_stop
         self.b_stop = b_stop
+
+        # store possibly extended comparable region domain
+        self.domain_a_start = domain_a_start
+        self.domain_b_start = domain_b_start
+        self.domain_a_stop = domain_a_stop
+        self.domain_b_stop = domain_b_stop
 
         self.reverse = reverse
 
@@ -74,12 +98,6 @@ class ComparableRegion:
         self.domain_dicts: Optional[
             tuple[dict[HSP, list[int]], dict[HSP, list[int]]]
         ] = None
-        # store lcs without any extensions
-        self.lcs_a_start = a_start
-        self.lcs_b_start = b_start
-        self.lcs_a_stop = a_stop
-        self.lcs_b_stop = b_stop
-        self.alignment_mode: ALIGNMENT_MODE = ALIGNMENT_MODE.GLOBAL
 
     def inflate_a(self) -> None:
         """Inflates the A region start and stop to include all CDS, including those
