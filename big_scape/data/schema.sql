@@ -24,6 +24,7 @@ CREATE TABLE IF NOT EXISTS bgc_record (
     nt_stop INTEGER,
     product TEXT,
     category TEXT,
+    merged BOOLEAN,
     UNIQUE(id),
     UNIQUE(gbk_id, record_number, record_type),
     FOREIGN KEY(gbk_id) REFERENCES gbk(id)

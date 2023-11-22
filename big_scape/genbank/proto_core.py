@@ -112,7 +112,7 @@ class ProtoCore(BGCRecord):
         gbk_dict
 
         Args:
-            region_dict (dict[int, GBK]): Dictionary of Region objects with database ids
+            protocluster_dict (dict[int, GBK]): Dictionary of protocluster objects with database ids
             as keys. Used for parenting
         """
 
@@ -133,6 +133,7 @@ class ProtoCore(BGCRecord):
                 record_table.c.nt_stop,
                 record_table.c.product,
                 record_table.c.category,
+                record_table.c.merged,
             )
             .where(record_table.c.record_type == "proto_core")
             .where(record_table.c.parent_id.in_(protocluster_dict.keys()))
@@ -145,20 +146,33 @@ class ProtoCore(BGCRecord):
             parent_proto_cluster = protocluster_dict[result.parent_id]
             parent_gbk = parent_proto_cluster.parent_gbk
 
+            merged = result.merged
             # if merged = True load as MergedProtoCore and load merged number as string
             # if false load as normal protocore
+            if merged:
+                new_proto_core: Optional[ProtoCore] = MergedProtoCore(
+                    parent_gbk,
+                    result.record_number,
+                    result.nt_start,
+                    result.nt_stop,
+                    result.contig_edge,
+                    result.product,
+                    result.category,
+                )
 
-            new_proto_core = ProtoCore(
-                parent_gbk,
-                result.record_number,
-                result.nt_start,
-                result.nt_stop,
-                result.contig_edge,
-                result.product,
-                result.category,
-            )
+            else:
+                new_proto_core = ProtoCore(
+                    parent_gbk,
+                    result.record_number,
+                    result.nt_start,
+                    result.nt_stop,
+                    result.contig_edge,
+                    result.product,
+                    result.category,
+                )
 
-            new_proto_core._db_id = result.id
+            if new_proto_core is not None:
+                new_proto_core._db_id = result.id
 
             # add to parent ProtoCluster protocore dict
             parent_proto_cluster.proto_core[result.record_number] = new_proto_core
@@ -192,6 +206,7 @@ class MergedProtoCore(ProtoCore):
         )
 
         self.merged_number = merged_number
+        self.merged = True
 
     @staticmethod
     def merge(protocore_a, protocore_b) -> MergedProtoCore:
@@ -210,9 +225,19 @@ class MergedProtoCore(ProtoCore):
 
         parent_gbk = protocore_a.parent_gbk
         merged_number = f"{protocore_a.number}_{protocore_b.number}"
-        category = f"{protocore_a.category}.{protocore_b.category}"
-        product = f"{protocore_a.product}.{protocore_b.product}"
+
+        if protocore_a.category != protocore_b.category:
+            category = f"{protocore_a.category}.{protocore_b.category}"
+        else:
+            category = protocore_a.category
+
+        if protocore_a.product != protocore_b.product:
+            product = f"{protocore_a.product}.{protocore_b.product}"
+        else:
+            product = protocore_a.product
+
         contig_edge = protocore_a.contig_edge or protocore_b.contig_edge
+
         nt_start = min(protocore_a.nt_start, protocore_b.nt_start)
         nt_stop = max(protocore_a.nt_stop, protocore_b.nt_stop)
 

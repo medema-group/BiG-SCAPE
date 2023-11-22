@@ -39,6 +39,7 @@ class BGCRecord:
         nt_start: int
         nt_stop: int
         product: str
+        merged: bool
         _db_id: int | None
         _families: dict[float, int]
     """
@@ -59,6 +60,7 @@ class BGCRecord:
         self.nt_start = nt_start
         self.nt_stop = nt_stop
         self.product = product
+        self.merged: bool = False
 
         # for database operations
         self._db_id: Optional[int] = None
@@ -202,6 +204,12 @@ class BGCRecord:
         if not hasattr(self, "category"):
             self.category: Optional[str] = None
 
+        # why
+        if hasattr(self, "merged_number"):
+            number = self.merged_number
+        else:
+            number = self.number
+
         contig_edge = None
         if self.contig_edge is not None:
             contig_edge = self.contig_edge
@@ -216,13 +224,14 @@ class BGCRecord:
             .values(
                 gbk_id=gbk_id,
                 parent_id=parent_id,
-                record_number=self.number,
+                record_number=number,
                 contig_edge=contig_edge,
                 nt_start=self.nt_start,
                 nt_stop=self.nt_stop,
                 product=self.product,
                 category=self.category,
                 record_type=record_type,
+                merged=self.merged,
             )
             .returning(bgc_record_table.c.id)
             .compile()
