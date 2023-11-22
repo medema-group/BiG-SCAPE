@@ -219,9 +219,12 @@ def generate_gcf_alignment(
                         alignments[bgc] += "-" * seq_length
 
     # if a bgc is missing all tree domains, remove it from the tree
+    delete_bgc: set[int] = set()
     for bgc in alignments:
         if bgc != exemplar and missed_domains[bgc] == len(tree_domains):
-            del alignments[bgc]
+            delete_bgc.add(bgc)
+    for bgc in delete_bgc:
+        del alignments[bgc]
 
     algn_string = f">{family_members[exemplar]}\n{alignments[exemplar]}\n"
     for bgc in alignments:
