@@ -184,6 +184,6 @@ def save_singletons(record_type: RECORD_TYPE, cutoff: float, bin_label: str) -> 
 
     singleton_regions = []
     for singleton in singletons.fetchall():
-        singleton_regions.append((singleton, singleton, cutoff, bin_label))
+        singleton_regions.append((singleton[0], singleton[0], cutoff, bin_label))
 
     save_to_db(singleton_regions)
