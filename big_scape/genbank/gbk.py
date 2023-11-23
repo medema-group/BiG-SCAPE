@@ -540,6 +540,41 @@ class GBK:
                 raise InvalidGBKError()
             proto_cluster.add_proto_core(tmp_proto_cores[proto_cluster_num])
 
+        updated_tmp_proto_clusters: dict[int, ProtoCluster] = {}
+
+        self.collapse_hybrids_in_cand_clusters(
+            tmp_cand_clusters, tmp_proto_clusters, updated_tmp_proto_clusters
+        )
+
+        # now we can add the protoclusters to the candidate clusters
+        for number, cand_cluster in tmp_cand_clusters.items():
+            for proto_cluster_num in cand_cluster.proto_clusters.keys():
+                cand_cluster.add_proto_cluster(
+                    updated_tmp_proto_clusters[proto_cluster_num]
+                )
+
+            region.add_cand_cluster(cand_cluster)
+
+        del (
+            tmp_proto_clusters,
+            tmp_proto_cores,
+            tmp_cand_clusters,
+            updated_tmp_proto_clusters,
+        )
+
+    def collapse_hybrids_in_cand_clusters(
+        self, tmp_cand_clusters, tmp_proto_clusters, updated_tmp_proto_clusters
+    ) -> None:
+        """for chemical hybrid and interleaved candidate clusters, merge protoclusters into
+        a single MergedProtoCluster, and update protocluster ids/numbers to reflect the new
+        unique set of protoclusters
+
+        Args:
+            tmp_cand_clusters (dict[int, cand_clusters)
+            tmp_proto_clusters (dict[int, ProtoCluster)
+            updated_tmp_proto_clusters (dict[int, ProtoCluster)
+        """
+
         # keep track of which protoclusters have been merged and old id: new id
         merged_protocluster_ids: dict[int, int] = {}
         merged_tmp_proto_clusters: dict[int, ProtoCluster] = {}
@@ -578,7 +613,6 @@ class GBK:
 
         # now we build a new version of the tmp_proto_clusters dict that contains the merged protoclusters
         # as well as protoclusters which did not need merging, with updated unique IDs/numbers
-        updated_tmp_proto_clusters: dict[int, ProtoCluster] = {}
 
         for cand_cluster_num, cand_cluster in tmp_cand_clusters.items():
             # for each cand_cluster, we also need to create an updated version of the proto_cluster dict
@@ -602,22 +636,9 @@ class GBK:
             # we need to do this since the cand_cluster.add_proto_cluster method expects the dict to be there
             cand_cluster.proto_clusters = updated_proto_cluster_dict
 
-        # now we can add the protoclusters to the candidate clusters
-        for cand_cluster_num, cand_cluster in tmp_cand_clusters.items():
-            for proto_cluster_num in cand_cluster.proto_clusters.keys():
-                cand_cluster.add_proto_cluster(
-                    updated_tmp_proto_clusters[proto_cluster_num]
-                )
-
-            region.add_cand_cluster(cand_cluster)
-
         del (
-            tmp_proto_clusters,
-            tmp_proto_cores,
-            tmp_cand_clusters,
             merged_protocluster_ids,
             merged_tmp_proto_clusters,
-            updated_tmp_proto_clusters,
         )
 
     def __repr__(self) -> str:
