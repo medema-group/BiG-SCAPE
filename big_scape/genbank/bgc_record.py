@@ -383,17 +383,28 @@ def get_sub_records(
     if len(cand_clusters) == 0:
         return [region]
 
+    # TODO: currently not implemented, only region, protocluster and protocore are supported
+    # implement and use same strategy as for region if kind is neighbouring (several cores in a record)
+    # and protocluster if kind is single, interleaved or chemical hybrid (one core per record)
     if record_type == bs_enums.genbank.RECORD_TYPE.CANDIDATE_CLUSTER:
         return cand_clusters
 
+    # for protoclusters and protocores we need to keep track of the numbers, since they may
+    # be repeated in different candidate clusters
+
     proto_clusters: list[ProtoCluster] = []
+    proto_cluster_numbers: list[int] = []
     for cand_cluster in cand_clusters:
         if cand_cluster.proto_clusters is None:
             continue
 
         for proto_cluster in cand_cluster.proto_clusters.values():
-            if proto_cluster is not None:
+            if (
+                proto_cluster is not None
+                and proto_cluster.number not in proto_cluster_numbers
+            ):
                 proto_clusters.append(proto_cluster)
+                proto_cluster_numbers.append(proto_cluster.number)
 
     if len(proto_clusters) == 0:
         return cand_clusters
@@ -402,12 +413,14 @@ def get_sub_records(
         return proto_clusters
 
     proto_cores: list[ProtoCore] = []
+    proto_core_numbers: list[int] = []
     for proto_cluster in proto_clusters:
         if proto_cluster.proto_core is None:
             continue
         for proto_core in proto_cluster.proto_core.values():
-            if proto_core is not None:
+            if proto_core is not None and proto_core.number not in proto_core_numbers:
                 proto_cores.append(proto_core)
+                proto_core_numbers.append(proto_core.number)
 
     if len(proto_cores) == 0:
         return proto_clusters
