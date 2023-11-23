@@ -293,47 +293,72 @@ class MergedProtoCluster(ProtoCluster):
         self.merged = True
 
     @staticmethod
-    def merge(proto_cluster_a, proto_cluster_b) -> MergedProtoCluster:
+    def merge(proto_clusters) -> MergedProtoCluster:
         """Merges two proto_clusters into a singled MergedProtoCluster
 
         Args:
-            proto_cluster_a (ProtoCluster): ProtoCluster
-            proto_cluster_b (ProtoCluster): ProtoCluster
+            proto_clusters ([ProtoCluster]): ProtoClusters
 
         Returns:
             MergedProtoCluster: MergedProtoCluster
         """
 
-        if proto_cluster_a.parent_gbk != proto_cluster_b.parent_gbk:
+        if len(proto_clusters) < 1:
+            raise ValueError("Cannot merge less than 2 protoclusters")
+
+        proto_cluster_a = proto_clusters[0]
+
+        parent_gbks = set(
+            [proto_cluster.parent_gbk for proto_cluster in proto_clusters]
+        )
+
+        if len(parent_gbks) > 1:
             raise ValueError("Cannot merge protoclusters from different GBKs")
 
         parent_gbk = proto_cluster_a.parent_gbk
-        merged_number = f"{proto_cluster_a.number}_{proto_cluster_b.number}"
 
-        if proto_cluster_a.category != proto_cluster_b.category:
-            category = f"{proto_cluster_a.category}.{proto_cluster_b.category}"
+        numbers = [proto_cluster.number for proto_cluster in proto_clusters]
+        merged_number = "_".join([str(number) for number in sorted(numbers)])
+
+        categories = list(
+            set([proto_cluster.category for proto_cluster in proto_clusters])
+        )
+        if len(categories) > 1:
+            categories.sort()
+            category = ".".join(categories)
         else:
-            category = proto_cluster_a.category
+            category = categories[0]
 
-        if proto_cluster_a.product != proto_cluster_b.product:
-            product = f"{proto_cluster_a.product}.{proto_cluster_b.product}"
+        products = list(
+            set([proto_cluster.product for proto_cluster in proto_clusters])
+        )
+        if len(products) > 1:
+            products.sort()
+            product = ".".join(products)
         else:
-            product = proto_cluster_a.product
+            product = products[0]
 
-        contig_edge = proto_cluster_a.contig_edge or proto_cluster_b.contig_edge
+        contig_edge = False
+        for proto_cluster in proto_clusters:
+            if proto_cluster.contig_edge:
+                contig_edge = True
+                break
 
-        nt_start = min(proto_cluster_a.nt_start, proto_cluster_b.nt_start)
-        nt_stop = max(proto_cluster_a.nt_stop, proto_cluster_b.nt_stop)
+        nt_start = min([proto_cluster.nt_start for proto_cluster in proto_clusters])
+        nt_stop = max([proto_cluster.nt_stop for proto_cluster in proto_clusters])
 
-        protocore_a = proto_cluster_a.proto_core[proto_cluster_a.number]
-        protocore_b = proto_cluster_b.proto_core[proto_cluster_b.number]
+        protocores = [
+            proto_cluster.proto_core[proto_cluster.number]
+            for proto_cluster in proto_clusters
+        ]
 
-        if protocore_a is None or protocore_b is None:
-            # should never happen, in AS4 there are only regions,
-            # beyond there are protoclusters and cores
-            merged_protocore = None
+        for protocore in protocores:
+            if protocore is None:
+                # should never happen, in AS4 there are only regions,
+                # beyond there are protoclusters and cores
+                merged_protocore = None
 
-        merged_protocore = MergedProtoCore.merge(protocore_a, protocore_b)
+        merged_protocore = MergedProtoCore.merge(protocores)
         proto_core_dict: dict[int, Optional[ProtoCore]] = {
             merged_protocore.number: merged_protocore
         }

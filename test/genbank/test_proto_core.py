@@ -89,7 +89,8 @@ class TestProtocore(TestCase):
         feature_b.qualifiers["product"] = ["PKS"]
         proto_core_b = ProtoCore.parse(feature_b)
 
-        merged = MergedProtoCore.merge(proto_core_a, proto_core_b)
+        protocores = [proto_core_a, proto_core_b]
+        merged = MergedProtoCore.merge(protocores)
 
         expected_number = "1_2"
 
@@ -110,7 +111,8 @@ class TestProtocore(TestCase):
         feature_b.qualifiers["product"] = ["PKS"]
         proto_core_b = ProtoCore.parse(feature_b)
 
-        merged = MergedProtoCore.merge(proto_core_a, proto_core_b)
+        protocores = [proto_core_a, proto_core_b]
+        merged = MergedProtoCore.merge(protocores)
 
         merged.save(0)
 
@@ -136,7 +138,8 @@ class TestProtocore(TestCase):
         feature_b.qualifiers["product"] = ["PKS"]
         proto_core_b = ProtoCore.parse(feature_b)
 
-        merged = MergedProtoCore.merge(proto_core_a, proto_core_b)
+        protocores = [proto_core_a, proto_core_b]
+        merged = MergedProtoCore.merge(protocores)
 
         merged.save(0)
 

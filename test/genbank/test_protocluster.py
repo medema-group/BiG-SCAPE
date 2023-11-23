@@ -163,7 +163,9 @@ class TestProtocluster(TestCase):
         protocluster_b = ProtoCluster.parse(protocluster_feature_b)
         protocluster_b.add_proto_core(proto_core_b)
 
-        merged_protoclusters = MergedProtoCluster.merge(protocluster_a, protocluster_b)
+        merged_protoclusters = MergedProtoCluster.merge(
+            [protocluster_a, protocluster_b]
+        )
 
         expected_number = "1_2"
 
@@ -208,7 +210,9 @@ class TestProtocluster(TestCase):
         protocluster_b = ProtoCluster.parse(protocluster_feature_b)
         protocluster_b.add_proto_core(proto_core_b)
 
-        merged_protoclusters = MergedProtoCluster.merge(protocluster_a, protocluster_b)
+        merged_protoclusters = MergedProtoCluster.merge(
+            [protocluster_a, protocluster_b]
+        )
         merged_protoclusters.save(0)
 
         cursor_result = DB.execute_raw_query("SELECT * FROM bgc_record;")
@@ -257,7 +261,9 @@ class TestProtocluster(TestCase):
         protocluster_b = ProtoCluster.parse(protocluster_feature_b)
         protocluster_b.add_proto_core(proto_core_b)
 
-        merged_protoclusters = MergedProtoCluster.merge(protocluster_a, protocluster_b)
+        merged_protoclusters = MergedProtoCluster.merge(
+            [protocluster_a, protocluster_b]
+        )
         merged_protoclusters.save(0)
 
         candidate_cluster_feature = SeqFeature(

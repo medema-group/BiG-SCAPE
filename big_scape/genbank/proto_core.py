@@ -212,37 +212,52 @@ class MergedProtoCore(ProtoCore):
         self.merged = True
 
     @staticmethod
-    def merge(protocore_a, protocore_b) -> MergedProtoCore:
+    def merge(protocores) -> MergedProtoCore:
         """Merges two protocores into a single merged protocore
 
         Args:
-            protocore_a (ProtoCore): ProtoCore
-            protocore_b (ProtoCore): ProtoCore
+            protocores ([ProtoCore]): ProtoCores
 
         Returns:
             MergedProtoCore: MergedProtoCore
         """
 
-        if protocore_a.parent_gbk != protocore_b.parent_gbk:
+        if len(protocores) < 1:
+            raise ValueError("Cannot merge less than 2 protocores")
+
+        protocore_a = protocores[0]
+        parent_gbks = set([protocore.parent_gbk for protocore in protocores])
+
+        if len(parent_gbks) > 1:
             raise ValueError("Cannot merge protocores from different GBKs")
 
         parent_gbk = protocore_a.parent_gbk
-        merged_number = f"{protocore_a.number}_{protocore_b.number}"
 
-        if protocore_a.category != protocore_b.category:
-            category = f"{protocore_a.category}.{protocore_b.category}"
+        numbers = [protocore.number for protocore in protocores]
+        merged_number = "_".join([str(number) for number in sorted(numbers)])
+
+        categories = list(set([protocore.category for protocore in protocores]))
+        if len(categories) > 1:
+            categories.sort()
+            category = ".".join(categories)
         else:
-            category = protocore_a.category
+            category = categories[0]
 
-        if protocore_a.product != protocore_b.product:
-            product = f"{protocore_a.product}.{protocore_b.product}"
+        products = list(set([protocore.product for protocore in protocores]))
+        if len(products) > 1:
+            products.sort()
+            product = ".".join(products)
         else:
-            product = protocore_a.product
+            product = products[0]
 
-        contig_edge = protocore_a.contig_edge or protocore_b.contig_edge
+        contig_edge = False
+        for protocore in protocores:
+            if protocore.contig_edge:
+                contig_edge = True
+                break
 
-        nt_start = min(protocore_a.nt_start, protocore_b.nt_start)
-        nt_stop = max(protocore_a.nt_stop, protocore_b.nt_stop)
+        nt_start = min([protocore.nt_start for protocore in protocores])
+        nt_stop = max([protocore.nt_stop for protocore in protocores])
 
         merged_proto_core = MergedProtoCore(
             parent_gbk,
