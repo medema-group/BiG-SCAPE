@@ -222,7 +222,7 @@ class MergedProtoCore(ProtoCore):
             MergedProtoCore: MergedProtoCore
         """
 
-        if len(protocores) < 1:
+        if len(protocores) < 2:
             raise ValueError("Cannot merge less than 2 protocores")
 
         protocore_a = protocores[0]

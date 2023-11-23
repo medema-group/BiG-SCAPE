@@ -303,7 +303,7 @@ class MergedProtoCluster(ProtoCluster):
             MergedProtoCluster: MergedProtoCluster
         """
 
-        if len(proto_clusters) < 1:
+        if len(proto_clusters) < 2:
             raise ValueError("Cannot merge less than 2 protoclusters")
 
         proto_cluster_a = proto_clusters[0]

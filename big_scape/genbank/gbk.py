@@ -23,7 +23,7 @@ from big_scape.enums import SOURCE_TYPE
 # from this module
 from .region import Region
 from .candidate_cluster import CandidateCluster
-from .proto_cluster import ProtoCluster
+from .proto_cluster import ProtoCluster, MergedProtoCluster
 from .proto_core import ProtoCore
 from .cds import CDS
 
@@ -540,6 +540,11 @@ class GBK:
                 raise InvalidGBKError()
             proto_cluster.add_proto_core(tmp_proto_cores[proto_cluster_num])
 
+        # keep track of which protoclusters have been merged and old id: new id
+        merged_protocluster_ids: dict[int, int] = {}
+        merged_tmp_proto_clusters: dict[int, ProtoCluster] = {}
+
+        # first we check which protoclusters need to be merged and do the merging
         for cand_cluster_num, cand_cluster in tmp_cand_clusters.items():
             for proto_cluster_num in cand_cluster.proto_clusters.keys():
                 if proto_cluster_num not in tmp_proto_clusters:
@@ -550,11 +555,70 @@ class GBK:
                         proto_cluster_num,
                     )
                     raise InvalidGBKError()
-                cand_cluster.add_proto_cluster(tmp_proto_clusters[proto_cluster_num])
+
+            if (
+                cand_cluster.kind == "interleaved"
+                or cand_cluster.kind == "chemical_hybrid"
+            ):
+                # merge all the protoclusters in this candidate cluster
+                protoclusters = [
+                    tmp_proto_clusters[number]
+                    for number in cand_cluster.proto_clusters.keys()
+                ]
+                merged_protocluster = MergedProtoCluster.merge(protoclusters)
+                merged_tmp_proto_clusters[
+                    merged_protocluster.number
+                ] = merged_protocluster
+
+                # update the protocluster old:new ids for the merged protoclusters of this cand_cluster
+                for proto_cluster_num in cand_cluster.proto_clusters.keys():
+                    merged_protocluster_ids[
+                        proto_cluster_num
+                    ] = merged_protocluster.number
+
+        # now we build a new version of the tmp_proto_clusters dict that contains the merged protoclusters
+        # as well as protoclusters which did not need merging, with updated unique IDs/numbers
+        updated_tmp_proto_clusters: dict[int, ProtoCluster] = {}
+
+        for cand_cluster_num, cand_cluster in tmp_cand_clusters.items():
+            # for each cand_cluster, we also need to create an updated version of the proto_cluster dict
+            # with the new IDs/numbers
+            updated_proto_cluster_dict: dict[int, Optional[ProtoCluster]] = {}
+            for proto_cluster_num in cand_cluster.proto_clusters.keys():
+                if proto_cluster_num in merged_protocluster_ids.keys():
+                    # this protocluster has been merged, so we need to add it to
+                    # the dict with its new protocluster number
+                    new_proto_cluster_num = merged_protocluster_ids[proto_cluster_num]
+                    updated_tmp_proto_clusters[
+                        new_proto_cluster_num
+                    ] = merged_tmp_proto_clusters[new_proto_cluster_num]
+                    updated_proto_cluster_dict[new_proto_cluster_num] = None
+                else:
+                    # protoclusters which have not been merged are added to the dict as is
+                    updated_tmp_proto_clusters[proto_cluster_num] = tmp_proto_clusters[
+                        proto_cluster_num
+                    ]
+                    updated_proto_cluster_dict[proto_cluster_num] = None
+            # we need to do this since the cand_cluster.add_proto_cluster method expects the dict to be there
+            cand_cluster.proto_clusters = updated_proto_cluster_dict
+
+        # now we can add the protoclusters to the candidate clusters
+        for cand_cluster_num, cand_cluster in tmp_cand_clusters.items():
+            for proto_cluster_num in cand_cluster.proto_clusters.keys():
+                cand_cluster.add_proto_cluster(
+                    updated_tmp_proto_clusters[proto_cluster_num]
+                )
 
             region.add_cand_cluster(cand_cluster)
 
-        del tmp_proto_clusters, tmp_proto_cores, tmp_cand_clusters
+        del (
+            tmp_proto_clusters,
+            tmp_proto_cores,
+            tmp_cand_clusters,
+            merged_protocluster_ids,
+            merged_tmp_proto_clusters,
+            updated_tmp_proto_clusters,
+        )
 
     def __repr__(self) -> str:
         return f"GBK {self.path.name}, {len(self.genes)} genes"
