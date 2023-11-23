@@ -159,6 +159,8 @@ class ProtoCore(BGCRecord):
                     result.product,
                     result.category,
                 )
+                if new_proto_core is not None:
+                    new_proto_core.number = min(result.record_number.split("_"))
 
             else:
                 new_proto_core = ProtoCore(
@@ -182,7 +184,7 @@ class MergedProtoCore(ProtoCore):
     """Class to described a merged protocore within an Antismash GBK
 
     Args:
-        ProtoCore (_type_): _description_
+        ProtoCore (ProtoCore): protocore
     """
 
     def __init__(
@@ -206,6 +208,7 @@ class MergedProtoCore(ProtoCore):
         )
 
         self.merged_number = merged_number
+        self.number = int(min(merged_number.split("_")))
         self.merged = True
 
     @staticmethod
@@ -213,11 +216,11 @@ class MergedProtoCore(ProtoCore):
         """Merges two protocores into a single merged protocore
 
         Args:
-            protocore_a (_type_): _description_
-            protocore_b (_type_): _description_
+            protocore_a (ProtoCore): ProtoCore
+            protocore_b (ProtoCore): ProtoCore
 
         Returns:
-            MergedProtoCore: _description_
+            MergedProtoCore: MergedProtoCore
         """
 
         if protocore_a.parent_gbk != protocore_b.parent_gbk:

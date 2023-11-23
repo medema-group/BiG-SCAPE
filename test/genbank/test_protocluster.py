@@ -7,7 +7,12 @@ from unittest import TestCase
 from Bio.SeqFeature import SeqFeature, FeatureLocation
 
 # from other modules
-from big_scape.genbank import ProtoCluster, ProtoCore
+from big_scape.genbank import (
+    ProtoCluster,
+    ProtoCore,
+    MergedProtoCluster,
+    CandidateCluster,
+)
 from big_scape.errors import InvalidGBKError
 from big_scape.data import DB
 
@@ -120,3 +125,156 @@ class TestProtocluster(TestCase):
         actual_row_count = len(cursor_result.fetchall())
 
         self.assertEqual(expected_row_count, actual_row_count)
+
+    def test_merge(self):
+        """tests whether two proto_clusters are correclty merged"""
+
+        feature_a = SeqFeature(FeatureLocation(0, 100), type="proto_core")
+        feature_a.qualifiers["protocluster_number"] = [str(1)]
+        feature_a.qualifiers["product"] = ["NRPS"]
+        proto_core_a = ProtoCore.parse(feature_a)
+
+        protocluster_feature_a = SeqFeature(
+            FeatureLocation(0, 100), type="protocluster"
+        )
+        protocluster_feature_a.qualifiers = {
+            "protocluster_number": ["1"],
+            "category": ["NRPS"],
+            "product": ["NRPS"],
+        }
+
+        protocluster_a = ProtoCluster.parse(protocluster_feature_a)
+        protocluster_a.add_proto_core(proto_core_a)
+
+        feature_b = SeqFeature(FeatureLocation(0, 100), type="proto_core")
+        feature_b.qualifiers["protocluster_number"] = [str(2)]
+        feature_b.qualifiers["product"] = ["PKS"]
+        proto_core_b = ProtoCore.parse(feature_b)
+
+        protocluster_feature_b = SeqFeature(
+            FeatureLocation(0, 100), type="protocluster"
+        )
+        protocluster_feature_b.qualifiers = {
+            "protocluster_number": ["2"],
+            "category": ["PKS"],
+            "product": ["PKS"],
+        }
+
+        protocluster_b = ProtoCluster.parse(protocluster_feature_b)
+        protocluster_b.add_proto_core(proto_core_b)
+
+        merged_protoclusters = MergedProtoCluster.merge(protocluster_a, protocluster_b)
+
+        expected_number = "1_2"
+
+        self.assertEqual(expected_number, merged_protoclusters.merged_number)
+
+    def test_save_merged(self):
+        """Tests whether a merged protocluster is saved correclty to the database"""
+
+        DB.create_in_mem()
+
+        feature_a = SeqFeature(FeatureLocation(0, 100), type="proto_core")
+        feature_a.qualifiers["protocluster_number"] = [str(1)]
+        feature_a.qualifiers["product"] = ["NRPS"]
+        proto_core_a = ProtoCore.parse(feature_a)
+
+        protocluster_feature_a = SeqFeature(
+            FeatureLocation(0, 100), type="protocluster"
+        )
+        protocluster_feature_a.qualifiers = {
+            "protocluster_number": ["1"],
+            "category": ["NRPS"],
+            "product": ["NRPS"],
+        }
+
+        protocluster_a = ProtoCluster.parse(protocluster_feature_a)
+        protocluster_a.add_proto_core(proto_core_a)
+
+        feature_b = SeqFeature(FeatureLocation(0, 100), type="proto_core")
+        feature_b.qualifiers["protocluster_number"] = [str(2)]
+        feature_b.qualifiers["product"] = ["PKS"]
+        proto_core_b = ProtoCore.parse(feature_b)
+
+        protocluster_feature_b = SeqFeature(
+            FeatureLocation(0, 100), type="protocluster"
+        )
+        protocluster_feature_b.qualifiers = {
+            "protocluster_number": ["2"],
+            "category": ["PKS"],
+            "product": ["PKS"],
+        }
+
+        protocluster_b = ProtoCluster.parse(protocluster_feature_b)
+        protocluster_b.add_proto_core(proto_core_b)
+
+        merged_protoclusters = MergedProtoCluster.merge(protocluster_a, protocluster_b)
+        merged_protoclusters.save(0)
+
+        cursor_result = DB.execute_raw_query("SELECT * FROM bgc_record;")
+
+        expected_row_count = 1
+        actual_row_count = len(cursor_result.fetchall())
+
+        self.assertEqual(expected_row_count, actual_row_count)
+
+    def test_load_merged(self):
+        """tests whether a merged protocluster is loaded correctly from the database"""
+
+        DB.create_in_mem()
+
+        feature_a = SeqFeature(FeatureLocation(0, 100), type="proto_core")
+        feature_a.qualifiers["protocluster_number"] = [str(1)]
+        feature_a.qualifiers["product"] = ["NRPS"]
+        proto_core_a = ProtoCore.parse(feature_a)
+
+        protocluster_feature_a = SeqFeature(
+            FeatureLocation(0, 100), type="protocluster"
+        )
+        protocluster_feature_a.qualifiers = {
+            "protocluster_number": ["1"],
+            "category": ["NRPS"],
+            "product": ["NRPS"],
+        }
+
+        protocluster_a = ProtoCluster.parse(protocluster_feature_a)
+        protocluster_a.add_proto_core(proto_core_a)
+
+        feature_b = SeqFeature(FeatureLocation(0, 100), type="proto_core")
+        feature_b.qualifiers["protocluster_number"] = [str(2)]
+        feature_b.qualifiers["product"] = ["PKS"]
+        proto_core_b = ProtoCore.parse(feature_b)
+
+        protocluster_feature_b = SeqFeature(
+            FeatureLocation(0, 100), type="protocluster"
+        )
+        protocluster_feature_b.qualifiers = {
+            "protocluster_number": ["2"],
+            "category": ["PKS"],
+            "product": ["PKS"],
+        }
+
+        protocluster_b = ProtoCluster.parse(protocluster_feature_b)
+        protocluster_b.add_proto_core(proto_core_b)
+
+        merged_protoclusters = MergedProtoCluster.merge(protocluster_a, protocluster_b)
+        merged_protoclusters.save(0)
+
+        candidate_cluster_feature = SeqFeature(
+            FeatureLocation(0, 100), type="cand_cluster"
+        )
+        candidate_cluster_feature.qualifiers = {
+            "candidate_cluster_number": ["1"],
+            "kind": ["single"],
+            "protoclusters": ["1"],
+            "product": ["NRPS"],
+        }
+
+        cand_cluster = CandidateCluster.parse(candidate_cluster_feature)
+        cand_cluster_dict = {0: cand_cluster}
+
+        ProtoCluster.load_all(cand_cluster_dict)
+
+        loaded_proto_cluster = cand_cluster.proto_clusters["1_2"]
+
+        self.assertIsInstance(loaded_proto_cluster, MergedProtoCluster)

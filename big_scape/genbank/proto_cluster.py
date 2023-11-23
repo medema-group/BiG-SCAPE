@@ -14,7 +14,7 @@ from big_scape.errors import InvalidGBKError, InvalidGBKRegionChildError
 
 # from this module
 from big_scape.genbank.bgc_record import BGCRecord
-from big_scape.genbank.proto_core import ProtoCore
+from big_scape.genbank.proto_core import ProtoCore, MergedProtoCore
 
 
 # from circular imports
@@ -202,6 +202,7 @@ class ProtoCluster(BGCRecord):
                 record_table.c.nt_stop,
                 record_table.c.product,
                 record_table.c.category,
+                record_table.c.merged,
             )
             .where(record_table.c.record_type == "protocluster")
             .where(record_table.c.parent_id.in_(candidate_cluster_dict.keys()))
@@ -216,24 +217,136 @@ class ProtoCluster(BGCRecord):
             parent_candidate_cluster = candidate_cluster_dict[result.parent_id]
             parent_gbk = parent_candidate_cluster.parent_gbk
 
-            new_proto_cluster = ProtoCluster(
-                parent_gbk,
-                result.record_number,
-                result.nt_start,
-                result.nt_stop,
-                result.contig_edge,
-                result.product,
-                {},
-                result.category,
-            )
+            merged = result.merged
 
-            new_proto_cluster._db_id = result.id
-            # add to parent CandidateCluster protocluster dict
-            parent_candidate_cluster.proto_clusters[
-                result.record_number
-            ] = new_proto_cluster
+            if merged:
+                new_proto_cluster: Optional[ProtoCluster] = MergedProtoCluster(
+                    parent_gbk,
+                    result.record_number,
+                    result.nt_start,
+                    result.nt_stop,
+                    result.contig_edge,
+                    result.product,
+                    {},
+                    result.category,
+                )
+                if new_proto_cluster is not None:
+                    new_proto_cluster.number = int(min(result.record_number.split("_")))
 
-            # add to dictionary
-            protocluster_dict[result.id] = new_proto_cluster
+            else:
+                new_proto_cluster = ProtoCluster(
+                    parent_gbk,
+                    result.record_number,
+                    result.nt_start,
+                    result.nt_stop,
+                    result.contig_edge,
+                    result.product,
+                    {},
+                    result.category,
+                )
+
+            if new_proto_cluster is not None:
+                new_proto_cluster._db_id = result.id
+
+                # add to parent CandidateCluster protocluster dict
+                parent_candidate_cluster.proto_clusters[
+                    result.record_number
+                ] = new_proto_cluster
+
+                # add to dictionary
+                protocluster_dict[result.id] = new_proto_cluster
 
         ProtoCore.load_all(protocluster_dict)
+
+
+class MergedProtoCluster(ProtoCluster):
+    """Class to described a merged protocluster within an Antismash GBK
+
+    Args:
+        ProtoCluster (ProtoCluster): ProtoCluster
+    """
+
+    def __init__(
+        self,
+        parent_gbk: Optional[GBK],
+        merged_number: str,
+        nt_start: int,
+        nt_stop: int,
+        contig_edge: Optional[bool],
+        product: str,
+        proto_core: dict[int, Optional[ProtoCore]],
+        category: Optional[str] = None,
+    ):
+        super().__init__(
+            parent_gbk,
+            0,
+            nt_start,
+            nt_stop,
+            contig_edge,
+            product,
+            proto_core,
+            category,
+        )
+
+        self.merged_number = merged_number
+        self.number = int(min(merged_number.split("_")))
+        self.merged = True
+
+    @staticmethod
+    def merge(proto_cluster_a, proto_cluster_b) -> MergedProtoCluster:
+        """Merges two proto_clusters into a singled MergedProtoCluster
+
+        Args:
+            proto_cluster_a (ProtoCluster): ProtoCluster
+            proto_cluster_b (ProtoCluster): ProtoCluster
+
+        Returns:
+            MergedProtoCluster: MergedProtoCluster
+        """
+
+        if proto_cluster_a.parent_gbk != proto_cluster_b.parent_gbk:
+            raise ValueError("Cannot merge protoclusters from different GBKs")
+
+        parent_gbk = proto_cluster_a.parent_gbk
+        merged_number = f"{proto_cluster_a.number}_{proto_cluster_b.number}"
+
+        if proto_cluster_a.category != proto_cluster_b.category:
+            category = f"{proto_cluster_a.category}.{proto_cluster_b.category}"
+        else:
+            category = proto_cluster_a.category
+
+        if proto_cluster_a.product != proto_cluster_b.product:
+            product = f"{proto_cluster_a.product}.{proto_cluster_b.product}"
+        else:
+            product = proto_cluster_a.product
+
+        contig_edge = proto_cluster_a.contig_edge or proto_cluster_b.contig_edge
+
+        nt_start = min(proto_cluster_a.nt_start, proto_cluster_b.nt_start)
+        nt_stop = max(proto_cluster_a.nt_stop, proto_cluster_b.nt_stop)
+
+        protocore_a = proto_cluster_a.proto_core[proto_cluster_a.number]
+        protocore_b = proto_cluster_b.proto_core[proto_cluster_b.number]
+
+        if protocore_a is None or protocore_b is None:
+            # should never happen, in AS4 there are only regions,
+            # beyond there are protoclusters and cores
+            merged_protocore = None
+
+        merged_protocore = MergedProtoCore.merge(protocore_a, protocore_b)
+        proto_core_dict: dict[int, Optional[ProtoCore]] = {
+            merged_protocore.number: merged_protocore
+        }
+
+        merged_proto_cluster = MergedProtoCluster(
+            parent_gbk,
+            merged_number,
+            nt_start,
+            nt_stop,
+            contig_edge,
+            product,
+            proto_core_dict,
+            category,
+        )
+
+        return merged_proto_cluster
