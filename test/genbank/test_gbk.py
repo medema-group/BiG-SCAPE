@@ -15,6 +15,8 @@ from big_scape.data import DB
 from big_scape.enums import SOURCE_TYPE
 import big_scape.enums as bs_enums
 
+import big_scape.genbank as bs_gbk
+
 
 class TestGBK(TestCase):
     """Test class for base GBK parsing tests"""
@@ -107,6 +109,117 @@ class TestGBK(TestCase):
         gbk = GBK.parse(gbk_file_path, SOURCE_TYPE.QUERY, run)
 
         self.assertIsInstance(gbk, GBK)
+
+    def test_get_all_records(self):
+        """Tests whether all records are correctly retrieved from a gbk, internally also testing that collapse
+        protoclusters works correclty"""
+
+        # a neighbouring cand_cluster, one interleaved and one hybrid cand_clusters
+        gbk_file_path_1 = Path(
+            "test/test_data/metagenome_valid_gbk_input/JCM_4504.region28.gbk"
+        )
+        # a neighbouring cand_cluster, 3 single cand_clusters
+        gbk_file_path_2 = Path(
+            "test/test_data/metagenome_valid_gbk_input/NS1.region05.gbk"
+        )
+
+        run = {
+            "input_dir": Path("test/test_data/valid_gbk_folder/"),
+            "input_mode": bs_enums.INPUT_MODE.FLAT,
+            "include_gbk": None,
+            "exclude_gbk": None,
+            "cds_overlap_cutoff": None,
+            "cores": None,
+            "classify": True,
+            "legacy_weights": True,
+        }
+
+        gbk_1 = GBK.parse(gbk_file_path_1, SOURCE_TYPE.QUERY, run)
+        gbk_2 = GBK.parse(gbk_file_path_2, SOURCE_TYPE.QUERY, run)
+
+        all_protoclusters_1 = bs_gbk.bgc_record.get_sub_records(
+            gbk_1.region, bs_enums.genbank.RECORD_TYPE.PROTO_CLUSTER
+        )
+        protocluster_numbers_1 = [pc.number for pc in all_protoclusters_1]
+        protocluster_numbers_1.sort()
+
+        all_protoclusters_2 = bs_gbk.bgc_record.get_sub_records(
+            gbk_2.region, bs_enums.genbank.RECORD_TYPE.PROTO_CLUSTER
+        )
+        protocluster_numbers_2 = [pc.number for pc in all_protoclusters_2]
+        protocluster_numbers_2.sort()
+
+        all_proto_cores_1 = bs_gbk.bgc_record.get_sub_records(
+            gbk_1.region, bs_enums.genbank.RECORD_TYPE.PROTO_CORE
+        )
+        proto_core_numbers_1 = [pc.number for pc in all_proto_cores_1]
+        proto_core_numbers_1.sort()
+
+        all_proto_cores_2 = bs_gbk.bgc_record.get_sub_records(
+            gbk_2.region, bs_enums.genbank.RECORD_TYPE.PROTO_CORE
+        )
+        proto_core_numbers_2 = [pc.number for pc in all_proto_cores_2]
+        proto_core_numbers_2.sort()
+
+        all_cand_clusters_1 = bs_gbk.bgc_record.get_sub_records(
+            gbk_1.region, bs_enums.genbank.RECORD_TYPE.CANDIDATE_CLUSTER
+        )
+        cand_cluster_numbers_1 = [cc.number for cc in all_cand_clusters_1]
+        cand_cluster_numbers_1.sort()
+        cc_1_1_pcs = list(gbk_1.region.cand_clusters[1].proto_clusters.keys())
+        cc_1_1_pcs.sort()
+        cc_1_2_pcs = list(gbk_1.region.cand_clusters[2].proto_clusters.keys())
+        cc_1_2_pcs.sort()
+        cc_1_3_pcs = list(gbk_1.region.cand_clusters[3].proto_clusters.keys())
+        cc_1_3_pcs.sort()
+
+        all_cand_clusters_2 = bs_gbk.bgc_record.get_sub_records(
+            gbk_2.region, bs_enums.genbank.RECORD_TYPE.CANDIDATE_CLUSTER
+        )
+        cand_cluster_numbers_2 = [cc.number for cc in all_cand_clusters_2]
+        cand_cluster_numbers_2.sort()
+        cc_2_1_pcs = list(gbk_2.region.cand_clusters[1].proto_clusters.keys())
+        cc_2_1_pcs.sort()
+        cc_2_2_pcs = list(gbk_2.region.cand_clusters[2].proto_clusters.keys())
+        cc_2_2_pcs.sort()
+        cc_2_3_pcs = list(gbk_2.region.cand_clusters[3].proto_clusters.keys())
+        cc_2_3_pcs.sort()
+        cc_2_4_pcs = list(gbk_2.region.cand_clusters[4].proto_clusters.keys())
+        cc_2_4_pcs.sort()
+
+        seen_dict = {
+            "pcl_1": protocluster_numbers_1,
+            "pc_1": proto_core_numbers_1,
+            "cc_1": cand_cluster_numbers_1,
+            "cc_1_1": cc_1_1_pcs,
+            "cc_1_2": cc_1_2_pcs,
+            "cc_1_3": cc_1_3_pcs,
+            "pcl_2": protocluster_numbers_2,
+            "pc_2": proto_core_numbers_2,
+            "cc_2": cand_cluster_numbers_2,
+            "cc_2_1": cc_2_1_pcs,
+            "cc_2_2": cc_2_2_pcs,
+            "cc_2_3": cc_2_3_pcs,
+            "cc_2_4": cc_2_4_pcs,
+        }
+
+        expected_dict = {
+            "pcl_1": [1, 3],
+            "pc_1": [1, 3],
+            "cc_1": [1, 2, 3],
+            "cc_1_1": [1, 3],
+            "cc_1_2": [1],
+            "cc_1_3": [3],
+            "pcl_2": [1, 2, 3],
+            "pc_2": [1, 2, 3],
+            "cc_2": [1, 2, 3, 4],
+            "cc_2_1": [1, 2, 3],
+            "cc_2_2": [1],
+            "cc_2_3": [2],
+            "cc_2_4": [3],
+        }
+
+        self.assertEqual(seen_dict, expected_dict)
 
     def test_parse_as4_no_cluster_feature(self):
         """Tests whether an as4 gbk has no cluster feature"""
