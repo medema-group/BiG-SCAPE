@@ -12,7 +12,7 @@ import logging
 # from other modules
 from big_scape.data import DB
 from big_scape.comparison import RecordPairGenerator, legacy_get_class
-from big_scape.genbank import GBK, CDS, BGCRecord
+from big_scape.genbank import GBK, CDS, BGCRecord, MergedProtoCluster, MergedProtoCore
 from big_scape.enums import SOURCE_TYPE
 from big_scape.trees import generate_newick_tree
 from big_scape.comparison import get_record_category
@@ -638,14 +638,25 @@ def generate_bs_data_js(
         if "organism" in gbk.metadata:
             organism = gbk.metadata["organism"]
 
+        if isinstance(record, MergedProtoCore) or isinstance(
+            record, MergedProtoCluster
+        ):
+            ids = [
+                gbk.path.name,
+                type(record).__name__.lower()[6:],
+                str(record.merged_number),
+            ]
+        else:
+            ids = [gbk.path.name, type(record).__name__.lower(), str(record.number)]
+
+        id = "_".join(ids)
+
         bs_data.append(
             {
                 "desc": organism,
                 "start": 1,
                 "end": len(gbk.nt_seq),
-                "id": "_".join(
-                    [gbk.path.name, type(record).__name__.lower(), str(record.number)]
-                ),
+                "id": id,
                 "hash": gbk.hash,
                 "mibig": gbk.source_type == SOURCE_TYPE.MIBIG,
                 "source": gbk.source_type.name.lower(),
