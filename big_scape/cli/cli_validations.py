@@ -285,6 +285,19 @@ def validate_binning_cluster_workflow(ctx) -> None:
         else:
             ctx.obj["legacy_weights"] = True
 
+    # --hybrids_off needs --legacy_classify or --classify
+
+    if ctx.obj["hybrids_off"]:
+        if not (ctx.obj["classify"] or ctx.obj["legacy_classify"]):
+            logging.error(
+                "You have selected --hybrids_off but no classification method. "
+                "Please select --classify or --legacy_classify"
+            )
+            raise click.UsageError(
+                "You have selected --hybrids_off but no classification method. "
+                "Please select --classify or --legacy_classify"
+            )
+
 
 def validate_binning_query_workflow(ctx) -> None:
     """Raise an error if the combination of parameters is invalid"""

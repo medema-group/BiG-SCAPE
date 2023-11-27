@@ -69,6 +69,8 @@ class RecordPairGenerator:
             Generator[RegionPair]: Generator for Region pairs in this bin
         """
         for record_a, record_b in combinations(self.source_records, 2):
+            if record_a.parent_gbk == record_b.parent_gbk:
+                continue
             if legacy_sorting:
                 sorted_a, sorted_b = sorted((record_a, record_b), key=sort_name_key)
                 pair = RecordPair(sorted_a, sorted_b)
@@ -140,13 +142,12 @@ class RecordPairGenerator:
 
         distance_table = DB.metadata.tables["distance"]
 
-        # get all distances in the table below the cutoff
+        # get all distances/edges in the table for the records in this bin and
+        # with distances below the cutoff
         select_statement = (
             select(distance_table.c.record_a_id, distance_table.c.record_b_id)
-            .where(
-                distance_table.c.record_a_id.in_(self.record_ids)
-                | distance_table.c.record_b_id.in_(self.record_ids)
-            )
+            .where(distance_table.c.record_a_id.in_(self.record_ids))
+            .where(distance_table.c.record_b_id.in_(self.record_ids))
             .where(distance_table.c.distance < cutoff)
             .where(distance_table.c.edge_param_id == self.edge_param_id)
         )
@@ -290,14 +291,16 @@ class RefToRefRecordPairGenerator(RecordPairGenerator):
                 continue
             self.done_record_ids.add(region._db_id)
 
-        for bgc_a in connected_reference_regions:
-            for bgc_b in singleton_reference_regions:
+        for region_a in connected_reference_regions:
+            for region_b in singleton_reference_regions:
+                if region_a.parent_gbk == region_b.parent_gbk:
+                    continue
                 if legacy_sorting:
-                    sorted_a, sorted_b = sorted((bgc_a, bgc_b), key=sort_name_key)
+                    sorted_a, sorted_b = sorted((region_a, region_b), key=sort_name_key)
                     pair = RecordPair(sorted_a, sorted_b)
 
                 else:
-                    pair = RecordPair(bgc_a, bgc_b)
+                    pair = RecordPair(region_a, region_b)
 
                 yield pair
 
@@ -572,6 +575,9 @@ class ConnectedComponentPairGenerator(RecordPairGenerator):
             record_a = self.record_id_to_obj[record_a_id]
             record_b = self.record_id_to_obj[record_b_id]
 
+            if record_a.parent_gbk == record_b.parent_gbk:
+                continue
+
             if legacy_sorting:
                 sorted_a, sorted_b = sorted((record_a, record_b), key=sort_name_key)
                 pair = RecordPair(sorted_a, sorted_b)
@@ -631,6 +637,10 @@ class MissingRecordPairGenerator(RecordPairGenerator):
         existing_distances = set(DB.execute(select_statement).fetchall())
 
         for pair in self.bin.generate_pairs(legacy_sorting):
+            # this should never happen, since no edges should be generated for
+            # records of the same parent gbk
+            if pair.record_a.parent_gbk == pair.record_b.parent_gbk:
+                continue
             # if the pair is not in the set of existing distances, yield it
             if (
                 pair.record_a._db_id,
@@ -757,20 +767,27 @@ def as_class_bin_generator(
         if classify_mode == CLASSIFY_MODE.CATEGORY:
             record_class = get_record_category(record)
 
-        try:
-            class_idx[record_class].append(record)
-        except KeyError:
-            class_idx[record_class] = [record]
+        if run["hybrids_off"]:
+            record_classes = record_class.split(".")
+        else:
+            record_classes = [record_class]
 
-        if weight_type == "legacy_weights":
-            # get region category for weights
-            region_weight_cat = get_weight_category(record)
+        for record_class in record_classes:
+            if record_class not in class_idx:
+                class_idx[record_class] = [record]
 
-            if record_class not in category_weights.keys():
-                category_weights[record_class] = region_weight_cat
+            if record_class in class_idx and record not in class_idx[record_class]:
+                class_idx[record_class].append(record)
 
-        if weight_type == "mix":
-            category_weights[record_class] = "mix"
+            if weight_type == "legacy_weights":
+                # get region category for weights
+                region_weight_cat = get_weight_category(record)
+
+                if record_class not in category_weights.keys():
+                    category_weights[record_class] = region_weight_cat
+
+            if weight_type == "mix":
+                category_weights[record_class] = "mix"
 
     for class_name, records in class_idx.items():
         weight_category = category_weights[class_name]
@@ -905,15 +922,22 @@ def legacy_bin_generator(
         if record.product is None:
             continue
 
-        # product hybrids of AS4 and under dealt with here and in legacy_output generate_run_data_js
-        product = ".".join(record.product.split("-"))
+        product = record.product
 
-        record_class = legacy_get_class(product)
+        if run["hybrids_off"]:
+            record_products = product.split(".")
 
-        try:
-            class_idx[record_class].append(record)
-        except KeyError:
-            class_idx[record_class] = [record]
+        else:
+            record_products = [product]
+
+        for product in record_products:
+            record_class = legacy_get_class(product)
+
+            if record_class not in class_idx:
+                class_idx[record_class] = [record]
+
+            if record_class in class_idx and record not in class_idx[record_class]:
+                class_idx[record_class].append(record)
 
     for class_name, records in class_idx.items():
         edge_param_id = bs_comparison.get_edge_param_id(run, class_name)

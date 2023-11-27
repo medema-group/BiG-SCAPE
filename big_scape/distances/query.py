@@ -11,7 +11,9 @@ import big_scape.comparison as bs_comparison
 import big_scape.enums as bs_enums
 
 
-def calculate_distances_query(run: dict, gbks: list[bs_gbk.GBK]) -> None:
+def calculate_distances_query(
+    run: dict, gbks: list[bs_gbk.GBK]
+) -> list[bs_gbk.BGCRecord]:
     """calculates distances between all queries and references in a given dataset and
     saves them to the database
 
@@ -48,7 +50,18 @@ def calculate_distances_query(run: dict, gbks: list[bs_gbk.GBK]) -> None:
             # TODO: implement selection of specific query record if type is not region
             query_record = gbk.region
             bgcs_records.extend(gbk_records)
+            break
+
+    for gbk in gbks:
+        if gbk.region is None:
             continue
+        if gbk.region.product is None:
+            continue
+        if gbk.source_type == bs_enums.SOURCE_TYPE.QUERY:
+            continue
+
+        gbk_records = bs_gbk.bgc_record.get_sub_records(gbk.region, run["record_type"])
+
         # if classification mode is off, then use all records
         if not run["classify"]:
             query_singleton = False
@@ -61,24 +74,39 @@ def calculate_distances_query(run: dict, gbks: list[bs_gbk.GBK]) -> None:
             # if they have the same class/category as the query
             for gbk_record in gbk_records:
                 if classify_mode == bs_enums.CLASSIFY_MODE.CLASS:
-                    query_class = query_record.product
-                    record_class = gbk_record.product
-                    if record_class == query_class:
+                    query_class = [query_record.product]
+                    record_class = [gbk_record.product]
+
+                    if run["hybrids_off"]:
+                        query_class = query_class[0].split(".")
+                        record_class = record_class[0].split(".")
+
+                    intersect_class = list(set(query_class) & set(record_class))
+                    if len(intersect_class) > 0:
                         query_singleton = False
                         bgcs_records.append(gbk_record)
+
                 if classify_mode == bs_enums.CLASSIFY_MODE.CATEGORY:
-                    query_category = bs_comparison.get_record_category(query_record)
-                    record_category = bs_comparison.get_record_category(gbk_record)
-                    if record_category == query_category:
+                    query_category = [bs_comparison.get_record_category(query_record)]
+                    record_category = [bs_comparison.get_record_category(gbk_record)]
+
+                    if run["hybrids_off"]:
+                        query_category = query_category[0].split(".")
+                        record_category = record_category[0].split(".")
+
+                    intersect_cats = list(set(query_category) & set(record_category))
+                    if len(intersect_cats) > 0:
                         query_singleton = False
                         bgcs_records.append(gbk_record)
 
     if query_singleton:
         logging.error(
-            "Query record is a singleton, no other input records have the same class/category"
+            f"Query record {query_record.parent_gbk} is a singleton, no other input "
+            "records have the same class/category"
         )
         raise ValueError(
-            "Query record is a singleton, no other input records have the same class/category"
+            f"Query record {query_record.parent_gbk} is a singleton, no other input "
+            "records have the same class/category"
         )
 
     # if legacy weights are on, then use the legacy weights and pass as label to bin generator
@@ -169,3 +197,5 @@ def calculate_distances_query(run: dict, gbks: list[bs_gbk.GBK]) -> None:
             break
 
         logging.info("Generated %d edges", num_edges)
+
+    return bgcs_records

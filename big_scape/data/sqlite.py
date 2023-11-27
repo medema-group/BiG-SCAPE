@@ -20,6 +20,7 @@ from sqlalchemy import (
     text,
 )
 import tqdm
+import click
 
 # from other modules
 from big_scape.cli.constants import DB_SCHEMA_PATH
@@ -100,6 +101,14 @@ class DB:
         """Saves the in-memory database to a .db file. This overwrites any last database
         file in the same location
         """
+
+        # TODO: true arg means silent if there is no context. this is done so that unit
+        # tests don't complain. remove this and mock the context in unit tests instead
+        click_context = click.get_current_context(silent=True)
+
+        if click_context and click_context.obj["no_db_dump"]:
+            return
+
         if not DB.opened():
             raise DBClosedError()
 

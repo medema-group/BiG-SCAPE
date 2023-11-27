@@ -333,30 +333,6 @@ def calculate_scores_pair(
     for pair in pairs:
         logging.debug(pair)
         pair.comparable_region.log_comparable_region()
-        logging.debug("")
-        if pair.record_a.parent_gbk == pair.record_b.parent_gbk:
-            results.append(
-                (
-                    pair.record_a._db_id,
-                    pair.record_b._db_id,
-                    0.0,
-                    1.0,
-                    1.0,
-                    1.0,
-                    edge_param_id,
-                    pair.comparable_region.lcs_a_start,
-                    pair.comparable_region.lcs_a_stop,
-                    pair.comparable_region.lcs_b_start,
-                    pair.comparable_region.lcs_b_stop,
-                    pair.comparable_region.a_start,
-                    pair.comparable_region.a_stop,
-                    pair.comparable_region.b_start,
-                    pair.comparable_region.b_stop,
-                    pair.comparable_region.reverse,
-                )
-            )
-            continue
-
         jaccard = calc_jaccard_pair(pair)
 
         if jaccard == 0.0:

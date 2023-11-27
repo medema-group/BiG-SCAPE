@@ -309,7 +309,7 @@ class BGCRecord:
         )
 
     @staticmethod
-    def parse_products(products: set[str]) -> str:
+    def parse_products(products: list[str]) -> str:
         """Parse a set of products from a BGC record. Used in cases where there are hybrid products
 
         Args:
@@ -321,6 +321,8 @@ class BGCRecord:
         # single product? just return it
         if len(products) == 1:
             return products.pop()
+
+        products.sort()
 
         # TODO: check the status here
         # return easy hybrids
