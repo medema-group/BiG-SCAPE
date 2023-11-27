@@ -7,6 +7,7 @@ from distutils import dir_util
 from pathlib import Path
 from typing import Any
 from sqlalchemy import select, alias
+import logging
 
 # from other modules
 from big_scape.data import DB
@@ -41,7 +42,7 @@ def copy_base_output_templates(output_dir: Path):
         output_network_root.mkdir(exist_ok=True)
 
 
-def prepare_cutoff_folder(output_dir: Path, label: str, cutoff: float) -> None:
+def prepare_cutoff_folders(output_dir: Path, label: str, cutoff: float) -> None:
     """Prepare a folder for a given cutoff output
 
     Args:
@@ -51,19 +52,22 @@ def prepare_cutoff_folder(output_dir: Path, label: str, cutoff: float) -> None:
     """
     # networks subfolders
     output_network_root = output_dir / "html_content/networks"
+    output_files_root = output_dir / "output_files"
 
-    cutoff_path = output_network_root / f"{label}_c{cutoff}"
+    cutoff_network_path = output_network_root / f"{label}_c{cutoff}"
+    cutoff_files_path = output_files_root / f"{label}_c{cutoff}"
 
-    cutoff_path.mkdir(exist_ok=True)
+    cutoff_network_path.mkdir(exist_ok=True)
+    cutoff_files_path.mkdir(exist_ok=True)
 
     template_root = Path("big_scape/output/html_template")
     overview_template = template_root / "overview_html"
 
     # copy overview html
-    shutil.copy(str(overview_template), str(cutoff_path / "overview.html"))
+    shutil.copy(str(overview_template), str(cutoff_network_path / "overview.html"))
 
 
-def prepare_pair_generator_folder(
+def prepare_pair_generator_folders(
     output_dir: Path, label: str, cutoff: float, pair_generator: RecordPairGenerator
 ) -> None:
     """Prepare the output folder for a pair_generator under a cutoff
@@ -76,21 +80,27 @@ def prepare_pair_generator_folder(
     """
     # networks subfolders
     output_network_root = output_dir / "html_content/networks"
+    output_files_root = output_dir / "output_files"
 
-    cutoff_path = output_network_root / f"{label}_c{cutoff}"
+    cutoff_network_path = output_network_root / f"{label}_c{cutoff}"
+    cutoff_files_path = output_files_root / f"{label}_c{cutoff}"
 
-    pair_generator_path = cutoff_path / pair_generator.label
+    pair_generator_network_path = cutoff_network_path / pair_generator.label
+    pair_generator_files_path = cutoff_files_path / pair_generator.label
 
-    pair_generator_path.mkdir(exist_ok=True)
+    pair_generator_network_path.mkdir(exist_ok=True)
+    pair_generator_files_path.mkdir(exist_ok=True)
 
-    tree_path = pair_generator_path / Path("GCF_trees")
+    tree_path = pair_generator_files_path / Path("GCF_trees")
 
     tree_path.mkdir(exist_ok=True)
 
     template_root = Path("big_scape/output/html_template")
     pair_generator_template = template_root / "index_html"
 
-    shutil.copy(str(pair_generator_template), str(pair_generator_path / "index.html"))
+    shutil.copy(
+        str(pair_generator_template), str(pair_generator_network_path / "index.html")
+    )
 
 
 def generate_pfams_js(output_dir: Path, pfam_info: list[tuple[str, str, str]]) -> None:
@@ -257,8 +267,7 @@ def generate_run_data_js(
         record_acc_idx = genomes[organism]
 
         # class id
-        # product hybrids of AS4 and under dealt with here and in legacy_bin_generator
-        product = ".".join(gbk.region.product.split("-"))
+        product = gbk.region.product
         region_class = legacy_get_class(product)
 
         if region_class not in class_idx:
@@ -436,7 +445,7 @@ def generate_bigscape_results_js(output_dir: Path, label: str, cutoff: float) ->
         bigscape_results = []
 
     # check if run is already there. if so we can re use it
-    cutoff_label = f"{label}_c{cutoff:.1f}"
+    cutoff_label = f"{label}_c{cutoff}"
     bigscape_result = None
     for existing_result in bigscape_results:
         if existing_result["label"] == cutoff_label:
@@ -482,7 +491,7 @@ def add_bigscape_results_js_network(
     bigscape_results = read_bigscape_results_js(bigscape_results_js_path)
 
     # check if run is already there. if so we can re use it
-    cutoff_label = f"{label}_c{cutoff:.1f}"
+    cutoff_label = f"{label}_c{cutoff}"
     bigscape_result: dict[str, Any] = {"label": cutoff_label, "networks": []}
 
     for existing_result in bigscape_results:
@@ -844,7 +853,12 @@ def generate_bs_families_alignment(
     bs_families_alignment = []
     records = pair_generator.source_records
 
+    logging.info("Generating GCF alignments and trees")
+
     for family_db_id, family_members in bs_families.items():
+        family_name = "FAM_{:05d}".format(family_db_id)
+        logging.debug("Generating alignment for %s", family_name)
+        # collects records within this GCF
         family_records = [records[bgc_num] for bgc_num in family_members]
         family_member_db_ids = [rec._db_id for rec in family_records]
         fam_record_idx = family_member_db_ids.index(family_db_id)
@@ -900,7 +914,7 @@ def generate_bs_families_alignment(
 
         ref_genes = list(ref_genes_)
 
-        family_name = "FAM_{:05d}".format(family_db_id)
+        logging.debug("Generating newick tree for %s", family_name)
         fam_alignment = {
             "id": family_name,
             "ref": family_members[fam_record_idx],
@@ -1030,7 +1044,11 @@ def generate_bs_networks_js(
     output_network_root = output_dir / Path("html_content/networks")
     cutoff_path = output_network_root / Path(f"{label}_c{cutoff}")
     pair_generator_path = cutoff_path / pair_generator.label
-    gcf_trees_path = pair_generator_path / Path("GCF_trees")
+
+    output_files_root = output_dir / Path("output_files")
+    cutoff_path_files = output_files_root / f"{label}_c{cutoff}"
+    pair_generator_files_path = cutoff_path_files / pair_generator.label
+    gcf_trees_path = pair_generator_files_path / Path("GCF_trees")
 
     bs_networks_js_path = pair_generator_path / "bs_networks.js"
 
@@ -1108,6 +1126,11 @@ def legacy_prepare_output(
 
     generate_pfams_js(output_dir, pfam_info)
 
+    # generate roon output_files folder
+    output_files_root = output_dir / "output_files"
+    if not output_files_root.exists():
+        output_files_root.mkdir(exist_ok=True)
+
 
 def legacy_prepare_cutoff_output(run: dict, cutoff: float, gbks: list[GBK]) -> None:
     """Prepare output data for a given cutoff value
@@ -1118,7 +1141,7 @@ def legacy_prepare_cutoff_output(run: dict, cutoff: float, gbks: list[GBK]) -> N
         cutoff (float): cutoff value
         gbks (list[GBK]): list of gbks used in the analysis
     """
-    prepare_cutoff_folder(run["output_dir"], run["label"], cutoff)
+    prepare_cutoff_folders(run["output_dir"], run["label"], cutoff)
 
     generate_bigscape_results_js(run["output_dir"], run["label"], cutoff)
 
@@ -1140,7 +1163,7 @@ def legacy_prepare_bin_output(
     output_dir = run["output_dir"]
     label = run["label"]
 
-    prepare_pair_generator_folder(output_dir, label, cutoff, pair_generator)
+    prepare_pair_generator_folders(output_dir, label, cutoff, pair_generator)
     generate_bs_data_js(output_dir, label, cutoff, pair_generator)
     add_bigscape_results_js_network(output_dir, label, cutoff, pair_generator)
 
@@ -1187,8 +1210,8 @@ def write_record_annotations_file(run, cutoff, all_bgc_records) -> None:
 
     output_dir = run["output_dir"]
     label = run["label"]
-    output_network_root = output_dir / "html_content/networks"
-    cutoff_path = output_network_root / f"{label}_c{cutoff}"
+    output_files_root = output_dir / "output_files"
+    cutoff_path = output_files_root / f"{label}_c{cutoff}"
     record_annotations_path = cutoff_path / "record_annotations.tsv"
 
     if not DB.metadata:
@@ -1272,8 +1295,8 @@ def write_clustering_file(run, cutoff, pair_generator) -> None:
     label = run["label"]
     bin_label = pair_generator.label
 
-    output_network_root = output_dir / "html_content/networks"
-    cutoff_path = output_network_root / f"{label}_c{cutoff}"
+    output_files_root = output_dir / "output_files"
+    cutoff_path = output_files_root / f"{label}_c{cutoff}"
     pair_generator_path = cutoff_path / pair_generator.label
     clustering_file_path = pair_generator_path / f"{bin_label}_clustering_c{cutoff}.tsv"
 
@@ -1455,8 +1478,8 @@ def write_cutoff_network_file(
     label = run["label"]
     bin_label = pair_generator.label
 
-    output_network_root = output_dir / "html_content/networks"
-    cutoff_path = output_network_root / f"{label}_c{cutoff}"
+    output_files_root = output_dir / "output_files"
+    cutoff_path = output_files_root / f"{label}_c{cutoff}"
     pair_generator_path = cutoff_path / pair_generator.label
     cutoff_network_file_path = pair_generator_path / f"{bin_label}_c{cutoff}.network"
 
@@ -1567,8 +1590,8 @@ def write_full_network_file(run: dict, all_bgc_records: list[BGCRecord]) -> None
     output_dir = run["output_dir"]
     label = run["label"]
 
-    output_network_root = output_dir / "html_content/networks"
-    full_network_file_path = output_network_root / f"{label}_full.network"
+    output_files_root = output_dir / "output_files"
+    full_network_file_path = output_files_root / f"{label}_full.network"
 
     # get distances for this set of records
     edgelist = get_full_network_edgelist(run, all_bgc_records)

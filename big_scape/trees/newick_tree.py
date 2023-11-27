@@ -55,9 +55,19 @@ def run_fasttree(algn_file: Path, out_file: TextIO):
         algn_file (Path): Path to alignment file
         out_file (TextIO): Opened output file object
     """
-    subprocess.run(
-        ["fasttree", "-quiet", "-nopr", algn_file], stdout=out_file, shell=False
+
+    result = subprocess.run(
+        ["fasttree", "-quiet", "-nopr", algn_file],
+        capture_output=True,
+        shell=False,
     )
+    stdout = result.stdout.decode("utf-8")
+    out_file.write(stdout)
+
+    if result.stderr:
+        stderr = result.stderr.decode("utf-8")
+        stderr = stderr.replace("\n", " ")
+        logging.debug(f"FastTree says: {stderr}")
 
 
 def process_newick_tree(tree_file: Path) -> str:

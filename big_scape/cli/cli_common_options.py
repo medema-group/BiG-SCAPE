@@ -93,6 +93,13 @@ def common_all(fn):
             ),
             help="Path to output log file. Default: output_dir/timestamp.log.",
         ),
+        click.option(
+            "--no-db-dump",
+            type=bool,
+            is_flag=True,
+            default=False,
+            help="Do not dump the sqlite database to disk",
+        ),
     ]
     for opt in options[::-1]:
         fn = opt(fn)
@@ -272,6 +279,17 @@ def common_cluster_query(fn):
                 "antiSMASH versions, either use --legacy_classify or do not select"
                 "--legacy_weights, which will perform the weighted distance calculations"
                 "based on the generic 'mix' weights."
+            ),
+        ),
+        click.option(
+            "--hybrids_off",
+            is_flag=True,
+            help=(
+                "Toggle to add BGCs with hybrid predicted classes/categories to each"
+                "subclass instead of a hybrid class/network (e.g. a 'terpene-nrps' BGC "
+                "would be added to both the terpene and NRPS classes/networks instead of"
+                " the terpene.nrps network)."
+                " Only works if --classify/--legacy_classify is selected."
             ),
         ),
         click.option(
