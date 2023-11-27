@@ -48,10 +48,12 @@ def generate_mock_cds_lists(
         if i < len_a:
             a = bs_genbank.CDS(i * 100, (i + 1) * 100)
             a.strand = 1
+            a.orf_num = i
             cds_a.append(a)
         if i < len_b:
             b = bs_genbank.CDS(i * 100, (i + 1) * 100)
             b.strand = 1
+            b.orf_num = i
             cds_b.append(b)
 
         if i not in common_a:
@@ -113,12 +115,14 @@ def generate_mock_lcs_region(cds_num_q, cds_num_t, q_domains, t_domains):
     for i in range(cds_num_q):
         cds = bs_genbank.CDS(i * 100, (i + 1) * 100)
         cds.strand = 1
+        cds.orf_num = i
         query_cds.append(cds)
 
     target_cds = []
     for i in range(cds_num_t):
         cds = bs_genbank.CDS(i * 100, (i + 1) * 100)
         cds.strand = 1
+        cds.orf_num = i
         target_cds.append(cds)
 
     query_domains = []
@@ -130,13 +134,16 @@ def generate_mock_lcs_region(cds_num_q, cds_num_t, q_domains, t_domains):
             query_domains.append(hsp)
         query_cds[cds].hsps = hsps
 
+    target_domains = []
     for cds, domains in t_domains.items():
         hsps = []
         for domain in domains:
-            hsps.append(bs_hmmer.HSP(target_cds[cds], domain, 100.0, 0, 100))
+            hsp = bs_hmmer.HSP(target_cds[cds], domain, 100.0, 0, 100)
+            hsps.append(hsp)
+            target_domains.append(hsp)
         target_cds[cds].hsps = hsps
 
-    return query_cds, query_domains, target_cds
+    return query_domains, target_domains
 
 
 class TestExtendUtilities(unittest.TestCase):
@@ -285,6 +292,7 @@ class TestScoreExtend(unittest.TestCase):
         for i in range(5):
             cds = bs_genbank.CDS(i * 100, (i + 1) * 100)
             cds.strand = 1
+            cds.orf_num = i
             target.append(cds)
 
         # flip one cds
@@ -301,21 +309,74 @@ class TestScoreExtend(unittest.TestCase):
         # add a duplicate to a different cds
         target[4].hsps.append(bs_hmmer.HSP(target[4], "C", 100.0, 0, 100))
 
+        target_domains = []
+        for cds in target:
+            if cds.strand == 1:
+                target_domains.extend(cds.hsps)
+            else:
+                target_domains.extend(cds.hsps[::-1])
+
         expected_target_index = {
             "A": [(0, 0), (4, 6)],
             "B": [(1, 1), (3, 3), (3, 4)],
             "C": [(2, 2), (4, 5)],
         }
 
-        actual_target_index = bs_comp.extend.get_target_indexes(target)
+        actual_target_index = bs_comp.extend.get_target_indexes(target_domains)
 
         self.assertEqual(expected_target_index, actual_target_index)
+
+    def test_get_target_indexes_reverse(self):
+        """Check strand orientation on target with reverse"""
+        # create mock cds list
+        target = []
+        for i in range(5):
+            cds = bs_genbank.CDS(i * 100, (i + 1) * 100)
+            cds.orf_num = i
+            cds.strand = 1
+            target.append(cds)
+
+            # flip one cds
+        target[4].strand = -1
+
+        # add mock domains
+        target[0].hsps = [bs_hmmer.HSP(target[0], "A", 100.0, 0, 100)]
+        target[1].hsps = [bs_hmmer.HSP(target[1], "B", 100.0, 0, 100)]
+        target[2].hsps = [bs_hmmer.HSP(target[2], "C", 100.0, 0, 100)]
+        target[3].hsps = [bs_hmmer.HSP(target[3], "B", 100.0, 0, 100)]
+        # add a duplicate to the same cds
+        target[3].hsps.append(bs_hmmer.HSP(target[3], "B", 100.0, 0, 100))
+        target[4].hsps = [bs_hmmer.HSP(target[4], "A", 100.0, 0, 100)]
+        # add a duplicate to a different cds
+        target[4].hsps.append(bs_hmmer.HSP(target[4], "C", 100.0, 0, 100))
+
+        target_domains = []
+        for cds in target:
+            if cds.strand == 1:
+                target_domains.extend(cds.hsps)
+            else:
+                target_domains.extend(cds.hsps[::-1])
+
+        # reverse target
+        target = target[::-1]
+        target_domains = target_domains[::-1]
+
+        expected_index = {
+            "A": [(0, 0), (4, 6)],
+            "C": [(0, 1), (2, 4)],
+            "B": [(1, 2), (1, 3), (3, 5)],
+        }
+
+        actual_index = bs_comp.extend.get_target_indexes(target_domains)
+
+        self.assertEqual(expected_index, actual_index)
 
     def test_get_query_indexes(self):
         """Tests for getting query domain indexes"""
         query = []
         for i in range(3):
             cds = bs_genbank.CDS(i * 100, (i + 1) * 100)
+            cds.orf_num = i
             cds.strand = 1
             query.append(cds)
 
@@ -329,7 +390,11 @@ class TestScoreExtend(unittest.TestCase):
 
         expected_index = {0: 0, 1: 1, 2: 1, 3: 1, 4: 2}
 
-        actual_index = bs_comp.extend.get_query_indexes(query)
+        query_domains = []
+        for cds in query:
+            query_domains.extend(cds.hsps)
+
+        actual_index = bs_comp.extend.get_query_indexes(query_domains)
 
         self.assertEqual(expected_index, actual_index)
 
@@ -343,8 +408,12 @@ class TestScoreExtend(unittest.TestCase):
         for cds in query:
             query_domains.extend(cds.hsps)
 
-        target_index = bs_comp.extend.get_target_indexes(target)
-        query_index = bs_comp.extend.get_query_indexes(query)
+        target_domains = []
+        for cds in target:
+            target_domains.extend(cds.hsps)
+
+        target_index = bs_comp.extend.get_target_indexes(target_domains)
+        query_index = bs_comp.extend.get_query_indexes(query_domains)
 
         expected_extends = (5, 5, 25)
 
@@ -362,9 +431,9 @@ class TestScoreExtend(unittest.TestCase):
         q_domains = {0: ["A"], 1: ["B"]}
         t_domains = {0: ["A"], 1: ["C"], 2: ["D"], 3: ["E"], 4: ["B"]}
 
-        query, query_dom, target = generate_mock_lcs_region(2, 5, q_domains, t_domains)
-        target_index = bs_comp.extend.get_target_indexes(target)
-        query_index = bs_comp.extend.get_query_indexes(query)
+        query_dom, target_dom = generate_mock_lcs_region(2, 5, q_domains, t_domains)
+        target_index = bs_comp.extend.get_target_indexes(target_dom)
+        query_index = bs_comp.extend.get_query_indexes(query_dom)
 
         expected_extends = (1, 1, 5)
 
@@ -380,9 +449,9 @@ class TestScoreExtend(unittest.TestCase):
         q_domains = {0: ["A"], 1: ["B"], 2: ["C"]}
         t_domains = {0: ["A"], 1: ["B"], 2: ["D"], 3: ["E"], 4: ["C"]}
 
-        query, query_dom, target = generate_mock_lcs_region(3, 5, q_domains, t_domains)
-        target_index = bs_comp.extend.get_target_indexes(target)
-        query_index = bs_comp.extend.get_query_indexes(query)
+        query_dom, target_dom = generate_mock_lcs_region(3, 5, q_domains, t_domains)
+        target_index = bs_comp.extend.get_target_indexes(target_dom)
+        query_index = bs_comp.extend.get_query_indexes(query_dom)
 
         expected_extends = (3, 5, 11)
 
@@ -406,13 +475,13 @@ class TestScoreExtend(unittest.TestCase):
 
         q_domains = {0: ["A"], 1: ["B"], 2: ["C"]}
         t_domains = {0: ["A"], 1: ["C"], 2: ["B"]}
-        query, query_dom, target = generate_mock_lcs_region(3, 3, q_domains, t_domains)
+        query_dom, target_dom = generate_mock_lcs_region(3, 3, q_domains, t_domains)
 
         # so we expect an extension of 3 on both sides, and a score of 15
         expected_extends = (3, 3, 15)
 
-        target_index = bs_comp.extend.get_target_indexes(target)
-        query_index = bs_comp.extend.get_query_indexes(query)
+        target_index = bs_comp.extend.get_target_indexes(target_dom)
+        query_index = bs_comp.extend.get_query_indexes(query_dom)
 
         actual_extends = bs_comp.extend.score_extend(
             query_dom, query_index, 0, 0, target_index, 0, 0, 5, -3, -2, 10
@@ -422,34 +491,34 @@ class TestScoreExtend(unittest.TestCase):
 
     def test_extend_middle_lcs(self):
         """Tests correct start of extension when lcs is in middle of sequence"""
-        q_domains = {2: ["A"], 3: ["B"], 4: ["C"]}
+        q_domains = {0: ["X"], 1: ["X"], 2: ["A"], 3: ["B"], 4: ["C"]}
         t_domains = {0: ["X"], 1: ["X"], 2: ["A"], 3: ["B"], 4: ["C"]}
-        query, query_dom, target = generate_mock_lcs_region(5, 6, q_domains, t_domains)
+        query_dom, target_dom = generate_mock_lcs_region(5, 6, q_domains, t_domains)
 
-        target_index = bs_comp.extend.get_target_indexes(target)
-        query_index = bs_comp.extend.get_query_indexes(query)
+        target_index = bs_comp.extend.get_target_indexes(target_dom)
+        query_index = bs_comp.extend.get_query_indexes(query_dom)
 
         expected_extends = (3, 3, 15)
 
         actual_extends = bs_comp.extend.score_extend(
-            query_dom, query_index, 2, 0, target_index, 2, 2, 5, -3, -2, 10
+            query_dom, query_index, 2, 2, target_index, 2, 2, 5, -3, -2, 10
         )
 
         self.assertEqual(expected_extends, actual_extends)
 
     def test_extend_middle_lcs_fill_gap(self):
         """Tests correct gap filling with lcs"""
-        q_domains = {2: ["A"], 3: ["B"], 4: ["C"]}
+        q_domains = {0: ["X"], 1: ["X"], 2: ["A"], 3: ["B"], 4: ["C"]}
         t_domains = {0: ["X"], 1: ["X"], 2: ["A"], 3: ["C"], 4: ["B"]}
-        query, query_dom, target = generate_mock_lcs_region(5, 6, q_domains, t_domains)
+        query_dom, target_dom = generate_mock_lcs_region(5, 6, q_domains, t_domains)
 
-        target_index = bs_comp.extend.get_target_indexes(target)
-        query_index = bs_comp.extend.get_query_indexes(query)
+        target_index = bs_comp.extend.get_target_indexes(target_dom)
+        query_index = bs_comp.extend.get_query_indexes(query_dom)
 
         expected_extends = (3, 3, 15)
 
         actual_extends = bs_comp.extend.score_extend(
-            query_dom, query_index, 2, 0, target_index, 2, 2, 5, -3, -2, 10
+            query_dom, query_index, 2, 2, target_index, 2, 2, 5, -3, -2, 10
         )
 
         self.assertEqual(expected_extends, actual_extends)
@@ -458,10 +527,10 @@ class TestScoreExtend(unittest.TestCase):
         """Tests correct lcs extension ignores domains before lcs"""
         q_domains = {0: ["X"], 1: ["X"], 2: ["A"], 3: ["B"], 4: ["C"]}
         t_domains = {0: ["A"], 1: ["X"], 2: ["X"], 3: ["B"], 4: ["C"]}
-        query, query_dom, target = generate_mock_lcs_region(5, 6, q_domains, t_domains)
+        query_dom, target_dom = generate_mock_lcs_region(5, 6, q_domains, t_domains)
 
-        target_index = bs_comp.extend.get_target_indexes(target)
-        query_index = bs_comp.extend.get_query_indexes(query)
+        target_index = bs_comp.extend.get_target_indexes(target_dom)
+        query_index = bs_comp.extend.get_query_indexes(query_dom)
 
         # B and C match, A mismatch -> 5+5-3 = 7
         expected_extends = (3, 2, 7)
@@ -474,34 +543,34 @@ class TestScoreExtend(unittest.TestCase):
 
     def test_score_extend_multi_domain_query(self):
         """Tests extension on cds with multiple domains"""
-        q_domains = {2: ["A", "B", "C"]}
+        q_domains = {0: ["X"], 1: ["X"], 2: ["A", "B", "C"]}
         t_domains = {0: ["X"], 1: ["X"], 2: ["A"], 3: ["B"], 4: ["C"]}
-        query, query_dom, target = generate_mock_lcs_region(3, 5, q_domains, t_domains)
+        query_dom, target_dom = generate_mock_lcs_region(3, 5, q_domains, t_domains)
 
-        target_index = bs_comp.extend.get_target_indexes(target)
-        query_index = bs_comp.extend.get_query_indexes(query)
+        target_index = bs_comp.extend.get_target_indexes(target_dom)
+        query_index = bs_comp.extend.get_query_indexes(query_dom)
 
         expected_extends = (1, 3, 15)
 
         actual_extends = bs_comp.extend.score_extend(
-            query_dom, query_index, 2, 0, target_index, 2, 2, 5, -3, -2, 10
+            query_dom, query_index, 2, 2, target_index, 2, 2, 5, -3, -2, 10
         )
 
         self.assertEqual(expected_extends, actual_extends)
 
     def test_score_extend_multi_domain_target(self):
         """Tests extension on cds with multiple domains"""
-        q_domains = {2: ["A"], 3: ["B"], 4: ["C"]}
+        q_domains = {0: ["X"], 1: ["X"], 2: ["A"], 3: ["B"], 4: ["C"]}
         t_domains = {0: ["X"], 1: ["X"], 2: ["A", "B", "C"]}
-        query, query_dom, target = generate_mock_lcs_region(5, 3, q_domains, t_domains)
+        query_dom, target_dom = generate_mock_lcs_region(5, 3, q_domains, t_domains)
 
-        target_index = bs_comp.extend.get_target_indexes(target)
-        query_index = bs_comp.extend.get_query_indexes(query)
+        target_index = bs_comp.extend.get_target_indexes(target_dom)
+        query_index = bs_comp.extend.get_query_indexes(query_dom)
 
         expected_extends = (3, 1, 15)
 
         actual_extends = bs_comp.extend.score_extend(
-            query_dom, query_index, 2, 0, target_index, 2, 2, 5, -3, -2, 10
+            query_dom, query_index, 2, 2, target_index, 2, 2, 5, -3, -2, 10
         )
 
         self.assertEqual(expected_extends, actual_extends)
@@ -511,16 +580,16 @@ class TestScoreExtend(unittest.TestCase):
 
         q_domains = {1: ["X"], 2: ["X"], 3: ["Q"], 4: ["A", "B"], 5: ["C", "D", "E"]}
         t_domains = {0: ["X"], 1: ["X", "X", "X"], 2: ["A"], 3: ["D", "B"], 4: ["E"]}
-        query, query_dom, target = generate_mock_lcs_region(6, 5, q_domains, t_domains)
+        query_dom, target_dom = generate_mock_lcs_region(6, 5, q_domains, t_domains)
 
-        target_index = bs_comp.extend.get_target_indexes(target)
-        query_index = bs_comp.extend.get_query_indexes(query)
+        target_index = bs_comp.extend.get_target_indexes(target_dom)
+        query_index = bs_comp.extend.get_query_indexes(query_dom)
 
         # 4 matches ABDE, 2 mismatches QC, : 4*5 - 2*3 = 14
         expected_extends = (3, 3, 14)
 
         actual_extends = bs_comp.extend.score_extend(
-            query_dom, query_index, 3, 2, target_index, 2, 4, 5, -3, -2, 10
+            query_dom, query_index, 2, 2, target_index, 2, 4, 5, -3, -2, 10
         )
 
         self.assertEqual(expected_extends, actual_extends)
@@ -529,15 +598,15 @@ class TestScoreExtend(unittest.TestCase):
         """Tests extend when starting in the middle of cds"""
         q_domains = {3: ["Q"], 4: ["A", "B"], 5: ["C"]}
         t_domains = {0: ["X"], 1: ["X", "X", "Q"], 2: ["A"], 3: ["B", "C"]}
-        query, query_dom, target = generate_mock_lcs_region(6, 5, q_domains, t_domains)
+        query_dom, target_dom = generate_mock_lcs_region(6, 5, q_domains, t_domains)
 
-        target_index = bs_comp.extend.get_target_indexes(target)
-        query_index = bs_comp.extend.get_query_indexes(query)
+        target_index = bs_comp.extend.get_target_indexes(target_dom)
+        query_index = bs_comp.extend.get_query_indexes(query_dom)
 
         expected_extends = (3, 2, 20)
 
         actual_extends = bs_comp.extend.score_extend(
-            query_dom, query_index, 3, 0, target_index, 2, 3, 5, -3, -2, 10
+            query_dom, query_index, 0, 0, target_index, 2, 3, 5, -3, -2, 10
         )
 
         self.assertEqual(expected_extends, actual_extends)
@@ -546,15 +615,15 @@ class TestScoreExtend(unittest.TestCase):
         """Tests extend when starting in the middle of cds"""
         q_domains = {2: ["X", "X"], 3: ["X", "Q"], 4: ["A", "B"], 5: ["C"]}
         t_domains = {0: ["X"], 1: ["X", "X", "Q"], 2: ["A"], 3: ["B", "C"]}
-        query, query_dom, target = generate_mock_lcs_region(6, 5, q_domains, t_domains)
+        query_dom, target_dom = generate_mock_lcs_region(6, 5, q_domains, t_domains)
 
-        target_index = bs_comp.extend.get_target_indexes(target)
-        query_index = bs_comp.extend.get_query_indexes(query)
+        target_index = bs_comp.extend.get_target_indexes(target_dom)
+        query_index = bs_comp.extend.get_query_indexes(query_dom)
 
         expected_extends = (2, 2, 20)
 
         actual_extends = bs_comp.extend.score_extend(
-            query_dom, query_index, 4, 3, target_index, 2, 3, 5, -3, -2, 10
+            query_dom, query_index, 2, 3, target_index, 2, 3, 5, -3, -2, 10
         )
 
         self.assertEqual(expected_extends, actual_extends)
@@ -563,10 +632,10 @@ class TestScoreExtend(unittest.TestCase):
         """Tests correct expansion in reverse"""
         q_domains = {0: ["A"], 1: ["B"], 2: ["C"], 3: ["X"], 4: ["X"]}
         t_domains = {0: ["A"], 1: ["B"], 2: ["C"], 3: ["X"], 4: ["X"]}
-        query, query_dom, target = generate_mock_lcs_region(5, 6, q_domains, t_domains)
+        query_dom, target_dom = generate_mock_lcs_region(5, 6, q_domains, t_domains)
 
-        target_index = bs_comp.extend.get_target_indexes(target)
-        query_index = bs_comp.extend.get_query_indexes(query)
+        target_index = bs_comp.extend.get_target_indexes(target_dom)
+        query_index = bs_comp.extend.get_query_indexes(query_dom)
 
         expected_extends = (3, 3, 15)
 
@@ -580,10 +649,10 @@ class TestScoreExtend(unittest.TestCase):
         """Tests correct expansion in reverse"""
         q_domains = {0: ["A"], 1: ["B"], 2: ["C"], 3: ["X"], 4: ["X"]}
         t_domains = {0: ["A"], 1: ["B"], 2: ["X"], 3: ["X"], 4: ["C"]}
-        query, query_dom, target = generate_mock_lcs_region(5, 6, q_domains, t_domains)
+        query_dom, target_dom = generate_mock_lcs_region(5, 6, q_domains, t_domains)
 
-        target_index = bs_comp.extend.get_target_indexes(target)
-        query_index = bs_comp.extend.get_query_indexes(query)
+        target_index = bs_comp.extend.get_target_indexes(target_dom)
+        query_index = bs_comp.extend.get_query_indexes(query_dom)
 
         expected_extends = (3, 2, 7)
 
@@ -597,10 +666,10 @@ class TestScoreExtend(unittest.TestCase):
         """Tests extend reverse on a combination of query and target multidomain cds"""
         q_domains = {0: ["Q"], 1: ["E", "A"], 2: ["C", "D"], 3: ["X"], 4: ["X"]}
         t_domains = {0: ["E"], 1: ["D"], 2: ["C", "B"], 3: ["A"], 4: ["X", "X", "X"]}
-        query, query_dom, target = generate_mock_lcs_region(5, 6, q_domains, t_domains)
+        query_dom, target_dom = generate_mock_lcs_region(5, 6, q_domains, t_domains)
 
-        target_index = bs_comp.extend.get_target_indexes(target)
-        query_index = bs_comp.extend.get_query_indexes(query)
+        target_index = bs_comp.extend.get_target_indexes(target_dom)
+        query_index = bs_comp.extend.get_query_indexes(query_dom)
 
         # 4 matches ACDE, 1 gap B: 4*5 - 2 = 18
         expected_extends = (2, 4, 18)
@@ -615,10 +684,10 @@ class TestScoreExtend(unittest.TestCase):
         """Tests correct expansion in reverse with double domains"""
         q_domains = {0: ["A"], 1: ["B", "B"], 2: ["C"], 3: ["X"], 4: ["X"]}
         t_domains = {0: ["A"], 1: ["B"], 2: ["C", "C"], 3: ["X"], 4: ["X"]}
-        query, query_dom, target = generate_mock_lcs_region(5, 6, q_domains, t_domains)
+        query_dom, target_dom = generate_mock_lcs_region(5, 6, q_domains, t_domains)
 
-        target_index = bs_comp.extend.get_target_indexes(target)
-        query_index = bs_comp.extend.get_query_indexes(query)
+        target_index = bs_comp.extend.get_target_indexes(target_dom)
+        query_index = bs_comp.extend.get_query_indexes(query_dom)
 
         # 3 matches ABC, 1 gap C, 1 mismatch B: 3*5 - 2 - 3 = 10
         expected_extends = (3, 3, 10)
@@ -633,16 +702,16 @@ class TestScoreExtend(unittest.TestCase):
         """Tests extend when starting in the middle of cds"""
         q_domains = {2: ["C"], 3: ["B", "A"], 4: ["Q", "X"], 5: ["X", "A"]}
         t_domains = {0: ["B", "C"], 1: ["A"], 2: ["N", "Q", "X"], 3: ["X"]}
-        query, query_dom, target = generate_mock_lcs_region(6, 5, q_domains, t_domains)
+        query_dom, target_dom = generate_mock_lcs_region(6, 5, q_domains, t_domains)
 
-        target_index = bs_comp.extend.get_target_indexes(target)
-        query_index = bs_comp.extend.get_query_indexes(query)
+        target_index = bs_comp.extend.get_target_indexes(target_dom)
+        query_index = bs_comp.extend.get_query_indexes(query_dom)
 
         # four matches QABC, one gap: 4*5 - 2 = 18
         expected_extends = (2, 2, 18)
 
         actual_extends = bs_comp.extend.score_extend_rev(
-            query_dom, query_index, 4, 4, target_index, 2, 5, 5, -3, -2, 10
+            query_dom, query_index, 2, 4, target_index, 2, 5, 5, -3, -2, 10
         )
 
         self.assertEqual(expected_extends, actual_extends)

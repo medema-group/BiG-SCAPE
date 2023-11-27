@@ -84,6 +84,7 @@ class TestBGCRecord(TestCase):
         gbk = GBK("", "", "")
         gbk.region = Region(gbk, 0, 0, 100, False, "")
         cds = CDS(10, 90)
+        cds.strand = 1
         gbk.genes.append(cds)
 
         for domain in domains:

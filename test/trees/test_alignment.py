@@ -37,7 +37,9 @@ class TestTrees(TestCase):
         gbk_a = GBK("", "", "")
         gbk_b = GBK("", "", "")
         cds_a = CDS(0, 20)
+        cds_a.strand = 1
         cds_b = CDS(0, 20)
+        cds_b.strand = 1
         hsp_a = HSP(cds_a, "PF1", 1, 0, 10)
         hsp_b = HSP(cds_b, "PF1", 1, 0, 12)
         hsp_a.alignment = HSPAlignment(hsp_a, "TEST-PF1--")

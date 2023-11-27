@@ -5,7 +5,6 @@ import math
 import logging
 
 # from other modules
-import big_scape.genbank as bs_genbank
 import big_scape.hmm as bs_hmm
 
 # from this module
@@ -107,30 +106,14 @@ def extend(
     # get the cds lists
     # TODO: base extend on all domains in case of protoclusters, allow extend beyond
     # protocluster border
-    a_cds = comparable_region.pair.record_a.get_cds_with_domains()
-    b_cds = comparable_region.pair.record_b.get_cds_with_domains()
-
-    a_domains: list[bs_hmm.HSP] = []
-    b_domains: list[bs_hmm.HSP] = []
-
-    for cds in a_cds:
-        if cds.strand == 1:
-            a_domains.extend(cds.hsps)
-        elif cds.strand == -1:
-            a_domains.extend(cds.hsps[::-1])
-
-    for cds in b_cds:
-        if cds.strand == 1:
-            b_domains.extend(cds.hsps)
-        elif cds.strand == -1:
-            b_domains.extend(cds.hsps[::-1])
+    a_domains = comparable_region.pair.record_a.get_hsps()
+    b_domains = comparable_region.pair.record_b.get_hsps()
 
     a_max_dist = math.floor(len(a_domains) * max_match_dist_perc)
     b_max_dist = math.floor(len(b_domains) * max_match_dist_perc)
 
     # reverse b if necessary. This might be true after LCS
     if comparable_region.reverse:
-        b_cds = b_cds[::-1]
         b_domains = b_domains[::-1]
 
     # we will try the following approach:
@@ -144,27 +127,25 @@ def extend(
     # we will only match when the position from the current extension is below a cutoff
     # length
 
-    if len(a_cds) > len(b_cds):
-        query = b_cds
+    if len(a_domains) > len(b_domains):
         query_domains = b_domains
         query_start = comparable_region.b_start
         query_domain_start = comparable_region.domain_b_start
         query_stop = comparable_region.b_stop
         query_domain_stop = comparable_region.domain_b_stop
-        target = a_cds
+        target_domains = a_domains
         target_start = comparable_region.a_start
         target_domain_start = comparable_region.domain_a_start
         target_stop = comparable_region.a_stop
         target_domain_stop = comparable_region.domain_a_stop
         max_match_dist = a_max_dist
     else:
-        query = a_cds
         query_domains = a_domains
         query_start = comparable_region.a_start
         query_domain_start = comparable_region.domain_a_start
         query_stop = comparable_region.a_stop
         query_domain_stop = comparable_region.domain_a_stop
-        target = b_cds
+        target_domains = b_domains
         target_start = comparable_region.b_start
         target_domain_start = comparable_region.domain_b_start
         target_stop = comparable_region.b_stop
@@ -173,10 +154,12 @@ def extend(
 
     # generate an index of domain positions in the target
     # the lists in this index will be sorted by position, in ascending order
-    target_index = get_target_indexes(target)
-    query_index = get_query_indexes(query)
+    target_index = get_target_indexes(target_domains)
+    query_index = get_query_indexes(query_domains)
 
-    if target_stop != len(target) and query_stop != len(query):
+    if target_domain_stop != len(target_domains) and query_domain_stop != len(
+        query_domains
+    ):
         query_exp, target_exp, score = score_extend(
             query_domains,
             query_index,
@@ -192,14 +175,14 @@ def extend(
         )
 
         # set the new start and stop positions
-        if len(a_cds) > len(b_cds):
+        if len(a_domains) > len(b_domains):
             comparable_region.b_stop += query_exp
             comparable_region.a_stop += target_exp
         else:
             comparable_region.a_stop += query_exp
             comparable_region.b_stop += target_exp
 
-    if target_start != 0 and query_start != 0:
+    if target_domain_start != 0 and query_domain_start != 0:
         query_exp, target_exp, score = score_extend_rev(
             query_domains,
             query_index,
@@ -215,7 +198,7 @@ def extend(
         )
 
         # expand left
-        if len(a_cds) > len(b_cds):
+        if len(a_domains) > len(b_domains):
             comparable_region.b_start -= query_exp
             comparable_region.a_start -= target_exp
         else:
@@ -227,7 +210,7 @@ def extend(
 
 
 def get_target_indexes(
-    target: list[bs_genbank.CDS],
+    target_domains: list[bs_hmm.HSP],
 ) -> dict[str, list[tuple[int, int]]]:
     """Generate an index of domain cds positions in the target
 
@@ -239,31 +222,29 @@ def get_target_indexes(
     All indexes are sorted by position, in ascending order
 
     Args:
-        target (list[bs_genbank.CDS]): The target cds list
+        target (list[bs_hmm.HSP]): The target domain list
 
     Returns:
         dict[str, list[tuple[int, int]]]: The target index dictionary
     """
-
     target_index: dict[str, list[tuple[int, int]]] = {}
-    domain_idx = 0
-    for cds_idx, cds in enumerate(target):
-        if cds.strand == 1:
-            hsps = cds.hsps
-        elif cds.strand == -1:
-            hsps = cds.hsps[::-1]
 
-        for hsp in hsps:
-            if hsp.domain not in target_index:
-                target_index[hsp.domain] = []
+    curr_cds_num = target_domains[0].cds.orf_num
+    cds_idx = 0
+    for domain_idx, hsp in enumerate(target_domains):
+        if hsp.cds.orf_num != curr_cds_num:
+            cds_idx += 1
+            curr_cds_num = hsp.cds.orf_num
 
-            target_index[hsp.domain].append((cds_idx, domain_idx))
+        if hsp.domain not in target_index:
+            target_index[hsp.domain] = []
 
-            domain_idx += 1
+        target_index[hsp.domain].append((cds_idx, domain_idx))
+
     return target_index
 
 
-def get_query_indexes(query: list[bs_genbank.CDS]) -> dict[int, int]:
+def get_query_indexes(query_domains: list[bs_hmm.HSP]) -> dict[int, int]:
     """Generate an index linking each domain to their cds index
 
     Dictionary that is returned will have the following structure:
@@ -280,9 +261,15 @@ def get_query_indexes(query: list[bs_genbank.CDS]) -> dict[int, int]:
         dict[int, int]: The query index dictionary
     """
     query_index: dict[int, int] = {}
-    for cds_idx, cds in enumerate(query):
-        for i in range(len(query_index), len(query_index) + len(cds.hsps)):
-            query_index[i] = cds_idx
+
+    curr_cds_num = query_domains[0].cds.orf_num
+    cds_idx = 0
+    for domain_idx, hsp in enumerate(query_domains):
+        if hsp.cds.orf_num != curr_cds_num:
+            cds_idx += 1
+            curr_cds_num = hsp.cds.orf_num
+
+        query_index[domain_idx] = cds_idx
     return query_index
 
 

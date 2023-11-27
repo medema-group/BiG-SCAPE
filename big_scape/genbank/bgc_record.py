@@ -169,16 +169,23 @@ class BGCRecord:
 
         return record_cds
 
-    def get_hsps(self) -> list[HSP]:
+    def get_hsps(self, return_all=False) -> list[HSP]:
         """Get a list of all hsps in this region
+
+        Args:
+            return_all (bool): If set to true, returns all HSP regardless of coordinate
+            information. Defaults to False
 
         Returns:
             list[HSP]: List of all hsps in this region
         """
         domains: list[HSP] = []
-        for cds in self.get_cds_with_domains():
+        for cds in self.get_cds_with_domains(return_all=return_all):
             if len(cds.hsps) > 0:
-                domains.extend(cds.hsps)
+                if cds.strand == 1:
+                    domains.extend(cds.hsps)
+                elif cds.strand == -1:
+                    domains.extend(cds.hsps[::-1])
         return domains
 
     def get_cds_start_stop(self) -> tuple[int, int]:
