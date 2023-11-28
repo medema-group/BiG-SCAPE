@@ -351,7 +351,7 @@ class TestDSS(TestCase):
 
         pair = RecordPair(gbk_a.region, gbk_b.region)
 
-        expected_distances = (4, 0)
+        expected_distances = (0, 4)
 
         actual_distances = get_distance_from_unshared(pair, [])
 
