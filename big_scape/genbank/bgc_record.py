@@ -357,7 +357,7 @@ class BGCRecord:
         """Parse a set of products from a BGC record from antismash V4 and under.
 
         Args:
-            products (set[str]): set of products
+            feature (SeqFeature): BGC record feature to parse
 
         Returns:
             str: Singular string representing the product type
