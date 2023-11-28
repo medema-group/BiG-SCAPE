@@ -333,7 +333,7 @@ def calculate_scores_pair(
     for pair in pairs:
         logging.debug(pair)
         pair.comparable_region.log_comparable_region()
-        jaccard = calc_jaccard_pair(pair)
+        jaccard = calc_jaccard_pair(pair, cache=False)
 
         if jaccard == 0.0:
             results.append(
