@@ -319,10 +319,10 @@ class BGCRecord:
 
     @staticmethod
     def parse_products(feature: SeqFeature) -> str:
-        """Parse a set of products from a BGC record. Used in cases where there are hybrid products
+        """Parse a set of products from a BGC record from antismash V5 and above.
 
         Args:
-            products (set[str]): set of products
+            feature (SeqFeature): BGC record feature to parse
 
         Returns:
             str: Singular string representing the product type
@@ -350,6 +350,37 @@ class BGCRecord:
         # cases we can remove that and just parse the products again
         # products.remove("other")
         # return BGCRecord.parse_products(products)
+
+    @staticmethod
+    def parse_products_as4(feature: SeqFeature) -> str:
+        """Parse a set of products from a BGC record from antismash V4 and under.
+
+        Args:
+            products (set[str]): set of products
+
+        Returns:
+            str: Singular string representing the product type
+        """
+
+        if "product" not in feature.qualifiers:
+            logging.error("product qualifier not found in feature!")
+            raise InvalidGBKError()
+
+        product = feature.qualifiers["product"][0]
+
+        if "-" not in product:
+            return product
+
+        elif product in as4_products:
+            return product
+
+        else:
+            products = []
+            for as4_product in as4_products:
+                if as4_product in product:
+                    products.append(as4_product)
+            products.sort()
+            return ".".join(products)
 
     @staticmethod
     def parse_common(
@@ -459,3 +490,91 @@ def get_sub_records(
         return proto_clusters
 
     return proto_cores
+
+
+as4_products = {
+    "t1pks",
+    "T1PKS" "transatpks",
+    "t2pks",
+    "t3pks",
+    "otherks",
+    "hglks",
+    "transAT-PKS",
+    "transAT-PKS-like",
+    "T2PKS",
+    "T3PKS",
+    "PKS-like",
+    "hglE-KS",
+    "nrps",
+    "NRPS",
+    "NRPS-like",
+    "thioamide-NRP",
+    "NAPAA" "lantipeptide",
+    "thiopeptide",
+    "bacteriocin",
+    "linaridin",
+    "cyanobactin",
+    "glycocin",
+    "LAP",
+    "lassopeptide",
+    "sactipeptide",
+    "bottromycin",
+    "head_to_tail",
+    "microcin",
+    "microviridin",
+    "proteusin",
+    "lanthipeptide",
+    "lipolanthine",
+    "RaS-RiPP",
+    "fungal-RiPP",
+    "TfuA-related",
+    "guanidinotides",
+    "RiPP-like",
+    "lanthipeptide-class-i",
+    "lanthipeptide-class-ii",
+    "lanthipeptide-class-iii",
+    "lanthipeptide-class-iv",
+    "lanthipeptide-class-v",
+    "ranthipeptide",
+    "redox-cofactor",
+    "thioamitides",
+    "epipeptide",
+    "cyclic-lactone-autoinducer",
+    "spliceotide",
+    "RRE-containing",
+    "amglyccycl",
+    "oligosaccharide",
+    "cf_saccharide",
+    "saccharide",
+    "acyl_amino_acids",
+    "arylpolyene",
+    "aminocoumarin",
+    "ectoine",
+    "butyrolactone",
+    "nucleoside",
+    "melanin",
+    "phosphoglycolipid",
+    "phenazine",
+    "phosphonate",
+    "other",
+    "cf_putative",
+    "resorcinol",
+    "indole",
+    "ladderane",
+    "PUFA",
+    "furan",
+    "hserlactone",
+    "fused",
+    "cf_fatty_acid",
+    "siderophore",
+    "blactam",
+    "fatty_acid",
+    "PpyS-KS",
+    "CDPS",
+    "betalactone",
+    "PBDE",
+    "tropodithietic-acid",
+    "NAGGN",
+    "halogenated",
+    "pyrrolidine",
+}

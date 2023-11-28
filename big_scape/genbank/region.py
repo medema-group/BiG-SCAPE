@@ -195,7 +195,7 @@ class Region(BGCRecord):
 
         nt_start, nt_stop, contig_edge = BGCRecord.parse_common(feature)
 
-        product = ""
+        product = BGCRecord.parse_products_as4(feature)
 
         # now we have all the parameters needed to assemble the region
         region = cls(
