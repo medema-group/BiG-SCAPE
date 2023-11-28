@@ -54,6 +54,7 @@ class TestGBK(TestCase):
         gbk_file_path = Path(
             "test/test_data/valid_gbk_folder/CM001015.1.cluster001.gbk"
         )
+
         run = {
             "input_dir": Path("test/test_data/valid_gbk_folder/"),
             "input_mode": bs_enums.INPUT_MODE.RECURSIVE,
@@ -67,6 +68,27 @@ class TestGBK(TestCase):
         gbk = GBK.parse(gbk_file_path, SOURCE_TYPE.QUERY, run)
 
         self.assertIsInstance(gbk, GBK)
+
+    def test_parse_as4gbk_product(self):
+        """Tests whether an as4 GBK's product is parsed correclty"""
+
+        gbk_file_path = Path(
+            "test/test_data/valid_gbk_folder/CM000578.1.cluster042.gbk"
+        )
+
+        run = {
+            "input_dir": Path("test/test_data/valid_gbk_folder/"),
+            "input_mode": bs_enums.INPUT_MODE.RECURSIVE,
+            "include_gbk": None,
+            "exclude_gbk": None,
+            "cds_overlap_cutoff": None,
+            "cores": None,
+            "classify": False,
+            "legacy_classify": False,
+        }
+        gbk = GBK.parse(gbk_file_path, SOURCE_TYPE.QUERY, run)
+        expected_region_product = "nrps.t1pks"
+        self.assertEqual(gbk.region.product, expected_region_product)
 
     def test_error_parse_as4_gbk_classify_legacy_weights(self):
         """Tests whether an error is raise when trying to parse a as4 GBK with legacy weights"""

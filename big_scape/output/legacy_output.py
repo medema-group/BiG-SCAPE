@@ -11,7 +11,7 @@ import logging
 
 # from other modules
 from big_scape.data import DB
-from big_scape.comparison import RecordPairGenerator, legacy_get_class
+from big_scape.comparison import RecordPairGenerator
 from big_scape.genbank import GBK, CDS, BGCRecord, MergedProtoCluster, MergedProtoCore
 from big_scape.enums import SOURCE_TYPE
 from big_scape.trees import generate_newick_tree
@@ -266,9 +266,11 @@ def generate_run_data_js(
         # acc id of gbk
         record_acc_idx = genomes[organism]
 
-        # class id
-        product = gbk.region.product
-        region_class = legacy_get_class(product)
+        # class id - used to make the input data BGC per class piechart
+        # features classes as they come from antismash, as it is a
+        # representation of input dataset features
+
+        region_class = gbk.region.product
 
         if region_class not in class_idx:
             class_idx[region_class] = len(class_idx)

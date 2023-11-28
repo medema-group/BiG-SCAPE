@@ -217,13 +217,12 @@ def run_bigscape(run: dict) -> None:
             HMMer.align_simple(hsps_to_align, align_callback)
 
         alignment_count = 0
-        for gbk in gbks:
-            for gene in gbk.genes:
-                for hsp in gene.hsps:
-                    if hsp.alignment is None:
-                        continue
-                    hsp.alignment.save(False)
-                    alignment_count += 1
+
+        for hsp in hsps_to_align:
+            if hsp.alignment is None:
+                continue
+            hsp.alignment.save(False)
+            alignment_count += 1
 
         logging.info("%d alignments", alignment_count)
 

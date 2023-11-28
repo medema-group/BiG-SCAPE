@@ -157,7 +157,8 @@ class ProtoCluster(BGCRecord):
         if "category" in feature.qualifiers:
             category = feature.qualifiers["category"][0]
 
-        nt_start, nt_stop, contig_edge, product = BGCRecord.parse_common(feature)
+        nt_start, nt_stop, contig_edge = BGCRecord.parse_common(feature)
+        product = BGCRecord.parse_products(feature)
 
         return cls(
             parent_gbk,

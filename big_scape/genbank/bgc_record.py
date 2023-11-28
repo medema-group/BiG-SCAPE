@@ -11,6 +11,7 @@ import logging
 from Bio.SeqFeature import SeqFeature
 
 # from other modules
+from big_scape.cli.constants import ANTISMASH_CLASSES
 from big_scape.data import DB
 from big_scape.errors import InvalidGBKError
 from big_scape.genbank.cds import CDS
@@ -318,15 +319,22 @@ class BGCRecord:
         )
 
     @staticmethod
-    def parse_products(products: list[str]) -> str:
-        """Parse a set of products from a BGC record. Used in cases where there are hybrid products
+    def parse_products(feature: SeqFeature) -> str:
+        """Parse a set of products from a BGC record from antismash V5 and above.
 
         Args:
-            products (set[str]): set of products
+            feature (SeqFeature): BGC record feature to parse
 
         Returns:
             str: Singular string representing the product type
         """
+
+        if "product" not in feature.qualifiers:
+            logging.error("product qualifier not found in feature!")
+            raise InvalidGBKError()
+
+        products = feature.qualifiers["product"]
+
         # single product? just return it
         if len(products) == 1:
             return products.pop()
@@ -345,9 +353,45 @@ class BGCRecord:
         # return BGCRecord.parse_products(products)
 
     @staticmethod
+    def parse_products_as4(feature: SeqFeature) -> str:
+        """Parse a set of products from a BGC record from antismash V4 and under.
+
+        Args:
+            feature (SeqFeature): BGC record feature to parse
+
+        Returns:
+            str: Singular string representing the product type
+        """
+
+        if "product" not in feature.qualifiers:
+            logging.error("product qualifier not found in feature!")
+            raise InvalidGBKError()
+
+        as4_products = []
+        for product_type in ANTISMASH_CLASSES:
+            for product in ANTISMASH_CLASSES[product_type]:
+                as4_products.append(product)
+
+        product = feature.qualifiers["product"][0]
+
+        if "-" not in product:
+            return product
+
+        elif product in as4_products:
+            return product
+
+        else:
+            products = []
+            for as4_product in as4_products:
+                if as4_product in product:
+                    products.append(as4_product)
+            products.sort()
+            return ".".join(products)
+
+    @staticmethod
     def parse_common(
         feature: SeqFeature,
-    ) -> tuple[int, int, Optional[bool], str]:
+    ) -> tuple[int, int, Optional[bool]]:
         """Parse and return the common attributes of BGC records in a GBK feature
 
         Args:
@@ -370,19 +414,7 @@ class BGCRecord:
 
             contig_edge = contig_edge_qualifier == "True"
 
-        if "product" not in feature.qualifiers:
-            logging.error("product qualifier not found in feature!")
-            raise InvalidGBKError()
-
-        # record may have multiple products. handle them here
-
-        # TODO: clean up
-        # products = set(feature.qualifiers["product"][0].split("-"))
-        products = feature.qualifiers["product"]
-
-        product = BGCRecord.parse_products(products)
-
-        return nt_start, nt_stop, contig_edge, product
+        return nt_start, nt_stop, contig_edge
 
 
 def get_sub_records(
@@ -464,3 +496,91 @@ def get_sub_records(
         return proto_clusters
 
     return proto_cores
+
+
+as4_products = {
+    "t1pks",
+    "T1PKS" "transatpks",
+    "t2pks",
+    "t3pks",
+    "otherks",
+    "hglks",
+    "transAT-PKS",
+    "transAT-PKS-like",
+    "T2PKS",
+    "T3PKS",
+    "PKS-like",
+    "hglE-KS",
+    "nrps",
+    "NRPS",
+    "NRPS-like",
+    "thioamide-NRP",
+    "NAPAA" "lantipeptide",
+    "thiopeptide",
+    "bacteriocin",
+    "linaridin",
+    "cyanobactin",
+    "glycocin",
+    "LAP",
+    "lassopeptide",
+    "sactipeptide",
+    "bottromycin",
+    "head_to_tail",
+    "microcin",
+    "microviridin",
+    "proteusin",
+    "lanthipeptide",
+    "lipolanthine",
+    "RaS-RiPP",
+    "fungal-RiPP",
+    "TfuA-related",
+    "guanidinotides",
+    "RiPP-like",
+    "lanthipeptide-class-i",
+    "lanthipeptide-class-ii",
+    "lanthipeptide-class-iii",
+    "lanthipeptide-class-iv",
+    "lanthipeptide-class-v",
+    "ranthipeptide",
+    "redox-cofactor",
+    "thioamitides",
+    "epipeptide",
+    "cyclic-lactone-autoinducer",
+    "spliceotide",
+    "RRE-containing",
+    "amglyccycl",
+    "oligosaccharide",
+    "cf_saccharide",
+    "saccharide",
+    "acyl_amino_acids",
+    "arylpolyene",
+    "aminocoumarin",
+    "ectoine",
+    "butyrolactone",
+    "nucleoside",
+    "melanin",
+    "phosphoglycolipid",
+    "phenazine",
+    "phosphonate",
+    "other",
+    "cf_putative",
+    "resorcinol",
+    "indole",
+    "ladderane",
+    "PUFA",
+    "furan",
+    "hserlactone",
+    "fused",
+    "cf_fatty_acid",
+    "siderophore",
+    "blactam",
+    "fatty_acid",
+    "PpyS-KS",
+    "CDPS",
+    "betalactone",
+    "PBDE",
+    "tropodithietic-acid",
+    "NAGGN",
+    "halogenated",
+    "pyrrolidine",
+}
