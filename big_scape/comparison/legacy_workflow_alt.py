@@ -253,7 +253,9 @@ def do_lcs_pair(
     if alignment_mode == bs_enums.ALIGNMENT_MODE.GLOCAL:
         return True
 
-    if check(pair.comparable_region, 0, True):
+    # reset lcs to full region if contains no biosynthetic cds or is smaller than 3 cds
+    # TODO: add lcs reset parameters to config
+    if check(pair.comparable_region, 3, True):
         return True
 
     logging.debug("resetting after extend")
@@ -279,6 +281,7 @@ def expand_pair(pair: RecordPair) -> float:
         bs_constants.EXPAND_MAX_MATCH_PERC,
     )
 
+    # TODO: add extension reset parameters to config
     if not check(pair.comparable_region, 0, True):
         logging.info("resetting after extend")
         reset(pair.comparable_region)

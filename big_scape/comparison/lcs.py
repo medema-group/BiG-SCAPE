@@ -263,12 +263,20 @@ def find_domain_lcs_region(
         # check if the match contains a biosynthetic gene
         has_biosynthetic = False
         for biosynthetic_idx in a_biosynthetic_domain_cds:
-            if start_a <= biosynthetic_idx < stop_a:
+            if (
+                a_domain_cds_idx[start_a]
+                <= biosynthetic_idx
+                < a_domain_cds_idx[stop_a - 1] + 1
+            ):
                 has_biosynthetic = True
                 break
 
         for biosynthetic_idx in b_biosynthetic_domain_cds:
-            if start_b <= biosynthetic_idx < stop_b:
+            if (
+                b_domain_cds_idx[start_b]
+                <= biosynthetic_idx
+                < b_domain_cds_idx[stop_b - 1] + 1
+            ):
                 has_biosynthetic = True
                 break
 
