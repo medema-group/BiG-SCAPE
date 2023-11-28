@@ -171,17 +171,55 @@ class BGCRecord:
 
         return record_cds
 
-    def get_hsps(self) -> list[HSP]:
+    def get_hsps(self, return_all=False) -> list[HSP]:
         """Get a list of all hsps in this region
+
+        Args:
+            return_all (bool): If set to true, returns all HSP regardless of coordinate
+            information. Defaults to False
 
         Returns:
             list[HSP]: List of all hsps in this region
         """
         domains: list[HSP] = []
-        for cds in self.get_cds_with_domains():
+        for cds in self.get_cds_with_domains(return_all=return_all):
             if len(cds.hsps) > 0:
-                domains.extend(cds.hsps)
+                if cds.strand == 1:
+                    domains.extend(cds.hsps)
+                elif cds.strand == -1:
+                    domains.extend(cds.hsps[::-1])
         return domains
+
+    def get_cds_start_stop(self) -> tuple[int, int]:
+        """Get cds ORF number of record start and stop with respect to full region
+
+        Obtained cds slice starts counting at one and is __inclusive__
+
+        Args:
+            record (BGCRecord): record to find bounds for
+
+        Returns:
+            tuple[int, int]: start and stop of record in cds number
+        """
+        if self.parent_gbk is None:
+            raise AttributeError("Record parent GBK is not set!")
+
+        gbk = self.parent_gbk
+        all_cds = gbk.genes
+
+        record_start = 1
+        record_stop = len(all_cds)
+        # check if record contains all cds
+        if all_cds[0].nt_start >= self.nt_start and all_cds[-1].nt_stop <= self.nt_stop:
+            return record_start, record_stop
+
+        for idx, cds in enumerate(all_cds):
+            if cds.nt_start < self.nt_start:
+                record_start = idx + 2
+            if cds.nt_stop > self.nt_stop:
+                record_stop = idx
+                break
+        return record_start, record_stop
 
     def save_record(
         self, record_type: str, parent_id: Optional[int] = None, commit=True

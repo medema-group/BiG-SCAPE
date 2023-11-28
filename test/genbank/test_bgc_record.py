@@ -84,6 +84,7 @@ class TestBGCRecord(TestCase):
         gbk = GBK("", "", "")
         gbk.region = Region(gbk, 0, 0, 100, False, "")
         cds = CDS(10, 90)
+        cds.strand = 1
         gbk.genes.append(cds)
 
         for domain in domains:
@@ -124,3 +125,79 @@ class TestBGCRecord(TestCase):
         actual_cds_count = len(region.get_cds_with_domains())
 
         self.assertEqual(expected_cds_count, actual_cds_count)
+
+    def test_get_cds_start_stop_region(self):
+        """Tests whether get_cds_start_stop correctly returns full region"""
+        gbk = GBK("", "", "test")
+        cds = [
+            CDS(0, 20),
+            CDS(20, 30),
+            CDS(30, 40),
+            CDS(40, 50),
+            CDS(50, 60),
+            CDS(80, 100),
+        ]
+        gbk.genes = cds
+        region = BGCRecord(gbk, 0, 0, 100, False, "")
+
+        expected_slice = (1, 6)
+        actual_slice = region.get_cds_start_stop()
+
+        self.assertEqual(expected_slice, actual_slice)
+
+    def test_get_cds_start_stop_protocluster(self):
+        """Tests whether get_cds_start_stop correctly returns full region"""
+        gbk = GBK("", "", "test")
+        cds = [
+            CDS(0, 20),
+            CDS(20, 30),
+            CDS(30, 40),
+            CDS(40, 50),
+            CDS(50, 60),
+            CDS(80, 100),
+        ]
+        gbk.genes = cds
+        protocluster = BGCRecord(gbk, 0, 30, 60, False, "")
+
+        expected_slice = (3, 5)
+        actual_slice = protocluster.get_cds_start_stop()
+
+        self.assertEqual(expected_slice, actual_slice)
+
+    def test_get_cds_start_stop_partial_region_end(self):
+        """Tests partial region bounds"""
+        gbk = GBK("", "", "test")
+        cds = [
+            CDS(0, 20),
+            CDS(20, 30),
+            CDS(30, 40),
+            CDS(40, 50),
+            CDS(50, 60),
+            CDS(80, 100),
+        ]
+        gbk.genes = cds
+        region = BGCRecord(gbk, 0, 0, 55, False, "")
+
+        expected_slice = (1, 4)
+        actual_slice = region.get_cds_start_stop()
+
+        self.assertEqual(expected_slice, actual_slice)
+
+    def test_get_cds_start_stop_partial_region_start(self):
+        """Tests partial region bounds"""
+        gbk = GBK("", "", "test")
+        cds = [
+            CDS(0, 20),
+            CDS(20, 30),
+            CDS(30, 40),
+            CDS(40, 50),
+            CDS(50, 60),
+            CDS(80, 100),
+        ]
+        gbk.genes = cds
+        region = BGCRecord(gbk, 0, 5, 100, False, "")
+
+        expected_slice = (2, 6)
+        actual_slice = region.get_cds_start_stop()
+
+        self.assertEqual(expected_slice, actual_slice)

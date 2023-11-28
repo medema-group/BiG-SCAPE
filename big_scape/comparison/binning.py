@@ -672,9 +672,11 @@ class RecordPair:
         # comparable regions start "deflated", meaning only CDS with domains
         a_len = len(record_a.get_cds_with_domains())
         b_len = len(record_b.get_cds_with_domains())
+        a_domain_len = len(record_a.get_hsps())
+        b_domain_len = len(record_b.get_hsps())
 
         self.comparable_region: ComparableRegion = ComparableRegion(
-            self, 0, a_len, 0, b_len, False
+            self, 0, a_len, 0, b_len, 0, a_domain_len, 0, b_domain_len, False
         )
 
     def __repr__(self) -> str:
