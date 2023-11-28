@@ -63,6 +63,8 @@ from distutils import dir_util
 from sklearn.cluster import AffinityPropagation
 import networkx as nx
 
+from bgc_data import bgc_data
+
 
 global use_relevant_mibig
 global mibig_set
@@ -70,7 +72,7 @@ global genbankDict
 global valid_classes
 
 
-def process_gbk_files(gbk, min_bgc_size, bgc_info, files_no_proteins, files_no_biosynthetic_genes):
+def process_gbk_files(gbk, bgc_fasta_folder, valid_classes, genbankDict, min_bgc_size, bgc_info, files_no_proteins, files_no_biosynthetic_genes):
     """ Given a file path to a GenBank file, reads information about the BGC"""
 
     biosynthetic_genes = set()
@@ -395,7 +397,7 @@ def process_gbk_files(gbk, min_bgc_size, bgc_info, files_no_proteins, files_no_b
     return adding_sequence
 
 
-def get_gbk_files(inputpath, outputdir, bgc_fasta_folder, min_bgc_size, include_gbk_str, exclude_gbk_str, bgc_info):
+def get_gbk_files(inputpath, outputdir, bgc_fasta_folder, valid_classes, genbankDict, min_bgc_size, include_gbk_str, exclude_gbk_str, bgc_info):
     """Searches given directory for genbank files recursively, will assume that
     the genbank files that have the same name are the same genbank file. 
     Returns a dictionary that contains the names of the clusters found as keys
@@ -440,7 +442,7 @@ def get_gbk_files(inputpath, outputdir, bgc_fasta_folder, min_bgc_size, include_
             sys.exit("\nError: Input GenBank files should not have spaces in their path as hmmscan cannot process them properly ('too many arguments').")
         
         file_counter += 1
-        if process_gbk_files(filepath, min_bgc_size, bgc_info, files_no_proteins, files_no_biosynthetic_genes):
+        if process_gbk_files(filepath, bgc_fasta_folder, valid_classes, genbankDict, min_bgc_size, bgc_info, files_no_proteins, files_no_biosynthetic_genes):
             processed_sequences += 1
     
     if len(files_no_proteins) > 0:
@@ -1305,7 +1307,7 @@ def parseHmmScan(hmmscanResults, pfd_folder, pfs_folder, overlapCutoff):
     return("")
 
 
-def clusterJsonBatch(bgcs, pathBase, className, matrix, pos_alignments, cutoffs=[1.0], damping=0.9, clusterClans=False, clanCutoff=(0.5,0.8), htmlFolder=None):
+def clusterJsonBatch(bgcs, pathBase, className, matrix, pos_alignments, pfd_folder, bgc_fasta_folder, cutoffs=[1.0], damping=0.9, clusterClans=False, clanCutoff=(0.5,0.8), htmlFolder=None):
     """BGC Family calling
     Uses csr sparse matrices to call Gene Cluster Families (GCFs) using Affinity
     Propagation.
@@ -2072,33 +2074,12 @@ def CMD_parser():
 
     return parser.parse_args()
 
+
+
+
+
 def main():
     options = CMD_parser()
-    
-    class bgc_data:
-        def __init__(self, accession_id, description, product, records, max_width, bgc_size, organism, taxonomy, biosynthetic_genes, contig_edge):
-            # These two properties come from the genbank file:
-            self.accession_id = accession_id
-            self.description = description
-            # AntiSMASH predicted class of compound:
-            self.product = product
-            # number of records in the genbank file (think of multi-locus BGCs):
-            self.records = records
-            # length of largest record (it will be used for ArrowerSVG):
-            self.max_width = int(max_width)
-            # length of the entire bgc (can include several records/subclusters)
-            self.bgc_size = bgc_size
-            # organism
-            self.organism = organism
-            # taxonomy as a string (of comma-separated values)
-            self.taxonomy = taxonomy
-            # Internal set of tags corresponding to genes that AntiSMASH marked 
-            # as "Kind: Biosynthetic". It is formed as
-            # clusterName + "_ORF" + cds_number + ":gid:" + gene_id + ":pid:" + protein_id + ":loc:" + gene_start + ":" + gene_end + ":strand:" + {+,-}
-            self.biosynthetic_genes = biosynthetic_genes
-            # AntiSMASH 4+ marks BGCs that sit on the edge of a contig
-            self.contig_edge = contig_edge
-
     
     if options.outputdir == "":
         print("please provide a name for an output folder using parameter -o or --outputdir")
@@ -2255,7 +2236,8 @@ def main():
     create_directory(output_folder, "Output", False)
 
     # logs
-    log_folder = os.path.join(output_folder, "logs")
+    global log_folder
+    log_folder= os.path.join(output_folder, "logs")
     create_directory(log_folder, "Logs", False)
     write_parameters(log_folder, sys.argv)
 
@@ -2303,6 +2285,7 @@ def main():
 
 
     # genbankDict: {cluster_name:[genbank_path_to_1st_instance,[sample_1,sample_2,...]]}
+    global bgc_info
     bgc_info = {} # Stores, per BGC: predicted type, gbk Description, number of records, width of longest record, GenBank's accession, Biosynthetic Genes' ids
     genbankDict = {}
     
@@ -2322,6 +2305,7 @@ def main():
     # Read included MIBiG
     # Change this for every officially curated MIBiG bundle
     # (file, final folder, number of bgcs)
+    global mibig_set
     mibig_set = set()
     if use_relevant_mibig:
         if options.mibig31:
@@ -2358,7 +2342,7 @@ def main():
             sys.exit("Did not find the correct number of MIBiG BGCs ({}). Please clean the 'Annotated MIBiG reference' folder from any .gbk files first".format(mibig_zipfile_numbgcs[2]))
         
         print("\nImporting MIBiG files")
-        get_gbk_files(bgcs_path, output_folder, bgc_fasta_folder, int(options.min_bgc_size),
+        get_gbk_files(bgcs_path, output_folder, bgc_fasta_folder, valid_classes, genbankDict, int(options.min_bgc_size),
                       ['*'], exclude_gbk_str, bgc_info)
         
         for i in genbankDict.keys():
@@ -2366,7 +2350,7 @@ def main():
             
     
     print("\nImporting GenBank files")
-    get_gbk_files(options.inputdir, output_folder, bgc_fasta_folder, int(options.min_bgc_size),
+    get_gbk_files(options.inputdir, output_folder, bgc_fasta_folder, valid_classes, genbankDict, int(options.min_bgc_size),
                   include_gbk_str, exclude_gbk_str, bgc_info)
     
     if has_query_bgc:
@@ -2376,7 +2360,7 @@ def main():
             pass
         else:
             print("\nImporting query BGC file")
-            get_gbk_files(options.query_bgc, output_folder, bgc_fasta_folder, 
+            get_gbk_files(options.query_bgc, output_folder, bgc_fasta_folder, valid_classes, genbankDict,
                           int(options.min_bgc_size), ['*'], exclude_gbk_str, bgc_info)
             
         if query_bgc not in genbankDict:
@@ -2424,6 +2408,7 @@ def main():
     # list of gene-numbers that have a hit in the anchor domain list. Zero based
     corebiosynthetic_position = {}
     # list of +/- orientation 
+    global BGCGeneOrientation
     BGCGeneOrientation = {}
     
     # to avoid multiple alignment if there's only 1 seq. representing a particular domain
@@ -3036,7 +3021,7 @@ def main():
             # lcsStartA, lcsStartB, seedLength, reverse={True,False}
             pa[int(row[1])] = (int(row[-4]), int(row[-3]), int(row[-2]), reverse)
         del network_matrix_mix[:]
-        family_data = clusterJsonBatch(mix_set, pathBase, "mix", reduced_network, pos_alignments,
+        family_data = clusterJsonBatch(mix_set, pathBase, "mix", reduced_network, pos_alignments, pfd_folder, bgc_fasta_folder,
                             cutoffs=cutoff_list, clusterClans=options.clans,
                             clanCutoff=options.clan_cutoff, htmlFolder=network_html_folder)
         for network_html_folder_cutoff in family_data:
@@ -3255,7 +3240,7 @@ def main():
             del network_matrix[:]
 
             family_data = clusterJsonBatch(BGC_classes[bgc_class], pathBase, bgc_class,
-                                reduced_network, pos_alignments, cutoffs=cutoff_list, 
+                                reduced_network, pos_alignments, pfd_folder, bgc_fasta_folder, cutoffs=cutoff_list, 
                                 clusterClans=options.clans, clanCutoff=options.clan_cutoff, 
                                 htmlFolder=network_html_folder)
             for network_html_folder_cutoff in family_data:
