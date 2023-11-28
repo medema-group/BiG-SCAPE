@@ -318,7 +318,7 @@ class BGCRecord:
         )
 
     @staticmethod
-    def parse_products(products: list[str]) -> str:
+    def parse_products(feature: SeqFeature) -> str:
         """Parse a set of products from a BGC record. Used in cases where there are hybrid products
 
         Args:
@@ -327,6 +327,13 @@ class BGCRecord:
         Returns:
             str: Singular string representing the product type
         """
+
+        if "product" not in feature.qualifiers:
+            logging.error("product qualifier not found in feature!")
+            raise InvalidGBKError()
+
+        products = feature.qualifiers["product"]
+
         # single product? just return it
         if len(products) == 1:
             return products.pop()
@@ -347,7 +354,7 @@ class BGCRecord:
     @staticmethod
     def parse_common(
         feature: SeqFeature,
-    ) -> tuple[int, int, Optional[bool], str]:
+    ) -> tuple[int, int, Optional[bool]]:
         """Parse and return the common attributes of BGC records in a GBK feature
 
         Args:
@@ -370,19 +377,7 @@ class BGCRecord:
 
             contig_edge = contig_edge_qualifier == "True"
 
-        if "product" not in feature.qualifiers:
-            logging.error("product qualifier not found in feature!")
-            raise InvalidGBKError()
-
-        # record may have multiple products. handle them here
-
-        # TODO: clean up
-        # products = set(feature.qualifiers["product"][0].split("-"))
-        products = feature.qualifiers["product"]
-
-        product = BGCRecord.parse_products(products)
-
-        return nt_start, nt_stop, contig_edge, product
+        return nt_start, nt_stop, contig_edge
 
 
 def get_sub_records(

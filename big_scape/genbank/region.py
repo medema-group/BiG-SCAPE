@@ -124,7 +124,10 @@ class Region(BGCRecord):
 
         region_number = int(feature.qualifiers["region_number"][0])
 
-        nt_start, nt_stop, contig_edge, product = BGCRecord.parse_common(feature)
+        nt_start, nt_stop, contig_edge = BGCRecord.parse_common(feature)
+
+        # record may have multiple products. handle them here
+        product = BGCRecord.parse_products(feature)
 
         # now we have all the parameters needed to assemble the region
         region = cls(
@@ -190,7 +193,9 @@ class Region(BGCRecord):
 
         cand_clusters: dict[int, Optional[CandidateCluster]] = {}
 
-        nt_start, nt_stop, contig_edge, product = BGCRecord.parse_common(feature)
+        nt_start, nt_stop, contig_edge = BGCRecord.parse_common(feature)
+
+        product = ""
 
         # now we have all the parameters needed to assemble the region
         region = cls(
