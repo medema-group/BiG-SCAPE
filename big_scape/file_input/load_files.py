@@ -243,7 +243,10 @@ def load_gbks(run: dict, bigscape_dir: Path) -> list[GBK]:
 
     if run["query_bgc_path"]:
         query_bgc_gbk = GBK.parse(
-            run["query_bgc_path"], bs_enums.SOURCE_TYPE.QUERY, run
+            run["query_bgc_path"],
+            bs_enums.SOURCE_TYPE.QUERY,
+            run,
+            run["cds_overlap_cutoff"],
         )
         input_gbks.append(query_bgc_gbk)
 
