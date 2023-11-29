@@ -13,6 +13,7 @@ from .cli_validations import (
     validate_pfam_path,
     validate_classify,
     validate_output_dir,
+    validate_query_record,
 )
 
 __all__ = [
@@ -28,4 +29,5 @@ __all__ = [
     "validate_pfam_path",
     "validate_classify",
     "validate_output_dir",
+    "validate_query_record",
 ]

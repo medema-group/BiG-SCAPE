@@ -357,3 +357,25 @@ def validate_record_type(ctx, _, record_type) -> Optional[bs_enums.genbank.RECOR
         if record_type == valid_type:
             return bs_enums.genbank.RECORD_TYPE[valid_type.upper()]
     return None
+
+
+def validate_query_record(ctx) -> None:
+    """Validates whether a query record number is provided when running query mode
+    with a given record type"""
+
+    print(ctx.obj["record_type"])
+
+    if (
+        ctx.obj["query_record_number"] is None
+        and ctx.obj["record_type"] != bs_enums.genbank.RECORD_TYPE.REGION
+    ):
+        logging.error(
+            "Missing option '--query_record_number'."
+            "A query record number is required when running query mode with a given record type."
+        )
+        raise click.UsageError(
+            "Missing option '--query_record_number'."
+            "A query record number is required when running query mode with a given record type."
+        )
+
+    return None

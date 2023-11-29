@@ -17,6 +17,7 @@ from .cli_validations import (
     validate_pfam_path,
     set_start,
     validate_binning_query_workflow,
+    validate_query_record,
 )
 
 
@@ -64,6 +65,7 @@ def query(ctx, *args, **kwarg):
     validate_pfam_path(ctx)
     validate_output_paths(ctx)
     validate_binning_query_workflow(ctx)
+    validate_query_record(ctx)
 
     # set start time and label
     set_start(ctx.obj)
