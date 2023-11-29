@@ -363,8 +363,6 @@ def validate_query_record(ctx) -> None:
     """Validates whether a query record number is provided when running query mode
     with a given record type"""
 
-    print(ctx.obj["record_type"])
-
     if (
         ctx.obj["query_record_number"] is None
         and ctx.obj["record_type"] != bs_enums.genbank.RECORD_TYPE.REGION
