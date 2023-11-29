@@ -39,8 +39,11 @@ from .cli_validations import (
     type=int,
     required=False,
     help=(
-        "Path to query BGC file. BiG-SCAPE will compare, "
-        "all input BGCs to the query in a one-vs-all mode."
+        "Query BGC record number. Used to select the specific record"
+        "from the query BGC gbk. Warning: interleaved or chemical hybrid proto"
+        "cluster/cores are merged, and the relevant number is that of the "
+        "first record of the merged cluster (the one with the lowest number)."
+        " e.g. if records 1 and 2 get merged, the relevant number is 1. "
     ),
 )
 @click.pass_context
