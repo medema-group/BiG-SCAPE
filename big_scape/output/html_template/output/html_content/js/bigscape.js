@@ -475,7 +475,11 @@ function Bigscape(run_data, bs_data, bs_families, bs_alignment, bs_similarity, n
     countDown--;
     if (countDown >= 0) {
       info_ui.find(".network-layout-counter").text(countDown);
-      var scale = 3 * (graphics.getSvgRoot().getElementsByTagName("g")[0].getBoundingClientRect().width / graphics.getSvgRoot().getBoundingClientRect().width);
+      var rootRect = graphics.getSvgRoot().getBoundingClientRect()
+      var networkRect = graphics.getSvgRoot().getElementsByTagName("g")[0].getBoundingClientRect()
+      var scale_w = 1.5 * (networkRect.width / rootRect.width);
+      var scale_h = 1.5 * (networkRect.height / rootRect.height);
+      var scale = Math.max(scale_w, scale_h)
       var point = {
         x: graphics.getSvgRoot().getBoundingClientRect().width / 2,
         y: graphics.getSvgRoot().getBoundingClientRect().height / 2
@@ -484,6 +488,11 @@ function Bigscape(run_data, bs_data, bs_families, bs_alignment, bs_similarity, n
         graphics.scale((1 / scale), point);
       }
     } else {
+      // center graph in svgContainer
+      var rootRect = graphics.getSvgRoot().getBoundingClientRect()
+      var networkRect = graphics.getSvgRoot().getElementsByTagName("g")[0].getBoundingClientRect()
+      graphics.translateRel((rootRect.width / 2) - (networkRect.left + ((networkRect.right - networkRect.left) / 2)),
+        (rootRect.height / 2) - (networkRect.top + ((networkRect.bottom - networkRect.top) / 2)));
       info_ui.html("");
       var nodes_with_edges_count = 0;
       graph.forEachNode(function (node) {
