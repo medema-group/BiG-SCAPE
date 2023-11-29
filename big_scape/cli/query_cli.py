@@ -33,6 +33,15 @@ from .cli_validations import (
         "all input BGCs to the query in a one-vs-all mode."
     ),
 )
+@click.option(
+    "--query_record_number",
+    type=int,
+    required=False,
+    help=(
+        "Path to query BGC file. BiG-SCAPE will compare, "
+        "all input BGCs to the query in a one-vs-all mode."
+    ),
+)
 @click.pass_context
 def query(ctx, *args, **kwarg):
     """

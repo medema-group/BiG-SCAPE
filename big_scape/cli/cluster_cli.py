@@ -2,7 +2,6 @@
 
 # from python
 import click
-from pathlib import Path
 
 # from other modules
 from big_scape.main import run_bigscape
@@ -22,15 +21,6 @@ from .cli_validations import (
 @click.command()
 @common_all
 @common_cluster_query
-# TODO: delete once query bgc mode is ready
-@click.option(
-    "--query_bgc_path",
-    type=click.Path(exists=True, dir_okay=False, file_okay=True, path_type=Path),
-    help=(
-        "Path to query BGC file. BiG-SCAPE will compare, "
-        "all input BGCs to the query in a one-vs-all mode."
-    ),
-)
 # comparison parameters
 @click.option(
     "--legacy_classify",
