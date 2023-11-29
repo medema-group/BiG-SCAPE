@@ -98,6 +98,7 @@ def calculate_distances_query(
 
     # fetch any existing distances from database
     missing_edge_bin = bs_comparison.MissingRecordPairGenerator(query_to_ref_bin)
+    # get the number of pairs that are missing
     num_pairs = missing_edge_bin.num_pairs()
 
     # calculate distances
@@ -168,6 +169,31 @@ def calculate_distances_query(
         # would have broken the loop earlier on.
         if num_edges == 0:
             break
+
+        logging.info("Generated %d edges", num_edges)
+
+    # now we make any last connected ref <-> connected ref pairs that are missing
+    missing_edge_ref_bin = bs_comparison.MissingRecordPairGenerator(ref_to_ref_bin)
+    num_pairs = missing_edge_ref_bin.num_pairs()
+
+    # calculate distances
+    if num_pairs > 0:
+        logging.info(
+            "Calculating distances for %d pairs (Query to Reference)",
+            num_pairs,
+        )
+
+        query_edges = bs_comparison.generate_edges(
+            missing_edge_ref_bin,
+            run["alignment_mode"],
+            run["cores"],
+        )
+
+        num_edges = 0
+
+        for edge in query_edges:
+            num_edges += 1
+            bs_comparison.save_edge_to_db(edge)
 
         logging.info("Generated %d edges", num_edges)
 
