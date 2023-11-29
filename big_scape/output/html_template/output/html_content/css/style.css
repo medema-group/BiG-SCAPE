@@ -25,9 +25,9 @@ html[data-theme='dark'] {
 }
 /* invert svg coloring in dark mode */
 html[data-theme='dark'] .arrower-svg,
-#det_fam_tree,
-#bgc_per_acc,
-#bgc_per_class {
+html[data-theme='dark'] #det_fam_tree,
+html[data-theme='dark'] #bgc_per_acc,
+html[data-theme='dark'] #bgc_per_class {
   filter: invert(95%);
   mix-blend-mode: screen;
 }

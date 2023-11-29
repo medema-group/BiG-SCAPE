@@ -31,6 +31,14 @@
   <script type="text/javascript" src="../../../js/arrower.js"></script>
   <script type="text/javascript" src="../../../js/bigscape.js"></script>
   <script type="text/javascript">
+    window.addEventListener("message", (event) => {
+      if (event.data === 'dark') {
+        document.documentElement.setAttribute("data-theme", 'dark')
+      } else if (event.data === 'light') {
+        document.documentElement.removeAttribute("data-theme")
+      }
+    })
+    window.parent.postMessage("update data-theme", "*")
     function showLoading(enable) {
       if (enable) {
         $("#loadingWindow").css("display", "block");

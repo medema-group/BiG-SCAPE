@@ -15,6 +15,13 @@
         <span class="bigscape-title"><a href="https://git.wageningenur.nl/medema-group/BiG-SCAPE">Biosynthetic Genes Similarity Clustering and Prospecting Engine</a><br>
             <span>Version 2.0.0</span>
         </span>
+        <span style="float: right; margin-top: 2em">
+          Theme (experimental):
+          <select id="color-theme">
+            <option value="light">Light</option>
+            <option value="dark">Dark</option>
+          </select>
+        </span>
         <!--div id="icons">
           <a href="#"><img src="./img/home.png" alt="home" title="Go to start page"></a>
           <a href="#"><img src="./img/help.png" alt="help" title="Get help using BiG-SCAPE"></a>
@@ -117,6 +124,17 @@
         loadRun(parseInt(this.value));
       })
       $("#bigscape-runs").trigger("change");
+    });
+    // communicate theme between windows
+    $('#color-theme').on('change', event => {
+      document.documentElement.setAttribute('data-theme', event.target.value);
+      $('#contentframe')[0].contentWindow.postMessage(event.target.value, "*");
+    });
+    $('#color-theme').trigger('change');
+    window.addEventListener("message", (event) => {
+      if (event.data === "update data-theme") {
+        $('#color-theme').trigger('change');
+      }
     });
   </script>
 </html>
