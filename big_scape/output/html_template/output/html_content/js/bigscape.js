@@ -62,7 +62,8 @@ function Bigscape(run_data, bs_data, bs_families, bs_alignment, bs_similarity, n
   var sprLen = 100;
   var layout = Viva.Graph.Layout.forceDirected(graph, {
     springLength: sprLen,
-    springCoeff: 0.001,
+    springCoeff: 0.0005,
+    dragCoeff: 0.1,
     gravity: -1,
     springTransform: function (link, spring) {
       spring.length = sprLen - (sprLen * (link.data.weight));
@@ -331,7 +332,7 @@ function Bigscape(run_data, bs_data, bs_families, bs_alignment, bs_similarity, n
       if (bs_data[a]["hash"] == bs_data[b]["hash"]) {
         graph.addLink(a, b, { weight: 0.01 });
       }
-      else{
+      else {
         if ((a > b) && (bs_similarity[a][b] > intra_cutoff)) {
           if ((bs_to_cl[a] !== bs_to_cl[b]) && (bs_similarity[a][b] < inter_cutoff)) {
             continue;
