@@ -883,14 +883,14 @@ BigscapeFunc.updateDescription = function (ids, bs_svg, bs_data, bs_to_cl, bs_fa
     }
     if (true) { // update desc_ui LIs
       var ul = desc_ui.find(".bs-desc_ui-list");
-      ul.find("li a.li-opendetail").css("color", "black");
+      ul.find("li a.li-opendetail").css("color", "var(--text-color-normal)");
       ul.find("li a.li-check").removeClass("checked");
       for (var i in sel_fam) {
         for (var j in fam_sels[sel_fam[i]]) {
-          ul.find("li#bs-desc_ui-li_bs-" + fam_sels[sel_fam[i]][j]).children("a.li-opendetail").css("color", "red");
+          ul.find("li#bs-desc_ui-li_bs-" + fam_sels[sel_fam[i]][j]).children("a.li-opendetail").css("color", "var(--li-selected-color)");
           ul.find("li#bs-desc_ui-li_bs-" + fam_sels[sel_fam[i]][j]).children("a.li-check").addClass("checked");
         }
-        ul.find("li#bs-desc_ui-li_fam-" + sel_fam[i]).children("a.li-opendetail").css("color", "red");
+        ul.find("li#bs-desc_ui-li_fam-" + sel_fam[i]).children("a.li-opendetail").css("color", "var(--li-selected-color)");
         ul.find("li#bs-desc_ui-li_fam-" + sel_fam[i]).children("a.li-check").addClass("checked");
       }
       if (desc_ui.find("input[name=bs-desc_ui-li_show]:checked").val() == "all") {

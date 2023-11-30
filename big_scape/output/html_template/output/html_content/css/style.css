@@ -2,37 +2,38 @@ html {
   --text-color-normal: rgba(129, 129, 127, 1);
   --text-color-richer: rgba(129, 129, 127, 1);
   --link-color: #1d1414;
+  --border-color: black;
   --overview-button-background: #51a3a3;
   --button-text-color: #eaeae9;
   --background-color: #fefefe;
   --background-header: rgba(234, 234, 233, 1);
+  --li-selected-color: red;
 }
 html[data-theme='dark'] {
   --hue: 180;
   --accent-hue: 210;
   --text-color-normal: hsl(var(--hue), 10%, 62%);
-  --text-color-light: hsl(var(--hue), 15%, 35%);
   --text-color-richer: hsl(var(--hue), 34%, 48%);
-  --text-color-highlight: hsl(var(--accent-hue), 20%, 50%);
   --link-color: hsl(var(--hue), 90%, 70%);
-  --accent-color: hsl(var(--accent-hue), 100%, 70%);
-  --error-color: rgb(240, 50, 50);
+  --border-color: hsl(var(--accent-hue), 20%, 50%);
   --overview-button-background: hsl(var(--hue), 34%, 48%);
-  --button-background: hsl(var(--hue), 15%, 30%);
   --button-text-color: hsl(var(--hue), 10%, 10%);
   --background-color: hsl(var(--hue), 20%, 12%);
   --background-header: rgba(159, 159, 143, 0.188);
+  --li-selected-color: hsl(var(--hue), 70%, 60%);
 }
 /* invert svg coloring in dark mode */
 html[data-theme='dark'] .arrower-svg,
 html[data-theme='dark'] #det_fam_tree,
 html[data-theme='dark'] #bgc_per_acc,
-html[data-theme='dark'] #bgc_per_class {
-  filter: invert(95%);
-  mix-blend-mode: screen;
-}
+html[data-theme='dark'] #bgc_per_class,
 html[data-theme='dark'] #abpres_heatmap {
   filter: invert(100%);
+}
+html[data-theme='dark'] #arrower-tooltip-1234567890 {
+  background-color: var(--background-color);
+  color: var(--text-color-normal);
+  border: 1px solid var(--border-color)
 }
 body {
   font-family: Verdana, Tahoma, Sans-Serif;
@@ -184,11 +185,11 @@ a:visited {
   overflow: scroll;
 }
 .hover-container {
-  background-color: white;
+  background-color: var(--background-color);
   padding: 0px 5px;
   position: absolute;
   overflow: hidden;
-  border: 1px solid #CCC;
+  border: 1px solid var(--border-color);
   box-shadow: 2px 3px;
   min-height: 20px;
   min-width: 50px;
@@ -197,18 +198,19 @@ a:visited {
   z-index: 1000;
   position: absolute;
   overflow: hidden;
-  border: 1px solid #CCC;
+  border: 1px solid var(--border-color);
   white-space: nowrap;
   font-family: sans-serif;
-  background: #FFF;
-  color: #333;
+  background-color: var(--background-color);
+  color: var(--text-color-normal);
   padding: 0;
 }
 .context-menu h3 {
   font-size: normal;
   margin: 0px;
   padding: 2px 5px;
-  border-bottom: 1px solid black;
+  color: var(--text-color-normal);
+  border-bottom: 1px solid var(--border-color);
 }
 .context-menu ul {
   list-style-type: none;
@@ -220,7 +222,7 @@ a:visited {
   cursor: pointer;
 }
 .context-menu li:hover {
-  background-color: #DEF;
+  background-color: var(--background-header);
 }
 .context-menu li a:hover {
   text-decoration: none;
@@ -232,12 +234,12 @@ a:visited {
   display: inline-block;
   height: 10px;
   width: 10px;
-  border: 1px solid black;
+  border: 1px solid var(--border-color);
   margin-right: 5px;
   background: rgba(0,0,0,0);
 }
 .li-check.checked {
-  background: rgba(0,0,0,0.5);
+  background: var(--li-selected-color);
 }
 .li-opendetail.mibig {
   background: rgba(131, 236, 240, 0.5);
