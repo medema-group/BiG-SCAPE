@@ -18,36 +18,36 @@ import big_scape.enums as bs_enums
 
 
 def reset_expansion(
-    comparable_region: ComparableRegion, a_start=0, a_stop=None, b_start=0, b_stop=None
+    pair: RecordPair, a_start=0, a_stop=None, b_start=0, b_stop=None
 ) -> None:  # pragma no cover
     """Resets the comparable region starts and stops
 
     If no arguments beyond comparable region are given, resets to the full range
     """
-    a_gbk = comparable_region.pair.record_a.parent_gbk
-    b_gbk = comparable_region.pair.record_b.parent_gbk
+    a_gbk = pair.record_a.parent_gbk
+    b_gbk = pair.record_b.parent_gbk
 
     if a_gbk is None or b_gbk is None:
         return
 
     if a_stop is None:
-        a_stop = len(comparable_region.pair.record_a.get_cds()) + 1
+        a_stop = len(pair.record_a.get_cds()) + 1
 
     if b_stop is None:
-        b_stop = len(comparable_region.pair.record_b.get_cds()) + 1
+        b_stop = len(pair.record_b.get_cds()) + 1
 
-    comparable_region.a_start = a_start
-    comparable_region.b_start = b_start
+    pair.comparable_region.a_start = a_start
+    pair.comparable_region.b_start = b_start
 
-    comparable_region.a_stop = a_stop
-    comparable_region.b_stop = b_stop
+    pair.comparable_region.a_stop = a_stop
+    pair.comparable_region.b_stop = b_stop
 
-    comparable_region.domain_lists = None
-    comparable_region.domain_sets = None
+    pair.domain_lists = None
+    pair.domain_sets = None
 
 
 def expand_glocal(
-    comparable_region: ComparableRegion,
+    pair: RecordPair,
     min_lcs_len=MIN_LCS_LEN,
     min_expand_len=MIN_EXPAND_LEN,
 ) -> None:  # pragma no cover
@@ -61,12 +61,12 @@ def expand_glocal(
     # EXPAND_MIN_LCS_LEN (3 in BiG-SCAPE 1.0) elements and no biosynthetic gene is found
     # in the LCS
     # TODO: are all relevant checks here?
-    match_len = comparable_region.a_stop - comparable_region.a_start
+    match_len = pair.comparable_region.a_stop - pair.comparable_region.a_start
     if match_len < min_lcs_len:
         if not ComparableRegion.cds_range_contains_biosynthetic(
-            comparable_region.pair.record_a,
-            comparable_region.a_start,
-            comparable_region.a_stop,
+            pair.record_a,
+            pair.comparable_region.a_start,
+            pair.comparable_region.a_stop,
             True,
         ):
             logging.debug(
@@ -74,35 +74,35 @@ def expand_glocal(
                     "Skipping pair %s left expansion - LCS len < %d and no core "
                     "biosynthetic genes found in LCS"
                 ),
-                comparable_region.pair,
+                pair,
                 min_lcs_len,
             )
-            reset_expansion(comparable_region)
+            reset_expansion(pair)
             return
 
-    logging.debug("cr before expand: %s", str(comparable_region))
+    logging.debug("cr before expand: %s", str(pair.comparable_region))
 
-    expand_glocal_left(comparable_region)
+    expand_glocal_left(pair)
 
-    expand_glocal_right(comparable_region)
+    expand_glocal_right(pair)
 
-    logging.debug("cr after expand: %s", str(comparable_region))
+    logging.debug("cr after expand: %s", str(pair.comparable_region))
 
 
 def check_expand(
-    comparable_region: ComparableRegion, min_expand_len=MIN_EXPAND_LEN
+    pair: RecordPair, min_expand_len=MIN_EXPAND_LEN
 ) -> bool:  # pragma no cover
     """Returns True if the expansion is valid. Returns False if the expansion should be reset"""
 
     # final checks: did we expand enough?
-    a_start = comparable_region.a_start
-    a_stop = comparable_region.a_stop
-    cds_list_a = comparable_region.pair.record_a.get_cds_with_domains()[a_start:a_stop]
+    a_start = pair.comparable_region.a_start
+    a_stop = pair.comparable_region.a_stop
+    cds_list_a = pair.record_a.get_cds_with_domains()[a_start:a_stop]
     expansion_len_a = len([cds for cds in cds_list_a if len(cds.hsps) > 0])
 
-    b_start = comparable_region.b_start
-    b_stop = comparable_region.b_stop
-    cds_list_b = comparable_region.pair.record_b.get_cds_with_domains()[b_start:b_stop]
+    b_start = pair.comparable_region.b_start
+    b_stop = pair.comparable_region.b_stop
+    cds_list_b = pair.record_b.get_cds_with_domains()[b_start:b_stop]
     expansion_len_b = len([cds for cds in cds_list_b if len(cds.hsps) > 0])
 
     if min(expansion_len_a, expansion_len_b) < min_expand_len:
@@ -110,19 +110,19 @@ def check_expand(
 
     # do both slices contain a biosynthetic gene?
     if not ComparableRegion.cds_range_contains_biosynthetic(
-        comparable_region.pair.record_a,
-        comparable_region.a_start,
-        comparable_region.a_stop,
+        pair.record_a,
+        pair.comparable_region.a_start,
+        pair.comparable_region.a_stop,
         end_inclusive=True,
     ):
         return False
 
     if not ComparableRegion.cds_range_contains_biosynthetic(
-        comparable_region.pair.record_b,
-        comparable_region.b_start,
-        comparable_region.b_stop,
+        pair.record_b,
+        pair.comparable_region.b_start,
+        pair.comparable_region.b_stop,
         end_inclusive=True,
-        reverse=comparable_region.reverse,
+        reverse=pair.comparable_region.reverse,
     ):
         return False
 
@@ -166,7 +166,7 @@ def set_expansion_left(
     comparable_region.b_start -= b_expansion
 
 
-def expand_glocal_left(comparable_region: ComparableRegion) -> None:  # pragma no cover
+def expand_glocal_left(pair: RecordPair) -> None:  # pragma no cover
     """Perform expansion on the left side of two regions where necessary and set new
     start and stop positions
 
@@ -179,17 +179,17 @@ def expand_glocal_left(comparable_region: ComparableRegion) -> None:  # pragma n
     # the legacy implementation of comparable region expansion first checks the number
     # of genes that are left of the current comparable region
 
-    cds_list_a = comparable_region.pair.record_a.get_cds_with_domains()
+    cds_list_a = pair.record_a.get_cds_with_domains()
 
-    a_left_stop = comparable_region.a_start
+    a_left_stop = pair.comparable_region.a_start
     left_cds_a = list(reversed(cds_list_a[:a_left_stop]))
     left_domain_cds_a = len([cds for cds in left_cds_a if len(cds.hsps) > 0])
 
-    cds_list_b = comparable_region.pair.record_b.get_cds_with_domains(
-        reverse=comparable_region.reverse
+    cds_list_b = pair.record_b.get_cds_with_domains(
+        reverse=pair.comparable_region.reverse
     )
 
-    b_left_stop = comparable_region.b_start
+    b_left_stop = pair.comparable_region.b_start
     left_cds_b = list(reversed(cds_list_b[:b_left_stop]))
     left_domain_cds_b = len([cds for cds in left_cds_b if len(cds.hsps) > 0])
 
@@ -201,7 +201,7 @@ def expand_glocal_left(comparable_region: ComparableRegion) -> None:  # pragma n
         a_score, a_expansion = expand_score(left_cds_a, left_cds_b)
         # B is extended as far as it can be
         b_expansion = len(left_cds_b)
-        set_expansion_left(comparable_region, a_expansion, b_expansion)
+        set_expansion_left(pair.comparable_region, a_expansion, b_expansion)
         return
 
     # case 2: B has more genes to the left of LCS than A
@@ -210,7 +210,7 @@ def expand_glocal_left(comparable_region: ComparableRegion) -> None:  # pragma n
         b_score, b_expansion = expand_score(left_cds_b, left_cds_a)
         # A is extended as far as it can be
         a_expansion = len(left_cds_a)
-        set_expansion_left(comparable_region, a_expansion, b_expansion)
+        set_expansion_left(pair.comparable_region, a_expansion, b_expansion)
         return
 
     # case 3: A and B have same number of genes left of LCS
@@ -223,23 +223,23 @@ def expand_glocal_left(comparable_region: ComparableRegion) -> None:  # pragma n
         # use A if it has a longer extension
         if a_expansion > b_expansion:
             b_expansion = len(left_cds_b)
-            set_expansion_left(comparable_region, a_expansion, b_expansion)
+            set_expansion_left(pair.comparable_region, a_expansion, b_expansion)
             return
         # otherwise just use B
         a_expansion = len(left_cds_a)
-        set_expansion_left(comparable_region, a_expansion, b_expansion)
+        set_expansion_left(pair.comparable_region, a_expansion, b_expansion)
         return
 
     # A has higher score
     if a_score > b_score:
         # ... use A
         b_expansion = len(left_cds_b)
-        set_expansion_left(comparable_region, a_expansion, b_expansion)
+        set_expansion_left(pair.comparable_region, a_expansion, b_expansion)
         return
 
     # only remaining case is B has higher score
     a_expansion = len(left_cds_a)
-    set_expansion_left(comparable_region, a_expansion, b_expansion)
+    set_expansion_left(pair.comparable_region, a_expansion, b_expansion)
 
 
 def set_expansion_right(
@@ -279,7 +279,7 @@ def set_expansion_right(
     comparable_region.b_stop += b_expansion
 
 
-def expand_glocal_right(comparable_region: ComparableRegion) -> None:  # pragma no cover
+def expand_glocal_right(pair: RecordPair) -> None:  # pragma no cover
     """Set new comparable region positions using glocal expand results
 
     Args:
@@ -289,17 +289,17 @@ def expand_glocal_right(comparable_region: ComparableRegion) -> None:  # pragma 
     # the legacy implementation of comparable region expansion first checks the number
     # of genes that are right of the current comparable region
 
-    cds_list_a = comparable_region.pair.record_a.get_cds_with_domains()
+    cds_list_a = pair.record_a.get_cds_with_domains()
 
-    a_right_start = comparable_region.a_stop
+    a_right_start = pair.comparable_region.a_stop
     right_cds_a = cds_list_a[a_right_start:]
     right_domain_cds_a = len([cds for cds in right_cds_a if len(cds.hsps) > 0])
 
-    cds_list_b = comparable_region.pair.record_b.get_cds_with_domains(
-        reverse=comparable_region.reverse
+    cds_list_b = pair.record_b.get_cds_with_domains(
+        reverse=pair.comparable_region.reverse
     )
 
-    b_right_start = comparable_region.b_stop
+    b_right_start = pair.comparable_region.b_stop
     right_cds_b = cds_list_b[b_right_start:]
     right_domain_cds_b = len([cds for cds in right_cds_b if len(cds.hsps) > 0])
 
@@ -311,7 +311,7 @@ def expand_glocal_right(comparable_region: ComparableRegion) -> None:  # pragma 
         a_score, a_expansion = expand_score(right_cds_a, right_cds_b)
         # B is extended as far as it can be
         b_expansion = len(right_cds_b)
-        set_expansion_right(comparable_region, a_expansion, b_expansion)
+        set_expansion_right(pair.comparable_region, a_expansion, b_expansion)
         return
 
     # case 2: B has more genes to the left of LCS than A
@@ -320,7 +320,7 @@ def expand_glocal_right(comparable_region: ComparableRegion) -> None:  # pragma 
         b_score, b_expansion = expand_score(right_cds_b, right_cds_a)
         # A is extended as far as it can be
         a_expansion = len(right_cds_a)
-        set_expansion_right(comparable_region, a_expansion, b_expansion)
+        set_expansion_right(pair.comparable_region, a_expansion, b_expansion)
         return
 
     # case 3: A and B have same number of genes left of LCS
@@ -333,23 +333,23 @@ def expand_glocal_right(comparable_region: ComparableRegion) -> None:  # pragma 
         # use A if it has a longer extension
         if a_expansion > b_expansion:
             b_expansion = len(right_cds_b)
-            set_expansion_right(comparable_region, a_expansion, b_expansion)
+            set_expansion_right(pair.comparable_region, a_expansion, b_expansion)
             return
         # otherwise just use B
         a_expansion = len(right_cds_a)
-        set_expansion_right(comparable_region, a_expansion, b_expansion)
+        set_expansion_right(pair.comparable_region, a_expansion, b_expansion)
         return
 
     # A has higher score
     if a_score > b_score:
         # ... use A
         b_expansion = len(right_cds_b)
-        set_expansion_right(comparable_region, a_expansion, b_expansion)
+        set_expansion_right(pair.comparable_region, a_expansion, b_expansion)
         return
 
     # only remaining case is B has higher score
     a_expansion = len(right_cds_a)
-    set_expansion_right(comparable_region, a_expansion, b_expansion)
+    set_expansion_right(pair.comparable_region, a_expansion, b_expansion)
 
 
 def expand_score(

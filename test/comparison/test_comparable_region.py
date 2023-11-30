@@ -16,7 +16,7 @@ class TestComparibleRegions(TestCase):
         """Tests the comparable region object string representation when B is not
         reversed
         """
-        comparable_region = ComparableRegion(None, 0, 5, 3, 8, 0, 0, 0, 0, False)
+        comparable_region = ComparableRegion(0, 5, 3, 8, 0, 0, 0, 0, False)
 
         expected_repr = "Comparable region: A 0-5, B 3-8, B is not reversed"
 
@@ -28,7 +28,7 @@ class TestComparibleRegions(TestCase):
         """Tests the comparable region object string representation when B is not
         reversed
         """
-        comparable_region = ComparableRegion(None, 0, 5, 3, 8, 0, 0, 0, 0, True)
+        comparable_region = ComparableRegion(0, 5, 3, 8, 0, 0, 0, 0, True)
 
         expected_repr = "Comparable region: A 0-5, B 3-8, B is reversed"
 
@@ -172,7 +172,7 @@ class TestComparibleRegions(TestCase):
             },
         )
 
-        actual_dicts = pair.comparable_region.get_domain_dicts()
+        actual_dicts = pair.get_domain_dicts()
 
         self.assertEqual(expected_dicts, actual_dicts)
 
@@ -217,7 +217,7 @@ class TestComparibleRegions(TestCase):
 
         expected_inflate = (1, 3, 2, 4, 0, 5, 0, 5)
 
-        pair.comparable_region.inflate()
+        pair.comparable_region.inflate(pair)
 
         actual_inflate = (
             pair.comparable_region.lcs_a_start,
@@ -257,7 +257,7 @@ class TestComparibleRegions(TestCase):
 
         expected_inflate = (2, 4, 2, 4)
 
-        pair.comparable_region.inflate_b()
+        pair.comparable_region.inflate_b(pair.record_b)
 
         actual_inflate = (
             pair.comparable_region.lcs_b_start,

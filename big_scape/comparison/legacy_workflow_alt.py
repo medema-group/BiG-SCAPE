@@ -11,7 +11,7 @@ TODO: docstrings, none typings
 
 # from python
 import logging
-from concurrent.futures import ProcessPoolExecutor, Future, wait
+from concurrent.futures import ProcessPoolExecutor, Future
 from threading import Event, Condition
 from typing import Generator, Callable, Optional, TypeVar
 from math import ceil
@@ -120,15 +120,16 @@ def generate_edges(
     new_results = Condition()
 
     def on_complete(future: Future):
-        if future.exception():
-            raise future.exception()
+        exception = future.exception()
+        if exception is not None:
+            raise exception
         with new_results:
             new_results.notify_all()
-            callback(future.result())
+            if callback:
+                callback(future.result())
             running_futures.discard(future)
 
     with ProcessPoolExecutor(cores) as executor:
-
         while True:
             while len(running_futures) < max_queue_length:
                 batch = batch_generator(pairs, batch_size)
@@ -149,10 +150,10 @@ def generate_edges(
 
                 future.add_done_callback(on_complete)
                 running_futures.add(future)
-            
+
             with new_results:
                 new_results.wait()
-            
+
             if all_done.is_set():
                 break
 
@@ -232,12 +233,12 @@ def do_lcs_pair(
 
     # reset lcs to full region if contains no biosynthetic cds or is smaller than 3 cds
     # TODO: add lcs reset parameters to config
-    if check(pair.comparable_region, 3, True):
+    if check(pair, 3, True):
         return True
 
     logging.debug("resetting after extend")
 
-    reset(pair.comparable_region)
+    reset(pair)
     return False
 
 
@@ -251,7 +252,7 @@ def expand_pair(pair: RecordPair) -> float:
         float: jaccard index
     """
     extend(
-        pair.comparable_region,
+        pair,
         bs_constants.EXPAND_MATCH_SCORE,
         bs_constants.EXPAND_MISMATCH_SCORE,
         bs_constants.EXPAND_GAP_SCORE,
@@ -259,9 +260,9 @@ def expand_pair(pair: RecordPair) -> float:
     )
 
     # TODO: add extension reset parameters to config
-    if not check(pair.comparable_region, 0, True):
+    if not check(pair, 0, True):
         logging.info("resetting after extend")
-        reset(pair.comparable_region)
+        reset(pair)
         jc = calc_jaccard_pair(pair)
         return jc
 
@@ -312,7 +313,7 @@ def calculate_scores_pair(
 
     for pair in pairs:
         logging.debug(pair)
-        pair.comparable_region.log_comparable_region()
+        pair.log_comparable_region()
         jaccard = calc_jaccard_pair(pair, cache=False)
 
         if jaccard == 0.0:
@@ -384,7 +385,7 @@ def calculate_scores_pair(
 
         # at the very end, we need to inflate the comparable region coordinates to
         # include CDS without domains
-        pair.comparable_region.inflate()
+        pair.comparable_region.inflate(pair)
 
         results.append(
             (
