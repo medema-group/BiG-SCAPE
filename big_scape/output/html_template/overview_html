@@ -8,7 +8,7 @@
     <title>BiG-SCAPE Result</title>
     <script>
       window.addEventListener("message", (event) => {
-        if (event.data in ['light', 'dark']) {
+        if (event.data === 'light' || event.data === 'dark') {
           document.documentElement.setAttribute("data-theme", event.data)
         }
       })

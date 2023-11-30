@@ -8,7 +8,7 @@
     <title>BiG-SCAPE Result</title>
     <script>
       window.addEventListener("message", (event) => {
-        if (event.data in ['light', 'dark']) {
+        if (event.data === 'light' || event.data === 'dark') {
           document.documentElement.setAttribute("data-theme", event.data)
         }
       })
@@ -50,7 +50,7 @@
     showLoading(true);
     function dataLoaded(name) {
       loadedData[name] = true;
-      if (!loadedData.hasOwnProperty("bs_data") || !loadedData.hasOwnProperty("bs_networks")) {
+      if (!loadedData.hasOwnProperty("bs_data") || !loadedData.hasOwnProperty("bs_networks") || !loadedData.hasOwnProperty("run_data")) {
         return;
       }
       showLoading(false);

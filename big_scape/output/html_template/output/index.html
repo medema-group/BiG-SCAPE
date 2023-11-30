@@ -18,6 +18,7 @@
         <span style="float: right; margin-top: 2em">
           Theme (experimental):
           <select id="color-theme">
+            <option selected value="auto">Auto</option>
             <option value="light">Light</option>
             <option value="dark">Dark</option>
           </select>
@@ -127,8 +128,16 @@
     });
     // communicate theme between windows
     $('#color-theme').on('change', event => {
-      document.documentElement.setAttribute('data-theme', event.target.value);
-      $('#contentframe')[0].contentWindow.postMessage(event.target.value, "*");
+      var theme = event.target.value
+      if (theme === "auto") {
+        if (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) {
+          theme = "dark"
+        } else {
+          theme = "light"
+        }
+      }
+      document.documentElement.setAttribute('data-theme', theme);
+      $('#contentframe')[0].contentWindow.postMessage(theme, "*");
     });
     $('#color-theme').trigger('change');
     window.addEventListener("message", (event) => {
