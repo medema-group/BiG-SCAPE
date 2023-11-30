@@ -9,10 +9,11 @@ import logging
 import big_scape.genbank as bs_gbk
 import big_scape.comparison as bs_comparison
 import big_scape.enums as bs_enums
+import big_scape.network.network as bs_network
 
 
 def calculate_distances_query(
-    run: dict, gbks: list[bs_gbk.GBK]
+    run: dict, all_bgc_records: list[bs_gbk.BGCRecord], query_record: bs_gbk.BGCRecord
 ) -> list[bs_gbk.BGCRecord]:
     """calculates distances between all queries and references in a given dataset and
     saves them to the database
@@ -23,81 +24,54 @@ def calculate_distances_query(
     """
     logging.info("Generating query BGC mode bin")
 
-    bgcs_records: list[bs_gbk.BGCRecord] = []
     query_singleton = True
+    query_records = [query_record]
 
-    # currently query only works for regions, since users have no way to
-    # specify a protocluster/core in a region that has multiple
-    # TODO: fix this
-    if run["record_type"] != bs_enums.RECORD_TYPE.REGION:
-        logging.info("Query BGC mode currently only works for regions, sorry!")
-        run["record_type"] = bs_enums.RECORD_TYPE.REGION
-
-    # get all working records
-    for gbk in gbks:
-        if gbk.region is None:
+    for record in all_bgc_records:
+        if record is None:
             continue
-        if gbk.region.product is None:
+        if record.product is None:
             continue
-
-        # query_bgcs_records.append(gbk.region)
-
-        gbk_records = bs_gbk.bgc_record.get_sub_records(gbk.region, run["record_type"])
-
-        # # we need to keep the query_record separate from the rest of the records
-        # # to be able to fetch specific characteristics
-        if gbk.source_type == bs_enums.SOURCE_TYPE.QUERY:
-            # TODO: implement selection of specific query record if type is not region
-            query_record = gbk.region
-            bgcs_records.extend(gbk_records)
-            break
-
-    for gbk in gbks:
-        if gbk.region is None:
+        if record.parent_gbk is None:
             continue
-        if gbk.region.product is None:
+        if record.parent_gbk.source_type == bs_enums.SOURCE_TYPE.QUERY:
             continue
-        if gbk.source_type == bs_enums.SOURCE_TYPE.QUERY:
-            continue
-
-        gbk_records = bs_gbk.bgc_record.get_sub_records(gbk.region, run["record_type"])
 
         # if classification mode is off, then use all records
         if not run["classify"]:
             query_singleton = False
-            bgcs_records.extend(gbk_records)
+            query_records.append(record)
 
         # if classification mode is on, then us only those records which have the query class/category
         if run["classify"]:
             classify_mode = run["classify"]
             # now we go to all the records, of a given type, of the gbk and check
             # if they have the same class/category as the query
-            for gbk_record in gbk_records:
-                if classify_mode == bs_enums.CLASSIFY_MODE.CLASS:
-                    query_class = [query_record.product]
-                    record_class = [gbk_record.product]
+            if classify_mode == bs_enums.CLASSIFY_MODE.CLASS:
+                query_class = [query_record.product]
+                record_class = [record.product]
 
-                    if run["hybrids_off"]:
-                        query_class = query_class[0].split(".")
-                        record_class = record_class[0].split(".")
+                if run["hybrids_off"]:
+                    query_class = query_class[0].split(".")
+                    record_class = record_class[0].split(".")
 
-                    intersect_class = list(set(query_class) & set(record_class))
-                    if len(intersect_class) > 0:
-                        query_singleton = False
-                        bgcs_records.append(gbk_record)
+                intersect_class = list(set(query_class) & set(record_class))
+                if len(intersect_class) > 0:
+                    query_singleton = False
+                    query_records.append(record)
 
-                if classify_mode == bs_enums.CLASSIFY_MODE.CATEGORY:
-                    query_category = [bs_comparison.get_record_category(query_record)]
-                    record_category = [bs_comparison.get_record_category(gbk_record)]
+            if classify_mode == bs_enums.CLASSIFY_MODE.CATEGORY:
+                query_category = [bs_comparison.get_record_category(query_record)]
+                record_category = [bs_comparison.get_record_category(record)]
 
-                    if run["hybrids_off"]:
-                        query_category = query_category[0].split(".")
-                        record_category = record_category[0].split(".")
+                if run["hybrids_off"]:
+                    query_category = query_category[0].split(".")
+                    record_category = record_category[0].split(".")
 
-                    intersect_cats = list(set(query_category) & set(record_category))
-                    if len(intersect_cats) > 0:
-                        query_singleton = False
-                        bgcs_records.append(gbk_record)
+                intersect_cats = list(set(query_category) & set(record_category))
+                if len(intersect_cats) > 0:
+                    query_singleton = False
+                    query_records.append(record)
 
     if query_singleton:
         logging.error(
@@ -121,10 +95,11 @@ def calculate_distances_query(
     query_to_ref_bin = bs_comparison.QueryToRefRecordPairGenerator(
         "Query_Ref", edge_param_id, weights
     )
-    query_to_ref_bin.add_records(bgcs_records)
+    query_to_ref_bin.add_records(query_records)
 
     # fetch any existing distances from database
     missing_edge_bin = bs_comparison.MissingRecordPairGenerator(query_to_ref_bin)
+    # get the number of pairs that are missing
     num_pairs = missing_edge_bin.num_pairs()
 
     # calculate distances
@@ -148,12 +123,15 @@ def calculate_distances_query(
 
         logging.info("Generated %d edges", num_edges)
 
+    if run["skip_propagation"]:
+        return query_records
+
     # now we expand these edges from reference to other reference
     # TODO: see if we can implement missing for these
     ref_to_ref_bin = bs_comparison.RefToRefRecordPairGenerator(
         "Ref_Ref", edge_param_id, weights
     )
-    ref_to_ref_bin.add_records(bgcs_records)
+    ref_to_ref_bin.add_records(query_records)
 
     while True:
         # fetches the current number of singleton ref <-> connected ref pairs from the database
@@ -163,7 +141,7 @@ def calculate_distances_query(
             break
 
         logging.info(
-            "Calculating distances for %d pairs (Reference to Reference)",
+            "Calculating distances for %d pairs (Connected Reference to Singleton Reference)",
             num_pairs,
         )
 
@@ -198,4 +176,41 @@ def calculate_distances_query(
 
         logging.info("Generated %d edges", num_edges)
 
-    return bgcs_records
+    # now we make any last connected ref <-> connected ref pairs that are missing
+    # get all the edges in the query connected component
+    query_connected_component = bs_network.get_query_connected_component(
+        query_records, query_record._db_id, edge_param_id, 1
+    )
+
+    query_nodes = bs_network.get_nodes_from_cc(query_connected_component, query_records)
+
+    query_connected_bin = bs_comparison.RecordPairGenerator("Query", edge_param_id)
+    query_connected_bin.add_records(query_nodes)
+
+    # fetch any existing distances from database
+    missing_ref_edge_bin = bs_comparison.MissingRecordPairGenerator(query_connected_bin)
+    # get the number of pairs that are missing
+    num_pairs = missing_ref_edge_bin.num_pairs()
+
+    # calculate distances
+    if num_pairs > 0:
+        logging.info(
+            "Calculating distances for %d pairs (Connected Reference to Connected Reference)",
+            num_pairs,
+        )
+
+        query_edges = bs_comparison.generate_edges(
+            missing_ref_edge_bin,
+            run["alignment_mode"],
+            run["cores"],
+        )
+
+        num_edges = 0
+
+        for edge in query_edges:
+            num_edges += 1
+            bs_comparison.save_edge_to_db(edge)
+
+        logging.info("Generated %d edges", num_edges)
+
+    return query_records

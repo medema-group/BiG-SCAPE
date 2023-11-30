@@ -524,7 +524,7 @@ class RefToRefRecordPairGenerator(RecordPairGenerator):
 
 class ConnectedComponentPairGenerator(RecordPairGenerator):
     """Generator that takes as input a conected component and generates
-    all pairs from the nodes in the component"""
+    the pairs from the edges in the component"""
 
     def __init__(self, connected_component, label: str):
         # getting the first one, assume consistent edge param id for all cc
