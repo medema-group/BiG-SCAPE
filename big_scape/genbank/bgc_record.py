@@ -11,6 +11,7 @@ import logging
 from Bio.SeqFeature import SeqFeature
 
 # from other modules
+from big_scape.cli.constants import ANTISMASH_CLASSES
 from big_scape.data import DB
 from big_scape.errors import InvalidGBKError
 from big_scape.genbank.cds import CDS
@@ -39,6 +40,7 @@ class BGCRecord:
         nt_start: int
         nt_stop: int
         product: str
+        merged: bool
         _db_id: int | None
         _families: dict[float, int]
     """
@@ -59,6 +61,7 @@ class BGCRecord:
         self.nt_start = nt_start
         self.nt_stop = nt_stop
         self.product = product
+        self.merged: bool = False
 
         # for database operations
         self._db_id: Optional[int] = None
@@ -169,17 +172,55 @@ class BGCRecord:
 
         return record_cds
 
-    def get_hsps(self) -> list[HSP]:
+    def get_hsps(self, return_all=False) -> list[HSP]:
         """Get a list of all hsps in this region
+
+        Args:
+            return_all (bool): If set to true, returns all HSP regardless of coordinate
+            information. Defaults to False
 
         Returns:
             list[HSP]: List of all hsps in this region
         """
         domains: list[HSP] = []
-        for cds in self.get_cds_with_domains():
+        for cds in self.get_cds_with_domains(return_all=return_all):
             if len(cds.hsps) > 0:
-                domains.extend(cds.hsps)
+                if cds.strand == 1:
+                    domains.extend(cds.hsps)
+                elif cds.strand == -1:
+                    domains.extend(cds.hsps[::-1])
         return domains
+
+    def get_cds_start_stop(self) -> tuple[int, int]:
+        """Get cds ORF number of record start and stop with respect to full region
+
+        Obtained cds slice starts counting at one and is __inclusive__
+
+        Args:
+            record (BGCRecord): record to find bounds for
+
+        Returns:
+            tuple[int, int]: start and stop of record in cds number
+        """
+        if self.parent_gbk is None:
+            raise AttributeError("Record parent GBK is not set!")
+
+        gbk = self.parent_gbk
+        all_cds = gbk.genes
+
+        record_start = 1
+        record_stop = len(all_cds)
+        # check if record contains all cds
+        if all_cds[0].nt_start >= self.nt_start and all_cds[-1].nt_stop <= self.nt_stop:
+            return record_start, record_stop
+
+        for idx, cds in enumerate(all_cds):
+            if cds.nt_start < self.nt_start:
+                record_start = idx + 2
+            if cds.nt_stop > self.nt_stop:
+                record_stop = idx
+                break
+        return record_start, record_stop
 
     def save_record(
         self, record_type: str, parent_id: Optional[int] = None, commit=True
@@ -202,6 +243,12 @@ class BGCRecord:
         if not hasattr(self, "category"):
             self.category: Optional[str] = None
 
+        # why
+        if hasattr(self, "merged_number"):
+            number = self.merged_number
+        else:
+            number = self.number
+
         contig_edge = None
         if self.contig_edge is not None:
             contig_edge = self.contig_edge
@@ -216,13 +263,14 @@ class BGCRecord:
             .values(
                 gbk_id=gbk_id,
                 parent_id=parent_id,
-                record_number=self.number,
+                record_number=number,
                 contig_edge=contig_edge,
                 nt_start=self.nt_start,
                 nt_stop=self.nt_stop,
                 product=self.product,
                 category=self.category,
                 record_type=record_type,
+                merged=self.merged,
             )
             .returning(bgc_record_table.c.id)
             .compile()
@@ -271,15 +319,22 @@ class BGCRecord:
         )
 
     @staticmethod
-    def parse_products(products: list[str]) -> str:
-        """Parse a set of products from a BGC record. Used in cases where there are hybrid products
+    def parse_products(feature: SeqFeature) -> str:
+        """Parse a set of products from a BGC record from antismash V5 and above.
 
         Args:
-            products (set[str]): set of products
+            feature (SeqFeature): BGC record feature to parse
 
         Returns:
             str: Singular string representing the product type
         """
+
+        if "product" not in feature.qualifiers:
+            logging.error("product qualifier not found in feature!")
+            raise InvalidGBKError()
+
+        products = feature.qualifiers["product"]
+
         # single product? just return it
         if len(products) == 1:
             return products.pop()
@@ -298,9 +353,45 @@ class BGCRecord:
         # return BGCRecord.parse_products(products)
 
     @staticmethod
+    def parse_products_as4(feature: SeqFeature) -> str:
+        """Parse a set of products from a BGC record from antismash V4 and under.
+
+        Args:
+            feature (SeqFeature): BGC record feature to parse
+
+        Returns:
+            str: Singular string representing the product type
+        """
+
+        if "product" not in feature.qualifiers:
+            logging.error("product qualifier not found in feature!")
+            raise InvalidGBKError()
+
+        as4_products = []
+        for product_type in ANTISMASH_CLASSES:
+            for product in ANTISMASH_CLASSES[product_type]:
+                as4_products.append(product)
+
+        product = feature.qualifiers["product"][0]
+
+        if "-" not in product:
+            return product
+
+        elif product in as4_products:
+            return product
+
+        else:
+            products = []
+            for as4_product in as4_products:
+                if as4_product in product:
+                    products.append(as4_product)
+            products.sort()
+            return ".".join(products)
+
+    @staticmethod
     def parse_common(
         feature: SeqFeature,
-    ) -> tuple[int, int, Optional[bool], str]:
+    ) -> tuple[int, int, Optional[bool]]:
         """Parse and return the common attributes of BGC records in a GBK feature
 
         Args:
@@ -323,19 +414,7 @@ class BGCRecord:
 
             contig_edge = contig_edge_qualifier == "True"
 
-        if "product" not in feature.qualifiers:
-            logging.error("product qualifier not found in feature!")
-            raise InvalidGBKError()
-
-        # record may have multiple products. handle them here
-
-        # TODO: clean up
-        # products = set(feature.qualifiers["product"][0].split("-"))
-        products = feature.qualifiers["product"]
-
-        product = BGCRecord.parse_products(products)
-
-        return nt_start, nt_stop, contig_edge, product
+        return nt_start, nt_stop, contig_edge
 
 
 def get_sub_records(
@@ -374,17 +453,28 @@ def get_sub_records(
     if len(cand_clusters) == 0:
         return [region]
 
+    # TODO: currently not implemented, only region, protocluster and protocore are supported
+    # implement and use same strategy as for region if kind is neighbouring (several cores in a record)
+    # and protocluster if kind is single, interleaved or chemical hybrid (one core per record)
     if record_type == bs_enums.genbank.RECORD_TYPE.CANDIDATE_CLUSTER:
         return cand_clusters
 
+    # for protoclusters and protocores we need to keep track of the numbers, since they may
+    # be repeated in different candidate clusters
+
     proto_clusters: list[ProtoCluster] = []
+    proto_cluster_numbers: list[int] = []
     for cand_cluster in cand_clusters:
         if cand_cluster.proto_clusters is None:
             continue
 
         for proto_cluster in cand_cluster.proto_clusters.values():
-            if proto_cluster is not None:
+            if (
+                proto_cluster is not None
+                and proto_cluster.number not in proto_cluster_numbers
+            ):
                 proto_clusters.append(proto_cluster)
+                proto_cluster_numbers.append(proto_cluster.number)
 
     if len(proto_clusters) == 0:
         return cand_clusters
@@ -393,14 +483,104 @@ def get_sub_records(
         return proto_clusters
 
     proto_cores: list[ProtoCore] = []
+    proto_core_numbers: list[int] = []
     for proto_cluster in proto_clusters:
         if proto_cluster.proto_core is None:
             continue
         for proto_core in proto_cluster.proto_core.values():
-            if proto_core is not None:
+            if proto_core is not None and proto_core.number not in proto_core_numbers:
                 proto_cores.append(proto_core)
+                proto_core_numbers.append(proto_core.number)
 
     if len(proto_cores) == 0:
         return proto_clusters
 
     return proto_cores
+
+
+as4_products = {
+    "t1pks",
+    "T1PKS" "transatpks",
+    "t2pks",
+    "t3pks",
+    "otherks",
+    "hglks",
+    "transAT-PKS",
+    "transAT-PKS-like",
+    "T2PKS",
+    "T3PKS",
+    "PKS-like",
+    "hglE-KS",
+    "nrps",
+    "NRPS",
+    "NRPS-like",
+    "thioamide-NRP",
+    "NAPAA" "lantipeptide",
+    "thiopeptide",
+    "bacteriocin",
+    "linaridin",
+    "cyanobactin",
+    "glycocin",
+    "LAP",
+    "lassopeptide",
+    "sactipeptide",
+    "bottromycin",
+    "head_to_tail",
+    "microcin",
+    "microviridin",
+    "proteusin",
+    "lanthipeptide",
+    "lipolanthine",
+    "RaS-RiPP",
+    "fungal-RiPP",
+    "TfuA-related",
+    "guanidinotides",
+    "RiPP-like",
+    "lanthipeptide-class-i",
+    "lanthipeptide-class-ii",
+    "lanthipeptide-class-iii",
+    "lanthipeptide-class-iv",
+    "lanthipeptide-class-v",
+    "ranthipeptide",
+    "redox-cofactor",
+    "thioamitides",
+    "epipeptide",
+    "cyclic-lactone-autoinducer",
+    "spliceotide",
+    "RRE-containing",
+    "amglyccycl",
+    "oligosaccharide",
+    "cf_saccharide",
+    "saccharide",
+    "acyl_amino_acids",
+    "arylpolyene",
+    "aminocoumarin",
+    "ectoine",
+    "butyrolactone",
+    "nucleoside",
+    "melanin",
+    "phosphoglycolipid",
+    "phenazine",
+    "phosphonate",
+    "other",
+    "cf_putative",
+    "resorcinol",
+    "indole",
+    "ladderane",
+    "PUFA",
+    "furan",
+    "hserlactone",
+    "fused",
+    "cf_fatty_acid",
+    "siderophore",
+    "blactam",
+    "fatty_acid",
+    "PpyS-KS",
+    "CDPS",
+    "betalactone",
+    "PBDE",
+    "tropodithietic-acid",
+    "NAGGN",
+    "halogenated",
+    "pyrrolidine",
+}

@@ -144,7 +144,7 @@ def find_bio_or_middle_lcs(
 
 def find_domain_lcs_region(
     pair: bs_comparison.RecordPair,
-) -> tuple[int, int, int, int, bool]:
+) -> tuple[int, int, int, int, int, int, int, int, bool]:
     """Find the longest stretch of matching domains between two lists of domains
 
     This takes CDS as arguments, but uses the domains within the CDS to find the LCS
@@ -165,7 +165,8 @@ def find_domain_lcs_region(
         b_cds (list[CDS]): List of CDS
 
     Returns:
-        tuple[int, int, int, int, bool]: a_start, a_stop, b_start, b_stop, reverse
+        tuple[int, int, int, int, int, int, int, int, bool]: a_start, a_stop,
+            b_start, b_stop, a_cds_start, a_cds_stop, b_cds_start, b_cds_stop, reverse
     """
     logging.debug("region lcs")
 
@@ -189,14 +190,24 @@ def find_domain_lcs_region(
     for cds_idx, cds in enumerate(a_cds):
         for i in range(len(a_domains), len(a_domains) + len(cds.hsps)):
             a_domain_cds_idx[i] = cds_idx
-        a_domains.extend(cds.hsps)
+
+        if cds.strand == 1:
+            a_domains.extend(cds.hsps)
+        elif cds.strand == -1:
+            a_domains.extend(cds.hsps[::-1])
+
         if cds.gene_kind == "biosynthetic":
             a_biosynthetic_domain_cds.append(cds_idx)
 
     for cds_idx, cds in enumerate(b_cds):
         for i in range(len(b_domains), len(b_domains) + len(cds.hsps)):
             b_domain_cds_idx[i] = cds_idx
-        b_domains.extend(cds.hsps)
+
+        if cds.strand == 1:
+            b_domains.extend(cds.hsps)
+        elif cds.strand == -1:
+            b_domains.extend(cds.hsps[::-1])
+
         if cds.gene_kind == "biosynthetic":
             b_biosynthetic_domain_cds.append(cds_idx)
 
@@ -252,12 +263,20 @@ def find_domain_lcs_region(
         # check if the match contains a biosynthetic gene
         has_biosynthetic = False
         for biosynthetic_idx in a_biosynthetic_domain_cds:
-            if start_a <= biosynthetic_idx < stop_a:
+            if (
+                a_domain_cds_idx[start_a]
+                <= biosynthetic_idx
+                < a_domain_cds_idx[stop_a - 1] + 1
+            ):
                 has_biosynthetic = True
                 break
 
         for biosynthetic_idx in b_biosynthetic_domain_cds:
-            if start_b <= biosynthetic_idx < stop_b:
+            if (
+                b_domain_cds_idx[start_b]
+                <= biosynthetic_idx
+                < b_domain_cds_idx[stop_b - 1] + 1
+            ):
                 has_biosynthetic = True
                 break
 
@@ -322,39 +341,42 @@ def find_domain_lcs_region(
         # this should never happen
         raise RuntimeError("No match found in LCS.")
 
+    # match bounds on domain level will be inclusive to ensure a consistent exclusive
+    # stop on cds level
     relevant_match = matching_block_dirs[match_idx]
     a_start = relevant_match[0]
-    a_stop = relevant_match[0] + relevant_match[2]
+    a_stop = relevant_match[0] + relevant_match[2] - 1  # inclusive stop
     b_start = relevant_match[1]
-    b_stop = relevant_match[1] + relevant_match[2]
+    b_stop = relevant_match[1] + relevant_match[2] - 1  # inclusive stop
     reverse = relevant_match[3]
 
     a_cds_start = a_domain_cds_idx[a_start]
     # cds stop may be end of cds
-    if a_stop == len(a_domains):
+    if a_stop == len(a_domains) - 1:
         a_cds_stop = len(a_cds)
     else:
-        a_cds_stop = a_domain_cds_idx[a_stop]
+        a_cds_stop = a_domain_cds_idx[a_stop] + 1  # exclusive stop
 
     # fix b start and stop if in reverse. this means first flipping the domain indexes, getting the
     # cds index, and then flipping the cds index. yay.
     if reverse:
         old_start = b_start
-        b_start = len(b_domains) - b_stop
-        b_stop = len(b_domains) - old_start
+        old_stop = b_stop
+        b_start = len(b_domains) - b_stop - 1
+        b_stop = len(b_domains) - old_start - 1  # inclusive stop
 
     b_cds_start = b_domain_cds_idx[b_start]
 
     # cds stop may be end of cds
-    if b_stop == len(b_domains):
+    if b_stop == len(b_domains) - 1:
         b_cds_stop = len(b_cds)
     else:
-        b_cds_stop = b_domain_cds_idx[b_stop]
+        b_cds_stop = b_domain_cds_idx[b_stop] + 1  # exclusive stop
 
     if reverse:
         old_cds_start = b_cds_start
         b_cds_start = len(b_cds) - b_cds_stop
-        b_cds_stop = len(b_cds) - old_cds_start
+        b_cds_stop = len(b_cds) - old_cds_start  # exclusive stop
 
     # final check: it could happen that the start and stop of the domain LCS is in the
     # same CDS. in this case, the stop needs to be incremented by one
@@ -364,12 +386,29 @@ def find_domain_lcs_region(
     if b_cds_start == b_cds_stop:
         b_cds_stop += 1
 
-    return a_cds_start, a_cds_stop, b_cds_start, b_cds_stop, reverse
+    # revert inclusive domain stop and index flipping before returning
+    if reverse:
+        b_start = old_start
+        b_stop = old_stop
+    a_stop += 1
+    b_stop += 1
+
+    return (
+        a_start,
+        a_stop,
+        b_start,
+        b_stop,
+        a_cds_start,
+        a_cds_stop,
+        b_cds_start,
+        b_cds_stop,
+        reverse,
+    )
 
 
 def find_domain_lcs_protocluster(
     pair: bs_comparison.RecordPair,
-) -> tuple[int, int, int, int, bool]:
+) -> tuple[int, int, int, int, int, int, int, int, bool]:
     """Find the longest stretch of matching domains between two protocluster records,
     using domains
 
@@ -380,7 +419,8 @@ def find_domain_lcs_protocluster(
         pair (RecordPair): RecordPair object
 
     Returns:
-        tuple[int, int, int, int, bool]: a_start, a_stop, b_start, b_stop, reverse
+        tuple[int, int, int, int, int, int, int, int, bool]: a_start, a_stop,
+            b_start, b_stop, a_cds_start, a_cds_stop, b_cds_start, b_cds_stop, reverse
     """
     logging.debug("pc lcs")
 
@@ -405,12 +445,20 @@ def find_domain_lcs_protocluster(
     for cds_idx, cds in enumerate(a_cds):
         for i in range(len(a_domains), len(a_domains) + len(cds.hsps)):
             a_domain_cds_idx[i] = cds_idx
-        a_domains.extend(cds.hsps)
+
+        if cds.strand == 1:
+            a_domains.extend(cds.hsps)
+        elif cds.strand == -1:
+            a_domains.extend(cds.hsps[::-1])
 
     for cds_idx, cds in enumerate(b_cds):
         for i in range(len(b_domains), len(b_domains) + len(cds.hsps)):
             b_domain_cds_idx[i] = cds_idx
-        b_domains.extend(cds.hsps)
+
+        if cds.strand == 1:
+            b_domains.extend(cds.hsps)
+        elif cds.strand == -1:
+            b_domains.extend(cds.hsps[::-1])
 
     # forward
     match, matching_blocks_fwd = find_lcs(a_domains, b_domains)
@@ -531,39 +579,42 @@ def find_domain_lcs_protocluster(
         # this should never happen
         raise RuntimeError("No match found in LCS.")
 
+    # match bounds on domain level will be inclusive to ensure a consistent exclusive
+    # stop on cds level
     relevant_match = matching_block_dirs[match_idx]
     a_start = relevant_match[0]
-    a_stop = relevant_match[0] + relevant_match[2]
+    a_stop = relevant_match[0] + relevant_match[2] - 1  # inclusive stop
     b_start = relevant_match[1]
-    b_stop = relevant_match[1] + relevant_match[2]
+    b_stop = relevant_match[1] + relevant_match[2] - 1  # inclusive stop
     reverse = relevant_match[3]
 
     a_cds_start = a_domain_cds_idx[a_start]
     # cds stop may be end of cds
-    if a_stop == len(a_domains):
+    if a_stop == len(a_domains) - 1:
         a_cds_stop = len(a_cds)
     else:
-        a_cds_stop = a_domain_cds_idx[a_stop]
+        a_cds_stop = a_domain_cds_idx[a_stop] + 1  # exclusive stop
 
     # fix b start and stop if in reverse. this means first flipping the domain indexes, getting the
     # cds index, and then flipping the cds index. yay.
     if reverse:
         old_start = b_start
-        b_start = len(b_domains) - b_stop
-        b_stop = len(b_domains) - old_start
+        old_stop = b_stop
+        b_start = len(b_domains) - b_stop - 1
+        b_stop = len(b_domains) - old_start - 1  # inclusive stop
 
     b_cds_start = b_domain_cds_idx[b_start]
 
     # cds stop may be end of cds
-    if b_stop == len(b_domains):
+    if b_stop == len(b_domains) - 1:
         b_cds_stop = len(b_cds)
     else:
-        b_cds_stop = b_domain_cds_idx[b_stop]
+        b_cds_stop = b_domain_cds_idx[b_stop] + 1  # exclusive stop
 
     if reverse:
         old_cds_start = b_cds_start
         b_cds_start = len(b_cds) - b_cds_stop
-        b_cds_stop = len(b_cds) - old_cds_start
+        b_cds_stop = len(b_cds) - old_cds_start  # exclusive stop
 
     # final check: it could happen that the start and stop of the domain LCS is in the
     # same CDS. in this case, the stop needs to be incremented by one
@@ -573,4 +624,21 @@ def find_domain_lcs_protocluster(
     if b_cds_start == b_cds_stop:
         b_cds_stop += 1
 
-    return a_cds_start, a_cds_stop, b_cds_start, b_cds_stop, reverse
+    # revert inclusive domain stop and index flipping before returning
+    if reverse:
+        b_start = old_start
+        b_stop = old_stop
+    a_stop += 1
+    b_stop += 1
+
+    return (
+        a_start,
+        a_stop,
+        b_start,
+        b_stop,
+        a_cds_start,
+        a_cds_stop,
+        b_cds_start,
+        b_cds_stop,
+        reverse,
+    )

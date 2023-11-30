@@ -47,7 +47,7 @@ class TestLoadGBK(TestCase):
 
         load_result = load_dataset_folder(run["input_dir"], run, SOURCE_TYPE.QUERY)
 
-        expected_count = 3
+        expected_count = 4
         actual_count = len(load_result)
 
         self.assertEqual(expected_count, actual_count)

@@ -169,33 +169,56 @@ def do_lcs_pair(
         bool: True if the pair needs expansion, False if it does not
     """
 
-    if isinstance(pair.record_a, bs_gbk.Region) and isinstance(
-        pair.record_b, bs_gbk.Region
-    ):
-        logging.debug("Using region lcs")
-        a_start, a_stop, b_start, b_stop, reverse = find_domain_lcs_region(pair)
-
-    elif isinstance(pair.record_a, bs_gbk.ProtoCluster) and isinstance(
+    if isinstance(pair.record_a, bs_gbk.ProtoCluster) and isinstance(
         pair.record_b, bs_gbk.ProtoCluster
     ):
         logging.debug("Using protocluster lcs")
-        a_start, a_stop, b_start, b_stop, reverse = find_domain_lcs_protocluster(pair)
+        (
+            a_start,
+            a_stop,
+            b_start,
+            b_stop,
+            a_cds_start,
+            a_cds_stop,
+            b_cds_start,
+            b_cds_stop,
+            reverse,
+        ) = find_domain_lcs_protocluster(pair)
 
     else:
-        raise TypeError("Regions must be of the same type")
+        logging.debug("Using region lcs")
+        (
+            a_start,
+            a_stop,
+            b_start,
+            b_stop,
+            a_cds_start,
+            a_cds_stop,
+            b_cds_start,
+            b_cds_stop,
+            reverse,
+        ) = find_domain_lcs_region(pair)
 
     logging.debug("before lcs:")
     logging.debug(pair.comparable_region)
 
-    # set the comparable region
-    pair.comparable_region.lcs_a_start = a_start
-    pair.comparable_region.lcs_a_stop = a_stop
-    pair.comparable_region.lcs_b_start = b_start
-    pair.comparable_region.lcs_b_stop = b_stop
-    pair.comparable_region.a_start = a_start
-    pair.comparable_region.a_stop = a_stop
-    pair.comparable_region.b_start = b_start
-    pair.comparable_region.b_stop = b_stop
+    # set the lcs and comparable region based on domains and on cds
+    pair.comparable_region.lcs_domain_a_start = a_start
+    pair.comparable_region.lcs_domain_a_stop = a_stop
+    pair.comparable_region.lcs_domain_b_start = b_start
+    pair.comparable_region.lcs_domain_b_stop = b_stop
+    pair.comparable_region.lcs_a_start = a_cds_start
+    pair.comparable_region.lcs_a_stop = a_cds_stop
+    pair.comparable_region.lcs_b_start = b_cds_start
+    pair.comparable_region.lcs_b_stop = b_cds_stop
+    pair.comparable_region.domain_a_start = a_start
+    pair.comparable_region.domain_a_stop = a_stop
+    pair.comparable_region.domain_b_start = b_start
+    pair.comparable_region.domain_b_stop = b_stop
+    pair.comparable_region.a_start = a_cds_start
+    pair.comparable_region.a_stop = a_cds_stop
+    pair.comparable_region.b_start = b_cds_start
+    pair.comparable_region.b_stop = b_cds_stop
     pair.comparable_region.reverse = reverse
 
     logging.debug("after lcs:")
@@ -207,7 +230,9 @@ def do_lcs_pair(
     if alignment_mode == bs_enums.ALIGNMENT_MODE.GLOCAL:
         return True
 
-    if check(pair.comparable_region, 0, True):
+    # reset lcs to full region if contains no biosynthetic cds or is smaller than 3 cds
+    # TODO: add lcs reset parameters to config
+    if check(pair.comparable_region, 3, True):
         return True
 
     logging.debug("resetting after extend")
@@ -233,16 +258,14 @@ def expand_pair(pair: RecordPair) -> float:
         bs_constants.EXPAND_MAX_MATCH_PERC,
     )
 
+    # TODO: add extension reset parameters to config
     if not check(pair.comparable_region, 0, True):
         logging.info("resetting after extend")
         reset(pair.comparable_region)
         jc = calc_jaccard_pair(pair)
         return jc
 
-    # TODO: check this
-    pair.comparable_region.alignment_mode = bs_enums.ALIGNMENT_MODE.GLOCAL
     jc = calc_jaccard_pair(pair)
-
     return jc
 
 

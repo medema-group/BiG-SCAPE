@@ -14,6 +14,7 @@ from typing import Generator, Iterator, Optional
 from sqlalchemy import select, func, or_
 
 # from other modules
+from big_scape.cli.constants import ANTISMASH_CLASSES
 from big_scape.data import DB
 from big_scape.genbank import BGCRecord, Region, ProtoCluster, ProtoCore
 from big_scape.enums import SOURCE_TYPE, CLASSIFY_MODE
@@ -672,9 +673,11 @@ class RecordPair:
         # comparable regions start "deflated", meaning only CDS with domains
         a_len = len(record_a.get_cds_with_domains())
         b_len = len(record_b.get_cds_with_domains())
+        a_domain_len = len(record_a.get_hsps())
+        b_domain_len = len(record_b.get_hsps())
 
         self.comparable_region: ComparableRegion = ComparableRegion(
-            self, 0, a_len, 0, b_len, False
+            self, 0, a_len, 0, b_len, 0, a_domain_len, 0, b_domain_len, False
         )
 
     def __repr__(self) -> str:
@@ -956,113 +959,20 @@ def legacy_get_class(product):  # pragma no cover
         str: product class
     """
 
-    # TODO: according with current (2021-05) antiSMASH rules:
-    # prodigiosin and PpyS-KS -> PKS
-    # CDPS -> NRPS
-    pks1_products = {"t1pks", "T1PKS"}
-    pksother_products = {
-        "transatpks",
-        "t2pks",
-        "t3pks",
-        "otherks",
-        "hglks",
-        "transAT-PKS",
-        "transAT-PKS-like",
-        "T2PKS",
-        "T3PKS",
-        "PKS-like",
-        "hglE-KS",
-    }
-    nrps_products = {"nrps", "NRPS", "NRPS-like", "thioamide-NRP", "NAPAA"}
-    ripps_products = {
-        "lantipeptide",
-        "thiopeptide",
-        "bacteriocin",
-        "linaridin",
-        "cyanobactin",
-        "glycocin",
-        "LAP",
-        "lassopeptide",
-        "sactipeptide",
-        "bottromycin",
-        "head_to_tail",
-        "microcin",
-        "microviridin",
-        "proteusin",
-        "lanthipeptide",
-        "lipolanthine",
-        "RaS-RiPP",
-        "fungal-RiPP",
-        "TfuA-related",
-        "guanidinotides",
-        "RiPP-like",
-        "lanthipeptide-class-i",
-        "lanthipeptide-class-ii",
-        "lanthipeptide-class-iii",
-        "lanthipeptide-class-iv",
-        "lanthipeptide-class-v",
-        "ranthipeptide",
-        "redox-cofactor",
-        "thioamitides",
-        "epipeptide",
-        "cyclic-lactone-autoinducer",
-        "spliceotide",
-        "RRE-containing",
-    }
-    saccharide_products = {
-        "amglyccycl",
-        "oligosaccharide",
-        "cf_saccharide",
-        "saccharide",
-    }
-    others_products = {
-        "acyl_amino_acids",
-        "arylpolyene",
-        "aminocoumarin",
-        "ectoine",
-        "butyrolactone",
-        "nucleoside",
-        "melanin",
-        "phosphoglycolipid",
-        "phenazine",
-        "phosphonate",
-        "other",
-        "cf_putative",
-        "resorcinol",
-        "indole",
-        "ladderane",
-        "PUFA",
-        "furan",
-        "hserlactone",
-        "fused",
-        "cf_fatty_acid",
-        "siderophore",
-        "blactam",
-        "fatty_acid",
-        "PpyS-KS",
-        "CDPS",
-        "betalactone",
-        "PBDE",
-        "tropodithietic-acid",
-        "NAGGN",
-        "halogenated",
-        "pyrrolidine",
-    }
-
     # PKS_Type I
-    if product in pks1_products:
+    if product in ANTISMASH_CLASSES["pks1_products"]:
         return "PKSI"
     # PKS Other Types
-    elif product in pksother_products:
+    elif product in ANTISMASH_CLASSES["pksother_products"]:
         return "PKSother"
     # NRPs
-    elif product in nrps_products:
+    elif product in ANTISMASH_CLASSES["nrps_products"]:
         return "NRPS"
     # RiPPs
-    elif product in ripps_products:
+    elif product in ANTISMASH_CLASSES["ripps_products"]:
         return "RiPP"
     # Saccharides
-    elif product in saccharide_products:
+    elif product in ANTISMASH_CLASSES["saccharide_products"]:
         return "saccharide"
     # Terpenes
     elif product == "terpene":
@@ -1073,21 +983,40 @@ def legacy_get_class(product):  # pragma no cover
         # cf_fatty_acid category contains a trailing empty space
 
         subtypes = set(s.strip() for s in product.split("."))
-        if len(subtypes - (pks1_products | pksother_products | nrps_products)) == 0:
-            if len(subtypes - nrps_products) == 0:
+        if (
+            len(
+                subtypes
+                - (
+                    ANTISMASH_CLASSES["pks1_products"]
+                    | ANTISMASH_CLASSES["pksother_products"]
+                    | ANTISMASH_CLASSES["nrps_products"]
+                )
+            )
+            == 0
+        ):
+            if len(subtypes - ANTISMASH_CLASSES["nrps_products"]) == 0:
                 return "NRPS"
-            elif len(subtypes - (pks1_products | pksother_products)) == 0:
+            elif (
+                len(
+                    subtypes
+                    - (
+                        ANTISMASH_CLASSES["pks1_products"]
+                        | ANTISMASH_CLASSES["pksother_products"]
+                    )
+                )
+                == 0
+            ):
                 return "PKSother"  # pks hybrids
             else:
                 return "PKS-NRP_Hybrids"
-        elif len(subtypes - ripps_products) == 0:
+        elif len(subtypes - ANTISMASH_CLASSES["ripps_products"]) == 0:
             return "RiPP"
-        elif len(subtypes - saccharide_products) == 0:
+        elif len(subtypes - ANTISMASH_CLASSES["saccharide_products"]) == 0:
             return "saccharide"
         else:
             return "other"  # other hybrid
     # Others
-    elif product in others_products:
+    elif product in ANTISMASH_CLASSES["others_products"]:
         return "other"
     # ??
     elif product == "":

@@ -55,9 +55,19 @@ def run_fasttree(algn_file: Path, out_file: TextIO):
         algn_file (Path): Path to alignment file
         out_file (TextIO): Opened output file object
     """
-    subprocess.run(
-        ["fasttree", "-quiet", "-nopr", algn_file], stdout=out_file, shell=False
+
+    result = subprocess.run(
+        ["fasttree", "-quiet", "-nopr", algn_file],
+        capture_output=True,
+        shell=False,
     )
+    stdout = result.stdout.decode("utf-8")
+    out_file.write(stdout)
+
+    if result.stderr:
+        stderr = result.stderr.decode("utf-8")
+        stderr = stderr.replace("\n", " ")
+        logging.debug(f"FastTree says: {stderr}")
 
 
 def process_newick_tree(tree_file: Path) -> str:
@@ -139,11 +149,12 @@ def generate_gcf_alignment(
     alignments: dict[int, str] = {}
     alignments[exemplar] = ""
 
-    out_of_tree_bgcs = []  # no common domain core
-    delete_bgc = set()
+    # store number of missed domains in bgc wrt exemplar
+    missed_domains: dict[int, int] = {}
     record_ids.remove(exemplar)
     for record_idx in record_ids:
         alignments[record_idx] = ""
+        missed_domains[record_idx] = 0
 
     match_dict: dict[int, int] = {}
     for domain in tree_domains:
@@ -161,10 +172,8 @@ def generate_gcf_alignment(
             if bgc == exemplar:
                 pass
             elif domain not in domain_sets[bgc]:
-                out_of_tree_bgcs.append(bgc)
-                delete_bgc.add(bgc)
-            elif bgc in delete_bgc:
-                pass
+                missed_domains[bgc] += 1
+                alignments[bgc] += "-" * seq_length * num_copies_a
             else:
                 specific_domain_list_b = [
                     hsp for hsp in records[bgc].get_hsps() if hsp.domain == domain
@@ -218,9 +227,15 @@ def generate_gcf_alignment(
                         # have a match in bgc (i.e. bgc has less copies
                         # of this domain than exemplar)
                         alignments[bgc] += "-" * seq_length
-        for bgc in list(delete_bgc):
-            del alignments[bgc]
-        delete_bgc.clear()
+
+    # if a bgc is missing all tree domains, remove it from the tree
+    delete_bgc: set[int] = set()
+    for bgc in alignments:
+        if bgc != exemplar and missed_domains[bgc] == len(tree_domains):
+            delete_bgc.add(bgc)
+    for bgc in delete_bgc:
+        del alignments[bgc]
+
     algn_string = f">{family_members[exemplar]}\n{alignments[exemplar]}\n"
     for bgc in alignments:
         if bgc != exemplar:

@@ -7,11 +7,12 @@ from distutils import dir_util
 from pathlib import Path
 from typing import Any
 from sqlalchemy import select, alias
+import logging
 
 # from other modules
 from big_scape.data import DB
-from big_scape.comparison import RecordPairGenerator, legacy_get_class
-from big_scape.genbank import GBK, CDS, BGCRecord
+from big_scape.comparison import RecordPairGenerator
+from big_scape.genbank import GBK, CDS, BGCRecord, MergedProtoCluster, MergedProtoCore
 from big_scape.enums import SOURCE_TYPE
 from big_scape.trees import generate_newick_tree
 from big_scape.comparison import get_record_category
@@ -41,7 +42,7 @@ def copy_base_output_templates(output_dir: Path):
         output_network_root.mkdir(exist_ok=True)
 
 
-def prepare_cutoff_folder(output_dir: Path, label: str, cutoff: float) -> None:
+def prepare_cutoff_folders(output_dir: Path, label: str, cutoff: float) -> None:
     """Prepare a folder for a given cutoff output
 
     Args:
@@ -51,19 +52,22 @@ def prepare_cutoff_folder(output_dir: Path, label: str, cutoff: float) -> None:
     """
     # networks subfolders
     output_network_root = output_dir / "html_content/networks"
+    output_files_root = output_dir / "output_files"
 
-    cutoff_path = output_network_root / f"{label}_c{cutoff}"
+    cutoff_network_path = output_network_root / f"{label}_c{cutoff}"
+    cutoff_files_path = output_files_root / f"{label}_c{cutoff}"
 
-    cutoff_path.mkdir(exist_ok=True)
+    cutoff_network_path.mkdir(exist_ok=True)
+    cutoff_files_path.mkdir(exist_ok=True)
 
     template_root = Path("big_scape/output/html_template")
     overview_template = template_root / "overview_html"
 
     # copy overview html
-    shutil.copy(str(overview_template), str(cutoff_path / "overview.html"))
+    shutil.copy(str(overview_template), str(cutoff_network_path / "overview.html"))
 
 
-def prepare_pair_generator_folder(
+def prepare_pair_generator_folders(
     output_dir: Path, label: str, cutoff: float, pair_generator: RecordPairGenerator
 ) -> None:
     """Prepare the output folder for a pair_generator under a cutoff
@@ -76,21 +80,27 @@ def prepare_pair_generator_folder(
     """
     # networks subfolders
     output_network_root = output_dir / "html_content/networks"
+    output_files_root = output_dir / "output_files"
 
-    cutoff_path = output_network_root / f"{label}_c{cutoff}"
+    cutoff_network_path = output_network_root / f"{label}_c{cutoff}"
+    cutoff_files_path = output_files_root / f"{label}_c{cutoff}"
 
-    pair_generator_path = cutoff_path / pair_generator.label
+    pair_generator_network_path = cutoff_network_path / pair_generator.label
+    pair_generator_files_path = cutoff_files_path / pair_generator.label
 
-    pair_generator_path.mkdir(exist_ok=True)
+    pair_generator_network_path.mkdir(exist_ok=True)
+    pair_generator_files_path.mkdir(exist_ok=True)
 
-    tree_path = pair_generator_path / Path("GCF_trees")
+    tree_path = pair_generator_files_path / Path("GCF_trees")
 
     tree_path.mkdir(exist_ok=True)
 
     template_root = Path("big_scape/output/html_template")
     pair_generator_template = template_root / "index_html"
 
-    shutil.copy(str(pair_generator_template), str(pair_generator_path / "index.html"))
+    shutil.copy(
+        str(pair_generator_template), str(pair_generator_network_path / "index.html")
+    )
 
 
 def generate_pfams_js(output_dir: Path, pfam_info: list[tuple[str, str, str]]) -> None:
@@ -256,9 +266,11 @@ def generate_run_data_js(
         # acc id of gbk
         record_acc_idx = genomes[organism]
 
-        # class id
-        product = gbk.region.product
-        region_class = legacy_get_class(product)
+        # class id - used to make the input data BGC per class piechart
+        # features classes as they come from antismash, as it is a
+        # representation of input dataset features
+
+        region_class = gbk.region.product
 
         if region_class not in class_idx:
             class_idx[region_class] = len(class_idx)
@@ -620,22 +632,31 @@ def generate_bs_data_js(
         if record.parent_gbk is None:
             raise AttributeError("Record parent GBK is not set!")
 
-        rec_cds = record.get_cds()
-        rec_start = rec_cds[0].orf_num
-        rec_stop = rec_cds[-1].orf_num
+        rec_start, rec_stop = record.get_cds_start_stop()
         gbk = record.parent_gbk
         organism = "Unknown"
         if "organism" in gbk.metadata:
             organism = gbk.metadata["organism"]
+
+        if isinstance(record, MergedProtoCore) or isinstance(
+            record, MergedProtoCluster
+        ):
+            ids = [
+                gbk.path.name,
+                type(record).__name__.lower()[6:],
+                str(record.merged_number),
+            ]
+        else:
+            ids = [gbk.path.name, type(record).__name__.lower(), str(record.number)]
+
+        id = "_".join(ids)
 
         bs_data.append(
             {
                 "desc": organism,
                 "start": 1,
                 "end": len(gbk.nt_seq),
-                "id": "_".join(
-                    [gbk.path.name, type(record).__name__.lower(), str(record.number)]
-                ),
+                "id": id,
                 "hash": gbk.hash,
                 "mibig": gbk.source_type == SOURCE_TYPE.MIBIG,
                 "source": gbk.source_type.name.lower(),
@@ -717,15 +738,16 @@ def generate_bs_networks_js_sim_matrix(
     return sparse_matrix
 
 
-def fetch_lcs_from_db(
-    a_id: int, b_id: int, weights: str, edge_param_id: int
-) -> dict[str, Any]:
+def fetch_lcs_from_db(a_id: int, b_id: int, edge_param_id: int) -> dict[str, Any]:
     """Find the lcs start, stop and direction for a pair of records in the database
 
     Args:
         a_id (int): record db id of region a
         b_id (int): record db id of region b
-        weights (str): weights used in analysis
+        edge_param_id (int): db id of used parameters during edge generation
+
+    Returns:
+        dict[str, Any]: row from distance db table
     """
     if DB.metadata is None:
         raise RuntimeError("Database metadata is None!")
@@ -741,101 +763,73 @@ def fetch_lcs_from_db(
     result = DB.execute(select_query).fetchone()
     if result is None:
         raise RuntimeError(
-            "LCS not found in database (%s %s %s %s)"
-            % (a_id, b_id, weights, edge_param_id)
+            "LCS not found in database (%s %s %s)" % (a_id, b_id, edge_param_id)
         )
     return dict(result._mapping)
 
 
-def adjust_lcs_to_all_genes(
-    result: dict[str, Any],
-    family_db_id: int,
-    bgc_db_id: int,
-    fam_gbk: GBK,
-    bgc_gbk: GBK,
-    domain_genes_to_all_genes: dict[int, dict[int, int]],
-    domain_count_gene: dict[int, list[int]],
+def adjust_lcs_to_family_reference(
+    lcs_data: dict[str, Any], family_db_id: int, fam_cds_num: int, bgc_cds_num: int
 ) -> tuple[int, int, bool]:
-    """Adjust boundaries of lcs from only genes with domains to all present genes
+    """Adjusts lcs start to the family reference
 
     Args:
-        result (dict[str, Any]): database distance row with lcs information
-        family_db_id (int): database record id of family exemplar
-        bgc_db_id (int): database record id of family member
-        fam_gbk (GBK): family exemplar GBK
-        bgc_gbk (GBK): family member GBK
-        domain_genes_to_all_genes (dict[int, dict[int, int]]): maps indices from genes
-            with domains to all present genes
-        domain_count_gene (dict[int, list[int]]): contains the number of domains each
-            gene contains
+        lcs_data (dict[str, Any]): dictionary with lcs boundaries
+        family_db_id (int): record db id of family reference
+        fam_cds_num (int): number of cds in family record
+        bgc_cds_num (int): number of cds in member record
 
     Returns:
-        tuple[int, int, bool]: adjusted a_start, b_start and reverse
+        tuple[int, int, bool]: adjusted a_start, b_start, reverse
     """
-    if result["record_a_id"] == family_db_id:
-        a_start = result["lcs_a_start"]
-        a_stop = result["lcs_a_stop"]
-        b_start = result["lcs_b_start"]
-        reverse = result["reverse"]
-        length = abs(a_start - a_stop)  # seed length
-        a_start = domain_genes_to_all_genes[family_db_id][a_start]
-        if length == 0:
-            pass
+    if lcs_data["record_a_id"] == family_db_id:
+        a_start = lcs_data["lcs_a_start"]
+        b_start = lcs_data["lcs_b_start"]
+        reverse = lcs_data["reverse"]
 
-        elif reverse:
-            b_start = domain_genes_to_all_genes[bgc_db_id][
-                len(domain_count_gene[bgc_db_id]) - b_start - 1
-            ]
-        else:
-            b_start = domain_genes_to_all_genes[bgc_db_id][b_start]
+        if reverse:
+            b_start = bgc_cds_num - b_start - 1
 
-    elif result["record_b_id"] == family_db_id:
-        a_start = result["lcs_b_start"]
-        a_stop = result["lcs_b_stop"]
-        b_start = result["lcs_a_start"]
-        reverse = result["reverse"]
-        length = abs(a_start - a_stop)  # seed length
-        if length == 0:
-            pass
-        elif reverse:
-            a_start = domain_genes_to_all_genes[family_db_id][
-                len(domain_count_gene[family_db_id]) - a_start - length
-            ]
-            b_start = domain_genes_to_all_genes[bgc_db_id][b_start + length - 1]
-        else:
-            a_start = domain_genes_to_all_genes[family_db_id][a_start]
-            b_start = domain_genes_to_all_genes[bgc_db_id][b_start]
+    elif lcs_data["record_b_id"] == family_db_id:
+        a_start = lcs_data["lcs_b_start"]
+        b_start = lcs_data["lcs_a_start"]
+        reverse = lcs_data["reverse"]
 
-    # TODO: adjust lcs bounds for protocluster/protocore mode once lcs is implemented
-    # a_start, b_start = adjust_lcs_record_bounds(
-    #     a_start, b_start, fam_rec, bgc_rec, reverse
-    # )
+        if reverse:
+            # to keep consistent family reference genes flip A back to forward
+            a_stop = lcs_data["lcs_b_stop"]
+            a_start = fam_cds_num - a_stop
 
-    if length == 0:
-        length = 1
-        # let's try aligning using the genes with most domains
-        # after all, they ended up being in the same GCF
-        # for some reason
-        x = max(domain_count_gene[family_db_id])
-        x = domain_count_gene[family_db_id].index(x)
-        a_start = domain_genes_to_all_genes[family_db_id][x]
+            # now we just need to correct for the exclusive stop in B
+            b_stop = lcs_data["lcs_a_stop"]
+            b_start = b_stop - 1
 
-        y = max(list(domain_count_gene[bgc_db_id]))
-        y = domain_count_gene[bgc_db_id].index(y)
-
-        # check orientation
-        if (
-            fam_gbk.genes[domain_genes_to_all_genes[family_db_id][x]].strand
-            == bgc_gbk.genes[domain_genes_to_all_genes[bgc_db_id][y]].strand
-        ):
-            b_start = domain_genes_to_all_genes[bgc_db_id][y]
-            reverse = False
-        else:
-            b_start = domain_genes_to_all_genes[bgc_db_id][
-                len(domain_count_gene[bgc_db_id]) - y - 1
-            ]
-            reverse = True
     return a_start, b_start, reverse
+
+
+def adjust_lcs_to_full_region(
+    a_start: int,
+    b_start: int,
+    fam_record: BGCRecord,
+    bgc_record: BGCRecord,
+) -> tuple[int, int]:
+    """Adjusts lcs start to full region if needed
+
+    Args:
+        a_start (int): family reference lcs start
+        b_start (int): family member lcs start
+        fam_record (BGCRecord): family reference record
+        bgc_record (BGCRecord): family member record
+
+    Returns:
+        tuple[int, int]: adjusted lcs starts
+    """
+    fam_record_start, _ = fam_record.get_cds_start_stop()
+    bgc_record_start, _ = bgc_record.get_cds_start_stop()
+
+    a_start = a_start + fam_record_start - 1
+    b_start = b_start + bgc_record_start - 1
+    return a_start, b_start
 
 
 def generate_bs_families_alignment(
@@ -871,38 +865,23 @@ def generate_bs_families_alignment(
     """
     bs_families_alignment = []
     records = pair_generator.source_records
-    # dictionary maps bgc to all orfs that contain domains
-    domain_genes_to_all_genes: dict[int, dict[int, int]] = {}
-    # dictionary maps bgc to list of domain count per gene
-    domain_count_gene: dict[int, list[int]] = {}
+
+    logging.info("Generating GCF alignments and trees")
 
     for family_db_id, family_members in bs_families.items():
+        family_name = "FAM_{:05d}".format(family_db_id)
+        logging.debug("Generating alignment for %s", family_name)
         # collects records within this GCF
         family_records = [records[bgc_num] for bgc_num in family_members]
         family_member_db_ids = [rec._db_id for rec in family_records]
         fam_record_idx = family_member_db_ids.index(family_db_id)
-        fam_gbk = family_records[fam_record_idx].parent_gbk
-        if fam_gbk is None:
-            raise AttributeError("Record parent GBK is not set!")
-        for bgc, bgc_db_id in zip(family_members, family_member_db_ids):
-            bgc_gbk = records[bgc].parent_gbk
-            if bgc_gbk is None:
-                raise AttributeError("Record parent GBK is not set!")
-            if bgc_db_id is None:
-                raise AttributeError("Record has no database id!")
-            domain_genes_to_all_genes[bgc_db_id] = {}
-            domain_count_gene[bgc_db_id] = []
-            has_domains = 0
-            for cds_idx, cds in enumerate(bgc_gbk.genes):
-                if len(cds.hsps) > 0:
-                    domain_count_gene[bgc_db_id].append(len(cds.hsps))
-                    domain_genes_to_all_genes[bgc_db_id][has_domains] = cds_idx
-                    has_domains += 1
+        fam_record = family_records[fam_record_idx]
 
         ref_genes_ = set()
         aln = []
         for bgc, bgc_db_id in zip(family_members, family_member_db_ids):
-            bgc_gbk = records[bgc].parent_gbk
+            bgc_record = records[bgc]
+            bgc_gbk = bgc_record.parent_gbk
             if bgc_gbk is None:
                 raise AttributeError("Record parent GBK is not set!")
             if bgc_db_id is None:
@@ -910,16 +889,28 @@ def generate_bs_families_alignment(
 
             if bgc_db_id == family_db_id:
                 aln.append([[gene_num, 0] for gene_num in range(len(bgc_gbk.genes))])
+
+            # protoclusters from the same record don't need aligning
+            elif bgc_gbk == fam_record.parent_gbk:
+                aln.append([[gene_num, 100] for gene_num in range(len(bgc_gbk.genes))])
+
             else:
-                result = fetch_lcs_from_db(
+                lcs_data = fetch_lcs_from_db(
                     family_db_id,
                     bgc_db_id,
-                    pair_generator.weights,
                     pair_generator.edge_param_id,
                 )
-                a_start = result["lcs_a_start"]
-                b_start = result["lcs_b_start"]
-                reverse = result["reverse"]
+
+                a_start, b_start, reverse = adjust_lcs_to_family_reference(
+                    lcs_data,
+                    family_db_id,
+                    len(fam_record.get_cds()),
+                    len(bgc_record.get_cds()),
+                )
+
+                a_start, b_start = adjust_lcs_to_full_region(
+                    a_start, b_start, fam_record, bgc_record
+                )
 
                 ref_genes_.add(a_start)
 
@@ -936,7 +927,7 @@ def generate_bs_families_alignment(
 
         ref_genes = list(ref_genes_)
 
-        family_name = "FAM_{:05d}".format(family_db_id)
+        logging.debug("Generating newick tree for %s", family_name)
         fam_alignment = {
             "id": family_name,
             "ref": family_members[fam_record_idx],
@@ -1066,7 +1057,11 @@ def generate_bs_networks_js(
     output_network_root = output_dir / Path("html_content/networks")
     cutoff_path = output_network_root / Path(f"{label}_c{cutoff}")
     pair_generator_path = cutoff_path / pair_generator.label
-    gcf_trees_path = pair_generator_path / Path("GCF_trees")
+
+    output_files_root = output_dir / Path("output_files")
+    cutoff_path_files = output_files_root / f"{label}_c{cutoff}"
+    pair_generator_files_path = cutoff_path_files / pair_generator.label
+    gcf_trees_path = pair_generator_files_path / Path("GCF_trees")
 
     bs_networks_js_path = pair_generator_path / "bs_networks.js"
 
@@ -1144,6 +1139,11 @@ def legacy_prepare_output(
 
     generate_pfams_js(output_dir, pfam_info)
 
+    # generate roon output_files folder
+    output_files_root = output_dir / "output_files"
+    if not output_files_root.exists():
+        output_files_root.mkdir(exist_ok=True)
+
 
 def legacy_prepare_cutoff_output(run: dict, cutoff: float, gbks: list[GBK]) -> None:
     """Prepare output data for a given cutoff value
@@ -1154,7 +1154,7 @@ def legacy_prepare_cutoff_output(run: dict, cutoff: float, gbks: list[GBK]) -> N
         cutoff (float): cutoff value
         gbks (list[GBK]): list of gbks used in the analysis
     """
-    prepare_cutoff_folder(run["output_dir"], run["label"], cutoff)
+    prepare_cutoff_folders(run["output_dir"], run["label"], cutoff)
 
     generate_bigscape_results_js(run["output_dir"], run["label"], cutoff)
 
@@ -1176,7 +1176,7 @@ def legacy_prepare_bin_output(
     output_dir = run["output_dir"]
     label = run["label"]
 
-    prepare_pair_generator_folder(output_dir, label, cutoff, pair_generator)
+    prepare_pair_generator_folders(output_dir, label, cutoff, pair_generator)
     generate_bs_data_js(output_dir, label, cutoff, pair_generator)
     add_bigscape_results_js_network(output_dir, label, cutoff, pair_generator)
 
@@ -1223,8 +1223,8 @@ def write_record_annotations_file(run, cutoff, all_bgc_records) -> None:
 
     output_dir = run["output_dir"]
     label = run["label"]
-    output_network_root = output_dir / "html_content/networks"
-    cutoff_path = output_network_root / f"{label}_c{cutoff}"
+    output_files_root = output_dir / "output_files"
+    cutoff_path = output_files_root / f"{label}_c{cutoff}"
     record_annotations_path = cutoff_path / "record_annotations.tsv"
 
     if not DB.metadata:
@@ -1308,8 +1308,8 @@ def write_clustering_file(run, cutoff, pair_generator) -> None:
     label = run["label"]
     bin_label = pair_generator.label
 
-    output_network_root = output_dir / "html_content/networks"
-    cutoff_path = output_network_root / f"{label}_c{cutoff}"
+    output_files_root = output_dir / "output_files"
+    cutoff_path = output_files_root / f"{label}_c{cutoff}"
     pair_generator_path = cutoff_path / pair_generator.label
     clustering_file_path = pair_generator_path / f"{bin_label}_clustering_c{cutoff}.tsv"
 
@@ -1491,8 +1491,8 @@ def write_cutoff_network_file(
     label = run["label"]
     bin_label = pair_generator.label
 
-    output_network_root = output_dir / "html_content/networks"
-    cutoff_path = output_network_root / f"{label}_c{cutoff}"
+    output_files_root = output_dir / "output_files"
+    cutoff_path = output_files_root / f"{label}_c{cutoff}"
     pair_generator_path = cutoff_path / pair_generator.label
     cutoff_network_file_path = pair_generator_path / f"{bin_label}_c{cutoff}.network"
 
@@ -1603,8 +1603,8 @@ def write_full_network_file(run: dict, all_bgc_records: list[BGCRecord]) -> None
     output_dir = run["output_dir"]
     label = run["label"]
 
-    output_network_root = output_dir / "html_content/networks"
-    full_network_file_path = output_network_root / f"{label}_full.network"
+    output_files_root = output_dir / "output_files"
+    full_network_file_path = output_files_root / f"{label}_full.network"
 
     # get distances for this set of records
     edgelist = get_full_network_edgelist(run, all_bgc_records)

@@ -93,7 +93,8 @@ class ProtoCore(BGCRecord):
 
         proto_core_number = int(feature.qualifiers["protocluster_number"][0])
 
-        nt_start, nt_stop, contig_edge, product = BGCRecord.parse_common(feature)
+        nt_start, nt_stop, contig_edge = BGCRecord.parse_common(feature)
+        product = BGCRecord.parse_products(feature)
 
         return cls(
             parent_gbk, proto_core_number, nt_start, nt_stop, contig_edge, product
@@ -112,7 +113,7 @@ class ProtoCore(BGCRecord):
         gbk_dict
 
         Args:
-            region_dict (dict[int, GBK]): Dictionary of Region objects with database ids
+            protocluster_dict (dict[int, GBK]): Dictionary of protocluster objects with database ids
             as keys. Used for parenting
         """
 
@@ -133,6 +134,7 @@ class ProtoCore(BGCRecord):
                 record_table.c.nt_stop,
                 record_table.c.product,
                 record_table.c.category,
+                record_table.c.merged,
             )
             .where(record_table.c.record_type == "proto_core")
             .where(record_table.c.parent_id.in_(protocluster_dict.keys()))
@@ -145,17 +147,127 @@ class ProtoCore(BGCRecord):
             parent_proto_cluster = protocluster_dict[result.parent_id]
             parent_gbk = parent_proto_cluster.parent_gbk
 
-            new_proto_core = ProtoCore(
-                parent_gbk,
-                result.record_number,
-                result.nt_start,
-                result.nt_stop,
-                result.contig_edge,
-                result.product,
-                result.category,
-            )
+            merged = result.merged
+            # if merged = True load as MergedProtoCore and load merged number as string
+            # if false load as normal protocore
+            if merged:
+                new_proto_core: Optional[ProtoCore] = MergedProtoCore(
+                    parent_gbk,
+                    result.record_number,
+                    result.nt_start,
+                    result.nt_stop,
+                    result.contig_edge,
+                    result.product,
+                    result.category,
+                )
+                if new_proto_core is not None:
+                    new_proto_core.number = min(result.record_number.split("_"))
 
-            new_proto_core._db_id = result.id
+            else:
+                new_proto_core = ProtoCore(
+                    parent_gbk,
+                    result.record_number,
+                    result.nt_start,
+                    result.nt_stop,
+                    result.contig_edge,
+                    result.product,
+                    result.category,
+                )
+
+            if new_proto_core is not None:
+                new_proto_core._db_id = result.id
 
             # add to parent ProtoCluster protocore dict
             parent_proto_cluster.proto_core[result.record_number] = new_proto_core
+
+
+class MergedProtoCore(ProtoCore):
+    """Class to described a merged protocore within an Antismash GBK
+
+    Args:
+        ProtoCore (ProtoCore): protocore
+    """
+
+    def __init__(
+        self,
+        parent_gbk: Optional[GBK],
+        merged_number: str,
+        nt_start: int,
+        nt_stop: int,
+        contig_edge: Optional[bool],
+        product: str,
+        category: Optional[str] = None,
+    ):
+        super().__init__(
+            parent_gbk,
+            0,
+            nt_start,
+            nt_stop,
+            contig_edge,
+            product,
+            category,
+        )
+
+        self.merged_number = merged_number
+        self.number = int(min(merged_number.split("_")))
+        self.merged = True
+
+    @staticmethod
+    def merge(protocores) -> MergedProtoCore:
+        """Merges two protocores into a single merged protocore
+
+        Args:
+            protocores ([ProtoCore]): ProtoCores
+
+        Returns:
+            MergedProtoCore: MergedProtoCore
+        """
+
+        if len(protocores) < 2:
+            raise ValueError("Cannot merge less than 2 protocores")
+
+        protocore_a = protocores[0]
+        parent_gbks = set([protocore.parent_gbk for protocore in protocores])
+
+        if len(parent_gbks) > 1:
+            raise ValueError("Cannot merge protocores from different GBKs")
+
+        parent_gbk = protocore_a.parent_gbk
+
+        numbers = [protocore.number for protocore in protocores]
+        merged_number = "_".join([str(number) for number in sorted(numbers)])
+
+        categories = list(set([protocore.category for protocore in protocores]))
+        if len(categories) > 1:
+            categories.sort()
+            category = ".".join(categories)
+        else:
+            category = categories[0]
+
+        products = list(set([protocore.product for protocore in protocores]))
+        if len(products) > 1:
+            products.sort()
+            product = ".".join(products)
+        else:
+            product = products[0]
+
+        contig_edge = False
+        for protocore in protocores:
+            if protocore.contig_edge:
+                contig_edge = True
+                break
+
+        nt_start = min([protocore.nt_start for protocore in protocores])
+        nt_stop = max([protocore.nt_stop for protocore in protocores])
+
+        merged_proto_core = MergedProtoCore(
+            parent_gbk,
+            merged_number,
+            nt_start,
+            nt_stop,
+            contig_edge,
+            product,
+            category,
+        )
+
+        return merged_proto_core

@@ -217,13 +217,12 @@ def run_bigscape(run: dict) -> None:
             HMMer.align_simple(hsps_to_align, align_callback)
 
         alignment_count = 0
-        for gbk in gbks:
-            for gene in gbk.genes:
-                for hsp in gene.hsps:
-                    if hsp.alignment is None:
-                        continue
-                    hsp.alignment.save(False)
-                    alignment_count += 1
+
+        for hsp in hsps_to_align:
+            if hsp.alignment is None:
+                continue
+            hsp.alignment.save(False)
+            alignment_count += 1
 
         logging.info("%d alignments", alignment_count)
 
@@ -303,6 +302,7 @@ def run_bigscape(run: dict) -> None:
 
                 # save families to database
                 bs_families.save_to_db(regions_families)
+            bs_families.save_singletons(run["record_type"], cutoff, "mix")
 
         DB.commit()
 
@@ -320,6 +320,8 @@ def run_bigscape(run: dict) -> None:
                         connected_component, bin.label, cutoff
                     )
                     bs_families.save_to_db(regions_families)
+                bs_families.save_singletons(run["record_type"], cutoff, bin.label)
+
         DB.commit()
 
     # classify
@@ -336,6 +338,8 @@ def run_bigscape(run: dict) -> None:
                         connected_component, bin.label, cutoff
                     )
                     bs_families.save_to_db(regions_families)
+                bs_families.save_singletons(run["record_type"], cutoff, bin.label)
+
         DB.commit()
 
     # query BGC mode
