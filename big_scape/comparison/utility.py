@@ -67,6 +67,10 @@ def save_edge_to_db(
         ext_b_start=comparable_region.b_start,
         ext_b_stop=comparable_region.b_stop,
         reverse=comparable_region.reverse,
+        lcs_domain_a_start=comparable_region.lcs_domain_a_start,
+        lcs_domain_a_stop=comparable_region.lcs_domain_a_stop,
+        lcs_domain_b_start=comparable_region.lcs_domain_b_start,
+        lcs_domain_b_stop=comparable_region.lcs_domain_b_stop,
     )
 
     if upsert:
@@ -102,7 +106,7 @@ def save_edges_to_db(
     # create a query
     # TODO: this should not need ignore. it's there now because protoclusters somehow
     # trigger an integrityerror
-    query = "INSERT OR IGNORE INTO distance VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"
+    query = "INSERT OR IGNORE INTO distance VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"
 
     unpacked_edges = [edge[:-1] + edge[-1].to_tuple() for edge in edges]
 
