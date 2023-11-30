@@ -2,7 +2,7 @@
 
 
 # from other modules
-from big_scape.comparison import RecordPair
+from big_scape.comparison.record_pair import RecordPair
 from big_scape.hmm import HSP
 
 
@@ -63,7 +63,7 @@ def calc_ai_pair(bgc_pair: RecordPair) -> float:
         float: adjacency index
     """
     # for some reason, we are not reversing the list here.
-    a_domains, b_domains = bgc_pair.comparable_region.get_domain_lists(reverse=False)
+    a_domains, b_domains = bgc_pair.get_domain_lists(reverse=False)
 
     # sort domains by absolute position. that is, the orf position + env position.
     def sort_domain_key(k: HSP):

@@ -4,7 +4,7 @@
 from typing import Any
 
 # from other modules
-from big_scape.comparison import RecordPair
+from big_scape.comparison.record_pair import RecordPair
 
 
 def calc_jaccard_sets(set_a: set[Any], set_b: set[Any]) -> float:
@@ -32,5 +32,5 @@ def calc_jaccard_pair(bgc_pair: RecordPair, cache=True) -> float:
     Returns:
         float: Jaccard index
     """
-    a_cds, b_cds = bgc_pair.comparable_region.get_domain_sets(cache=cache)
+    a_cds, b_cds = bgc_pair.get_domain_sets(cache=cache)
     return calc_jaccard_sets(a_cds, b_cds)

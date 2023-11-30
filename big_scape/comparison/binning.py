@@ -4,6 +4,10 @@ At this level, the comparisons are referred to as pairs. Whenever anything talks
 pairs, it refers to things generated from these classes. This is distinct from what are
 referred to as edges, which are pairs that have a (set of) distances between them and
 may be present in the database.
+
+TODO: this file is very long and is begging for refactoring. a lot of the classes
+are very similar apart from the method in which they query the database. This could
+almost certainly be abstracted somehow
 """
 
 # from python
@@ -15,13 +19,14 @@ from sqlalchemy import select, func, or_
 
 # from other modules
 from big_scape.cli.constants import ANTISMASH_CLASSES
+from big_scape.comparison.record_pair import RecordPair
 from big_scape.data import DB
 from big_scape.genbank import BGCRecord, Region, ProtoCluster, ProtoCore
 from big_scape.enums import SOURCE_TYPE, CLASSIFY_MODE
+
 import big_scape.comparison as bs_comparison
 
 # from this module
-from .comparable_region import ComparableRegion
 
 
 # weights are in the order JC, AI, DSS, Anchor boost
@@ -654,52 +659,6 @@ class MissingRecordPairGenerator(RecordPairGenerator):
 
     def add_records(self, _: list[BGCRecord]):
         raise NotImplementedError("Cannot add records to a PartialRecordPairGenerator")
-
-
-class RecordPair:
-    """Contains a pair of BGC records, which can be any type of BGCRecord
-
-    This will also contain any other necessary information specific to this pair needed
-    to generate the scores
-    """
-
-    def __init__(self, record_a: BGCRecord, record_b: BGCRecord):
-        self.record_a = record_a
-        self.record_b = record_b
-
-        if record_a.parent_gbk is None or record_b.parent_gbk is None:
-            raise ValueError("Region in pair has no parent GBK!")
-
-        # comparable regions start "deflated", meaning only CDS with domains
-        a_len = len(record_a.get_cds_with_domains())
-        b_len = len(record_b.get_cds_with_domains())
-        a_domain_len = len(record_a.get_hsps())
-        b_domain_len = len(record_b.get_hsps())
-
-        self.comparable_region: ComparableRegion = ComparableRegion(
-            self, 0, a_len, 0, b_len, 0, a_domain_len, 0, b_domain_len, False
-        )
-
-    def __repr__(self) -> str:
-        return f"Pair {self.record_a} - {self.record_b}"
-
-    def __hash__(self) -> int:
-        a_hash = hash(self.record_a)
-        b_hash = hash(self.record_b)
-
-        # order doesn't matter
-        return a_hash + b_hash
-
-    def __eq__(self, _o) -> bool:
-        if not isinstance(_o, RecordPair):
-            return False
-
-        if self.record_a == _o.record_a and self.record_b == _o.record_b:
-            return True
-        if self.record_a == _o.record_b and self.record_b == _o.record_a:
-            return True
-
-        return False
 
 
 def generate_mix_bin(

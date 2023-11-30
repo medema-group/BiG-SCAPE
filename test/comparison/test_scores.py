@@ -8,7 +8,7 @@ from unittest import TestCase
 # from other modules
 from big_scape.genbank import GBK, Region, CDS
 from big_scape.hmm import HSP
-from big_scape.comparison import RecordPair
+from big_scape.comparison.record_pair import RecordPair
 from big_scape.distances import (
     calc_jaccard_sets,
     calc_jaccard_pair,

@@ -11,9 +11,11 @@ TODO: docstrings, none typings
 
 # from python
 import logging
-from concurrent.futures import ProcessPoolExecutor, wait
+from concurrent.futures import ProcessPoolExecutor, Future
+from threading import Event, Condition
 from typing import Generator, Callable, Optional, TypeVar
 from math import ceil
+from .record_pair import RecordPair
 
 
 # from other modules
@@ -21,9 +23,10 @@ from big_scape.distances import calc_jaccard_pair, calc_ai_pair, calc_dss_pair
 import big_scape.enums as bs_enums
 import big_scape.genbank as bs_gbk
 import big_scape.cli.constants as bs_constants
+import big_scape.comparison as bs_comparison
 
 # from this module
-from .binning import RecordPairGenerator, RecordPair
+from .binning import RecordPairGenerator
 from .binning import LEGACY_WEIGHTS
 from .extend import extend, reset, check
 from .lcs import find_domain_lcs_region, find_domain_lcs_protocluster
@@ -82,6 +85,7 @@ def generate_edges(
     pair_generator: RecordPairGenerator,
     alignment_mode: bs_enums.ALIGNMENT_MODE,
     cores: int,
+    max_queue_length: int,
     callback: Optional[Callable] = None,
     batch_size=None,
 ):  # pragma no cover
@@ -91,7 +95,8 @@ def generate_edges(
         pair_generator (RecordPairGenerator): generator for pairs
         alignment_mode (str): alignment mode
         cores (int): number of cores to use
-        callback (Optional[Callable]): callback to call when a batch is done
+        callback (Optional[Callable]): callback to call when a batch is done. this is
+        called with the results of the batch as the only argument
         batch_size (int): batch size to use
 
     yields:
@@ -112,39 +117,30 @@ def generate_edges(
         batch_size = min(num_pairs, batch_size)
         logging.debug("Using batch size: %d", batch_size)
 
+    running_futures = set()
+    all_done = Event()
+    new_results = Condition()
+
+    def on_complete(future: Future):
+        exception = future.exception()
+        if exception is not None:
+            raise exception
+        with new_results:
+            new_results.notify_all()
+            if callback:
+                callback(future.result())
+            running_futures.discard(future)
+
     with ProcessPoolExecutor(cores) as executor:
-        done_pairs = 0
-
-        running_tasks = {}
-
-        for _ in range(cores):
-            batch = batch_generator(pairs, batch_size)
-
-            if len(batch) == 0:
-                break
-
-            new_task = executor.submit(
-                calculate_scores_pair,
-                (
-                    batch,
-                    alignment_mode,
-                    pair_generator.edge_param_id,
-                    pair_generator.weights,
-                ),
-            )
-            running_tasks[new_task] = batch
-
         while True:
-            done, _ = wait(running_tasks, None, "FIRST_COMPLETED")
-
-            # first quickly start new tasks
-            for done_task in done:
+            while len(running_futures) < max_queue_length:
                 batch = batch_generator(pairs, batch_size)
 
                 if len(batch) == 0:
-                    continue
+                    all_done.set()
+                    break
 
-                new_task = executor.submit(
+                future = executor.submit(
                     calculate_scores_pair,
                     (
                         batch,
@@ -153,30 +149,14 @@ def generate_edges(
                         pair_generator.weights,
                     ),
                 )
-                running_tasks[new_task] = batch
 
-            # second loop to store results
-            for done_task in done:
-                task_batch: list[RecordPair] = running_tasks[done_task]
+                future.add_done_callback(on_complete)
+                running_futures.add(future)
 
-                exception = done_task.exception()
-                if exception:
-                    raise exception
+            with new_results:
+                new_results.wait()
 
-                results = done_task.result()
-
-                del running_tasks[done_task]
-
-                if len(results) != len(task_batch):
-                    raise ValueError("Mismatch between task length and result length")
-
-                yield from results
-
-                done_pairs += len(results)
-                if callback:
-                    callback(done_pairs)
-
-            if len(running_tasks) == 0:
+            if all_done.is_set():
                 break
 
 
@@ -255,12 +235,12 @@ def do_lcs_pair(
 
     # reset lcs to full region if contains no biosynthetic cds or is smaller than 3 cds
     # TODO: add lcs reset parameters to config
-    if check(pair.comparable_region, 3, True):
+    if check(pair, 3, True):
         return True
 
     logging.debug("resetting after extend")
 
-    reset(pair.comparable_region)
+    reset(pair)
     return False
 
 
@@ -274,7 +254,7 @@ def expand_pair(pair: RecordPair) -> float:
         float: jaccard index
     """
     extend(
-        pair.comparable_region,
+        pair,
         bs_constants.EXPAND_MATCH_SCORE,
         bs_constants.EXPAND_MISMATCH_SCORE,
         bs_constants.EXPAND_GAP_SCORE,
@@ -282,9 +262,9 @@ def expand_pair(pair: RecordPair) -> float:
     )
 
     # TODO: add extension reset parameters to config
-    if not check(pair.comparable_region, 0, True):
+    if not check(pair, 0, True):
         logging.info("resetting after extend")
-        reset(pair.comparable_region)
+        reset(pair)
         jc = calc_jaccard_pair(pair)
         return jc
 
@@ -303,15 +283,7 @@ def calculate_scores_pair(
         float,
         float,
         int,
-        int,
-        int,
-        int,
-        int,
-        int,
-        int,
-        int,
-        int,
-        bool,
+        bs_comparison.ComparableRegion,
     ]
 ]:  # pragma no cover
     """Calculate the scores for a list of pairs
@@ -335,7 +307,7 @@ def calculate_scores_pair(
 
     for pair in pairs:
         logging.debug(pair)
-        pair.comparable_region.log_comparable_region()
+        pair.log_comparable_region()
         jaccard = calc_jaccard_pair(pair, cache=False)
 
         if jaccard == 0.0:
@@ -348,15 +320,7 @@ def calculate_scores_pair(
                     0.0,
                     0.0,
                     edge_param_id,
-                    pair.comparable_region.lcs_a_start,
-                    pair.comparable_region.lcs_a_stop,
-                    pair.comparable_region.lcs_b_start,
-                    pair.comparable_region.lcs_b_stop,
-                    pair.comparable_region.a_start,
-                    pair.comparable_region.a_stop,
-                    pair.comparable_region.b_start,
-                    pair.comparable_region.b_stop,
-                    pair.comparable_region.reverse,
+                    pair.comparable_region,
                 )
             )
             continue
@@ -377,15 +341,7 @@ def calculate_scores_pair(
                     0.0,
                     0.0,
                     edge_param_id,
-                    pair.comparable_region.lcs_a_start,
-                    pair.comparable_region.lcs_a_stop,
-                    pair.comparable_region.lcs_b_start,
-                    pair.comparable_region.lcs_b_stop,
-                    pair.comparable_region.a_start,
-                    pair.comparable_region.a_stop,
-                    pair.comparable_region.b_start,
-                    pair.comparable_region.b_stop,
-                    pair.comparable_region.reverse,
+                    pair.comparable_region,
                 )
             )
             continue
@@ -407,7 +363,7 @@ def calculate_scores_pair(
 
         # at the very end, we need to inflate the comparable region coordinates to
         # include CDS without domains
-        pair.comparable_region.inflate()
+        pair.comparable_region.inflate(pair)
 
         results.append(
             (
@@ -418,15 +374,7 @@ def calculate_scores_pair(
                 adjacency,
                 dss,
                 edge_param_id,
-                pair.comparable_region.lcs_a_start,
-                pair.comparable_region.lcs_a_stop,
-                pair.comparable_region.lcs_b_start,
-                pair.comparable_region.lcs_b_stop,
-                pair.comparable_region.a_start,
-                pair.comparable_region.a_stop,
-                pair.comparable_region.b_start,
-                pair.comparable_region.b_stop,
-                pair.comparable_region.reverse,
+                pair.comparable_region,
             )
         )
         logging.debug("")

@@ -4,6 +4,7 @@
 import unittest
 import random
 import string
+import big_scape.comparison.record_pair
 
 # from other modules
 import big_scape.genbank as bs_genbank
@@ -157,18 +158,17 @@ class TestExtendUtilities(unittest.TestCase):
         record_a = generate_mock_region(cds_a)
         record_b = generate_mock_region(cds_b)
 
-        record_pair = bs_comp.RecordPair(record_a, record_b)
+        record_pair = big_scape.comparison.record_pair.RecordPair(record_a, record_b)
 
         # create a comparable region starting at a single cds
-        comparable_region = bs_comp.ComparableRegion(
-            record_pair, 5, 6, 5, 6, 0, 0, 0, 0, False
+        record_pair.comparable_region = bs_comp.ComparableRegion(
+            5, 6, 5, 6, 0, 0, 0, 0, False
         )
 
         # reset the expansion
-        bs_comp.extend.reset(comparable_region)
+        bs_comp.extend.reset(record_pair)
 
         expected_comparable_region = bs_comp.ComparableRegion(
-            record_pair,
             0,
             len(cds_a),
             0,
@@ -180,7 +180,7 @@ class TestExtendUtilities(unittest.TestCase):
             False,
         )
 
-        self.assertEqual(expected_comparable_region, comparable_region)
+        self.assertEqual(expected_comparable_region, record_pair.comparable_region)
 
     def test_reset_protocluster(self):
         """Test for reset method on a protocluster"""
@@ -190,18 +190,17 @@ class TestExtendUtilities(unittest.TestCase):
         record_a = generate_mock_protocluster(cds_a, 5)
         record_b = generate_mock_protocluster(cds_b, 5)
 
-        record_pair = bs_comp.RecordPair(record_a, record_b)
+        record_pair = big_scape.comparison.record_pair.RecordPair(record_a, record_b)
 
         # create a comparable region starting at a single cds
-        comparable_region = bs_comp.ComparableRegion(
-            record_pair, 5, 6, 5, 6, 0, 0, 0, 0, False
+        record_pair.comparable_region = bs_comp.ComparableRegion(
+            5, 6, 5, 6, 0, 0, 0, 0, False
         )
 
         # reset the expansion
-        bs_comp.extend.reset(comparable_region)
+        bs_comp.extend.reset(record_pair)
 
         expected_comparable_region = bs_comp.ComparableRegion(
-            record_pair,
             0,
             len(cds_a),
             0,
@@ -213,7 +212,7 @@ class TestExtendUtilities(unittest.TestCase):
             False,
         )
 
-        self.assertEqual(expected_comparable_region, comparable_region)
+        self.assertEqual(expected_comparable_region, record_pair.comparable_region)
 
     def test_check_too_short(self):
         """Test for check method when a region is too short and contains no
@@ -225,15 +224,15 @@ class TestExtendUtilities(unittest.TestCase):
         record_a = generate_mock_protocluster(cds_a, 5)
         record_b = generate_mock_protocluster(cds_b, 5)
 
-        record_pair = bs_comp.RecordPair(record_a, record_b)
+        record_pair = big_scape.comparison.record_pair.RecordPair(record_a, record_b)
 
         # create a comparable region starting at a single cds
-        comparable_region = bs_comp.ComparableRegion(
-            record_pair, 5, 6, 5, 6, 0, 0, 0, 0, False
+        record_pair.comparable_region = bs_comp.ComparableRegion(
+            5, 6, 5, 6, 0, 0, 0, 0, False
         )
 
         expected_result = False
-        actual_result = bs_comp.extend.check(comparable_region, 3, True)
+        actual_result = bs_comp.extend.check(record_pair, 3, True)
 
         self.assertEqual(expected_result, actual_result)
 
@@ -247,15 +246,15 @@ class TestExtendUtilities(unittest.TestCase):
         record_a = generate_mock_protocluster(cds_a, 5)
         record_b = generate_mock_protocluster(cds_b, 5)
 
-        record_pair = bs_comp.RecordPair(record_a, record_b)
+        record_pair = big_scape.comparison.record_pair.RecordPair(record_a, record_b)
 
         # create a comparable region starting at a single cds
-        comparable_region = bs_comp.ComparableRegion(
-            record_pair, 5, 6, 5, 6, 0, 0, 0, 0, False
+        record_pair.comparable_region = bs_comp.ComparableRegion(
+            5, 6, 5, 6, 0, 0, 0, 0, False
         )
 
         expected_result = True
-        actual_result = bs_comp.extend.check(comparable_region, 3, True)
+        actual_result = bs_comp.extend.check(record_pair, 3, True)
 
         self.assertEqual(expected_result, actual_result)
 
@@ -268,15 +267,15 @@ class TestExtendUtilities(unittest.TestCase):
         record_a = generate_mock_protocluster(cds_a, 5)
         record_b = generate_mock_protocluster(cds_b, 5)
 
-        record_pair = bs_comp.RecordPair(record_a, record_b)
+        record_pair = big_scape.comparison.record_pair.RecordPair(record_a, record_b)
 
         # create a comparable region starting at a single cds
-        comparable_region = bs_comp.ComparableRegion(
-            record_pair, 5, 9, 5, 9, 0, 0, 0, 0, False
+        record_pair.comparable_region = bs_comp.ComparableRegion(
+            5, 9, 5, 9, 0, 0, 0, 0, False
         )
 
         expected_result = True
-        actual_result = bs_comp.extend.check(comparable_region, 3, True)
+        actual_result = bs_comp.extend.check(record_pair, 3, True)
 
         self.assertEqual(expected_result, actual_result)
 

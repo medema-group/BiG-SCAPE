@@ -7,31 +7,18 @@ import sqlite3
 
 # from dependencies
 from sqlalchemy import insert, select
+from big_scape.comparison.record_pair import RecordPair
 
 # from other modules
 from big_scape.data import DB
-from big_scape.comparison.binning import RecordPairGenerator, RecordPair
+
+# from this module
+from .binning import RecordPairGenerator
+from .comparable_region import ComparableRegion
 
 
 def save_edge_to_db(
-    edge: tuple[
-        int,
-        int,
-        float,
-        float,
-        float,
-        float,
-        int,
-        int,
-        int,
-        int,
-        int,
-        int,
-        int,
-        int,
-        int,
-        bool,
-    ],
+    edge: tuple[int, int, float, float, float, float, int, ComparableRegion],
     upsert=False,
 ) -> None:
     """Save edge to the database
@@ -52,15 +39,7 @@ def save_edge_to_db(
         adjacency,
         dss,
         edge_param_id,
-        lcs_a_start,
-        lcs_a_stop,
-        lcs_b_start,
-        lcs_b_stop,
-        ext_a_start,
-        ext_a_stop,
-        ext_b_start,
-        ext_b_stop,
-        reverse,
+        comparable_region,
     ) = edge
 
     # save the comparison data to the database
@@ -79,15 +58,15 @@ def save_edge_to_db(
         adjacency=adjacency,
         dss=dss,
         edge_param_id=edge_param_id,
-        lcs_a_start=lcs_a_start,
-        lcs_a_stop=lcs_a_stop,
-        lcs_b_start=lcs_b_start,
-        lcs_b_stop=lcs_b_stop,
-        ext_a_start=ext_a_start,
-        ext_a_stop=ext_a_stop,
-        ext_b_start=ext_b_start,
-        ext_b_stop=ext_b_stop,
-        reverse=reverse,
+        lcs_a_start=comparable_region.lcs_a_start,
+        lcs_a_stop=comparable_region.lcs_a_stop,
+        lcs_b_start=comparable_region.lcs_b_start,
+        lcs_b_stop=comparable_region.lcs_b_stop,
+        ext_a_start=comparable_region.a_start,
+        ext_a_stop=comparable_region.a_stop,
+        ext_b_start=comparable_region.b_start,
+        ext_b_stop=comparable_region.b_stop,
+        reverse=comparable_region.reverse,
     )
 
     if upsert:
@@ -97,25 +76,7 @@ def save_edge_to_db(
 
 
 def save_edges_to_db(
-    edges: list[
-        tuple[
-            int,
-            int,
-            float,
-            float,
-            float,
-            float,
-            int,
-            int,
-            int,
-            int,
-            int,
-            int,
-            int,
-            int,
-            bool,
-        ]
-    ]
+    edges: list[tuple[int, int, float, float, float, float, ComparableRegion]]
 ) -> None:
     """Save many edges to the database
 
@@ -143,7 +104,9 @@ def save_edges_to_db(
     # trigger an integrityerror
     query = "INSERT OR IGNORE INTO distance VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"
 
-    cursor.executemany(query, edges)
+    unpacked_edges = [edge[:-1] + edge[-1].to_tuple() for edge in edges]
+
+    cursor.executemany(query, unpacked_edges)
 
     # # execute the query. use batches of 100000 to track progress
     # batch_size = 100000

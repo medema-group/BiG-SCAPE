@@ -9,66 +9,62 @@ import big_scape.hmm as bs_hmm
 
 # from this module
 from .comparable_region import ComparableRegion
+from .record_pair import RecordPair
 
 
-def reset(comparable_region: ComparableRegion) -> None:
-    """Resets the expansion of a comparable region
+def reset(pair: RecordPair) -> None:
+    """Resets the expansion of a pair's comparable region
 
     Args:
-        comparable_region: The comparable region to reset
+        pair: The record pair to reset
     """
-    comparable_region.a_start = 0
-    comparable_region.b_start = 0
-    comparable_region.a_stop = len(
-        comparable_region.pair.record_a.get_cds_with_domains()
-    )
-    comparable_region.b_stop = len(
-        comparable_region.pair.record_b.get_cds_with_domains()
-    )
-    comparable_region.domain_a_start = 0
-    comparable_region.domain_b_start = 0
-    comparable_region.domain_a_stop = len(comparable_region.pair.record_a.get_hsps())
-    comparable_region.domain_b_stop = len(comparable_region.pair.record_b.get_hsps())
 
-    comparable_region.reverse = False
+    pair.comparable_region.a_start = 0
+    pair.comparable_region.b_start = 0
+    pair.comparable_region.a_stop = len(pair.record_a.get_cds_with_domains())
+    pair.comparable_region.b_stop = len(pair.record_b.get_cds_with_domains())
+    pair.comparable_region.domain_a_start = 0
+    pair.comparable_region.domain_b_start = 0
+    pair.comparable_region.domain_a_stop = len(pair.record_a.get_hsps())
+    pair.comparable_region.domain_b_stop = len(pair.record_b.get_hsps())
+
+    pair.comparable_region.reverse = False
 
 
-def check(
-    comparable_region: ComparableRegion, min_len: int, biosynth_check: bool
-) -> bool:
-    """Checks if a comparable region should be reset after expansion
+def check(pair: RecordPair, min_len: int, biosynth_check: bool) -> bool:
+    """Checks if a pair's comparable region should be reset after expansion
 
     returns true if either of the following conditions are met:
     - the comparable region contains a biosynthetic gene
     - the comparable region is longer than or equal to min_len
 
     Args:
-        comparable_region: The comparable region to check
+        pair: The record pair to check
         min_len: The minimum length of the comparable region
         biosynth_check: Whether to check for biosynthetic genes within the comparable
             region
     """
     if biosynth_check:
         if ComparableRegion.cds_range_contains_biosynthetic(
-            comparable_region.pair.record_a,
-            comparable_region.a_start,
-            comparable_region.a_stop,
+            pair.record_a,
+            pair.comparable_region.a_start,
+            pair.comparable_region.a_stop,
             False,
             False,
         ):
             return True
 
         if ComparableRegion.cds_range_contains_biosynthetic(
-            comparable_region.pair.record_b,
-            comparable_region.b_start,
-            comparable_region.b_stop,
+            pair.record_b,
+            pair.comparable_region.b_start,
+            pair.comparable_region.b_stop,
             False,
-            comparable_region.reverse,
+            pair.comparable_region.reverse,
         ):
             return True
 
-    a_len = comparable_region.a_stop - comparable_region.a_start
-    b_len = comparable_region.b_stop - comparable_region.b_start
+    a_len = pair.comparable_region.a_stop - pair.comparable_region.a_start
+    b_len = pair.comparable_region.b_stop - pair.comparable_region.b_start
 
     if a_len >= min_len and b_len >= min_len:
         return True
@@ -77,7 +73,7 @@ def check(
 
 
 def extend(
-    comparable_region: ComparableRegion,
+    pair: RecordPair,
     match: int,
     mismatch: int,
     gap: int,
@@ -85,7 +81,7 @@ def extend(
 ) -> None:
     """Expands a comparable region
 
-    This will expand the included set of cds in a comparable region based on a scoring
+    This will expand the included set of cds in a pair based on a scoring
     mechanism. If the pair in the comparable region consists of protoclusters, the
     this will not be limited to the bounds of those protoclusters
 
@@ -93,7 +89,7 @@ def extend(
     without domains only.
 
     Args:
-        comparable_region: The comparable region to expand
+        pair: The record pair to extend
         match: The score for a match
         mismatch: The score for a mismatch
         gap: The score for a gap
@@ -101,19 +97,19 @@ def extend(
     """
 
     logging.debug("before extend:")
-    logging.debug(comparable_region)
+    logging.debug(pair.comparable_region)
 
     # get the cds lists
     # TODO: base extend on all domains in case of protoclusters, allow extend beyond
     # protocluster border
-    a_domains = comparable_region.pair.record_a.get_hsps()
-    b_domains = comparable_region.pair.record_b.get_hsps()
+    a_domains = pair.record_a.get_hsps()
+    b_domains = pair.record_b.get_hsps()
 
     a_max_dist = math.floor(len(a_domains) * max_match_dist_perc)
     b_max_dist = math.floor(len(b_domains) * max_match_dist_perc)
 
     # reverse b if necessary. This might be true after LCS
-    if comparable_region.reverse:
+    if pair.comparable_region.reverse:
         b_domains = b_domains[::-1]
 
     # we will try the following approach:
@@ -129,27 +125,27 @@ def extend(
 
     if len(a_domains) > len(b_domains):
         query_domains = b_domains
-        query_start = comparable_region.b_start
-        query_domain_start = comparable_region.domain_b_start
-        query_stop = comparable_region.b_stop
-        query_domain_stop = comparable_region.domain_b_stop
+        query_start = pair.comparable_region.b_start
+        query_domain_start = pair.comparable_region.domain_b_start
+        query_stop = pair.comparable_region.b_stop
+        query_domain_stop = pair.comparable_region.domain_b_stop
         target_domains = a_domains
-        target_start = comparable_region.a_start
-        target_domain_start = comparable_region.domain_a_start
-        target_stop = comparable_region.a_stop
-        target_domain_stop = comparable_region.domain_a_stop
+        target_start = pair.comparable_region.a_start
+        target_domain_start = pair.comparable_region.domain_a_start
+        target_stop = pair.comparable_region.a_stop
+        target_domain_stop = pair.comparable_region.domain_a_stop
         max_match_dist = a_max_dist
     else:
         query_domains = a_domains
-        query_start = comparable_region.a_start
-        query_domain_start = comparable_region.domain_a_start
-        query_stop = comparable_region.a_stop
-        query_domain_stop = comparable_region.domain_a_stop
+        query_start = pair.comparable_region.a_start
+        query_domain_start = pair.comparable_region.domain_a_start
+        query_stop = pair.comparable_region.a_stop
+        query_domain_stop = pair.comparable_region.domain_a_stop
         target_domains = b_domains
-        target_start = comparable_region.b_start
-        target_domain_start = comparable_region.domain_b_start
-        target_stop = comparable_region.b_stop
-        target_domain_stop = comparable_region.domain_b_stop
+        target_start = pair.comparable_region.b_start
+        target_domain_start = pair.comparable_region.domain_b_start
+        target_stop = pair.comparable_region.b_stop
+        target_domain_stop = pair.comparable_region.domain_b_stop
         max_match_dist = b_max_dist
 
     # generate an index of domain positions in the target
@@ -176,11 +172,11 @@ def extend(
 
         # set the new start and stop positions
         if len(a_domains) > len(b_domains):
-            comparable_region.b_stop += query_exp
-            comparable_region.a_stop += target_exp
+            pair.comparable_region.b_stop += query_exp
+            pair.comparable_region.a_stop += target_exp
         else:
-            comparable_region.a_stop += query_exp
-            comparable_region.b_stop += target_exp
+            pair.comparable_region.a_stop += query_exp
+            pair.comparable_region.b_stop += target_exp
 
     if target_domain_start != 0 and query_domain_start != 0:
         query_exp, target_exp, score = score_extend_rev(
@@ -199,14 +195,14 @@ def extend(
 
         # expand left
         if len(a_domains) > len(b_domains):
-            comparable_region.b_start -= query_exp
-            comparable_region.a_start -= target_exp
+            pair.comparable_region.b_start -= query_exp
+            pair.comparable_region.a_start -= target_exp
         else:
-            comparable_region.a_start -= query_exp
-            comparable_region.b_start -= target_exp
+            pair.comparable_region.a_start -= query_exp
+            pair.comparable_region.b_start -= target_exp
 
     logging.debug("after extend:")
-    logging.debug(comparable_region)
+    logging.debug(pair.comparable_region)
 
 
 def get_target_indexes(

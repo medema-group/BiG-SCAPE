@@ -44,7 +44,7 @@ def calculate_distances_classify(
                     last = done_pairs
 
             as_class_edges = bs_comparison.generate_edges(
-                missing_edge_bin, run["alignment_mode"], run["cores"], callback
+                missing_edge_bin, run["alignment_mode"], run["cores"], run["cores"] * 2, callback
             )
 
             with tqdm.tqdm(

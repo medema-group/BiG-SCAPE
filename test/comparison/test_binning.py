@@ -7,6 +7,7 @@ from collections import OrderedDict
 
 # from dependencies
 from Bio.SeqFeature import SeqFeature, FeatureLocation
+from big_scape.comparison.record_pair import RecordPair
 
 # from other modules
 from big_scape.genbank import GBK, BGCRecord, CDS, Region, ProtoCluster, ProtoCore
@@ -15,7 +16,6 @@ from big_scape.comparison import (
     QueryToRefRecordPairGenerator,
     RefToRefRecordPairGenerator,
     ConnectedComponentPairGenerator,
-    RecordPair,
     save_edge_to_db,
     get_record_category,
     get_weight_category,
@@ -280,15 +280,17 @@ class TestBGCBin(TestCase):
                         1.0,
                         1.0,
                         1,
-                        0,
-                        0,
-                        0,
-                        0,
-                        0,
-                        0,
-                        0,
-                        0,
-                        False,
+                        bs_comparison.ComparableRegion(
+                            0,
+                            0,
+                            0,
+                            0,
+                            0,
+                            0,
+                            0,
+                            0,
+                            False,
+                        ),
                     )
                 )
             else:
@@ -302,15 +304,17 @@ class TestBGCBin(TestCase):
                         0.0,
                         0.0,
                         1,
-                        0,
-                        0,
-                        0,
-                        0,
-                        0,
-                        0,
-                        0,
-                        0,
-                        False,
+                        bs_comparison.ComparableRegion(
+                            0,
+                            0,
+                            0,
+                            0,
+                            0,
+                            0,
+                            0,
+                            0,
+                            False,
+                        ),
                     )
                 )
 
@@ -387,15 +391,17 @@ class TestBGCBin(TestCase):
                         1.0,
                         1.0,
                         1,
-                        0,
-                        0,
-                        0,
-                        0,
-                        0,
-                        0,
-                        0,
-                        0,
-                        False,
+                        bs_comparison.ComparableRegion(
+                            0,
+                            0,
+                            0,
+                            0,
+                            0,
+                            0,
+                            0,
+                            0,
+                            False,
+                        ),
                     )
                 )
             else:
@@ -409,15 +415,17 @@ class TestBGCBin(TestCase):
                         0.0,
                         0.0,
                         1,
-                        0,
-                        0,
-                        0,
-                        0,
-                        0,
-                        0,
-                        0,
-                        0,
-                        False,
+                        bs_comparison.ComparableRegion(
+                            0,
+                            0,
+                            0,
+                            0,
+                            0,
+                            0,
+                            0,
+                            0,
+                            False,
+                        ),
                     )
                 )
 
@@ -445,15 +453,17 @@ class TestBGCBin(TestCase):
                 1.0,
                 1.0,
                 1,
-                0,
-                0,
-                0,
-                0,
-                0,
-                0,
-                0,
-                0,
-                False,
+                bs_comparison.ComparableRegion(
+                    0,
+                    0,
+                    0,
+                    0,
+                    0,
+                    0,
+                    0,
+                    0,
+                    False,
+                ),
             )
         )
 
@@ -467,15 +477,17 @@ class TestBGCBin(TestCase):
                 0.0,
                 0.0,
                 1,
-                0,
-                0,
-                0,
-                0,
-                0,
-                0,
-                0,
-                0,
-                False,
+                bs_comparison.ComparableRegion(
+                    0,
+                    0,
+                    0,
+                    0,
+                    0,
+                    0,
+                    0,
+                    0,
+                    False,
+                ),
             )
         )
         save_edge_to_db(
@@ -487,15 +499,17 @@ class TestBGCBin(TestCase):
                 0.0,
                 0.0,
                 1,
-                0,
-                0,
-                0,
-                0,
-                0,
-                0,
-                0,
-                0,
-                False,
+                bs_comparison.ComparableRegion(
+                    0,
+                    0,
+                    0,
+                    0,
+                    0,
+                    0,
+                    0,
+                    0,
+                    False,
+                ),
             )
         )
         save_edge_to_db(
@@ -507,15 +521,17 @@ class TestBGCBin(TestCase):
                 0.0,
                 0.0,
                 1,
-                0,
-                0,
-                0,
-                0,
-                0,
-                0,
-                0,
-                0,
-                False,
+                bs_comparison.ComparableRegion(
+                    0,
+                    0,
+                    0,
+                    0,
+                    0,
+                    0,
+                    0,
+                    0,
+                    False,
+                ),
             )
         )
 
@@ -662,15 +678,17 @@ class TestBGCBin(TestCase):
                 1.0,
                 1.0,
                 1,
-                0,
-                0,
-                0,
-                0,
-                0,
-                0,
-                0,
-                0,
-                False,
+                bs_comparison.ComparableRegion(
+                    0,
+                    0,
+                    0,
+                    0,
+                    0,
+                    0,
+                    0,
+                    0,
+                    False,
+                ),
             )
         )
 
@@ -683,15 +701,17 @@ class TestBGCBin(TestCase):
                 0.0,
                 0.0,
                 1,
-                0,
-                0,
-                0,
-                0,
-                0,
-                0,
-                0,
-                0,
-                False,
+                bs_comparison.ComparableRegion(
+                    0,
+                    0,
+                    0,
+                    0,
+                    0,
+                    0,
+                    0,
+                    0,
+                    False,
+                ),
             )
         )
 
@@ -704,15 +724,17 @@ class TestBGCBin(TestCase):
                 1.0,
                 1.0,
                 1,
-                0,
-                0,
-                0,
-                0,
-                0,
-                0,
-                0,
-                0,
-                False,
+                bs_comparison.ComparableRegion(
+                    0,
+                    0,
+                    0,
+                    0,
+                    0,
+                    0,
+                    0,
+                    0,
+                    False,
+                ),
             )
         )
 

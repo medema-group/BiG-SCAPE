@@ -6,6 +6,7 @@ return the state of partial analyses so that they can be continued
 from pathlib import Path
 from unittest import TestCase
 from itertools import combinations
+import big_scape.comparison.record_pair
 
 # from other modules
 from big_scape.data import (
@@ -54,24 +55,7 @@ def add_mock_hsp_alignment_hsp(hsp: HSP) -> None:
 def gen_mock_edge_list(
     edge_gbks: list[GBK],
 ) -> list[
-    tuple[
-        int,
-        int,
-        float,
-        float,
-        float,
-        float,
-        int,
-        int,
-        int,
-        int,
-        int,
-        int,
-        int,
-        int,
-        int,
-        bool,
-    ]
+    tuple[int, int, float, float, float, float, int, bs_comparison.ComparableRegion]
 ]:
     edges = []
     for gbk_a, gbk_b in combinations(edge_gbks, 2):
@@ -89,15 +73,17 @@ def gen_mock_edge_list(
                 0.0,
                 0.0,
                 1,
-                0,
-                0,
-                0,
-                0,
-                0,
-                0,
-                0,
-                0,
-                False,
+                bs_comparison.ComparableRegion(
+                    0,
+                    0,
+                    0,
+                    0,
+                    0,
+                    0,
+                    0,
+                    0,
+                    False,
+                ),
             )
         )
 
@@ -520,8 +506,8 @@ class TestPartialComparison(TestCase):
         mix_bin.add_records([gbk.region for gbk in gbks])
 
         expected_missing_pairs = [
-            bs_comparison.RecordPair(gbks[0].region, gbks[2].region),
-            bs_comparison.RecordPair(gbks[1].region, gbks[2].region),
+            big_scape.comparison.record_pair.RecordPair(gbks[0].region, gbks[2].region),
+            big_scape.comparison.record_pair.RecordPair(gbks[1].region, gbks[2].region),
         ]
 
         pair_generator = bs_comparison.RecordPairGenerator("mix", 1)
