@@ -613,22 +613,22 @@ class TestBGCBin(TestCase):
             ),
         ]
 
-        # expected_pairs = set(
-        #     [
-        #         RecordPair(query_gbk.region, ref_gbks[0].region),
-        #         RecordPair(query_gbk.region, ref_gbks[1].region),
-        #         RecordPair(ref_gbks[0].region, ref_gbks[1].region),
-        #     ]
-        # )
-        expected_record_ids = [1, 2, 3]
+        expected_pairs = set(
+            [
+                RecordPair(query_gbk.region, ref_gbks[0].region),
+                RecordPair(query_gbk.region, ref_gbks[1].region),
+                RecordPair(ref_gbks[0].region, ref_gbks[1].region),
+            ]
+        )
+        # expected_record_ids = [1, 2, 3]
 
         cc_pair_generator = ConnectedComponentPairGenerator(connected_component, "mix")
         cc_pair_generator.add_records(source_records)
 
-        actual_record_ids = cc_pair_generator.record_ids = [1, 2, 3]
-        # actual_pairs = set(list(cc_pair_generator.generate_pairs()))
+        # actual_record_ids = cc_pair_generator.record_ids = [1, 2, 3]
+        actual_pairs = set(list(cc_pair_generator.generate_pairs()))
 
-        self.assertEqual(expected_record_ids, actual_record_ids)
+        self.assertEqual(expected_pairs, actual_pairs)
 
     def test_cull_singletons_cutoff(self):
         """Tests whether singletons are correctly culled"""

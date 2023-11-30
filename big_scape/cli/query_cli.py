@@ -17,6 +17,7 @@ from .cli_validations import (
     validate_pfam_path,
     set_start,
     validate_binning_query_workflow,
+    validate_query_record,
 )
 
 
@@ -31,6 +32,29 @@ from .cli_validations import (
     help=(
         "Path to query BGC file. BiG-SCAPE will compare, "
         "all input BGCs to the query in a one-vs-all mode."
+    ),
+)
+@click.option(
+    "--query_record_number",
+    type=int,
+    required=False,
+    help=(
+        "Query BGC record number. Used to select the specific record"
+        "from the query BGC gbk. Warning: interleaved or chemical hybrid proto"
+        "cluster/cores are merged, and the relevant number is that of the "
+        "first record of the merged cluster (the one with the lowest number)."
+        " e.g. if records 1 and 2 get merged, the relevant number is 1. "
+    ),
+)
+@click.option(
+    "--skip_propagation",
+    is_flag=True,
+    help=(
+        "Only generate edges between the query and reference BGCs. If not set, "
+        "BiG-SCAPE will also propagate edge generation to reference BGCs."
+        "Warning: if database already contains all edges, this will not work,"
+        "and the output will still showcase all edges between nodes "
+        "in the query connected component."
     ),
 )
 @click.pass_context
@@ -55,6 +79,7 @@ def query(ctx, *args, **kwarg):
     validate_pfam_path(ctx)
     validate_output_paths(ctx)
     validate_binning_query_workflow(ctx)
+    validate_query_record(ctx)
 
     # set start time and label
     set_start(ctx.obj)

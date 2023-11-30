@@ -92,17 +92,10 @@ def run_bigscape(run: dict) -> None:
         logging.info("Profiler started")
 
     # INPUT - load data
-    # TODO: check/implement loading a subset of DB behaviour
-    # attention: each gbk is unique by its path, so if user copies a gbk for a
-    # subset, it wont be loaded from db
-    # TODO: gbk id should be made a hash of the content
-
     gbks = bs_files.load_gbks(run, bigscape_dir)
 
     # get all working BGC records
-
     all_bgc_records: list[bs_gbk.BGCRecord] = []
-
     for gbk in gbks:
         if gbk.region is not None:
             gbk_records = bs_gbk.bgc_record.get_sub_records(
@@ -110,10 +103,32 @@ def run_bigscape(run: dict) -> None:
             )
             if run["query_bgc_path"]:
                 if gbk.source_type == bs_enums.SOURCE_TYPE.QUERY:
-                    # TODO: allow query mode on protocluster/protocores?
-                    query_node_id = gbk.region._db_id
-                    query_record = gbk.region
-            all_bgc_records.extend(gbk_records)
+                    query_record_type = run["record_type"]
+
+                    query_record_type = run["record_type"]
+                    query_record_number = run["query_record_number"]
+
+                    query_sub_records = bs_gbk.bgc_record.get_sub_records(
+                        gbk.region, query_record_type
+                    )
+
+                    if query_record_type == bs_enums.RECORD_TYPE.REGION:
+                        query_record = query_sub_records[0]
+
+                    else:
+                        query_record = [
+                            record
+                            for record in query_sub_records
+                            if record.number == query_record_number
+                        ][0]
+
+                    query_node_id = query_record._db_id
+
+                    all_bgc_records.append(query_record)
+                else:
+                    all_bgc_records.extend(gbk_records)
+            else:
+                all_bgc_records.extend(gbk_records)
 
     # get fist task
     run_state = bs_data.find_minimum_task(gbks)
@@ -272,7 +287,9 @@ def run_bigscape(run: dict) -> None:
     # query
 
     if run["query_bgc_path"]:
-        query_records = bs_query.calculate_distances_query(run, gbks)
+        query_records = bs_query.calculate_distances_query(
+            run, all_bgc_records, query_record
+        )
 
         DB.commit()
 

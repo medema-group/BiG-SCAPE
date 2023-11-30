@@ -333,9 +333,12 @@ def common_cluster_query(fn):
             type=click.Path(path_type=Path, dir_okay=False),
             help="Path to sqlite db output file. Default: output_dir/data_sqlite.db.",
         ),
+        # TODO: implement cand_cluster here and LCS-ext
         click.option(
             "--record_type",
-            type=click.Choice(["region", "proto_cluster", "proto_core"]),
+            type=click.Choice(
+                ["region", "cand_cluster", "proto_cluster", "proto_core"]
+            ),
             default="region",
             callback=validate_record_type,
             help="Use a specific type of record for comparison. Default: region",

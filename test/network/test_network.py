@@ -417,3 +417,35 @@ class TestNetwork(TestCase):
         ]
 
         self.assertEqual(expected_cc, query_cc)
+
+    def test_get_nodes_from_connected_component(self):
+        """Tests whether nodes are correctly retrieved from a connected component"""
+
+        bs_data.DB.create_in_mem()
+
+        # create a bunch of gbk files
+        gbks = []
+        for i in range(8):
+            gbk = create_mock_gbk(i)
+            gbks.append(gbk)
+            gbk.save_all()
+
+        # gather all records to include
+        gbk_regions = [gbk.region for gbk in gbks]
+
+        # create two connected components 123 and 456
+        edges = gen_mock_edge_list(gbks[:3])
+
+        # save the edges
+        for edge in edges:
+            bs_comparison.save_edge_to_db(edge)
+
+        # find cc for query record 5
+        cc = bs_network.get_query_connected_component(
+            include_records=gbk_regions, edge_param_id=1, query_node_id=1
+        )
+
+        nodes = bs_network.get_nodes_from_cc(cc, gbks)
+        expected_nodes = [gbks[0], gbks[1], gbks[2]]
+
+        self.assertEqual(nodes, expected_nodes)
