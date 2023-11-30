@@ -62,7 +62,7 @@ def get_distance_from_unshared(
 
         distance_non_anchor += unshared_count
 
-    return distance_non_anchor, distance_anchor
+    return distance_anchor, distance_non_anchor
 
 
 def get_aligned_string_dist(string_a: str, string_b: str) -> float:
@@ -153,7 +153,7 @@ def get_distance_from_shared(
     intersect = domain_set_a & domain_set_b
 
     distance_anchor = 0.0
-    distance_non_nachor = 0.0
+    distance_non_anchor = 0.0
 
     domains_anchor = 0
     domains_non_anchor = 0
@@ -167,14 +167,16 @@ def get_distance_from_shared(
             distance_anchor += sum_seq_dist
             domains_anchor += normalization_element
         else:
-            distance_non_nachor += sum_seq_dist
+            distance_non_anchor += sum_seq_dist
             domains_non_anchor += normalization_element
 
-    return distance_anchor, distance_non_nachor, domains_anchor, domains_non_anchor
+    return distance_anchor, distance_non_anchor, domains_anchor, domains_non_anchor
 
 
 def calc_dss_pair(
-    record_pair: RecordPair, anchor_domains: Optional[set[str]] = None
+    record_pair: RecordPair,
+    anchor_domains: Optional[set[str]] = None,
+    anchor_boost: float = 1.0,
 ) -> float:  # pragma no cover
     """Calculate the DSS for a pair of records
 
@@ -182,6 +184,7 @@ def calc_dss_pair(
         record_pair (RecordPair): Pair of records to calculate DSS for
         anchor_domains (Optional[set[str]], optional): Set of anchor domains. Defaults
             to None.
+        anchor_boost (float): boost the importance of anchor domains in DSS calculation
 
     Returns:
         float: DSS score for the pair of records
@@ -231,8 +234,11 @@ def calc_dss_pair(
     dss_non_anchor = distance_non_anchor / domains_non_anchor
 
     # Calculate proper, proportional weight to each kind of domain
-    anchor_percent = domains_anchor / (domains_non_anchor + domains_anchor)
-    non_anchor_percent = domains_non_anchor / (domains_anchor + domains_anchor)
+    anchor_percent = (domains_anchor * anchor_boost) / (
+        domains_non_anchor + domains_anchor
+    )
+    # non_anchor_percent = domains_non_anchor / (domains_anchor + domains_anchor)
+    non_anchor_percent = domains_non_anchor / (domains_non_anchor + domains_anchor)
 
     # boost anchor subcomponent and re-normalize
     non_anchor_weight = non_anchor_percent / (anchor_percent + non_anchor_percent)
