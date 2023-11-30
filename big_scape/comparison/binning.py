@@ -4,6 +4,10 @@ At this level, the comparisons are referred to as pairs. Whenever anything talks
 pairs, it refers to things generated from these classes. This is distinct from what are
 referred to as edges, which are pairs that have a (set of) distances between them and
 may be present in the database.
+
+TODO: this file is very long and is begging for refactoring. a lot of the classes
+are very similar apart from the method in which they query the database. This could
+almost certainly be abstracted somehow
 """
 
 # from python
