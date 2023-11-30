@@ -65,10 +65,10 @@ class TestTrees(TestCase):
         mock_result = {
             "record_a_id": 0,
             "record_b_id": 1,
-            "lcs_a_start": 4,
-            "lcs_a_stop": 7,
-            "lcs_b_start": 6,
-            "lcs_b_stop": 9,
+            "lcs_domain_a_start": 4,
+            "lcs_domain_a_stop": 7,
+            "lcs_domain_b_start": 6,
+            "lcs_domain_b_stop": 9,
             "reverse": False,
         }
 
@@ -83,10 +83,10 @@ class TestTrees(TestCase):
         mock_result = {
             "record_a_id": 0,
             "record_b_id": 1,
-            "lcs_a_start": 4,
-            "lcs_a_stop": 7,
-            "lcs_b_start": 6,
-            "lcs_b_stop": 9,
+            "lcs_domain_a_start": 4,
+            "lcs_domain_a_stop": 7,
+            "lcs_domain_b_start": 6,
+            "lcs_domain_b_stop": 9,
             "reverse": True,
         }
 
@@ -101,10 +101,10 @@ class TestTrees(TestCase):
         mock_result = {
             "record_a_id": 0,
             "record_b_id": 1,
-            "lcs_a_start": 6,
-            "lcs_a_stop": 9,
-            "lcs_b_start": 4,
-            "lcs_b_stop": 7,
+            "lcs_domain_a_start": 6,
+            "lcs_domain_a_stop": 9,
+            "lcs_domain_b_start": 4,
+            "lcs_domain_b_stop": 7,
             "reverse": False,
         }
 
@@ -119,10 +119,10 @@ class TestTrees(TestCase):
         mock_result = {
             "record_a_id": 0,
             "record_b_id": 1,
-            "lcs_a_start": 6,
-            "lcs_a_stop": 9,
-            "lcs_b_start": 4,
-            "lcs_b_stop": 7,
+            "lcs_domain_a_start": 6,
+            "lcs_domain_a_stop": 9,
+            "lcs_domain_b_start": 4,
+            "lcs_domain_b_stop": 7,
             "reverse": True,
         }
 

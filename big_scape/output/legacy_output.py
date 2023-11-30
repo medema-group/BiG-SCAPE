@@ -783,25 +783,25 @@ def adjust_lcs_to_family_reference(
         tuple[int, int, bool]: adjusted a_start, b_start, reverse
     """
     if lcs_data["record_a_id"] == family_db_id:
-        a_start = lcs_data["lcs_a_start"]
-        b_start = lcs_data["lcs_b_start"]
+        a_start = lcs_data["lcs_domain_a_start"]
+        b_start = lcs_data["lcs_domain_b_start"]
         reverse = lcs_data["reverse"]
 
         if reverse:
             b_start = bgc_cds_num - b_start - 1
 
     elif lcs_data["record_b_id"] == family_db_id:
-        a_start = lcs_data["lcs_b_start"]
-        b_start = lcs_data["lcs_a_start"]
+        a_start = lcs_data["lcs_domain_b_start"]
+        b_start = lcs_data["lcs_domain_a_start"]
         reverse = lcs_data["reverse"]
 
         if reverse:
             # to keep consistent family reference genes flip A back to forward
-            a_stop = lcs_data["lcs_b_stop"]
+            a_stop = lcs_data["lcs_domain_b_stop"]
             a_start = fam_cds_num - a_stop
 
             # now we just need to correct for the exclusive stop in B
-            b_stop = lcs_data["lcs_a_stop"]
+            b_stop = lcs_data["lcs_domain_a_stop"]
             b_start = b_stop - 1
 
     return a_start, b_start, reverse
@@ -887,12 +887,16 @@ def generate_bs_families_alignment(
             if bgc_db_id is None:
                 raise AttributeError("Record has no database id!")
 
-            if bgc_db_id == family_db_id:
-                aln.append([[gene_num, 0] for gene_num in range(len(bgc_gbk.genes))])
+            bgc_domains = bgc_record.get_hsps()
 
-            # protoclusters from the same record don't need aligning
+            if bgc_db_id == family_db_id:
+                aln.append([[dom_num, 0] for dom_num in range(len(bgc_domains))])
+
+            # records from the same region will not have an lcs,
+            # TODO: should they end up in the same family we can align them if they overlap
             elif bgc_gbk == fam_record.parent_gbk:
-                aln.append([[gene_num, 100] for gene_num in range(len(bgc_gbk.genes))])
+                aln.append([[dom_num, 0] for dom_num in range(len(bgc_domains))])
+                # aln.append([align_subrecords(fam_record, bgc_record)])
 
             else:
                 lcs_data = fetch_lcs_from_db(
@@ -904,19 +908,15 @@ def generate_bs_families_alignment(
                 a_start, b_start, reverse = adjust_lcs_to_family_reference(
                     lcs_data,
                     family_db_id,
-                    len(fam_record.get_cds()),
-                    len(bgc_record.get_cds()),
-                )
-
-                a_start, b_start = adjust_lcs_to_full_region(
-                    a_start, b_start, fam_record, bgc_record
+                    len(fam_record.get_hsps()),
+                    len(bgc_domains),
                 )
 
                 ref_genes_.add(a_start)
 
                 bgc_algn = []
-                for gene_num in range(len(bgc_gbk.genes)):
-                    if gene_num == b_start:
+                for dom_num in range(len(bgc_domains)):
+                    if dom_num == b_start:
                         if reverse:
                             bgc_algn.append([a_start, -100])
                         else:
