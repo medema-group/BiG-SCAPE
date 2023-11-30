@@ -4,7 +4,7 @@
 from typing import Any
 
 # from other modules
-from big_scape.comparison import RecordPair
+from big_scape.comparison.record_pair import RecordPair
 
 
 def calc_jaccard_sets(set_a: set[Any], set_b: set[Any]) -> float:

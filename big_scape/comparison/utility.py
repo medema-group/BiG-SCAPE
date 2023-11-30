@@ -7,10 +7,11 @@ import sqlite3
 
 # from dependencies
 from sqlalchemy import insert, select
+from big_scape.comparison.record_pair import RecordPair
 
 # from other modules
 from big_scape.data import DB
-from big_scape.comparison.binning import RecordPairGenerator, RecordPair
+from big_scape.comparison.binning import RecordPairGenerator
 
 
 def save_edge_to_db(

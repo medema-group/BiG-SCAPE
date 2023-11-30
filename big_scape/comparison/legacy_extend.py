@@ -11,8 +11,9 @@ from big_scape.cli.constants import (
     EXPAND_MATCH_SCORE,
     EXPAND_MISMATCH_SCORE,
 )
+from big_scape.comparison.record_pair import RecordPair
 from big_scape.genbank import CDS, BGCRecord
-from big_scape.comparison import ComparableRegion, RecordPair
+from big_scape.comparison import ComparableRegion
 
 import big_scape.enums as bs_enums
 

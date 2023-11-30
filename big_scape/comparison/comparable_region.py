@@ -11,7 +11,7 @@ from big_scape.genbank import BGCRecord
 
 # from circular imports
 if TYPE_CHECKING:  # pragma: no cover
-    from .binning import (
+    from .record_pair import (
         RecordPair,
     )  # not sure why this one throws a circular import error
 

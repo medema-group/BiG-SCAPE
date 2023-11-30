@@ -21,7 +21,7 @@ from difflib import Match, SequenceMatcher
 
 # from other modules
 import big_scape.genbank as bs_genbank
-import big_scape.comparison as bs_comparison
+import big_scape.comparison.record_pair as bs_comparison
 import big_scape.hmm as bs_hmm
 
 

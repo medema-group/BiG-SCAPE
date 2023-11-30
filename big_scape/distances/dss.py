@@ -14,7 +14,7 @@ from scipy.optimize import linear_sum_assignment
 
 # from other modules
 from big_scape.cli.constants import LEGACY_ANCHOR_DOMAINS
-from big_scape.comparison import RecordPair
+from big_scape.comparison.record_pair import RecordPair
 
 # from this module
 

@@ -4,6 +4,7 @@
 import unittest
 import random
 import string
+import big_scape.comparison.record_pair
 
 # from other modules
 import big_scape.genbank as bs_genbank
@@ -157,7 +158,7 @@ class TestExtendUtilities(unittest.TestCase):
         record_a = generate_mock_region(cds_a)
         record_b = generate_mock_region(cds_b)
 
-        record_pair = bs_comp.RecordPair(record_a, record_b)
+        record_pair = big_scape.comparison.record_pair.RecordPair(record_a, record_b)
 
         # create a comparable region starting at a single cds
         record_pair.comparable_region = bs_comp.ComparableRegion(
@@ -189,7 +190,7 @@ class TestExtendUtilities(unittest.TestCase):
         record_a = generate_mock_protocluster(cds_a, 5)
         record_b = generate_mock_protocluster(cds_b, 5)
 
-        record_pair = bs_comp.RecordPair(record_a, record_b)
+        record_pair = big_scape.comparison.record_pair.RecordPair(record_a, record_b)
 
         # create a comparable region starting at a single cds
         record_pair.comparable_region = bs_comp.ComparableRegion(
@@ -223,7 +224,7 @@ class TestExtendUtilities(unittest.TestCase):
         record_a = generate_mock_protocluster(cds_a, 5)
         record_b = generate_mock_protocluster(cds_b, 5)
 
-        record_pair = bs_comp.RecordPair(record_a, record_b)
+        record_pair = big_scape.comparison.record_pair.RecordPair(record_a, record_b)
 
         # create a comparable region starting at a single cds
         record_pair.comparable_region = bs_comp.ComparableRegion(
@@ -245,7 +246,7 @@ class TestExtendUtilities(unittest.TestCase):
         record_a = generate_mock_protocluster(cds_a, 5)
         record_b = generate_mock_protocluster(cds_b, 5)
 
-        record_pair = bs_comp.RecordPair(record_a, record_b)
+        record_pair = big_scape.comparison.record_pair.RecordPair(record_a, record_b)
 
         # create a comparable region starting at a single cds
         record_pair.comparable_region = bs_comp.ComparableRegion(
@@ -266,7 +267,7 @@ class TestExtendUtilities(unittest.TestCase):
         record_a = generate_mock_protocluster(cds_a, 5)
         record_b = generate_mock_protocluster(cds_b, 5)
 
-        record_pair = bs_comp.RecordPair(record_a, record_b)
+        record_pair = big_scape.comparison.record_pair.RecordPair(record_a, record_b)
 
         # create a comparable region starting at a single cds
         record_pair.comparable_region = bs_comp.ComparableRegion(

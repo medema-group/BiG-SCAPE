@@ -2,11 +2,12 @@
 
 # from python
 from unittest import TestCase
+from big_scape.comparison.record_pair import RecordPair
 
 # from other modules
 from big_scape.genbank import GBK, Region, CDS
 from big_scape.hmm import HSP
-from big_scape.comparison import RecordPair, ComparableRegion
+from big_scape.comparison import ComparableRegion
 
 
 class TestComparibleRegions(TestCase):

@@ -1,6 +1,6 @@
 """Contains code to create and manage comparison objects"""
+from .record_pair import RecordPair
 from .binning import (
-    RecordPair,
     RecordPairGenerator,
     QueryToRefRecordPairGenerator,
     RefToRefRecordPairGenerator,
@@ -26,7 +26,7 @@ from . import lcs
 from . import extend
 
 __all__ = [
-    "RecordPair",
+    "record_pair",
     "RecordPairGenerator",
     "QueryToRefRecordPairGenerator",
     "RefToRefRecordPairGenerator",

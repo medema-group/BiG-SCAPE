@@ -15,6 +15,7 @@ from concurrent.futures import ProcessPoolExecutor, Future
 from threading import Event, Condition
 from typing import Generator, Callable, Optional, TypeVar
 from math import ceil
+from .record_pair import RecordPair
 
 
 # from other modules
@@ -24,7 +25,7 @@ import big_scape.genbank as bs_gbk
 import big_scape.cli.constants as bs_constants
 
 # from this module
-from .binning import RecordPairGenerator, RecordPair
+from .binning import RecordPairGenerator
 from .binning import LEGACY_WEIGHTS
 from .extend import extend, reset, check
 from .lcs import find_domain_lcs_region, find_domain_lcs_protocluster

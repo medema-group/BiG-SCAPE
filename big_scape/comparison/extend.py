@@ -9,7 +9,7 @@ import big_scape.hmm as bs_hmm
 
 # from this module
 from .comparable_region import ComparableRegion
-from .binning import RecordPair
+from .record_pair import RecordPair
 
 
 def reset(pair: RecordPair) -> None:

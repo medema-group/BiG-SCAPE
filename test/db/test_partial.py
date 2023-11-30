@@ -6,6 +6,7 @@ return the state of partial analyses so that they can be continued
 from pathlib import Path
 from unittest import TestCase
 from itertools import combinations
+import big_scape.comparison.record_pair
 
 # from other modules
 from big_scape.data import (
@@ -520,8 +521,8 @@ class TestPartialComparison(TestCase):
         mix_bin.add_records([gbk.region for gbk in gbks])
 
         expected_missing_pairs = [
-            bs_comparison.RecordPair(gbks[0].region, gbks[2].region),
-            bs_comparison.RecordPair(gbks[1].region, gbks[2].region),
+            big_scape.comparison.record_pair.RecordPair(gbks[0].region, gbks[2].region),
+            big_scape.comparison.record_pair.RecordPair(gbks[1].region, gbks[2].region),
         ]
 
         pair_generator = bs_comparison.RecordPairGenerator("mix", 1)

@@ -4,6 +4,7 @@
 import unittest
 import random
 import string
+import big_scape.comparison.record_pair
 
 # from other modules
 import big_scape.genbank as bs_genbank
@@ -114,7 +115,7 @@ class TestRegionDomainLCS(unittest.TestCase):
 
         pc_a = generate_mock_protocluster(cds_a, 2)
         pc_b = generate_mock_protocluster(cds_b, 2)
-        pair = bs_comparison.RecordPair(pc_a, pc_b)
+        pair = big_scape.comparison.record_pair.RecordPair(pc_a, pc_b)
 
         lcs = bs_comparison.lcs.find_domain_lcs_region(pair)
 
@@ -131,7 +132,7 @@ class TestRegionDomainLCS(unittest.TestCase):
 
         pc_a = generate_mock_protocluster(cds_a, 2)
         pc_b = generate_mock_protocluster(cds_b, 2)
-        pair = bs_comparison.RecordPair(pc_a, pc_b)
+        pair = big_scape.comparison.record_pair.RecordPair(pc_a, pc_b)
 
         lcs = bs_comparison.lcs.find_domain_lcs_region(pair)
 
@@ -145,7 +146,7 @@ class TestRegionDomainLCS(unittest.TestCase):
 
         pc_a = generate_mock_protocluster(cds_a)
         pc_b = generate_mock_protocluster(cds_b)
-        pair = bs_comparison.RecordPair(pc_a, pc_b)
+        pair = big_scape.comparison.record_pair.RecordPair(pc_a, pc_b)
 
         with self.assertRaises(RuntimeError):
             bs_comparison.lcs.find_domain_lcs_region(pair)
@@ -159,7 +160,7 @@ class TestRegionDomainLCS(unittest.TestCase):
 
         pc_a = generate_mock_protocluster(cds_a, 2)
         pc_b = generate_mock_protocluster(cds_b, 2)
-        pair = bs_comparison.RecordPair(pc_a, pc_b)
+        pair = big_scape.comparison.record_pair.RecordPair(pc_a, pc_b)
 
         lcs = bs_comparison.lcs.find_domain_lcs_region(pair)
 
@@ -176,7 +177,7 @@ class TestRegionDomainLCS(unittest.TestCase):
 
         pc_a = generate_mock_protocluster(cds_a, 2)
         pc_b = generate_mock_protocluster(cds_b, 2)
-        pair = bs_comparison.RecordPair(pc_a, pc_b)
+        pair = big_scape.comparison.record_pair.RecordPair(pc_a, pc_b)
 
         lcs = bs_comparison.lcs.find_domain_lcs_region(pair)
 
@@ -192,7 +193,7 @@ class TestRegionDomainLCS(unittest.TestCase):
 
         pc_a = generate_mock_protocluster(cds_a, 2)
         pc_b = generate_mock_protocluster(cds_b, 2)
-        pair = bs_comparison.RecordPair(pc_a, pc_b)
+        pair = big_scape.comparison.record_pair.RecordPair(pc_a, pc_b)
 
         lcs = bs_comparison.lcs.find_domain_lcs_region(pair)
 
@@ -208,7 +209,7 @@ class TestRegionDomainLCS(unittest.TestCase):
 
         pc_a = generate_mock_protocluster(cds_a, 2)
         pc_b = generate_mock_protocluster(cds_b, 2)
-        pair = bs_comparison.RecordPair(pc_a, pc_b)
+        pair = big_scape.comparison.record_pair.RecordPair(pc_a, pc_b)
 
         lcs = bs_comparison.lcs.find_domain_lcs_region(pair)
 
@@ -224,7 +225,7 @@ class TestRegionDomainLCS(unittest.TestCase):
 
         pc_a = generate_mock_protocluster(cds_a, 2)
         pc_b = generate_mock_protocluster(cds_b, 2)
-        pair = bs_comparison.RecordPair(pc_a, pc_b)
+        pair = big_scape.comparison.record_pair.RecordPair(pc_a, pc_b)
 
         lcs = bs_comparison.lcs.find_domain_lcs_region(pair)
 
@@ -247,7 +248,7 @@ class TestProtoclusterDomainLCS(unittest.TestCase):
         record_a = bs_genbank.Region(gbk, 1, 0, len(cds_a) * 100, False, "")
         record_b = bs_genbank.Region(gbk, 1, 0, len(cds_b) * 100, False, "")
 
-        record_pair = bs_comparison.RecordPair(record_a, record_b)
+        record_pair = big_scape.comparison.record_pair.RecordPair(record_a, record_b)
 
         with self.assertRaises(TypeError):
             bs_comparison.lcs.find_domain_lcs_protocluster(record_pair)
@@ -267,7 +268,7 @@ class TestProtoclusterDomainLCS(unittest.TestCase):
         )
         record_b = bs_genbank.Region(gbk, 1, 0, len(cds_b) * 100, False, "")
 
-        record_pair = bs_comparison.RecordPair(record_a, record_b)
+        record_pair = big_scape.comparison.record_pair.RecordPair(record_a, record_b)
 
         with self.assertRaises(TypeError):
             bs_comparison.lcs.find_domain_lcs_protocluster(record_pair)
@@ -281,7 +282,9 @@ class TestProtoclusterDomainLCS(unittest.TestCase):
         protocluster_a = generate_mock_protocluster(cds_a, 2)
         protocluster_b = generate_mock_protocluster(cds_b, 2)
 
-        record_pair = bs_comparison.RecordPair(protocluster_a, protocluster_b)
+        record_pair = big_scape.comparison.record_pair.RecordPair(
+            protocluster_a, protocluster_b
+        )
 
         expected_lcs = (1, 6, 1, 6, 1, 4, 1, 4, False)
         actual_lcs = bs_comparison.lcs.find_domain_lcs_protocluster(record_pair)
@@ -297,7 +300,9 @@ class TestProtoclusterDomainLCS(unittest.TestCase):
         protocluster_a = generate_mock_protocluster(cds_a, 2)
         protocluster_b = generate_mock_protocluster(cds_b, 2)
 
-        record_pair = bs_comparison.RecordPair(protocluster_a, protocluster_b)
+        record_pair = big_scape.comparison.record_pair.RecordPair(
+            protocluster_a, protocluster_b
+        )
 
         expected_lcs = (1, 6, 1, 6, 1, 4, 1, 4, True)
         actual_lcs = bs_comparison.lcs.find_domain_lcs_protocluster(record_pair)
@@ -330,7 +335,9 @@ class TestProtoclusterDomainLCS(unittest.TestCase):
         protocluster_a = generate_mock_protocluster(cds_a, 2)
         protocluster_b = generate_mock_protocluster(cds_b, 2)
 
-        record_pair = bs_comparison.RecordPair(protocluster_a, protocluster_b)
+        record_pair = big_scape.comparison.record_pair.RecordPair(
+            protocluster_a, protocluster_b
+        )
 
         expected_lcs = (1, 3, 1, 3, 1, 3, 1, 3, False)
         actual_lcs = bs_comparison.lcs.find_domain_lcs_protocluster(record_pair)
@@ -363,7 +370,9 @@ class TestProtoclusterDomainLCS(unittest.TestCase):
         protocluster_a = generate_mock_protocluster(cds_a, 5)
         protocluster_b = generate_mock_protocluster(cds_b, 5)
 
-        record_pair = bs_comparison.RecordPair(protocluster_a, protocluster_b)
+        record_pair = big_scape.comparison.record_pair.RecordPair(
+            protocluster_a, protocluster_b
+        )
 
         expected_lcs = (5, 7, 3, 5, 5, 7, 3, 5, True)
         actual_lcs = bs_comparison.lcs.find_domain_lcs_protocluster(record_pair)
@@ -386,7 +395,9 @@ class TestProtoclusterDomainLCS(unittest.TestCase):
         protocluster_a = generate_mock_protocluster(cds_a, 5)
         protocluster_b = generate_mock_protocluster(cds_b, 5)
 
-        record_pair = bs_comparison.RecordPair(protocluster_a, protocluster_b)
+        record_pair = big_scape.comparison.record_pair.RecordPair(
+            protocluster_a, protocluster_b
+        )
 
         expected_lcs = (5, 6, 5, 6, 5, 6, 5, 6, False)
         actual_lcs = bs_comparison.lcs.find_domain_lcs_protocluster(record_pair)
@@ -422,7 +433,9 @@ class TestProtoclusterDomainLCS(unittest.TestCase):
         protocluster_a = generate_mock_protocluster(cds_a, 4)
         protocluster_b = generate_mock_protocluster(cds_b, 4)
 
-        record_pair = bs_comparison.RecordPair(protocluster_a, protocluster_b)
+        record_pair = big_scape.comparison.record_pair.RecordPair(
+            protocluster_a, protocluster_b
+        )
 
         expected_lcs = (4, 7, 4, 7, 4, 5, 4, 5, False)
         actual_lcs = bs_comparison.lcs.find_domain_lcs_protocluster(record_pair)
@@ -459,7 +472,9 @@ class TestProtoclusterDomainLCS(unittest.TestCase):
         protocluster_a = generate_mock_protocluster(cds_a, 4)
         protocluster_b = generate_mock_protocluster(cds_b, 4)
 
-        record_pair = bs_comparison.RecordPair(protocluster_a, protocluster_b)
+        record_pair = big_scape.comparison.record_pair.RecordPair(
+            protocluster_a, protocluster_b
+        )
 
         expected_lcs = (4, 6, 4, 6, 4, 5, 4, 5, False)
         actual_lcs = bs_comparison.lcs.find_domain_lcs_protocluster(record_pair)
@@ -494,7 +509,9 @@ class TestProtoclusterDomainLCS(unittest.TestCase):
         protocluster_a = generate_mock_protocluster(cds_a, 4)
         protocluster_b = generate_mock_protocluster(cds_b, 4)
 
-        record_pair = bs_comparison.RecordPair(protocluster_a, protocluster_b)
+        record_pair = big_scape.comparison.record_pair.RecordPair(
+            protocluster_a, protocluster_b
+        )
 
         expected_lcs = (6, 9, 2, 5, 4, 5, 2, 3, True)
         actual_lcs = bs_comparison.lcs.find_domain_lcs_protocluster(record_pair)
