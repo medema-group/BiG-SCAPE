@@ -9,6 +9,7 @@ import logging
 import big_scape.genbank as bs_gbk
 import big_scape.comparison as bs_comparison
 import big_scape.enums as bs_enums
+import big_scape.network.network as bs_network
 
 
 def calculate_distances_query(
@@ -122,6 +123,9 @@ def calculate_distances_query(
 
         logging.info("Generated %d edges", num_edges)
 
+    if run["skip_propagation"]:
+        return query_records
+
     # now we expand these edges from reference to other reference
     # TODO: see if we can implement missing for these
     ref_to_ref_bin = bs_comparison.RefToRefRecordPairGenerator(
@@ -137,7 +141,7 @@ def calculate_distances_query(
             break
 
         logging.info(
-            "Calculating distances for %d pairs (Reference to Reference)",
+            "Calculating distances for %d pairs (Connected Reference to Singleton Reference)",
             num_pairs,
         )
 
@@ -173,18 +177,30 @@ def calculate_distances_query(
         logging.info("Generated %d edges", num_edges)
 
     # now we make any last connected ref <-> connected ref pairs that are missing
-    missing_edge_ref_bin = bs_comparison.MissingRecordPairGenerator(ref_to_ref_bin)
-    num_pairs = missing_edge_ref_bin.num_pairs()
+    # get all the edges in the query connected component
+    query_connected_component = bs_network.get_query_connected_component(
+        query_records, query_record._db_id, edge_param_id, 1
+    )
+
+    query_nodes = bs_network.get_nodes_from_cc(query_connected_component, query_records)
+
+    query_connected_bin = bs_comparison.RecordPairGenerator("Query", edge_param_id)
+    query_connected_bin.add_records(query_nodes)
+
+    # fetch any existing distances from database
+    missing_ref_edge_bin = bs_comparison.MissingRecordPairGenerator(query_connected_bin)
+    # get the number of pairs that are missing
+    num_pairs = missing_ref_edge_bin.num_pairs()
 
     # calculate distances
     if num_pairs > 0:
         logging.info(
-            "Calculating distances for %d pairs (Query to Reference)",
+            "Calculating distances for %d pairs (Connected Reference to Connected Reference)",
             num_pairs,
         )
 
         query_edges = bs_comparison.generate_edges(
-            missing_edge_ref_bin,
+            missing_ref_edge_bin,
             run["alignment_mode"],
             run["cores"],
         )

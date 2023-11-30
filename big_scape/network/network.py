@@ -299,3 +299,35 @@ def get_query_connected_component(
         # we can now yield the connected component
 
     return list(connected_component)
+
+
+def get_nodes_from_cc(
+    connected_component, bgc_records: list[BGCRecord]
+) -> list[BGCRecord]:
+    "get the nodes from the connected component"
+
+    cc_record_ids = set()
+    cc_record_list = []
+
+    for edge in connected_component:
+        (
+            record_a_id,
+            record_b_id,
+            dist,
+            jacc,
+            adj,
+            dss,
+            edge_param_id,
+        ) = edge
+        cc_record_ids.add(record_a_id)
+        cc_record_ids.add(record_b_id)
+
+    for record in bgc_records:
+        if record._db_id is None:
+            raise ValueError("Region in bin has no db id!")
+        if record._db_id not in cc_record_ids:
+            continue
+
+        cc_record_list.append(record)
+
+    return cc_record_list

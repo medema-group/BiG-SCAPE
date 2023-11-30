@@ -46,6 +46,17 @@ from .cli_validations import (
         " e.g. if records 1 and 2 get merged, the relevant number is 1. "
     ),
 )
+@click.option(
+    "--skip_propagation",
+    is_flag=True,
+    help=(
+        "Only generate edges between the query and reference BGCs. If not set, "
+        "BiG-SCAPE will also propagate edge generation to reference BGCs."
+        "Warning: if database already contains all edges, this will not work,"
+        "and the output will still showcase all edges between nodes "
+        "in the query connected component."
+    ),
+)
 @click.pass_context
 def query(ctx, *args, **kwarg):
     """
