@@ -302,7 +302,7 @@ def generate_run_data_js(
                 json.dumps(run_data, indent=4, separators=(",", ":"), sort_keys=True)
             )
         )
-        run_data_js.write("dataLoaded();\n")
+        run_data_js.write("dataLoaded('run_data');\n")
 
 
 def add_run_data_network(
@@ -351,7 +351,7 @@ def add_run_data_network(
                 json.dumps(run_data, indent=4, separators=(",", ":"), sort_keys=True)
             )
         )
-        run_data_js.write("dataLoaded();\n")
+        run_data_js.write("dataLoaded('run_data');\n")
 
 
 def read_bigscape_results_js(bigscape_results_js_path: Path) -> list[Any]:
