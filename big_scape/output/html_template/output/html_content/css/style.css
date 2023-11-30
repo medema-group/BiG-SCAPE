@@ -1,6 +1,7 @@
 html {
   --text-color-normal: rgba(129, 129, 127, 1);
   --text-color-richer: rgba(129, 129, 127, 1);
+  --text-color-tooltip: black;
   --link-color: #1d1414;
   --border-color: black;
   --overview-button-background: #51a3a3;
@@ -14,6 +15,7 @@ html[data-theme='dark'] {
   --accent-hue: 210;
   --text-color-normal: hsl(var(--hue), 10%, 62%);
   --text-color-richer: hsl(var(--hue), 34%, 48%);
+  --text-color-tooltip: var(--text-color-normal);
   --link-color: hsl(var(--hue), 90%, 70%);
   --border-color: hsl(var(--accent-hue), 20%, 50%);
   --overview-button-background: hsl(var(--hue), 34%, 48%);
@@ -30,9 +32,9 @@ html[data-theme='dark'] #bgc_per_class,
 html[data-theme='dark'] #abpres_heatmap {
   filter: invert(100%);
 }
-html[data-theme='dark'] #arrower-tooltip-1234567890 {
+#arrower-tooltip-1234567890 {
   background-color: var(--background-color);
-  color: var(--text-color-normal);
+  color: var(--text-color-tooltip);
   border: 1px solid var(--border-color)
 }
 body {
