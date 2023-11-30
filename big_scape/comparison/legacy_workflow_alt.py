@@ -17,7 +17,7 @@ from math import ceil
 
 
 # from other modules
-from big_scape.distances import calc_jaccard_pair, calc_ai_pair, calc_dss_pair_legacy
+from big_scape.distances import calc_jaccard_pair, calc_ai_pair, calc_dss_pair
 import big_scape.enums as bs_enums
 import big_scape.genbank as bs_gbk
 import big_scape.cli.constants as bs_constants
@@ -336,7 +336,7 @@ def calculate_scores_pair(
     for pair in pairs:
         logging.debug(pair)
         pair.comparable_region.log_comparable_region()
-        jaccard = calc_jaccard_pair(pair)
+        jaccard = calc_jaccard_pair(pair, cache=False)
 
         if jaccard == 0.0:
             results.append(
@@ -400,7 +400,7 @@ def calculate_scores_pair(
 
         adjacency = calc_ai_pair(pair)
         # mix anchor boost = 2.0
-        dss = calc_dss_pair_legacy(pair, anchor_boost=anchor_boost)
+        dss = calc_dss_pair(pair, anchor_boost=anchor_boost)
 
         similarity = jaccard * jc_weight + adjacency * ai_weight + dss * dss_weight
         distance = 1 - similarity
