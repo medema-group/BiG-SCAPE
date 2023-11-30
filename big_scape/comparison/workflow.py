@@ -23,6 +23,7 @@ from big_scape.distances import calc_jaccard_pair, calc_ai_pair, calc_dss_pair
 import big_scape.enums as bs_enums
 import big_scape.genbank as bs_gbk
 import big_scape.cli.constants as bs_constants
+import big_scape.comparison as bs_comparison
 
 # from this module
 from .binning import RecordPairGenerator
@@ -282,15 +283,7 @@ def calculate_scores_pair(
         float,
         float,
         int,
-        int,
-        int,
-        int,
-        int,
-        int,
-        int,
-        int,
-        int,
-        bool,
+        bs_comparison.ComparableRegion,
     ]
 ]:  # pragma no cover
     """Calculate the scores for a list of pairs
@@ -327,15 +320,7 @@ def calculate_scores_pair(
                     0.0,
                     0.0,
                     edge_param_id,
-                    pair.comparable_region.lcs_a_start,
-                    pair.comparable_region.lcs_a_stop,
-                    pair.comparable_region.lcs_b_start,
-                    pair.comparable_region.lcs_b_stop,
-                    pair.comparable_region.a_start,
-                    pair.comparable_region.a_stop,
-                    pair.comparable_region.b_start,
-                    pair.comparable_region.b_stop,
-                    pair.comparable_region.reverse,
+                    pair.comparable_region,
                 )
             )
             continue
@@ -356,15 +341,7 @@ def calculate_scores_pair(
                     0.0,
                     0.0,
                     edge_param_id,
-                    pair.comparable_region.lcs_a_start,
-                    pair.comparable_region.lcs_a_stop,
-                    pair.comparable_region.lcs_b_start,
-                    pair.comparable_region.lcs_b_stop,
-                    pair.comparable_region.a_start,
-                    pair.comparable_region.a_stop,
-                    pair.comparable_region.b_start,
-                    pair.comparable_region.b_stop,
-                    pair.comparable_region.reverse,
+                    pair.comparable_region,
                 )
             )
             continue
@@ -397,15 +374,7 @@ def calculate_scores_pair(
                 adjacency,
                 dss,
                 edge_param_id,
-                pair.comparable_region.lcs_a_start,
-                pair.comparable_region.lcs_a_stop,
-                pair.comparable_region.lcs_b_start,
-                pair.comparable_region.lcs_b_stop,
-                pair.comparable_region.a_start,
-                pair.comparable_region.a_stop,
-                pair.comparable_region.b_start,
-                pair.comparable_region.b_stop,
-                pair.comparable_region.reverse,
+                pair.comparable_region,
             )
         )
         logging.debug("")

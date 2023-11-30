@@ -158,6 +158,24 @@ class ComparableRegion:
         self.inflate_a(pair.record_a)
         self.inflate_b(pair.record_b)
 
+    def to_tuple(self):
+        """Returns a tuple representation of this comparable region
+
+        Returns:
+            tuple: Tuple representation of this comparable region
+        """
+        return (
+            self.a_start,
+            self.a_stop,
+            self.b_start,
+            self.b_stop,
+            self.domain_a_start,
+            self.domain_a_stop,
+            self.domain_b_start,
+            self.domain_b_stop,
+            self.reverse,
+        )
+
     def __eq__(self, __o: object) -> bool:
         """Checks whether this LCS object and another object are equal
 

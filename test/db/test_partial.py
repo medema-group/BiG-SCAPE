@@ -55,24 +55,7 @@ def add_mock_hsp_alignment_hsp(hsp: HSP) -> None:
 def gen_mock_edge_list(
     edge_gbks: list[GBK],
 ) -> list[
-    tuple[
-        int,
-        int,
-        float,
-        float,
-        float,
-        float,
-        int,
-        int,
-        int,
-        int,
-        int,
-        int,
-        int,
-        int,
-        int,
-        bool,
-    ]
+    tuple[int, int, float, float, float, float, int, bs_comparison.ComparableRegion]
 ]:
     edges = []
     for gbk_a, gbk_b in combinations(edge_gbks, 2):
@@ -90,15 +73,17 @@ def gen_mock_edge_list(
                 0.0,
                 0.0,
                 1,
-                0,
-                0,
-                0,
-                0,
-                0,
-                0,
-                0,
-                0,
-                False,
+                bs_comparison.ComparableRegion(
+                    0,
+                    0,
+                    0,
+                    0,
+                    0,
+                    0,
+                    0,
+                    0,
+                    False,
+                ),
             )
         )
 
