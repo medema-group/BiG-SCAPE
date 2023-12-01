@@ -11,8 +11,9 @@ import logging
 
 # from other modules
 from big_scape.data import DB
-from big_scape.comparison import RecordPairGenerator
+from big_scape.comparison import RecordPairGenerator, lcs
 from big_scape.genbank import GBK, CDS, BGCRecord, MergedProtoCluster, MergedProtoCore
+from big_scape.hmm import HSP
 from big_scape.enums import SOURCE_TYPE
 from big_scape.trees import generate_newick_tree
 from big_scape.comparison import get_record_category
@@ -769,15 +770,15 @@ def fetch_lcs_from_db(a_id: int, b_id: int, edge_param_id: int) -> dict[str, Any
 
 
 def adjust_lcs_to_family_reference(
-    lcs_data: dict[str, Any], family_db_id: int, fam_cds_num: int, bgc_cds_num: int
+    lcs_data: dict[str, Any], family_db_id: int, fam_dom_num: int, bgc_dom_num: int
 ) -> tuple[int, int, bool]:
     """Adjusts lcs start to the family reference
 
     Args:
         lcs_data (dict[str, Any]): dictionary with lcs boundaries
         family_db_id (int): record db id of family reference
-        fam_cds_num (int): number of cds in family record
-        bgc_cds_num (int): number of cds in member record
+        fam_dom_num (int): number of domains in family record
+        bgc_dom_num (int): number of domains in member record
 
     Returns:
         tuple[int, int, bool]: adjusted a_start, b_start, reverse
@@ -788,7 +789,7 @@ def adjust_lcs_to_family_reference(
         reverse = lcs_data["reverse"]
 
         if reverse:
-            b_start = bgc_cds_num - b_start - 1
+            b_start = bgc_dom_num - b_start - 1
 
     elif lcs_data["record_b_id"] == family_db_id:
         a_start = lcs_data["lcs_domain_b_start"]
@@ -798,12 +799,43 @@ def adjust_lcs_to_family_reference(
         if reverse:
             # to keep consistent family reference genes flip A back to forward
             a_stop = lcs_data["lcs_domain_b_stop"]
-            a_start = fam_cds_num - a_stop
+            a_start = fam_dom_num - a_stop
 
             # now we just need to correct for the exclusive stop in B
             b_stop = lcs_data["lcs_domain_a_stop"]
             b_start = b_stop - 1
 
+    return a_start, b_start, reverse
+
+
+def align_subrecords(
+    fam_domains: list[HSP], bgc_domains: list[HSP]
+) -> tuple[int, int, bool]:
+    """Find lcs for rare case where two subrecords from the same gbk need aligning
+
+    Args:
+        fam_domains (list[HSP]): family reference domains
+        bgc_domains (list[HSP]): family member domains
+
+    Returns:
+        tuple[int, int bool]: a_start, b_start, reverse
+    """
+    # forward
+    match_fwd, _ = lcs.find_lcs(fam_domains, bgc_domains)
+    fwd_match_len = match_fwd[2]
+
+    # reverse
+    match_rev, _ = lcs.find_lcs(fam_domains, bgc_domains[::-1])
+    rev_match_len = match_rev[2]
+
+    if fwd_match_len >= rev_match_len:
+        a_start = match_fwd[0]
+        b_start = match_fwd[1]
+        reverse = False
+    else:
+        a_start = match_rev[0]
+        b_start = len(bgc_domains) - match_rev[1] - 1
+        reverse = True
     return a_start, b_start, reverse
 
 
@@ -891,12 +923,14 @@ def generate_bs_families_alignment(
 
             if bgc_db_id == family_db_id:
                 aln.append([[dom_num, 0] for dom_num in range(len(bgc_domains))])
+                continue
 
-            # records from the same region will not have an lcs,
-            # TODO: should they end up in the same family we can align them if they overlap
+            # records from the same region will not already have an lcs computed,
+            # should they end up in the same family we can try to align them
             elif bgc_gbk == fam_record.parent_gbk:
-                aln.append([[dom_num, 0] for dom_num in range(len(bgc_domains))])
-                # aln.append([align_subrecords(fam_record, bgc_record)])
+                a_start, b_start, reverse = align_subrecords(
+                    fam_record.get_hsps(), bgc_domains
+                )
 
             else:
                 lcs_data = fetch_lcs_from_db(
@@ -912,18 +946,18 @@ def generate_bs_families_alignment(
                     len(bgc_domains),
                 )
 
-                ref_genes_.add(a_start)
+            ref_genes_.add(a_start)
 
-                bgc_algn = []
-                for dom_num in range(len(bgc_domains)):
-                    if dom_num == b_start:
-                        if reverse:
-                            bgc_algn.append([a_start, -100])
-                        else:
-                            bgc_algn.append([a_start, 100])
+            bgc_algn = []
+            for dom_num in range(len(bgc_domains)):
+                if dom_num == b_start:
+                    if reverse:
+                        bgc_algn.append([a_start, -100])
                     else:
-                        bgc_algn.append([-1, 100])
-                aln.append(bgc_algn)
+                        bgc_algn.append([a_start, 100])
+                else:
+                    bgc_algn.append([-1, 100])
+            aln.append(bgc_algn)
 
         ref_genes = list(ref_genes_)
 
