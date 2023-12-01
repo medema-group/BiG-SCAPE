@@ -1,7 +1,46 @@
+html {
+  --text-color-normal: rgba(129, 129, 127, 1);
+  --text-color-richer: rgba(129, 129, 127, 1);
+  --text-color-tooltip: black;
+  --link-color: #1d1414;
+  --border-color: black;
+  --overview-button-background: #51a3a3;
+  --button-text-color: #eaeae9;
+  --background-color: #fefefe;
+  --background-header: rgba(234, 234, 233, 1);
+  --li-selected-color: red;
+}
+html[data-theme='dark'] {
+  --hue: 180;
+  --accent-hue: 210;
+  --text-color-normal: hsl(var(--hue), 10%, 62%);
+  --text-color-richer: hsl(var(--hue), 34%, 48%);
+  --text-color-tooltip: var(--text-color-normal);
+  --link-color: hsl(var(--hue), 90%, 70%);
+  --border-color: hsl(var(--accent-hue), 20%, 50%);
+  --overview-button-background: hsl(var(--hue), 34%, 48%);
+  --button-text-color: hsl(var(--hue), 10%, 10%);
+  --background-color: hsl(var(--hue), 20%, 12%);
+  --background-header: rgba(159, 159, 143, 0.188);
+  --li-selected-color: hsl(var(--hue), 70%, 60%);
+}
+/* invert svg coloring in dark mode */
+html[data-theme='dark'] .arrower-svg,
+html[data-theme='dark'] #det_fam_tree,
+html[data-theme='dark'] #bgc_per_acc,
+html[data-theme='dark'] #bgc_per_class,
+html[data-theme='dark'] #abpres_heatmap {
+  filter: invert(100%);
+}
+#arrower-tooltip-1234567890 {
+  background-color: var(--background-color);
+  color: var(--text-color-tooltip);
+  border: 1px solid var(--border-color)
+}
 body {
   font-family: Verdana, Tahoma, Sans-Serif;
-  color: rgba(129, 129, 127, 1);
-  background-color: #fefefe;
+  color: var(--text-color-normal);
+  background-color: var(--background-color);
   text-align: left;
   margin: 0;
   padding: 0;
@@ -10,16 +49,16 @@ a {
   text-decoration: none;
 }
 a:active {
-  color: rgba(129, 129, 127, 1);
+  color: var(--text-color-normal);
 }
 a:hover {
   text-decoration: underline;
 }
 a:link {
-  color: #1d1414;
+  color: var(--link-color);
 }
 a:visited {
-  color: #1d1414;
+  color: var(--link-color);
 }
 .bold {
   font-weight: bold;
@@ -36,7 +75,7 @@ a:visited {
 .top-header {
   display: block;
   overflow: hidden;
-  background-color: rgba(234, 234, 233, 1);
+  background-color: var(--background-header);
   padding-bottom: 0.25em;
 }
 .footer {
@@ -51,7 +90,7 @@ a:visited {
   float: left;
 }
 .bigscape-title a {
-  color: rgba(129, 129, 127, 1);
+  color: var(--text-color-normal);
   font-size: 120%;
   font-weight: bold;
 }
@@ -65,7 +104,8 @@ a:visited {
   padding: 3px;
   border: 1px solid gray;
   box-shadow: 2px 3px;
-  background-color: rgba(255,255,255,0.9);
+  color: var(--text-color-normal);
+  background-color: var(--background-color);
   overflow: scroll;
 }
 .desc-container.active {
@@ -79,7 +119,8 @@ a:visited {
   top: 55px;
   left: 10px;
   padding: 3px;
-  background-color: rgba(255,255,255,0.9);
+  color: var(--text-color-normal);
+  background-color: var(--background-color);
   box-shadow: 2px 3px;
   border: 1px solid gray;
 }
@@ -90,7 +131,8 @@ a:visited {
   padding: 3px;
   min-height: 30px;
   min-width: 210px;
-  background-color: rgba(255,255,255,0.9);
+  color: var(--text-color-normal);
+  background-color: var(--background-color);
   box-shadow: 2px 3px;
   border: 1px solid gray;
 }
@@ -99,7 +141,8 @@ a:visited {
   top: 10px;
   left: 10px;
   padding: 3px;
-  background-color: rgba(255,255,255,0.9);
+  color: var(--text-color-normal);
+  background-color: var(--background-color);
   box-shadow: 2px 3px;
   border: 1px solid gray;
 }
@@ -108,7 +151,8 @@ a:visited {
   bottom: 10px;
   left: 10px;
   padding: 3px;
-  background-color: rgba(255,255,255,0.9);
+  color: var(--text-color-normal);
+  background-color: var(--background-color);
   box-shadow: 2px 3px;
   border: 1px solid gray;
 }
@@ -136,17 +180,18 @@ a:visited {
   left: 5px;
   right: 5px;
   padding: 3px;
-  background-color: rgba(255,255,255,0.9);
+  color: var(--text-color-normal);
+  background-color: var(--background-color);
   box-shadow: 2px 3px;
   border: 1px solid gray;
   overflow: scroll;
 }
 .hover-container {
-  background-color: white;
+  background-color: var(--background-color);
   padding: 0px 5px;
   position: absolute;
   overflow: hidden;
-  border: 1px solid #CCC;
+  border: 1px solid var(--border-color);
   box-shadow: 2px 3px;
   min-height: 20px;
   min-width: 50px;
@@ -155,18 +200,19 @@ a:visited {
   z-index: 1000;
   position: absolute;
   overflow: hidden;
-  border: 1px solid #CCC;
+  border: 1px solid var(--border-color);
   white-space: nowrap;
   font-family: sans-serif;
-  background: #FFF;
-  color: #333;
+  background-color: var(--background-color);
+  color: var(--text-color-normal);
   padding: 0;
 }
 .context-menu h3 {
   font-size: normal;
   margin: 0px;
   padding: 2px 5px;
-  border-bottom: 1px solid black;
+  color: var(--text-color-normal);
+  border-bottom: 1px solid var(--border-color);
 }
 .context-menu ul {
   list-style-type: none;
@@ -178,7 +224,7 @@ a:visited {
   cursor: pointer;
 }
 .context-menu li:hover {
-  background-color: #DEF;
+  background-color: var(--background-header);
 }
 .context-menu li a:hover {
   text-decoration: none;
@@ -190,12 +236,12 @@ a:visited {
   display: inline-block;
   height: 10px;
   width: 10px;
-  border: 1px solid black;
+  border: 1px solid var(--border-color);
   margin-right: 5px;
   background: rgba(0,0,0,0);
 }
 .li-check.checked {
-  background: rgba(0,0,0,0.5);
+  background: var(--li-selected-color);
 }
 .li-opendetail.mibig {
   background: rgba(131, 236, 240, 0.5);
@@ -322,10 +368,10 @@ a:visited {
   margin: 5px;
 }
 .overview {
-  background-color: #51a3a3;
+  background-color: var(--overview-button-background);
 }
 .overview a {
-  color: #eaeae9;
+  color: var(--button-text-color);
 }
 .pks {
   background-color: sandybrown;
@@ -987,7 +1033,8 @@ table {
   border-radius: 10px;
   padding: 5px;
   margin: 0px;
-  background-color: rgba(234, 234, 233, 1);
+  color: var(--text-color-richer);
+  background-color: var(--background-color);
 }
 
 .infobar {

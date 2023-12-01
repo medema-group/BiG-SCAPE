@@ -62,7 +62,8 @@ function Bigscape(run_data, bs_data, bs_families, bs_alignment, bs_similarity, n
   var sprLen = 100;
   var layout = Viva.Graph.Layout.forceDirected(graph, {
     springLength: sprLen,
-    springCoeff: 0.001,
+    springCoeff: 0.0005,
+    dragCoeff: 0.1,
     gravity: -1,
     springTransform: function (link, spring) {
       spring.length = sprLen - (sprLen * (link.data.weight));
@@ -331,7 +332,7 @@ function Bigscape(run_data, bs_data, bs_families, bs_alignment, bs_similarity, n
       if (bs_data[a]["hash"] == bs_data[b]["hash"]) {
         graph.addLink(a, b, { weight: 0.01 });
       }
-      else{
+      else {
         if ((a > b) && (bs_similarity[a][b] > intra_cutoff)) {
           if ((bs_to_cl[a] !== bs_to_cl[b]) && (bs_similarity[a][b] < inter_cutoff)) {
             continue;
@@ -474,7 +475,11 @@ function Bigscape(run_data, bs_data, bs_families, bs_alignment, bs_similarity, n
     countDown--;
     if (countDown >= 0) {
       info_ui.find(".network-layout-counter").text(countDown);
-      var scale = 3 * (graphics.getSvgRoot().getElementsByTagName("g")[0].getBoundingClientRect().width / graphics.getSvgRoot().getBoundingClientRect().width);
+      var rootRect = graphics.getSvgRoot().getBoundingClientRect()
+      var networkRect = graphics.getSvgRoot().getElementsByTagName("g")[0].getBoundingClientRect()
+      var scale_w = 1.5 * (networkRect.width / rootRect.width);
+      var scale_h = 1.5 * (networkRect.height / rootRect.height);
+      var scale = Math.max(scale_w, scale_h)
       var point = {
         x: graphics.getSvgRoot().getBoundingClientRect().width / 2,
         y: graphics.getSvgRoot().getBoundingClientRect().height / 2
@@ -483,6 +488,11 @@ function Bigscape(run_data, bs_data, bs_families, bs_alignment, bs_similarity, n
         graphics.scale((1 / scale), point);
       }
     } else {
+      // center graph in svgContainer
+      var rootRect = graphics.getSvgRoot().getBoundingClientRect()
+      var networkRect = graphics.getSvgRoot().getElementsByTagName("g")[0].getBoundingClientRect()
+      graphics.translateRel((rootRect.width / 2) - (networkRect.left + ((networkRect.right - networkRect.left) / 2)),
+        (rootRect.height / 2) - (networkRect.top + ((networkRect.bottom - networkRect.top) / 2)));
       info_ui.html("");
       var nodes_with_edges_count = 0;
       graph.forEachNode(function (node) {
@@ -873,14 +883,14 @@ BigscapeFunc.updateDescription = function (ids, bs_svg, bs_data, bs_to_cl, bs_fa
     }
     if (true) { // update desc_ui LIs
       var ul = desc_ui.find(".bs-desc_ui-list");
-      ul.find("li a.li-opendetail").css("color", "black");
+      ul.find("li a.li-opendetail").css("color", "var(--text-color-normal)");
       ul.find("li a.li-check").removeClass("checked");
       for (var i in sel_fam) {
         for (var j in fam_sels[sel_fam[i]]) {
-          ul.find("li#bs-desc_ui-li_bs-" + fam_sels[sel_fam[i]][j]).children("a.li-opendetail").css("color", "red");
+          ul.find("li#bs-desc_ui-li_bs-" + fam_sels[sel_fam[i]][j]).children("a.li-opendetail").css("color", "var(--li-selected-color)");
           ul.find("li#bs-desc_ui-li_bs-" + fam_sels[sel_fam[i]][j]).children("a.li-check").addClass("checked");
         }
-        ul.find("li#bs-desc_ui-li_fam-" + sel_fam[i]).children("a.li-opendetail").css("color", "red");
+        ul.find("li#bs-desc_ui-li_fam-" + sel_fam[i]).children("a.li-opendetail").css("color", "var(--li-selected-color)");
         ul.find("li#bs-desc_ui-li_fam-" + sel_fam[i]).children("a.li-check").addClass("checked");
       }
       if (desc_ui.find("input[name=bs-desc_ui-li_show]:checked").val() == "all") {

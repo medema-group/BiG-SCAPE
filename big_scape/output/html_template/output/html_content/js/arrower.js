@@ -306,9 +306,9 @@ Arrower.showToolTip = (function(html, handler){
 var divTooltip = $("#" + Arrower.tooltip_id);
 if (divTooltip.length < 1) {
   divTooltip = $("<div id='" + Arrower.tooltip_id + "'>");
-  divTooltip.css("background-color", "white");
-  divTooltip.css("border", "1px solid black");
-  divTooltip.css("color", "black");
+  // divTooltip.css("background-color", "white");
+  // divTooltip.css("border", "1px solid black");
+  // divTooltip.css("color", "black");
   divTooltip.css("font-size", "small");
   divTooltip.css("padding", "0 5px");
   divTooltip.css("pointer-events", "none");
