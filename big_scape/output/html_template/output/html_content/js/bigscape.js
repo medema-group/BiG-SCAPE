@@ -1183,6 +1183,7 @@ BigscapeFunc.openFamDetail = function (id_fam, ids_highlighted, bs_svg, bs_data,
     }
 
     // draw the rest of the bgcs
+    var anyOutTree = false
     for (var i = 0; i < bs_families[id_fam]["members"].length; i++) {
       var isInTree = false;
       for (var j = 0; j < bgcOffsets.length; j++) {
@@ -1196,7 +1197,12 @@ BigscapeFunc.openFamDetail = function (id_fam, ids_highlighted, bs_svg, bs_data,
         jqG.attr('transform', 'translate(' + (510) + ',' + (lastY + 50 - 10) + ') scale(0.5)');
         jqG.appendTo(treeSVG);
         lastY += 50;
+        anyOutTree = true
       }
+    }
+    // display note if any bgcs are placed outside tree
+    if (anyOutTree) {
+      det_ui.append("<span>*NOTE: This family contains members that could not be placed in the tree due to missing common domains</span>");
     }
     // move tree svg into a <g> so that it can be collectively manipulated
     var tempG = document.createElementNS('http://www.w3.org/2000/svg', 'g');
