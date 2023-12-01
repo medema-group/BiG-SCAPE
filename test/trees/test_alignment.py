@@ -7,7 +7,7 @@ from unittest import TestCase
 from big_scape.genbank import GBK, BGCRecord, CDS
 from big_scape.hmm import HSP, HSPAlignment
 from big_scape.trees import generate_newick_tree
-from big_scape.trees.newick_tree import generate_gcf_alignment
+from big_scape.trees.newick_tree import generate_gcf_alignment, find_tree_domains
 from big_scape.output.legacy_output import (
     adjust_lcs_to_family_reference,
     adjust_lcs_to_full_region,
@@ -31,6 +31,37 @@ class TestTrees(TestCase):
         tree = generate_newick_tree(records, exemplar, mock_family, "", "")
 
         self.assertEqual(tree, expected_tree)
+
+    def test_find_tree_domains_small(self):
+        """Tests whether found tree domains are correct"""
+        freqs = {
+            "PF1": 1,
+            "PF2": 2,
+            "PF3": 2,
+        }
+
+        excepted_tree_domains = set(["PF2", "PF3"])
+        actual_tree_domains = find_tree_domains(freqs, 0, 3)
+
+        self.assertEqual(excepted_tree_domains, actual_tree_domains)
+
+    def test_find_tree_domains_large(self):
+        """Tests whether found tree domains are correct"""
+        freqs = {
+            "PF1": 5,
+            "PF2": 5,
+            "PF3": 7,
+            "PF4": 7,
+            "PF5": 6,
+            "PF6": 6,
+            "PF7": 4,
+            "PF8": 3,
+        }
+
+        excepted_tree_domains = set(["PF1", "PF2", "PF3", "PF4", "PF5", "PF6"])
+        actual_tree_domains = find_tree_domains(freqs, 0, 3)
+
+        self.assertEqual(excepted_tree_domains, actual_tree_domains)
 
     def test_gcf_alignment(self):
         """Tests alignment of GCF HSP alignments"""
