@@ -1,6 +1,7 @@
 """Contains config class and method to parse config file """
 
 import configparser
+from pathlib import Path
 
 
 # config class
@@ -22,7 +23,15 @@ class BigscapeConfig:
     EXPAND_MAX_MATCH_PERC = 0.1
 
     @staticmethod
-    def parse_config(config_file_path) -> None:
+    def parse_config(run) -> None:
+        """parses config file
+
+        Args:
+            config_file_path (Path): path to config file
+        """
+
+        config_file_path = run["config_file_path"]
+
         config = configparser.ConfigParser()
         config.read(config_file_path)
 
@@ -45,3 +54,25 @@ class BigscapeConfig:
         BigscapeConfig.EXPAND_MAX_MATCH_PERC = float(
             config["EXPAND"]["EXPAND_MAX_MATCH_PERC"]
         )
+
+        # write config log
+        BigscapeConfig.write_config_log(run, config)
+
+    @staticmethod
+    def write_config_log(run, config) -> None:
+        """_summary_
+
+        Args:
+            log_path (Path): path to log file
+        """
+
+        log_path = run["log_path"]
+        config_log_path = Path(str(log_path).replace(".log", ".config.log"))
+
+        with open(config_log_path, "w") as config_log:
+            for section in config.sections():
+                config_log.write(f"\n[{section}]\n")
+                for key in config[section]:
+                    value = config[section][key]
+                    key = key.upper()
+                    config_log.write(f"{key} = {value}\n")

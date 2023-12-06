@@ -51,7 +51,8 @@ def run_bigscape(run: dict) -> None:
     main_pid = os.getpid()
 
     # parse config file
-    BigscapeConfig.parse_config(run["config_file_path"])
+    logging.info("Using config file %s", run["config_file_path"])
+    BigscapeConfig.parse_config(run)
 
     # capture ctrl-c for database saving and other cleanup
     def signal_handler(sig, frame):
