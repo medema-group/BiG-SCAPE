@@ -22,7 +22,7 @@ from .record_pair import RecordPair
 from big_scape.distances import calc_jaccard_pair, calc_ai_pair, calc_dss_pair
 import big_scape.enums as bs_enums
 import big_scape.genbank as bs_gbk
-import big_scape.cli.constants as bs_constants
+from big_scape.cli.config import BigscapeConfig
 import big_scape.comparison as bs_comparison
 
 # from this module
@@ -255,10 +255,10 @@ def expand_pair(pair: RecordPair) -> float:
     """
     extend(
         pair,
-        bs_constants.EXPAND_MATCH_SCORE,
-        bs_constants.EXPAND_MISMATCH_SCORE,
-        bs_constants.EXPAND_GAP_SCORE,
-        bs_constants.EXPAND_MAX_MATCH_PERC,
+        BigscapeConfig.EXPAND_MATCH_SCORE,
+        BigscapeConfig.EXPAND_MISMATCH_SCORE,
+        BigscapeConfig.EXPAND_GAP_SCORE,
+        BigscapeConfig.EXPAND_MAX_MATCH_PERC,
     )
 
     # TODO: add extension reset parameters to config

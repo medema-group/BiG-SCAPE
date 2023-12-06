@@ -15,7 +15,7 @@ import pandas as pd
 import matplotlib.pyplot as plt
 
 # from other modules
-from big_scape.cli.constants import PROFILER_UPDATE_INTERVAL
+from big_scape.cli.config import BigscapeConfig
 
 # to stop numpy from spitting out warnings to sys.stdout
 # TODO: remove this and resolve underlying issue
@@ -35,7 +35,11 @@ class Profiler:
         self.command_queue: Queue = Queue()
         self.worker = Process(
             target=collect_consumption,
-            args=(profile_path, self.command_queue, PROFILER_UPDATE_INTERVAL),
+            args=(
+                profile_path,
+                self.command_queue,
+                BigscapeConfig.PROFILER_UPDATE_INTERVAL,
+            ),
         )
 
     def start(self) -> None:

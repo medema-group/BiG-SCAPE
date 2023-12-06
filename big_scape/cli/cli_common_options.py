@@ -43,6 +43,7 @@ def common_all(fn):
             type=click.Path(
                 exists=True, dir_okay=False, file_okay=True, path_type=Path
             ),
+            default="./config.ini",
             help="Path to BiG-SCAPE config file.",
         ),
         # diagnostic parameters

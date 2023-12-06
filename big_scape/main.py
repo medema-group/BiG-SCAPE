@@ -14,6 +14,7 @@ from pathlib import Path
 import tqdm
 
 # from other modules
+from big_scape.cli.config import BigscapeConfig
 from big_scape.data import DB
 from big_scape.hmm import HMMer, HSP
 from big_scape.diagnostics import Profiler
@@ -48,6 +49,9 @@ def run_bigscape(run: dict) -> None:
     bigscape_dir = Path(os.path.dirname(os.path.abspath(__file__)))
 
     main_pid = os.getpid()
+
+    # parse config file
+    BigscapeConfig.parse_config(run["config_file_path"])
 
     # capture ctrl-c for database saving and other cleanup
     def signal_handler(sig, frame):
