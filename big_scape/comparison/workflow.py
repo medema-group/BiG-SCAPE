@@ -242,8 +242,8 @@ def do_lcs_pair(pair: RecordPair) -> bool:  # pragma no cover
         return False
 
     else:
-        # Proto LCS: must contain biosynthetic domain, no min length
-        if len_check(pair, BigscapeConfig.PROTO_MIN_LCS_LEN) or biosynthetic_check(
+        # Proto LCS: must contain biosynthetic domain, no min length by default
+        if len_check(pair, BigscapeConfig.PROTO_MIN_LCS_LEN) and biosynthetic_check(
             pair
         ):
             return True

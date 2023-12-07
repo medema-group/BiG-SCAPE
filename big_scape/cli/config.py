@@ -1,5 +1,6 @@
 """Contains config class and method to parse config file """
 
+# from python
 import configparser
 from pathlib import Path
 
@@ -32,7 +33,7 @@ class BigscapeConfig:
         """parses config file
 
         Args:
-            config_file_path (Path): path to config file
+            run (dict): run parameters
         """
 
         config_file_path = run["config_file_path"]
@@ -56,7 +57,7 @@ class BigscapeConfig:
         BigscapeConfig.PROTO_MIN_EXPAND_LEN = int(
             config["EXPAND"]["PROTO_MIN_EXPAND_LEN"]
         )
-        BigscapeConfig.NO_MIN_CLASSES = config["LCS"]["NO_MIN_CLASSES"].split(",")
+        BigscapeConfig.NO_MIN_CLASSES = config["EXPAND"]["NO_MIN_CLASSES"].split(",")
         BigscapeConfig.EXPAND_MATCH_SCORE = int(config["EXPAND"]["EXPAND_MATCH_SCORE"])
         BigscapeConfig.EXPAND_MISMATCH_SCORE = int(
             config["EXPAND"]["EXPAND_MISMATCH_SCORE"]
@@ -74,9 +75,10 @@ class BigscapeConfig:
 
     @staticmethod
     def write_config_log(run, config) -> None:
-        """_summary_
+        """writes config lof file
 
         Args:
+            run (dict): run parameters
             log_path (Path): path to log file
         """
 
