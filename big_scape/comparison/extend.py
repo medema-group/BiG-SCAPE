@@ -56,6 +56,7 @@ def check(pair: RecordPair, min_len: int, biosynth_check: bool) -> bool:
     return False
 
 
+# TODO: needs testing
 def len_check(pair: RecordPair, min_len: int) -> bool:
     """Checks if a pair's comparable region is longer than or equal to min_len
 
@@ -72,6 +73,7 @@ def len_check(pair: RecordPair, min_len: int) -> bool:
     return False
 
 
+# TODO: needs testing
 def biosynthetic_check(pair: RecordPair) -> bool:
     """Checks if any element of a pair contains a biosynthetic domain
 

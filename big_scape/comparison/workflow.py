@@ -160,6 +160,7 @@ def generate_edges(
                 break
 
 
+# TODO: needs testing
 def do_lcs_pair(pair: RecordPair) -> bool:  # pragma no cover
     """Find the longest common subsequence of protein domains between two regions
 
@@ -252,6 +253,7 @@ def do_lcs_pair(pair: RecordPair) -> bool:  # pragma no cover
         return False
 
 
+# TODO: needs testing
 def expand_pair(pair: RecordPair) -> bool:
     """Expand the pair
 
