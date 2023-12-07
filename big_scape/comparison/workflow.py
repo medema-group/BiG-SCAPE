@@ -28,7 +28,7 @@ import big_scape.comparison as bs_comparison
 # from this module
 from .binning import RecordPairGenerator
 from .binning import LEGACY_WEIGHTS
-from .extend import extend, reset, check
+from .extend import extend, reset, len_check, biosynthetic_check
 from .lcs import find_domain_lcs_region, find_domain_lcs_protocluster
 
 T = TypeVar("T")
@@ -227,31 +227,48 @@ def do_lcs_pair(
     logging.debug("after lcs:")
     logging.debug(pair.comparable_region)
 
+    # TODO: fix this so glocal/global/auto are used properly
     if alignment_mode == bs_enums.ALIGNMENT_MODE.GLOBAL:
         return False
 
     if alignment_mode == bs_enums.ALIGNMENT_MODE.GLOCAL:
         return True
 
-    # reset lcs to full region if contains no biosynthetic cds or is smaller than 3 cds
-    # TODO: add lcs reset parameters to config
-    if check(pair, 3, True):
-        return True
+    # Region LCS: biosynthetic or min 3 domains
+    if isinstance(pair.record_a, bs_gbk.Region) or isinstance(
+        pair.record_b, bs_gbk.Region
+    ):
+        # returns True if LCS is min 3 domains, or contains a biosynthetic domain
+        if len_check(pair, BigscapeConfig.REGION_MIN_LCS_LEN) or biosynthetic_check(
+            pair
+        ):
+            return True
 
-    logging.debug("resetting after extend")
+        # reset comparable region coordinates to full record start and stop
+        logging.debug("resetting after lcs")
+        reset(pair)
+        return False
 
-    reset(pair)
-    return False
+    else:
+        # Proto LCS: must contain biosynthetic domain, no min length
+        if len_check(pair, BigscapeConfig.PROTO_MIN_LCS_LEN) or biosynthetic_check(
+            pair
+        ):
+            return True
+
+        logging.debug("resetting after lcs")
+        reset(pair)
+        return False
 
 
-def expand_pair(pair: RecordPair) -> float:
-    """Expand the pair and calculate the jaccard index
+def expand_pair(pair: RecordPair) -> bool:
+    """Expand the pair
 
     Args:
         pair (RecordPair): pair to expand
 
     Returns:
-        float: jaccard index
+        bool: True if the pair was extended, False if it does not
     """
     extend(
         pair,
@@ -261,15 +278,38 @@ def expand_pair(pair: RecordPair) -> float:
         BigscapeConfig.EXPAND_MAX_MATCH_PERC,
     )
 
-    # TODO: add extension reset parameters to config
-    if not check(pair, 0, True):
-        logging.info("resetting after extend")
-        reset(pair)
-        jc = calc_jaccard_pair(pair)
-        return jc
+    # Region EXT: biosynthetic or min 5 domains
+    if isinstance(pair.record_a, bs_gbk.Region) or isinstance(
+        pair.record_b, bs_gbk.Region
+    ):
+        # returns True if LCS is min 3 domains, or contains a biosynthetic domain
+        if len_check(pair, BigscapeConfig.REGION_MIN_EXPAND_LEN) or biosynthetic_check(
+            pair
+        ):
+            return True
 
-    jc = calc_jaccard_pair(pair)
-    return jc
+        # reset comparable region coordinates to full record start and stop
+        logging.debug("resetting after lcs")
+        reset(pair)
+        return False
+
+    # Proto EXT: min 3 domains, except no min for 1-dom rules (e.g. terpene), in which case comparable region is allowed
+    # to be 1 domain as long as it is biosynthetic (already checked in do_lcs_pair)
+    else:
+        if (
+            pair.record_a.product == pair.record_b.product
+            and pair.record_a.product in BigscapeConfig.NO_MIN_CLASSES
+        ):
+            if len_check(pair, 0):
+                return True
+
+        else:
+            if len_check(pair, BigscapeConfig.PROTO_MIN_EXPAND_LEN):
+                return True
+
+        logging.debug("resetting after extend")
+        reset(pair)
+        return False
 
 
 def calculate_scores_pair(
@@ -325,26 +365,12 @@ def calculate_scores_pair(
             )
             continue
 
-        # in the form [bool, Pair]. true bools means they need expansion, false they don't
+        # in the form [bool]. true bools means they need expansion, false they don't
         needs_expand = do_lcs_pair(pair, alignment_mode)
 
         if needs_expand:
-            jaccard = expand_pair(pair)
-
-        if jaccard == 0.0:
-            results.append(
-                (
-                    pair.record_a._db_id,
-                    pair.record_b._db_id,
-                    1.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    edge_param_id,
-                    pair.comparable_region,
-                )
-            )
-            continue
+            # TODO: separate these into two functions, do the extend and then calculate jaccard
+            expand_pair(pair)
 
         if weights_label not in LEGACY_WEIGHTS:
             bin_weights = LEGACY_WEIGHTS["mix"]["weights"]

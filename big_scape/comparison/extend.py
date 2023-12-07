@@ -44,29 +44,60 @@ def check(pair: RecordPair, min_len: int, biosynth_check: bool) -> bool:
         biosynth_check: Whether to check for biosynthetic genes within the comparable
             region
     """
-    if biosynth_check:
-        if ComparableRegion.cds_range_contains_biosynthetic(
-            pair.record_a,
-            pair.comparable_region.a_start,
-            pair.comparable_region.a_stop,
-            False,
-            False,
-        ):
-            return True
-
-        if ComparableRegion.cds_range_contains_biosynthetic(
-            pair.record_b,
-            pair.comparable_region.b_start,
-            pair.comparable_region.b_stop,
-            False,
-            pair.comparable_region.reverse,
-        ):
-            return True
+    if biosynthetic_check(pair):
+        return True
 
     a_len = pair.comparable_region.a_stop - pair.comparable_region.a_start
     b_len = pair.comparable_region.b_stop - pair.comparable_region.b_start
 
     if a_len >= min_len and b_len >= min_len:
+        return True
+
+    return False
+
+
+def len_check(pair: RecordPair, min_len: int) -> bool:
+    """Checks if a pair's comparable region is longer than or equal to min_len
+
+    Args:
+        pair: The record pair to check
+        min_len: The minimum length of the comparable region
+    """
+    a_len = pair.comparable_region.a_stop - pair.comparable_region.a_start
+    b_len = pair.comparable_region.b_stop - pair.comparable_region.b_start
+
+    if a_len >= min_len and b_len >= min_len:
+        return True
+
+    return False
+
+
+def biosynthetic_check(pair: RecordPair) -> bool:
+    """Checks if any element of a pair contains a biosynthetic domain
+
+    returns true if
+    - the comparable region contains a biosynthetic gene
+
+    Args:
+        pair: The record pair to check
+    """
+
+    if ComparableRegion.cds_range_contains_biosynthetic(
+        pair.record_a,
+        pair.comparable_region.a_start,
+        pair.comparable_region.a_stop,
+        False,
+        False,
+    ):
+        return True
+
+    if ComparableRegion.cds_range_contains_biosynthetic(
+        pair.record_b,
+        pair.comparable_region.b_start,
+        pair.comparable_region.b_stop,
+        False,
+        pair.comparable_region.reverse,
+    ):
         return True
 
     return False
