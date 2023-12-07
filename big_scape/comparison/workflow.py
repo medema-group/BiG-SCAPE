@@ -160,9 +160,7 @@ def generate_edges(
                 break
 
 
-def do_lcs_pair(
-    pair: RecordPair, alignment_mode: bs_enums.ALIGNMENT_MODE
-) -> bool:  # pragma no cover
+def do_lcs_pair(pair: RecordPair) -> bool:  # pragma no cover
     """Find the longest common subsequence of protein domains between two regions
 
     Args:
@@ -226,13 +224,6 @@ def do_lcs_pair(
 
     logging.debug("after lcs:")
     logging.debug(pair.comparable_region)
-
-    # TODO: fix this so glocal/global/auto are used properly
-    if alignment_mode == bs_enums.ALIGNMENT_MODE.GLOBAL:
-        return False
-
-    if alignment_mode == bs_enums.ALIGNMENT_MODE.GLOCAL:
-        return True
 
     # Region LCS: biosynthetic or min 3 domains
     if isinstance(pair.record_a, bs_gbk.Region) or isinstance(
@@ -365,12 +356,20 @@ def calculate_scores_pair(
             )
             continue
 
-        # in the form [bool]. true bools means they need expansion, false they don't
-        needs_expand = do_lcs_pair(pair, alignment_mode)
+        # GLOBAL/GLOCAL/AUTO
+        # GLOBAL the comparable region is the full record
+        # GLOCAL computes a the comparable region based on LCS EXT
+        # AUTO computes a the comparable region based on LCS EXT if
+        # either record is on a contig edge
 
-        if needs_expand:
-            # TODO: separate these into two functions, do the extend and then calculate jaccard
-            expand_pair(pair)
+        if alignment_mode == bs_enums.ALIGNMENT_MODE.GLOCAL or (
+            alignment_mode == bs_enums.ALIGNMENT_MODE.AUTO
+            and (pair.record_a.contig_edge or pair.record_b.contig_edge)
+        ):
+            needs_expand = do_lcs_pair(pair)
+            if needs_expand:
+                # TODO: separate these into two functions, do the extend and then calculate jaccard
+                expand_pair(pair)
 
         if weights_label not in LEGACY_WEIGHTS:
             bin_weights = LEGACY_WEIGHTS["mix"]["weights"]
