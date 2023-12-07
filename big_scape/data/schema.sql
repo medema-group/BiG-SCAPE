@@ -98,6 +98,10 @@ CREATE TABLE IF NOT EXISTS distance (
     ext_b_start INTEGER NOT NULL,
     ext_b_stop INTEGER NOT NULL,
     reverse BOOLEAN NOT NULL,
+    lcs_domain_a_start INTEGER NOT NULL,
+    lcs_domain_a_stop INTEGER NOT NULL,
+    lcs_domain_b_start INTEGER NOT NULL,
+    lcs_domain_b_stop INTEGER NOT NULL,
     UNIQUE(record_a_id, record_b_id, edge_param_id)
     FOREIGN KEY(record_a_id) REFERENCES bgc_record(id)
     FOREIGN KEY(record_b_id) REFERENCES bgc_record(id)
