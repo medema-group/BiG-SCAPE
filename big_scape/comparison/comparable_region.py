@@ -165,15 +165,19 @@ class ComparableRegion:
             tuple: Tuple representation of this comparable region
         """
         return (
+            self.lcs_a_start,
+            self.lcs_a_stop,
+            self.lcs_b_start,
+            self.lcs_b_stop,
             self.a_start,
             self.a_stop,
             self.b_start,
             self.b_stop,
-            self.domain_a_start,
-            self.domain_a_stop,
-            self.domain_b_start,
-            self.domain_b_stop,
             self.reverse,
+            self.lcs_domain_a_start,
+            self.lcs_domain_a_stop,
+            self.lcs_domain_b_start,
+            self.lcs_domain_b_stop,
         )
 
     def __eq__(self, __o: object) -> bool:

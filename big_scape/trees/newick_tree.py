@@ -98,6 +98,36 @@ def process_newick_tree(tree_file: Path) -> str:
             return tree.format("newick")
 
 
+def find_tree_domains(
+    frequency_table: dict[str, int], exemplar_domains: set[str], top_freqs: int
+) -> set[str]:
+    """Find the set of tree domains to base alignment on
+
+    Tries to pick domains that appear with the highest frequency (i.e. that are present
+    in most family members) and that appear in the exemplar.
+
+    Args:
+        frequency_table (dict): the number of family members each domain appears in
+        exemplar (set[str]): domains in family exemplar
+        top_freqs (int): the number of highest frequencies to include in alignment
+    """
+    tree_domains: set[str] = set()
+    frequencies = sorted(set(frequency_table.values()), reverse=True)
+
+    if len(frequencies) < top_freqs:
+        accepted_f = frequencies
+        # make sure frequency 1 is not included
+        if 1 in accepted_f:
+            accepted_f.remove(1)
+    else:
+        accepted_f = frequencies[:top_freqs]
+
+    for domain in frequency_table:
+        if frequency_table[domain] in accepted_f and domain in exemplar_domains:
+            tree_domains.add(domain)
+    return tree_domains
+
+
 def generate_gcf_alignment(
     records: list[BGCRecord], exemplar: int, family_members: list[int]
 ) -> str:
@@ -123,22 +153,10 @@ def generate_gcf_alignment(
         for domain in domain_sets[idx]:
             frequency_table[domain] += 1
 
-    # Find the set of [(tree domains)]. They should 1) be in the exemplar
-    # and 2) appear with the most frequency. Iterate over the different
-    # frequencies (descending) until set is not empty
-    tree_domains: set[str] = set()
-    frequencies = sorted(set(frequency_table.values()), reverse=True)
-
-    # first try with domain(s) with max frequency, even if it's just one
-    f = 0
-    while len(tree_domains) == 0 and f < len(frequencies):
-        for domain in frequency_table:
-            if (
-                frequency_table[domain] == frequencies[f]
-                and domain in domain_sets[exemplar]
-            ):
-                tree_domains.add(domain)
-        f += 1
+    # TODO: add top number of frequencies to use in config file
+    tree_domains = find_tree_domains(
+        frequency_table, domain_sets[exemplar], top_freqs=3
+    )
     if len(tree_domains) == 1:
         logging.debug(
             "core shared domains for GCF {} consists of a single domain ({})".format(

@@ -1038,19 +1038,61 @@ BigscapeFunc.openFamDetail = function (id_fam, ids_highlighted, bs_svg, bs_data,
     // get tree info
     var fam_aln = bs_families_alignment[id_fam];
     /* FUNCTION BLOCK, DRAWING THE TREE */
-    function getBGCOffset(bgc_ref, bgc, genes_ref, aln) {
+    function getBGCOffset(bgc_ref, bgc, domains_ref, aln) {
       function scaleBGC(val, height = 20) { // << default: 40, scale x 0.5
         return parseInt(val / (1000 / height)); // PLEASE DO SOMETHING WITH THIS
       }
-      for (var i = 0; i < genes_ref.length; i++) {
-        var ref_gene = genes_ref[i];
+      function findMatchGene(bgc, match_domain) {
+        var domain_idx = 0
+        for (cds_idx = bgc["record_start"] - 1; cds_idx < bgc["record_stop"]; cds_idx++) {
+          for (d = 0; d < bgc["orfs"][cds_idx]["domains"].length; d++) {
+            if (domain_idx === match_domain) {
+              return [cds_idx, d]
+            }
+            domain_idx++
+          }
+        }
+      }
+      for (var i = 0; i < domains_ref.length; i++) {
+        var ref_domain = domains_ref[i];
+        var [ref_gene, ref_gene_domain] = findMatchGene(bgc_ref, ref_domain)
         for (var j = 0; j < aln.length; j++) {
-          if (aln[j][0] === ref_gene) {
-            var match_gene = j;
-            if (aln[j][1] < 0) {
-              return [scaleBGC((bgc_ref["orfs"][ref_gene]["start"] - bgc_ref["start"]) - (bgc["end"] - bgc["orfs"][match_gene]["end"])), aln[j][1]];
+          if (aln[j][0] === ref_domain) {
+            var [match_gene, gene_domain] = findMatchGene(bgc, j)
+            // reference domain start
+            var ref_gene_obj = bgc_ref["orfs"][ref_gene]
+            if (ref_gene_obj["strand"] === 1) {
+              var ref_dom_obj = ref_gene_obj["domains"][ref_gene_domain]
+              var ref_domain_offset = 3 * ref_dom_obj["start"]
             } else {
-              return [scaleBGC((bgc_ref["orfs"][ref_gene]["start"] - bgc_ref["start"]) - (bgc["orfs"][match_gene]["start"] - bgc["start"])), aln[j][1]];
+              var ref_dom_idx = ref_gene_obj["domains"].length - ref_gene_domain - 1
+              var ref_dom_obj = ref_gene_obj["domains"][ref_dom_idx]
+              var ref_domain_offset = (ref_gene_obj["end"] - ref_gene_obj["start"]) - 3 * ref_dom_obj["end"]
+            }
+            ref_start = (ref_gene_obj["start"] + ref_domain_offset) - bgc_ref["start"]
+            // aligned bgc domain start
+            var gene_obj = bgc["orfs"][match_gene]
+            if (aln[j][1] < 0) {
+              if (gene_obj["strand"] === 1) {
+                var dom_obj = gene_obj["domains"][gene_domain]
+                var bgc_start = bgc["end"] - (gene_obj["start"] + (3 * dom_obj["end"]))
+              } else {
+                var dom_idx = gene_obj["domains"].length - gene_domain - 1
+                var dom_obj = gene_obj["domains"][dom_idx]
+                var bgc_start = bgc["end"] - (gene_obj["end"] - (3 * dom_obj["start"]))
+              }
+              return [scaleBGC(ref_start - bgc_start), aln[j][1]];
+            } else {
+              if (gene_obj["strand"] === 1) {
+                var dom_obj = gene_obj["domains"][gene_domain]
+                var domain_offset = 3 * dom_obj["start"]
+              } else {
+                var dom_idx = gene_obj["domains"].length - gene_domain - 1
+                var dom_obj = gene_obj["domains"][dom_idx]
+                var domain_offset = (gene_obj["end"] - gene_obj["start"]) - 3 * dom_obj["end"]
+              }
+              bgc_start = (gene_obj["start"] + domain_offset) - bgc["start"]
+              return [scaleBGC(ref_start - bgc_start), aln[j][1]];
             }
           }
         }
@@ -1151,6 +1193,7 @@ BigscapeFunc.openFamDetail = function (id_fam, ids_highlighted, bs_svg, bs_data,
     }
 
     // draw the rest of the bgcs
+    var anyOutTree = false
     for (var i = 0; i < bs_families[id_fam]["members"].length; i++) {
       var isInTree = false;
       for (var j = 0; j < bgcOffsets.length; j++) {
@@ -1164,7 +1207,12 @@ BigscapeFunc.openFamDetail = function (id_fam, ids_highlighted, bs_svg, bs_data,
         jqG.attr('transform', 'translate(' + (510) + ',' + (lastY + 50 - 10) + ') scale(0.5)');
         jqG.appendTo(treeSVG);
         lastY += 50;
+        anyOutTree = true
       }
+    }
+    // display note if any bgcs are placed outside tree
+    if (anyOutTree) {
+      det_ui.append("<span>*NOTE: This family contains members that could not be placed in the tree due to missing common domains</span>");
     }
     // move tree svg into a <g> so that it can be collectively manipulated
     var tempG = document.createElementNS('http://www.w3.org/2000/svg', 'g');

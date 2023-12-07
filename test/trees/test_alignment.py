@@ -7,8 +7,9 @@ from unittest import TestCase
 from big_scape.genbank import GBK, BGCRecord, CDS
 from big_scape.hmm import HSP, HSPAlignment
 from big_scape.trees import generate_newick_tree
-from big_scape.trees.newick_tree import generate_gcf_alignment
+from big_scape.trees.newick_tree import generate_gcf_alignment, find_tree_domains
 from big_scape.output.legacy_output import (
+    align_subrecords,
     adjust_lcs_to_family_reference,
     adjust_lcs_to_full_region,
 )
@@ -31,6 +32,41 @@ class TestTrees(TestCase):
         tree = generate_newick_tree(records, exemplar, mock_family, "", "")
 
         self.assertEqual(tree, expected_tree)
+
+    def test_find_tree_domains_small(self):
+        """Tests whether found tree domains are correct"""
+        freqs = {
+            "PF1": 1,
+            "PF2": 2,
+            "PF3": 2,
+        }
+
+        exemplar = set(["PF1", "PF2", "PF3"])
+
+        excepted_tree_domains = set(["PF2", "PF3"])
+        actual_tree_domains = find_tree_domains(freqs, exemplar, 3)
+
+        self.assertEqual(excepted_tree_domains, actual_tree_domains)
+
+    def test_find_tree_domains_large(self):
+        """Tests whether found tree domains are correct"""
+        freqs = {
+            "PF1": 5,
+            "PF2": 5,
+            "PF3": 7,
+            "PF4": 7,
+            "PF5": 6,
+            "PF6": 6,
+            "PF7": 4,
+            "PF8": 3,
+        }
+
+        exemplar = set(["PF2", "PF3", "PF4", "PF5", "PF6", "PF7", "PF8"])
+
+        excepted_tree_domains = set(["PF2", "PF3", "PF4", "PF5", "PF6"])
+        actual_tree_domains = find_tree_domains(freqs, exemplar, 3)
+
+        self.assertEqual(excepted_tree_domains, actual_tree_domains)
 
     def test_gcf_alignment(self):
         """Tests alignment of GCF HSP alignments"""
@@ -65,10 +101,10 @@ class TestTrees(TestCase):
         mock_result = {
             "record_a_id": 0,
             "record_b_id": 1,
-            "lcs_a_start": 4,
-            "lcs_a_stop": 7,
-            "lcs_b_start": 6,
-            "lcs_b_stop": 9,
+            "lcs_domain_a_start": 4,
+            "lcs_domain_a_stop": 7,
+            "lcs_domain_b_start": 6,
+            "lcs_domain_b_stop": 9,
             "reverse": False,
         }
 
@@ -83,10 +119,10 @@ class TestTrees(TestCase):
         mock_result = {
             "record_a_id": 0,
             "record_b_id": 1,
-            "lcs_a_start": 4,
-            "lcs_a_stop": 7,
-            "lcs_b_start": 6,
-            "lcs_b_stop": 9,
+            "lcs_domain_a_start": 4,
+            "lcs_domain_a_stop": 7,
+            "lcs_domain_b_start": 6,
+            "lcs_domain_b_stop": 9,
             "reverse": True,
         }
 
@@ -101,10 +137,10 @@ class TestTrees(TestCase):
         mock_result = {
             "record_a_id": 0,
             "record_b_id": 1,
-            "lcs_a_start": 6,
-            "lcs_a_stop": 9,
-            "lcs_b_start": 4,
-            "lcs_b_stop": 7,
+            "lcs_domain_a_start": 6,
+            "lcs_domain_a_stop": 9,
+            "lcs_domain_b_start": 4,
+            "lcs_domain_b_stop": 7,
             "reverse": False,
         }
 
@@ -119,10 +155,10 @@ class TestTrees(TestCase):
         mock_result = {
             "record_a_id": 0,
             "record_b_id": 1,
-            "lcs_a_start": 6,
-            "lcs_a_stop": 9,
-            "lcs_b_start": 4,
-            "lcs_b_stop": 7,
+            "lcs_domain_a_start": 6,
+            "lcs_domain_a_stop": 9,
+            "lcs_domain_b_start": 4,
+            "lcs_domain_b_stop": 7,
             "reverse": True,
         }
 
@@ -182,3 +218,45 @@ class TestTrees(TestCase):
         )
 
         self.assertEqual(expected_adjusted, actual_adjusted)
+
+    def test_align_subrecords(self):
+        """Tests alignment of subrecords through lcs"""
+        a_domains = [
+            HSP("", "PFX", 100, 0, 100),
+            HSP("", "PF1", 100, 0, 100),
+            HSP("", "PF2", 100, 0, 100),
+            HSP("", "PF3", 100, 0, 100),
+        ]
+
+        b_domains = [
+            HSP("", "PF1", 100, 0, 100),
+            HSP("", "PF2", 100, 0, 100),
+            HSP("", "PF3", 100, 0, 100),
+            HSP("", "PFQ", 100, 0, 100),
+        ]
+
+        expected_lcs = (1, 0, False)
+        actual_lcs = align_subrecords(a_domains, b_domains)
+
+        self.assertEqual(expected_lcs, actual_lcs)
+
+    def test_align_subrecords_rev(self):
+        """Tests alignment of subrecords through lcs"""
+        a_domains = [
+            HSP("", "PF3", 100, 0, 100),
+            HSP("", "PF2", 100, 0, 100),
+            HSP("", "PF1", 100, 0, 100),
+            HSP("", "PFX", 100, 0, 100),
+        ]
+
+        b_domains = [
+            HSP("", "PF1", 100, 0, 100),
+            HSP("", "PF2", 100, 0, 100),
+            HSP("", "PF3", 100, 0, 100),
+            HSP("", "PFQ", 100, 0, 100),
+        ]
+
+        expected_lcs = (0, 2, True)
+        actual_lcs = align_subrecords(a_domains, b_domains)
+
+        self.assertEqual(expected_lcs, actual_lcs)
