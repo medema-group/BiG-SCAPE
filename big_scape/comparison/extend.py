@@ -31,6 +31,31 @@ def reset(pair: RecordPair) -> None:
     pair.comparable_region.reverse = False
 
 
+def check(pair: RecordPair, min_len: int, biosynth_check: bool) -> bool:
+    """Checks if a pair's comparable region should be reset after expansion
+
+    returns true if either of the following conditions are met:
+    - the comparable region contains a biosynthetic gene
+    - the comparable region is longer than or equal to min_len
+
+    Args:
+        pair: The record pair to check
+        min_len: The minimum length of the comparable region
+        biosynth_check: Whether to check for biosynthetic genes within the comparable
+            region
+    """
+    if biosynthetic_check(pair):
+        return True
+
+    a_len = pair.comparable_region.a_stop - pair.comparable_region.a_start
+    b_len = pair.comparable_region.b_stop - pair.comparable_region.b_start
+
+    if a_len >= min_len and b_len >= min_len:
+        return True
+
+    return False
+
+
 # TODO: needs testing
 def len_check(pair: RecordPair, min_len: int) -> bool:
     """Checks if a pair's comparable region is longer than or equal to min_len
