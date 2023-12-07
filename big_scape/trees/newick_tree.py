@@ -12,6 +12,7 @@ from scipy.optimize import linear_sum_assignment
 
 # from other modules
 from big_scape.genbank import BGCRecord
+from big_scape.cli.config import BigscapeConfig
 
 
 def generate_newick_tree(
@@ -153,9 +154,8 @@ def generate_gcf_alignment(
         for domain in domain_sets[idx]:
             frequency_table[domain] += 1
 
-    # TODO: add top number of frequencies to use in config file
     tree_domains = find_tree_domains(
-        frequency_table, domain_sets[exemplar], top_freqs=3
+        frequency_table, domain_sets[exemplar], top_freqs=BigscapeConfig.TOP_FREQS
     )
     if len(tree_domains) == 1:
         logging.debug(
