@@ -19,7 +19,7 @@ class BigscapeConfig:
     # EXPAND
     REGION_MIN_EXPAND_LEN = 5
     PROTO_MIN_EXPAND_LEN = 3
-    NO_MIN_CLASSES = ["Terpene", "Halogenated"]
+    NO_MIN_CLASSES = ["Terpene"]
     EXPAND_MATCH_SCORE = 5
     EXPAND_MISMATCH_SCORE = -3
     EXPAND_GAP_SCORE = -2
