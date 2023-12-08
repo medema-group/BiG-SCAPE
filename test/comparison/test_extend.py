@@ -228,11 +228,17 @@ class TestExtendUtilities(unittest.TestCase):
 
         # create a comparable region starting at a single cds
         record_pair.comparable_region = bs_comp.ComparableRegion(
-            5, 6, 5, 6, 0, 0, 0, 0, False
+            5, 6, 5, 6, 5, 6, 5, 6, False
         )
 
-        expected_result = False
-        actual_result = bs_comp.extend.check(record_pair, 3, True)
+        expected_result = (
+            False,
+            False,
+        )
+        actual_result = (
+            bs_comp.extend.len_check(record_pair, 3),
+            bs_comp.extend.biosynthetic_check(record_pair),
+        )
 
         self.assertEqual(expected_result, actual_result)
 
@@ -250,11 +256,17 @@ class TestExtendUtilities(unittest.TestCase):
 
         # create a comparable region starting at a single cds
         record_pair.comparable_region = bs_comp.ComparableRegion(
-            5, 6, 5, 6, 0, 0, 0, 0, False
+            5, 6, 5, 6, 5, 6, 5, 6, False
         )
 
-        expected_result = True
-        actual_result = bs_comp.extend.check(record_pair, 3, True)
+        expected_result = (
+            False,
+            True,
+        )
+        actual_result = (
+            bs_comp.extend.len_check(record_pair, 3),
+            bs_comp.extend.biosynthetic_check(record_pair),
+        )
 
         self.assertEqual(expected_result, actual_result)
 
@@ -271,11 +283,17 @@ class TestExtendUtilities(unittest.TestCase):
 
         # create a comparable region starting at a single cds
         record_pair.comparable_region = bs_comp.ComparableRegion(
-            5, 9, 5, 9, 0, 0, 0, 0, False
+            5, 9, 5, 9, 5, 9, 5, 9, False
         )
 
-        expected_result = True
-        actual_result = bs_comp.extend.check(record_pair, 3, True)
+        expected_result = (
+            True,
+            False,
+        )
+        actual_result = (
+            bs_comp.extend.len_check(record_pair, 3),
+            bs_comp.extend.biosynthetic_check(record_pair),
+        )
 
         self.assertEqual(expected_result, actual_result)
 

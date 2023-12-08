@@ -160,7 +160,6 @@ def generate_edges(
                 break
 
 
-# TODO: needs testing
 def do_lcs_pair(pair: RecordPair) -> bool:  # pragma no cover
     """Find the longest common subsequence of protein domains between two regions
 
@@ -253,7 +252,6 @@ def do_lcs_pair(pair: RecordPair) -> bool:  # pragma no cover
         return False
 
 
-# TODO: needs testing
 def expand_pair(pair: RecordPair) -> bool:
     """Expand the pair
 
@@ -275,7 +273,7 @@ def expand_pair(pair: RecordPair) -> bool:
     if isinstance(pair.record_a, bs_gbk.Region) or isinstance(
         pair.record_b, bs_gbk.Region
     ):
-        # returns True if LCS is min 3 domains, or contains a biosynthetic domain
+        # returns True if EXT is min 5 domains, or contains a biosynthetic domain
         if len_check(pair, BigscapeConfig.REGION_MIN_EXPAND_LEN) or biosynthetic_check(
             pair
         ):
@@ -286,8 +284,9 @@ def expand_pair(pair: RecordPair) -> bool:
         reset(pair)
         return False
 
-    # Proto EXT: min 3 domains, except no min for 1-dom rules (e.g. terpene), in which case comparable region is allowed
-    # to be 1 domain as long as it is biosynthetic (already checked in do_lcs_pair)
+    # Proto EXT: min 3 domains, except no min for 1-dom rules (e.g. terpene), in which
+    # case comparable region is allowed to be 1 domain as long as it is biosynthetic
+    # (already checked in do_lcs_pair)
     else:
         if (
             pair.record_a.product == pair.record_b.product
