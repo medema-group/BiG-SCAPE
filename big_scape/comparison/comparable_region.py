@@ -53,8 +53,8 @@ class ComparableRegion:
         b_start: int,
         b_stop: int,
         domain_a_start: int,
-        domain_b_start: int,
         domain_a_stop: int,
+        domain_b_start: int,
         domain_b_stop: int,
         reverse: bool,
     ):
