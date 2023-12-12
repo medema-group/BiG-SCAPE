@@ -898,8 +898,6 @@ def generate_bs_families_alignment(
     bs_families_alignment = []
     records = pair_generator.source_records
 
-    logging.info("Generating GCF alignments and trees")
-
     for family_db_id, family_members in bs_families.items():
         family_name = "FAM_{:05d}".format(family_db_id)
         logging.debug("Generating alignment for %s", family_name)
