@@ -225,9 +225,12 @@ def do_lcs_pair(pair: RecordPair) -> bool:  # pragma no cover
     logging.debug("after lcs:")
     logging.debug(pair.comparable_region)
 
-    # Region LCS: biosynthetic or min 3 domains
-    if isinstance(pair.record_a, bs_gbk.Region) or isinstance(
-        pair.record_b, bs_gbk.Region
+    # Region/CandCluster LCS: biosynthetic or min 3 domains
+    if (
+        isinstance(pair.record_a, bs_gbk.Region)
+        or isinstance(pair.record_b, bs_gbk.Region)
+        or isinstance(pair.record_a, bs_gbk.CandidateCluster)
+        or isinstance(pair.record_b, bs_gbk.CandidateCluster)
     ):
         # returns True if LCS is min 3 domains, or contains a biosynthetic domain
         if len_check(pair, BigscapeConfig.REGION_MIN_LCS_LEN) or biosynthetic_check(
@@ -240,9 +243,9 @@ def do_lcs_pair(pair: RecordPair) -> bool:  # pragma no cover
         reset(pair)
         return False
 
+    # ProtoCluster and ProtoCore LCS: biosynthetic or min 3 domains
     else:
-        # Proto LCS: must contain biosynthetic domain, no min length by default
-        if len_check(pair, BigscapeConfig.PROTO_MIN_LCS_LEN) and biosynthetic_check(
+        if len_check(pair, BigscapeConfig.PROTO_MIN_LCS_LEN) or biosynthetic_check(
             pair
         ):
             return True
@@ -269,39 +272,69 @@ def expand_pair(pair: RecordPair) -> bool:
         BigscapeConfig.EXPAND_MAX_MATCH_PERC,
     )
 
-    # Region EXT: biosynthetic or min 5 domains
-    if isinstance(pair.record_a, bs_gbk.Region) or isinstance(
-        pair.record_b, bs_gbk.Region
+    # Region/CandCluster EXT checks: biosynthetic and min 3 or min 5 domains,
+    # except no min for 1-dom rules (e.g. terpene)
+    if (
+        isinstance(pair.record_a, bs_gbk.Region)
+        or isinstance(pair.record_b, bs_gbk.Region)
+        or isinstance(pair.record_a, bs_gbk.CandidateCluster)
+        or isinstance(pair.record_b, bs_gbk.CandidateCluster)
     ):
-        # returns True if EXT is min 5 domains, or contains a biosynthetic domain
-        if len_check(pair, BigscapeConfig.REGION_MIN_EXPAND_LEN) or biosynthetic_check(
-            pair
-        ):
-            return True
-
-        # reset comparable region coordinates to full record start and stop
-        logging.debug("resetting after lcs")
-        reset(pair)
-        return False
-
-    # Proto EXT: min 3 domains, except no min for 1-dom rules (e.g. terpene), in which
-    # case comparable region is allowed to be 1 domain as long as it is biosynthetic
-    # (already checked in do_lcs_pair)
-    else:
+        # returns True if EXT is min 5 domains, min 0 domains and contains biosynthetic domain for no_min_class
         if (
             pair.record_a.product == pair.record_b.product
             and pair.record_a.product in BigscapeConfig.NO_MIN_CLASSES
         ):
-            if len_check(pair, 0):
+            if len_check(
+                pair, BigscapeConfig.REGION_MIN_EXPAND_LEN
+            ) or biosynthetic_check(pair):
                 return True
 
+        # returns True if EXT is min 5 domains, or contains a biosynthetic domain and is min 3 domains
         else:
-            if len_check(pair, BigscapeConfig.PROTO_MIN_EXPAND_LEN):
+            if len_check(pair, BigscapeConfig.REGION_MIN_EXPAND_LEN) or (
+                len_check(pair, BigscapeConfig.REGION_MIN_EXPAND_LEN_BIO)
+                and biosynthetic_check(pair)
+            ):
                 return True
 
-        logging.debug("resetting after extend")
+    # ProtoCluster EXT: min 3 domains and biosynthetic, except no min for 1-dom rules (e.g. terpene)
+    elif isinstance(pair.record_a, bs_gbk.ProtoCluster) and isinstance(
+        pair.record_b, bs_gbk.ProtoCluster
+    ):
+        # no_min_class: biosynthetic & min_len = 0
+        if (
+            pair.record_a.product == pair.record_b.product
+            and pair.record_a.product in BigscapeConfig.NO_MIN_CLASSES
+        ):
+            if biosynthetic_check(pair):
+                return True
+
+        # biosynthetic & min_len = 3
+        else:
+            if len_check(
+                pair, BigscapeConfig.PROTO_MIN_EXPAND_LEN
+            ) and biosynthetic_check(pair):
+                return True
+
+    # ProtoCore Ext: needs to be biosynthetic
+    elif isinstance(pair.record_a, bs_gbk.ProtoCore) and isinstance(
+        pair.record_b, bs_gbk.ProtoCore
+    ):
+        if biosynthetic_check(pair):
+            return True
+
+    else:
+        logging.debug(
+            "comparing protocluster to protocore, something must have gone wrong here, pair: %s",
+            pair,
+        )
         reset(pair)
         return False
+
+    logging.debug("resetting after extend")
+    reset(pair)
+    return False
 
 
 def calculate_scores_pair(
