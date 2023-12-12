@@ -14,10 +14,11 @@ class BigscapeConfig:
 
     # LCS
     REGION_MIN_LCS_LEN = 3
-    PROTO_MIN_LCS_LEN = 0
+    PROTO_MIN_LCS_LEN = 3
 
     # EXPAND
     REGION_MIN_EXPAND_LEN = 5
+    REGION_MIN_EXPAND_LEN_BIO = 5
     PROTO_MIN_EXPAND_LEN = 3
     NO_MIN_CLASSES = ["Terpene"]
     EXPAND_MATCH_SCORE = 5
@@ -53,6 +54,9 @@ class BigscapeConfig:
         # EXPAND
         BigscapeConfig.REGION_MIN_EXPAND_LEN = int(
             config["EXPAND"]["REGION_MIN_EXPAND_LEN"]
+        )
+        BigscapeConfig.REGION_MIN_EXPAND_LEN_BIO = int(
+            config["EXPAND"]["REGION_MIN_EXPAND_LEN_BIO"]
         )
         BigscapeConfig.PROTO_MIN_EXPAND_LEN = int(
             config["EXPAND"]["PROTO_MIN_EXPAND_LEN"]

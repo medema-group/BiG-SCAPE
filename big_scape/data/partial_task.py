@@ -10,7 +10,6 @@ from typing import TYPE_CHECKING, Generator
 
 # from dependencies
 from sqlalchemy import select
-from big_scape.comparison.record_pair import RecordPair
 
 # from other modules
 from big_scape.data import DB
@@ -18,6 +17,7 @@ import big_scape.enums as bs_enums
 
 # from circular imports
 if TYPE_CHECKING:
+    from big_scape.comparison.record_pair import RecordPair
     from big_scape.comparison import RecordPairGenerator
     from big_scape.genbank.gbk import GBK, CDS
     from big_scape.hmm import HSP
