@@ -285,9 +285,9 @@ def expand_pair(pair: RecordPair) -> bool:
             pair.record_a.product == pair.record_b.product
             and pair.record_a.product in BigscapeConfig.NO_MIN_CLASSES
         ):
-            if len_check(pair, BigscapeConfig.REGION_MIN_EXPAND_LEN) or (
-                len_check(pair, 0) and biosynthetic_check(pair)
-            ):
+            if len_check(
+                pair, BigscapeConfig.REGION_MIN_EXPAND_LEN
+            ) or biosynthetic_check(pair):
                 return True
 
         # returns True if EXT is min 5 domains, or contains a biosynthetic domain and is min 3 domains
@@ -298,11 +298,6 @@ def expand_pair(pair: RecordPair) -> bool:
             ):
                 return True
 
-        # reset comparable region coordinates to full record start and stop
-        logging.debug("resetting after lcs")
-        reset(pair)
-        return False
-
     # ProtoCluster EXT: min 3 domains and biosynthetic, except no min for 1-dom rules (e.g. terpene)
     elif isinstance(pair.record_a, bs_gbk.ProtoCluster) and isinstance(
         pair.record_b, bs_gbk.ProtoCluster
@@ -312,7 +307,7 @@ def expand_pair(pair: RecordPair) -> bool:
             pair.record_a.product == pair.record_b.product
             and pair.record_a.product in BigscapeConfig.NO_MIN_CLASSES
         ):
-            if len_check(pair, 0) and biosynthetic_check(pair):
+            if biosynthetic_check(pair):
                 return True
 
         # biosynthetic & min_len = 3
@@ -322,10 +317,6 @@ def expand_pair(pair: RecordPair) -> bool:
             ) and biosynthetic_check(pair):
                 return True
 
-        logging.debug("resetting after extend")
-        reset(pair)
-        return False
-
     # ProtoCore Ext: needs to be biosynthetic
     elif isinstance(pair.record_a, bs_gbk.ProtoCore) and isinstance(
         pair.record_b, bs_gbk.ProtoCore
@@ -333,18 +324,17 @@ def expand_pair(pair: RecordPair) -> bool:
         if biosynthetic_check(pair):
             return True
 
-        logging.debug("resetting after extend")
-        reset(pair)
-        return False
-
     else:
         logging.debug(
             "comparing protocluster to protocore, something must have gone wrong here, pair: %s",
             pair,
         )
-        logging.debug("resetting after extend")
         reset(pair)
         return False
+
+    logging.debug("resetting after extend")
+    reset(pair)
+    return False
 
 
 def calculate_scores_pair(
