@@ -2,6 +2,9 @@
 
 # from python
 import warnings
+import numpy as np
+import networkx
+import math
 
 # from dependencies
 from sklearn.cluster import AffinityPropagation
@@ -11,6 +14,7 @@ from sqlalchemy import select
 # from other modules
 from big_scape.data import DB
 from big_scape.enums import RECORD_TYPE
+from big_scape.cli.config import BigscapeConfig
 
 # from this module
 from .utility import edge_list_to_sim_matrix
@@ -37,16 +41,27 @@ def generate_families(
     # insertion into db
     regions_families = []
 
-    # if there are only one or two edges, this can all be the same family
-    # choose the first node id as the family id
-    if len(connected_component) <= 2:
-        family_id = connected_component[0][0]
+    # hierarchical checks to see if affinity propagation should be applied or not
+    # AP is applied if the edge weight standard deviation is above a threshold
+    # or if the connected component connectivity is below a threshold
+    # or if the connected component breaks when removing the top nodes with
+    # highest betweenness centrality
+    cc_edge_weight_std = get_cc_edge_weight_std(connected_component)
+    if cc_edge_weight_std < BigscapeConfig.EDGE_WEIGHT_STD_THRESHOLD:
+        cc_connectivity = get_cc_connectivity(connected_component)
+        if cc_connectivity > BigscapeConfig.CC_CONNECTIVITY_THRESHOLD:
+            cc_breaks, nodes_centrality = test_centrality(
+                connected_component, BigscapeConfig.BETWEENNESS_CENTRALITY_NODES
+            )
+            if not cc_breaks:
+                # node with highest betweenness centrality is the center of the family
+                family_id = nodes_centrality[0]
 
-        for edge in connected_component:
-            regions_families.append((edge[0], family_id, cutoff, bin_label))
-            regions_families.append((edge[1], family_id, cutoff, bin_label))
+                for edge in connected_component:
+                    regions_families.append((edge[0], family_id, cutoff, bin_label))
+                    regions_families.append((edge[1], family_id, cutoff, bin_label))
 
-        return regions_families
+                return regions_families
 
     distance_matrix, node_ids = edge_list_to_sim_matrix(connected_component)
 
@@ -65,6 +80,87 @@ def generate_families(
         regions_families.append((region_id, family, cutoff, bin_label))
 
     return regions_families
+
+
+def get_cc_edge_weight_std(connected_component) -> float:
+    """calculates the standard deviation of the edge weights of a connected component
+
+    Args:
+        connected_component (list[tuple[int, int, float, float, float, float, str]]):
+            connected component in the form of a list of edges
+
+    Returns:
+        float: standard deviation of the edge weights of the connected component
+    """
+
+    edge_weights = [edge[2] for edge in connected_component]
+    edge_std = np.std(edge_weights)
+    edge_std = round(edge_std, 2)
+
+    return edge_std
+
+
+def get_cc_connectivity(connected_component) -> float:
+    """calculates the connectivity of a connected component
+
+    Args:
+        connected_component (list[tuple[int, int, float, float, float, float, str]]):
+            connected component in the form of a list of edges
+
+    Returns:
+        float: connectivity of the connected component
+    """
+
+    nr_edges = len(connected_component)
+
+    nodes_a = [edge[0] for edge in connected_component]
+    nodes_b = [edge[1] for edge in connected_component]
+    nr_nodes = len(set(nodes_a + nodes_b))
+
+    cc_connectivity = nr_edges / (nr_nodes * (nr_nodes - 1) / 2)
+    cc_connectivity = round(cc_connectivity, 2)
+
+    return cc_connectivity
+
+
+def test_centrality(connected_component, node_fraction) -> tuple[bool, list[int]]:
+    """tests if a network will break when removing the top nodes
+    with highest betweenness centrality
+
+    Args:
+        connected_component (list[tuple[int, int, float, float, float, float, str]]):
+            connected component in the form of a list of edges
+        node_fraction (float): fraction of nodes with highest betweenness centrality to remove
+
+    Returns:
+        tuple[bool, list[int]]: whether the network breaks and the list of nodes sorted by betweenness centrality
+    """
+
+    edgelist = [(edge[0], edge[1], edge[2]) for edge in connected_component]
+
+    graph = networkx.Graph()
+    graph.add_weighted_edges_from(edgelist)
+
+    betweeness_centrality_dict = networkx.betweenness_centrality(graph)
+    sorted_between_bentrality_nodes = sorted(
+        betweeness_centrality_dict, key=betweeness_centrality_dict.get, reverse=True
+    )
+
+    # round up to nearest integer
+    top_nodes = math.ceil(len(sorted_between_bentrality_nodes) * node_fraction)
+    nodes_to_remove = sorted_between_bentrality_nodes[:top_nodes]
+
+    for node in nodes_to_remove:
+        graph.remove_node(node)
+
+    nr_ccs = networkx.number_connected_components(graph)
+
+    del graph
+
+    if nr_ccs > 1:
+        return True, sorted_between_bentrality_nodes
+
+    return False, sorted_between_bentrality_nodes
 
 
 def aff_sim_matrix(matrix):

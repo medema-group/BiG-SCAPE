@@ -26,6 +26,12 @@ class BigscapeConfig:
     EXPAND_GAP_SCORE = -2
     EXPAND_MAX_MATCH_PERC = 0.1
 
+    # CLUSTER
+    # TODO: benchmark these values, or at least think better about them
+    EDGE_WEIGHT_STD_THRESHOLD = 0.1
+    CC_CONNECTIVITY_THRESHOLD = 0.8
+    BETWEENNESS_CENTRALITY_NODES = 0.3
+
     # TREE
     TOP_FREQS = 3
 
@@ -69,6 +75,17 @@ class BigscapeConfig:
         BigscapeConfig.EXPAND_GAP_SCORE = int(config["EXPAND"]["EXPAND_GAP_SCORE"])
         BigscapeConfig.EXPAND_MAX_MATCH_PERC = float(
             config["EXPAND"]["EXPAND_MAX_MATCH_PERC"]
+        )
+
+        # CLUSTER
+        BigscapeConfig.EDGE_WEIGHT_STD_THRESHOLD = float(
+            config["CLUSTER"]["EDGE_WEIGHT_STD_THRESHOLD"]
+        )
+        BigscapeConfig.CC_CONNECTIVITY_THRESHOLD = float(
+            config["CLUSTER"]["CC_CONNECTIVITY_THRESHOLD"]
+        )
+        BigscapeConfig.BETWEENNESS_CENTRALITY_NODES = int(
+            config["CLUSTER"]["BETWEENNESS_CENTRALITY_NODES"]
         )
 
         # TREE
