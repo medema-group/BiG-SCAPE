@@ -204,7 +204,7 @@ class OutputGenerator:
             c="#E68981",  # pink
             label="Missing links",
         )
-
+        ax.text(0, -0.4, self.metadata, transform=ax.transAxes)
         plt.title("External cluster evaluation metrics per used cutoff")
         plt.xlabel("BiG-SCAPE family cutoff")
         plt.ylabel("Score")
