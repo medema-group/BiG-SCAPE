@@ -20,7 +20,7 @@ def run_bigscape_benchmark(run: dict):
 
     logging.info("Calculating benchmarking metrics per cutoff")
     metrics: dict[str, dict[str, Any]] = {}
-    for fam_cutoff in data.computed_labels.keys():
+    for fam_cutoff in sorted(data.computed_labels.keys(), key=float):
         computed_labels_in_cutoff = data.computed_labels[fam_cutoff]
         calculator = BenchmarkMetrics(data.curated_labels, computed_labels_in_cutoff)
         metrics[fam_cutoff] = calculator.calculate_metrics()

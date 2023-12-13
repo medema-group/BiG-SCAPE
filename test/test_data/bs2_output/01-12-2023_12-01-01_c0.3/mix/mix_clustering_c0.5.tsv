@@ -1,0 +1,5 @@
+GBK	Record_Type	Record_Number	GCF_number
+../data/benchmark_antismash_files/extracted/Fusarium/Fusarium_16/CM000578.1.cluster047.gbk	protocluster	1	72
+../data/benchmark_antismash_files/extracted/Fusarium/Fusarium_108/CM000578.1.cluster038.gbk	protocluster	1	77
+../data/benchmark_antismash_files/extracted/Fusarium/Fusarium_108/CM000578.1.cluster038.gbk	protocluster	2	179
+../data/benchmark_antismash_files/extracted/Fusarium/Fusarium_75/CM000578.1.cluster033.gbk	region	33	167

@@ -2,12 +2,17 @@
 
 # from python
 import os
+import logging
 import numpy as np
 from pathlib import Path
 from typing import Any, Optional
 
 # from dependencies
 import matplotlib.pyplot as plt
+
+# suppress dependency debug logs
+for logger in ["PIL", "matplotlib"]:
+    logging.getLogger(logger).setLevel(logging.WARNING)
 
 
 class OutputGenerator:

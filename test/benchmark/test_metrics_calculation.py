@@ -10,6 +10,20 @@ from big_scape.benchmarking import BenchmarkMetrics
 class TestBenchmarkMetrics(TestCase):
     """Test class for metrics calculation tasks"""
 
+    def test_shared_label_filter(self):
+        """Tests finding shared labels between curated and computed GCFs"""
+        curated = {"bgc1": "gcf1", "bgc2": "gcf1", "bgc3": "gcf2"}
+        computed = {"bgc1": "gcf1", "bgc2": "gcf1", "bgc4": "gcf2"}
+
+        expected_cur = {"bgc1": "gcf1", "bgc2": "gcf1"}
+        expected_comp = {"bgc1": "gcf1", "bgc2": "gcf1"}
+
+        calc = BenchmarkMetrics(curated, computed)
+
+        self.assertEqual(
+            (expected_cur, expected_comp), (calc.curated_labels, calc.computed_labels)
+        )
+
     def test_vmeasure(self):
         """Test the calculation of homogeneity, completeness, v_measure"""
         curated = {"bgc1": "gcf1", "bgc2": "gcf1", "bgc3": "gcf2"}
@@ -54,12 +68,12 @@ class TestBenchmarkMetrics(TestCase):
     def test_conf_matrix(self):
         """Test the calculation confusion matrix"""
         curated = {"bgc1": "gcf1", "bgc2": "gcf1", "bgc3": "gcf2"}
-        computed = {"bgc1": "gcf1", "bgc2": "gcf1", "bgc3": "gcf2"}
+        computed = {"bgc1": "1", "bgc2": "1", "bgc3": "2"}
 
         calc = BenchmarkMetrics(curated, computed)
         mat_data = calc.confusion_matrix()
 
-        expected = ([[2, 0], [0, 1]], ["gcf1", "gcf2"], ["gcf1", "gcf2"])
+        expected = ([[2, 0], [0, 1]], ["gcf1", "gcf2"], ["1", "2"])
 
         self.assertEqual(mat_data, expected)
 
