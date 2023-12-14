@@ -248,6 +248,8 @@ def load_gbks(run: dict, bigscape_dir: Path) -> list[GBK]:
             run,
             run["cds_overlap_cutoff"],
         )
+        logging.info("Loaded query GBK %s", query_bgc_gbk)
+
         input_gbks.append(query_bgc_gbk)
 
         query_bgc_stem = run["query_bgc_path"].stem
