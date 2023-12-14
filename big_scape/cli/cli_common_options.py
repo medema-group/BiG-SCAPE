@@ -30,14 +30,6 @@ def common_all(fn):
         function decorated with new click options
     """
     options = [
-        # meta
-        click.option(
-            "--metadata_path",
-            type=click.Path(
-                exists=True, dir_okay=False, file_okay=True, path_type=Path
-            ),
-            help="Path to metadata file.",
-        ),
         click.option(
             "--config_file_path",
             type=click.Path(
@@ -150,9 +142,8 @@ def common_cluster_query(fn):
         # TODO: adjust choices
         click.option(
             "--mibig_version",
-            type=click.Choice(
-                ["1.0", "1.1", "1.2", "1.3", "1.4", "2.0", "3.0", "3.1", "custom"]
-            ),
+            type=click.Choice(["3.1", "custom"]),
+            # TODO: document custom, readjust if needed
             required=False,
             help="MIBiG release number (e.g. 3.1). Download (if needed) and use this "
             "version of MiBIG database. If not provided, MiBIG will not be included "
@@ -166,14 +157,6 @@ def common_cluster_query(fn):
                 exists=True, file_okay=False, dir_okay=True, path_type=Path
             ),
             help="Path to directory containing antismash-processed reference BGCs.",
-        ),
-        # TODO: check if still needed
-        click.option(
-            "--dataset_path",
-            type=click.Path(
-                exists=True, dir_okay=False, file_okay=True, path_type=Path
-            ),
-            help="Path to location of input dataset mapping file.",
         ),
         click.option(
             "--include_gbk",
@@ -199,6 +182,7 @@ def common_cluster_query(fn):
             ),
         ),
         click.option(
+            # TODO: check if implemented
             "--min_bgc_length",
             type=int,
             default=0,
@@ -240,6 +224,7 @@ def common_cluster_query(fn):
                 "processed gbk files (e.g. to use a new version of Pfam)."
             ),
         ),
+        # TODO: can this be deleted? if database is given, hmmscan is skipped anyway?
         click.option(
             "--skip_hmmscan",
             is_flag=True,
@@ -250,6 +235,7 @@ def common_cluster_query(fn):
             ),
         ),
         click.option(
+            # TODO: check if implemented
             "--domain_includelist_path",
             type=click.Path(
                 exists=True, dir_okay=False, file_okay=True, path_type=Path
@@ -336,6 +322,7 @@ def common_cluster_query(fn):
         ),
         # TODO: implement cand_cluster here and LCS-ext
         click.option(
+            # TODO: double check that cand_cluster is proper implemented
             "--record_type",
             type=click.Choice(
                 ["region", "cand_cluster", "proto_cluster", "proto_core"]
