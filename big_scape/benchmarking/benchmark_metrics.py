@@ -1,6 +1,7 @@
 """Contains calculation of benchmarking evaluation metrics"""
 
 # from python
+import logging
 from collections import Counter
 from typing import Any
 
@@ -19,8 +20,12 @@ class BenchmarkMetrics:
     """
 
     def __init__(self, curated_labels: dict[str, str], computed_labels: dict[str, str]):
-        self.curated_labels = curated_labels
-        self.computed_labels = computed_labels
+        # collect labels that occur in both curated and computed sets
+        eligible_labels = curated_labels & computed_labels.keys()
+        self.curated_labels = {lab: curated_labels[lab] for lab in eligible_labels}
+        self.computed_labels = {lab: computed_labels[lab] for lab in eligible_labels}
+
+        logging.debug("Working with %s eligible shared BGCs", len(eligible_labels))
 
     def calculate_metrics(self) -> dict[str, Any]:
         """Calculate all metrics
@@ -72,10 +77,8 @@ class BenchmarkMetrics:
         Returns:
             tuple[float, float, float]: homogeneity, completeness and V-measure
         """
-        computed_bgcs = self.computed_labels.keys()
-
-        curated_fams = [self.curated_labels[bgc] for bgc in computed_bgcs]
-        computed_fams = [self.computed_labels[bgc] for bgc in computed_bgcs]
+        curated_fams = list(self.curated_labels.values())
+        computed_fams = list(self.computed_labels.values())
 
         return homogeneity_completeness_v_measure(curated_fams, computed_fams)
 
@@ -123,19 +126,15 @@ class BenchmarkMetrics:
             families, and fraction of present and missing associations based on curated
             families.
         """
-        computed_bgcs = self.computed_labels.keys()
-        curated_labels_used = {
-            bgc: fam for bgc, fam in self.curated_labels.items() if bgc in computed_bgcs
-        }
         computed_fams = BenchmarkMetrics.create_fam_index(self.computed_labels)
-        curated_fams = BenchmarkMetrics.create_fam_index(curated_labels_used)
+        curated_fams = BenchmarkMetrics.create_fam_index(self.curated_labels)
 
         correct = []
         wrong = []
         present = []
         missing = []
-        for bgc in computed_bgcs:
-            cur_assoc = set(curated_fams[curated_labels_used[bgc]])
+        for bgc in self.computed_labels:
+            cur_assoc = set(curated_fams[self.curated_labels[bgc]])
             comp_assoc = set(computed_fams[self.computed_labels[bgc]])
             # remove self-association
             cur_assoc.remove(bgc)
@@ -171,15 +170,11 @@ class BenchmarkMetrics:
         """
         mat: list[list[int]] = []
 
-        comp_bgcs = self.computed_labels.keys()
-        curated_labels_used = {
-            bgc: fam for bgc, fam in self.curated_labels.items() if bgc in comp_bgcs
-        }
         computed_fams = BenchmarkMetrics.create_fam_index(self.computed_labels)
-        curated_fams = BenchmarkMetrics.create_fam_index(curated_labels_used)
+        curated_fams = BenchmarkMetrics.create_fam_index(self.curated_labels)
 
         row_labels = sorted(curated_fams.keys())
-        col_labels = sorted(computed_fams.keys())
+        col_labels = sorted(computed_fams.keys(), key=int)
         for cur_fam in row_labels:
             row: list[int] = []
             cur_members = set(curated_fams[cur_fam])
@@ -203,20 +198,15 @@ class BenchmarkMetrics:
         """Calculate summary GCF number and size for curated and computed GCFs
 
         Returns:
-            Tuple containing number of curated and computed GCFs and their average size
+            Tuple containing number of curated and computed GCFs, their average size and
+            number of singleton families
         """
-        computed_bgcs = self.computed_labels.keys()
-
-        curated_labels_used = {
-            bgc: fam for bgc, fam in self.curated_labels.items() if bgc in computed_bgcs
-        }
-
-        curated_fams = set(curated_labels_used.values())
+        curated_fams = set(self.curated_labels.values())
         computed_fams = set(self.computed_labels.values())
 
         curated_avg_size = float(
             np.average(
-                [list(curated_labels_used.values()).count(fam) for fam in curated_fams]
+                [list(self.curated_labels.values()).count(fam) for fam in curated_fams]
             )
         )
         computed_avg_size = float(
@@ -227,7 +217,7 @@ class BenchmarkMetrics:
                 ]
             )
         )
-        curated_single = list(Counter(curated_labels_used.values()).values()).count(1)
+        curated_single = list(Counter(self.curated_labels.values()).values()).count(1)
         computed_single = list(Counter(self.computed_labels.values()).values()).count(1)
         return (
             len(curated_fams),

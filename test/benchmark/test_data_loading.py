@@ -30,13 +30,27 @@ class TestBenchmarkData(TestCase):
 
         self.assertEqual(testloader.curated_labels, expected_data)
 
+    def test_curated_gcf_loading_long_format(self):
+        """Tests the loading of long format curated GCF assignments, e.g. protoclusters"""
+        expected_data = {
+            "AGCF01000001.1.cluster077_protocluster_1": "ectoine",
+            "CM001149.1.cluster003_protocluster_1": "ectoine",
+            "CM001149.1.cluster001_protocluster_1": "FAS",
+            "CM002177.1.cluster025": "FAS",
+        }
+        curated_path = Path("test/test_data/curated_gcfs/valid_protocluster_gcfs.tsv")
+        testloader = BenchmarkData(curated_path, None)
+        testloader.load_curated_labels()
+
+        self.assertEqual(testloader.curated_labels, expected_data)
+
     def test_empty_assignments_warning(self):
         """Test warning upon loading empty GCF assignment file"""
         empty_file = Path("test/test_data/curated_gcfs/empty_curated_gcfs.tsv")
-        dataloader = BenchmarkData(None, None)
+        dataloader = BenchmarkData(empty_file, None)
         with self.assertLogs(level=logging.INFO) as cm:
             logging.info("nonsense")
-            dataloader.read_gcf_tsv(empty_file)
+            dataloader.load_curated_labels()
 
         # cm.output a list of strings of all the logs
         str = "GCF assignment file is empty"
@@ -68,22 +82,26 @@ class TestBenchmarkData(TestCase):
         self.assertEqual(dataloader.computed_labels, expected_data)
 
     def test_bs2_computed_gcf_loading(self):
-        """Test loading of BS2 computed GCF assignments from database"""
-        db_path = Path("test/test_data/database/valid_family.db")
+        """Test loading of BS2 computed GCF assignments from output"""
+        run_path = Path("test/test_data/bs2_output")
 
         expected_data = {
-            "0.3": {
-                "HF679024.1.cluster018": "2",
-                "CM000578.1.cluster042": "2",
-                "HG323944.1.cluster039": "3",
-                "CM003198.1.cluster037": "6",
-                "Chr1.cluster034": "6",
-                "CM000574.1.cluster043": "6",
-            }
+            "0.5": {
+                "CM000578.1.cluster047_protocluster_1": "72",
+                "CM000578.1.cluster038_protocluster_1": "77",
+                "CM000578.1.cluster038_protocluster_2": "179",
+                "CM000578.1.cluster033": "167",
+            },
+            "0.7": {
+                "CM000578.1.cluster038_protocluster_1": "6",
+                "CM000578.1.cluster038_protocluster_2": "6",
+                "CM000578.1.cluster042_protocluster_1_2": "10",
+                "CM000578.1.cluster033": "62",
+            },
         }
 
         dataloader = BenchmarkData(None, None)
-        dataloader.load_computed_bs2_labels(db_path)
+        dataloader.load_computed_bs2_labels(run_path)
 
         self.assertEqual(dataloader.computed_labels, expected_data)
 
