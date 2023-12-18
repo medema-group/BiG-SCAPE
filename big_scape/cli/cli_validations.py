@@ -25,8 +25,8 @@ def set_start(param_dict) -> None:
     timestamp = start_time.strftime("%d-%m-%Y_%H-%M-%S")
     if param_dict["label"]:
         param_dict["label"] = f"{param_dict['label']}_{timestamp}"
-
-    param_dict["label"] = f"{timestamp}"
+    else:
+        param_dict["label"] = f"{timestamp}"
 
     param_dict["start_time"] = start_time
 

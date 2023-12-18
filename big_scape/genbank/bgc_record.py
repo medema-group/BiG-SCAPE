@@ -456,7 +456,7 @@ def get_sub_records(
     # TODO: currently not implemented, only region, protocluster and protocore are supported
     # implement and use same strategy as for region if kind is neighbouring (several cores in a record)
     # and protocluster if kind is single, interleaved or chemical hybrid (one core per record)
-    if record_type == bs_enums.genbank.RECORD_TYPE.CANDIDATE_CLUSTER:
+    if record_type == bs_enums.genbank.RECORD_TYPE.CAND_CLUSTER:
         return cand_clusters
 
     # for protoclusters and protocores we need to keep track of the numbers, since they may
@@ -479,7 +479,7 @@ def get_sub_records(
     if len(proto_clusters) == 0:
         return cand_clusters
 
-    if record_type == bs_enums.genbank.RECORD_TYPE.PROTO_CLUSTER:
+    if record_type == bs_enums.genbank.RECORD_TYPE.PROTOCLUSTER:
         return proto_clusters
 
     proto_cores: list[ProtoCore] = []

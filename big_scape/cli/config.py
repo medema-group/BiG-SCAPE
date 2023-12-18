@@ -84,7 +84,7 @@ class BigscapeConfig:
         BigscapeConfig.CC_CONNECTIVITY_THRESHOLD = float(
             config["CLUSTER"]["CC_CONNECTIVITY_THRESHOLD"]
         )
-        BigscapeConfig.BETWEENNESS_CENTRALITY_NODES = int(
+        BigscapeConfig.BETWEENNESS_CENTRALITY_NODES = float(
             config["CLUSTER"]["BETWEENNESS_CENTRALITY_NODES"]
         )
 

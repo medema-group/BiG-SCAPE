@@ -5,6 +5,6 @@ from enum import Enum
 
 class RECORD_TYPE(Enum):
     REGION = "region"
-    CANDIDATE_CLUSTER = "cand_cluster"
-    PROTO_CLUSTER = "proto_cluster"
+    CAND_CLUSTER = "cand_cluster"
+    PROTOCLUSTER = "protocluster"
     PROTO_CORE = "proto_core"
