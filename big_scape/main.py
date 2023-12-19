@@ -171,7 +171,7 @@ def run_bigscape(run: dict) -> None:
                 run["cores"],
             )
 
-            with tqdm.tqdm(unit="CDS", desc="HMMSCAN") as t:
+            with tqdm.tqdm(unit="CDS", total=len(cds_to_scan), desc="HMMSCAN") as t:
 
                 def callback(tasks_done):
                     t.update(tasks_done)
@@ -229,7 +229,7 @@ def run_bigscape(run: dict) -> None:
 
         hsps_to_align = bs_data.get_hsp_to_align(gbks)
 
-        with tqdm.tqdm(unit="HSP", desc="HMMALIGN") as t:
+        with tqdm.tqdm(unit="HSP", total=len(hsps_to_align), desc="HMMALIGN") as t:
 
             def align_callback(tasks_done: int):
                 t.update(tasks_done)

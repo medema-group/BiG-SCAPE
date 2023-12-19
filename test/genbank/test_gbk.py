@@ -184,7 +184,7 @@ class TestGBK(TestCase):
         proto_core_numbers_2.sort()
 
         all_cand_clusters_1 = bs_gbk.bgc_record.get_sub_records(
-            gbk_1.region, bs_enums.genbank.RECORD_TYPE.CANDIDATE_CLUSTER
+            gbk_1.region, bs_enums.genbank.RECORD_TYPE.CAND_CLUSTER
         )
         cand_cluster_numbers_1 = [cc.number for cc in all_cand_clusters_1]
         cand_cluster_numbers_1.sort()
@@ -196,7 +196,7 @@ class TestGBK(TestCase):
         cc_1_3_pcs.sort()
 
         all_cand_clusters_2 = bs_gbk.bgc_record.get_sub_records(
-            gbk_2.region, bs_enums.genbank.RECORD_TYPE.CANDIDATE_CLUSTER
+            gbk_2.region, bs_enums.genbank.RECORD_TYPE.CAND_CLUSTER
         )
         cand_cluster_numbers_2 = [cc.number for cc in all_cand_clusters_2]
         cand_cluster_numbers_2.sort()

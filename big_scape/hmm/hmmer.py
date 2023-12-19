@@ -314,8 +314,6 @@ class HMMer:
         # an order to shut down
         # this way we can write the main process as follows:
 
-        tasks_done = 0
-
         # now that we have our worker processes and connections, we can start sending
         # data to the workers so they can actually start doing stuff
         while len(connections) > 0:
@@ -360,9 +358,8 @@ class HMMer:
                             task_output, cds_list, domain_overlap_cutoff
                         )
 
-                    tasks_done += src_task_count
                     if callback is not None:
-                        callback(tasks_done)
+                        callback(src_task_count)
 
         # almost certainly not every cds has an HSP, so we can only assume that if this reached the
         # end of the function all of the CDS were scanned.
@@ -465,8 +462,6 @@ class HMMer:
             hsps (list[HSP]): List of HSPs to align
         """
 
-        tasks_done = 0
-
         # emit a warning for people not using a certain version of pyhmmer
         version_parts = list(map(int, pyhmmer_version.split(".")))
         if int(version_parts[1]) < 8 or version_parts[1] == 8 and version_parts[2] < 2:
@@ -514,10 +509,8 @@ class HMMer:
 
             msa = hmmalign(domain_profile, ds_block)
 
-            tasks_done += 1
-
             if callback is not None:
-                callback(tasks_done)
+                callback(len(hsp_list))
 
             for idx, alignment in enumerate(msa.alignment):
                 # name is actually the list index of the original HSP

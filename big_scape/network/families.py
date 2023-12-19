@@ -179,7 +179,7 @@ def aff_sim_matrix(matrix):
     warnings.filterwarnings(action="ignore", category=ConvergenceWarning)
 
     af_results = AffinityPropagation(
-        damping=0.9,
+        damping=0.90,
         max_iter=1000,
         convergence_iter=200,
         affinity="precomputed",
@@ -245,11 +245,7 @@ def save_singletons(record_type: RECORD_TYPE, cutoff: float, bin_label: str) -> 
         cutoff (float): cutoff value to create families for
         bin_label (str): label of the bin to create families for
     """
-    # TODO: fix protocluster spelling in RECORD_TYPE enum
-    if record_type == RECORD_TYPE.PROTO_CLUSTER:
-        record_type_str = "protocluster"
-    else:
-        record_type_str = record_type.value
+    record_type_str = record_type.value
 
     if DB.metadata is None:
         raise RuntimeError("DB metadata is None!")
