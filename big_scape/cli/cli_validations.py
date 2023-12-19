@@ -351,12 +351,13 @@ def validate_pfam_path(ctx) -> None:
 
 def validate_record_type(ctx, _, record_type) -> Optional[bs_enums.genbank.RECORD_TYPE]:
     """Validates whether a region_type is provided when running classify"""
-    valid_types = [mode.value for mode in bs_enums.genbank.RECORD_TYPE]
+    valid_types = {mode.value: mode for mode in bs_enums.genbank.RECORD_TYPE}
 
-    for valid_type in valid_types:
-        if record_type == valid_type:
-            return bs_enums.genbank.RECORD_TYPE[valid_type.upper()]
-    return None
+    if record_type not in valid_types:
+        logging.error("Provided --record_type is invalid")
+        raise click.UsageError("Provided --record_type in invalid")
+
+    return valid_types[record_type]
 
 
 def validate_query_record(ctx) -> None:

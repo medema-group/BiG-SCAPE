@@ -479,7 +479,7 @@ def get_sub_records(
     if len(proto_clusters) == 0:
         return cand_clusters
 
-    if record_type == bs_enums.genbank.RECORD_TYPE.PROTOCLUSTER:
+    if record_type == bs_enums.genbank.RECORD_TYPE.PROTO_CLUSTER:
         return proto_clusters
 
     proto_cores: list[ProtoCore] = []

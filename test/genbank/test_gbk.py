@@ -160,13 +160,13 @@ class TestGBK(TestCase):
         gbk_2 = GBK.parse(gbk_file_path_2, SOURCE_TYPE.QUERY, run)
 
         all_protoclusters_1 = bs_gbk.bgc_record.get_sub_records(
-            gbk_1.region, bs_enums.genbank.RECORD_TYPE.PROTOCLUSTER
+            gbk_1.region, bs_enums.genbank.RECORD_TYPE.PROTO_CLUSTER
         )
         protocluster_numbers_1 = [pc.number for pc in all_protoclusters_1]
         protocluster_numbers_1.sort()
 
         all_protoclusters_2 = bs_gbk.bgc_record.get_sub_records(
-            gbk_2.region, bs_enums.genbank.RECORD_TYPE.PROTOCLUSTER
+            gbk_2.region, bs_enums.genbank.RECORD_TYPE.PROTO_CLUSTER
         )
         protocluster_numbers_2 = [pc.number for pc in all_protoclusters_2]
         protocluster_numbers_2.sort()
