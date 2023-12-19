@@ -138,7 +138,7 @@ def make_plots(
     stats_df = stats_df.fillna(0.0)
     main_df = stats_df.pop("MAIN")
 
-    if stat_type == "mem":
+    if stat_type == "Memory":
         ylabel = "Memory (Mb)"
     else:
         ylabel = "CPU Percent"

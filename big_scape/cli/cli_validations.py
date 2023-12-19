@@ -41,8 +41,8 @@ def validate_profiling(ctx, param, profiling) -> bool:
 
     if profiling and platform.system() == "Darwin":
         logging.warning("Profiling is not supported on MacOS, please use Linux")
-
-    return False
+        return False
+    return profiling
 
 
 # input parameter validations
