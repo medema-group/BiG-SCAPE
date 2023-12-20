@@ -19,6 +19,7 @@ from sqlalchemy import (
     select,
     text,
 )
+from sqlalchemy.pool import StaticPool
 import tqdm
 import click
 
@@ -84,7 +85,11 @@ class DB:
         if DB.opened():
             raise DBAlreadyOpenError()
 
-        DB.engine = create_engine("sqlite:///:memory:")
+        DB.engine = create_engine(
+            "sqlite:///:memory:",
+            connect_args={"check_same_thread": False},
+            poolclass=StaticPool,
+        )
         DB.connection = DB.engine.connect()
 
     @staticmethod
