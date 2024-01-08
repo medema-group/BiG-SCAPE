@@ -52,8 +52,7 @@ def calculate_distances_mix(
                     t.update(1)
                     save_batch.append(edge)
                     if len(save_batch) > batch_size:
-                        bs_comparison.save_edges_to_db(save_batch)
-                        bs_data.DB.commit()
+                        bs_comparison.save_edges_to_db(save_batch, commit=True)
                         save_batch = []
 
             bs_comparison.generate_edges(

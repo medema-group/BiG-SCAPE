@@ -2,7 +2,7 @@
 
 # from python
 import logging
-from typing import Generator, cast
+from typing import Generator
 import sqlite3
 
 # from dependencies
@@ -80,13 +80,15 @@ def save_edge_to_db(
 
 
 def save_edges_to_db(
-    edges: list[tuple[int, int, float, float, float, float, ComparableRegion]]
+    edges: list[tuple[int, int, float, float, float, float, ComparableRegion]],
+    commit: bool = False,
 ) -> None:
     """Save many edges to the database
 
     Args:
         edges (list[tuple[int, int, float, float, float, float, int, int, int, int,
                int, int, int, int, bool]]): list of edges to save
+        commit (bool): whether to commit immediately, e.g. during multiprocessing
     """
     # save the comparison data to the database
     # using raw sqlite for this because sqlalchemy is not fast enough
@@ -97,8 +99,10 @@ def save_edges_to_db(
     if not DB.engine:
         raise RuntimeError("DB.engine is None")
 
-    sqlite_connection = DB.engine.raw_connection()
-    sqlite_connection = cast(sqlite3.Connection, sqlite_connection)
+    sqlite_connection = DB.engine.raw_connection().driver_connection
+
+    if not isinstance(sqlite_connection, sqlite3.Connection):
+        raise TypeError("Unexpected DB connection type")
 
     # create a cursor
     cursor = sqlite_connection.cursor()
@@ -111,6 +115,9 @@ def save_edges_to_db(
     unpacked_edges = [edge[:-1] + edge[-1].to_tuple() for edge in edges]
 
     cursor.executemany(query, unpacked_edges)
+
+    if commit:
+        sqlite_connection.commit()
 
     # # execute the query. use batches of 100000 to track progress
     # batch_size = 100000
