@@ -63,7 +63,7 @@ from distutils import dir_util
 from sklearn.cluster import AffinityPropagation
 import networkx as nx
 
-from bgc_data import bgc_data
+from .bgc_data import bgc_data
 
 
 global use_relevant_mibig
