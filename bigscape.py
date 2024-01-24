@@ -1260,7 +1260,7 @@ def runHmmScan(fastaPath, hmmPath, outputdir, verbose):
         sys.exit("Error running hmmscan: Fasta file " + fastaPath + " doesn't exist")
 
 
-def parseHmmScan(hmmscanResults, pfd_folder, pfs_folder, overlapCutoff):
+def parseHmmScan(hmmscanResults, pfd_folder, pfs_folder, overlapCutoff, genbankDict):
     outputbase = ".".join(hmmscanResults.split(os.sep)[-1].split(".")[:-1])
     # try to read the domtable file to find out if this gbk has domains. Domains
     # need to be parsed into fastas anyway.
@@ -2519,7 +2519,7 @@ def main():
     # Using serialized version for now. Probably doesn't have too bad an impact
     #pool = Pool(cores,maxtasksperchild=32)
     for domtableFile in domtableFiles - alreadyDone:
-        parseHmmScan(domtableFile, pfd_folder, pfs_folder, options.domain_overlap_cutoff)
+        parseHmmScan(domtableFile, pfd_folder, pfs_folder, options.domain_overlap_cutoff, genbankDict)
         #pool.apply_async(parseHmmScan, args=(domtableFile,output_folder,options.domain_overlap_cutoff))
     #pool.close()
     #pool.join()
