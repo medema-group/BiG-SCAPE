@@ -1960,10 +1960,10 @@ def CMD_parser():
                         Toggle to activate.")
     
     parser.add_argument("-d", "--domain_overlap_cutoff", 
-                        dest="domain_overlap_cutoff", default=0.1, help="Specify\
-                        at which overlap percentage domains are considered to \
-                        overlap. Domain with the best score is kept \
-                        (default=0.1).")
+                        dest="domain_overlap_cutoff", default=0.1, 
+                        type=float, help="Specify at which overlap percentage  \
+                        domains are considered to overlap. Domain with the best \
+                        score is kept (default=0.1).")
     
     parser.add_argument("-m", "--min_bgc_size", dest="min_bgc_size", default=0,
                       help="Provide the minimum size of a BGC to be included in\
