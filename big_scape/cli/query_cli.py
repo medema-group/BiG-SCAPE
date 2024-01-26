@@ -39,11 +39,11 @@ from .cli_validations import (
     type=int,
     required=False,
     help=(
-        "Query BGC record number. Used to select the specific record"
+        "Query BGC record number. Used to select the specific record "
         "from the query BGC gbk. Warning: interleaved or chemical hybrid proto"
         "cluster/cores are merged, and the relevant number is that of the "
-        "first record of the merged cluster (the one with the lowest number)."
-        " e.g. if records 1 and 2 get merged, the relevant number is 1. "
+        "first record of the merged cluster (the one with the lowest number). "
+        "e.g. if records 1 and 2 get merged, the relevant number is 1. "
     ),
 )
 @click.option(
@@ -51,8 +51,8 @@ from .cli_validations import (
     is_flag=True,
     help=(
         "Only generate edges between the query and reference BGCs. If not set, "
-        "BiG-SCAPE will also propagate edge generation to reference BGCs."
-        "Warning: if database already contains all edges, this will not work,"
+        "BiG-SCAPE will also propagate edge generation to reference BGCs. "
+        "Warning: if database already contains all edges, this will not work, "
         "and the output will still showcase all edges between nodes "
         "in the query connected component."
     ),
@@ -63,7 +63,7 @@ def query(ctx, *args, **kwarg):
     BiG-SCAPE - QUERY
 
     Query BGC mode - BiG-SCAPE queries a set of BGCs
-    based on a single BGC query.
+    based on a single BGC query in a one-vs-all comparison.
     For a more comprehensive help menu and tutorials see GitHub Wiki.
     \f
     :param click.core.Context ctx: Click context.

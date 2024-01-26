@@ -21,8 +21,9 @@ Nico Louwen                         nico.louwen@wur.nl
 
 
 Usage:   Please see `python bigscape.py -h`
+                    `python bigscape.py cluster -h`
 
-Example: python bigscape.py -c 8 --pfam_dir ./ -i ./inputfiles -o ./results
+Example: python bigscape.py cluster -i ./inputfiles -o ./results -c 8 -p ./Pfam-A.hmm
 
 
 Official repository:
@@ -50,7 +51,7 @@ def print_version(ctx, param, value):
     ctx.exit()
 
 
-@click.group()
+@click.group(context_settings={"help_option_names": ["-h", "--help"]})
 @click.option(
     "--version", is_flag=True, callback=print_version, expose_value=False, is_eager=True
 )
