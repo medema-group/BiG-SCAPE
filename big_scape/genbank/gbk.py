@@ -399,13 +399,6 @@ class GBK:
             # if regions are missing, gbk will be assumed to be as4
             # here we need to see if the user set --gbk-force to true
 
-            if run["force_gbk"]:
-                logging.warning(
-                    "%s: GBK file does not contain an antiSMASH region feature. "
-                    "Using --force_gbk, assuming AS4",
-                    gbk.path,
-                )
-
             gbk.parse_as4(record, cds_overlap_cutoff, run["force_gbk"])
 
         return gbk
@@ -470,6 +463,12 @@ class GBK:
             raise InvalidGBKError()
 
         # at this point we need to make a region object from the whole GBK
+        logging.warning(
+            "%s: GBK file does not contain an antiSMASH region feature. "
+            "Using --force_gbk, assuming AS4",
+            self.path,
+        )
+
         self.region = Region.parse_full_region(record, parent_gbk=self)
 
     def parse_as5up(
