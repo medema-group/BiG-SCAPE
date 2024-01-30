@@ -7,6 +7,7 @@ from typing import Dict, Optional, TYPE_CHECKING
 
 # from dependencies
 from Bio.SeqFeature import SeqFeature
+from Bio.SeqRecord import SeqRecord
 
 # from other modules
 from big_scape.data import DB
@@ -207,6 +208,37 @@ class Region(BGCRecord):
             product,
         )
         region.cand_clusters = cand_clusters
+        return region
+
+    @classmethod
+    def parse_full_region(cls, record: SeqRecord, parent_gbk: GBK) -> Region:
+        """Generates a region from a full feature, without trying to parse any region feature
+
+        Args:
+            record (SeqRecord): SeqRecord object
+            parent_gbk (GBK): parent GBK
+
+        Returns:
+            Region: region object
+        """
+        nt_start = 1
+        nt_stop = len(record.seq) // 3
+        contig_edge = False
+
+        # record may have multiple products. handle them here
+        product = "other"
+
+        # now we have all the parameters needed to assemble the region
+        region = cls(
+            parent_gbk,
+            1,
+            nt_start,
+            nt_stop,
+            contig_edge,
+            product,
+        )
+
+        region.cand_clusters = {}
         return region
 
     def get_cds_with_domains(self, return_all=True, reverse=False) -> list[CDS]:

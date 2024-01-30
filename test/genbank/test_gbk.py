@@ -64,6 +64,7 @@ class TestGBK(TestCase):
             "cores": None,
             "classify": False,
             "legacy_classify": False,
+            "force_gbk": False,
         }
         gbk = GBK.parse(gbk_file_path, SOURCE_TYPE.QUERY, run)
 
@@ -85,6 +86,7 @@ class TestGBK(TestCase):
             "cores": None,
             "classify": False,
             "legacy_classify": False,
+            "force_gbk": False,
         }
         gbk = GBK.parse(gbk_file_path, SOURCE_TYPE.QUERY, run)
         expected_region_product = "nrps.t1pks"
@@ -257,6 +259,7 @@ class TestGBK(TestCase):
             "cores": None,
             "classify": False,
             "legacy_classify": False,
+            "force_gbk": False,
         }
         self.assertRaises(
             InvalidGBKError, GBK.parse, gbk_file_path, SOURCE_TYPE.QUERY, run
@@ -727,3 +730,28 @@ class TestGBK(TestCase):
         self.assertTrue(all(gbks_have_regions))
 
     # TODO: test load candidate clusters, protoclusters, protocores
+
+    def test_force_gbk_import(self):
+        """Tests whether a GBK without any antiSMASH annotations can be imported
+        when the --force-gbk option is enabled"""
+
+        test_file = Path("test/test_data/invalid_gbk_folder/as4_no_cluster_feature.gbk")
+
+        run = {
+            "input_dir": Path("test/test_data/invalid_gbk_folder/"),
+            "input_mode": bs_enums.INPUT_MODE.RECURSIVE,
+            "include_gbk": None,
+            "exclude_gbk": None,
+            "cds_overlap_cutoff": None,
+            "cores": None,
+            "classify": False,
+            "legacy_classify": False,
+            "force_gbk": True,
+        }
+
+        gbk = GBK.parse(test_file, SOURCE_TYPE.QUERY, run)
+
+        actual_len = gbk.region.nt_stop
+        expected_len = 31585
+
+        self.assertEqual(expected_len, actual_len)
