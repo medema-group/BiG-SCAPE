@@ -19,8 +19,8 @@ setup(
      name='bigscape',
      version='1.1.5',
      py_modules=['functions','ArrowerSVG'],
-     packages=['bigscape'],
-     package_dir={'bigscape': '.'},
+     packages=["bigscape", "bgc_data"],
+     package_dir={"bigscape": ".", "bgc_data": "."},
      package_data=generate_package_data(),
      entry_points={
          'console_scripts': ['bigscape=bigscape.__main__:main']
