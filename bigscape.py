@@ -1260,7 +1260,7 @@ def runHmmScan(fastaPath, hmmPath, outputdir, verbose):
         sys.exit("Error running hmmscan: Fasta file " + fastaPath + " doesn't exist")
 
 
-def parseHmmScan(hmmscanResults, pfd_folder, pfs_folder, overlapCutoff, genbankDict):
+def parseHmmScan(hmmscanResults, pfd_folder, pfs_folder, overlapCutoff):
     outputbase = ".".join(hmmscanResults.split(os.sep)[-1].split(".")[:-1])
     # try to read the domtable file to find out if this gbk has domains. Domains
     # need to be parsed into fastas anyway.
@@ -1960,10 +1960,10 @@ def CMD_parser():
                         Toggle to activate.")
     
     parser.add_argument("-d", "--domain_overlap_cutoff", 
-                        dest="domain_overlap_cutoff", default=0.1, 
-                        type=float, help="Specify at which overlap percentage  \
-                        domains are considered to overlap. Domain with the best \
-                        score is kept (default=0.1).")
+                        dest="domain_overlap_cutoff", default=0.1, help="Specify\
+                        at which overlap percentage domains are considered to \
+                        overlap. Domain with the best score is kept \
+                        (default=0.1).")
     
     parser.add_argument("-m", "--min_bgc_size", dest="min_bgc_size", default=0,
                       help="Provide the minimum size of a BGC to be included in\
@@ -2519,7 +2519,7 @@ def main():
     # Using serialized version for now. Probably doesn't have too bad an impact
     #pool = Pool(cores,maxtasksperchild=32)
     for domtableFile in domtableFiles - alreadyDone:
-        parseHmmScan(domtableFile, pfd_folder, pfs_folder, options.domain_overlap_cutoff, genbankDict)
+        parseHmmScan(domtableFile, pfd_folder, pfs_folder, options.domain_overlap_cutoff)
         #pool.apply_async(parseHmmScan, args=(domtableFile,output_folder,options.domain_overlap_cutoff))
     #pool.close()
     #pool.join()
