@@ -3,6 +3,7 @@
 import os
 from distutils.core import setup
 
+
 def generate_package_data():
     data_files = []
     for directory in ['html_template','Annotated_MIBiG_reference']:
@@ -17,10 +18,10 @@ def generate_package_data():
 
 setup(
      name='bigscape',
-     version='1.1.5',
+     version='1.1.8',
      py_modules=['functions','ArrowerSVG'],
-     packages=['bigscape'],
-     package_dir={'bigscape': '.'},
+     packages=["bigscape", "bgc_data"],
+     package_dir={"bigscape": ".", "bgc_data": "."},
      package_data=generate_package_data(),
      entry_points={
          'console_scripts': ['bigscape=bigscape.__main__:main']
