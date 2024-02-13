@@ -6,7 +6,6 @@ return the state of partial analyses so that they can be continued
 from pathlib import Path
 from unittest import TestCase
 from itertools import combinations
-import big_scape.comparison.record_pair
 
 # from other modules
 from big_scape.data import (
@@ -34,6 +33,7 @@ def create_mock_gbk(i) -> GBK:
     cds.strand = 1
     gbk.genes.append(cds)
     gbk.region = Region(gbk, 1, 0, 100, False, "test")
+    gbk.region._db_id = i
     gbk.metadata = {
         "organism": "banana",
         "taxonomy": "bananus;fruticus",
@@ -506,8 +506,8 @@ class TestPartialComparison(TestCase):
         mix_bin.add_records([gbk.region for gbk in gbks])
 
         expected_missing_pairs = [
-            big_scape.comparison.record_pair.RecordPair(gbks[0].region, gbks[2].region),
-            big_scape.comparison.record_pair.RecordPair(gbks[1].region, gbks[2].region),
+            (gbks[0].region._db_id, gbks[2].region._db_id),
+            (gbks[1].region._db_id, gbks[2].region._db_id),
         ]
 
         pair_generator = bs_comparison.RecordPairGenerator("mix", 1)

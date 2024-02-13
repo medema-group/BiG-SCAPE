@@ -17,6 +17,8 @@ from typing import Generator, Callable, Optional, TypeVar
 from math import ceil
 from .record_pair import RecordPair
 
+# from dependencies
+from sqlalchemy import select
 
 # from other modules
 from big_scape.distances import calc_jaccard_pair, calc_ai_pair, calc_dss_pair
@@ -24,6 +26,17 @@ import big_scape.enums as bs_enums
 import big_scape.genbank as bs_gbk
 from big_scape.cli.config import BigscapeConfig
 import big_scape.comparison as bs_comparison
+from big_scape.data import DB
+from big_scape.genbank import (
+    CDS,
+    GBK,
+    Region,
+    CandidateCluster,
+    ProtoCluster,
+    ProtoCore,
+    BGCRecord,
+)
+from big_scape.hmm import HSP, HSPAlignment
 
 # from this module
 from .binning import RecordPairGenerator
@@ -111,7 +124,7 @@ def generate_edges(
     num_pairs = pair_generator.num_pairs()
 
     if batch_size is None:
-        batch_size = get_batch_size(cores, 10000, num_pairs)
+        batch_size = get_batch_size(cores, 50000, num_pairs)
         logging.debug("Using automatic batch size: %d", batch_size)
     else:
         batch_size = min(num_pairs, batch_size)
@@ -338,7 +351,7 @@ def expand_pair(pair: RecordPair) -> bool:
 
 
 def calculate_scores_pair(
-    data: tuple[list[RecordPair], bs_enums.ALIGNMENT_MODE, int, str]
+    data: tuple[list[tuple[int, int]], bs_enums.ALIGNMENT_MODE, int, str]
 ) -> list[
     tuple[
         Optional[int],
@@ -364,13 +377,17 @@ def calculate_scores_pair(
     """
     pairs, alignment_mode, edge_param_id, weights_label = data
 
+    # convert database ids to minimal record objects
+    records = fetch_records_from_database(pairs)
+
     results = []
 
     # TODO: this fails since DB getting accessed from child processes
     # seems to be a problem with the DB connection (for mac?)
     # weights_label = bs_comparison.get_edge_weight(edge_param_id)
 
-    for pair in pairs:
+    for id_a, id_b in pairs:
+        pair = RecordPair(records[id_a], records[id_b])
         logging.debug(pair)
         pair.log_comparable_region()
         jaccard = calc_jaccard_pair(pair, cache=False)
@@ -439,3 +456,109 @@ def calculate_scores_pair(
         logging.debug("")
 
     return results
+
+
+def fetch_records_from_database(pairs: list[tuple[int, int]]) -> dict[int, BGCRecord]:
+    """Constructs an index containing minimal BGCRecord objects. This can be used from
+    threads to gather the minimal information needed to perform distance calculations.
+
+    Args:
+        pairs (list[tuple[int, int]]): list of record pair in database ids
+
+    Returns:
+        dict[int, BGCRecord]: index linking each database id to a minimal record object
+    """
+
+    # First gather records to collect from the database
+    pair_ids = set([db_id for pair in pairs for db_id in pair])
+
+    if DB.metadata is None:
+        raise RuntimeError("DB metadata is None!")
+
+    gbk_table = DB.metadata.tables["gbk"]
+    record_table = DB.metadata.tables["bgc_record"]
+    cds_table = DB.metadata.tables["cds"]
+    hsp_table = DB.metadata.tables["hsp"]
+    algn_table = DB.metadata.tables["hsp_alignment"]
+
+    # gather minimally needed information for distance calculation and object creation
+    query_statement = (
+        select(
+            gbk_table.c.id,
+            record_table.c.id,
+            record_table.c.record_type,
+            record_table.c.nt_start,
+            record_table.c.nt_stop,
+            record_table.c.contig_edge,
+            cds_table.c.id,
+            cds_table.c.nt_start,
+            cds_table.c.nt_stop,
+            cds_table.c.orf_num,
+            cds_table.c.strand,
+            cds_table.c.gene_kind,
+            hsp_table.c.accession,
+            hsp_table.c.bit_score,
+            hsp_table.c.env_start,
+            hsp_table.c.env_stop,
+            algn_table.c.alignment,
+        )
+        .join(record_table, record_table.c.gbk_id == gbk_table.c.id)
+        .join(cds_table, cds_table.c.gbk_id == gbk_table.c.id)
+        .join(hsp_table, hsp_table.c.cds_id == cds_table.c.id)
+        .join(algn_table, algn_table.c.hsp_id == hsp_table.c.id)
+        .where(record_table.c.id.in_(pair_ids))
+    )
+
+    pair_data = DB.execute(query_statement).fetchall()
+
+    if not pair_data:
+        raise RuntimeError("Data of pairs not found in database!")
+
+    # make an index of formatted data for each record to be reused
+    gbk_index: dict[int, GBK] = {}
+    record_index: dict[int, BGCRecord] = {}
+    cds_index: dict[int, CDS] = {}
+
+    # iteratively build the required data structures
+    for row in pair_data:
+        gbk_id, rec_id, cds_id = row[0], row[1], row[6]
+
+        # create dummy GBK object to link records and CDSs
+        if gbk_id not in gbk_index:
+            gbk_index[gbk_id] = GBK("", "", "")
+
+        # keep track of record_type to enable comparison on e.g. protocluster level
+        if rec_id not in record_index:
+            record_type = row[2]
+            if record_type == "region":
+                record_index[rec_id] = Region(
+                    gbk_index[gbk_id], 0, row[3], row[4], row[5], ""
+                )
+            elif record_type == "cand_cluster":
+                record_index[rec_id] = CandidateCluster(
+                    gbk_index[gbk_id], 0, row[3], row[4], row[5], "", "", {}
+                )
+            elif record_type == "protocluster":
+                record_index[rec_id] = ProtoCluster(
+                    gbk_index[gbk_id], 0, row[3], row[4], row[5], "", {}
+                )
+            elif record_type == "proto_core":
+                record_index[rec_id] = ProtoCore(
+                    gbk_index[gbk_id], 0, row[3], row[4], row[5], ""
+                )
+            record_index[rec_id]._db_id = rec_id
+
+        # simultaneously save CDSs and assign to the correct parent GBK
+        if cds_id not in cds_index:
+            cds_index[cds_id] = CDS(row[7], row[8])
+            cds_index[cds_id].orf_num = row[9]
+            cds_index[cds_id].strand = row[10]
+            cds_index[cds_id].gene_kind = row[11]
+            gbk_index[gbk_id].genes.append(cds_index[cds_id])
+
+        # finally, assign HSPs to their respective CDS
+        new_hsp = HSP(cds_index[cds_id], row[12], row[13], row[14], row[15])
+        new_hsp.alignment = HSPAlignment(new_hsp, row[16])
+        cds_index[cds_id].hsps.append(new_hsp)
+
+    return record_index
