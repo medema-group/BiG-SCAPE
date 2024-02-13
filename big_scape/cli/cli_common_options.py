@@ -284,8 +284,7 @@ def common_cluster_query(fn):
         click.option(
             "--alignment_mode",
             type=click.Choice(["global", "glocal", "auto"]),
-            # TODO: define proper default: v1 has glocal
-            default="auto",
+            default="glocal",
             callback=validate_alignment_mode,
             help=(
                 "Alignment mode for each pair of gene clusters. 'global': the whole "
@@ -295,7 +294,7 @@ def common_cluster_query(fn):
                 "domain content per gene in both BGCs, then expand each slice. "
                 "'auto': use glocal when at least one of the BGCs in each pair "
                 "has the 'contig_edge' annotation from antiSMASH v4+, otherwise "
-                "use global mode on that pair (default: auto)."
+                "use global mode on that pair (default: glocal)."
             ),
         ),
         # networking parameters
