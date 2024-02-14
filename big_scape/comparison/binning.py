@@ -198,16 +198,16 @@ class QueryToRefRecordPairGenerator(RecordPairGenerator):
     def generate_pairs(
         self, legacy_sorting=False
     ) -> Generator[tuple[int, int], None, None]:
-        """Returns an Generator for Region pairs in this bin, all pairs are generated
+        """Returns an Generator for record pairs in this bin, all pairs are generated
         except for ref <-> ref pairs
 
         Args:
             legacy_sorting (bool, optional): Whether to sort the BGC records by GBK file name.
             This is done in BiG-SCAPE 1.0 and can affect scoring depending on which of
-            the BGC records is region A in a pair.
+            the BGC records is record A in a pair.
 
         Yields:
-            Generator[RegionPair]: Generator for Region pairs in this bin
+            Generator[tuple[int, int]]: Generator for record pairs in this bin
         """
         for query_idx, record_a in enumerate(self.query_records):
             query_start = query_idx + 1
@@ -289,17 +289,16 @@ class RefToRefRecordPairGenerator(RecordPairGenerator):
     def generate_pairs(
         self, legacy_sorting=False
     ) -> Generator[tuple[int, int], None, None]:
-        """Returns an Generator for Region pairs in this bin, pairs are only generated between
-        given nodes to all singleton ref nodes
+        """Returns an Generator for record pairs in this bin, pairs are only generated
+        between given nodes to all singleton ref nodes
 
         Args:
-            network (BSNetwork): A network object to use for finding and sorting the nodes.
-            all records in this bin must be in the network as nodes, with or without edges
-
-            given_nodes (list[BGCRecord]): List of BGC records to generate pairs from
+            legacy_sorting (bool, optional): Whether to sort the BGC records by GBK file name.
+            This is done in BiG-SCAPE 1.0 and can affect scoring depending on which of
+            the BGC records is record A in a pair.
 
         Yields:
-            Generator[RegionPair]: Generator for Region pairs in this bin
+            Generator[tuple[int, int]]: Generator for record pairs in this bin
         """
 
         singleton_reference_records = self.get_singleton_reference_nodes()
@@ -593,7 +592,16 @@ class ConnectedComponentPairGenerator(RecordPairGenerator):
     def generate_pairs(
         self, legacy_sorting=False
     ) -> Generator[tuple[int, int], None, None]:
-        """Returns a Generator for all pairs in this bin"""
+        """Returns an Generator for record pairs in this bin
+
+        Args:
+            legacy_sorting (bool, optional): Whether to sort the BGC records by GBK file name.
+            This is done in BiG-SCAPE 1.0 and can affect scoring depending on which of
+            the BGC records is record A in a pair.
+
+        Yields:
+            Generator[tuple[int, int]]: Generator for record pairs in this bin
+        """
 
         for edge in self.connected_component:
             record_a_id, record_b_id, dist, jacc, adj, dss, edge_param_id = edge
@@ -652,6 +660,16 @@ class MissingRecordPairGenerator(RecordPairGenerator):
     def generate_pairs(
         self, legacy_sorting=False
     ) -> Generator[tuple[int, int], None, None]:
+        """Returns an Generator for record pairs in this bin
+
+        Args:
+            legacy_sorting (bool, optional): Whether to sort the BGC records by GBK file name.
+            This is done in BiG-SCAPE 1.0 and can affect scoring depending on which of
+            the BGC records is record A in a pair.
+
+        Yields:
+            Generator[tuple[int, int]]: Generator for record pairs in this bin
+        """
         if not DB.metadata:
             raise RuntimeError("DB.metadata is None")
 
