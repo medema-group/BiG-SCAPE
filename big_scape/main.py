@@ -429,7 +429,9 @@ def run_bigscape(run: dict) -> None:
 
     if not run["no_mix"] and not run["query_bgc_path"]:
         edge_param_id = bs_comparison.get_edge_param_id(run, "mix")
-        mix_bin = bs_comparison.generate_mix_bin(all_bgc_records, edge_param_id)
+        mix_bin = bs_comparison.generate_mix_bin(
+            all_bgc_records, edge_param_id, run["record_type"]
+        )
 
         for cutoff in run["gcf_cutoffs"]:
             if not run["include_singletons"]:

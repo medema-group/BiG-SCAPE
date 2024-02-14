@@ -166,6 +166,44 @@ class TestBGCBin(TestCase):
 
         self.assertEqual(expected_num_pairs, actual_num_pairs)
 
+    def test_num_pairs_corrected_multiple_subrecords(self):
+        """Tests whether number of expected pairs is corrected for subrecords from the
+        same gbk"""
+        bs_data.DB.create_in_mem()
+
+        gbk1 = create_mock_gbk(0, bs_enums.SOURCE_TYPE.QUERY)
+        pclust1 = ProtoCluster(gbk1, 1, 10, 100, False, "", {})
+        pclust2 = ProtoCluster(gbk1, 2, 50, 200, False, "", {})
+        gbk1.region.cand_clusters[1] = CandidateCluster(
+            gbk1, 0, 10, 100, False, "", "", {1: pclust1, 2: pclust2}
+        )
+        gbk1.save_all()
+
+        gbk2 = create_mock_gbk(1, bs_enums.SOURCE_TYPE.QUERY)
+        pclust3 = ProtoCluster(gbk2, 1, 10, 100, False, "", {})
+        pclust4 = ProtoCluster(gbk2, 2, 50, 200, False, "", {})
+        pclust5 = ProtoCluster(gbk2, 3, 200, 300, False, "", {})
+        gbk2.region.cand_clusters[1] = CandidateCluster(
+            gbk1, 0, 10, 100, False, "", "", {1: pclust3, 2: pclust4, 3: pclust5}
+        )
+        gbk2.save_all()
+
+        gbk3 = create_mock_gbk(2, bs_enums.SOURCE_TYPE.QUERY)
+        gbk3.save_all()
+
+        records = [pclust1, pclust2, pclust3, pclust4, pclust5, gbk3.region]
+        bin = RecordPairGenerator(
+            "test", 1, record_type=bs_enums.RECORD_TYPE.PROTO_CLUSTER
+        )
+        bin.add_records(records)
+
+        # with 6 total records, we would normally expect 15 pairs
+        # subtract one for gbk1 and subtract 3 for gbk2
+        expected_pairs = 11
+        actual_pairs = bin.num_pairs()
+
+        self.assertEqual(expected_pairs, actual_pairs)
+
     def test_legacy_sorting(self):
         """Tests whether the legacy sorting option in bin.pairs() correctly orders the pairs"""
 
@@ -771,7 +809,7 @@ class TestMixComparison(TestCase):
 
         bgc_list = [bgc_a, bgc_b, bgc_c]
 
-        new_bin = generate_mix_bin(bgc_list, 1)
+        new_bin = generate_mix_bin(bgc_list, 1, bs_enums.RECORD_TYPE.REGION)
 
         # expected representation of the bin object
         expected_pair_count = 3
@@ -906,6 +944,7 @@ class TestBinGenerators(TestCase):
             "legacy_weights": True,
             "classify": bs_enums.CLASSIFY_MODE.CATEGORY,
             "hybrids_off": False,
+            "record_type": bs_enums.RECORD_TYPE.REGION,
         }
 
         bin = next(as_class_bin_generator(gbks, run_category_weights))
