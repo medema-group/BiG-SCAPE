@@ -367,8 +367,8 @@ def calculate_scores_pair(
     """Calculate the scores for a list of pairs
 
     Args:
-        data (tuple[list[RecordPair], str, str]): list of pairs, alignment mode, bin
-        label
+        data (tuple[list[tuple[int, int]], str, str]): list of pairs, alignment mode,
+        bin label
 
     Returns:
         list[tuple[int, int, float, float, float, float, int, int, int, int, int, int,

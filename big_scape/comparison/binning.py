@@ -62,7 +62,7 @@ class RecordPairGenerator:
     def generate_pairs(
         self, legacy_sorting=False
     ) -> Generator[tuple[int, int], None, None]:
-        """Returns a generator for all vs all Region pairs in this bins
+        """Returns a generator for all vs all record pairs in this bins
 
         This will always generate all pairs, and does not take into account any edges
         that already exist in the database
@@ -70,10 +70,10 @@ class RecordPairGenerator:
         Args:
             legacy_sorting (bool, optional): Whether to sort the BGC records by GBK file name.
             This is done in BiG-SCAPE 1.0 and can affect scoring depending on which of
-            the BGC regions is region A in a pair. TODO: may be removed in the future
+            the BGC records is record A in a pair. TODO: may be removed in the future
 
         Yields:
-            Generator[tuple[int, int]]: Generator for Region pairs in this bin
+            Generator[tuple[int, int]]: Generator for record pairs in this bin
         """
         for record_a, record_b in combinations(self.source_records, 2):
             if record_a.parent_gbk == record_b.parent_gbk:
@@ -104,8 +104,8 @@ class RecordPairGenerator:
             the BGC records is region A in a pair.
 
         Yields:
-            Generator[list[RegionPair], None, None]]: Generator for Region pairs in this
-            bin
+            Generator[list[tuple[int, int]], None, None]]: Generator for records pairs
+            in this bin
         """
         batch = []
         while pair := next(self.generate_pairs(legacy_sorting), None):
