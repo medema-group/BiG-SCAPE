@@ -12,6 +12,9 @@ class BigscapeConfig:
     # PROFILER
     PROFILER_UPDATE_INTERVAL = 0.5
 
+    # INPUT
+    MERGED_CAND_CLUSTER_TYPE = ["chemical_hybrid", "interleaved"]
+
     # LCS
     REGION_MIN_LCS_LEN = 3
     PROTO_MIN_LCS_LEN = 3
@@ -52,6 +55,11 @@ class BigscapeConfig:
         BigscapeConfig.PROFILER_UPDATE_INTERVAL = float(
             config["PROFILER"]["PROFILER_UPDATE_INTERVAL"]
         )
+
+        # INPUT
+        BigscapeConfig.MERGED_CAND_CLUSTER_TYPE = config["INPUT"][
+            "MERGED_CAND_CLUSTER_TYPE"
+        ].split(",")
 
         # LCS
         BigscapeConfig.REGION_MIN_LCS_LEN = int(config["LCS"]["REGION_MIN_LCS_LEN"])
