@@ -524,7 +524,7 @@ class GBK:
                 "%s: GBK file does not contain an antiSMASH region feature", self.path
             )
             raise InvalidGBKError()
-        if not tmp_cand_clusters:
+        if not tmp_cand_clusters and not self.source_type == SOURCE_TYPE.MIBIG:
             logging.warning(
                 "%s: GBK file does not contain any cand_cluster features", self.path
             )
