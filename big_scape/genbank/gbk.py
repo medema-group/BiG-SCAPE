@@ -356,6 +356,10 @@ class GBK:
         record: SeqRecord = next(SeqIO.parse(path, "genbank"))
         gbk.nt_seq = record.seq
 
+        if len(gbk.nt_seq) > 500000:
+            logging.error("Genbank sequence length exceeds 0.5 Mbp! (%s)", gbk.path)
+            raise InvalidGBKError()
+
         gbk.metadata["description"] = record.description
 
         if "organism" in record.annotations:
