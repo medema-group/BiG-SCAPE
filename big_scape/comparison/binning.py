@@ -19,7 +19,6 @@ from sqlalchemy import select, func, or_
 
 # from other modules
 from big_scape.cli.constants import ANTISMASH_CLASSES
-from big_scape.comparison.record_pair import RecordPair
 from big_scape.data import DB
 from big_scape.genbank import BGCRecord, Region, ProtoCluster, ProtoCore
 from big_scape.enums import SOURCE_TYPE, CLASSIFY_MODE
@@ -60,8 +59,10 @@ class RecordPairGenerator:
             weights = label
         self.weights = weights
 
-    def generate_pairs(self, legacy_sorting=False) -> Generator[RecordPair, None, None]:
-        """Returns a generator for all vs all Region pairs in this bins
+    def generate_pairs(
+        self, legacy_sorting=False
+    ) -> Generator[tuple[int, int], None, None]:
+        """Returns a generator for all vs all record pairs in this bins
 
         This will always generate all pairs, and does not take into account any edges
         that already exist in the database
@@ -69,26 +70,31 @@ class RecordPairGenerator:
         Args:
             legacy_sorting (bool, optional): Whether to sort the BGC records by GBK file name.
             This is done in BiG-SCAPE 1.0 and can affect scoring depending on which of
-            the BGC regions is region A in a pair. TODO: may be removed in the future
+            the BGC records is record A in a pair. TODO: may be removed in the future
 
         Yields:
-            Generator[RegionPair]: Generator for Region pairs in this bin
+            Generator[tuple[int, int]]: Generator for record pairs in this bin
         """
         for record_a, record_b in combinations(self.source_records, 2):
             if record_a.parent_gbk == record_b.parent_gbk:
                 continue
             if legacy_sorting:
                 sorted_a, sorted_b = sorted((record_a, record_b), key=sort_name_key)
-                pair = RecordPair(sorted_a, sorted_b)
+                if sorted_a._db_id is None or sorted_b._db_id is None:
+                    raise RuntimeError("generated pair is missing DB ids!")
+                pair = (sorted_a._db_id, sorted_b._db_id)
 
             else:
-                pair = RecordPair(record_a, record_b)
+                if record_a._db_id is None or record_b._db_id is None:
+                    raise RuntimeError("generated pair is missing DB ids!")
+                pair = (record_a._db_id, record_b._db_id)
 
             yield pair
 
+    # TODO: check if can be removed
     def generate_batch(
         self, batch_size: int, legacy_sorting=False
-    ) -> Generator[list[RecordPair], None, None]:
+    ) -> Generator[list[tuple[int, int]], None, None]:
         """Generator for batches of pairs in this bin
 
         Args:
@@ -98,8 +104,8 @@ class RecordPairGenerator:
             the BGC records is region A in a pair.
 
         Yields:
-            Generator[list[RegionPair], None, None]]: Generator for Region pairs in this
-            bin
+            Generator[list[tuple[int, int]], None, None]]: Generator for records pairs
+            in this bin
         """
         batch = []
         while pair := next(self.generate_pairs(legacy_sorting), None):
@@ -161,7 +167,7 @@ class RecordPairGenerator:
         edges = DB.execute(select_statement).fetchall()
 
         # get all record_ids in the edges
-        filtered_record_ids = set()
+        filtered_record_ids: set[int] = set()
         for edge in edges:
             filtered_record_ids.update(edge)
 
@@ -189,29 +195,35 @@ class QueryToRefRecordPairGenerator(RecordPairGenerator):
         self.reference_records: list[BGCRecord] = []
         self.query_records: list[BGCRecord] = []
 
-    def generate_pairs(self, legacy_sorting=False) -> Generator[RecordPair, None, None]:
-        """Returns an Generator for Region pairs in this bin, all pairs are generated
+    def generate_pairs(
+        self, legacy_sorting=False
+    ) -> Generator[tuple[int, int], None, None]:
+        """Returns an Generator for record pairs in this bin, all pairs are generated
         except for ref <-> ref pairs
 
         Args:
             legacy_sorting (bool, optional): Whether to sort the BGC records by GBK file name.
             This is done in BiG-SCAPE 1.0 and can affect scoring depending on which of
-            the BGC records is region A in a pair.
+            the BGC records is record A in a pair.
 
         Yields:
-            Generator[RegionPair]: Generator for Region pairs in this bin
+            Generator[tuple[int, int]]: Generator for record pairs in this bin
         """
-        for query_idx, bgc_a in enumerate(self.query_records):
+        for query_idx, record_a in enumerate(self.query_records):
             query_start = query_idx + 1
-            for bgc_b in self.reference_records + self.query_records[query_start:]:
-                if bgc_a == bgc_b:
+            for record_b in self.reference_records + self.query_records[query_start:]:
+                if record_a == record_b:
                     continue
 
                 if legacy_sorting:
-                    sorted_a, sorted_b = sorted((bgc_a, bgc_b), key=sort_name_key)
-                    pair = RecordPair(sorted_a, sorted_b)
+                    sorted_a, sorted_b = sorted((record_a, record_b), key=sort_name_key)
+                    if sorted_a._db_id is None or sorted_b._db_id is None:
+                        raise RuntimeError("generated pair is missing DB ids!")
+                    pair = (sorted_a._db_id, sorted_b._db_id)
                 else:
-                    pair = RecordPair(bgc_a, bgc_b)
+                    if record_a._db_id is None or record_b._db_id is None:
+                        raise RuntimeError("generated pair is missing DB ids!")
+                    pair = (record_a._db_id, record_b._db_id)
 
                 yield pair
 
@@ -274,39 +286,44 @@ class RefToRefRecordPairGenerator(RecordPairGenerator):
         self.done_record_ids: set[int] = set()
         super().__init__(label, edge_param_id, weights)
 
-    def generate_pairs(self, legacy_sorting=False) -> Generator[RecordPair, None, None]:
-        """Returns an Generator for Region pairs in this bin, pairs are only generated between
-        given nodes to all singleton ref nodes
+    def generate_pairs(
+        self, legacy_sorting=False
+    ) -> Generator[tuple[int, int], None, None]:
+        """Returns an Generator for record pairs in this bin, pairs are only generated
+        between given nodes to all singleton ref nodes
 
         Args:
-            network (BSNetwork): A network object to use for finding and sorting the nodes.
-            all records in this bin must be in the network as nodes, with or without edges
-
-            given_nodes (list[BGCRecord]): List of BGC records to generate pairs from
+            legacy_sorting (bool, optional): Whether to sort the BGC records by GBK file name.
+            This is done in BiG-SCAPE 1.0 and can affect scoring depending on which of
+            the BGC records is record A in a pair.
 
         Yields:
-            Generator[RegionPair]: Generator for Region pairs in this bin
+            Generator[tuple[int, int]]: Generator for record pairs in this bin
         """
 
-        singleton_reference_regions = self.get_singleton_reference_nodes()
-        connected_reference_regions = self.get_connected_reference_nodes()
+        singleton_reference_records = self.get_singleton_reference_nodes()
+        connected_reference_records = self.get_connected_reference_nodes()
 
         # update the done nodes with the connected nodes we're about to do
-        for region in connected_reference_regions:
-            if region._db_id is None:
+        for record in connected_reference_records:
+            if record._db_id is None:
                 continue
-            self.done_record_ids.add(region._db_id)
+            self.done_record_ids.add(record._db_id)
 
-        for region_a in connected_reference_regions:
-            for region_b in singleton_reference_regions:
-                if region_a.parent_gbk == region_b.parent_gbk:
+        for record_a in connected_reference_records:
+            for record_b in singleton_reference_records:
+                if record_a.parent_gbk == record_b.parent_gbk:
                     continue
                 if legacy_sorting:
-                    sorted_a, sorted_b = sorted((region_a, region_b), key=sort_name_key)
-                    pair = RecordPair(sorted_a, sorted_b)
+                    sorted_a, sorted_b = sorted((record_a, record_b), key=sort_name_key)
+                    if sorted_a._db_id is None or sorted_b._db_id is None:
+                        raise RuntimeError("generated pair is missing DB ids!")
+                    pair = (sorted_a._db_id, sorted_b._db_id)
 
                 else:
-                    pair = RecordPair(region_a, region_b)
+                    if record_a._db_id is None or record_b._db_id is None:
+                        raise RuntimeError("generated pair is missing DB ids!")
+                    pair = (record_a._db_id, record_b._db_id)
 
                 yield pair
 
@@ -572,8 +589,19 @@ class ConnectedComponentPairGenerator(RecordPairGenerator):
 
         return super().add_records(cc_record_list)
 
-    def generate_pairs(self, legacy_sorting=False) -> Generator[RecordPair, None, None]:
-        """Returns a Generator for all pairs in this bin"""
+    def generate_pairs(
+        self, legacy_sorting=False
+    ) -> Generator[tuple[int, int], None, None]:
+        """Returns an Generator for record pairs in this bin
+
+        Args:
+            legacy_sorting (bool, optional): Whether to sort the BGC records by GBK file name.
+            This is done in BiG-SCAPE 1.0 and can affect scoring depending on which of
+            the BGC records is record A in a pair.
+
+        Yields:
+            Generator[tuple[int, int]]: Generator for record pairs in this bin
+        """
 
         for edge in self.connected_component:
             record_a_id, record_b_id, dist, jacc, adj, dss, edge_param_id = edge
@@ -586,9 +614,13 @@ class ConnectedComponentPairGenerator(RecordPairGenerator):
 
             if legacy_sorting:
                 sorted_a, sorted_b = sorted((record_a, record_b), key=sort_name_key)
-                pair = RecordPair(sorted_a, sorted_b)
+                if sorted_a._db_id is None or sorted_b._db_id is None:
+                    raise RuntimeError("generated pair is missing DB ids!")
+                pair = (sorted_a._db_id, sorted_b._db_id)
             else:
-                pair = RecordPair(record_a, record_b)
+                if record_a._db_id is None or record_b._db_id is None:
+                    raise RuntimeError("generated pair is missing DB ids!")
+                pair = (record_a._db_id, record_b._db_id)
 
             yield pair
 
@@ -625,7 +657,19 @@ class MissingRecordPairGenerator(RecordPairGenerator):
         # subtract from expected number of distances
         return self.bin.num_pairs() - existing_distance_count
 
-    def generate_pairs(self, legacy_sorting=False) -> Generator[RecordPair, None, None]:
+    def generate_pairs(
+        self, legacy_sorting=False
+    ) -> Generator[tuple[int, int], None, None]:
+        """Returns an Generator for record pairs in this bin
+
+        Args:
+            legacy_sorting (bool, optional): Whether to sort the BGC records by GBK file name.
+            This is done in BiG-SCAPE 1.0 and can affect scoring depending on which of
+            the BGC records is record A in a pair.
+
+        Yields:
+            Generator[tuple[int, int]]: Generator for record pairs in this bin
+        """
         if not DB.metadata:
             raise RuntimeError("DB.metadata is None")
 
@@ -643,18 +687,8 @@ class MissingRecordPairGenerator(RecordPairGenerator):
         existing_distances = set(DB.execute(select_statement).fetchall())
 
         for pair in self.bin.generate_pairs(legacy_sorting):
-            # this should never happen, since no edges should be generated for
-            # records of the same parent gbk
-            if pair.record_a.parent_gbk == pair.record_b.parent_gbk:
-                continue
             # if the pair is not in the set of existing distances, yield it
-            if (
-                pair.record_a._db_id,
-                pair.record_b._db_id,
-            ) not in existing_distances and (
-                pair.record_a._db_id,
-                pair.record_b._db_id,
-            ) not in existing_distances:
+            if pair not in existing_distances and pair[::-1] not in existing_distances:
                 yield pair
 
     def add_records(self, _: list[BGCRecord]):

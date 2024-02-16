@@ -2,18 +2,15 @@
 
 # from python
 import logging
-from typing import Generator
 import sqlite3
 
 # from dependencies
 from sqlalchemy import insert, select
-from big_scape.comparison.record_pair import RecordPair
 
 # from other modules
 from big_scape.data import DB
 
 # from this module
-from .binning import RecordPairGenerator
 from .comparable_region import ComparableRegion
 
 
@@ -131,58 +128,59 @@ def save_edges_to_db(
     #         t.update(batch_size)
 
 
-def edges_from_db(
-    pair_generator: RecordPairGenerator,
-) -> Generator[tuple[RecordPair, float, float, float, float, int], None, None]:
-    """Reconstruct distances from the database instead of recalculating them
+# TODO: does not seem to be used, check if can be removed
+# def edges_from_db(
+#     pair_generator: RecordPairGenerator,
+# ) -> Generator[tuple[RecordPair, float, float, float, float, int], None, None]:
+#     """Reconstruct distances from the database instead of recalculating them
 
-    Args:
-        pair_generator (RecordPairGenerator): pair_generator to regenerate distances for
+#     Args:
+#         pair_generator (RecordPairGenerator): pair_generator to regenerate distances for
 
-    Yields:
-        Generator[tuple[BGCPair, float, float, float, float], None]: generator of distances
-    """
-    # batch size to select database for
-    distance_batch_size = 100
+#     Yields:
+#         Generator[tuple[BGCPair, float, float, float, float], None]: generator of distances
+#     """
+#     # batch size to select database for
+#     distance_batch_size = 100
 
-    # iterate over the pair generator in batches of distance_batch_size
-    for pair_batch in pair_generator.generate_batch(distance_batch_size):
-        # generate a dict of pairs to their ids for record_a and record_b in pair
-        region_ids = {}
-        for pair in pair_batch:
-            region_ids[pair.record_a._db_id] = pair.record_a
-            region_ids[pair.record_b._db_id] = pair.record_b
+#     # iterate over the pair generator in batches of distance_batch_size
+#     for pair_batch in pair_generator.generate_batch(distance_batch_size):
+#         # generate a dict of pairs to their ids for record_a and record_b in pair
+#         region_ids = {}
+#         for pair in pair_batch:
+#             region_ids[pair.record_a._db_id] = pair.record_a
+#             region_ids[pair.record_b._db_id] = pair.record_b
 
-        # get the distances from the database
+#         # get the distances from the database
 
-        if not DB.metadata:
-            raise RuntimeError("DB.metadata is None")
+#         if not DB.metadata:
+#             raise RuntimeError("DB.metadata is None")
 
-        distance_table = DB.metadata.tables["distance"]
-        distance_query = distance_table.select().where(
-            distance_table.c.record_a_id.in_(region_ids)
-            & distance_table.c.record_b_id.in_(region_ids)
-        )
-        edges = DB.execute(distance_query).fetchall()
+#         distance_table = DB.metadata.tables["distance"]
+#         distance_query = distance_table.select().where(
+#             distance_table.c.record_a_id.in_(region_ids)
+#             & distance_table.c.record_b_id.in_(region_ids)
+#         )
+#         edges = DB.execute(distance_query).fetchall()
 
-        # yield the distances
-        for edge in edges:
-            # get the pair
-            record_a = region_ids[edge.record_a_id]
-            record_b = region_ids[edge.record_b_id]
-            pair = RecordPair(record_a, record_b)
+#         # yield the distances
+#         for edge in edges:
+#             # get the pair
+#             record_a = region_ids[edge.record_a_id]
+#             record_b = region_ids[edge.record_b_id]
+#             pair = RecordPair(record_a, record_b)
 
-            # get the distances
-            distance: float = edge.distance
-            jaccard: float = edge.jaccard
-            adjacency: float = edge.adjacency
-            dss: float = edge.dss
+#             # get the distances
+#             distance: float = edge.distance
+#             jaccard: float = edge.jaccard
+#             adjacency: float = edge.adjacency
+#             dss: float = edge.dss
 
-            # get the edge param id
-            edge_param_id: int = edge.edge_param_id
+#             # get the edge param id
+#             edge_param_id: int = edge.edge_param_id
 
-            # yield the distance
-            yield pair, distance, jaccard, adjacency, dss, edge_param_id
+#             # yield the distance
+#             yield pair, distance, jaccard, adjacency, dss, edge_param_id
 
 
 def get_edge_param_id(run, weights) -> int:
