@@ -11,6 +11,7 @@ import logging
 
 # from other modules
 from big_scape.data import DB
+from big_scape.cli.config import BigscapeConfig
 from big_scape.comparison import RecordPairGenerator, lcs
 from big_scape.genbank import GBK, CDS, BGCRecord, MergedProtoCluster, MergedProtoCore
 from big_scape.hmm import HSP
@@ -216,7 +217,7 @@ def generate_run_data_js(
         else "NA",
         "mibig": run["mibig_version"] if run["mibig_version"] else "None",
         "record_type": run["record_type"].name.title(),
-        "min_bgc_length": run["min_bgc_length"],
+        "min_bgc_length": BigscapeConfig.MIN_BGC_LENGTH,
         "classify": "Legacy Groups"
         if run["legacy_classify"]
         else run["classify"].name.title()

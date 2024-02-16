@@ -143,13 +143,13 @@ def common_cluster_query(fn):
         # TODO: adjust choices
         click.option(
             "--mibig_version",
-            type=click.Choice(["3.1", "custom"]),
-            # TODO: document custom, readjust if needed
+            type=str,
             required=False,
-            help="MIBiG release number (e.g. 3.1). Download (if needed) and use this "
-            "version of MiBIG database. If not provided, MiBIG will not be included "
-            "in the analysis. If download is required, BiG-SCAPE "
-            "will download the MIBiG database to ./big_scape/MIBiG.",
+            help="MIBiG release number (e.g. 3.1). If not provided, MIBiG will not be "
+            "included in the analysis. If required, BiG-SCAPE will download the "
+            "MIBiG database to ./big_scape/MIBiG/mibig_antismash_<version>_gbk. "
+            "(Advanced) Any custom MIBiG collection can be used as long as the expected "
+            "folder is present.",
         ),
         click.option(
             "--reference_dir",
