@@ -14,6 +14,8 @@ class BigscapeConfig:
 
     # INPUT
     MERGED_CAND_CLUSTER_TYPE = ["chemical_hybrid", "interleaved"]
+    MIN_BGC_LENGTH = 0
+    MAX_BGC_LENGTH = 500000
 
     # LCS
     REGION_MIN_LCS_LEN = 3
@@ -60,6 +62,8 @@ class BigscapeConfig:
         BigscapeConfig.MERGED_CAND_CLUSTER_TYPE = config["INPUT"][
             "MERGED_CAND_CLUSTER_TYPE"
         ].split(",")
+        BigscapeConfig.MIN_BGC_LENGTH = int(config["INPUT"]["MIN_BGC_LENGTH"])
+        BigscapeConfig.MAX_BGC_LENGTH = int(config["INPUT"]["MAX_BGC_LENGTH"])
 
         # LCS
         BigscapeConfig.REGION_MIN_LCS_LEN = int(config["LCS"]["REGION_MIN_LCS_LEN"])

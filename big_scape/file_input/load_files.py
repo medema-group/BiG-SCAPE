@@ -13,6 +13,7 @@ import requests  # type: ignore
 
 # from other modules
 from big_scape.genbank.gbk import GBK
+from big_scape.cli.config import BigscapeConfig
 import big_scape.enums as bs_enums
 import big_scape.genbank as bs_gbk
 import big_scape.data as bs_data
@@ -180,6 +181,62 @@ def filter_files(
     return filtered_files
 
 
+def remove_duplicate_gbk(gbks: list[GBK]) -> list[GBK]:
+    """Remove any duplicate GBKs from given input based on content hash
+
+    Args:
+        gbks (list[GBK]): list of input GBKs
+
+    Returns:
+        list[GBK]: list of unique input GBKs
+    """
+    unique_gbks = set()
+    for gbk in gbks:
+        if gbk in unique_gbks:
+            logging.info("Skipping duplicate %s", gbk)
+            continue
+        unique_gbks.add(gbk)
+
+    return list(unique_gbks)
+
+
+def bgc_length_contraint(gbks: list[GBK]) -> list[GBK]:
+    """Remove any GBKs that are not between the minimum ans maximum allowed length
+
+    Args:
+        gbks (list[GBK]): list of input GBKs
+
+    Returns:
+        list[GBK]: list of filtered input GBKs
+    """
+    orig_size = len(gbks)
+    filtered_gbks = [
+        gbk
+        for gbk in gbks
+        if BigscapeConfig.MIN_BGC_LENGTH
+        < len(gbk.nt_seq)
+        < BigscapeConfig.MAX_BGC_LENGTH
+    ]
+    filtered_size = len(filtered_gbks)
+
+    if filtered_size == 0:
+        logging.error(
+            "No GBKs remain after length constraint of min %s to max %s bp!",
+            BigscapeConfig.MIN_BGC_LENGTH,
+            BigscapeConfig.MAX_BGC_LENGTH,
+        )
+        raise RuntimeError()
+
+    if orig_size != filtered_size:
+        logging.info(
+            "%s GBKs remain after length constraint of min %s to max %s bp",
+            filtered_size,
+            BigscapeConfig.MIN_BGC_LENGTH,
+            BigscapeConfig.MAX_BGC_LENGTH,
+        )
+    return filtered_gbks
+
+
 def is_included(path: Path, include_list: List[str]):
     """Returns true if filename includes string from list
 
@@ -281,14 +338,10 @@ def load_gbks(run: dict, bigscape_dir: Path) -> list[GBK]:
         input_gbks.extend(reference_gbks)
 
     # remove eventual duplicates from input gbks
-    unique_gbks = set()
-    for gbk in input_gbks:
-        if gbk in unique_gbks:
-            logging.info("Skipping duplicate %s", gbk)
-            continue
-        unique_gbks.add(gbk)
+    input_gbks = remove_duplicate_gbk(input_gbks)
 
-    input_gbks = list(unique_gbks)
+    # apply minimum and maximum bgc length constraint
+    input_gbks = bgc_length_contraint(input_gbks)
 
     # find the minimum task set for these gbks
     # if there is no database, create a new one and load in all the input stuff

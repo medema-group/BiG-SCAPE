@@ -183,13 +183,6 @@ def common_cluster_query(fn):
             ),
         ),
         click.option(
-            # TODO: check if implemented
-            "--min_bgc_length",
-            type=int,
-            default=0,
-            help="Minimum BGC length to be included in analysis (default: 0bp).",
-        ),
-        click.option(
             "--cds_overlap_cutoff",
             type=click.FloatRange(min=0, max=1),
             default=0.1,
