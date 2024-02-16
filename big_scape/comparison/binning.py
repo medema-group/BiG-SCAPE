@@ -21,7 +21,7 @@ from sqlalchemy import select, func, or_
 from big_scape.cli.constants import ANTISMASH_CLASSES
 from big_scape.data import DB
 from big_scape.genbank import BGCRecord, Region, ProtoCluster, ProtoCore
-from big_scape.enums import SOURCE_TYPE, CLASSIFY_MODE
+from big_scape.enums import SOURCE_TYPE, CLASSIFY_MODE, RECORD_TYPE
 
 import big_scape.comparison as bs_comparison
 
@@ -50,7 +50,13 @@ class RecordPairGenerator:
         source_records (list[BGCRecord]): List of BGC records to generate pairs from
     """
 
-    def __init__(self, label: str, edge_param_id: int, weights: Optional[str] = None):
+    def __init__(
+        self,
+        label: str,
+        edge_param_id: int,
+        weights: Optional[str] = None,
+        record_type: Optional[RECORD_TYPE] = None,
+    ):
         self.label = label
         self.edge_param_id = edge_param_id
         self.source_records: list[BGCRecord] = []
@@ -58,6 +64,7 @@ class RecordPairGenerator:
         if weights is None:
             weights = label
         self.weights = weights
+        self.record_type = record_type
 
     def generate_pairs(
         self, legacy_sorting=False
@@ -128,6 +135,36 @@ class RecordPairGenerator:
 
         # (n*(n-1)) / 2
         num_all_pairs = int((len_all_records * (len_all_records - 1)) / 2)
+
+        if self.record_type is not None and self.record_type != RECORD_TYPE.REGION:
+            # if in protocluster mode this will overestimate the number of pairs as two
+            # records from the same gbk will not be compared -> will not be a pair. Use
+            # the database to find how many subrecords come from the same genbank, i.e.
+            # how many pairs should be removed
+            if not DB.metadata:
+                raise RuntimeError("DB metadata is None!")
+            record_table = DB.metadata.tables["bgc_record"]
+
+            # find a collection of gbks with more than one subrecord
+            member_table = (
+                select(func.count(record_table.c.gbk_id).label("rec_count"))
+                .where(record_table.c.record_type == self.record_type.value)
+                .group_by(record_table.c.gbk_id)
+                .having(func.count() > 1)
+                .subquery()
+            )
+            # count how many times each occurs, e.g. gbks with 3 records occur 4 times
+            subrecord_membership = select(
+                member_table.c.rec_count, func.count(member_table.c.rec_count)
+            ).group_by(member_table.c.rec_count)
+
+            subrecord_counts = DB.execute(subrecord_membership).fetchall()
+
+            # for each occurence of a number of subrecords, remove pairs
+            if subrecord_counts is not None:
+                for row in subrecord_counts:
+                    nr_subrec, occurence = row
+                    num_all_pairs -= int((nr_subrec * (nr_subrec - 1)) / 2 * occurence)
 
         return num_all_pairs
 
@@ -696,7 +733,7 @@ class MissingRecordPairGenerator(RecordPairGenerator):
 
 
 def generate_mix_bin(
-    record_list: list[BGCRecord], edge_param_id: int
+    record_list: list[BGCRecord], edge_param_id: int, record_type: RECORD_TYPE
 ) -> RecordPairGenerator:
     """Generate an all-vs-all bin of the supplied BGC records
 
@@ -707,7 +744,9 @@ def generate_mix_bin(
         BGCBin: The all-vs-all BGC bin
     """
 
-    mix_bin = RecordPairGenerator(label="mix", edge_param_id=edge_param_id)
+    mix_bin = RecordPairGenerator(
+        label="mix", edge_param_id=edge_param_id, record_type=record_type
+    )
 
     mix_bin.add_records([record for record in record_list if record is not None])
 
@@ -786,7 +825,9 @@ def as_class_bin_generator(
     for class_name, records in class_idx.items():
         weight_category = category_weights[class_name]
         edge_param_id = bs_comparison.get_edge_param_id(run, weight_category)
-        bin = RecordPairGenerator(class_name, edge_param_id, weight_category)
+        bin = RecordPairGenerator(
+            class_name, edge_param_id, weight_category, run["record_type"]
+        )
         bin.add_records(records)
         yield bin
 
@@ -935,7 +976,9 @@ def legacy_bin_generator(
 
     for class_name, records in class_idx.items():
         edge_param_id = bs_comparison.get_edge_param_id(run, class_name)
-        bin = RecordPairGenerator(class_name, edge_param_id, class_name)
+        bin = RecordPairGenerator(
+            class_name, edge_param_id, class_name, run["record_type"]
+        )
         bin.add_records(records)
         yield bin
 
