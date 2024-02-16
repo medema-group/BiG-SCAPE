@@ -209,25 +209,29 @@ def generate_run_data_js(
         "mode": run["mode"],
         "input_dir": str(run["input_dir"].name) if run["input_dir"] else "None",
         "output_dir": str(run["output_dir"].name) if run["output_dir"] else "None",
-        "reference_dir": str(run["reference_dir"].name)
-        if run["reference_dir"]
-        else "None",
-        "query_path": str(run["query_bgc_path"].name)
-        if run["query_bgc_path"]
-        else "NA",
+        "reference_dir": (
+            str(run["reference_dir"].name) if run["reference_dir"] else "None"
+        ),
+        "query_path": (
+            str(run["query_bgc_path"].name) if run["query_bgc_path"] else "NA"
+        ),
         "mibig": run["mibig_version"] if run["mibig_version"] else "None",
         "record_type": run["record_type"].name.title(),
         "min_bgc_length": BigscapeConfig.MIN_BGC_LENGTH,
-        "classify": "Legacy Groups"
-        if run["legacy_classify"]
-        else run["classify"].name.title()
-        if run["classify"]
-        else "Not Classify",
+        "classify": (
+            "Legacy Groups"
+            if run["legacy_classify"]
+            else run["classify"].name.title()
+            if run["classify"]
+            else "Not Classify"
+        ),
         "weights": "Legacy Weights" if run["legacy_weights"] else "Mix",
         "alignment_mode": run["alignment_mode"].name.title(),
-        "include_singletons": "NA"
-        if "include_singletons" not in run.keys()
-        else ("Yes" if run["include_singletons"] else "No"),
+        "include_singletons": (
+            "NA"
+            if "include_singletons" not in run.keys()
+            else ("Yes" if run["include_singletons"] else "No")
+        ),
         "input": {
             "accession": [],
             "accession_newick": [],
@@ -1265,6 +1269,27 @@ def write_record_annotations_file(run, cutoff, all_bgc_records) -> None:
     bgc_record_table = DB.metadata.tables["bgc_record"]
     gbk_table = DB.metadata.tables["gbk"]
 
+    record_categories = {}
+    for record in all_bgc_records:
+        record_categories[record._db_id] = get_record_category(record)
+
+    select_statement = (
+        select(
+            gbk_table.c.path,
+            gbk_table.c.organism,
+            gbk_table.c.taxonomy,
+            gbk_table.c.description,
+            bgc_record_table.c.id,
+            bgc_record_table.c.record_number,
+            bgc_record_table.c.record_type,
+            bgc_record_table.c.product,
+        )
+        .where(bgc_record_table.c.id.in_(record_categories.keys()))
+        .join(bgc_record_table, bgc_record_table.c.gbk_id == gbk_table.c.id)
+    )
+
+    record_data = DB.execute(select_statement).fetchall()
+
     with open(record_annotations_path, "w") as record_annotations_file:
         header = "\t".join(
             [
@@ -1280,40 +1305,25 @@ def write_record_annotations_file(run, cutoff, all_bgc_records) -> None:
         )
         record_annotations_file.write(header + "\n")
 
-        for record in all_bgc_records:
-            record_id = record._db_id
-
-            select_statment = select(
-                bgc_record_table.c.gbk_id,
-                bgc_record_table.c.record_number,
-                bgc_record_table.c.record_type,
-                bgc_record_table.c.product,
-            ).where(bgc_record_table.c.id == record_id)
-            gbk_id, record_number, record_type, product = DB.execute(
-                select_statment
-            ).fetchone()
-
-            category = get_record_category(record)
-
-            select_statment = select(
-                gbk_table.c.path,
-                gbk_table.c.organism,
-                gbk_table.c.taxonomy,
-                gbk_table.c.description,
-            ).where(gbk_table.c.id == gbk_id)
-
-            gbk_path, organism, taxonomy, description = DB.execute(
-                select_statment
-            ).fetchone()
-            # gbk_path = gbk_path.split("/")[-1]
+        for record in record_data:
+            (
+                gbk_path,
+                organism,
+                taxonomy,
+                description,
+                rec_id,
+                record_number,
+                record_type,
+                product,
+            ) = record
 
             row = "\t".join(
                 [
-                    str(gbk_path),
+                    Path(gbk_path).stem,
                     record_type,
                     str(record_number),
                     product,
-                    category,
+                    record_categories[rec_id],
                     organism,
                     taxonomy,
                     description,
@@ -1352,53 +1362,43 @@ def write_clustering_file(run, cutoff, pair_generator) -> None:
     gbk_table = DB.metadata.tables["gbk"]
     bgc_record_table = DB.metadata.tables["bgc_record"]
     family_table = DB.metadata.tables["family"]
-    record_famly_table = DB.metadata.tables["bgc_record_family"]
+    rec_fam_table = DB.metadata.tables["bgc_record_family"]
 
     record_ids = pair_generator.record_ids
+    select_statement = (
+        select(
+            gbk_table.c.path,
+            bgc_record_table.c.record_type,
+            bgc_record_table.c.record_number,
+            rec_fam_table.c.family_id,
+            family_table.c.center_id,
+        )
+        .join(bgc_record_table, bgc_record_table.c.gbk_id == gbk_table.c.id)
+        .join(rec_fam_table, bgc_record_table.c.id == rec_fam_table.c.record_id)
+        .join(family_table, rec_fam_table.c.family_id == family_table.c.id)
+        .where(rec_fam_table.c.record_id.in_(record_ids))
+        .where(family_table.c.cutoff == cutoff)
+        .where(family_table.c.bin_label == bin_label)
+    )
+
+    record_data = DB.execute(select_statement).fetchall()
 
     with open(clustering_file_path, "w") as clustering_file:
         header = "\t".join(
-            [
-                "GBK",
-                "Record_Type",
-                "Record_Number",
-                "GCF_number",
-            ]
+            ["GBK", "Record_Type", "Record_Number", "GCF_Number", "Family_Name"]
         )
         clustering_file.write(header + "\n")
 
-        select_statement = (
-            select(
-                record_famly_table.c.record_id,
-                record_famly_table.c.family_id,
-            )
-            .join(family_table, record_famly_table.c.family_id == family_table.c.id)
-            .where(record_famly_table.c.record_id.in_(record_ids))
-            .where(family_table.c.cutoff == cutoff)
-            .where(family_table.c.bin_label == bin_label)
-        )
-
-        rows = DB.execute(select_statement).fetchall()
-
-        for row in rows:
-            record_id, gcf_number = row
-
-            select_statment = select(
-                bgc_record_table.c.gbk_id,
-                bgc_record_table.c.record_number,
-                bgc_record_table.c.record_type,
-            ).where(bgc_record_table.c.id == record_id)
-            gbk_id, record_number, record_type = DB.execute(select_statment).fetchone()
-
-            select_statment = select(gbk_table.c.path).where(gbk_table.c.id == gbk_id)
-            gbk_path = DB.execute(select_statment).fetchone()[0]
+        for record in record_data:
+            gbk_path, record_type, record_number, gcf_number, center = record
 
             row = "\t".join(
                 [
-                    str(gbk_path),
+                    Path(gbk_path).stem,
                     record_type,
                     str(record_number),
                     str(gcf_number),
+                    f"FAM_{center:0>5}",
                 ]
             )
             clustering_file.write(row + "\n")
@@ -1485,11 +1485,11 @@ def write_network_file(
 
             row = "\t".join(
                 [
-                    str(gbk_path_a),
+                    Path(gbk_path_a).stem,
                     record_type_a,
                     str(record_number_a),
                     f"{ext_a_start}:{ext_a_stop}",
-                    str(gbk_path_b),
+                    Path(gbk_path_b).stem,
                     record_type_b,
                     str(record_number_b),
                     f"{ext_b_start}:{ext_b_stop}",
@@ -1623,6 +1623,7 @@ def get_cutoff_edgelist(
     return edgelist
 
 
+# TODO: not used, either implement or remove
 def write_full_network_file(run: dict, all_bgc_records: list[BGCRecord]) -> None:
     """Writes the full network file to the output directory,
     i.e. all edges from db that have both records in the run,
