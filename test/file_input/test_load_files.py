@@ -43,6 +43,7 @@ class TestLoadGBK(TestCase):
             "cores": None,
             "classify": False,
             "legacy_classify": False,
+            "force_gbk": False,
         }
 
         load_result = load_dataset_folder(run["input_dir"], run, SOURCE_TYPE.QUERY)

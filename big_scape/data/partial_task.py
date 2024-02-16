@@ -6,7 +6,7 @@ Also contains functions to determine subsets of tasks that need to be done
 
 # from python
 from __future__ import annotations
-from typing import TYPE_CHECKING, Generator
+from typing import TYPE_CHECKING, Generator, Optional
 
 # from dependencies
 from sqlalchemy import select
@@ -17,7 +17,6 @@ import big_scape.enums as bs_enums
 
 # from circular imports
 if TYPE_CHECKING:
-    from big_scape.comparison.record_pair import RecordPair
     from big_scape.comparison import RecordPairGenerator
     from big_scape.genbank.gbk import GBK, CDS
     from big_scape.hmm import HSP
@@ -235,9 +234,10 @@ def get_comparison_data_state(gbks: list[GBK]) -> bs_enums.COMPARISON_TASK:
     return bs_enums.COMPARISON_TASK.ALL_DONE
 
 
+# TODO: does not seem to be used
 def get_missing_distances(
     pair_generator: RecordPairGenerator,
-) -> Generator[RecordPair, None, None]:
+) -> Generator[tuple[Optional[int], Optional[int]], None, None]:
     """Get a generator of BGCPairs that are missing from a network
 
     Args:
@@ -265,5 +265,5 @@ def get_missing_distances(
 
     for pair in pair_generator.generate_pairs():
         # if the pair is not in the set of existing distances, yield it
-        if (pair.record_a._db_id, pair.record_b._db_id) not in existing_distances:
+        if pair not in existing_distances and pair[::-1] not in existing_distances:
             yield pair

@@ -397,7 +397,10 @@ class GBK:
         if int(as_version[0]) >= 5:
             gbk.parse_as5up(record, cds_overlap_cutoff)
         if int(as_version[0]) == 4:
-            gbk.parse_as4(record, cds_overlap_cutoff)
+            # if regions are missing, gbk will be assumed to be as4
+            # here we need to see if the user set --gbk-force to true
+
+            gbk.parse_as4(record, cds_overlap_cutoff, run["force_gbk"])
 
         return gbk
 
@@ -405,6 +408,7 @@ class GBK:
         self,
         record: SeqRecord,
         cds_overlap_cutoff: Optional[float] = None,
+        force_gbk: bool = False,
     ) -> None:
         """Parses a GBK record of AS version 4 and returns a GBK object with all
         necessary information
@@ -448,12 +452,25 @@ class GBK:
                     continue
 
                 self.genes.append(cds)
-        # If no cluster feature was found, GBK is invalid
-        if self.region is None:
+
+        if self.region is not None:
+            return
+
+        # If no cluster feature was found and force-gbk is false, GBK is invalid
+        if not force_gbk:
             logging.error(
                 "%s: GBK file does not contain an antiSMASH cluster feature", self.path
             )
             raise InvalidGBKError()
+
+        # at this point we need to make a region object from the whole GBK
+        logging.warning(
+            "%s: GBK file does not contain an antiSMASH region feature. "
+            "Using --force_gbk, assuming AS4",
+            self.path,
+        )
+
+        self.region = Region.parse_full_region(record, parent_gbk=self)
 
     def parse_as5up(
         self,

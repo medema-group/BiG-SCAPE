@@ -93,6 +93,14 @@ def common_all(fn):
             default=False,
             help="Do not dump the sqlite database to disk",
         ),
+        click.option(
+            "--force-gbk",
+            type=bool,
+            is_flag=True,
+            default=False,
+            help="If GBK files are found without antiSMASH annotations, this adds a region covering \
+                the full sequence, and sets its product to 'other'",
+        ),
     ]
     for opt in options[::-1]:
         fn = opt(fn)
