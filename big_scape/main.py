@@ -45,6 +45,15 @@ def run_bigscape(run: dict) -> None:
     """Run a bigscape cluster analysis. This is the main function of the program that parses the
     command line arguments, loads the data, runs the analysis and saves the output.
     """
+    # starting information
+    logging.info(
+        "Starting BiG-SCAPE %s run on %s level with %s alignment and %s weights",
+        run["mode"],
+        run["record_type"].value,
+        run["alignment_mode"].value,
+        "legacy" if run["legacy_weights"] else "mix",
+    )
+
     # root directory
     bigscape_dir = Path(os.path.dirname(os.path.abspath(__file__)))
 
