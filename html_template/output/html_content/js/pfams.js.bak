@@ -49401,7 +49401,7 @@ var pfams={
     },
     "PF13186":{
         "col":"183,66,65",
-        "desc":"Iron-sulfur cluster-binding domain (SPASM)"
+        "desc":"Iron-sulfur cluster-binding domain"
     },
     "PF13187":{
         "col":"70,123,186",

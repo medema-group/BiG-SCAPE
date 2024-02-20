@@ -64,15 +64,15 @@
                   <span id="network_total_families" class="inforight"></span>          
                 </div>
                 <div class="infobar">
-                  <span class="infoleft">Average no. of BGCs per family:</span>
+                  <span class="infoleft">Average number of BGCs per family:</span>
                   <span id="network_avg_bgc_in_family" class="inforight"></span>          
                 </div>
                 <div class="infobar">
-                  <span class="infoleft">Max no. BGCs in a family:</span>
+                  <span class="infoleft">Max number of BGCs in a family:</span>
                   <span id="network_max_bgc_in_family" class="inforight"></span>          
                 </div>
                 <div class="infobar">
-                  <span class="infoleft">Families with MIBiG BGCs:</span>
+                  <span class="infoleft">Families with MIBiG Reference BGCs:</span>
                   <span id="network_mibig_in_family" class="inforight"></span>          
                 </div>
                 <div class="infobar">
@@ -277,12 +277,12 @@
       var inchlib = new InCHlib({
           target: "abpres_heatmap",
           metadata: false,
-          heatmap_colors: "PuBu",
+          heatmap_colors: "OrRd",
           draw_row_ids: true,
           dendrogram: true,
           column_dendrogram: true,
           column_metadata: true,
-          column_metadata_colors: "PuRd",
+          column_metadata_colors: "YlGn",
           column_metadata_function: function(features) {
             var str2num = {};
             str2num["0 hit"] = 0;

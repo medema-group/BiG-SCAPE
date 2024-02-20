@@ -394,32 +394,32 @@ def sort_bgc(product):
     https://docs.antismash.secondarymetabolites.org/glossary/#cluster-types)
     """
     
+    # TODO: according with current (2021-05) antiSMASH rules:
+    # prodigiosin and PpyS-KS -> PKS
+    # CDPS, mycosporine-like -> NRPS
+    # but they should probably be kept in Others
     pks1_products = {'t1pks', 'T1PKS'}
     pksother_products = {'transatpks', 't2pks', 't3pks', 'otherks', 'hglks', 
                      'transAT-PKS', 'transAT-PKS-like', 'T2PKS', 'T3PKS', 
-                     'PKS-like', 'hglE-KS', 'HR-T2PKS', 'HR-T2PKS'}
+                     'PKS-like', 'hglE-KS', 'prodigiosin'}
     nrps_products = {'nrps', 'NRPS', 'NRPS-like', 'thioamide-NRP', 
-                    'NAPAA', 'darobactin', 'NRP-metallophore', 'isocyanide-nrp'}
+                    'NAPAA', 'CDPS'}
     ripps_products = {'linaridin', 'cyanobactin', 'glycocin', 'lassopeptide', 
                      'bottromycin', 'head_to_tail', 'microcin', 
                      'microviridin', 'proteusin', 'lipolanthine', 
                      'RaS-RiPP', 'fungal-RiPP', 'TfuA-related', 'guanidinotides', 
-                     'redox-cofactor', 'thioamitides', 'epipeptide', 
-                     'spliceotide', 'archaeal-RiPP', 'crocagin', 'triceptide', 'methanobactin'}
-    lanthipeptide_products = {'lantipeptide', 'lanthipeptide', 'lanthipeptide-class-i', 
-                     'lanthipeptide-class-ii',
+                     'redox-cofactor', 'thioamitides', 'epipeptide', 'spliceotide', 'crocagin'}
+    lanthipeptide_products = {'lantipeptide', 'lanthipeptide', 'lanthipeptide-class-i', 'lanthipeptide-class-ii',
                      'lanthipeptide-class-iii', 'lanthipeptide-class-iv', 'lanthipeptide-class-v'}
     saccharide_products = {'amglyccycl', 'oligosaccharide', 'cf_saccharide', 
-                     'saccharide', '2dos'}
+                     'saccharide'}
     others_products = {'acyl_amino_acids', 'aminocoumarin', 
                        'ectoine', 'butyrolactone', 'nucleoside', 'melanin', 'phosphoglycolipid',
                        'phosphoglycolipid', 'phenazine', 'phosphonate', 'other',
                        'cf_putative', 'indole', 'cf_fatty_acid',
                        'PUFA', 'furan', 'hserlactone', 'fused', 'cf_fatty_acid', 
                        'blactam', 'fatty_acid', 'PpyS-KS', 'PBDE', 'tropodithietic-acid', 'NAGGN', 
-                       'halogenated', 'pyrrolidine', 'mycosporine-like', 'hydrogen-cyanide', 
-                       'isocyanide', 'NI-siderophore', 'aminopolycarboxylic-acid', 
-                       'opine-like-metallophore', 'CDPS', 'RCDPS', 'prodigiosin'}
+                       'halogenated', 'pyrrolidine', 'mycosporine-like'}
     scfa_pathways = {'PFOR_II_pathway', 'Pyruvate2acetate-formate',
                      'Fumarate2succinate', 'Acetyl-CoA_pathway',
                      'Leucine_reduction', 'acetate2butyrate', 'porA',
@@ -505,7 +505,7 @@ def sort_bgc(product):
         return("Ladderane")
     # Cyclic-lactone-autoinducers
     elif product == 'cyclic-lactone-autoinducer':
-        return("Autoinducer")
+        return("Autoinducers")
 #gutSMASH
     # SCFA
     elif product in scfa_pathways:
@@ -545,7 +545,7 @@ def sort_bgc(product):
             elif len(subtypes - (pks1_products | pksother_products)) == 0:
                 return("PKSother") # pks hybrids
             else:
-                return("PKS-NRP_Hybrid")
+                return("PKS-NRP_Hybrids")
         elif len(subtypes - ripps_products) == 0:
             return("RiPPs")
         elif len(subtypes - saccharide_products) == 0:

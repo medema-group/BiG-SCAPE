@@ -312,9 +312,8 @@ nav .main-link div {
   margin: 0 0 0 0.5em;
   padding: 0;
   list-style-type: none;
-  min-height: 0.5em;
-  display: flex;
-  flex-flow: row wrap;
+  min-height: 1.1em;
+  min-height: 2em;
 }
 #clusterbuttons a:hover {
   text-decoration: none;
@@ -325,7 +324,7 @@ nav .main-link div {
   margin-right: 0.4em;
   padding: 0.25em;
   min-width: 1.25em;
-  min-height: 0.5em;
+  min-height: 1.25em;
   text-align: center;
   vertical-align: middle;
 }
@@ -339,7 +338,7 @@ nav .main-link div {
 .overview.inactive {
   background-color: #51a3a3;
 }
-.overview a {
+.overview.inactive a {
   color: white;
 }
 .pks.inactive {
@@ -363,13 +362,13 @@ nav .main-link div {
 .RiPP-other.inactive {
   background-color: #51839A;
 }
-.RiPP-other a {
+.RiPP-other.inactive a {
   color: white;
 }
 .RiPP-like.inactive {
   background-color: #6BA1B3;
 }
-.RiPP-like a {
+.RiPP-like.inactive a {
   color: white;
 }
 .putative.inactive {
@@ -381,7 +380,7 @@ nav .main-link div {
 .PKSI.inactive {
   background-color: #8879a8;
 }
-.PKSI a {
+.PKSI.inactive a {
   color: white;
 }
 .transatpks.inactive {
@@ -405,31 +404,31 @@ nav .main-link div {
 .PKSother.inactive {
   background-color: #9e93d0;
 }
-.PKSother a {
+.PKSother.inactive a {
   color: white;
 }
 .ArylPolyene.inactive {
   background-color: #CE6E7A;
 }
-.ArylPolyene a {
+.ArylPolyene.inactive a {
   color: white;
 }
 .Resorcinol.inactive {
   background-color: #7A558C;
 }
-.Resorcinol a {
+.Resorcinol.inactive a {
   color: white;
 }
 .betaLactone.inactive {
   background-color: #8FB791;
 }
-.betaLactone a {
+.betaLactone.inactive a {
   color: white;
 }
 .Ladderane.inactive {
   background-color: #A7275C;
 }
-.Ladderane a {
+.Ladderane.inactive a {
   color: white;
 }
 .pufa.inactive {
@@ -441,19 +440,19 @@ nav .main-link div {
 .NRPS.inactive {
   background-color: #90BB54;
 }
-.NRPS a {
+.NRPS.inactive a {
   color: white;
 }
 .NRPS-like.inactive {
   background-color: ##64823a;
 }
-.NRPS-like a {
+.NRPS-like.inactive a {
   color: white;
 }
 .Terpene.inactive {
   background-color: #EE7A6D;
 }
-.Terpene a {
+.Terpene.inactive a {
   color: white;
 }
 .lantibiotic.inactive {
@@ -465,43 +464,43 @@ nav .main-link div {
 .LAP.inactive {
   background-color: #44748D;
 }
-.LAP a {
+.LAP.inactive a {
   color: white;
 }
 .Ranthipeptide.inactive {
   background-color: #03284D;
 }
-.Ranthipeptide a {
+.Ranthipeptide.inactive a {
   color: white;
 }
 .RRE-containing.inactive {
   background-color: #5E92A7;
 }
-.RRE-containing a {
+.RRE-containing.inactive a {
   color: white;
 }
 .Lanthipeptide.inactive {
   background-color: #2A5674;
 }
-.Lanthipeptide a {
+.Lanthipeptide.inactive a {
   color: white;
 }
 .HybridBGC.inactive {
   background-color: #2A5674;
 }
-.HybridBGC a {
+.HybridBGC.inactive a {
   color: white;
 }
 .Bacteriocin.inactive {
   background-color: #51a9ff;
 }
-.Bacteriocin a {
+.Bacteriocin.inactive a {
   color: white;
 }
 .Thiopeptide.inactive {
   background-color: #376580;
 }
-.Thiopeptide a {
+.Thiopeptide.inactive a {
   color: white;
 }
 .linaridin.inactive {
@@ -531,7 +530,7 @@ nav .main-link div {
 .Sactipeptide.inactive {
   background-color: #006ad1;
 }
-.Sactipeptide a {
+.Sactipeptide.inactive a {
   color: white;
 }
 .bottromycin.inactive {
@@ -567,7 +566,7 @@ nav .main-link div {
 .Autoinducer.inactive {
   background-color: #B5446E;
 }
-.Autoinducer a {
+.Autoinducer.inactive a {
   color: white;
 }
 .blactam.inactive {
@@ -591,7 +590,7 @@ nav .main-link div {
 .Siderophore.inactive {
   background-color: #74007A;
 }
-.Siderophore a {
+.Siderophore.inactive a {
   color: white;
 }
 .ectoine.inactive {
@@ -612,10 +611,10 @@ nav .main-link div {
 .indole.inactive a {
   color: black;
 }
-.Nucleoside.inactive {
+.nucleoside.inactive {
   background-color: antiquewhite;
 }
-.Nucleoside.inactive a {
+.nucleoside.inactive a {
   color: black;
 }
 .phosphoglycolipid.inactive {
@@ -660,16 +659,10 @@ nav .main-link div {
 .phosphonate.inactive a {
   color: black;
 }
-.Saccharides.inactive {
-  background-color: wheat;
-}
-.Saccharides a {
-  color: black;
-}
 .Others.inactive {
   background-color: gray;
 }
-.Others a {
+.Others.inactive a {
   color: white;
 }
 /* plant sec_mets */
@@ -683,6 +676,12 @@ nav .main-link div {
   background-color: chartreuse;
 }
 .plant.inactive a {
+  color: black;
+}
+.Saccharides.inactive {
+  background-color: wheat;
+}
+.Saccharides.inactive a {
   color: black;
 }
 .lignan.inactive {
@@ -709,7 +708,7 @@ nav .main-link div {
 .SCFA.inactive {
   background-color: #34A0A4;
 }
-.SCFA a {
+.SCFA.inactive a {
   color: white;
 }
 .SCFA.inactive {
@@ -721,7 +720,7 @@ nav .main-link div {
 .SCFAother.inactive {
   background-color: #34A0A4;
 }
-.SCFAother a {
+.SCFAother.inactive a {
   color: white;
 }
 .SCFAother.inactive {
@@ -733,7 +732,7 @@ nav .main-link div {
 .Aromatic.inactive {
   background-color: #52B69A;
 }
-.Aromatic a {
+.Aromatic.inactive a {
   color: white;
 }
 .Aromatic.inactive {
@@ -745,7 +744,7 @@ nav .main-link div {
 .npAA.inactive {
   background-color: #76C893;
 }
-.npAA a {
+.npAA.inactive a {
   color: white;
 }
 .npAA.inactive {
@@ -757,7 +756,7 @@ nav .main-link div {
 .AliphaticAmine.inactive {
   background-color: #7fcf6f;
 }
-.AliphaticAmine a {
+.AliphaticAmine.inactive a {
   color: white;
 }
 .AliphaticAmine.inactive {
@@ -769,7 +768,7 @@ nav .main-link div {
 .BileAcids.inactive {
   background-color: #7fcf6f;
 }
-.BileAcids a {
+.BileAcids.inactive a {
   color: white;
 }
 .BileAcids.inactive {
@@ -781,7 +780,7 @@ nav .main-link div {
 .EnergyMGC.inactive {
   background-color: #a2cf7a;
 }
-.EnergyMGC a {
+.EnergyMGC.inactive a {
   color: white;
 }
 .EnergyMGC.inactive {
@@ -793,7 +792,7 @@ nav .main-link div {
 .OtherMGC.inactive {
   background-color: #b8cea2;
 }
-.OtherMGC a {
+.OtherMGC.inactive a {
   color: white;
 }
 .OtherMGC.inactive {
@@ -805,7 +804,7 @@ nav .main-link div {
 .PutativeMGC.inactive {
   background-color: #b8beb2;
 }
-.PutativeMGC a {
+.PutativeMGC.inactive a {
   color: white;
 }
 .PutativeMGC.inactive {
@@ -823,11 +822,11 @@ nav .main-link div {
 .fused.inactive a {
   color: white;
 }
-.other,.Others.inactive {
+.other,.Others {
   background-color: midnightblue;
 }
-.other,.Others.inactive a {
-  color: white;
+.other,.Others a {
+  color: lightsteelblue;
 }
 .cf_saccharide.inactive {
   background-color: #f2f2f2;
@@ -850,8 +849,14 @@ nav .main-link div {
 .PKS-NRP_Hybrid.inactive {
   background-color: lightsteelblue;
 }
-.PKS-NRP_Hybrid a {
+.PKS-NRP_Hybrid.inactive a {
   color: midnightblue;
+}
+.clbutton.inactive {
+  background-color: #ccc;
+}
+.clbutton.inactive > a {
+  color: white;
 }
 /* done with sec met types */
 .cldropdown {

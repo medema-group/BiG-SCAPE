@@ -1989,8 +1989,8 @@ def CMD_parser():
                                              "Lanthipeptide", "Sactipeptide",
                                              "Thiopeptide", "Bacteriocin",
                                              "ArylPolyene", "Resorcinol",
-                                             "Siderophore", "betaLactone", "LAP",
-                                             "Lassopeptide", "Ranthipeptide",
+                                             "Siderophore", "betaLactone",                                            
+                                             "LAP", "Lassopeptide", "Ranthipeptide",
                                              "NRPS-like" , "Nucleoside", "RiPP-like",
                                              "RRE-containing", "thiopeptide", "Ladderane",
                                              "Autoinducer", "SCFA", "SCFAother", "PutativeMGC",
@@ -2289,6 +2289,7 @@ def main():
     bgc_class_weight["Sactipeptide"] = (0.028, 0.71, 0.01, 1.0)
     bgc_class_weight["Bacteriocin"] = (0.028, 0.71, 0.01, 1.0)
     bgc_class_weight["NRPS-like"] = (0.0, 1.0, 0.0, 4.0)
+    bgc_class_weight["Nucleoside"] = (0.01, 0.97, 0.02, 4.0)
     bgc_class_weight["Resorcinol"] = (0.01, 0.97, 0.02, 4.0)
     bgc_class_weight["Thiopeptide"] = (0.028, 0.71, 0.01, 1.0)
     bgc_class_weight["Siderophore"] = (0.01, 0.97, 0.02, 4.0)

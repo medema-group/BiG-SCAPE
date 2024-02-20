@@ -10477,7 +10477,7 @@ defaults._set('global', {
 	defaultFontFamily: "'Helvetica Neue', 'Helvetica', 'Arial', sans-serif",
 	defaultFontSize: 12,
 	defaultFontStyle: 'normal',
-	showLines: false,
+	showLines: true,
 
 	// Element defaults defined in element extensions
 	elements: {},
@@ -11344,12 +11344,12 @@ defaults._set('scale', {
 	gridLines: {
 		display: true,
 		color: 'rgba(0, 0, 0, 0.1)',
-		lineWidth: 0,
+		lineWidth: 1,
 		drawBorder: true,
 		drawOnChartArea: true,
 		drawTicks: true,
 		tickMarkLength: 10,
-		zeroLineWidth: 0,
+		zeroLineWidth: 1,
 		zeroLineColor: 'rgba(0,0,0,0.25)',
 		zeroLineBorderDash: [],
 		zeroLineBorderDashOffset: 0.0,
@@ -13475,7 +13475,7 @@ defaults._set('global', {
 		arc: {
 			backgroundColor: defaults.global.defaultColor,
 			borderColor: '#fff',
-			borderWidth: 0
+			borderWidth: 2
 		}
 	}
 });
@@ -16194,7 +16194,7 @@ module.exports = function(Chart) {
 					if (legendItem.hidden) {
 						// Strikethrough the text if hidden
 						ctx.beginPath();
-						ctx.lineWidth = 0;
+						ctx.lineWidth = 2;
 						ctx.moveTo(xLeft, yMiddle);
 						ctx.lineTo(xLeft + textWidth, yMiddle);
 						ctx.stroke();
@@ -17335,7 +17335,7 @@ module.exports = function(Chart) {
 		angleLines: {
 			display: true,
 			color: 'rgba(0, 0, 0, 0.1)',
-			lineWidth: 0
+			lineWidth: 1
 		},
 
 		gridLines: {
@@ -17599,8 +17599,8 @@ module.exports = function(Chart) {
 
 	function drawRadiusLine(scale, gridLineOpts, radius, index) {
 		var ctx = scale.ctx;
-		ctx.strokeStyle = helpers.valueAtIndexOrDefault(gridLineOpts.color, index - 0);
-		ctx.lineWidth = helpers.valueAtIndexOrDefault(gridLineOpts.lineWidth, index - 0);
+		ctx.strokeStyle = helpers.valueAtIndexOrDefault(gridLineOpts.color, index - 1);
+		ctx.lineWidth = helpers.valueAtIndexOrDefault(gridLineOpts.lineWidth, index - 1);
 
 		if (scale.options.gridLines.circular) {
 			// Draw circular arcs between the points
