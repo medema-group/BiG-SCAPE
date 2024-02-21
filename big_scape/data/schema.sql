@@ -112,6 +112,7 @@ CREATE TABLE IF NOT EXISTS connected_component (
     id INTEGER NOT NULL,
     record_id INTEGER NOT NULL,
     cutoff REAL NOT NULL,
+    edge_param_id INTEGER NOT NULL,
     unique(record_id, cutoff),
     FOREIGN KEY(record_id) REFERENCES bgc_record(id)
 );
