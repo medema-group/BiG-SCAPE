@@ -496,6 +496,7 @@ def fetch_records_from_database(pairs: list[tuple[int, int]]) -> dict[int, BGCRe
             cds_table.c.orf_num,
             cds_table.c.strand,
             cds_table.c.gene_kind,
+            hsp_table.c.id,
             hsp_table.c.accession,
             hsp_table.c.bit_score,
             hsp_table.c.env_start,
@@ -518,10 +519,11 @@ def fetch_records_from_database(pairs: list[tuple[int, int]]) -> dict[int, BGCRe
     gbk_index: dict[int, GBK] = {}
     record_index: dict[int, BGCRecord] = {}
     cds_index: dict[int, CDS] = {}
+    added_hsp_ids: set[int] = set()
 
     # iteratively build the required data structures
     for row in pair_data:
-        gbk_id, rec_id, cds_id = row[0], row[1], row[6]
+        gbk_id, rec_id, cds_id, hsp_id = row[0], row[1], row[6], row[12]
 
         # create dummy GBK object to link records and CDSs
         if gbk_id not in gbk_index:
@@ -557,8 +559,10 @@ def fetch_records_from_database(pairs: list[tuple[int, int]]) -> dict[int, BGCRe
             gbk_index[gbk_id].genes.append(cds_index[cds_id])
 
         # finally, assign HSPs to their respective CDS
-        new_hsp = HSP(cds_index[cds_id], row[12], row[13], row[14], row[15])
-        new_hsp.alignment = HSPAlignment(new_hsp, row[16])
-        cds_index[cds_id].hsps.append(new_hsp)
+        if hsp_id not in added_hsp_ids:
+            new_hsp = HSP(cds_index[cds_id], row[13], row[14], row[15], row[16])
+            new_hsp.alignment = HSPAlignment(new_hsp, row[17])
+            cds_index[cds_id].hsps.append(new_hsp)
+            added_hsp_ids.add(hsp_id)
 
     return record_index
