@@ -1,4 +1,4 @@
-name: BiG-SCAPE
+name: bigscape
 channels:
   - conda-forge
   - bioconda
@@ -17,5 +17,6 @@ dependencies:
   - matplotlib=3.8.0
   - requests=2.31.0
   - tqdm=4.66.1
+  - pip=23.3
   - pip:
     - click==8.1.7

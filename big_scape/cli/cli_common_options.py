@@ -36,7 +36,7 @@ def common_all(fn):
                 exists=True, dir_okay=False, file_okay=True, path_type=Path
             ),
             default="./config.ini",
-            help="Path to BiG-SCAPE config file.",
+            help="Path to BiG-SCAPE config file. (default: ./config.ini).",
         ),
         # diagnostic parameters
         click.option(
@@ -66,8 +66,8 @@ def common_all(fn):
             default=cpu_count(),
             type=int,
             help=(
-                "Set the max number of cores available"
-                " (default: use all available cores)."
+                "Set the max number of cores available "
+                "(default: use all available cores)."
             ),
         ),
         # output parameters
@@ -84,7 +84,7 @@ def common_all(fn):
             type=click.Path(
                 path_type=Path(exists=False), dir_okay=True, file_okay=False
             ),
-            help="Path to output log file. Default: output_dir/timestamp.log.",
+            help="Path to output log file. (default: output_dir/timestamp.log).",
         ),
         click.option(
             "--no-db-dump",
@@ -142,21 +142,22 @@ def common_cluster_query(fn):
             callback=validate_input_mode,
             type=click.Choice(["recursive", "flat"]),
             help=(
-                "Where to look for input GBK files. Default: recursive"
+                "Where to look for input GBK files. "
                 "recursive: search for gbk files recursively in input directory. "
-                "flat: search for gbk files in input directory only."
+                "flat: search for gbk files in input directory only. "
+                "(default: recursive)."
             ),
         ),
         # TODO: adjust choices
         click.option(
             "--mibig_version",
-            type=click.Choice(["3.1", "custom"]),
-            # TODO: document custom, readjust if needed
+            type=str,
             required=False,
-            help="MIBiG release number (e.g. 3.1). Download (if needed) and use this "
-            "version of MiBIG database. If not provided, MiBIG will not be included "
-            "in the analysis. If download is required, BiG-SCAPE "
-            "will download the MIBiG database to the BiG-SCAPE folder",
+            help="MIBiG release number (e.g. 3.1). If not provided, MIBiG will not be "
+            "included in the analysis. If required, BiG-SCAPE will download the "
+            "MIBiG database to ./big_scape/MIBiG/mibig_antismash_<version>_gbk. "
+            "(Advanced) Any custom MIBiG collection can be used as long as the expected "
+            "folder is present.",
         ),
         click.option(
             "--reference_dir",
@@ -174,7 +175,7 @@ def common_cluster_query(fn):
             help=(
                 "A comma separated list of strings. "
                 "Only gbk files with this string(s) will be used for the analysis "
-                "(default: 'cluster', 'region'). Use an asterisk to accept every "
+                "(default: 'cluster,region'). Use an asterisk to accept every "
                 "file (overrides '--exclude_gbk_str')."
             ),
         ),
@@ -190,19 +191,13 @@ def common_cluster_query(fn):
             ),
         ),
         click.option(
-            # TODO: check if implemented
-            "--min_bgc_length",
-            type=int,
-            default=0,
-            help="Minimum BGC length to be included in analysis (default: 0bp).",
-        ),
-        click.option(
             "--cds_overlap_cutoff",
             type=click.FloatRange(min=0, max=1),
             default=0.1,
             help=(
-                "Specify at which overlap percentage (as a decimal) two CDS in a gbk"
-                " are considered to overlap. This preserves longest overlapping CDS."
+                "Specify at which overlap percentage (as a decimal) two CDS in a gbk "
+                "are considered to overlap. This preserves longest overlapping CDS "
+                "(default=0.1)."
             ),
         ),
         click.option(
@@ -211,7 +206,7 @@ def common_cluster_query(fn):
             type=click.Path(
                 exists=True, dir_okay=False, file_okay=True, path_type=Path
             ),
-            help="Path to Pfam database file(s).",
+            help="Path to Pfam database file.",
         ),
         # hmmer parameters
         click.option(
@@ -219,9 +214,9 @@ def common_cluster_query(fn):
             type=click.FloatRange(min=0, max=1),
             default=0.1,
             help=(
-                "Specify at which overlap percentage (as a decimal) two domains"
-                " in a CDS are considered to overlap. Domain with the "
-                "best score is kept (default=0.1)"
+                "Specify at which overlap percentage (as a decimal) two domains "
+                "in a CDS are considered to overlap. Domain with the "
+                "best score is kept (default=0.1)."
             ),
         ),
         click.option(
@@ -237,7 +232,7 @@ def common_cluster_query(fn):
             "--skip_hmmscan",
             is_flag=True,
             help=(
-                "Skip domain prediction using hmmscan."
+                "Skip domain prediction using hmmscan. "
                 "BiG-SCAPE expects to find "
                 "a database of already processed gbks."
             ),
@@ -258,9 +253,9 @@ def common_cluster_query(fn):
             "--legacy_weights",
             is_flag=True,
             help=(
-                "Use BiG-SCAPE v1 class-based weights in distance calculations"
-                "If not selected, the distance metric will be based on the 'mix'"
-                " weights distribution."
+                "Use BiG-SCAPE v1 class-based weights in distance calculations. "
+                "If not selected, the distance metric will be based on the 'mix' "
+                "weights distribution."
             ),
         ),
         click.option(
@@ -268,11 +263,11 @@ def common_cluster_query(fn):
             type=click.Choice(["class", "category"]),
             callback=validate_classify,
             help=(
-                "Use antiSMASH/BGC classes or categories to run analyses on class-based bins."
+                "Use antiSMASH/BGC classes or categories to run analyses on class-based bins. "
                 "Can be used in combination with --legacy_weights if BGC gbks "
                 "have been produced by antiSMASH version6 or higher. For older "
-                "antiSMASH versions, either use --legacy_classify or do not select"
-                "--legacy_weights, which will perform the weighted distance calculations"
+                "antiSMASH versions, either use --legacy_classify or do not select "
+                "--legacy_weights, which will perform the weighted distance calculations "
                 "based on the generic 'mix' weights."
             ),
         ),
@@ -280,28 +275,27 @@ def common_cluster_query(fn):
             "--hybrids_off",
             is_flag=True,
             help=(
-                "Toggle to add BGCs with hybrid predicted classes/categories to each"
+                "Toggle to add BGCs with hybrid predicted classes/categories to each "
                 "subclass instead of a hybrid class/network (e.g. a 'terpene-nrps' BGC "
-                "would be added to both the terpene and NRPS classes/networks instead of"
-                " the terpene.nrps network)."
-                " Only works if --classify/--legacy_classify is selected."
+                "would be added to both the terpene and NRPS classes/networks instead of "
+                "the terpene.nrps network). "
+                "Only works if --classify/--legacy_classify is selected."
             ),
         ),
         click.option(
             "--alignment_mode",
             type=click.Choice(["global", "glocal", "auto"]),
-            # TODO: define proper default: v1 has glocal
-            default="auto",
+            default="glocal",
             callback=validate_alignment_mode,
             help=(
                 "Alignment mode for each pair of gene clusters. 'global': the whole "
                 "list of domains of each BGC are compared; 'glocal': Longest Common "
                 "Subcluster mode. Redefine the subset of the domains used to "
                 "calculate distance by trying to find the longest slice of common "
-                "domain content per gene in both BGCs, then expand each slice."
-                " 'auto': use glocal when at least one of the BGCs in each pair "
-                "has the 'contig_edge'annotation from antiSMASH v4+, otherwise "
-                "use global mode on that pair"
+                "domain content per gene in both BGCs, then expand each slice. "
+                "'auto': use glocal when at least one of the BGCs in each pair "
+                "has the 'contig_edge' annotation from antiSMASH v4+, otherwise "
+                "use global mode on that pair (default: glocal)."
             ),
         ),
         # networking parameters
@@ -314,19 +308,19 @@ def common_cluster_query(fn):
                 "A comma separated list of floats. "
                 "Generate networks using multiple raw distance cutoff values. "
                 "Values should be in the range [0.0, 1.0]. Example: --gcf_cutoffs 0.1,"
-                "0.25,0.5,1.0. Default: 0.3"
+                "0.25,0.5,1.0. (default: 0.3)."
             ),
         ),
         # output parameters
         click.option(
             "--profile_path",
             type=click.Path(path_type=Path, dir_okay=False),
-            help="Path to output profile file. Default: output_dir/.",
+            help="Path to output profile file. (default: output_dir/).",
         ),
         click.option(
             "--db_path",
             type=click.Path(path_type=Path, dir_okay=False),
-            help="Path to sqlite db output file. Default: output_dir/data_sqlite.db.",
+            help="Path to sqlite db output file. (default: output_dir/data_sqlite.db).",
         ),
         # TODO: implement cand_cluster here and LCS-ext
         click.option(
@@ -335,7 +329,7 @@ def common_cluster_query(fn):
             type=click.Choice(["region", "cand_cluster", "protocluster", "proto_core"]),
             default="region",
             callback=validate_record_type,
-            help="Use a specific type of record for comparison. Default: region",
+            help="Use a specific type of record for comparison. (default: region).",
         ),
     ]
     for opt in options[::-1]:

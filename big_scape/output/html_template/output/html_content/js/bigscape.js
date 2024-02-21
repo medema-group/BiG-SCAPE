@@ -63,7 +63,7 @@ function Bigscape(run_data, bs_data, bs_families, bs_alignment, bs_similarity, n
   var layout = Viva.Graph.Layout.forceDirected(graph, {
     springLength: sprLen,
     springCoeff: 0.0005,
-    dragCoeff: 0.1,
+    dragCoeff: 0.095,
     gravity: -1,
     springTransform: function (link, spring) {
       spring.length = sprLen - (sprLen * (link.data.weight));
@@ -328,7 +328,11 @@ function Bigscape(run_data, bs_data, bs_families, bs_alignment, bs_similarity, n
   }
   for (var a = 0; a < bs_data.length; a++) {
     for (var b = 0; b < bs_data.length; b++) {
-      // addind a topo link
+      // skip self links
+      if (a === b) {
+        continue
+      }
+      // add in a topo link
       if (bs_data[a]["hash"] == bs_data[b]["hash"]) {
         graph.addLink(a, b, { weight: 0.01 });
       }

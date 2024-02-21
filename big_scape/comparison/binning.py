@@ -20,7 +20,13 @@ from sqlalchemy import select, func, or_
 # from other modules
 from big_scape.cli.constants import ANTISMASH_CLASSES
 from big_scape.data import DB
-from big_scape.genbank import BGCRecord, Region, ProtoCluster, ProtoCore
+from big_scape.genbank import (
+    BGCRecord,
+    Region,
+    CandidateCluster,
+    ProtoCluster,
+    ProtoCore,
+)
 from big_scape.enums import SOURCE_TYPE, CLASSIFY_MODE, RECORD_TYPE
 
 import big_scape.comparison as bs_comparison
@@ -842,28 +848,38 @@ def get_record_category(record: BGCRecord) -> str:
         str: BGC category
     """
 
-    categories: list[str] = []
+    def cand_cluster_category(cand_cluster: CandidateCluster) -> set[str]:
+        """Grab categories that occur in a candidate cluster"""
+        categories = set()
+        for proto in cand_cluster.proto_clusters.values():
+            if proto is not None:
+                categories.update(proto_category(proto))
+        return categories
 
-    if isinstance(record, ProtoCluster) or isinstance(record, ProtoCore):
-        if record.category is not None:
-            categories.append(record.category)
+    def proto_category(proto: ProtoCluster | ProtoCore) -> set[str]:
+        """Grab category(s) that occurs in Protocluster or Protocore"""
+        # merged protocluster/cores can contain multiple categories joined by "."
+        return set(proto.category.split(".") if proto.category is not None else [])
+
+    categories: set[str] = set()
 
     if isinstance(record, Region):
         # get categories from region object
-        for idx, cand_cluster in record.cand_clusters.items():
+        for cand_cluster in record.cand_clusters.values():
             if cand_cluster is not None:
-                for idx, protocluster in cand_cluster.proto_clusters.items():
-                    if protocluster is not None and protocluster.category is not None:
-                        pc_category = protocluster.category
-                        # avoid duplicates, hybrids of the same kind count as one category
-                        if pc_category not in categories:
-                            categories.append(pc_category)
+                categories.update(cand_cluster_category(cand_cluster))
+
+    if isinstance(record, CandidateCluster):
+        categories.update(cand_cluster_category(record))
+
+    if isinstance(record, ProtoCluster) or isinstance(record, ProtoCore):
+        categories.update(proto_category(record))
 
     if len(categories) == 0:
         return "Categoryless"
 
     if len(categories) == 1:
-        return categories[0]
+        return list(categories)[0]
 
     return ".".join(categories)
 

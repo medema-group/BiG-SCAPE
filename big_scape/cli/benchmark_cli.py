@@ -22,7 +22,7 @@ from .cli_validations import set_start, validate_output_paths
     type=click.Path(exists=True, file_okay=True, path_type=Path),
     required=True,
     help=(
-        "Path to GCF assignments file. BiG-SCAPE will compare, "
+        "Path to GCF assignments file. BiG-SCAPE will compare "
         "a run output to these assignments."
     ),
 )
@@ -37,8 +37,8 @@ def benchmark(ctx, *args, **kwargs):
     """
     BiG-SCAPE - BENCHMARK
 
-    Benchmarking mode - BiG-SCAPE compares the results of a query against
-    a benchmark set of BGC <-> GCF assignments.
+    Benchmarking mode - Compare a BiG-SCAPE or BiG-SLICE BGC clustering against
+    a known/expected set of BGC <-> GCF assignments.
     For a more comprehensive help menu and tutorials see GitHub Wiki.
     \f
     :param click.core.Context ctx: Click context.

@@ -19,6 +19,7 @@ from Bio.SeqFeature import SeqFeature
 from big_scape.errors import InvalidGBKError
 from big_scape.data import DB
 from big_scape.enums import SOURCE_TYPE
+from big_scape.cli.config import BigscapeConfig
 
 # from this module
 from .region import Region
@@ -541,7 +542,7 @@ class GBK:
                 "%s: GBK file does not contain an antiSMASH region feature", self.path
             )
             raise InvalidGBKError()
-        if not tmp_cand_clusters:
+        if not tmp_cand_clusters and not self.source_type == SOURCE_TYPE.MIBIG:
             logging.warning(
                 "%s: GBK file does not contain any cand_cluster features", self.path
             )
@@ -608,10 +609,7 @@ class GBK:
                     )
                     raise InvalidGBKError()
 
-            if (
-                cand_cluster.kind == "interleaved"
-                or cand_cluster.kind == "chemical_hybrid"
-            ):
+            if cand_cluster.kind in BigscapeConfig.MERGED_CAND_CLUSTER_TYPE:
                 # merge all the protoclusters in this candidate cluster
                 protoclusters = [
                     tmp_proto_clusters[number]

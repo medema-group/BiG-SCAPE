@@ -1,4 +1,5 @@
 """Contains constant values"""
+
 DB_SCHEMA_PATH = "big_scape/data/schema.sql"
 
 LEGACY_ANCHOR_DOMAINS = [
@@ -20,8 +21,8 @@ LEGACY_ANCHOR_DOMAINS = [
 # prodigiosin and PpyS-KS -> PKS
 # CDPS -> NRPS
 ANTISMASH_CLASSES = {
-    "pks1_products": ["t1pks", "T1PKS"],
-    "pksother_products": [
+    "pks1_products": {"t1pks", "T1PKS"},
+    "pksother_products": {
         "transatpks",
         "t2pks",
         "t3pks",
@@ -33,9 +34,9 @@ ANTISMASH_CLASSES = {
         "T3PKS",
         "PKS-like",
         "hglE-KS",
-    ],
-    "nrps_products": ["nrps", "NRPS", "NRPS-like", "thioamide-NRP", "NAPAA"],
-    "ripps_products": [
+    },
+    "nrps_products": {"nrps", "NRPS", "NRPS-like", "thioamide-NRP", "NAPAA"},
+    "ripps_products": {
         "lantipeptide",
         "thiopeptide",
         "bacteriocin",
@@ -69,14 +70,14 @@ ANTISMASH_CLASSES = {
         "cyclic-lactone-autoinducer",
         "spliceotide",
         "RRE-containing",
-    ],
-    "saccharide_products": [
+    },
+    "saccharide_products": {
         "amglyccycl",
         "oligosaccharide",
         "cf_saccharide",
         "saccharide",
-    ],
-    "others_products": [
+    },
+    "others_products": {
         "acyl_amino_acids",
         "arylpolyene",
         "aminocoumarin",
@@ -108,5 +109,5 @@ ANTISMASH_CLASSES = {
         "NAGGN",
         "halogenated",
         "pyrrolidine",
-    ],
+    },
 }
