@@ -106,7 +106,14 @@ CREATE TABLE IF NOT EXISTS distance (
     FOREIGN KEY(record_a_id) REFERENCES bgc_record(id)
     FOREIGN KEY(record_b_id) REFERENCES bgc_record(id)
     FOREIGN KEY(edge_param_id) REFERENCES edge_params(id)
+);
 
+CREATE TABLE IF NOT EXISTS connected_component (
+    id INTEGER NOT NULL,
+    record_id INTEGER NOT NULL,
+    cutoff REAL NOT NULL,
+    unique(record_id, cutoff),
+    FOREIGN KEY(record_id) REFERENCES bgc_record(id)
 );
 
 CREATE TABLE IF NOT EXISTS edge_params (
