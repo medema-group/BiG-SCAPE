@@ -183,9 +183,12 @@ def calculate_distances_query(
 
     # now we make any last connected ref <-> connected ref pairs that are missing
     # get all the edges in the query connected component
-    query_connected_component = bs_network.get_query_connected_component(
-        query_records, query_record._db_id, edge_param_id, 1
+    query_connected_component = bs_network.get_connected_components(
+        edge_param_id, 1, query_records
     )
+
+    # get_connected_components returns a list of connected components, we only want the first one
+    query_connected_component = next(query_connected_component)
 
     query_nodes = bs_network.get_nodes_from_cc(query_connected_component, query_records)
 
