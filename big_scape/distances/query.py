@@ -42,7 +42,7 @@ def calculate_distances_query(
             query_singleton = False
             query_records.append(record)
 
-        # if classification mode is on, then us only those records which have the query class/category
+        # if classification mode is on, then use only those records which have the query class/category
         if run["classify"]:
             classify_mode = run["classify"]
             # now we go to all the records, of a given type, of the gbk and check
@@ -91,7 +91,7 @@ def calculate_distances_query(
 
     edge_param_id = bs_comparison.get_edge_param_id(run, weights)
 
-    # generate inital query -> ref pairs
+    # generate initial query -> ref pairs
     query_to_ref_bin = bs_comparison.QueryToRefRecordPairGenerator(
         "Query_Ref", edge_param_id, weights
     )
@@ -126,17 +126,21 @@ def calculate_distances_query(
 
     if run["skip_propagation"]:
         return query_records
+    
+    # at this point we have query -> ref edges
+    # we now need to propagate edges from those ref -> other ref
 
-    # now we expand these edges from reference to other reference
     # TODO: see if we can implement missing for these
     ref_to_ref_bin = bs_comparison.RefToRefRecordPairGenerator(
         "Ref_Ref", edge_param_id, weights
     )
     ref_to_ref_bin.add_records(query_records)
 
+    # we will continue propagating until there are no more edges to generate
     while True:
         # fetches the current number of singleton ref <-> connected ref pairs from the database
         num_pairs = ref_to_ref_bin.num_pairs()
+        
         # if there are no more singleton ref <-> connected ref pairs, then break and exit
         if num_pairs == 0:
             break
@@ -183,9 +187,12 @@ def calculate_distances_query(
 
     # now we make any last connected ref <-> connected ref pairs that are missing
     # get all the edges in the query connected component
-    query_connected_component = bs_network.get_query_connected_component(
-        query_records, query_record._db_id, edge_param_id, 1
+    query_connected_component = bs_network.get_connected_components(
+        1, edge_param_id, query_records
     )
+
+    # get_connected_components returns a list of connected components, we only want the first one
+    query_connected_component = next(query_connected_component)
 
     query_nodes = bs_network.get_nodes_from_cc(query_connected_component, query_records)
 
