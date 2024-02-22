@@ -310,7 +310,7 @@ def run_bigscape(run: dict) -> None:
         for cutoff in run["gcf_cutoffs"]:
             logging.debug("Bin 'mix': cutoff %s", cutoff)
             for connected_component in bs_network.get_connected_components(
-                edge_param_id, cutoff, all_bgc_records
+                cutoff, edge_param_id, all_bgc_records
             ):
                 logging.debug(
                     "Found connected component with %d edges", len(connected_component)
@@ -334,7 +334,7 @@ def run_bigscape(run: dict) -> None:
             for cutoff in run["gcf_cutoffs"]:
                 logging.debug("Bin '%s': cutoff %s", bin.label, cutoff)
                 for connected_component in bs_network.get_connected_components(
-                    edge_param_id, cutoff, bin.source_records
+                    cutoff, edge_param_id, bin.source_records
                 ):
                     regions_families = bs_families.generate_families(
                         connected_component, bin.label, cutoff
@@ -352,7 +352,7 @@ def run_bigscape(run: dict) -> None:
             for cutoff in run["gcf_cutoffs"]:
                 logging.debug("Bin '%s': cutoff %s", bin.label, cutoff)
                 for connected_component in bs_network.get_connected_components(
-                    edge_param_id, cutoff, bin.source_records
+                    cutoff, edge_param_id, bin.source_records
                 ):
                     regions_families = bs_families.generate_families(
                         connected_component, bin.label, cutoff
@@ -378,9 +378,10 @@ def run_bigscape(run: dict) -> None:
 
             # get_connected_components returns a list of connected components, but we only
             # want the first one, so we use next()
+            
             query_connected_component = next(
                 bs_network.get_connected_components(
-                    edge_param_id, cutoff, query_records
+                    cutoff, edge_param_id, [query_record]
                 )
             )
 
