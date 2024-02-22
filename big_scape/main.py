@@ -136,8 +136,6 @@ def run_bigscape(run: dict) -> None:
                             if record.number == query_record_number
                         ][0]
 
-                    query_node_id = query_record._db_id
-
                     all_bgc_records.append(query_record)
                 else:
                     all_bgc_records.extend(gbk_records)
@@ -321,7 +319,7 @@ def run_bigscape(run: dict) -> None:
         for cutoff in run["gcf_cutoffs"]:
             logging.debug("Bin 'mix': cutoff %s", cutoff)
             for connected_component in bs_network.get_connected_components(
-                all_bgc_records, edge_param_id, cutoff
+                cutoff, edge_param_id, all_bgc_records
             ):
                 logging.debug(
                     "Found connected component with %d edges", len(connected_component)
@@ -345,7 +343,7 @@ def run_bigscape(run: dict) -> None:
             for cutoff in run["gcf_cutoffs"]:
                 logging.debug("Bin '%s': cutoff %s", bin.label, cutoff)
                 for connected_component in bs_network.get_connected_components(
-                    bin.source_records, edge_param_id, cutoff
+                    cutoff, edge_param_id, bin.source_records
                 ):
                     regions_families = bs_families.generate_families(
                         connected_component, bin.label, cutoff
@@ -363,7 +361,7 @@ def run_bigscape(run: dict) -> None:
             for cutoff in run["gcf_cutoffs"]:
                 logging.debug("Bin '%s': cutoff %s", bin.label, cutoff)
                 for connected_component in bs_network.get_connected_components(
-                    bin.source_records, edge_param_id, cutoff
+                    cutoff, edge_param_id, bin.source_records
                 ):
                     regions_families = bs_families.generate_families(
                         connected_component, bin.label, cutoff
@@ -375,7 +373,9 @@ def run_bigscape(run: dict) -> None:
 
     # query BGC mode
     if run["query_bgc_path"]:
-        cc_cutoff: dict[str, list] = {}
+        cc_cutoff: dict[
+            str, list[tuple[int, int, float, float, float, float, int]]
+        ] = {}
         if run["legacy_weights"]:
             weights = bs_comparison.get_weight_category(query_record)
         else:
@@ -385,8 +385,13 @@ def run_bigscape(run: dict) -> None:
         for cutoff in run["gcf_cutoffs"]:
             logging.info("Query BGC Bin: cutoff %s", cutoff)
 
-            query_connected_component = bs_network.get_query_connected_component(
-                query_records, query_node_id, edge_param_id, cutoff
+            # get_connected_components returns a list of connected components, but we only
+            # want the first one, so we use next()
+            
+            query_connected_component = next(
+                bs_network.get_connected_components(
+                    cutoff, edge_param_id, [query_record]
+                )
             )
 
             cc_cutoff[cutoff] = query_connected_component
