@@ -34,15 +34,20 @@ def generate_newick_tree(
     Returns:
         str: Correctly formatted newick tree
     """
+
+    algn_filename = output_path / Path(family_name + "_alignment.fasta")
+    tree_filename = output_path / Path(family_name + ".newick")
+
+    if algn_filename.exists() and tree_filename.exists():
+        return process_newick_tree(tree_filename)
+
     # no need for alignment
     if len(records) < 3:
         tree = f"({','.join([str(bgc_id)+':0.0' for bgc_id in family_members])}):0.01;"
     else:
         algn = generate_gcf_alignment(records, exemplar, family_members)
-        algn_filename = output_path / Path(family_name + "_alignment.fasta")
         with open(algn_filename, "w") as out_algn:
             out_algn.write(algn)
-        tree_filename = output_path / Path(family_name + ".newick")
         with open(tree_filename, "w") as out_newick:
             run_fasttree(algn_filename, out_newick)
         tree = process_newick_tree(tree_filename)

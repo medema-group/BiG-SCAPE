@@ -1,7 +1,9 @@
 """Contains functions to mimic legacy output as seen in BiG-SCAPE 1.0"""
 
 # from python
+from itertools import repeat
 import json
+from multiprocessing import Pool
 import shutil
 from distutils import dir_util
 from pathlib import Path
@@ -869,7 +871,100 @@ def adjust_lcs_to_full_region(
     return a_start, b_start
 
 
+def generate_bs_family_alignment(
+    family_db_id: int,
+    family_members: list[int],
+    records: list[BGCRecord],
+    edge_param_id: int,
+    tree_path: Path,
+):
+    """Generate alignment for a family of bgcs
+
+    Args:
+        family_db_id (int): database id of family reference
+        family_members (list[int]): list of database ids of family members
+        records (list[BGCRecord]): list of BGCRecords
+        edge_param_id (int): database id of used parameters during edge generation
+        tree_path (Path): folder to store made alignments and trees
+
+    Returns:
+        dict[str, Any]: alignment of family members
+    """
+    family_name = "FAM_{:05d}".format(family_db_id)
+    logging.debug("Generating alignment for %s", family_name)
+    # collects records within this GCF
+    family_records = [records[bgc_num] for bgc_num in family_members]
+    family_member_db_ids = [rec._db_id for rec in family_records]
+    fam_record_idx = family_member_db_ids.index(family_db_id)
+    fam_record = family_records[fam_record_idx]
+
+    ref_genes_ = set()
+    aln = []
+    for bgc, bgc_db_id in zip(family_members, family_member_db_ids):
+        bgc_record = records[bgc]
+        bgc_gbk = bgc_record.parent_gbk
+        if bgc_gbk is None:
+            raise AttributeError("Record parent GBK is not set!")
+        if bgc_db_id is None:
+            raise AttributeError("Record has no database id!")
+
+        bgc_domains = bgc_record.get_hsps()
+
+        if bgc_db_id == family_db_id:
+            aln.append([[dom_num, 0] for dom_num in range(len(bgc_domains))])
+            continue
+
+        # records from the same region will not already have an lcs computed,
+        # should they end up in the same family we can try to align them
+        elif bgc_gbk == fam_record.parent_gbk:
+            a_start, b_start, reverse = align_subrecords(
+                fam_record.get_hsps(), bgc_domains
+            )
+
+        else:
+            lcs_data = fetch_lcs_from_db(
+                family_db_id,
+                bgc_db_id,
+                edge_param_id,
+            )
+
+            a_start, b_start, reverse = adjust_lcs_to_family_reference(
+                lcs_data,
+                family_db_id,
+                len(fam_record.get_hsps()),
+                len(bgc_domains),
+            )
+
+        ref_genes_.add(a_start)
+
+        bgc_algn = []
+        for dom_num in range(len(bgc_domains)):
+            if dom_num == b_start:
+                if reverse:
+                    bgc_algn.append([a_start, -100])
+                else:
+                    bgc_algn.append([a_start, 100])
+            else:
+                bgc_algn.append([-1, 100])
+        aln.append(bgc_algn)
+
+    ref_genes = list(ref_genes_)
+
+    logging.debug("Generating newick tree for %s", family_name)
+    fam_alignment = {
+        "id": family_name,
+        "ref": family_members[fam_record_idx],
+        "newick": generate_newick_tree(
+            family_records, fam_record_idx, family_members, family_name, tree_path
+        ),
+        "ref_genes": ref_genes,
+        "aln": aln,
+    }
+    return fam_alignment
+
+
 def generate_bs_families_alignment(
+    run: dict,
     bs_families: dict[int, list[int]],
     pair_generator: RecordPairGenerator,
     tree_path: Path,
@@ -900,82 +995,20 @@ def generate_bs_families_alignment(
             }
         ]
     """
-    bs_families_alignment = []
     records = pair_generator.source_records
 
-    for family_db_id, family_members in bs_families.items():
-        family_name = "FAM_{:05d}".format(family_db_id)
-        logging.debug("Generating alignment for %s", family_name)
-        # collects records within this GCF
-        family_records = [records[bgc_num] for bgc_num in family_members]
-        family_member_db_ids = [rec._db_id for rec in family_records]
-        fam_record_idx = family_member_db_ids.index(family_db_id)
-        fam_record = family_records[fam_record_idx]
+    pool = Pool(processes=run["cores"])
 
-        ref_genes_ = set()
-        aln = []
-        for bgc, bgc_db_id in zip(family_members, family_member_db_ids):
-            bgc_record = records[bgc]
-            bgc_gbk = bgc_record.parent_gbk
-            if bgc_gbk is None:
-                raise AttributeError("Record parent GBK is not set!")
-            if bgc_db_id is None:
-                raise AttributeError("Record has no database id!")
-
-            bgc_domains = bgc_record.get_hsps()
-
-            if bgc_db_id == family_db_id:
-                aln.append([[dom_num, 0] for dom_num in range(len(bgc_domains))])
-                continue
-
-            # records from the same region will not already have an lcs computed,
-            # should they end up in the same family we can try to align them
-            elif bgc_gbk == fam_record.parent_gbk:
-                a_start, b_start, reverse = align_subrecords(
-                    fam_record.get_hsps(), bgc_domains
-                )
-
-            else:
-                lcs_data = fetch_lcs_from_db(
-                    family_db_id,
-                    bgc_db_id,
-                    pair_generator.edge_param_id,
-                )
-
-                a_start, b_start, reverse = adjust_lcs_to_family_reference(
-                    lcs_data,
-                    family_db_id,
-                    len(fam_record.get_hsps()),
-                    len(bgc_domains),
-                )
-
-            ref_genes_.add(a_start)
-
-            bgc_algn = []
-            for dom_num in range(len(bgc_domains)):
-                if dom_num == b_start:
-                    if reverse:
-                        bgc_algn.append([a_start, -100])
-                    else:
-                        bgc_algn.append([a_start, 100])
-                else:
-                    bgc_algn.append([-1, 100])
-            aln.append(bgc_algn)
-
-        ref_genes = list(ref_genes_)
-
-        logging.debug("Generating newick tree for %s", family_name)
-        fam_alignment = {
-            "id": family_name,
-            "ref": family_members[fam_record_idx],
-            "newick": generate_newick_tree(
-                family_records, fam_record_idx, family_members, family_name, tree_path
-            ),
-            "ref_genes": ref_genes,
-            "aln": aln,
-        }
-        bs_families_alignment.append(fam_alignment)
-    return bs_families_alignment
+    return pool.starmap(
+        generate_bs_family_alignment,
+        zip(
+            bs_families.keys(),
+            bs_families.values(),
+            repeat(records),
+            repeat(pair_generator.edge_param_id),
+            repeat(tree_path),
+        ),
+    )
 
 
 def generate_bs_families_members(
@@ -1063,8 +1096,7 @@ def generate_bs_networks_families(
 
 
 def generate_bs_networks_js(
-    output_dir: Path,
-    label: str,
+    run: dict,
     cutoff: float,
     pair_generator: RecordPairGenerator,
     bs_families: dict[int, list[int]],
@@ -1091,6 +1123,9 @@ def generate_bs_networks_js(
         cutoff (float): cutoff to generate results for
         pair_generator (str): pair_generator to generate results for
     """
+    output_dir = run["output_dir"]
+    label = run["label"]
+
     output_network_root = output_dir / Path("html_content/networks")
     cutoff_path = output_network_root / Path(f"{label}_c{cutoff}")
     pair_generator_path = cutoff_path / pair_generator.label
@@ -1108,7 +1143,7 @@ def generate_bs_networks_js(
         cutoff, pair_generator
     )
     bs_families_alignment: list[Any] = generate_bs_families_alignment(
-        bs_families, pair_generator, gcf_trees_path
+        run, bs_families, pair_generator, gcf_trees_path
     )
     bs_similarity_families: list[Any] = []
 
@@ -1240,7 +1275,7 @@ def legacy_generate_bin_output(
     # networks_families = generate_bs_networks_families(families_members)
 
     add_run_data_network(output_dir, label, cutoff, pair_generator, families_members)
-    generate_bs_networks_js(output_dir, label, cutoff, pair_generator, families_members)
+    generate_bs_networks_js(run, cutoff, pair_generator, families_members)
     write_clustering_file(run, cutoff, pair_generator)
     write_cutoff_network_file(run, cutoff, pair_generator)
 
