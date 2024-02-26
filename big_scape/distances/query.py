@@ -2,14 +2,20 @@
 given dataset
 """
 
+# TODO: duplicate code with a lot of other edge generation and within this file
+
+
 # from python
 import logging
+
+import tqdm
 
 # from other modules
 import big_scape.genbank as bs_gbk
 import big_scape.comparison as bs_comparison
 import big_scape.enums as bs_enums
 import big_scape.network.network as bs_network
+import big_scape.data as bs_data
 
 
 def calculate_distances_query(
@@ -109,24 +115,42 @@ def calculate_distances_query(
             num_pairs,
         )
 
-        query_edges = bs_comparison.generate_edges(
-            missing_edge_bin,
-            run["alignment_mode"],
-            run["cores"],
-            run["cores"] * 2,
-        )
-
+        save_batch = []
         num_edges = 0
 
-        for edge in query_edges:
-            num_edges += 1
-            bs_comparison.save_edge_to_db(edge)
+        with tqdm.tqdm(
+            total=num_pairs, unit="edge", desc="Calculating distances (qry2ref)"
+        ) as t:
+
+            def callback(edges):
+                nonlocal num_edges
+                nonlocal save_batch
+                batch_size = run["cores"] * 100000
+                for edge in edges:
+                    num_edges += 1
+                    t.update(1)
+                    save_batch.append(edge)
+                    if len(save_batch) > batch_size:
+                        bs_comparison.save_edges_to_db(save_batch, commit=True)
+                        save_batch = []
+
+            bs_comparison.generate_edges(
+                missing_edge_bin,
+                run["alignment_mode"],
+                run["cores"],
+                run["cores"] * 2,
+                callback,
+            )
+
+        bs_comparison.save_edges_to_db(save_batch)
+
+        bs_data.DB.commit()
 
         logging.info("Generated %d edges", num_edges)
 
     if run["skip_propagation"]:
         return query_records
-    
+
     # at this point we have query -> ref edges
     # we now need to propagate edges from those ref -> other ref
 
@@ -140,7 +164,7 @@ def calculate_distances_query(
     while True:
         # fetches the current number of singleton ref <-> connected ref pairs from the database
         num_pairs = ref_to_ref_bin.num_pairs()
-        
+
         # if there are no more singleton ref <-> connected ref pairs, then break and exit
         if num_pairs == 0:
             break
@@ -149,46 +173,44 @@ def calculate_distances_query(
             "Calculating distances for %d pairs (Connected Reference to Singleton Reference)",
             num_pairs,
         )
-
-        def callback(done_pairs):
-            if num_pairs > 10:
-                mod = round(num_pairs / 10)
-            else:
-                mod = 1
-
-            if done_pairs % mod == 0:
-                logging.info(
-                    "%d/%d (%.2f%%)",
-                    done_pairs,
-                    num_pairs,
-                    done_pairs / num_pairs * 100,
-                )
-
-        # generate edges for these pairs
-        ref_edges = bs_comparison.generate_edges(
-            ref_to_ref_bin,
-            run["alignment_mode"],
-            run["cores"],
-            run["cores"] * 2,
-            callback,
-        )
-
+        save_batch = []
         num_edges = 0
-        for edge in ref_edges:
-            num_edges += 1
-            bs_comparison.save_edge_to_db(edge, True)
-        # if no new edges were generated, then break and exit
-        # should never happen since generate edges calls num_pairs() which
-        # would have broken the loop earlier on.
-        if num_edges == 0:
-            break
+
+        with tqdm.tqdm(
+            total=num_pairs, unit="edge", desc="Calculating distances (ref2sng)"
+        ) as t:
+
+            def callback(edges):
+                nonlocal num_edges
+                nonlocal save_batch
+                batch_size = run["cores"] * 100000
+                for edge in edges:
+                    num_edges += 1
+                    t.update(1)
+                    save_batch.append(edge)
+                    if len(save_batch) > batch_size:
+                        bs_comparison.save_edges_to_db(save_batch, commit=True)
+                        save_batch = []
+
+            # generate edges for these pairs
+            bs_comparison.generate_edges(
+                ref_to_ref_bin,
+                run["alignment_mode"],
+                run["cores"],
+                run["cores"] * 2,
+                callback,
+            )
+
+        bs_comparison.save_edges_to_db(save_batch)
 
         logging.info("Generated %d edges", num_edges)
+
+    logging.info("Finished propagating edges")
 
     # now we make any last connected ref <-> connected ref pairs that are missing
     # get all the edges in the query connected component
     query_connected_component = bs_network.get_connected_components(
-        1, edge_param_id, query_records
+        1, edge_param_id, [query_record]
     )
 
     # get_connected_components returns a list of connected components, we only want the first one
@@ -213,15 +235,36 @@ def calculate_distances_query(
             num_pairs,
         )
 
-        query_edges = bs_comparison.generate_edges(
-            missing_ref_edge_bin, run["alignment_mode"], run["cores"], run["cores"] * 2
-        )
-
+        save_batch = []
         num_edges = 0
 
-        for edge in query_edges:
-            num_edges += 1
-            bs_comparison.save_edge_to_db(edge)
+        with tqdm.tqdm(
+            total=num_pairs, unit="edge", desc="Calculating distances (ref2ref)"
+        ) as t:
+
+            def callback(edges):
+                nonlocal num_edges
+                nonlocal save_batch
+                batch_size = run["cores"] * 100000
+                for edge in edges:
+                    num_edges += 1
+                    t.update(1)
+                    save_batch.append(edge)
+                    if len(save_batch) > batch_size:
+                        bs_comparison.save_edges_to_db(save_batch, commit=True)
+                        save_batch = []
+
+            bs_comparison.generate_edges(
+                missing_ref_edge_bin,
+                run["alignment_mode"],
+                run["cores"],
+                run["cores"] * 2,
+                callback,
+            )
+
+        bs_comparison.save_edges_to_db(save_batch)
+
+        bs_data.DB.commit()
 
         logging.info("Generated %d edges", num_edges)
 
