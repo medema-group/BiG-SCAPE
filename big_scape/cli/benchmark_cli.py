@@ -30,7 +30,7 @@ from .cli_validations import set_start, validate_output_paths
     "--BiG_dir",
     type=click.Path(exists=True, file_okay=False, path_type=Path),
     required=True,
-    help="Path to BiG-SCAPE or BiG-SLICE output directory.",
+    help="Path to BiG-SCAPE (v1 or v2) or BiG-SLICE output directory.",
 )
 @click.pass_context
 def benchmark(ctx, *args, **kwargs):

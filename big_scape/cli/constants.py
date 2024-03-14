@@ -2,6 +2,8 @@
 
 DB_SCHEMA_PATH = "big_scape/data/schema.sql"
 
+# TODO: add comments with notes as in BS1
+# TODO: move to config file
 LEGACY_ANCHOR_DOMAINS = [
     "PF02801",
     "PF02624",
