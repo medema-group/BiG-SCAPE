@@ -29,7 +29,8 @@ from big_scape.output import (
 
 
 import big_scape.file_input as bs_files
-import big_scape.genbank as bs_gbk
+
+# import big_scape.genbank as bs_gbk
 import big_scape.data as bs_data
 import big_scape.enums as bs_enums
 import big_scape.comparison as bs_comparison
@@ -109,38 +110,10 @@ def run_bigscape(run: dict) -> None:
     gbks = bs_files.load_gbks(run, bigscape_dir)
 
     # get all working BGC records
-    all_bgc_records: list[bs_gbk.BGCRecord] = []
-    for gbk in gbks:
-        if gbk.region is not None:
-            gbk_records = bs_gbk.bgc_record.get_sub_records(
-                gbk.region, run["record_type"]
-            )
-            if run["query_bgc_path"]:
-                if gbk.source_type == bs_enums.SOURCE_TYPE.QUERY:
-                    query_record_type = run["record_type"]
-
-                    query_record_type = run["record_type"]
-                    query_record_number = run["query_record_number"]
-
-                    query_sub_records = bs_gbk.bgc_record.get_sub_records(
-                        gbk.region, query_record_type
-                    )
-
-                    if query_record_type == bs_enums.RECORD_TYPE.REGION:
-                        query_record = query_sub_records[0]
-
-                    else:
-                        query_record = [
-                            record
-                            for record in query_sub_records
-                            if record.number == query_record_number
-                        ][0]
-
-                    all_bgc_records.append(query_record)
-                else:
-                    all_bgc_records.extend(gbk_records)
-            else:
-                all_bgc_records.extend(gbk_records)
+    if run["query_bgc_path"]:
+        all_bgc_records, query_record = bs_files.get_all_bgc_records_query(run, gbks)
+    else:
+        all_bgc_records = bs_files.get_all_bgc_records(run, gbks)
 
     # get fist task
     run_state = bs_data.find_minimum_task(gbks)

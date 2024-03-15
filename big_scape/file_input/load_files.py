@@ -3,7 +3,7 @@
 # from python
 import logging
 from pathlib import Path
-from typing import List, Optional
+from typing import List, Optional, Tuple
 import os
 import tarfile
 import multiprocessing
@@ -87,6 +87,7 @@ def download_dataset(url: str, path: Path, path_compressed: Path) -> None:
 
     # extract contents
     with tarfile.open(path_compressed) as file:
+        # TODO: deal with deprecation
         file.extractall(path)
 
     os.remove(path_compressed)
@@ -181,6 +182,7 @@ def filter_files(
     return filtered_files
 
 
+# TODO: test
 def remove_duplicate_gbk(gbks: list[GBK]) -> list[GBK]:
     """Remove any duplicate GBKs from given input based on content hash
 
@@ -200,6 +202,7 @@ def remove_duplicate_gbk(gbks: list[GBK]) -> list[GBK]:
     return list(unique_gbks)
 
 
+# TODO: test
 def bgc_length_contraint(gbks: list[GBK]) -> list[GBK]:
     """Remove any GBKs that are not between the minimum ans maximum allowed length
 
@@ -237,6 +240,7 @@ def bgc_length_contraint(gbks: list[GBK]) -> list[GBK]:
     return filtered_gbks
 
 
+# TODO: test
 def is_included(path: Path, include_list: List[str]):
     """Returns true if filename includes string from list
 
@@ -388,3 +392,70 @@ def load_gbks(run: dict, bigscape_dir: Path) -> list[GBK]:
         bs_hmm.HSP.load_all(gbk.genes)
 
     return input_gbks_from_db
+
+
+def get_all_bgc_records(run: dict, gbks: List[GBK]) -> List[bs_gbk.BGCRecord]:
+    """Get all BGC records from the working list of GBKs
+
+    Args:
+        gbks (list[GBK]): list of GBK objects
+        run (dict): run parameters
+
+    Returns:
+        list[bs_gbk.BGCRecord]: list of BGC records
+    """
+    all_bgc_records: list[bs_gbk.BGCRecord] = []
+    for gbk in gbks:
+        if gbk.region is not None:
+            gbk_records = bs_gbk.bgc_record.get_sub_records(
+                gbk.region, run["record_type"]
+            )
+            all_bgc_records.extend(gbk_records)
+
+    return all_bgc_records
+
+
+def get_all_bgc_records_query(
+    run: dict, gbks: List[GBK]
+) -> Tuple[List[bs_gbk.BGCRecord], bs_gbk.BGCRecord]:
+    """Get all BGC records from the working list of GBKs
+
+    Args:
+        gbks (list[GBK]): list of GBK objects
+        run (dict): run parameters
+
+    Returns:
+        list[bs_gbk.BGCRecord]: list of BGC records
+    """
+    all_bgc_records: list[bs_gbk.BGCRecord] = []
+    for gbk in gbks:
+        if gbk.region is not None:
+            gbk_records = bs_gbk.bgc_record.get_sub_records(
+                gbk.region, run["record_type"]
+            )
+            if gbk.source_type == bs_enums.SOURCE_TYPE.QUERY:
+                query_record_type = run["record_type"]
+
+                query_record_type = run["record_type"]
+                query_record_number = run["query_record_number"]
+
+                query_sub_records = bs_gbk.bgc_record.get_sub_records(
+                    gbk.region, query_record_type
+                )
+
+                if query_record_type == bs_enums.RECORD_TYPE.REGION:
+                    query_record = query_sub_records[0]
+
+                else:
+                    query_record = [
+                        record
+                        for record in query_sub_records
+                        if record.number == query_record_number
+                    ][0]
+
+                all_bgc_records.append(query_record)
+
+            else:
+                all_bgc_records.extend(gbk_records)
+
+    return all_bgc_records, query_record
