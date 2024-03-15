@@ -30,8 +30,9 @@ from .cli_validations import (
     required=True,
     callback=validate_query_bgc,
     help=(
-        "Path to query BGC file. BiG-SCAPE will compare, "
-        "all input BGCs to the query in a one-vs-all mode."
+        "Path to query BGC file. BiG-SCAPE will compare "
+        "all BGCs in the input and reference folders to the query"
+        " in a one-vs-all mode."
     ),
 )
 @click.option(
@@ -40,7 +41,7 @@ from .cli_validations import (
     required=False,
     help=(
         "Query BGC record number. Used to select the specific record "
-        "from the query BGC gbk. Warning: interleaved or chemical hybrid proto"
+        "from the query BGC gbk. Warning: interleaved or chemical hybrid proto "
         "cluster/cores are merged, and the relevant number is that of the "
         "first record of the merged cluster (the one with the lowest number). "
         "e.g. if records 1 and 2 get merged, the relevant number is 1. "
@@ -52,7 +53,7 @@ from .cli_validations import (
     help=(
         "Only generate edges between the query and reference BGCs. If not set, "
         "BiG-SCAPE will also propagate edge generation to reference BGCs. "
-        "Warning: if database already contains all edges, this will not work, "
+        "Warning: if the database already contains all edges, this will not work, "
         "and the output will still showcase all edges between nodes "
         "in the query connected component."
     ),

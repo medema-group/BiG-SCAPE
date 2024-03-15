@@ -36,7 +36,8 @@ def common_all(fn):
                 exists=True, dir_okay=False, file_okay=True, path_type=Path
             ),
             default="./config.ini",
-            help="Path to BiG-SCAPE config file. (default: ./config.ini).",
+            help="Path to BiG-SCAPE config file, which stores values for a "
+            "series of advanced use parameters. (default: ./config.ini).",
         ),
         # diagnostic parameters
         click.option(
@@ -58,7 +59,8 @@ def common_all(fn):
             "--label",
             default=None,
             type=str,
-            help="A run label to be added to the output results folder name.",
+            help="A run label to be added to the output results folder name. "
+            "By default, BiG-SCAPE runs will have a name such as YYYY-MM-DD_HH-MM-SS_[label]",
         ),
         click.option(
             "-c",
@@ -66,8 +68,7 @@ def common_all(fn):
             default=cpu_count(),
             type=int,
             help=(
-                "Set the max number of cores available "
-                "(default: use all available cores)."
+                "Set the max number of cores available (default: use all available cores)."
             ),
         ),
         # output parameters
@@ -91,15 +92,19 @@ def common_all(fn):
             type=bool,
             is_flag=True,
             default=False,
-            help="Do not dump the sqlite database to disk",
+            help="Do not dump the sqlite database to disk. This will speed up your run,"
+            " but in case of a crashed run no info will be stored and you’ll have to"
+            " re-start the run from scratch",
         ),
         click.option(
             "--force-gbk",
             type=bool,
             is_flag=True,
             default=False,
-            help="If GBK files are found without antiSMASH annotations, this adds a region covering \
-                the full sequence, and sets its product to 'other'",
+            help="If GBK files are found without antiSMASH annotations, this adds a region covering "
+            "the full sequence, and sets its product to 'other'. Warning: BiG-SCAPE still "
+            "needs CDS features and a sequence feature to work with non-antiSMASH gbks. "
+            "Furthermore, this feature is still under development, use at own risk.",
         ),
     ]
     for opt in options[::-1]:
@@ -122,9 +127,8 @@ def common_cluster_query(fn):
             "--profiling",
             callback=validate_profiling,
             is_flag=True,
-            help="Run profiler and output profile report",
+            help="Run profiler and output profile report. Note: currently only available for Linux systems.",
         ),
-        # input parameters
         click.option(
             "-i",
             "--input_dir",
@@ -165,7 +169,7 @@ def common_cluster_query(fn):
             type=click.Path(
                 exists=True, file_okay=False, dir_okay=True, path_type=Path
             ),
-            help="Path to directory containing antismash-processed reference BGCs.",
+            help="Path to directory containing user defined, non-MIBiG, antiSMASH processed reference BGCs.",
         ),
         click.option(
             "--include_gbk",
@@ -246,7 +250,10 @@ def common_cluster_query(fn):
             callback=validate_includelist,
             help=(
                 "Path to txt file with Pfam accessions. Only BGCs containing "
-                "the listed accessions will be analysed."
+                "the listed accessions will be analysed. In this file, each "
+                "line contains a single Pfam accession (with an optional comment,"
+                " separated by a tab). Lines starting with '#' are ignored. Pfam "
+                "accessions are case-sensitive."
             ),
         ),
         click.option(
@@ -329,7 +336,7 @@ def common_cluster_query(fn):
             type=click.Choice(["region", "cand_cluster", "protocluster", "proto_core"]),
             default="region",
             callback=validate_record_type,
-            help="Use a specific type of record for comparison. (default: region).",
+            help="Use a specific type of antiSMASH record for comparison. (default: region).",
         ),
     ]
     for opt in options[::-1]:

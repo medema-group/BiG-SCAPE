@@ -38,7 +38,7 @@ from .cli_validations import (
     ),
 )
 # binning parameters
-@click.option("--no_mix", is_flag=True, help=("Dont run the all-vs-all analysis"))
+@click.option("--no_mix", is_flag=True, help=("Don't run the all-vs-all analysis."))
 # networking parameters
 @click.option(
     "--include_singletons",

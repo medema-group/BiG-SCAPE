@@ -64,6 +64,8 @@ def validate_input_mode(ctx, param, input_mode) -> Optional[bs_enums.INPUT_MODE]
     """validates the input_mode property. Raises an InvalidArgumentError if the
     input_mode parameter is invalid
     """
+    # TODO: its not raising an error if the input_mode is invalid
+
     # check if the property matches one of the enum values
     valid_modes = [mode.value for mode in bs_enums.INPUT_MODE]
 
