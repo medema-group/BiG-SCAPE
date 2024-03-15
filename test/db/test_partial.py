@@ -149,7 +149,7 @@ class TestPartial(TestCase):
         DB.create_in_mem()
         expected_min_task = bs_enums.TASK.SAVE_GBKS
 
-        gbks = [create_mock_gbk(1), create_mock_gbk(2), create_mock_gbk(1)]
+        gbks = [create_mock_gbk(1), create_mock_gbk(2), create_mock_gbk(3)]
 
         gbks[0].save_all()
         gbks[1].save_all()
