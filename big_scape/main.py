@@ -387,7 +387,7 @@ def run_bigscape(run: dict) -> None:
 
             # get_connected_components returns a list of connected components, but we only
             # want the first one, so we use next()
-            
+
             query_connected_component = next(
                 bs_network.get_connected_components(
                     cutoff, edge_param_id, [query_record]
