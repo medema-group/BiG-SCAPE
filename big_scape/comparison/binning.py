@@ -468,7 +468,7 @@ class RefToRefRecordPairGenerator(RecordPairGenerator):
             .join(gbk_table, bgc_record_table.c.gbk_id == gbk_table.c.id)
         )
 
-        connected_reference_node_count = DB.execute(select_statement).scalar_one()
+        connected_reference_node_count: int = DB.execute(select_statement).scalar_one()
 
         return connected_reference_node_count
 
@@ -560,7 +560,7 @@ class RefToRefRecordPairGenerator(RecordPairGenerator):
             .join(gbk_table, bgc_record_table.c.gbk_id == gbk_table.c.id)
         )
 
-        singleton_reference_node_count = DB.execute(select_statement).scalar_one()
+        singleton_reference_node_count: int = DB.execute(select_statement).scalar_one()
 
         return singleton_reference_node_count
 
@@ -651,7 +651,7 @@ class MissingRecordPairGenerator(RecordPairGenerator):
     already in the database
     """
 
-    def __init__(self, pair_generator):
+    def __init__(self, pair_generator: RecordPairGenerator):
         super().__init__(
             pair_generator.label, pair_generator.edge_param_id, pair_generator.weights
         )
@@ -673,7 +673,7 @@ class MissingRecordPairGenerator(RecordPairGenerator):
         )
 
         # get count
-        existing_distance_count = DB.execute(select_statement).scalar_one()
+        existing_distance_count: int = DB.execute(select_statement).scalar_one()
 
         # subtract from expected number of distances
         return self.bin.num_pairs() - existing_distance_count
