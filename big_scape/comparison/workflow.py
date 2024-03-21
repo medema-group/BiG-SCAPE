@@ -489,11 +489,11 @@ def fetch_records_from_database(pairs: list[tuple[int, int]]) -> dict[int, BGCRe
     if DB.metadata is None:
         raise RuntimeError("DB metadata is None!")
 
-    gbk_table = DB.metadata.tables["gbk"]
-    record_table = DB.metadata.tables["bgc_record"]
-    cds_table = DB.metadata.tables["cds"]
-    hsp_table = DB.metadata.tables["hsp"]
-    algn_table = DB.metadata.tables["hsp_alignment"]
+    gbk_table = DB.get_table("gbk")
+    record_table = DB.get_table("bgc_record")
+    cds_table = DB.get_table("cds")
+    hsp_table = DB.get_table("hsp")
+    algn_table = DB.get_table("hsp_alignment")
 
     # gather minimally needed information for distance calculation and object creation
     query_statement = (

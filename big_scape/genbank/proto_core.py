@@ -117,10 +117,7 @@ class ProtoCore(BGCRecord):
             as keys. Used for parenting
         """
 
-        if not DB.metadata:
-            raise RuntimeError("DB.metadata is None")
-
-        record_table = DB.metadata.tables["bgc_record"]
+        record_table = DB.get_table("bgc_record")
 
         region_select_query = (
             record_table.select()

@@ -173,7 +173,7 @@ class HMMer:
             cds (CDS): cds to update state for
         """
 
-        state_table = DB.metadata.tables["scanned_cds"]
+        state_table = DB.get_table("scanned_cds")
 
         upignore_statement = (
             insert(state_table).prefix_with("OR IGNORE").values(cds_id=cds._db_id)

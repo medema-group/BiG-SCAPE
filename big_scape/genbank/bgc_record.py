@@ -235,10 +235,7 @@ class BGCRecord:
             query. Defaults to True.
         """
 
-        if not DB.metadata:
-            raise RuntimeError("DB.metadata is None")
-
-        bgc_record_table = DB.metadata.tables["bgc_record"]
+        bgc_record_table = DB.get_table("bgc_record")
 
         if not hasattr(self, "category"):
             self.category: Optional[str] = None

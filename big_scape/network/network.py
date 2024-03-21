@@ -24,12 +24,12 @@ def get_connected_components(
     Args:
         cutoff (float): the distance cutoff
         edge_param_id (int): the edge parameter id
-        include_records (list[BGCRecord]], Optional): list of records to include in
-        the connected components. Defaults to None.
+        include_records (list[BGCRecord]], Optional): list of records to include in the
+        connected components. Defaults to None.
 
     Yields:
         Generator[list[tuple[int, int, float, float, float, float, int]], None, None]:
-        a generator yielding a list of edges for each connected component
+            a generator yielding a list of edges for each connected component
     """
 
     # create a temporary table with the records to include
@@ -44,9 +44,7 @@ def get_connected_components(
 
     logging.info(f"Found {len(cc_ids)} connected components")
 
-    if DB.metadata is None:
-        raise RuntimeError("DB.metadata is None")
-    distance_table = DB.metadata.tables["distance"]
+    distance_table = DB.get_table("distance")
 
     # return connected components per connected component id
     for cc_id in cc_ids:
@@ -61,13 +59,13 @@ def get_connected_components(
         ).where(
             and_(
                 distance_table.c.record_a_id.in_(
-                    select(DB.metadata.tables["connected_component"].c.record_id).where(
-                        DB.metadata.tables["connected_component"].c.id == cc_id
+                    select(DB.get_table("connected_component").c.record_id).where(
+                        DB.get_table("connected_component").c.id == cc_id
                     )
                 ),
                 distance_table.c.record_b_id.in_(
-                    select(DB.metadata.tables["connected_component"].c.record_id).where(
-                        DB.metadata.tables["connected_component"].c.id == cc_id
+                    select(DB.get_table("connected_component").c.record_id).where(
+                        DB.get_table("connected_component").c.id == cc_id
                     )
                 ),
                 distance_table.c.edge_param_id == edge_param_id,
@@ -88,13 +86,11 @@ def generate_connected_components(
     Args:
         cutoff (Optional[float], optional): the distance cutoff. Defaults to None.
         edge_param_id (int): the edge parameter id
-        temp_record_table (Table, optional): a temporary table with the records to include in the
-        connected component. Defaults to None.
+        temp_record_table (Table, optional): a temporary table with the records to
+            include in the connected component. Defaults to None.
     """
 
-    if DB.metadata is None:
-        raise RuntimeError("DB.metadata is None")
-    distance_table = DB.metadata.tables["distance"]
+    distance_table = DB.get_table("distance")
 
     edge = get_random_edge(cutoff, edge_param_id, temp_record_table)
 
@@ -175,17 +171,15 @@ def has_missing_cc_assignments(
     Args:
         cutoff (float): the distance cutoff
         edge_param_id (int): the edge parameter id
-        temp_table (Table, optional): a temporary table with the records to include in the connected
-        component. Defaults to None.
+        temp_table (Table, optional): a temporary table with the records to include
+            in the connected component. Defaults to None.
 
     Returns:
         bool: True if there are missing connected component assignments, False otherwise
     """
 
-    if DB.metadata is None:
-        raise RuntimeError("DB.metadata is None")
-    distance_table = DB.metadata.tables["distance"]
-    cc_table = DB.metadata.tables["connected_component"]
+    distance_table = DB.get_table("distance")
+    cc_table = DB.get_table("connected_component")
 
     select_statement = (
         select(func.count(distinct(distance_table.c.record_a_id)))
@@ -216,15 +210,13 @@ def get_connected_component_ids(
     Args:
         cutoff (float): the distance cutoff
         edge_param_id (int): the edge parameter id
-        temp_record_table (Table, optional): a temporary table with the records to include in the
-        connected component. Defaults to None.
+        temp_record_table (Table, optional): a temporary table with the records to
+            include in the connected component. Defaults to None.
 
     Returns:
         list[int]: a list of connected component ids
     """
-    if DB.metadata is None:
-        raise RuntimeError("DB.metadata is None")
-    cc_table = DB.metadata.tables["connected_component"]
+    cc_table = DB.get_table("connected_component")
     select_statement = (
         select(cc_table.c.id)
         .distinct()
@@ -261,16 +253,15 @@ def get_random_edge(
     Args:
         cutoff: the distance cutoff
         edge_param_id: the edge parameter id
-        temp_record_table (Table, optional): a temporary table with the records to include in the
-        connected component. Defaults to None.
+        temp_record_table (Table, optional): a temporary table with the records to
+            include in the connected component. Defaults to None.
 
     Returns:
         Optional[tuple[int, int]]: a tuple with the record ids of the edge or None
     """
-    if DB.metadata is None:
-        raise RuntimeError("DB.metadata is None")
-    distance_table = DB.metadata.tables["distance"]
-    cc_table = DB.metadata.tables["connected_component"]
+
+    distance_table = DB.get_table("distance")
+    cc_table = DB.get_table("connected_component")
 
     # this query is complicated, breaking it down:
 
@@ -335,10 +326,9 @@ def get_cc_edges(
     Returns:
         Optional[tuple[int, int]]: a tuple with the record ids of the edge or none
     """
-    if DB.metadata is None:
-        raise RuntimeError("DB.metadata is None")
-    distance_table = DB.metadata.tables["distance"]
-    cc_table = DB.metadata.tables["connected_component"]
+
+    distance_table = DB.get_table("distance")
+    cc_table = DB.get_table("connected_component")
 
     cc_edge_query = select(
         distance_table.c.record_a_id, distance_table.c.record_b_id
@@ -377,9 +367,7 @@ def get_edge(
 
     # fetch an edge from the database
 
-    if not DB.metadata:
-        raise RuntimeError("DB.metadata is None")
-    distance_table = DB.metadata.tables["distance"]
+    distance_table = DB.get_table("distance")
     select_statment = (
         select(
             distance_table.c.record_a_id,
@@ -415,10 +403,7 @@ def get_edges(
 
     # fetch edges from the database
 
-    if not DB.metadata:
-        raise RuntimeError("DB.metadata is None")
-
-    distance_table = DB.metadata.tables["distance"]
+    distance_table = DB.get_table("distance")
     select_statement = (
         select(
             distance_table.c.record_a_id,
@@ -484,7 +469,12 @@ def create_temp_record_table(include_records: list[BGCRecord]) -> Table:
     Returns:
         Table: the temporary table
     """
-    ids = [record._db_id for record in include_records]
+    ids = []
+
+    for record in include_records:
+        if record._db_id is None:
+            raise ValueError("Record has no db id")
+        ids.append(record._db_id)
 
     # generate a short random string
     temp_table_name = "temp_" + "".join(random.choices(string.ascii_lowercase, k=10))
@@ -508,6 +498,9 @@ def create_temp_record_table(include_records: list[BGCRecord]) -> Table:
     cursor.close()
 
     DB.commit()
+
+    if DB.metadata is None:
+        raise ValueError("DB metadata is None")
 
     table = Table(temp_table_name, DB.metadata, autoload_with=DB.engine)
 

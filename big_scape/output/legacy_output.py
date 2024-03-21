@@ -759,7 +759,7 @@ def fetch_lcs_from_db(a_id: int, b_id: int, edge_param_id: int) -> dict[str, Any
     """
     if DB.metadata is None:
         raise RuntimeError("Database metadata is None!")
-    dist_table = DB.metadata.tables["distance"]
+    dist_table = DB.get_table("distance")
     select_query = (
         dist_table.select()
         .where(dist_table.c.record_a_id != dist_table.c.record_b_id)
@@ -1028,12 +1028,9 @@ def generate_bs_families_members(
     # get a dictionary of node id to family id
     node_family = {}
 
-    if not DB.metadata:
-        raise RuntimeError("DB.metadata is None")
-
     # get all families from the database
-    family_table = DB.metadata.tables["family"]
-    bgc_families_table = DB.metadata.tables["bgc_record_family"]
+    family_table = DB.get_table("family")
+    bgc_families_table = DB.get_table("bgc_record_family")
 
     select_statement = (
         select(
@@ -1299,10 +1296,8 @@ def write_record_annotations_file(run, cutoff, all_bgc_records) -> None:
     cutoff_path = output_files_root / f"{label}_c{cutoff}"
     record_annotations_path = cutoff_path / "record_annotations.tsv"
 
-    if not DB.metadata:
-        raise RuntimeError("DB.metadata is None")
-    bgc_record_table = DB.metadata.tables["bgc_record"]
-    gbk_table = DB.metadata.tables["gbk"]
+    bgc_record_table = DB.get_table("bgc_record")
+    gbk_table = DB.get_table("gbk")
 
     record_categories = {}
     for record in all_bgc_records:
@@ -1391,13 +1386,10 @@ def write_clustering_file(run, cutoff, pair_generator) -> None:
     pair_generator_path = cutoff_path / pair_generator.label
     clustering_file_path = pair_generator_path / f"{bin_label}_clustering_c{cutoff}.tsv"
 
-    if not DB.metadata:
-        raise RuntimeError("DB.metadata is None")
-
-    gbk_table = DB.metadata.tables["gbk"]
-    bgc_record_table = DB.metadata.tables["bgc_record"]
-    family_table = DB.metadata.tables["family"]
-    rec_fam_table = DB.metadata.tables["bgc_record_family"]
+    gbk_table = DB.get_table("gbk")
+    bgc_record_table = DB.get_table("bgc_record")
+    family_table = DB.get_table("family")
+    rec_fam_table = DB.get_table("bgc_record_family")
 
     record_ids = pair_generator.record_ids
     select_statement = (
@@ -1607,13 +1599,10 @@ def get_cutoff_edgelist(
         set: edgelist
     """
 
-    if not DB.metadata:
-        raise RuntimeError("DB.metadata is None")
-
-    distance_table = DB.metadata.tables["distance"]
-    gbk_table = DB.metadata.tables["gbk"]
-    bgc_record_table = DB.metadata.tables["bgc_record"]
-    edge_params_table = DB.metadata.tables["edge_params"]
+    distance_table = DB.get_table("distance")
+    gbk_table = DB.get_table("gbk")
+    bgc_record_table = DB.get_table("bgc_record")
+    edge_params_table = DB.get_table("edge_params")
 
     bgc_record_a = alias(bgc_record_table)
     bgc_record_b = alias(bgc_record_table)
@@ -1734,13 +1723,10 @@ def get_full_network_edgelist(run: dict, all_bgc_records: list) -> set[
 
     record_ids = [record._db_id for record in all_bgc_records]
 
-    if not DB.metadata:
-        raise RuntimeError("DB.metadata is None")
-
-    distance_table = DB.metadata.tables["distance"]
-    gbk_table = DB.metadata.tables["gbk"]
-    bgc_record_table = DB.metadata.tables["bgc_record"]
-    edge_params_table = DB.metadata.tables["edge_params"]
+    distance_table = DB.get_table("distance")
+    gbk_table = DB.get_table("gbk")
+    bgc_record_table = DB.get_table("bgc_record")
+    edge_params_table = DB.get_table("edge_params")
 
     bgc_record_a = alias(bgc_record_table)
     bgc_record_b = alias(bgc_record_table)

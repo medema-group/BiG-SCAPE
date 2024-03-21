@@ -41,10 +41,7 @@ class HSP:
         if self.cds is not None and self.cds._db_id is not None:
             parent_cds_id = self.cds._db_id
 
-        if not DB.metadata:
-            raise RuntimeError("DB.metadata is None")
-
-        hsp_table = DB.metadata.tables["hsp"]
+        hsp_table = DB.get_table("hsp")
         insert_query = (
             hsp_table.insert()
             .returning(hsp_table.c.id)
@@ -148,11 +145,8 @@ class HSP:
         """
         cds_dict = {cds._db_id: cds for cds in cds_list}
 
-        if not DB.metadata:
-            raise RuntimeError("DB.metadata is None")
-
-        hsp_table = DB.metadata.tables["hsp"]
-        hsp_alignment_table = DB.metadata.tables["hsp_alignment"]
+        hsp_table = DB.get_table("hsp")
+        hsp_alignment_table = DB.get_table("hsp_alignment")
 
         hsp_select_query = (
             hsp_table.select()
@@ -245,10 +239,7 @@ class HSPAlignment:
         if self.hsp is not None and self.hsp._db_id is not None:
             parent_hsp_id = self.hsp._db_id
 
-        if not DB.metadata:
-            raise RuntimeError("DB.metadata is None")
-
-        hsp_align_table = DB.metadata.tables["hsp_alignment"]
+        hsp_align_table = DB.get_table("hsp_alignment")
         insert_query = hsp_align_table.insert().values(
             hsp_id=parent_hsp_id,
             alignment=self.align_string,

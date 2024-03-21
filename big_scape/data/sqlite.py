@@ -14,6 +14,7 @@ from sqlalchemy import (
     Select,
     Insert,
     CursorResult,
+    Table,
     create_engine,
     func,
     select,
@@ -288,10 +289,7 @@ class DB:
         if not DB.opened():
             raise DBClosedError()
 
-        if not DB.metadata:
-            raise RuntimeError("DB.metadata is None")
-
-        table_metadata = DB.metadata.tables[table_name]
+        table_metadata = DB.get_table(table_name)
 
         row_count: int = DB.execute(
             select(func.count("*")).select_from(table_metadata)
@@ -316,10 +314,7 @@ class DB:
         if not DB.opened():
             raise DBClosedError()
 
-        if not DB.metadata:
-            raise RuntimeError("DB.metadata is None")
-
-        table_metadata = DB.metadata.tables[table_name]
+        table_metadata = DB.get_table(table_name)
         table_select = select(table_metadata)
         table_select = table_select.execution_options(stream_results=True)
 
@@ -329,6 +324,16 @@ class DB:
             if not rows:
                 break
             yield tuple(rows)
+
+    @staticmethod
+    def get_table(table_name: str) -> Table:
+        if not DB.opened():
+            raise DBClosedError()
+
+        if not DB.metadata:
+            raise RuntimeError("DB.metadata is None")
+
+        return DB.metadata.tables[table_name]
 
 
 def read_schema(path: Path) -> list[str]:

@@ -197,8 +197,8 @@ def save_to_db(regions_families):
         regions_families (list[tuple[int, int, float]]): list of (region_id, family,
         cutoff) tuples
     """
-    family_table = DB.metadata.tables["family"]
-    bgc_record_family_table = DB.metadata.tables["bgc_record_family"]
+    family_table = DB.get_table("family")
+    bgc_record_family_table = DB.get_table("bgc_record_family")
 
     for region_id, family, cutoff, bin_label in regions_families:
         # obtain unique family id if present
@@ -235,8 +235,8 @@ def save_to_db(regions_families):
 
 def reset_db_families():
     """Clear previous family assignments from database"""
-    DB.execute(DB.metadata.tables["bgc_record_family"].delete())
-    DB.execute(DB.metadata.tables["family"].delete())
+    DB.execute(DB.get_table("bgc_record_family").delete())
+    DB.execute(DB.get_table("family").delete())
 
 
 def save_singletons(record_type: RECORD_TYPE, cutoff: float, bin_label: str) -> None:
@@ -252,9 +252,9 @@ def save_singletons(record_type: RECORD_TYPE, cutoff: float, bin_label: str) -> 
     if DB.metadata is None:
         raise RuntimeError("DB metadata is None!")
 
-    family_table = DB.metadata.tables["family"]
-    bgc_record_family_table = DB.metadata.tables["bgc_record_family"]
-    record_table = DB.metadata.tables["bgc_record"]
+    family_table = DB.get_table("family")
+    bgc_record_family_table = DB.get_table("bgc_record_family")
+    record_table = DB.get_table("bgc_record")
 
     singleton_query = (
         select(record_table.c.id)

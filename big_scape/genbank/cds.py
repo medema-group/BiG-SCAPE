@@ -129,7 +129,7 @@ class CDS:
         if self.parent_gbk is not None and self.parent_gbk._db_id is not None:
             parent_gbk_id = self.parent_gbk._db_id
 
-        cds_table = DB.metadata.tables["cds"]
+        cds_table = DB.get_table("cds")
         insert_query = (
             cds_table.insert()
             .returning(cds_table.c.id)
@@ -336,10 +336,7 @@ class CDS:
             as keys. Used for parenting
         """
 
-        if not DB.metadata:
-            raise RuntimeError("DB.metadata is None")
-
-        cds_table = DB.metadata.tables["cds"]
+        cds_table = DB.get_table("cds")
 
         region_select_query = (
             cds_table.select()

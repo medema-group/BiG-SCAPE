@@ -147,16 +147,14 @@ class GBK:
         this returns the id of the GBK row
 
         Arguments:
-            commit: commit immediately after executing the insert query"""
-
-        if not DB.metadata:
-            raise RuntimeError("DB.metadata is None")
+            commit: commit immediately after executing the insert query
+        """
 
         organism = self.metadata["organism"]
         taxonomy = self.metadata["taxonomy"]
         description = self.metadata["description"]
 
-        gbk_table = DB.metadata.tables["gbk"]
+        gbk_table = DB.get_table("gbk")
         insert_query = (
             gbk_table.insert()
             .prefix_with("OR REPLACE")
@@ -210,10 +208,7 @@ class GBK:
             list[GBK]: _description_
         """
 
-        if not DB.metadata:
-            raise RuntimeError("DB.metadata is None")
-
-        gbk_table = DB.metadata.tables["gbk"]
+        gbk_table = DB.get_table("gbk")
 
         select_query = (
             gbk_table.select()
@@ -263,10 +258,7 @@ class GBK:
 
         input_gbk_hashes = [gbk.hash for gbk in input_gbks]
 
-        if not DB.metadata:
-            raise RuntimeError("DB.metadata is None")
-
-        gbk_table = DB.metadata.tables["gbk"]
+        gbk_table = DB.get_table("gbk")
         select_query = (
             gbk_table.select()
             .add_columns(

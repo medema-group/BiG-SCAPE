@@ -125,9 +125,8 @@ class RecordPairGenerator:
             # records from the same gbk will not be compared -> will not be a pair. Use
             # the database to find how many subrecords come from the same genbank, i.e.
             # how many pairs should be removed
-            if not DB.metadata:
-                raise RuntimeError("DB metadata is None!")
-            record_table = DB.metadata.tables["bgc_record"]
+
+            record_table = DB.get_table("bgc_record")
 
             # find a collection of gbks with more than one subrecord
             member_table = (
@@ -170,10 +169,7 @@ class RecordPairGenerator:
         """Culls singletons for given cutoff, i.e. records which have either no edges
         in the database, or all edges have a distance above/equal to the cutoff"""
 
-        if not DB.metadata:
-            raise RuntimeError("DB.metadata is None")
-
-        distance_table = DB.metadata.tables["distance"]
+        distance_table = DB.get_table("distance")
 
         # get all distances/edges in the table for the records in this bin and
         # with distances below the cutoff
@@ -385,12 +381,9 @@ class RefToRefRecordPairGenerator(RecordPairGenerator):
             set[BGCRecord]: A set of reference nodes that are connected to other reference nodes
         """
 
-        if not DB.metadata:
-            raise RuntimeError("DB.metadata is None")
-
-        distance_table = DB.metadata.tables["distance"]
-        bgc_record_table = DB.metadata.tables["bgc_record"]
-        gbk_table = DB.metadata.tables["gbk"]
+        distance_table = DB.get_table("distance")
+        bgc_record_table = DB.get_table("bgc_record")
+        gbk_table = DB.get_table("gbk")
 
         select_statement = (
             select(
@@ -436,12 +429,9 @@ class RefToRefRecordPairGenerator(RecordPairGenerator):
             nodes
         """
 
-        if not DB.metadata:
-            raise RuntimeError("DB.metadata is None")
-
-        distance_table = DB.metadata.tables["distance"]
-        bgc_record_table = DB.metadata.tables["bgc_record"]
-        gbk_table = DB.metadata.tables["gbk"]
+        distance_table = DB.get_table("distance")
+        bgc_record_table = DB.get_table("bgc_record")
+        gbk_table = DB.get_table("gbk")
 
         select_statement = (
             select(
@@ -481,12 +471,9 @@ class RefToRefRecordPairGenerator(RecordPairGenerator):
             reference nodes
         """
 
-        if not DB.metadata:
-            raise RuntimeError("DB.metadata is None")
-
-        distance_table = DB.metadata.tables["distance"]
-        bgc_record_table = DB.metadata.tables["bgc_record"]
-        gbk_table = DB.metadata.tables["gbk"]
+        distance_table = DB.get_table("distance")
+        bgc_record_table = DB.get_table("bgc_record")
+        gbk_table = DB.get_table("gbk")
 
         select_statement = (
             select(
@@ -531,12 +518,9 @@ class RefToRefRecordPairGenerator(RecordPairGenerator):
             nodes
         """
 
-        if not DB.metadata:
-            raise RuntimeError("DB.metadata is None")
-
-        distance_table = DB.metadata.tables["distance"]
-        bgc_record_table = DB.metadata.tables["bgc_record"]
-        gbk_table = DB.metadata.tables["gbk"]
+        distance_table = DB.get_table("distance")
+        bgc_record_table = DB.get_table("bgc_record")
+        gbk_table = DB.get_table("gbk")
 
         select_statement = (
             select(
@@ -658,10 +642,7 @@ class MissingRecordPairGenerator(RecordPairGenerator):
         self.bin: RecordPairGenerator = pair_generator
 
     def num_pairs(self) -> int:
-        if not DB.metadata:
-            raise RuntimeError("DB.metadata is None")
-
-        distance_table = DB.metadata.tables["distance"]
+        distance_table = DB.get_table("distance")
 
         # get all region._db_id in the bin where the record_a_id and record_b_id are in the
         # bin
@@ -691,10 +672,8 @@ class MissingRecordPairGenerator(RecordPairGenerator):
         Yields:
             Generator[tuple[int, int]]: Generator for record pairs in this bin
         """
-        if not DB.metadata:
-            raise RuntimeError("DB.metadata is None")
 
-        distance_table = DB.metadata.tables["distance"]
+        distance_table = DB.get_table("distance")
 
         # get all region._db_id in the bin
         select_statement = (

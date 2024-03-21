@@ -41,10 +41,7 @@ def save_edge_to_db(
 
     # save the comparison data to the database
 
-    if not DB.metadata:
-        raise RuntimeError("DB.metadata is None")
-
-    distance_table = DB.metadata.tables["distance"]
+    distance_table = DB.get_table("distance")
 
     # save the entry to the database
     statement = insert(distance_table).values(
@@ -156,7 +153,7 @@ def save_edges_to_db(
 #         if not DB.metadata:
 #             raise RuntimeError("DB.metadata is None")
 
-#         distance_table = DB.metadata.tables["distance"]
+#         distance_table = DB.get_table("distance")
 #         distance_query = distance_table.select().where(
 #             distance_table.c.record_a_id.in_(region_ids)
 #             & distance_table.c.record_b_id.in_(region_ids)
@@ -197,9 +194,6 @@ def get_edge_param_id(run, weights) -> int:
         int: id of the edge param entry
     """
 
-    if not DB.metadata:
-        raise RuntimeError("DB.metadata is None")
-
     alignment_mode = run["alignment_mode"]
 
     edge_param_id = edge_params_query(alignment_mode, weights)
@@ -229,7 +223,8 @@ def edge_params_query(alignment_mode, weights):
     if not DB.metadata:
         raise RuntimeError("DB.metadata is None")
 
-    edge_params_table = DB.metadata.tables["edge_params"]
+    edge_params_table = DB.get_table("edge_params")
+
     edge_params_query = (
         select(edge_params_table.c.id)
         .where(edge_params_table.c.alignment_mode == alignment_mode.name)
@@ -294,7 +289,7 @@ def get_edge_weight(edge_param_id: int) -> str:
     if DB.metadata is None:
         raise RuntimeError("DB.metadata is None")
 
-    edge_params_table = DB.metadata.tables["edge_params"]
+    edge_params_table = DB.get_table("edge_params")
 
     edge_weight_query = select(edge_params_table.c.weights).where(
         edge_params_table.c.id == edge_param_id

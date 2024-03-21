@@ -171,10 +171,7 @@ class CandidateCluster(BGCRecord):
             ids as keys. Used for reassembling the hierarchy
         """
 
-        if not DB.metadata:
-            raise RuntimeError("DB.metadata is None")
-
-        record_table = DB.metadata.tables["bgc_record"]
+        record_table = DB.get_table("bgc_record")
 
         candidate_cluster_select_query = (
             record_table.select()
