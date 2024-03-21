@@ -1671,7 +1671,9 @@ def write_full_network_file(run: dict, all_bgc_records: list[BGCRecord]) -> None
     write_network_file(full_network_file_path, edgelist)
 
 
-def get_full_network_edgelist(run: dict, all_bgc_records: list) -> set[
+def get_full_network_edgelist(
+    run: dict, all_bgc_records: list
+) -> set[
     tuple[
         str,
         str,
