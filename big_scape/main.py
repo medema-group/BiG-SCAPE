@@ -111,6 +111,12 @@ def run_bigscape(run: dict) -> None:
         mibig_version_dir = bs_files.get_mibig(run["mibig_version"], bigscape_dir)
         run["mibig_dir"] = mibig_version_dir
 
+    # INPUT - create an in memory DB or load from disk
+    if not run["db_path"].exists():
+        bs_data.DB.create_in_mem()
+    else:
+        bs_data.DB.load_from_disk(run["db_path"])
+
     # INPUT - load data
     gbks = bs_files.load_gbks(run, bigscape_dir)
 

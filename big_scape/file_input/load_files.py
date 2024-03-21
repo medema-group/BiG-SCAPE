@@ -349,20 +349,7 @@ def load_gbks(run: dict, bigscape_dir: Path) -> list[GBK]:
     # apply minimum and maximum bgc length constraint
     input_gbks = bgc_length_contraint(input_gbks)
 
-    # if there is no database, create a new one and load in all the input stuff
-    # TODO: do this outside of this function, same as with mibig, then no return early
-    # and start with finding the minimum task
-    if not run["db_path"].exists():
-        bs_data.DB.create_in_mem()
-        all_cds: list[bs_gbk.CDS] = []
-        for gbk in input_gbks:
-            gbk.save_all()
-            all_cds.extend(gbk.genes)
-
-        return input_gbks
-
     # find the minimum task set for these gbks
-    bs_data.DB.load_from_disk(run["db_path"])
     task_state = bs_data.find_minimum_task(input_gbks)
 
     source_dict = {gbk.hash: gbk.source_type for gbk in input_gbks}
