@@ -1,6 +1,5 @@
 """Contains functions to manipulate the in-db network"""
 
-
 # from dependencies
 import logging
 import random
@@ -278,8 +277,8 @@ def get_random_edge(
     random_edge_query = (
         # select edge as just record ids
         select(distance_table.c.record_a_id, distance_table.c.record_b_id)
+        # where record a id is not in a connected component with the same cutoff and edge param id
         .where(
-            # where record a id is not in a connected component with the same cutoff and edge param id
             distance_table.c.record_a_id.notin_(
                 select(cc_table.c.record_id).where(
                     and_(
@@ -288,9 +287,9 @@ def get_random_edge(
                     )
                 )
             )
+            # and where record b id is not in a connected component with the same cutoff and edge param id
         )
         .where(
-            # and where record b id is not in a connected component with the same cutoff and edge param id
             distance_table.c.record_b_id.notin_(
                 select(cc_table.c.record_id).where(
                     and_(
@@ -299,14 +298,14 @@ def get_random_edge(
                     )
                 )
             ),
+            # and where the edge has a distance less than the cutoff and the edge param id is the same
         )
         .where(
-            # and where the edge has a distance less than the cutoff and the edge param id is the same
             distance_table.c.distance < cutoff,
             distance_table.c.edge_param_id == edge_param_id,
+            # return only one edge
         )
         .limit(1)
-        # return only one edge
     )
 
     if temp_record_table is not None:
@@ -498,8 +497,6 @@ def create_temp_record_table(include_records: list[BGCRecord]) -> Table:
 
     DB.execute_raw_query(create_temp_table)
 
-    if DB.engine is None:
-        raise RuntimeError("DB.engine is None")
     cursor = DB.engine.raw_connection().cursor()
 
     insert_query = f"""

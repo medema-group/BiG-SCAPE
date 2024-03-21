@@ -616,15 +616,15 @@ class GBK:
                     for number in cand_cluster.proto_clusters.keys()
                 ]
                 merged_protocluster = MergedProtoCluster.merge(protoclusters)
-                merged_tmp_proto_clusters[
-                    merged_protocluster.number
-                ] = merged_protocluster
+                merged_tmp_proto_clusters[merged_protocluster.number] = (
+                    merged_protocluster
+                )
 
                 # update the protocluster old:new ids for the merged protoclusters of this cand_cluster
                 for proto_cluster_num in cand_cluster.proto_clusters.keys():
-                    merged_protocluster_ids[
-                        proto_cluster_num
-                    ] = merged_protocluster.number
+                    merged_protocluster_ids[proto_cluster_num] = (
+                        merged_protocluster.number
+                    )
 
         # now we build a new version of the tmp_proto_clusters dict that contains the merged protoclusters
         # as well as protoclusters which did not need merging, with updated unique IDs/numbers
@@ -638,9 +638,9 @@ class GBK:
                     # this protocluster has been merged, so we need to add it to
                     # the dict with its new protocluster number
                     new_proto_cluster_num = merged_protocluster_ids[proto_cluster_num]
-                    updated_tmp_proto_clusters[
-                        new_proto_cluster_num
-                    ] = merged_tmp_proto_clusters[new_proto_cluster_num]
+                    updated_tmp_proto_clusters[new_proto_cluster_num] = (
+                        merged_tmp_proto_clusters[new_proto_cluster_num]
+                    )
                     updated_proto_cluster_dict[new_proto_cluster_num] = None
                 else:
                     # protoclusters which have not been merged are added to the dict as is
