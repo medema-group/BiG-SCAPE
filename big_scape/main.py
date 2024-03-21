@@ -106,6 +106,11 @@ def run_bigscape(run: dict) -> None:
         profiler.start()
         logging.info("Profiler started")
 
+    # INPUT - get mibig if needed
+    if run["mibig_version"]:
+        mibig_version_dir = bs_files.get_mibig(run["mibig_version"], bigscape_dir)
+        run["mibig_dir"] = mibig_version_dir
+
     # INPUT - load data
     gbks = bs_files.load_gbks(run, bigscape_dir)
 

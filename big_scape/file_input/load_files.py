@@ -46,13 +46,16 @@ def get_mibig(mibig_version: str, bigscape_dir: Path):
     )
 
     if not os.path.exists(mibig_dir):
+        logging.info("Creating MIBiG %s directory", mibig_version)
         os.makedirs(mibig_dir)
 
     contents_dir = os.listdir(mibig_dir)
     if len(contents_dir) > 0 and any(mibig_version in dir for dir in contents_dir):
+        logging.info("MIBiG version %s already downloaded", mibig_version)
         # we assume that if a folder is here, that it is uncompressed and ready to use
         return mibig_version_dir
 
+    logging.info("Downloading MIBiG version %s", mibig_version)
     mibig_dir_compressed = Path(f"{mibig_version_dir}.tar.bz2")
     download_dataset(mibig_url, mibig_dir, mibig_dir_compressed)
     return mibig_version_dir
@@ -329,9 +332,8 @@ def load_gbks(run: dict, bigscape_dir: Path) -> list[GBK]:
 
     # get reference if either MIBiG version or user-made reference dir passed
     if run["mibig_version"]:
-        mibig_version_dir = get_mibig(run["mibig_version"], bigscape_dir)
         mibig_gbks = load_dataset_folder(
-            mibig_version_dir, run, bs_enums.SOURCE_TYPE.MIBIG
+            run["mibig_dir"], run, bs_enums.SOURCE_TYPE.MIBIG
         )
         input_gbks.extend(mibig_gbks)
 
@@ -347,8 +349,9 @@ def load_gbks(run: dict, bigscape_dir: Path) -> list[GBK]:
     # apply minimum and maximum bgc length constraint
     input_gbks = bgc_length_contraint(input_gbks)
 
-    # find the minimum task set for these gbks
     # if there is no database, create a new one and load in all the input stuff
+    # TODO: do this outside of this function, same as with mibig, then no return early
+    # and start with finding the minimum task
     if not run["db_path"].exists():
         bs_data.DB.create_in_mem()
         all_cds: list[bs_gbk.CDS] = []
@@ -358,6 +361,7 @@ def load_gbks(run: dict, bigscape_dir: Path) -> list[GBK]:
 
         return input_gbks
 
+    # find the minimum task set for these gbks
     bs_data.DB.load_from_disk(run["db_path"])
     task_state = bs_data.find_minimum_task(input_gbks)
 
