@@ -15,6 +15,8 @@ from __future__ import annotations
 import logging
 from itertools import combinations
 from typing import Generator, Iterator, Optional
+
+# from dependencies
 from sqlalchemy import select, func, or_
 
 # from other modules
@@ -29,9 +31,8 @@ from big_scape.genbank import (
 )
 from big_scape.enums import SOURCE_TYPE, CLASSIFY_MODE, RECORD_TYPE
 
-import big_scape.comparison as bs_comparison
-
 # from this module
+import big_scape.comparison as bs_comparison
 
 
 # weights are in the order JC, AI, DSS, Anchor boost
