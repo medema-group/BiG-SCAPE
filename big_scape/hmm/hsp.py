@@ -113,12 +113,12 @@ class HSP:
         # special case if we are comparing this to a string
         if isinstance(__o, str):
             # we do not care about version numbers in this comparison, so strip it
-            return self.domain == __o
+            return self.domain == __o  # type: ignore
 
         if not isinstance(__o, HSP):
             raise NotImplementedError()
 
-        return __o.domain == self.domain
+        return __o.domain == self.domain  # type: ignore
 
     def __hash__(self) -> int:
         return hash(self.domain)

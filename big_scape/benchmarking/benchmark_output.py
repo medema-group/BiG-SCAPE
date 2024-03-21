@@ -172,7 +172,7 @@ class OutputGenerator:
         cutoffs_fl = list(map(float, cutoffs))
 
         fig = plt.figure()
-        ax = fig.gca()
+        ax = fig.gca()  # type: ignore
 
         h = ax.plot(
             cutoffs_fl,
@@ -225,8 +225,8 @@ class OutputGenerator:
             matrix_data: contains confusion matrix, row labels and column labels
         """
         matrix, row_lab, col_lab = matrix_data
-        plt.imshow(matrix, cmap="binary", interpolation=None)
-        ax = plt.gca()
+        plt.imshow(matrix, cmap="binary", interpolation=None)  # type: ignore
+        ax = plt.gca()  # type: ignore
         ax.set_xticks(
             range(len(col_lab)),
             labels=col_lab,

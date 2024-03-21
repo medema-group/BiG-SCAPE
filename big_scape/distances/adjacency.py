@@ -1,12 +1,11 @@
 """Contains code to calculate adjacency indexes of set pairs"""
 
-
 # from other modules
 from big_scape.comparison.record_pair import RecordPair
 from big_scape.hmm import HSP
 
 
-def calc_ai_lists(list_a: list, list_b: list):
+def calc_ai_lists(list_a: list, list_b: list) -> float:
     """Calculate the adjacency index of two lists, which is the Jaccard index of sets
     of neighbouring items in two sorted lists.
 

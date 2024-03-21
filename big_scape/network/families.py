@@ -96,7 +96,7 @@ def get_cc_edge_weight_std(connected_component) -> float:
     """
 
     edge_weights = [edge[2] for edge in connected_component]
-    edge_std = np.std(edge_weights)
+    edge_std: float = np.std(edge_weights)
     edge_std = round(edge_std, 2)
 
     return edge_std

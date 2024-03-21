@@ -80,7 +80,12 @@ class BenchmarkMetrics:
         curated_fams = list(self.curated_labels.values())
         computed_fams = list(self.computed_labels.values())
 
-        return homogeneity_completeness_v_measure(curated_fams, computed_fams)
+        metrics: tuple[float, float, float] = homogeneity_completeness_v_measure(
+            curated_fams,
+            computed_fams,
+        )
+
+        return metrics
 
     def calculate_purity(self) -> dict[str, float]:
         """Calculate purity P of each computed GCF

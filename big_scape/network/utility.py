@@ -15,6 +15,7 @@ def sim_matrix_from_graph(graph: nx.Graph, edge_property: str) -> np.ndarray:
     Returns:
         ndarray: _description_
     """
+    matrix: np.ndarray
     matrix = nx.to_numpy_array(graph, weight=edge_property, nonedge=1.0)
     # have to convert from distances to similarity
     matrix = 1 - matrix
@@ -60,7 +61,7 @@ def edge_list_to_adj_list(
     return adj_list
 
 
-def adj_list_to_sim_matrix(adj_list: dict[int, dict[int, float]]) -> np.ndarray:
+def adj_list_to_sim_matrix(adj_list: dict[int, dict[int, float]]) -> list[list[float]]:
     """Return a similarity matrix from an adjacency list
 
     Adjacency list is expected to be a dictionary of dictionaries, where the keys of
@@ -78,6 +79,7 @@ def adj_list_to_sim_matrix(adj_list: dict[int, dict[int, float]]) -> np.ndarray:
         np.ndarray: similarity matrix
     """
     # set up the matrix
+    matrix: np.ndarray
     matrix = np.zeros((len(adj_list), len(adj_list)))
 
     # set up a dictionary to map region ids to matrix indices
@@ -92,7 +94,9 @@ def adj_list_to_sim_matrix(adj_list: dict[int, dict[int, float]]) -> np.ndarray:
             b_matrix_idx = region_to_index[record_b]
             matrix[a_matrix_idx][b_matrix_idx] = 1 - adj_list[record_a][record_b]
 
-    return matrix.tolist()
+    sim_matrix_list: list[list[float]] = matrix.tolist()
+
+    return sim_matrix_list
 
 
 def edge_list_to_sim_matrix(

@@ -101,7 +101,8 @@ def process_newick_tree(tree_file: Path) -> str:
                 # Noticed this could happen if the sequences are exactly
                 # the same and all distances == 0
                 logging.debug("Unable to root at midpoint")
-            return tree.format("newick")
+            newick_tree: str = tree.format("newick")
+            return newick_tree
 
 
 def find_tree_domains(

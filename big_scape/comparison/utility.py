@@ -236,7 +236,24 @@ def edge_params_query(alignment_mode, weights):
         .where(edge_params_table.c.weights == weights)
     )
 
-    edge_param_id = DB.execute(edge_params_query).fetchone()
+    row = DB.execute(edge_params_query).fetchone()
+
+    if row is None:
+        edge_params_insert = (
+            edge_params_table.insert()
+            .values(alignment_mode=alignment_mode.name, weights=weights)
+            .returning(edge_params_table.c.id)
+            .compile()
+        )
+        cursor_result = DB.execute(edge_params_insert, False)
+        row = cursor_result.fetchone()
+
+    if row is None:
+        raise RuntimeError("Could not get edge param id")
+
+    logging.debug("Edge params id: %d", row[0])
+
+    edge_param_id: int = row[0]
 
     return edge_param_id
 
@@ -283,6 +300,14 @@ def get_edge_weight(edge_param_id: int) -> str:
         edge_params_table.c.id == edge_param_id
     )
 
-    weights = DB.execute(edge_weight_query).fetchone()[0]
+    row = DB.execute(edge_weight_query).fetchone()
+
+    if row is None:
+        raise RuntimeError("No edge weights found")
+
+    weights = row[0]
+
+    if not isinstance(weights, str):
+        raise TypeError(f"Unexpected type for weights: {type(weights)}")
 
     return weights

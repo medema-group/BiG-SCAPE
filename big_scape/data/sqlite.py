@@ -205,8 +205,9 @@ class DB:
 
         DB.reflect()
 
-        page_count = raw_file_connection.execute("PRAGMA page_count;")
-        page_count = page_count.fetchone()[0]
+        page_count: float = raw_file_connection.execute(
+            "PRAGMA page_count;"
+        ).fetchone()[0]
 
         with tqdm.tqdm(total=page_count, unit="page", desc="Loading database") as t:
 
@@ -291,9 +292,12 @@ class DB:
             raise RuntimeError("DB.metadata is None")
 
         table_metadata = DB.metadata.tables[table_name]
-        return DB.execute(
+
+        row_count: int = DB.execute(
             select(func.count("*")).select_from(table_metadata)
         ).scalar_one()
+
+        return row_count
 
     @staticmethod
     def get_table_row_batch(

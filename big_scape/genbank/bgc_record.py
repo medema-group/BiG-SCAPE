@@ -333,7 +333,7 @@ class BGCRecord:
             logging.error("product qualifier not found in feature!")
             raise InvalidGBKError()
 
-        products = feature.qualifiers["product"]
+        products: list[str] = feature.qualifiers["product"]
 
         # single product? just return it
         if len(products) == 1:

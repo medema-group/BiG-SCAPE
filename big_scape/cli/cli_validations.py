@@ -36,7 +36,7 @@ def set_start(param_dict) -> None:
 # meta parameter validations
 
 
-def validate_profiling(ctx, param, profiling) -> bool:
+def validate_profiling(ctx, param, profiling: bool) -> bool:
     """Checks whether multithreading is possible, and therefore whether profiling can happen"""
 
     if profiling and platform.system() == "Darwin":
@@ -48,7 +48,7 @@ def validate_profiling(ctx, param, profiling) -> bool:
 # input parameter validations
 
 
-def validate_not_empty_dir(ctx, param, dir) -> Path:
+def validate_not_empty_dir(ctx, param, dir: Path) -> Path:
     """Validates that a given directory is not empty.
     Raises a BadParameter"""
 
@@ -57,6 +57,7 @@ def validate_not_empty_dir(ctx, param, dir) -> Path:
         if len(contents) == 0:
             logging.error(f"{dir}/ directory is empty!")
             raise click.BadParameter(f"{dir}/ directory is empty!")
+
     return dir
 
 
@@ -75,7 +76,7 @@ def validate_input_mode(ctx, param, input_mode) -> Optional[bs_enums.INPUT_MODE]
     return None
 
 
-def validate_query_bgc(ctx, param, query_bgc_path) -> Path:
+def validate_query_bgc(ctx, param, query_bgc_path: Path) -> Path:
     """Raises an InvalidArgumentError if the query bgc path does not exist"""
 
     if query_bgc_path.suffix != ".gbk":
@@ -88,7 +89,7 @@ def validate_query_bgc(ctx, param, query_bgc_path) -> Path:
 # output parameter validations
 
 
-def validate_output_dir(ctx, param, output_dir) -> Path:
+def validate_output_dir(ctx, param, output_dir: Path) -> Path:
     """Validates that output directory exists"""
 
     if not output_dir.exists():
@@ -131,21 +132,23 @@ def validate_output_paths(ctx) -> None:
 # comparison validations
 
 
-def validate_classify(ctx, param, classify) -> Optional[bs_enums.CLASSIFY_MODE]:
+def validate_classify(
+    ctx, param, classify: Optional[bs_enums.CLASSIFY_MODE]
+) -> Optional[bs_enums.CLASSIFY_MODE]:
     """Validates whether the classification type is set, and if not
     sets the parameter to False"""
 
     # check if the property matches one of the enum values
     valid_modes = [mode.value for mode in bs_enums.CLASSIFY_MODE]
 
+    if not classify:
+        return None
+
     for mode in valid_modes:
         if classify == mode:
             return bs_enums.CLASSIFY_MODE[mode.upper()]
 
-    if classify is None:
-        classify = False
-
-    return classify
+    raise InvalidArgumentError("--classify", classify)
 
 
 def validate_alignment_mode(
@@ -187,7 +190,9 @@ def validate_gcf_cutoffs(ctx, param, gcf_cutoffs) -> list[float]:
 def validate_filter_gbk(ctx, param, filter_str) -> list[str]:
     """Validates and formats the filter string and returns a list of strings"""
 
-    return filter_str.split(",")
+    split_str: list[str] = filter_str.split(",")
+
+    return split_str
 
 
 # hmmer parameters

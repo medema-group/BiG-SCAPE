@@ -315,7 +315,7 @@ class GBK:
         """
 
         try:
-            as_version = gbk_seq_record.annotations["structured_comment"][
+            as_version: str = gbk_seq_record.annotations["structured_comment"][
                 "antiSMASH-Data"
             ]["Version"]
         except KeyError:
