@@ -134,7 +134,7 @@ class TestGBK(TestCase):
 
         self.assertIsInstance(gbk, GBK)
 
-    def test_get_all_records(self):
+    def test_get_sub_records(self):
         """Tests whether all records are correctly retrieved from a gbk, internally also testing that collapse
         protoclusters works correclty"""
 

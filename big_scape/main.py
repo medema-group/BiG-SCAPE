@@ -120,7 +120,7 @@ def run_bigscape(run: dict) -> None:
     # INPUT - load data
     gbks = bs_files.load_gbks(run, bigscape_dir)
 
-    # get all working BGC records
+    # INPUT - get all working BGC records
     if run["query_bgc_path"]:
         all_bgc_records, query_record = bs_files.get_all_bgc_records_query(run, gbks)
     else:

@@ -134,7 +134,7 @@ def load_dataset_folder(
     if mode == bs_enums.INPUT_MODE.FLAT:
         files = list(path.glob("*.gbk"))
 
-    # TODO: empty folder? -> redundant, already checked in cli
+    # redundant check, this should never happen if the cli is working properly
     if len(files) == 0:
         logging.error("Folder does not contain any GBK files!")
         raise FileNotFoundError()
@@ -185,7 +185,6 @@ def filter_files(
     return filtered_files
 
 
-# TODO: test
 def remove_duplicate_gbk(gbks: list[GBK]) -> list[GBK]:
     """Remove any duplicate GBKs from given input based on content hash
 
@@ -205,7 +204,6 @@ def remove_duplicate_gbk(gbks: list[GBK]) -> list[GBK]:
     return list(unique_gbks)
 
 
-# TODO: test
 def bgc_length_contraint(gbks: list[GBK]) -> list[GBK]:
     """Remove any GBKs that are not between the minimum ans maximum allowed length
 
@@ -243,7 +241,6 @@ def bgc_length_contraint(gbks: list[GBK]) -> list[GBK]:
     return filtered_gbks
 
 
-# TODO: test
 def is_included(path: Path, include_list: List[str]):
     """Returns true if filename includes string from list
 
