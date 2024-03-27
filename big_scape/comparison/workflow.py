@@ -387,6 +387,15 @@ def calculate_scores_pair(
     # weights_label = bs_comparison.get_edge_weight(edge_param_id)
 
     for id_a, id_b in pairs:
+        if id_a not in records or id_b not in records:
+            comparable_region = bs_comparison.ComparableRegion(
+                0, 0, 0, 0, 0, 0, 0, 0, False
+            )
+            results.append(
+                (id_a, id_b, 1.0, 0.0, 0.0, 0.0, edge_param_id, comparable_region)
+            )
+            continue
+
         pair = RecordPair(records[id_a], records[id_b])
         logging.debug(pair)
         pair.log_comparable_region()
