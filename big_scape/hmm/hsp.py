@@ -131,6 +131,9 @@ class HSP:
         if accession[7] == ".":
             return accession[:7]
 
+        if len(accession) > 9:
+            raise ValueError(f"Accession {accession} is not in the expected format")
+
         return accession
 
     @staticmethod

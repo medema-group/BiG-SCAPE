@@ -207,6 +207,7 @@ class HMMer:
         for top_hits in hmmsearch(
             HMMer.profiles, digital_sequence, bit_cutoffs="trusted", cpus=cores
         ):
+            # TODO: document this better & build more comprehensive unit tests
             for hit in top_hits:
                 if not hit.included:
                     continue
