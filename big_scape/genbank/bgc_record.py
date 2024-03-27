@@ -453,8 +453,8 @@ def get_sub_records(
     if len(cand_clusters) == 0:
         return [region]
 
-    # TODO: currently not implemented, only region, protocluster and protocore are supported
-    # implement and use same strategy as for region if kind is neighbouring (several cores in a record)
+    # TODO: check if properly implemented, or at all
+    #  use same strategy as for region if kind is neighbouring (several cores in a record)
     # and protocluster if kind is single, interleaved or chemical hybrid (one core per record)
     if record_type == bs_enums.genbank.RECORD_TYPE.CAND_CLUSTER:
         return cand_clusters

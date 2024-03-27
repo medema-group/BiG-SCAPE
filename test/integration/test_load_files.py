@@ -1,4 +1,4 @@
-"""module containing integration tests for loading files and records"""
+"""module containing integration tests for loading files"""
 
 # from python
 import os
@@ -20,7 +20,7 @@ from big_scape.file_input.load_files import (
 )
 
 
-class TestLoadRecords(TestCase):
+class TestLoadFiles(TestCase):
     """Test class for loading files and records in files"""
 
     def clean_db(self):
