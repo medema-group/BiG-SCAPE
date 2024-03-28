@@ -216,7 +216,7 @@ class TestCDS(TestCase):
         cds.aa_seq = "M" * 100
         cds.strand = 1
 
-        new_hsp = HSP(cds, "test_domain", 100.0, 0, 100)
+        new_hsp = HSP(cds, "domain", 100.0, 0, 100)
 
         cds.add_hsp_overlap_filter(new_hsp)
 
@@ -234,11 +234,11 @@ class TestCDS(TestCase):
         cds.aa_seq = "M" * 100
         cds.strand = 1
 
-        old_hsp = HSP(cds, "test_domain_1", 100.0, 0, 100)
+        old_hsp = HSP(cds, "domain_1", 100.0, 0, 100)
 
         cds.add_hsp_overlap_filter(old_hsp)
 
-        new_hsp = HSP(cds, "test_domain_2", 50.0, 0, 100)
+        new_hsp = HSP(cds, "domain_2", 50.0, 0, 100)
 
         cds.add_hsp_overlap_filter(new_hsp)
 
@@ -256,11 +256,11 @@ class TestCDS(TestCase):
         cds.aa_seq = "M" * 100
         cds.strand = 1
 
-        old_hsp = HSP(cds, "test_domain_1", 50.0, 0, 100)
+        old_hsp = HSP(cds, "domain_1", 50.0, 0, 100)
 
         cds.add_hsp_overlap_filter(old_hsp)
 
-        new_hsp = HSP(cds, "test_domain_2", 100.0, 0, 100)
+        new_hsp = HSP(cds, "domain_2", 100.0, 0, 100)
 
         cds.add_hsp_overlap_filter(new_hsp)
 
@@ -278,11 +278,11 @@ class TestCDS(TestCase):
         cds.aa_seq = "M" * 100
         cds.strand = 1
 
-        old_hsp = HSP(cds, "test_domain_1", 100.0, 20, 100)
+        old_hsp = HSP(cds, "domain_1", 100.0, 20, 100)
 
         cds.add_hsp_overlap_filter(old_hsp)
 
-        new_hsp = HSP(cds, "test_domain_2", 100.0, 0, 100)
+        new_hsp = HSP(cds, "domain_2", 100.0, 0, 100)
 
         cds.add_hsp_overlap_filter(new_hsp)
 

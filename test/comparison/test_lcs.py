@@ -16,7 +16,7 @@ import big_scape.enums as bs_enums
 def generate_random_hsp(cds: bs_genbank.CDS):
     """Generate a random domain for a cds"""
     # generate a random string as accession
-    accession = "".join(random.choices(string.ascii_uppercase + string.digits, k=10))
+    accession = "".join(random.choices(string.ascii_uppercase + string.digits, k=7))
     hsp = bs_hmmer.HSP(cds, accession, 100.0, cds.nt_start, cds.nt_stop)
     return hsp
 
@@ -24,7 +24,7 @@ def generate_random_hsp(cds: bs_genbank.CDS):
 def generate_common_hsp(cds_a: bs_genbank.CDS, cds_b: bs_genbank.CDS, offset=0):
     """Generate a random domain common between a pair of cds"""
     # generate a random string as accession
-    accession = "".join(random.choices(string.ascii_uppercase + string.digits, k=10))
+    accession = "".join(random.choices(string.ascii_uppercase + string.digits, k=7))
     hsp_a = bs_hmmer.HSP(
         cds_a, accession, 100.0, cds_a.nt_start + offset, cds_a.nt_stop + offset
     )

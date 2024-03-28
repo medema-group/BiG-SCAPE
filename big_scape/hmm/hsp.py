@@ -131,7 +131,7 @@ class HSP:
         if accession[7] == ".":
             return accession[:7]
 
-        if len(accession) > 9:
+        if len(accession) > 10:
             raise ValueError(f"Accession {accession} is not in the expected format")
 
         return accession
