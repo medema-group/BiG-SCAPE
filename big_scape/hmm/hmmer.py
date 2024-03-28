@@ -204,13 +204,17 @@ class HMMer:
 
         digital_sequence = TextSequenceBlock(sequences).digitize(HMMer.alphabet)
 
+        # this is a generator of TopHits
+        # each top hit corresponds to a domain, which will have as many hits as there are CDSs with that domain
+        # included -> passes thresholds, reported -> all CDS <-> domain hits
         for top_hits in hmmsearch(
             HMMer.profiles, digital_sequence, bit_cutoffs="trusted", cpus=cores
         ):
-            # TODO: document this better & build more comprehensive unit tests
-            for hit in top_hits:
+            # hit corresponds to a CDS that has a hit on that domain
+            for hit in top_hits:  # this is same as top_hits.reported
                 if not hit.included:
                     continue
+                # one CDS may have more than one domain hit, so we need to go through all of them
                 for domain in hit.domains:
                     if not domain.included:
                         continue
