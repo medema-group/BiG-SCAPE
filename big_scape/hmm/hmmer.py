@@ -225,7 +225,7 @@ class HMMer:
                     cds_idx = int(hit.name.decode())
                     accession = domain.alignment.hmm_accession.decode()
                     score = domain.score
-                    env_start = domain.env_from
+                    env_start = domain.env_from - 1
                     env_stop = domain.env_to
                     relevant_cds = cds_list[cds_idx]
                     hsp = HSP(relevant_cds, accession, score, env_start, env_stop)
