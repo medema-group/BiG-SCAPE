@@ -19,6 +19,8 @@ from .utility import (
     save_edge_to_db,
     save_edges_to_db,
     get_edge_param_id,
+    edge_params_insert,
+    edge_params_query,
     get_edge_weight,
 )
 
@@ -45,5 +47,7 @@ __all__ = [
     "lcs",
     "extend",
     "get_edge_param_id",
+    "edge_params_insert",
+    "edge_params_query",
     "get_edge_weight",
 ]

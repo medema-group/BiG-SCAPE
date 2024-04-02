@@ -202,6 +202,33 @@ def get_edge_param_id(run, weights) -> int:
 
     alignment_mode = run["alignment_mode"]
 
+    edge_param_id = edge_params_query(alignment_mode, weights)
+
+    if edge_param_id is None:
+        edge_param_id = edge_params_insert(alignment_mode, weights)
+
+    logging.debug("Edge params id: %d", edge_param_id[0])
+
+    return edge_param_id[0]
+
+
+def edge_params_query(alignment_mode, weights):
+    """Create and run a query for edge params
+
+    Args:
+        alignment_mode (enum): global, glocal or auto
+        weights (str): weights category, i.e. "mix"
+
+    Raises:
+        RuntimeError: no dabatase
+
+    Returns:
+        Row | None: cursor result
+    """
+
+    if not DB.metadata:
+        raise RuntimeError("DB.metadata is None")
+
     edge_params_table = DB.metadata.tables["edge_params"]
     edge_params_query = (
         select(edge_params_table.c.id)
@@ -211,19 +238,37 @@ def get_edge_param_id(run, weights) -> int:
 
     edge_param_id = DB.execute(edge_params_query).fetchone()
 
-    if edge_param_id is None:
-        edge_params_insert = (
-            edge_params_table.insert()
-            .values(alignment_mode=alignment_mode.name, weights=weights)
-            .returning(edge_params_table.c.id)
-            .compile()
-        )
-        cursor_result = DB.execute(edge_params_insert, False)
-        edge_param_id = cursor_result.fetchone()
+    return edge_param_id
 
-    logging.debug("Edge params id: %d", edge_param_id[0])
 
-    return edge_param_id[0]
+def edge_params_insert(alignment_mode, weights):
+    """Insert an edge param entry into the database
+
+    Args:
+        alignment_mode (_type_): global, glocal or auto
+        weights (_type_): weights category, i.e. "mix"
+
+    Raises:
+        RuntimeError: no dabatase
+
+    Returns:
+        Row | None: cursor result
+    """
+
+    if not DB.metadata:
+        raise RuntimeError("DB.metadata is None")
+
+    edge_params_table = DB.metadata.tables["edge_params"]
+    edge_params_insert = (
+        edge_params_table.insert()
+        .values(alignment_mode=alignment_mode.name, weights=weights)
+        .returning(edge_params_table.c.id)
+        .compile()
+    )
+    cursor_result = DB.execute(edge_params_insert, False)
+    edge_param_id = cursor_result.fetchone()
+
+    return edge_param_id
 
 
 def get_edge_weight(edge_param_id: int) -> str:
