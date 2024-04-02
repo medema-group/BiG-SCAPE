@@ -158,12 +158,12 @@ class RecordPairGenerator:
             record_list (list[BGCRecord]): List of BGC records to add to this bin
         """
         self.source_records.extend(record_list)
-        self.record_ids.update([region._db_id or -1 for region in record_list])
+        self.record_ids.update([record._db_id or -1 for record in record_list])
 
-        # throw a ValueError if any region db id is None, as we expect all regions to be
+        # throw a ValueError if any region db id is None, as we expect all records to be
         # represented in the database
         if None in self.record_ids:
-            raise ValueError("Region in bin has no db id!")
+            raise ValueError("Record in bin has no db id!")
 
     def cull_singletons(self, cutoff: float):
         """Culls singletons for given cutoff, i.e. records which have either no edges
@@ -939,7 +939,6 @@ def legacy_bin_generator(
     Yields:
         Iterator[BGCBin]: Generator that yields bins. Order is not guarenteed to be
         consistent
-        TODO: should it be consistent?
     """
     # generate index
     class_idx: dict[str, list[BGCRecord]] = {}
