@@ -1,4 +1,8 @@
-"""Contains functions to mimic legacy output as seen in BiG-SCAPE 1.0"""
+"""Contains functions to mimic legacy output as seen in BiG-SCAPE 1.0
+
+NOTE: here be dragons. This code is long, complex, and contains a whole bunch of
+hacky workarounds to make the output of BiG-SCAPE 2.0 look like the output of BiG-SCAPE 1.0.
+"""
 
 # from python
 from itertools import repeat
@@ -388,7 +392,7 @@ def read_bigscape_results_js(bigscape_results_js_path: Path) -> list[Any]:
     # last one has a semicolon at the end. remove it
     lines[-1] = lines[-1][:1]
 
-    return json.loads("".join(lines))
+    return json.loads("".join(lines))  # type: ignore
 
 
 def read_run_data_js(run_data_js_path: Path) -> dict[str, Any]:
@@ -418,7 +422,7 @@ def read_run_data_js(run_data_js_path: Path) -> dict[str, Any]:
     # last line after that has a semicolon at the end. remove the semicolon
     lines[-1] = lines[-1][:1]
 
-    return json.loads("".join(lines))
+    return json.loads("".join(lines))  # type: ignore
 
 
 def generate_bigscape_results_js(output_dir: Path, label: str, cutoff: float) -> None:
@@ -1567,26 +1571,7 @@ def write_cutoff_network_file(
 
 def get_cutoff_edgelist(
     run: dict, cutoff: float, pair_generator: RecordPairGenerator
-) -> set[
-    tuple[
-        str,
-        str,
-        int,
-        str,
-        str,
-        int,
-        float,
-        float,
-        float,
-        float,
-        str,
-        int,
-        int,
-        int,
-        int,
-        str,
-    ]
-]:
+) -> set[Any]:
     """Generate the network egdelist for a given bin with edges above the cutoff
 
     Args:
@@ -1596,7 +1581,7 @@ def get_cutoff_edgelist(
         RuntimeError: no database present
 
     Returns:
-        set: edgelist
+        set: edgelist. A set of a long tuple each corresponding to a row in the distance table
     """
 
     distance_table = DB.get_table("distance")
@@ -1671,28 +1656,7 @@ def write_full_network_file(run: dict, all_bgc_records: list[BGCRecord]) -> None
     write_network_file(full_network_file_path, edgelist)
 
 
-def get_full_network_edgelist(
-    run: dict, all_bgc_records: list
-) -> set[
-    tuple[
-        str,
-        str,
-        int,
-        str,
-        str,
-        int,
-        float,
-        float,
-        float,
-        float,
-        str,
-        int,
-        int,
-        int,
-        int,
-        str,
-    ]
-]:
+def get_full_network_edgelist(run: dict, all_bgc_records: list) -> set[Any]:
     """Get all edges for the pairs of records in this run, for the weights relevant to this run
 
     Args:
@@ -1702,7 +1666,7 @@ def get_full_network_edgelist(
         RuntimeError: no database present
 
     Returns:
-        set: edgelist
+        set: edgelist. A set of a long tuple each corresponding to a row in the distance table
     """
 
     legacy_weights = [

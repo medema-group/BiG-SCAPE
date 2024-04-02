@@ -73,7 +73,12 @@ def get_connected_components(
             )
         )
 
-        yield list(DB.execute(select_statement))
+        edges = cast(
+            list[tuple[int, int, float, float, float, float, int]],
+            list(DB.execute(select_statement)),
+        )
+
+        yield edges
 
 
 def generate_connected_components(
@@ -105,8 +110,14 @@ def generate_connected_components(
     seen = set()
 
     if DB.engine is None:
-        raise RuntimeError("DB.engine is None")
-    cursor = DB.engine.raw_connection().driver_connection.cursor()
+        raise RuntimeError("DB engine is None")
+
+    driver = DB.engine.raw_connection().driver_connection
+
+    if driver is None:
+        raise RuntimeError("Driver is None")
+
+    cursor = driver.cursor()
 
     edge_count_query = select(func.count(distance_table.c.record_a_id)).where(
         and_(
@@ -114,7 +125,13 @@ def generate_connected_components(
             distance_table.c.edge_param_id == edge_param_id,
         )
     )
-    num_edges = DB.execute(edge_count_query).fetchone()[0]
+
+    result = DB.execute(edge_count_query).fetchone()
+
+    if result is None:
+        raise ValueError("No result from query")
+
+    num_edges = result[0]
 
     with tqdm.tqdm(total=num_edges, desc="Generating connected components") as t:
         while len(edges) > 0:
@@ -197,7 +214,12 @@ def has_missing_cc_assignments(
             distance_table.c.record_a_id.in_(select(temp_record_table.c.record_id))
         )
 
-    num_missing = DB.execute(select_statement).fetchone()[0]
+    result = DB.execute(select_statement).fetchone()
+
+    if result is None:
+        raise ValueError("No result from query")
+
+    num_missing: int = result[0]
 
     return num_missing > 0
 
@@ -233,10 +255,10 @@ def get_connected_component_ids(
             cc_table.c.record_id.in_(select(temp_record_table.c.record_id))
         )
 
-    cc_ids = DB.execute(select_statement).fetchall()
-
     # returned as tuples, convert to list
-    cc_ids = [cc_id[0] for cc_id in cc_ids]
+    cc_ids: list[int] = cast(
+        list[int], [cc_id[0] for cc_id in DB.execute(select_statement).fetchall()]
+    )
 
     return cc_ids
 
@@ -307,7 +329,9 @@ def get_random_edge(
             )
         )
 
-    edge = DB.execute(random_edge_query).fetchone()
+    edge: Optional[tuple[int, int]] = cast(
+        Optional[tuple[int, int]], DB.execute(random_edge_query).fetchone()
+    )
 
     return edge
 
@@ -346,7 +370,9 @@ def get_cc_edges(
             distance_table.c.edge_param_id == edge_param_id,
         )
     )
-    edges = DB.execute(cc_edge_query).fetchall()
+    edges: list[tuple[int, int]] = cast(
+        list[tuple[int, int]], DB.execute(cc_edge_query).fetchall()
+    )
 
     return edges
 
@@ -487,13 +513,16 @@ def create_temp_record_table(include_records: list[BGCRecord]) -> Table:
 
     DB.execute_raw_query(create_temp_table)
 
+    if DB.engine is None:
+        raise RuntimeError("DB engine is None")
+
     cursor = DB.engine.raw_connection().cursor()
 
     insert_query = f"""
         INSERT INTO {temp_table_name} (record_id) VALUES (?);
     """
 
-    cursor.executemany(insert_query, [(x,) for x in ids])
+    cursor.executemany(insert_query, [(x,) for x in ids])  # type: ignore
 
     cursor.close()
 

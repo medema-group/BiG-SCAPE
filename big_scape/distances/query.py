@@ -208,7 +208,7 @@ def calculate_distances_query(
     )
 
     # get_connected_components returns a list of connected components, we only want the first one
-    query_connected_component = next(query_connected_component)
+    query_connected_component = next(query_connected_component)  # type: ignore
 
     query_nodes = bs_network.get_nodes_from_cc(query_connected_component, query_records)
 
