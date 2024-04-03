@@ -153,8 +153,22 @@ def run_bigscape(run: dict) -> None:
         logging.info("Scanning %d CDS", len(cds_to_scan))
 
         if platform.system() == "Darwin":
-            logging.warning("Running on mac-OS: hmmsearch_simple single threaded")
-            HMMer.hmmsearch_simple(cds_to_scan, 1)
+            logging.debug(
+                "Running on %s: hmmsearch_simple with %d cores",
+                platform.system(),
+                run["cores"],
+            )
+            with tqdm.tqdm(unit="CDS", total=len(cds_to_scan), desc="HMMSCAN") as t:
+
+                def callback(tasks_done):
+                    t.update(tasks_done)
+
+                HMMer.hmmsearch_simple(
+                    cds_to_scan,
+                    domain_overlap_cutoff=run["domain_overlap_cutoff"],
+                    cores=run["cores"],
+                    callback=callback,
+                )
         else:
             logging.debug(
                 "Running on %s: hmmsearch_multiprocess with %d cores",
