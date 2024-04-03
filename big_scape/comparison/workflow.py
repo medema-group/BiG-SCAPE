@@ -94,6 +94,7 @@ def get_batch_size(cores: int, desired_batch_size: int, num_items: int):
     return desired_batch_size
 
 
+# TODO: Test ?
 def generate_edges(
     pair_generator: RecordPairGenerator,
     alignment_mode: bs_enums.ALIGNMENT_MODE,
@@ -350,6 +351,7 @@ def expand_pair(pair: RecordPair) -> bool:
     return False
 
 
+# TODO: Test ?
 def calculate_scores_pair(
     data: tuple[list[tuple[int, int]], bs_enums.ALIGNMENT_MODE, int, str]
 ) -> list[

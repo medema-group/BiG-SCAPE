@@ -224,7 +224,7 @@ class TestComparison(TestCase):
     def test_calculate_scores_pair(self):
         pass
 
-    def test_calculate_distances_mix_bin(self):
+    def test_calculate_distances_mix_bin_worflow(self):
         """Tests the distance calculation workflow for mix mode"""
 
         bs_data.DB.create_in_mem()

@@ -14,6 +14,7 @@ from big_scape.data import DB
 from big_scape.genbank import BGCRecord
 
 
+# TODO: test
 def get_connected_components(
     cutoff: float,
     edge_param_id: int,
