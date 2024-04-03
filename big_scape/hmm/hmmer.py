@@ -205,7 +205,7 @@ class HMMer:
 
         for cds_batch in cds_batches:
             sequences = []
-            for idx, cds in enumerate(cds_list):
+            for idx, cds in enumerate(cds_batch):
                 # name is actually the list index of the original CDS
                 sequences.append(
                     TextSequence(name=str(idx).encode(), sequence=cds.aa_seq)
@@ -236,7 +236,7 @@ class HMMer:
                         score = domain.score
                         env_start = domain.env_from - 1
                         env_stop = domain.env_to
-                        relevant_cds = cds_list[cds_idx]
+                        relevant_cds = cds_batch[cds_idx]
                         hsp = HSP(relevant_cds, accession, score, env_start, env_stop)
                         relevant_cds.add_hsp_overlap_filter(hsp, domain_overlap_cutoff)
 
@@ -655,7 +655,7 @@ def cds_batch_generator(
 
     i = 0
     while (i * batch_size) < len(cds_list):
-        batch = cds_list[i * batch_size : min(((i + 1) * batch_size), len(cds_list))]
+        batch = cds_list[i * batch_size: min(((i + 1) * batch_size), len(cds_list))]
 
         yield (batch)
 
