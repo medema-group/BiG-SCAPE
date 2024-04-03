@@ -19,3 +19,6 @@ types-psutil
 networkx-stubs
 data-science-types
 types-tqdm
+
+# mypy
+mypy==1.9.0
