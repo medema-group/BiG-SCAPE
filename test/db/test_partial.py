@@ -567,7 +567,7 @@ class TestPartialComparison(TestCase):
             pair_generator
         )
 
-        actual_missing_pairs = list(missing_edge_generator.generate_pairs())
+        actual_missing_pairs = list(missing_edge_generator.generate_pair_ids())
 
         self.assertListEqual(expected_missing_pairs, actual_missing_pairs)
 

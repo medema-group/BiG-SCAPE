@@ -72,7 +72,7 @@ class RecordPairGenerator:
         self.weights = weights
         self.record_type = record_type
 
-    def generate_pairs(
+    def generate_pair_ids(
         self, legacy_sorting=False
     ) -> Generator[tuple[int, int], None, None]:
         """Returns a generator for all vs all record pairs in this bins
@@ -215,7 +215,7 @@ class QueryToRefRecordPairGenerator(RecordPairGenerator):
         self.reference_records: list[BGCRecord] = []
         self.query_records: list[BGCRecord] = []
 
-    def generate_pairs(
+    def generate_pair_ids(
         self, legacy_sorting=False
     ) -> Generator[tuple[int, int], None, None]:
         """Returns an Generator for record pairs in this bin, all pairs are generated
@@ -306,7 +306,7 @@ class RefToRefRecordPairGenerator(RecordPairGenerator):
         self.done_record_ids: set[int] = set()
         super().__init__(label, edge_param_id, weights)
 
-    def generate_pairs(
+    def generate_pair_ids(
         self, legacy_sorting=False
     ) -> Generator[tuple[int, int], None, None]:
         """Returns an Generator for record pairs in this bin, pairs are only generated
@@ -609,7 +609,7 @@ class ConnectedComponentPairGenerator(RecordPairGenerator):
 
         return super().add_records(cc_record_list)
 
-    def generate_pairs(
+    def generate_pair_ids(
         self, legacy_sorting=False
     ) -> Generator[tuple[int, int], None, None]:
         """Returns an Generator for record pairs in this bin
@@ -654,7 +654,7 @@ class MissingRecordPairGenerator(RecordPairGenerator):
         super().__init__(
             pair_generator.label, pair_generator.edge_param_id, pair_generator.weights
         )
-        self.bin = pair_generator
+        self.bin: RecordPairGenerator = pair_generator
 
     def num_pairs(self) -> int:
         if not DB.metadata:
@@ -677,7 +677,7 @@ class MissingRecordPairGenerator(RecordPairGenerator):
         # subtract from expected number of distances
         return self.bin.num_pairs() - existing_distance_count
 
-    def generate_pairs(
+    def generate_pair_ids(
         self, legacy_sorting=False
     ) -> Generator[tuple[int, int], None, None]:
         """Returns an Generator for record pairs in this bin
@@ -706,7 +706,7 @@ class MissingRecordPairGenerator(RecordPairGenerator):
         # generate a set of tuples of region id pairs
         existing_distances = set(DB.execute(select_statement).fetchall())
 
-        for pair in self.bin.generate_pairs(legacy_sorting):
+        for pair in self.bin.generate_pair_ids(legacy_sorting):
             # if the pair is not in the set of existing distances, yield it
             if pair not in existing_distances and pair[::-1] not in existing_distances:
                 yield pair

@@ -263,7 +263,7 @@ def get_missing_distances(
     # generate a set of tuples of region id pairs
     existing_distances = set(DB.execute(select_statement).fetchall())
 
-    for pair in pair_generator.generate_pairs():
+    for pair in pair_generator.generate_pair_ids():
         # if the pair is not in the set of existing distances, yield it
         if pair not in existing_distances and pair[::-1] not in existing_distances:
             yield pair
