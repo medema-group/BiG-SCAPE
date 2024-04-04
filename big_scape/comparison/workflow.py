@@ -405,8 +405,11 @@ def calculate_scores_pair(
         pair_ids = data
         records = fetch_records_from_database(pair_ids)
     else:
-        records = {record._db_id: record for record in data}
-        pair_ids = [(record_a._db_id, record_b._db_id) for record_a, record_b in data]
+        for pair in data:
+            records = {record._db_id: record for record in pair}
+            pair_ids = [
+                (record.record_a._db_id, record.record_b._db_id) for record in pair
+            ]
 
     results = []
 
