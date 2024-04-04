@@ -3,7 +3,7 @@
 # from python
 import logging
 from pathlib import Path
-from typing import List, Optional, Tuple
+from typing import List, Optional
 import os
 import tarfile
 import multiprocessing
@@ -405,7 +405,7 @@ def get_all_bgc_records(run: dict, gbks: List[GBK]) -> List[bs_gbk.BGCRecord]:
 
 def get_all_bgc_records_query(
     run: dict, gbks: List[GBK]
-) -> Tuple[List[bs_gbk.BGCRecord], bs_gbk.BGCRecord]:
+) -> tuple[List[bs_gbk.BGCRecord], bs_gbk.BGCRecord]:
     """Get all BGC records from the working list of GBKs
 
     Args:
