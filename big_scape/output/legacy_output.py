@@ -4,6 +4,7 @@
 from itertools import repeat
 import json
 from multiprocessing import Pool
+import platform
 import shutil
 from distutils import dir_util
 from pathlib import Path
@@ -996,6 +997,22 @@ def generate_bs_families_alignment(
         ]
     """
     records = pair_generator.source_records
+
+    if platform.system() == "Darwin":
+        # logging.warning("Profiling is not supported on MacOS, please use Linux")
+
+        result = []
+        for exemplar_id, member_ids in bs_families.items():
+            result.append(
+                generate_bs_family_alignment(
+                    exemplar_id,
+                    member_ids,
+                    records,
+                    pair_generator.edge_param_id,
+                    tree_path,
+                )
+            )
+        return result
 
     pool = Pool(processes=run["cores"])
 
