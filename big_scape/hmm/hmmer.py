@@ -204,9 +204,7 @@ class HMMer:
         sequences = []
         for idx, cds in enumerate(cds_list):
             # name is actually the list index of the original CDS
-            sequences.append(
-                TextSequence(name=str(idx).encode(), sequence=cds.aa_seq)
-            )
+            sequences.append(TextSequence(name=str(idx).encode(), sequence=cds.aa_seq))
 
         digital_sequence = TextSequenceBlock(sequences).digitize(HMMer.alphabet)
 
@@ -214,7 +212,11 @@ class HMMer:
         # each top hit corresponds to a domain, which will have as many hits as there are CDSs with that domain
         # included -> passes thresholds, reported -> all CDS <-> domain hits
         for top_hits in hmmsearch(
-            HMMer.profiles, digital_sequence, bit_cutoffs="trusted", cpus=cores, callback=callback
+            HMMer.profiles,
+            digital_sequence,
+            bit_cutoffs="trusted",
+            cpus=cores,
+            callback=callback,
         ):
             # hit corresponds to a CDS that has a hit on that domain
             for hit in top_hits:  # this is same as top_hits.reported
@@ -649,7 +651,7 @@ def cds_batch_generator(
 
     i = 0
     while (i * batch_size) < len(cds_list):
-        batch = cds_list[i * batch_size: min(((i + 1) * batch_size), len(cds_list))]
+        batch = cds_list[i * batch_size : min(((i + 1) * batch_size), len(cds_list))]
 
         yield (batch)
 

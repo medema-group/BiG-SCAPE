@@ -310,10 +310,10 @@ class TestComparison(TestCase):
         self.assertEqual(edge_param_id, 1)
 
     def test_generate_edges(self):
-        pass
+        self.skipTest("Not implemented")
 
     def test_calculate_scores_pair(self):
-        pass
+        self.skipTest("Not implemented")
 
     # TODO: update to use bs_mix.calculate_distances_mix(run, all_bgc_records)
     def test_calculate_distances_mix_bin_worflow(self):
@@ -468,7 +468,7 @@ class TestComparison(TestCase):
         self.assertEqual(bin_pairs, [3, 3, 3])
 
     def test_calculate_distances_query(self):
-        pass
+        self.skipTest("Not implemented")
 
     def test_get_connected_components(self):
-        pass
+        self.skipTest("Not implemented")
