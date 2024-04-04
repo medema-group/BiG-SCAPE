@@ -797,7 +797,9 @@ def as_class_bin_generator(
 
             if weight_type == "legacy_weights":
                 # get region category for weights
-                region_weight_cat = get_weight_category(record)
+                region_weight_cat = get_legacy_weights_from_category(
+                    record, record_class, run
+                )
 
                 if record_class not in category_weights.keys():
                     category_weights[record_class] = region_weight_cat
@@ -861,7 +863,9 @@ def get_record_category(record: BGCRecord) -> str:
     return ".".join(categories)
 
 
-def get_weight_category(record: BGCRecord) -> str:
+def get_legacy_weights_from_category(
+    record: BGCRecord, record_class: str, run: dict
+) -> str:
     """Get the category of a BGC based on its antiSMASH product(s)
     and match it to the legacy weights classes
 
@@ -896,10 +900,12 @@ def get_weight_category(record: BGCRecord) -> str:
                         else:
                             pc_category = protocluster.category
                         # avoid duplicates, hybrids of the same kind use the same weight class
-                        if pc_category not in categories:
-                            categories.append(pc_category)
-
-    # process into legacy_weights classes
+                        if run["hybrids_off"] and protocluster.product == record_class:
+                            if pc_category not in categories:
+                                categories.append(pc_category)
+                        else:
+                            if pc_category not in categories:
+                                categories.append(pc_category)
 
     # for versions that dont have category information
     if len(categories) == 0:
@@ -912,6 +918,7 @@ def get_weight_category(record: BGCRecord) -> str:
         )
         category = "other"
 
+    # process into legacy_weights classes
     if len(categories) == 1:
         category = categories[0]
 

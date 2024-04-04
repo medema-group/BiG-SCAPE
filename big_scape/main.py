@@ -375,7 +375,9 @@ def run_bigscape(run: dict) -> None:
             str, list[tuple[int, int, float, float, float, float, int]]
         ] = {}
         if run["legacy_weights"]:
-            weights = bs_comparison.get_weight_category(query_record)
+            weights = bs_comparison.get_legacy_weights_from_category(
+                query_record, query_record.product, run
+            )
         else:
             weights = "mix"
         edge_param_id = bs_comparison.get_edge_param_id(run, weights)

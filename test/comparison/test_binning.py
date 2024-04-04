@@ -18,7 +18,7 @@ from big_scape.comparison import (
     ConnectedComponentPairGenerator,
     save_edge_to_db,
     get_record_category,
-    get_weight_category,
+    get_legacy_weights_from_category,
     as_class_bin_generator,
 )
 from big_scape.comparison import generate_mix_bin
@@ -897,12 +897,20 @@ class TestBinGenerators(TestCase):
     def test_get_weight_category(self):
         """Tests wether the correct legacy weight category is created from a region category"""
 
+        run = {
+            "alignment_mode": bs_enums.ALIGNMENT_MODE.AUTO,
+            "legacy_weights": True,
+            "classify": bs_enums.CLASSIFY_MODE.CLASS,
+            "record_type": bs_enums.RECORD_TYPE.REGION,
+            "hybrids_off": False,
+        }
+
         region = mock_region()
         cc = region.cand_clusters[1]
         pc = cc.proto_clusters[1]
 
         expected_category = "T1PKS"
-        category = get_weight_category(pc)
+        category = get_legacy_weights_from_category(pc, "T1PKS", run)
 
         self.assertEqual(expected_category, category)
 

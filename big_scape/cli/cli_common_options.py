@@ -279,14 +279,18 @@ def common_cluster_query(fn):
             ),
         ),
         click.option(
-            "--hybrids_off",
+            "--legacy_classify",
             is_flag=True,
             help=(
-                "Toggle to add BGCs with hybrid predicted classes/categories to each "
-                "subclass instead of a hybrid class/network (e.g. a 'terpene-nrps' BGC "
-                "would be added to both the terpene and NRPS classes/networks instead of "
-                "the terpene.nrps network). "
-                "Only works if --classify/--legacy_classify is selected."
+                "Does not use antiSMASH BGC classes to run analyses on "
+                "class-based bins, instead it uses BiG-SCAPE v1 predefined groups: "
+                "PKS1, PKSOther, NRPS, NRPS-PKS-hybrid, RiPP, Saccharide, Terpene, Others. "
+                "Will also use BiG-SCAPEv1 legacy_weights for distance calculations. "
+                "This feature is available for backwards compatibility with "
+                "antiSMASH versions up to v7. For higher antiSMASH versions, use "
+                "at your own risk, as BGC classes may have changed. All antiSMASH "
+                "classes that this legacy mode does not recognize will be grouped in "
+                "'others'."
             ),
         ),
         click.option(

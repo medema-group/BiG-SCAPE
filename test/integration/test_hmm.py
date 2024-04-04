@@ -65,6 +65,8 @@ class TestHMMScan(TestCase):
         self.addCleanup(self.clean_db)
         self.addCleanup(self.class_cleanup)
 
+    # TODO: expand tests to include several BGCs and several CDSs, to catch any potential
+    # issues where HSPs are wrongly assigned to CDSs
     def test_hmmsearch_simple_workflow(self):
         """Tests the entire hmmsearch worfkflow"""
 
