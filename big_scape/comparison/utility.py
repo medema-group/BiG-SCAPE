@@ -3,9 +3,10 @@
 # from python
 import logging
 import sqlite3
+from typing import Optional
 
 # from dependencies
-from sqlalchemy import insert, select
+from sqlalchemy import Row, insert, select
 
 # from other modules
 from big_scape.data import DB
@@ -196,17 +197,20 @@ def get_edge_param_id(run, weights) -> int:
 
     alignment_mode = run["alignment_mode"]
 
-    edge_param_id = edge_params_query(alignment_mode, weights)
+    edge_param_id_res = edge_params_query(alignment_mode, weights)
+
+    edge_param_id: int = edge_param_id_res[0] if edge_param_id_res else None
 
     if edge_param_id is None:
-        edge_param_id = edge_params_insert(alignment_mode, weights)
+        edge_param_id_res = edge_params_insert(alignment_mode, weights)
+        edge_param_id = edge_param_id_res[0]
 
-    logging.debug("Edge params id: %d", edge_param_id[0])
+    logging.debug("Edge params id: %d", edge_param_id)
 
-    return edge_param_id[0]
+    return edge_param_id
 
 
-def edge_params_query(alignment_mode, weights):
+def edge_params_query(alignment_mode, weights) -> Optional[Row]:
     """Create and run a query for edge params
 
     Args:
@@ -220,9 +224,6 @@ def edge_params_query(alignment_mode, weights):
         Row | None: cursor result
     """
 
-    if not DB.metadata:
-        raise RuntimeError("DB.metadata is None")
-
     edge_params_table = DB.get_table("edge_params")
 
     edge_params_query = (
@@ -231,24 +232,7 @@ def edge_params_query(alignment_mode, weights):
         .where(edge_params_table.c.weights == weights)
     )
 
-    row = DB.execute(edge_params_query).fetchone()
-
-    if row is None:
-        edge_params_insert = (
-            edge_params_table.insert()
-            .values(alignment_mode=alignment_mode.name, weights=weights)
-            .returning(edge_params_table.c.id)
-            .compile()
-        )
-        cursor_result = DB.execute(edge_params_insert, False)
-        row = cursor_result.fetchone()
-
-    if row is None:
-        raise RuntimeError("Could not get edge param id")
-
-    logging.debug("Edge params id: %d", row[0])
-
-    edge_param_id: int = row[0]
+    edge_param_id = DB.execute(edge_params_query).fetchone()
 
     return edge_param_id
 

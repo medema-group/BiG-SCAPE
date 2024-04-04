@@ -15,6 +15,7 @@ from concurrent.futures import ProcessPoolExecutor, Future
 from threading import Event, Condition
 from typing import Generator, Callable, Optional, TypeVar
 from math import ceil
+
 from .record_pair import RecordPair
 
 # from dependencies
@@ -359,8 +360,8 @@ def calculate_scores_pair(
     data: tuple[list[tuple[int, int]], bs_enums.ALIGNMENT_MODE, int, str]
 ) -> list[
     tuple[
-        Optional[int],
-        Optional[int],
+        int,
+        int,
         float,
         float,
         float,
@@ -385,7 +386,9 @@ def calculate_scores_pair(
     # convert database ids to minimal record objects
     records = fetch_records_from_database(pair_ids)
 
-    results = []
+    results: list[
+        tuple[int, int, float, float, float, float, int, bs_comparison.ComparableRegion]
+    ] = []
 
     # TODO: this fails since DB getting accessed from child processes
     # seems to be a problem with the DB connection (for mac?)
@@ -409,8 +412,8 @@ def calculate_scores_pair(
         if jaccard == 0.0:
             results.append(
                 (
-                    pair.record_a._db_id,
-                    pair.record_b._db_id,
+                    id_a,
+                    id_b,
                     1.0,
                     0.0,
                     0.0,
@@ -457,8 +460,8 @@ def calculate_scores_pair(
 
         results.append(
             (
-                pair.record_a._db_id,
-                pair.record_b._db_id,
+                id_a,
+                id_b,
                 distance,
                 jaccard,
                 adjacency,
