@@ -159,7 +159,6 @@ def run_bigscape(run: dict) -> None:
                 run["cores"],
             )
             with tqdm.tqdm(unit="CDS", total=len(HMMer.profiles), desc="HMMSCAN") as t:
-
                 HMMer.hmmsearch_simple(
                     cds_to_scan,
                     domain_overlap_cutoff=run["domain_overlap_cutoff"],
