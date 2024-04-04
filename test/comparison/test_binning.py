@@ -18,7 +18,7 @@ from big_scape.comparison import (
     ConnectedComponentPairGenerator,
     save_edge_to_db,
     get_record_category,
-    get_weight_category,
+    get_legacy_weights_from_category,
     as_class_bin_generator,
 )
 from big_scape.comparison import generate_mix_bin
@@ -236,7 +236,7 @@ class TestBGCBin(TestCase):
         ]
 
         actual_pair_list = [
-            pair for pair in new_bin.generate_pairs(legacy_sorting=True)
+            pair for pair in new_bin.generate_pair_ids(legacy_sorting=True)
         ]
 
         self.assertEqual(expected_pair_list, actual_pair_list)
@@ -268,7 +268,7 @@ class TestBGCBin(TestCase):
             expected_pairs.append(expected_pair)
 
         # get all edges
-        actual_pairs = list(query_to_ref_pair_generator.generate_pairs())
+        actual_pairs = list(query_to_ref_pair_generator.generate_pair_ids())
 
         self.assertListEqual(expected_pairs, actual_pairs)
 
@@ -378,7 +378,7 @@ class TestBGCBin(TestCase):
             ]
         )
 
-        actual_pairs = set(list(ref_to_ref_pair_generator.generate_pairs()))
+        actual_pairs = set(list(ref_to_ref_pair_generator.generate_pair_ids()))
 
         self.assertEqual(expected_pairs, actual_pairs)
 
@@ -473,7 +473,7 @@ class TestBGCBin(TestCase):
         # so now we have a network where the query is connected to 2 of the reference
         # records, and two of the reference records are not connected to anything
         # let's do the first iteration
-        list(ref_to_ref_pair_generator.generate_pairs())
+        list(ref_to_ref_pair_generator.generate_pair_ids())
 
         # we throw away the result because I want to test the second iteration, and
         # I want to enter the distance data manually
@@ -603,7 +603,7 @@ class TestBGCBin(TestCase):
             ]
         )
 
-        actual_pairs = set(list(ref_to_ref_pair_generator.generate_pairs()))
+        actual_pairs = set(list(ref_to_ref_pair_generator.generate_pair_ids()))
 
         self.assertEqual(expected_pairs, actual_pairs)
 
@@ -683,7 +683,7 @@ class TestBGCBin(TestCase):
         cc_pair_generator.add_records(source_records)
 
         # actual_record_ids = cc_pair_generator.record_ids = [1, 2, 3]
-        actual_pairs = set(list(cc_pair_generator.generate_pairs()))
+        actual_pairs = set(list(cc_pair_generator.generate_pair_ids()))
 
         self.assertEqual(expected_pairs, actual_pairs)
 
@@ -820,7 +820,7 @@ class TestMixComparison(TestCase):
         # expected representation of the bin object
         expected_pair_count = 3
 
-        actual_pair_count = len(list(new_bin.generate_pairs()))
+        actual_pair_count = len(list(new_bin.generate_pair_ids()))
 
         self.assertEqual(expected_pair_count, actual_pair_count)
 
@@ -897,12 +897,20 @@ class TestBinGenerators(TestCase):
     def test_get_weight_category(self):
         """Tests wether the correct legacy weight category is created from a region category"""
 
+        run = {
+            "alignment_mode": bs_enums.ALIGNMENT_MODE.AUTO,
+            "legacy_weights": True,
+            "classify": bs_enums.CLASSIFY_MODE.CLASS,
+            "record_type": bs_enums.RECORD_TYPE.REGION,
+            "hybrids_off": False,
+        }
+
         region = mock_region()
         cc = region.cand_clusters[1]
         pc = cc.proto_clusters[1]
 
         expected_category = "T1PKS"
-        category = get_weight_category(pc)
+        category = get_legacy_weights_from_category(pc, "T1PKS", run)
 
         self.assertEqual(expected_category, category)
 

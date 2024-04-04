@@ -29,7 +29,8 @@ from big_scape.output import (
 
 
 import big_scape.file_input as bs_files
-import big_scape.genbank as bs_gbk
+
+# import big_scape.genbank as bs_gbk
 import big_scape.data as bs_data
 import big_scape.enums as bs_enums
 import big_scape.comparison as bs_comparison
@@ -105,42 +106,25 @@ def run_bigscape(run: dict) -> None:
         profiler.start()
         logging.info("Profiler started")
 
+    # INPUT - get mibig if needed
+    if run["mibig_version"]:
+        mibig_version_dir = bs_files.get_mibig(run["mibig_version"], bigscape_dir)
+        run["mibig_dir"] = mibig_version_dir
+
+    # INPUT - create an in memory DB or load from disk
+    if not run["db_path"].exists():
+        bs_data.DB.create_in_mem()
+    else:
+        bs_data.DB.load_from_disk(run["db_path"])
+
     # INPUT - load data
     gbks = bs_files.load_gbks(run, bigscape_dir)
 
-    # get all working BGC records
-    all_bgc_records: list[bs_gbk.BGCRecord] = []
-    for gbk in gbks:
-        if gbk.region is not None:
-            gbk_records = bs_gbk.bgc_record.get_sub_records(
-                gbk.region, run["record_type"]
-            )
-            if run["query_bgc_path"]:
-                if gbk.source_type == bs_enums.SOURCE_TYPE.QUERY:
-                    query_record_type = run["record_type"]
-
-                    query_record_type = run["record_type"]
-                    query_record_number = run["query_record_number"]
-
-                    query_sub_records = bs_gbk.bgc_record.get_sub_records(
-                        gbk.region, query_record_type
-                    )
-
-                    if query_record_type == bs_enums.RECORD_TYPE.REGION:
-                        query_record = query_sub_records[0]
-
-                    else:
-                        query_record = [
-                            record
-                            for record in query_sub_records
-                            if record.number == query_record_number
-                        ][0]
-
-                    all_bgc_records.append(query_record)
-                else:
-                    all_bgc_records.extend(gbk_records)
-            else:
-                all_bgc_records.extend(gbk_records)
+    # INPUT - get all working BGC records
+    if run["query_bgc_path"]:
+        all_bgc_records, query_record = bs_files.get_all_bgc_records_query(run, gbks)
+    else:
+        all_bgc_records = bs_files.get_all_bgc_records(run, gbks)
 
     # get fist task
     run_state = bs_data.find_minimum_task(gbks)
@@ -169,8 +153,18 @@ def run_bigscape(run: dict) -> None:
         logging.info("Scanning %d CDS", len(cds_to_scan))
 
         if platform.system() == "Darwin":
-            logging.warning("Running on mac-OS: hmmsearch_simple single threaded")
-            HMMer.hmmsearch_simple(cds_to_scan, 1)
+            logging.debug(
+                "Running on %s: hmmsearch_simple with %d cores",
+                platform.system(),
+                run["cores"],
+            )
+            with tqdm.tqdm(unit="CDS", total=len(HMMer.profiles), desc="HMMSCAN") as t:
+                HMMer.hmmsearch_simple(
+                    cds_to_scan,
+                    domain_overlap_cutoff=run["domain_overlap_cutoff"],
+                    cores=run["cores"],
+                    callback=lambda x, y: t.update(),
+                )
         else:
             logging.debug(
                 "Running on %s: hmmsearch_multiprocess with %d cores",
@@ -377,7 +371,9 @@ def run_bigscape(run: dict) -> None:
             str, list[tuple[int, int, float, float, float, float, int]]
         ] = {}
         if run["legacy_weights"]:
-            weights = bs_comparison.get_weight_category(query_record)
+            weights = bs_comparison.get_legacy_weights_from_category(
+                query_record, query_record.product, run
+            )
         else:
             weights = "mix"
         edge_param_id = bs_comparison.get_edge_param_id(run, weights)
@@ -387,7 +383,7 @@ def run_bigscape(run: dict) -> None:
 
             # get_connected_components returns a list of connected components, but we only
             # want the first one, so we use next()
-            
+
             query_connected_component = next(
                 bs_network.get_connected_components(
                     cutoff, edge_param_id, [query_record]

@@ -12,6 +12,7 @@ from typing import Callable, Iterator, Optional, cast, TYPE_CHECKING
 from pathlib import Path
 from multiprocessing import Pipe, Process, cpu_count
 from multiprocessing.connection import Connection, wait
+from typing import Generator, List
 
 # from dependencies
 from pyhmmer.plan7 import (
@@ -182,7 +183,10 @@ class HMMer:
 
     @staticmethod
     def hmmsearch_simple(
-        cds_list: list[CDS], domain_overlap_cutoff=0.1, cores=cpu_count()
+        cds_list: list[CDS],
+        domain_overlap_cutoff=0.1,
+        cores=cpu_count(),
+        callback: Optional[Callable] = None,
     ) -> None:
         """Performs hmmsearch on a list of CDS and appends detected HSPs to the CDS
         objects
@@ -195,7 +199,7 @@ class HMMer:
             Defaults to 0.1
         """
 
-        logging.info("Performing simple hmmsearch on %d genes", len(cds_list))
+        logging.debug("Performing simple hmmsearch on %d genes", len(cds_list))
 
         sequences = []
         for idx, cds in enumerate(cds_list):
@@ -204,12 +208,21 @@ class HMMer:
 
         digital_sequence = TextSequenceBlock(sequences).digitize(HMMer.alphabet)
 
+        # this is a generator of TopHits
+        # each top hit corresponds to a domain, which will have as many hits as there are CDSs with that domain
+        # included -> passes thresholds, reported -> all CDS <-> domain hits
         for top_hits in hmmsearch(
-            HMMer.profiles, digital_sequence, bit_cutoffs="trusted", cpus=cores
+            HMMer.profiles,
+            digital_sequence,
+            bit_cutoffs="trusted",
+            cpus=cores,
+            callback=callback,
         ):
-            for hit in top_hits:
+            # hit corresponds to a CDS that has a hit on that domain
+            for hit in top_hits:  # this is same as top_hits.reported
                 if not hit.included:
                     continue
+                # one CDS may have more than one domain hit, so we need to go through all of them
                 for domain in hit.domains:
                     if not domain.included:
                         continue
@@ -220,7 +233,7 @@ class HMMer:
                     cds_idx = int(hit.name.decode())
                     accession = domain.alignment.hmm_accession.decode()
                     score = domain.score
-                    env_start = domain.env_from
+                    env_start = domain.env_from - 1
                     env_stop = domain.env_to
                     relevant_cds = cds_list[cds_idx]
                     hsp = HSP(relevant_cds, accession, score, env_start, env_stop)
@@ -612,3 +625,34 @@ def process_algn_string(algn_string: str) -> str:
     cds gaps
     """
     return algn_string.translate(str.maketrans("", "", string.ascii_lowercase + "."))
+
+
+def cds_batch_generator(
+    cds_list: list, num_threads: int, batch_size: int = 100, spread_input: bool = True
+) -> Generator[List[CDS]]:
+    """Generates batches of CDSs
+
+    Args:
+        cds_list (list): complete list of CDSs to scan
+        num_threads (int): nr of cores
+        batch_size (int, optional): Defaults to 100.
+        spread_input (bool, optional): . Defaults to True.
+
+    Yields:
+        Generator[List[CDS]]: generator of CDS batches
+    """
+
+    divided_equally = int(len(cds_list) / num_threads)
+
+    if batch_size > divided_equally and spread_input:
+        batch_size = divided_equally
+
+    batch_size = max(1, batch_size)
+
+    i = 0
+    while (i * batch_size) < len(cds_list):
+        batch = cds_list[i * batch_size : min(((i + 1) * batch_size), len(cds_list))]
+
+        yield (batch)
+
+        i += 1

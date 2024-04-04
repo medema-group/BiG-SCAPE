@@ -101,10 +101,60 @@ class TestPartial(TestCase):
         self.addCleanup(self.clean_db)
 
     def test_min_task_data(self):
+        """Test if the minimum task is correctly determined
+        when there is no data in the db"""
+
         DB.create_in_mem()
         expected_min_task = bs_enums.TASK.SAVE_GBKS
 
         gbks = [create_mock_gbk(1)]
+
+        actual_min_task = find_minimum_task(gbks)
+
+        self.assertEqual(expected_min_task, actual_min_task)
+
+    def test_min_task_data_mixed_input(self):
+        """Test if the minimum task is correctly determined
+        when there is some data in the db"""
+        DB.create_in_mem()
+        expected_min_task = bs_enums.TASK.SAVE_GBKS
+
+        gbks = [create_mock_gbk(1), create_mock_gbk(2)]
+        gbks[0].save_all()
+
+        actual_min_task = find_minimum_task(gbks)
+
+        self.assertEqual(expected_min_task, actual_min_task)
+
+    def test_min_task_data_mixed_input_2(self):
+        """Test if the minimum task is correctly determined
+        when there is extra data in the db
+        but all data needed is already present"""
+        DB.create_in_mem()
+        expected_min_task = bs_enums.TASK.HMM_SCAN
+
+        gbks = [create_mock_gbk(1), create_mock_gbk(2), create_mock_gbk(1)]
+        for gbk in gbks:
+            gbk.save_all()
+
+        gbks = [gbks[0]]
+
+        actual_min_task = find_minimum_task(gbks)
+
+        self.assertEqual(expected_min_task, actual_min_task)
+
+    def test_min_task_data_mixed_input_3(self):
+        """Test if the minimum task is correctly determined when there is
+        some data in the db, some extra, but not all data needed"""
+        DB.create_in_mem()
+        expected_min_task = bs_enums.TASK.SAVE_GBKS
+
+        gbks = [create_mock_gbk(1), create_mock_gbk(2), create_mock_gbk(3)]
+
+        gbks[0].save_all()
+        gbks[1].save_all()
+
+        gbks = [gbks[0], gbks[2]]
 
         actual_min_task = find_minimum_task(gbks)
 
@@ -517,7 +567,7 @@ class TestPartialComparison(TestCase):
             pair_generator
         )
 
-        actual_missing_pairs = list(missing_edge_generator.generate_pairs())
+        actual_missing_pairs = list(missing_edge_generator.generate_pair_ids())
 
         self.assertListEqual(expected_missing_pairs, actual_missing_pairs)
 

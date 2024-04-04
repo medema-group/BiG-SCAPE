@@ -57,10 +57,6 @@ def calculate_distances_query(
                 query_class = [query_record.product]
                 record_class = [record.product]
 
-                if run["hybrids_off"]:
-                    query_class = query_class[0].split(".")
-                    record_class = record_class[0].split(".")
-
                 intersect_class = list(set(query_class) & set(record_class))
                 if len(intersect_class) > 0:
                     query_singleton = False
@@ -69,10 +65,6 @@ def calculate_distances_query(
             if classify_mode == bs_enums.CLASSIFY_MODE.CATEGORY:
                 query_category = [bs_comparison.get_record_category(query_record)]
                 record_category = [bs_comparison.get_record_category(record)]
-
-                if run["hybrids_off"]:
-                    query_category = query_category[0].split(".")
-                    record_category = record_category[0].split(".")
 
                 intersect_cats = list(set(query_category) & set(record_category))
                 if len(intersect_cats) > 0:
@@ -91,7 +83,9 @@ def calculate_distances_query(
 
     # if legacy weights are on, then use the legacy weights and pass as label to bin generator
     if run["legacy_weights"]:
-        weights = bs_comparison.get_weight_category(query_record)
+        weights = bs_comparison.get_legacy_weights_from_category(
+            query_record, query_record.product, run
+        )
     else:
         weights = "mix"
 

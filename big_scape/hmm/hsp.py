@@ -131,6 +131,9 @@ class HSP:
         if accession[7] == ".":
             return accession[:7]
 
+        if len(accession) > 10:
+            raise ValueError(f"Accession {accession} is not in the expected format")
+
         return accession
 
     @staticmethod
@@ -218,62 +221,6 @@ class HSP:
 
         # limit to > 0
         return max(0, right - left)
-
-    @staticmethod
-    def overlap_filter(hsp_list: list[HSP], overlap_cutoff=0.1) -> list[HSP]:
-        """Filters overlapping HSP
-
-        Args:
-            hsp_list (list[HSP]): a list of high scoring protein hits
-            overlap_cutoff: The maximum percentage sequence length domains can overlap
-                without being discarded
-
-        Returns:
-            list[HSP]: a filtered list of high scoring protein hits
-        """
-        # for this the hsps have to be sorted by any of the start coordinates
-        # this is for the rare case where two hsps have the same bit score.
-        # to replicate BiG-SCAPE output, the hsp with a lower start coordinate
-        # will end up being chosen
-        sorted_hsps = sorted(hsp_list, key=lambda hsp: hsp.cds.nt_start)
-
-        filtered_list = []
-        for i in range(len(sorted_hsps) - 1):
-            for j in range(i + 1, len(sorted_hsps)):
-                hsp_a: HSP = sorted_hsps[i]
-                hsp_b: HSP = sorted_hsps[j]
-
-                # check if we are the same CDS
-                if hsp_a == hsp_b:
-                    # check if there is overlap between the domains
-                    if not HSP.has_overlap(hsp_a, hsp_b):
-                        continue
-
-                    len_aa_overlap = HSP.len_overlap(hsp_a, hsp_b)
-
-                    # calculate percentage of total hsp length is the aa overlap between
-                    # two hsp
-                    overlap_perc_a = len_aa_overlap / (
-                        hsp_a.cds.nt_stop - hsp_a.cds.nt_start
-                    )
-                    overlap_perc_b = len_aa_overlap / (
-                        hsp_b.cds.nt_stop - hsp_b.cds.nt_start
-                    )
-                    # check if the amount of overlap is significant
-                    if (
-                        overlap_perc_a < overlap_cutoff
-                        and overlap_perc_b < overlap_cutoff
-                    ):
-                        continue
-                    # rounding with 1 decimal to mirror domtable files
-                    hsp_a_score = round(float(hsp_a.score), 1)
-                    hsp_b_score = round(float(hsp_b.score), 1)
-                    if hsp_a_score >= hsp_b_score:  # see which has a better score
-                        filtered_list.append(hsp_a)
-                    elif hsp_a_score < hsp_b_score:
-                        filtered_list.append(hsp_b)
-
-        return filtered_list
 
 
 class HSPAlignment:

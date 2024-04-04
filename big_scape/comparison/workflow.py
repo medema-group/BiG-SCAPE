@@ -94,6 +94,7 @@ def get_batch_size(cores: int, desired_batch_size: int, num_items: int):
     return desired_batch_size
 
 
+# TODO: Test ?
 def generate_edges(
     pair_generator: RecordPairGenerator,
     alignment_mode: bs_enums.ALIGNMENT_MODE,
@@ -119,7 +120,7 @@ def generate_edges(
     # prepare a process pool
     logging.debug("Using %d cores", cores)
 
-    pairs = pair_generator.generate_pairs()
+    pair_ids = pair_generator.generate_pair_ids()
 
     num_pairs = pair_generator.num_pairs()
 
@@ -146,8 +147,11 @@ def generate_edges(
 
     with ProcessPoolExecutor(cores) as executor:
         while True:
+            # create a buffer of submitted tasks
+            # to ensure that the executor is always working on something, even if
+            # the main thread is busy submitting new tasks
             while len(running_futures) < max_queue_length:
-                batch = batch_generator(pairs, batch_size)
+                batch = batch_generator(pair_ids, batch_size)
 
                 if len(batch) == 0:
                     all_done.set()
@@ -350,6 +354,7 @@ def expand_pair(pair: RecordPair) -> bool:
     return False
 
 
+# TODO: Test ?
 def calculate_scores_pair(
     data: tuple[list[tuple[int, int]], bs_enums.ALIGNMENT_MODE, int, str]
 ) -> list[
@@ -375,10 +380,10 @@ def calculate_scores_pair(
         int, int, bool, str,]]: list of scores for each pair in the
         order as the input data list, including lcs and extension coordinates
     """
-    pairs, alignment_mode, edge_param_id, weights_label = data
+    pair_ids, alignment_mode, edge_param_id, weights_label = data
 
     # convert database ids to minimal record objects
-    records = fetch_records_from_database(pairs)
+    records = fetch_records_from_database(pair_ids)
 
     results = []
 
@@ -386,7 +391,7 @@ def calculate_scores_pair(
     # seems to be a problem with the DB connection (for mac?)
     # weights_label = bs_comparison.get_edge_weight(edge_param_id)
 
-    for id_a, id_b in pairs:
+    for id_a, id_b in pair_ids:
         if id_a not in records or id_b not in records:
             comparable_region = bs_comparison.ComparableRegion(
                 0, 0, 0, 0, 0, 0, 0, 0, False

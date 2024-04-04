@@ -9,6 +9,7 @@ from pyhmmer.plan7 import HMM, OptimizedProfile
 
 # from other modules
 from big_scape.hmm import HMMer
+import big_scape.hmm as bs_hmm
 
 
 class TestHMMSetup(TestCase):
@@ -63,3 +64,31 @@ class TestHMMSetup(TestCase):
         profile = HMMer.get_profile("PF00457")
 
         self.assertIsInstance(profile, OptimizedProfile)
+
+    def test_get_cds_batches(self):
+        """tests whether cds_batch_generator correctly splits all cds in bacthes"""
+
+        cds_list = ["a", "b", "c", "d", "e", "f", "g", "h", "i", "j"]
+        cores = 3
+
+        expected_batches = [["a", "b", "c"], ["d", "e", "f"], ["g", "h", "i"], ["j"]]
+
+        actual_batches = list(bs_hmm.cds_batch_generator(cds_list, cores))
+
+        self.assertEqual(expected_batches, actual_batches)
+
+        cores = 1
+
+        expected_batches = [["a", "b", "c", "d", "e", "f", "g", "h", "i", "j"]]
+        actual_batches = list(bs_hmm.cds_batch_generator(cds_list, cores))
+
+        self.assertEqual(expected_batches, actual_batches)
+
+        cores = 5
+
+        expected_batches = [["a", "b", "c", "d", "e", "f", "g", "h", "i", "j"]]
+        actual_batches = list(
+            bs_hmm.cds_batch_generator(cds_list, cores, spread_input=False)
+        )
+
+        self.assertEqual(expected_batches, actual_batches)

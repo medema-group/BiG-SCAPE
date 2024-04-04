@@ -46,13 +46,16 @@ def get_mibig(mibig_version: str, bigscape_dir: Path):
     )
 
     if not os.path.exists(mibig_dir):
+        logging.info("Creating MIBiG %s directory", mibig_version)
         os.makedirs(mibig_dir)
 
     contents_dir = os.listdir(mibig_dir)
     if len(contents_dir) > 0 and any(mibig_version in dir for dir in contents_dir):
+        logging.info("MIBiG version %s already downloaded", mibig_version)
         # we assume that if a folder is here, that it is uncompressed and ready to use
         return mibig_version_dir
 
+    logging.info("Downloading MIBiG version %s", mibig_version)
     mibig_dir_compressed = Path(f"{mibig_version_dir}.tar.bz2")
     download_dataset(mibig_url, mibig_dir, mibig_dir_compressed)
     return mibig_version_dir
@@ -87,6 +90,7 @@ def download_dataset(url: str, path: Path, path_compressed: Path) -> None:
 
     # extract contents
     with tarfile.open(path_compressed) as file:
+        # TODO: deal with deprecation
         file.extractall(path)
 
     os.remove(path_compressed)
@@ -130,7 +134,7 @@ def load_dataset_folder(
     if mode == bs_enums.INPUT_MODE.FLAT:
         files = list(path.glob("*.gbk"))
 
-    # TODO: empty folder? -> redundant, already checked in cli
+    # redundant check, this should never happen if the cli is working properly
     if len(files) == 0:
         logging.error("Folder does not contain any GBK files!")
         raise FileNotFoundError()
@@ -325,9 +329,8 @@ def load_gbks(run: dict, bigscape_dir: Path) -> list[GBK]:
 
     # get reference if either MIBiG version or user-made reference dir passed
     if run["mibig_version"]:
-        mibig_version_dir = get_mibig(run["mibig_version"], bigscape_dir)
         mibig_gbks = load_dataset_folder(
-            mibig_version_dir, run, bs_enums.SOURCE_TYPE.MIBIG
+            run["mibig_dir"], run, bs_enums.SOURCE_TYPE.MIBIG
         )
         input_gbks.extend(mibig_gbks)
 
@@ -344,17 +347,6 @@ def load_gbks(run: dict, bigscape_dir: Path) -> list[GBK]:
     input_gbks = bgc_length_contraint(input_gbks)
 
     # find the minimum task set for these gbks
-    # if there is no database, create a new one and load in all the input stuff
-    if not run["db_path"].exists():
-        bs_data.DB.create_in_mem()
-        all_cds: list[bs_gbk.CDS] = []
-        for gbk in input_gbks:
-            gbk.save_all()
-            all_cds.extend(gbk.genes)
-
-        return input_gbks
-
-    bs_data.DB.load_from_disk(run["db_path"])
     task_state = bs_data.find_minimum_task(input_gbks)
 
     source_dict = {gbk.hash: gbk.source_type for gbk in input_gbks}
@@ -388,3 +380,70 @@ def load_gbks(run: dict, bigscape_dir: Path) -> list[GBK]:
         bs_hmm.HSP.load_all(gbk.genes)
 
     return input_gbks_from_db
+
+
+def get_all_bgc_records(run: dict, gbks: List[GBK]) -> List[bs_gbk.BGCRecord]:
+    """Get all BGC records from the working list of GBKs
+
+    Args:
+        gbks (list[GBK]): list of GBK objects
+        run (dict): run parameters
+
+    Returns:
+        list[bs_gbk.BGCRecord]: list of BGC records
+    """
+    all_bgc_records: list[bs_gbk.BGCRecord] = []
+    for gbk in gbks:
+        if gbk.region is not None:
+            gbk_records = bs_gbk.bgc_record.get_sub_records(
+                gbk.region, run["record_type"]
+            )
+            all_bgc_records.extend(gbk_records)
+
+    return all_bgc_records
+
+
+def get_all_bgc_records_query(
+    run: dict, gbks: List[GBK]
+) -> tuple[List[bs_gbk.BGCRecord], bs_gbk.BGCRecord]:
+    """Get all BGC records from the working list of GBKs
+
+    Args:
+        gbks (list[GBK]): list of GBK objects
+        run (dict): run parameters
+
+    Returns:
+        list[bs_gbk.BGCRecord]: list of BGC records
+    """
+    all_bgc_records: list[bs_gbk.BGCRecord] = []
+    for gbk in gbks:
+        if gbk.region is not None:
+            gbk_records = bs_gbk.bgc_record.get_sub_records(
+                gbk.region, run["record_type"]
+            )
+            if gbk.source_type == bs_enums.SOURCE_TYPE.QUERY:
+                query_record_type = run["record_type"]
+
+                query_record_type = run["record_type"]
+                query_record_number = run["query_record_number"]
+
+                query_sub_records = bs_gbk.bgc_record.get_sub_records(
+                    gbk.region, query_record_type
+                )
+
+                if query_record_type == bs_enums.RECORD_TYPE.REGION:
+                    query_record = query_sub_records[0]
+
+                else:
+                    query_record = [
+                        record
+                        for record in query_sub_records
+                        if record.number == query_record_number
+                    ][0]
+
+                all_bgc_records.append(query_record)
+
+            else:
+                all_bgc_records.extend(gbk_records)
+
+    return all_bgc_records, query_record

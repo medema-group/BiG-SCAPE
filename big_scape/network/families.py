@@ -46,6 +46,8 @@ def generate_families(
     # or if the connected component connectivity is below a threshold
     # or if the connected component breaks when removing the top nodes with
     # highest betweenness centrality
+    # TODO: consider getting rid of centrality check, but still
+    # need a center node for trees
     cc_edge_weight_std = get_cc_edge_weight_std(connected_component)
     if cc_edge_weight_std < BigscapeConfig.EDGE_WEIGHT_STD_THRESHOLD:
         cc_connectivity = get_cc_connectivity(connected_component)

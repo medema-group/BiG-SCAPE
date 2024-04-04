@@ -75,7 +75,6 @@ class TestHMMScan(TestCase):
 
         self.assertEqual(expected_result, actual_result)
 
-    @unittest.skipIf(platform.system() == "Darwin", "Unsupported OS")
     def test_search(self):
         """Tests scanning of a single sequence on a set of domain HMMs"""
 
@@ -100,6 +99,67 @@ class TestHMMScan(TestCase):
         HMMer.hmmsearch_simple([cds])
 
         actual_result = cds.hsps[0]
+
+        self.assertEqual(expected_result, actual_result)
+
+    def test_search_two_domain_hits(self):
+        """Tests scanning of a single sequence on a set of domain HMMs"""
+
+        aa_seq = (
+            "MQQDGTQQDRIKQSPAPLNGMSRRGFLGGAGTLALATASGLLLPGTAHAATTITTNQTGTDGMYYSFWTDGGGS"
+            "VSMTLNGGGSYSTQWTNCGNFVAGKGWSTGGRRTVRYNGYFNPSGNGYGCLYGWTSNPLVEYYIVDNWGSYRPT"
+            "VSMTLNGGGSYSTQWTNCGNFVAGKSVEGTKTFQVRYNGYFNPSGNGYGCLYGWTHFDAWARAGMNMGQFRYYM"
+            "IMATEGYQSSGSSNITVSGMQTYMSKNKCHCPNEVTIVSLSCHRTRTWWWVWEIPLNEDLVVGVVARSLYSMQQD"
+            "GTQQDRIKQSPAPLNGMSRRGFLGGAGTLALATASGLLLPGTAHAATTITTNQTGTDGMYYSFWTMQQDGTQQDR"
+            "IKQSPAPLNGMSRRGFLGGAGTLALATASGLLLPGTAHAATTITTNQTGTDGMYYSFWTDGGGS"
+        )
+
+        # domain_hit_1
+        # score: 113.76690673828125
+        # included: True
+        # env_start: 60
+        # env_stop: 155
+
+        # domain_hit_2
+        # score: 40.309471130371094
+        # included: True
+        # env_start: 147
+        # env_stop: 204
+
+        # domain_hit_3
+        # score: 37.029972076416016
+        # included: True
+        # env_start: 203
+        # env_stop: 238
+
+        # domain_hit_4
+        # score: -1.5011663436889648
+        # included: False
+        # env_start: 0
+        # env_stop: 95
+
+        # domain_hit_5
+        # score: 0.8793293833732605
+        # included: False
+        # env_start: 0
+        # env_stop: 95
+
+        # domain_hit_1 and domain_hit_2 overlap, so we only expect domain_hit_1 to be included,
+        # as well as the non-overlapping domain_hit_3
+
+        cds = CDS(0, len(aa_seq) * 3)
+        cds.aa_seq = aa_seq
+
+        # loading this specific hmm because we know the above sequences will be matched
+        # by it
+        hmm_path = Path("test/test_data/hmm/PF00457.19.hmm")
+
+        HMMer.init(hmm_path)
+
+        HMMer.hmmsearch_simple([cds])
+
+        expected_result = [113.76690673828125, 37.029972076416016]
+        actual_result = [domain.score for domain in cds.hsps]
 
         self.assertEqual(expected_result, actual_result)
 
@@ -128,6 +188,33 @@ class TestHMMScan(TestCase):
         HMMer.hmmsearch_multiprocess([cds], batch_size=1)
 
         actual_result = cds.hsps[0]
+
+        self.assertEqual(expected_result, actual_result)
+
+    @unittest.skipIf(platform.system() == "Darwin", "Unsupported OS")
+    def test_search_two_domain_hits_multiprocess(self):
+        """Tests scanning of a single sequence on a set of domain HMMs"""
+
+        aa_seq = (
+            "MQQDGTQQDRIKQSPAPLNGMSRRGFLGGAGTLALATASGLLLPGTAHAATTITTNQTGTDGMYYSFWTDGGGS"
+            "VSMTLNGGGSYSTQWTNCGNFVAGKGWSTGGRRTVRYNGYFNPSGNGYGCLYGWTSNPLVEYYIVDNWGSYRPT"
+            "VSMTLNGGGSYSTQWTNCGNFVAGKSVEGTKTFQVRYNGYFNPSGNGYGCLYGWTHFDAWARAGMNMGQFRYYM"
+            "IMATEGYQSSGSSNITVSGMQTYMSKNKCHCPNEVTIVSLSCHRTRTWWWVWEIPLNEDLVVGVVARSLYSMQQD"
+            "GTQQDRIKQSPAPLNGMSRRGFLGGAGTLALATASGLLLPGTAHAATTITTNQTGTDGMYYSFWTMQQDGTQQDR"
+            "IKQSPAPLNGMSRRGFLGGAGTLALATASGLLLPGTAHAATTITTNQTGTDGMYYSFWTDGGGS"
+        )
+
+        cds = CDS(0, len(aa_seq) * 3)
+        cds.aa_seq = aa_seq
+
+        hmm_path = Path("test/test_data/hmm/PF00457.19.hmm")
+
+        HMMer.init(hmm_path)
+
+        HMMer.hmmsearch_multiprocess([cds], batch_size=1)
+
+        expected_result = [113.76690673828125, 37.029972076416016]
+        actual_result = [domain.score for domain in cds.hsps]
 
         self.assertEqual(expected_result, actual_result)
 
