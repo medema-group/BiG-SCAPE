@@ -201,53 +201,47 @@ class HMMer:
 
         logging.debug("Performing simple hmmsearch on %d genes", len(cds_list))
 
-        cds_batches = cds_batch_generator(cds_list, cores)
+        sequences = []
+        for idx, cds in enumerate(cds_list):
+            # name is actually the list index of the original CDS
+            sequences.append(
+                TextSequence(name=str(idx).encode(), sequence=cds.aa_seq)
+            )
 
-        for cds_batch in cds_batches:
-            sequences = []
-            for idx, cds in enumerate(cds_batch):
-                # name is actually the list index of the original CDS
-                sequences.append(
-                    TextSequence(name=str(idx).encode(), sequence=cds.aa_seq)
-                )
+        digital_sequence = TextSequenceBlock(sequences).digitize(HMMer.alphabet)
 
-            digital_sequence = TextSequenceBlock(sequences).digitize(HMMer.alphabet)
-
-            # this is a generator of TopHits
-            # each top hit corresponds to a domain, which will have as many hits as there are CDSs with that domain
-            # included -> passes thresholds, reported -> all CDS <-> domain hits
-            for top_hits in hmmsearch(
-                HMMer.profiles, digital_sequence, bit_cutoffs="trusted", cpus=cores
-            ):
-                # hit corresponds to a CDS that has a hit on that domain
-                for hit in top_hits:  # this is same as top_hits.reported
-                    if not hit.included:
+        # this is a generator of TopHits
+        # each top hit corresponds to a domain, which will have as many hits as there are CDSs with that domain
+        # included -> passes thresholds, reported -> all CDS <-> domain hits
+        for top_hits in hmmsearch(
+            HMMer.profiles, digital_sequence, bit_cutoffs="trusted", cpus=cores, callback=callback
+        ):
+            # hit corresponds to a CDS that has a hit on that domain
+            for hit in top_hits:  # this is same as top_hits.reported
+                if not hit.included:
+                    continue
+                # one CDS may have more than one domain hit, so we need to go through all of them
+                for domain in hit.domains:
+                    if not domain.included:
                         continue
-                    # one CDS may have more than one domain hit, so we need to go through all of them
-                    for domain in hit.domains:
-                        if not domain.included:
-                            continue
-                        if domain.score < 0:
-                            continue
+                    if domain.score < 0:
+                        continue
 
-                        # name is actually the list index of the original CDS
-                        cds_idx = int(hit.name.decode())
-                        accession = domain.alignment.hmm_accession.decode()
-                        score = domain.score
-                        env_start = domain.env_from - 1
-                        env_stop = domain.env_to
-                        relevant_cds = cds_batch[cds_idx]
-                        hsp = HSP(relevant_cds, accession, score, env_start, env_stop)
-                        relevant_cds.add_hsp_overlap_filter(hsp, domain_overlap_cutoff)
+                    # name is actually the list index of the original CDS
+                    cds_idx = int(hit.name.decode())
+                    accession = domain.alignment.hmm_accession.decode()
+                    score = domain.score
+                    env_start = domain.env_from - 1
+                    env_stop = domain.env_to
+                    relevant_cds = cds_list[cds_idx]
+                    hsp = HSP(relevant_cds, accession, score, env_start, env_stop)
+                    relevant_cds.add_hsp_overlap_filter(hsp, domain_overlap_cutoff)
 
-            if callback is not None:
-                callback(len(cds_batch))
-
-            # almost certainly not every cds has an HSP, so we can only assume that if this reached the
-            # end of the function all of the CDS were scanned.
-            if DB.opened():
-                for cds in cds_list:
-                    HMMer.set_hmm_scanned(cds)
+        # almost certainly not every cds has an HSP, so we can only assume that if this reached the
+        # end of the function all of the CDS were scanned.
+        if DB.opened():
+            for cds in cds_list:
+                HMMer.set_hmm_scanned(cds)
 
     @staticmethod
     def calc_batch_size(num_genes: int, cores=cpu_count()) -> int:
