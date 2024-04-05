@@ -414,10 +414,6 @@ def calculate_scores_pair(
 
     results = []
 
-    # TODO: this fails since DB getting accessed from child processes
-    # seems to be a problem with the DB connection (for mac?)
-    # weights_label = bs_comparison.get_edge_weight(edge_param_id)
-
     for id_a, id_b in pair_ids:
         if id_a not in records or id_b not in records:
             comparable_region = bs_comparison.ComparableRegion(

@@ -556,8 +556,8 @@ class TestPartialComparison(TestCase):
         mix_bin.add_records([gbk.region for gbk in gbks])
 
         expected_missing_pairs = [
-            (gbks[0].region._db_id, gbks[2].region._db_id),
-            (gbks[1].region._db_id, gbks[2].region._db_id),
+            (gbks[0].region, gbks[2].region),
+            (gbks[1].region, gbks[2].region),
         ]
 
         pair_generator = bs_comparison.RecordPairGenerator("mix", 1)
