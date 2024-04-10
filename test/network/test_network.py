@@ -373,7 +373,7 @@ class TestNetwork(TestCase):
     def test_create_temp_record_table(self):
         """Test the create_temp_record_table function"""
 
-        self.skipTest("Not fully implemented yet")
+        # self.skipTest("Not implemented")
 
         bs_data.DB.create_in_mem()
 
@@ -403,10 +403,10 @@ class TestNetwork(TestCase):
 
         expected_row_count = 5
 
-        actual_row_count = len(rows)
         actual_row_count = bs_data.DB.execute(row_count_query).fetchone()[0]
 
         self.assertEqual(expected_row_count, actual_row_count)
+        self.assertEqual(expected_row_count, len(rows))
 
     def test_get_cc_edges(self):
         """Test the get_cc_edges function"""

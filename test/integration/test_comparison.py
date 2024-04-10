@@ -469,6 +469,3 @@ class TestComparison(TestCase):
 
     def test_calculate_distances_query(self):
         self.skipTest("Not implemented")
-
-    def test_get_connected_components(self):
-        self.skipTest("Not implemented")
