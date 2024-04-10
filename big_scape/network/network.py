@@ -547,3 +547,8 @@ def create_temp_record_table(include_records: list[BGCRecord]) -> Table:
     table = Table(temp_table_name, DB.metadata, autoload_with=DB.engine)
 
     return table
+
+
+def reset_db_connected_components():
+    """Removes any data from the connected component table"""
+    DB.execute(DB.metadata.tables["connected_component"].delete())
