@@ -316,8 +316,8 @@ def get_random_edge(
             distance_table.c.distance < cutoff,
             distance_table.c.edge_param_id == edge_param_id,
         )
-        .limit(1)
         # return only one edge
+        .limit(1)
     )
 
     if temp_record_table is not None:
