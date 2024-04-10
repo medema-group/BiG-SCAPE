@@ -230,16 +230,49 @@ class TestBGCBin(TestCase):
 
         # expected list should correctly sort the third entry int the list to be bgc_b, bgc_c
         expected_pair_list = [
-            (bgc_a._db_id, bgc_c._db_id),
-            (bgc_a._db_id, bgc_b._db_id),
-            (bgc_b._db_id, bgc_c._db_id),
+            (bgc_a, bgc_c),
+            (bgc_a, bgc_b),
+            (bgc_b, bgc_c),
         ]
 
         actual_pair_list = [
-            pair for pair in new_bin.generate_pair_ids(legacy_sorting=True)
+            pair for pair in new_bin.generate_pairs(legacy_sorting=True)
         ]
 
         self.assertEqual(expected_pair_list, actual_pair_list)
+
+    def test_generate_pairs(self):
+        """Tests whether bin.generate_pairs() correctly generates all pairs"""
+
+        gbk_a = GBK(Path("test1.gbk"), "test1", "test")
+        bgc_a = BGCRecord(gbk_a, 0, 0, 10, False, "")
+        bgc_a._db_id = 1
+        gbk_b = GBK(Path("test2.gbk"), "test2", "test")
+        bgc_b = BGCRecord(gbk_b, 0, 0, 10, False, "")
+        bgc_b._db_id = 2
+        gbk_c = GBK(Path("test3.gbk"), "test3", "test")
+        bgc_c = BGCRecord(gbk_c, 0, 0, 10, False, "")
+        bgc_c._db_id = 3
+
+        # due to the order, this should generate a list of pairs as follows without legacy sort:
+        # bgc_a, bgc_c
+        # bgc_a, bgc_b
+        # bgc_c, bgc_b
+        bgc_list = [bgc_a, bgc_c, bgc_b]
+
+        new_bin = RecordPairGenerator("test", 1)
+
+        new_bin.add_records(bgc_list)
+
+        actual_pair_list = [pair for pair in new_bin.generate_pairs()]
+
+        expected_pair_ids = [
+            (pair[0]._db_id, pair[1]._db_id) for pair in actual_pair_list
+        ]
+
+        actual_pair_ids = [pair for pair in new_bin.generate_pair_ids()]
+
+        self.assertEqual(expected_pair_ids, actual_pair_ids)
 
     def test_query_to_ref_pair_generator(self):
         """Tests whether the QueryToRefPairGenerator correctly generates a set of
@@ -264,11 +297,11 @@ class TestBGCBin(TestCase):
 
         expected_pairs = []
         for ref_gbk in ref_gbks:
-            expected_pair = (query_gbk.region._db_id, ref_gbk.region._db_id)
+            expected_pair = (query_gbk.region, ref_gbk.region)
             expected_pairs.append(expected_pair)
 
         # get all edges
-        actual_pairs = list(query_to_ref_pair_generator.generate_pair_ids())
+        actual_pairs = list(query_to_ref_pair_generator.generate_pairs())
 
         self.assertListEqual(expected_pairs, actual_pairs)
 
@@ -371,14 +404,14 @@ class TestBGCBin(TestCase):
         # this is rough, so let's type it all out
         expected_pairs = set(
             [
-                (ref_gbks[0].region._db_id, ref_gbks[2].region._db_id),
-                (ref_gbks[0].region._db_id, ref_gbks[3].region._db_id),
-                (ref_gbks[1].region._db_id, ref_gbks[2].region._db_id),
-                (ref_gbks[1].region._db_id, ref_gbks[3].region._db_id),
+                (ref_gbks[0].region, ref_gbks[2].region),
+                (ref_gbks[0].region, ref_gbks[3].region),
+                (ref_gbks[1].region, ref_gbks[2].region),
+                (ref_gbks[1].region, ref_gbks[3].region),
             ]
         )
 
-        actual_pairs = set(list(ref_to_ref_pair_generator.generate_pair_ids()))
+        actual_pairs = set(list(ref_to_ref_pair_generator.generate_pairs()))
 
         self.assertEqual(expected_pairs, actual_pairs)
 
@@ -473,7 +506,7 @@ class TestBGCBin(TestCase):
         # so now we have a network where the query is connected to 2 of the reference
         # records, and two of the reference records are not connected to anything
         # let's do the first iteration
-        list(ref_to_ref_pair_generator.generate_pair_ids())
+        list(ref_to_ref_pair_generator.generate_pairs())
 
         # we throw away the result because I want to test the second iteration, and
         # I want to enter the distance data manually
@@ -599,11 +632,11 @@ class TestBGCBin(TestCase):
         # now we can do the second iteration
         expected_pairs = set(
             [
-                (ref_gbks[3].region._db_id, ref_gbks[2].region._db_id),
+                (ref_gbks[3].region, ref_gbks[2].region),
             ]
         )
 
-        actual_pairs = set(list(ref_to_ref_pair_generator.generate_pair_ids()))
+        actual_pairs = set(list(ref_to_ref_pair_generator.generate_pairs()))
 
         self.assertEqual(expected_pairs, actual_pairs)
 
@@ -672,9 +705,9 @@ class TestBGCBin(TestCase):
 
         expected_pairs = set(
             [
-                (query_gbk.region._db_id, ref_gbks[0].region._db_id),
-                (query_gbk.region._db_id, ref_gbks[1].region._db_id),
-                (ref_gbks[0].region._db_id, ref_gbks[1].region._db_id),
+                (query_gbk.region, ref_gbks[0].region),
+                (query_gbk.region, ref_gbks[1].region),
+                (ref_gbks[0].region, ref_gbks[1].region),
             ]
         )
         # expected_record_ids = [1, 2, 3]
@@ -683,7 +716,7 @@ class TestBGCBin(TestCase):
         cc_pair_generator.add_records(source_records)
 
         # actual_record_ids = cc_pair_generator.record_ids = [1, 2, 3]
-        actual_pairs = set(list(cc_pair_generator.generate_pair_ids()))
+        actual_pairs = set(list(cc_pair_generator.generate_pairs()))
 
         self.assertEqual(expected_pairs, actual_pairs)
 
@@ -820,7 +853,7 @@ class TestMixComparison(TestCase):
         # expected representation of the bin object
         expected_pair_count = 3
 
-        actual_pair_count = len(list(new_bin.generate_pair_ids()))
+        actual_pair_count = len(list(new_bin.generate_pairs()))
 
         self.assertEqual(expected_pair_count, actual_pair_count)
 

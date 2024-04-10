@@ -556,8 +556,8 @@ class TestPartialComparison(TestCase):
         mix_bin.add_records([gbk.region for gbk in gbks])
 
         expected_missing_pairs = [
-            (gbks[0].region._db_id, gbks[2].region._db_id),
-            (gbks[1].region._db_id, gbks[2].region._db_id),
+            (gbks[0].region, gbks[2].region),
+            (gbks[1].region, gbks[2].region),
         ]
 
         pair_generator = bs_comparison.RecordPairGenerator("mix", 1)
@@ -567,7 +567,7 @@ class TestPartialComparison(TestCase):
             pair_generator
         )
 
-        actual_missing_pairs = list(missing_edge_generator.generate_pair_ids())
+        actual_missing_pairs = list(missing_edge_generator.generate_pairs())
 
         self.assertListEqual(expected_missing_pairs, actual_missing_pairs)
 
