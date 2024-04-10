@@ -519,6 +519,7 @@ def create_temp_record_table(include_records: list[BGCRecord]) -> Table:
             primary_key=True,
             nullable=False,
         ),
+        prefixes=["TEMPORARY"],
     )
 
     DB.metadata.create_all(DB.engine)
