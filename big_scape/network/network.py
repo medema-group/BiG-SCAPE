@@ -358,10 +358,14 @@ def get_cc_edges(
         and_(
             or_(
                 distance_table.c.record_a_id.in_(
-                    select(cc_table.c.record_id).where(cc_table.c.id == cc_id)
+                    select(cc_table.c.record_id)
+                    .where(cc_table.c.id == cc_id)
+                    .where(cc_table.c.cutoff == cutoff)
                 ),
                 distance_table.c.record_b_id.in_(
-                    select(cc_table.c.record_id).where(cc_table.c.id == cc_id)
+                    select(cc_table.c.record_id)
+                    .where(cc_table.c.id == cc_id)
+                    .where(cc_table.c.cutoff == cutoff)
                 ),
             ),
             distance_table.c.distance < cutoff,
