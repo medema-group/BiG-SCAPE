@@ -7,7 +7,17 @@ import random
 import string
 import tqdm
 from typing import Optional, Generator, cast
-from sqlalchemy import Table, and_, distinct, or_, select, func
+from sqlalchemy import (
+    Column,
+    ForeignKey,
+    Integer,
+    Table,
+    and_,
+    distinct,
+    or_,
+    select,
+    func,
+)
 
 # from other modules
 from big_scape.data import DB
@@ -484,34 +494,55 @@ def create_temp_record_table(include_records: list[BGCRecord]) -> Table:
     Returns:
         Table: the temporary table
     """
-    ids = [record._db_id for record in include_records]
+    ids = []
+
+    for record in include_records:
+        if record._db_id is None:
+            raise ValueError("Record has no db id")
+        ids.append(record._db_id)
 
     # generate a short random string
     temp_table_name = "temp_" + "".join(random.choices(string.ascii_lowercase, k=10))
 
-    create_temp_table = f"""
-        CREATE TEMPORARY TABLE {temp_table_name} (
-            record_id INTEGER PRIMARY KEY NOT NULL references bgc_record(id)
-        );
-    """
+    temp_table = Table(
+        temp_table_name,
+        DB.metadata,
+        Column(
+            "record_id",
+            Integer,
+            ForeignKey(DB.metadata.tables["bgc_record"].c.id),
+            primary_key=True,
+            nullable=False,
+        ),
+    )
 
-    DB.execute_raw_query(create_temp_table)
+    DB.metadata.create_all(DB.engine)
 
-    DB.commit()
+    # create_temp_table = f"""
+    #     CREATE TEMPORARY TABLE {temp_table_name} (
+    #         record_id INTEGER PRIMARY KEY NOT NULL references bgc_record(id)
+    #     );
+    # """
+
+    # DB.execute_raw_query(create_temp_table)
 
     if DB.engine is None:
-        raise RuntimeError("DB.engine is None")
-    cursor = DB.engine.raw_connection().cursor()
+        raise RuntimeError("DB engine is None")
+
+    cursor = DB.engine.raw_connection().driver_connection.cursor()
 
     insert_query = f"""
         INSERT INTO {temp_table_name} (record_id) VALUES (?);
     """
 
-    cursor.executemany(insert_query, [(x,) for x in ids])
+    cursor.executemany(insert_query, [(x,) for x in ids])  # type: ignore
 
     cursor.close()
 
     DB.commit()
+
+    if DB.metadata is None:
+        raise ValueError("DB metadata is None")
 
     table = Table(temp_table_name, DB.metadata, autoload_with=DB.engine)
 
