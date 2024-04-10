@@ -7,8 +7,12 @@ import pathlib
 from unittest import TestCase
 from itertools import combinations
 
+# from dependencies
+from sqlalchemy import select, func
+
 # from other modules
 import big_scape.genbank as bs_gbk
+import big_scape.file_input as bs_files
 import big_scape.data as bs_data
 import big_scape.network.network as bs_network
 import big_scape.comparison as bs_comparison
@@ -24,13 +28,14 @@ def create_mock_gbk(i) -> bs_gbk.GBK:
     cds.orf_num = 1
     cds.strand = 1
     gbk.genes.append(cds)
-    gbk.region = bs_gbk.Region(gbk, 1, 0, 100, False, "test")
+    gbk.region = bs_gbk.Region(gbk, i, 0, 100, False, "test")
     gbk.metadata = {"organism": "test", "taxonomy": "test", "description": "test"}
     return gbk
 
 
 def gen_mock_edge_list(
     edge_gbks: list[bs_gbk.GBK],
+    score: float = 0.0,
 ) -> list[
     tuple[int, int, float, float, float, float, int, bs_comparison.ComparableRegion]
 ]:
@@ -45,10 +50,10 @@ def gen_mock_edge_list(
             (
                 gbk_a.region._db_id,
                 gbk_b.region._db_id,
-                0.0,
-                1.0,
-                1.0,
-                1.0,
+                score,
+                1.0 - score,
+                1.0 - score,
+                1.0 - score,
                 1,
                 bs_comparison.ComparableRegion(
                     0,
@@ -365,6 +370,128 @@ class TestNetwork(TestCase):
         # we expect the edge to be in the list of edges
         self.assertIn(random_edge, edges_small)
 
+    def test_create_temp_record_table(self):
+        """Test the create_temp_record_table function"""
+
+        self.skipTest("Not fully implemented yet")
+
+        bs_data.DB.create_in_mem()
+
+        run = {"record_type": bs_enums.RECORD_TYPE.REGION}
+
+        gbks = []
+
+        for i in range(5):
+            gbk = create_mock_gbk(i)
+            gbk.save_all()
+            gbks.append(gbk)
+
+        include_records = []
+
+        record = bs_files.get_all_bgc_records(run, gbks)
+        include_records.extend(record)
+
+        table = bs_network.create_temp_record_table(include_records)
+
+        temp_table_name = table.name
+        temp_table = bs_data.DB.metadata.tables[temp_table_name]
+
+        rows = bs_data.DB.execute_raw_query(
+            "select * from " + temp_table_name
+        ).fetchall()
+        row_count_query = select(func.count(temp_table.c.record_id))
+
+        expected_row_count = 5
+
+        actual_row_count = len(rows)
+        actual_row_count = bs_data.DB.execute(row_count_query).fetchone()[0]
+
+        self.assertEqual(expected_row_count, actual_row_count)
+
     def test_get_cc_edges(self):
         """Test the get_cc_edges function"""
-        self.skipTest("Not implemented yet")
+
+        bs_data.DB.create_in_mem()
+
+        # create a bunch of gbk files
+        gbks_a = []
+        for i in range(3):
+            gbk = create_mock_gbk(i)
+            gbks_a.append(gbk)
+            gbk.save_all()
+
+        gbks_b = []
+        for i in range(3):
+            gbk = create_mock_gbk(i)
+            gbks_b.append(gbk)
+            gbk.save_all()
+
+        # create a bunch of edges, generating a cc with edges of distance 0
+        # and another with distance 0.6
+        # gen_mock_edge_list creates edges for all combinations of gbks
+        edges_a = gen_mock_edge_list(gbks_a)
+        edges_b = gen_mock_edge_list(gbks_b, 0.6)
+
+        edges = edges_a + edges_b
+
+        # save the edges
+        for edge in edges:
+            bs_comparison.save_edge_to_db(edge)
+
+        # generate connected components
+        bs_network.generate_connected_components(0.5, 1)
+
+        cc_ids = bs_network.get_connected_component_ids(0.5, 1)
+
+        cc_edges_a = bs_network.get_cc_edges(cc_ids[0], 1, 1)
+
+        expected_data = {"cc_count": 1, "edge_count": len(edges_a)}
+        seen_data = {"cc_count": len(cc_ids), "edge_count": len(cc_edges_a)}
+
+        self.assertEqual(expected_data, seen_data)
+
+    def test_get_nodes_from_cc(self):
+        """Test the get_nodes_from_cc function"""
+
+        bs_data.DB.create_in_mem()
+
+        # create a bunch of gbk files
+        gbks_a = []
+        for i in range(3):
+            gbk = create_mock_gbk(i)
+            gbks_a.append(gbk)
+            gbk.save_all()
+
+        gbks_b = []
+        for i in range(3):
+            gbk = create_mock_gbk(i)
+            gbks_b.append(gbk)
+            gbk.save_all()
+
+        # gen_mock_edge_list creates edges for all combinations of gbks
+        edges_a = gen_mock_edge_list(gbks_a)
+
+        # save the edges
+        for edge in edges_a:
+            bs_comparison.save_edge_to_db(edge)
+
+        # generate connected components
+        cc = []
+        for edge in edges_a:
+            (
+                record_a_id,
+                record_b_id,
+                dist,
+                jacc,
+                adj,
+                dss,
+                edge_param_id,
+                comparable_region,
+            ) = edge
+
+            shortened = (record_a_id, record_b_id, dist, jacc, adj, dss, edge_param_id)
+            cc.append(shortened)
+
+        cc_nodes = bs_network.get_nodes_from_cc(cc, gbks_a + gbks_b)
+
+        self.assertEqual(len(cc_nodes), len(gbks_a))

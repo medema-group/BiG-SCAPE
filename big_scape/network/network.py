@@ -14,7 +14,6 @@ from big_scape.data import DB
 from big_scape.genbank import BGCRecord
 
 
-# TODO: test
 def get_connected_components(
     cutoff: float,
     edge_param_id: int,
@@ -168,6 +167,7 @@ def generate_connected_components(
     DB.commit()
 
 
+# TODO: not used, delete
 def has_missing_cc_assignments(
     cutoff: float, edge_param_id: int, temp_record_table: Optional[Table] = None
 ) -> bool:
@@ -363,8 +363,7 @@ def get_cc_edges(
 
 
 # generic functions
-
-
+# TODO: not used, delete
 def get_edge(
     include_nodes: set[int],
     exclude_nodes: set[int],
@@ -497,6 +496,8 @@ def create_temp_record_table(include_records: list[BGCRecord]) -> Table:
     """
 
     DB.execute_raw_query(create_temp_table)
+
+    DB.commit()
 
     if DB.engine is None:
         raise RuntimeError("DB.engine is None")
