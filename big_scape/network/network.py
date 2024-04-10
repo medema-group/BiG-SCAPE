@@ -140,6 +140,7 @@ def generate_connected_components(
 
                 if record_id_a not in seen:
                     inserts.append((cc_id, record_id_a, cutoff, edge_param_id))
+
                 if record_id_b not in seen:
                     inserts.append((cc_id, record_id_b, cutoff, edge_param_id))
 
@@ -153,15 +154,15 @@ def generate_connected_components(
 
             cursor.executemany(q, inserts)
 
-            t.update(len(edges))
-
             last_len = len(edges)
 
             edges = get_cc_edges(cc_id, cutoff, edge_param_id)
 
-            if len(edges) == last_len:
+            if last_len == len(edges):
                 # print(f"cc: {', '.join([str(x) for x in seen])}, ({len(seen)})")
                 edge = get_random_edge(cutoff, edge_param_id, temp_record_table)
+
+                t.update(len(edges))
 
                 if edge is None:
                     break
