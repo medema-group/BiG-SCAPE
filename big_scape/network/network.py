@@ -13,6 +13,7 @@ from sqlalchemy import (
     Integer,
     Table,
     and_,
+    delete,
     distinct,
     or_,
     select,
@@ -22,6 +23,7 @@ from sqlalchemy import (
 # from other modules
 from big_scape.data import DB
 from big_scape.genbank import BGCRecord
+import big_scape.enums as bs_enums
 
 
 def get_connected_components(
@@ -553,3 +555,88 @@ def create_temp_record_table(include_records: list[BGCRecord]) -> Table:
 def reset_db_connected_components():
     """Removes any data from the connected component table"""
     DB.execute(DB.metadata.tables["connected_component"].delete())
+
+
+def reference_only_connected_component(connected_component, bgc_records) -> bool:
+    """Checks if this connected component is made up of only reference records"""
+
+    has_query = False
+
+    record_ids = []
+
+    for edge in connected_component:
+        record_a_id, record_b_id, _, _, _, _, _ = edge
+        record_ids.append(record_a_id)
+        record_ids.append(record_b_id)
+
+    for record in bgc_records:
+        if record._db_id is None:
+            raise ValueError("Record has no db id")
+        if (
+            record._db_id in record_ids
+            and record.parent_gbk.source_type == bs_enums.SOURCE_TYPE.QUERY
+        ):
+            has_query = True
+            break
+
+    return not has_query
+
+
+def get_connected_component_id(connected_component, cutoff, edge_param_id) -> int:
+    """Returns the connected component table id for the given connected component"""
+
+    if DB.metadata is None:
+        raise RuntimeError("DB.metadata is None")
+
+    record_ids = []
+
+    for edge in connected_component:
+        record_a_id, record_b_id, _, _, _, _, _ = edge
+        if record_a_id is None or record_b_id is None:
+            raise ValueError("Record id is None")
+        if record_a_id not in record_ids:
+            record_ids.append(record_a_id)
+        if record_b_id not in record_ids:
+            record_ids.append(record_b_id)
+
+    cc_table = DB.metadata.tables["connected_component"]
+
+    select_statement = (
+        select(cc_table.c.id)
+        .distinct()
+        .where(
+            and_(
+                cc_table.c.cutoff == cutoff,
+                cc_table.c.edge_param_id == edge_param_id,
+                cc_table.c.record_id.in_(record_ids),
+            )
+        )
+    )
+
+    cc_ids = DB.execute(select_statement).fetchall()
+
+    if len(cc_ids) == 0 or len(cc_ids) > 1:
+        raise ValueError(
+            f"Connected component not found or multiple found: {len(cc_ids)}"
+        )
+
+    return cc_ids[0][0]
+
+
+def remove_connected_component(connected_component, cutoff, edge_param_id) -> None:
+    """Removes a connected component from the cc table in the database"""
+
+    if DB.metadata is None:
+        raise RuntimeError("DB.metadata is None")
+
+    cc_id = get_connected_component_id(connected_component, cutoff, edge_param_id)
+
+    cc_table = DB.metadata.tables["connected_component"]
+
+    delete_statement = delete(cc_table).where(
+        cc_table.c.id == cc_id,
+    )
+
+    DB.execute(delete_statement)
+
+    DB.commit()
