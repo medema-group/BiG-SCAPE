@@ -18,6 +18,7 @@ from big_scape.genbank import (
     Region,
 )
 import big_scape.enums as bs_enums
+import big_scape.file_input as bs_files
 
 
 def create_mock_gbk(i, source_type: bs_enums.SOURCE_TYPE) -> GBK:
@@ -82,7 +83,7 @@ def create_mock_edge(a_id, b_id, distance=0.0):
 
 
 class TestComparison(TestCase):
-    """Test class for hmm search/scan workflow"""
+    """Test class for the network module"""
 
     def clean_db(self):
         if bs_data.DB.opened():
@@ -372,3 +373,95 @@ class TestComparison(TestCase):
         )
 
         self.assertEqual(len(cc_ids_and_cutoffs), expected_len)
+
+    def test_get_connected_components_no_ref_to_ref_ccs(self):
+        """Tests whether ref only ccs are correclty excluded from the analysis"""
+        bs_data.DB.create_in_mem()
+        run = {"record_type": bs_enums.RECORD_TYPE.REGION}
+
+        gbks_a = []
+        for i in range(3):
+            gbk = create_mock_gbk(i, bs_enums.SOURCE_TYPE.REFERENCE)
+            gbks_a.append(gbk)
+            gbk.save_all()
+
+        gbks_b = []
+        for i in range(3, 6):
+            gbk = create_mock_gbk(i, bs_enums.SOURCE_TYPE.QUERY)
+            gbks_b.append(gbk)
+            gbk.save_all()
+
+        gbks_c = []
+        for i in range(6, 9):
+            gbk = create_mock_gbk(i, bs_enums.SOURCE_TYPE.REFERENCE)
+            gbks_c.append(gbk)
+            gbk.save_all()
+
+        all_gbks = gbks_a + gbks_b + gbks_c
+
+        include_records = []
+
+        record = bs_files.get_all_bgc_records(run, all_gbks)
+        include_records.extend(record)
+
+        # create a bunch of edges, generating a cc with edges of distance 0
+        # and another with distance 0.6
+        # gen_mock_edge_list creates edges for all combinations of gbks
+
+        edges_a = gen_mock_edge_list(gbks_a, create_mock_edge)
+        edges_b = gen_mock_edge_list(gbks_b, create_mock_edge)
+        edges_c = gen_mock_edge_list(gbks_c, create_mock_edge, 0.6)
+
+        edges_d = gen_mock_edge_list([gbks_b[0], gbks_c[0]], create_mock_edge, 0.2)
+
+        edges = edges_a + edges_b + edges_c + edges_d
+
+        # save the edges
+        for edge in edges:
+            bs_comparison.save_edge_to_db(edge)
+
+        # distance cutoff 0.8, here we should only get one connected component,
+        # featuring all nodes from gbks_b and gbks_c
+        ccs = bs_network.get_connected_components(0.8, 1, all_gbks)
+
+        for cc in ccs:
+            is_ref_only = bs_network.reference_only_connected_component(
+                cc, include_records
+            )
+            if is_ref_only:
+                bs_network.remove_connected_component(cc, 0.8, 1)
+
+        cc_table = bs_data.DB.metadata.tables["connected_component"]
+
+        select_statement = select(cc_table.c.id).distinct()
+        len_cc = len(bs_data.DB.execute(select_statement).fetchall())
+
+        self.assertEqual(len_cc, 1)
+
+        select_statement = select(cc_table.c.record_id).where(cc_table.c.cutoff == 0.8)
+        rows = len(bs_data.DB.execute(select_statement).fetchall())
+
+        self.assertEqual(rows, len(gbks_b + gbks_c))
+
+        # distance cutoff 0.5, here we should only get one connected component,
+        # featuring nodes from gbks_b and one node from gbks_c
+        ccs = bs_network.get_connected_components(0.5, 1, all_gbks)
+
+        for cc in ccs:
+            is_ref_only = bs_network.reference_only_connected_component(
+                cc, include_records
+            )
+            if is_ref_only:
+                bs_network.remove_connected_component(cc, 0.5, 1)
+
+        cc_table = bs_data.DB.metadata.tables["connected_component"]
+
+        select_statement = select(cc_table.c.id).distinct()
+        len_cc = len(bs_data.DB.execute(select_statement).fetchall())
+
+        self.assertEqual(len_cc, 1)
+
+        select_statement = select(cc_table.c.record_id).where(cc_table.c.cutoff == 0.5)
+        rows = len(bs_data.DB.execute(select_statement).fetchall())
+
+        self.assertEqual(rows, len(gbks_b + [gbks_c[0]]))

@@ -19,10 +19,8 @@ import big_scape.comparison as bs_comparison
 import big_scape.enums as bs_enums
 
 
-def create_mock_gbk(i) -> bs_gbk.GBK:
-    gbk = bs_gbk.GBK(
-        pathlib.Path(f"test_path_{i}.gbk"), str(i), bs_enums.SOURCE_TYPE.QUERY
-    )
+def create_mock_gbk(i, source=bs_enums.SOURCE_TYPE.QUERY) -> bs_gbk.GBK:
+    gbk = bs_gbk.GBK(pathlib.Path(f"test_path_{i}.gbk"), str(i), source)
     cds = bs_gbk.CDS(0, 100)
     cds.parent_gbk = gbk
     cds.orf_num = 1
@@ -495,3 +493,150 @@ class TestNetwork(TestCase):
         cc_nodes = bs_network.get_nodes_from_cc(cc, gbks_a + gbks_b)
 
         self.assertEqual(len(cc_nodes), len(gbks_a))
+
+    def test_is_ref_only_connected_component(self):
+        bs_data.DB.create_in_mem()
+
+        run = {"record_type": bs_enums.RECORD_TYPE.REGION}
+
+        # create a bunch of gbk files
+        gbks_a = []
+        for i in range(3):
+            gbk = create_mock_gbk(i, bs_enums.SOURCE_TYPE.REFERENCE)
+            gbks_a.append(gbk)
+            gbk.save_all()
+
+        gbks_b = []
+        for i in range(3):
+            gbk = create_mock_gbk(i, bs_enums.SOURCE_TYPE.QUERY)
+            gbks_b.append(gbk)
+            gbk.save_all()
+
+        gbks = gbks_a + gbks_b
+
+        include_records = []
+
+        record = bs_files.get_all_bgc_records(run, gbks)
+        include_records.extend(record)
+
+        # create a bunch of edges, generating a cc with edges of distance 0
+        # and another with distance 0.6
+        # gen_mock_edge_list creates edges for all combinations of gbks
+        edges_a = gen_mock_edge_list(gbks_a)
+        edges_b = gen_mock_edge_list(gbks_b)
+
+        edges = edges_a + edges_b
+
+        # save the edges
+        for edge in edges:
+            bs_comparison.save_edge_to_db(edge)
+
+        # generate connected components
+        ccs = list(bs_network.get_connected_components(0.5, 1, include_records))
+
+        ref_status = {}
+
+        idx = 0
+        for cc in ccs:
+            is_ref_only = bs_network.reference_only_connected_component(
+                cc, include_records
+            )
+            ref_status[idx] = is_ref_only
+            idx += 1
+
+        expected_data = {0: True, 1: False}
+
+        self.assertEqual(expected_data, ref_status)
+
+    def test_get_connected_component_id(self):
+        """Tests the get_connected_component_id function"""
+        bs_data.DB.create_in_mem()
+
+        run = {"record_type": bs_enums.RECORD_TYPE.REGION}
+        # create a bunch of gbk files
+        gbks = []
+        for i in range(3):
+            gbk = create_mock_gbk(i, bs_enums.SOURCE_TYPE.REFERENCE)
+            gbks.append(gbk)
+            gbk.save_all()
+
+        include_records = []
+
+        record = bs_files.get_all_bgc_records(run, gbks)
+        include_records.extend(record)
+
+        edges = gen_mock_edge_list(gbks)
+
+        for edge in edges:
+            bs_comparison.save_edge_to_db(edge)
+
+        cc = next(bs_network.get_connected_components(0.5, 1, include_records))
+
+        cc_id = bs_network.get_connected_component_id(cc, 0.5, 1)
+
+        expected_data = 1
+
+        self.assertEqual(expected_data, cc_id)
+
+    def test_remove_connected_component(self):
+        bs_data.DB.create_in_mem()
+
+        run = {"record_type": bs_enums.RECORD_TYPE.REGION}
+
+        # create a bunch of gbk files
+        gbks_a = []
+        for i in range(3):
+            gbk = create_mock_gbk(i, bs_enums.SOURCE_TYPE.REFERENCE)
+            gbks_a.append(gbk)
+            gbk.save_all()
+
+        gbks_b = []
+        for i in range(3):
+            gbk = create_mock_gbk(i, bs_enums.SOURCE_TYPE.QUERY)
+            gbks_b.append(gbk)
+            gbk.save_all()
+
+        gbks = gbks_a + gbks_b
+
+        include_records = []
+
+        record = bs_files.get_all_bgc_records(run, gbks)
+        include_records.extend(record)
+
+        # create a bunch of edges, generating a cc with edges of distance 0
+        # and another with distance 0.6
+        # gen_mock_edge_list creates edges for all combinations of gbks
+        edges_a = gen_mock_edge_list(gbks_a)
+        edges_b = gen_mock_edge_list(gbks_b)
+
+        edges = edges_a + edges_b
+
+        # save the edges
+        for edge in edges:
+            bs_comparison.save_edge_to_db(edge)
+
+        # generate connected components
+        ccs = list(bs_network.get_connected_components(0.5, 1, include_records))
+
+        cc_table = bs_data.DB.metadata.tables["connected_component"]
+
+        select_statement = select(cc_table.c.id).distinct()
+
+        pre_len_cc = len(bs_data.DB.execute(select_statement).fetchall())
+
+        for cc in ccs:
+            is_ref_only = bs_network.reference_only_connected_component(
+                cc, include_records
+            )
+            if is_ref_only:
+                bs_network.remove_connected_component(cc, 0.5, 1)
+
+        select_statement = select(cc_table.c.id).distinct()
+
+        post_len_cc = len(bs_data.DB.execute(select_statement).fetchall())
+
+        cc_status = {"pre": pre_len_cc, "post": post_len_cc}
+
+        expected_data = {"pre": 2, "post": 1}
+
+        self.assertEqual(expected_data, cc_status)
