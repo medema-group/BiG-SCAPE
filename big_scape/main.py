@@ -470,10 +470,11 @@ def run_bigscape(run: dict) -> None:
         )
 
         for cutoff in run["gcf_cutoffs"]:
-            # cull ref singletons, use function below and add ref only flag
             # cull singletons ref only
+            mix_bin.cull_singletons(cutoff, ref_only=True)
             if not run["include_singletons"]:
-                mix_bin.cull_singletons(cutoff)  # all
+                # cull all records, ref and query
+                mix_bin.cull_singletons(cutoff, ref_only=False)
                 if len(mix_bin.record_ids) == 0:
                     logging.info(
                         f"Network {mix_bin.label} with cutoff {cutoff} is empty after culling singletons"
@@ -489,6 +490,7 @@ def run_bigscape(run: dict) -> None:
 
         for bin in legacy_class_bins:
             for cutoff in run["gcf_cutoffs"]:
+                bin.cull_singletons(cutoff, ref_only=True)
                 if not run["include_singletons"]:
                     bin.cull_singletons(cutoff)
                     if len(bin.record_ids) == 0:
@@ -506,6 +508,7 @@ def run_bigscape(run: dict) -> None:
 
         for bin in as_class_bins:
             for cutoff in run["gcf_cutoffs"]:
+                bin.cull_singletons(cutoff, ref_only=True)
                 if not run["include_singletons"]:
                     bin.cull_singletons(cutoff)
                     if len(bin.record_ids) == 0:
