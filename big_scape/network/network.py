@@ -588,21 +588,23 @@ def reference_only_connected_component(connected_component, bgc_records) -> bool
 
 
 def get_connected_component_id(connected_component, cutoff, edge_param_id) -> int:
-    """Returns the connected component table id for the given connected component"""
+    """Get the connected component id for the given connected component
+        expects all edges to be in one connected component, if thats not the
+        case, weird things might happen
+
+    Args:
+        connected_component: the connected component
+        cutoff: the distance cutoff
+        edge_param_id: the edge parameter id
+
+    Returns:
+        int: the connected component id
+    """
 
     if DB.metadata is None:
         raise RuntimeError("DB.metadata is None")
 
-    record_ids = []
-
-    for edge in connected_component:
-        record_a_id, record_b_id, _, _, _, _, _ = edge
-        if record_a_id is None or record_b_id is None:
-            raise ValueError("Record id is None")
-        if record_a_id not in record_ids:
-            record_ids.append(record_a_id)
-        if record_b_id not in record_ids:
-            record_ids.append(record_b_id)
+    record_id = connected_component[0][0]
 
     cc_table = DB.metadata.tables["connected_component"]
 
@@ -613,19 +615,15 @@ def get_connected_component_id(connected_component, cutoff, edge_param_id) -> in
             and_(
                 cc_table.c.cutoff == cutoff,
                 cc_table.c.edge_param_id == edge_param_id,
-                cc_table.c.record_id.in_(record_ids),
+                cc_table.c.record_id == record_id,
             )
         )
+        .limit(1)
     )
 
-    cc_ids = DB.execute(select_statement).fetchall()
+    cc_ids = DB.execute(select_statement).fetchone()
 
-    if len(cc_ids) == 0 or len(cc_ids) > 1:
-        raise ValueError(
-            f"Connected component not found or multiple found: {len(cc_ids)}"
-        )
-
-    return cc_ids[0][0]
+    return cc_ids[0]
 
 
 def remove_connected_component(connected_component, cutoff, edge_param_id) -> None:
