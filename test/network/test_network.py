@@ -441,7 +441,7 @@ class TestNetwork(TestCase):
 
         cc_ids = bs_network.get_connected_component_ids(0.5, 1)
 
-        cc_edges_a = bs_network.get_cc_edges(cc_ids[0], 1, 1)
+        cc_edges_a = bs_network.get_cc_edges(cc_ids[0], 0.5, 1)
 
         expected_data = {"cc_count": 1, "edge_count": len(edges_a)}
         seen_data = {"cc_count": len(cc_ids), "edge_count": len(cc_edges_a)}
