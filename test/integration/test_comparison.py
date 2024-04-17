@@ -36,7 +36,6 @@ def create_mock_gbk(i, source_type: bs_enums.SOURCE_TYPE) -> GBK:
     cds.strand = 1
     gbk.genes.append(cds)
     gbk.region = Region(gbk, 1, 0, 100, False, "test")
-    gbk.region._db_id = i
     gbk.metadata = {
         "organism": "banana",
         "taxonomy": "bananus;fruticus",
@@ -78,7 +77,7 @@ def create_mock_complete_single_gbk(
         "product": [bgc_class],
     }
 
-    protocluster = ProtoCluster.parse(protocluster_feature)
+    protocluster = ProtoCluster.parse(protocluster_feature, parent_gbk=gbk)
 
     protocore_feature = SeqFeature(FeatureLocation(0, 100), type="proto_core")
     protocore_feature.qualifiers = {
@@ -98,7 +97,6 @@ def create_mock_complete_single_gbk(
     cds.strand = 1
     gbk.genes.append(cds)
     gbk.region = region
-    gbk.region._db_id = i
     gbk.metadata = {
         "organism": "banana",
         "taxonomy": "bananus;fruticus",
@@ -150,7 +148,7 @@ def create_mock_complete_chemhyb_gbk(
         "product": [bgc_categories[0]],
     }
 
-    protocore_1 = ProtoCore.parse(protocore_feature_1)
+    protocore_1 = ProtoCore.parse(protocore_feature_1, parent_gbk=gbk)
 
     protocluster_feature_2 = SeqFeature(FeatureLocation(0, 100), type="protocluster")
     protocluster_feature_2.qualifiers = {
@@ -159,7 +157,7 @@ def create_mock_complete_chemhyb_gbk(
         "product": [bgc_categories[1]],
     }
 
-    protocluster_2 = ProtoCluster.parse(protocluster_feature_2)
+    protocluster_2 = ProtoCluster.parse(protocluster_feature_2, parent_gbk=gbk)
 
     protocore_feature_2 = SeqFeature(FeatureLocation(0, 100), type="proto_core")
     protocore_feature_2.qualifiers = {
@@ -167,7 +165,7 @@ def create_mock_complete_chemhyb_gbk(
         "product": [bgc_categories[1]],
     }
 
-    protocore_2 = ProtoCore.parse(protocore_feature_2)
+    protocore_2 = ProtoCore.parse(protocore_feature_2, parent_gbk=gbk)
 
     protocluster_1.add_proto_core(protocore_1)
     protocluster_2.add_proto_core(protocore_2)
@@ -181,7 +179,6 @@ def create_mock_complete_chemhyb_gbk(
     cds.strand = 1
     gbk.genes.append(cds)
     gbk.region = region
-    gbk.region._db_id = i
     gbk.metadata = {
         "organism": "banana",
         "taxonomy": "bananus;fruticus",
@@ -319,9 +316,56 @@ class TestComparison(TestCase):
         self.assertEqual(edge_param_id, 1)
 
     def test_fetch_records_from_db(self):
-        self.skipTest("Not implemented")
+        bs_data.DB.create_in_mem()
 
-    # TODO: add no hsp records
+        run = {
+            "alignment_mode": bs_enums.ALIGNMENT_MODE.AUTO,
+            "legacy_weights": True,
+            "record_type": bs_enums.RECORD_TYPE.REGION,
+            "cores": 1,
+        }
+        weights = "mix"
+
+        gbks_with_hsp = [
+            create_mock_gbk(
+                i,
+                bs_enums.SOURCE_TYPE.QUERY,
+            )
+            for i in range(0, 3)
+        ]
+
+        gbks_no_hsp = [
+            create_mock_complete_single_gbk(i, bs_enums.SOURCE_TYPE.QUERY, "PKS", "PKS")
+            for i in range(3, 6)
+        ]
+
+        gbks = gbks_with_hsp + gbks_no_hsp
+
+        for gbk in gbks_with_hsp:
+            gbk.save_all()
+            gbk.genes[0].hsps[0].save()
+            gbk.genes[0].hsps[0].alignment.save()
+
+        for gbk in gbks_no_hsp:
+            gbk.save_all()
+
+        bs_data.DB.commit()
+
+        list_bgc_records = bs_files.get_all_bgc_records(run, gbks)
+
+        edge_param_id = bs_comparison.get_edge_param_id(run, weights)
+
+        mix_bin = bs_comparison.generate_mix_bin(
+            list_bgc_records, edge_param_id, run["record_type"]
+        )
+
+        missing_edge_bin = bs_comparison.MissingRecordPairGenerator(mix_bin)
+
+        pair_ids = missing_edge_bin.generate_pair_ids()
+        records = bs_comparison.workflow.fetch_records_from_database(pair_ids)
+
+        self.assertEqual(len(records), 6)
+
     def test_calculate_scores_pair(self):
         bs_data.DB.create_in_mem()
 

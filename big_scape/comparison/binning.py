@@ -711,7 +711,10 @@ class MissingRecordPairGenerator(RecordPairGenerator):
         for pair in self.bin.generate_pairs(legacy_sorting):
             # if the pair is not in the set of existing distances, yield it
             pair_ids = (pair[0]._db_id, pair[1]._db_id)
-            if pair_ids not in existing_distances and pair_ids[::-1] not in existing_distances:
+            if (
+                pair_ids not in existing_distances
+                and pair_ids[::-1] not in existing_distances
+            ):
                 yield pair
 
     def add_records(self, _: list[BGCRecord]):
