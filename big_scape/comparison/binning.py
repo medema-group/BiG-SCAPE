@@ -31,8 +31,6 @@ from big_scape.enums import SOURCE_TYPE, CLASSIFY_MODE, RECORD_TYPE
 
 import big_scape.comparison as bs_comparison
 
-# from this module
-
 
 # weights are in the order JC, AI, DSS, Anchor boost
 LEGACY_WEIGHTS = {
