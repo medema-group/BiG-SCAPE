@@ -7,6 +7,7 @@ from itertools import combinations
 
 # from dependencies
 from Bio.SeqFeature import SeqFeature, FeatureLocation
+from sqlalchemy import select
 
 # from other modules
 import big_scape.data as bs_data
@@ -29,6 +30,8 @@ def create_mock_gbk(i, source_type: bs_enums.SOURCE_TYPE) -> GBK:
     gbk = GBK(Path(f"test_path_{i}.gbk"), str(i), source_type)
     cds = CDS(0, 100)
     cds.parent_gbk = gbk
+    add_mock_hsp_cds(cds)
+    add_mock_hsp_alignment_hsp(cds.hsps[0])
     cds.orf_num = 1
     cds.strand = 1
     gbk.genes.append(cds)
@@ -45,6 +48,8 @@ def create_mock_gbk(i, source_type: bs_enums.SOURCE_TYPE) -> GBK:
 def create_mock_complete_single_gbk(
     i, source_type: bs_enums.SOURCE_TYPE, bgc_class, bgc_category
 ) -> GBK:
+    gbk = GBK(Path(f"test_path_{i}.gbk"), str(i), source_type)
+
     region_feature = SeqFeature(FeatureLocation(0, 100), type="region")
     region_feature.qualifiers = {
         "region_number": ["1"],
@@ -52,7 +57,7 @@ def create_mock_complete_single_gbk(
         "product": [bgc_class],
     }
 
-    region = Region.parse_as5(region_feature)
+    region = Region.parse_as5(region_feature, parent_gbk=gbk)
 
     candidate_cluster_feature = SeqFeature(FeatureLocation(0, 100), type="cand_cluster")
     candidate_cluster_feature.qualifiers = {
@@ -62,7 +67,9 @@ def create_mock_complete_single_gbk(
         "product": [bgc_class],
     }
 
-    candidate_cluster = CandidateCluster.parse(candidate_cluster_feature)
+    candidate_cluster = CandidateCluster.parse(
+        candidate_cluster_feature, parent_gbk=gbk
+    )
 
     protocluster_feature = SeqFeature(FeatureLocation(0, 100), type="protocluster")
     protocluster_feature.qualifiers = {
@@ -79,13 +86,12 @@ def create_mock_complete_single_gbk(
         "product": [bgc_class],
     }
 
-    protocore = ProtoCore.parse(protocore_feature)
+    protocore = ProtoCore.parse(protocore_feature, parent_gbk=gbk)
 
     protocluster.add_proto_core(protocore)
     candidate_cluster.add_proto_cluster(protocluster)
     region.add_cand_cluster(candidate_cluster)
 
-    gbk = GBK(Path(f"test_path_{i}.gbk"), str(i), source_type)
     cds = CDS(0, 100)
     cds.parent_gbk = gbk
     cds.orf_num = 1
@@ -106,6 +112,8 @@ def create_mock_complete_chemhyb_gbk(
 ) -> GBK:
     bgc_categories = bgc_class.split(".")
 
+    gbk = GBK(Path(f"test_path_{i}.gbk"), str(i), source_type)
+
     region_feature = SeqFeature(FeatureLocation(0, 100), type="region")
     region_feature.qualifiers = {
         "region_number": ["1"],
@@ -113,7 +121,7 @@ def create_mock_complete_chemhyb_gbk(
         "product": [bgc_class],
     }
 
-    region = Region.parse_as5(region_feature)
+    region = Region.parse_as5(region_feature, parent_gbk=gbk)
 
     candidate_cluster_feature = SeqFeature(FeatureLocation(0, 100), type="cand_cluster")
     candidate_cluster_feature.qualifiers = {
@@ -123,7 +131,9 @@ def create_mock_complete_chemhyb_gbk(
         "product": [bgc_class],
     }
 
-    candidate_cluster = CandidateCluster.parse(candidate_cluster_feature)
+    candidate_cluster = CandidateCluster.parse(
+        candidate_cluster_feature, parent_gbk=gbk
+    )
 
     protocluster_feature_1 = SeqFeature(FeatureLocation(0, 100), type="protocluster")
     protocluster_feature_1.qualifiers = {
@@ -132,7 +142,7 @@ def create_mock_complete_chemhyb_gbk(
         "product": [bgc_categories[0]],
     }
 
-    protocluster_1 = ProtoCluster.parse(protocluster_feature_1)
+    protocluster_1 = ProtoCluster.parse(protocluster_feature_1, parent_gbk=gbk)
 
     protocore_feature_1 = SeqFeature(FeatureLocation(0, 100), type="proto_core")
     protocore_feature_1.qualifiers = {
@@ -165,7 +175,6 @@ def create_mock_complete_chemhyb_gbk(
     candidate_cluster.add_proto_cluster(protocluster_2)
     region.add_cand_cluster(candidate_cluster)
 
-    gbk = GBK(Path(f"test_path_{i}.gbk"), str(i), source_type)
     cds = CDS(0, 100)
     cds.parent_gbk = gbk
     cds.orf_num = 1
@@ -309,13 +318,151 @@ class TestComparison(TestCase):
 
         self.assertEqual(edge_param_id, 1)
 
-    def test_generate_edges(self):
+    def test_fetch_records_from_db(self):
         self.skipTest("Not implemented")
 
+    # TODO: add no hsp records
     def test_calculate_scores_pair(self):
-        self.skipTest("Not implemented")
+        bs_data.DB.create_in_mem()
 
-    # TODO: update to use bs_mix.calculate_distances_mix(run, all_bgc_records)
+        run = {
+            "alignment_mode": bs_enums.ALIGNMENT_MODE.AUTO,
+            "legacy_weights": True,
+            "record_type": bs_enums.RECORD_TYPE.REGION,
+            "cores": 1,
+        }
+        weights = "mix"
+
+        gbks_with_hsp = [
+            create_mock_gbk(
+                i,
+                bs_enums.SOURCE_TYPE.QUERY,
+            )
+            for i in range(3)
+        ]
+
+        gbks_no_hsp = [
+            create_mock_complete_single_gbk(i, bs_enums.SOURCE_TYPE.QUERY, "PKS", "PKS")
+            for i in range(3)
+        ]
+
+        gbks = gbks_with_hsp + gbks_no_hsp
+
+        for gbk in gbks:
+            gbk.save_all()
+
+        list_bgc_records = bs_files.get_all_bgc_records(run, gbks)
+
+        edge_param_id = bs_comparison.get_edge_param_id(run, weights)
+
+        mix_bin = bs_comparison.generate_mix_bin(
+            list_bgc_records, edge_param_id, run["record_type"]
+        )
+
+        missing_edge_bin = bs_comparison.MissingRecordPairGenerator(mix_bin)
+
+        pair_data = missing_edge_bin.generate_pairs()
+
+        batch = bs_comparison.workflow.batch_generator(pair_data, 15)
+
+        scores = bs_comparison.workflow.calculate_scores_pair(
+            (
+                batch,
+                run["alignment_mode"],
+                missing_edge_bin.edge_param_id,
+                missing_edge_bin.weights,
+            )
+        )
+
+        self.assertEqual(len(scores), 12)
+
+        distances_seen = []
+        for score in scores:
+            score = score[2]
+            distances_seen.append(score)
+
+        # 3 records are identical, so we expect 3 identical scores of 1.0
+        # remaining are scores of 0.0 since the second batch of records do
+        # not have any HSPs
+        self.assertIn(1.0, distances_seen)
+        self.assertIn(0.0, distances_seen)
+
+    def test_generate_and_save_edges_workflow(self):
+        """Tests the edge generation and saving workflow"""
+
+        bs_data.DB.create_in_mem()
+
+        run = {
+            "alignment_mode": bs_enums.ALIGNMENT_MODE.AUTO,
+            "legacy_weights": True,
+            "record_type": bs_enums.RECORD_TYPE.REGION,
+            "cores": 1,
+        }
+        weights = "mix"
+
+        gbks = [
+            create_mock_complete_single_gbk(i, bs_enums.SOURCE_TYPE.QUERY, "PKS", "PKS")
+            for i in range(3)
+        ]
+
+        for gbk in gbks:
+            gbk.save_all()
+
+        list_bgc_records = bs_files.get_all_bgc_records(run, gbks)
+
+        edge_param_id = bs_comparison.get_edge_param_id(run, weights)
+
+        mix_bin = bs_comparison.generate_mix_bin(
+            list_bgc_records, edge_param_id, run["record_type"]
+        )
+
+        missing_edge_bin = bs_comparison.MissingRecordPairGenerator(mix_bin)
+
+        return_edges = []
+
+        def callback(edges):
+            nonlocal return_edges
+            for edge in edges:
+                return_edges.append(edge)
+
+        bs_comparison.generate_edges(
+            missing_edge_bin,
+            run["alignment_mode"],
+            run["cores"],
+            run["cores"] * 2,
+            callback,
+            batch_size=5,
+        )
+
+        # check if the edges are correct
+        # we expect 3 totally dissimilar edges,
+        # as the regions are identical but have no HSPs
+
+        self.assertEqual(len(return_edges), 3)
+
+        scores = []
+        for edge in return_edges:
+            score = edge[2]
+            score = round(score, 1)
+            scores.append(score)
+
+        self.assertEqual(scores, [1, 1, 1])
+
+        # check that there are no edges in db
+        distance_table = bs_data.DB.metadata.tables["distance"]
+        select_statement = select(distance_table.c.distance)
+        rows = len(bs_data.DB.execute(select_statement).fetchall())
+
+        self.assertEqual(rows, 0)
+
+        bs_comparison.save_edges_to_db(return_edges, commit=True)
+
+        # check that the edges are now in the db
+        select_statement = select(distance_table.c.distance)
+        rows = len(bs_data.DB.execute(select_statement).fetchall())
+
+        self.assertEqual(rows, 3)
+
     def test_calculate_distances_mix_bin_worflow(self):
         """Tests the distance calculation workflow for mix mode"""
 
@@ -467,8 +614,20 @@ class TestComparison(TestCase):
 
         self.assertEqual(bin_pairs, [3, 3, 3])
 
-    def test_calculate_distances_query(self):
+    def test_test_generate_bins_query_workflow(self):
         self.skipTest("Not implemented")
 
-    def test_get_connected_components(self):
+    def test_calculate_distances_mix(self):
+        self.skipTest("Not implemented")
+
+    def test_calculate_distances_classify(self):
+        self.skipTest("Not implemented")
+
+    def test_calculate_distances_hybrids_off(self):
+        self.skipTest("Not implemented")
+
+    def test_calculate_distances_legacy_classify(self):
+        self.skipTest("Not implemented")
+
+    def test_calculate_distances_query(self):
         self.skipTest("Not implemented")
