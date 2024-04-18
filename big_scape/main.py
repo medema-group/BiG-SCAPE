@@ -306,15 +306,25 @@ def run_bigscape(run: dict) -> None:
 
     bs_families.reset_db_families()
 
+    bs_network.reset_db_connected_components()
+
     # mix
 
     if not run["no_mix"] and not run["query_bgc_path"]:
         edge_param_id = bs_comparison.get_edge_param_id(run, "mix")
         for cutoff in run["gcf_cutoffs"]:
-            logging.debug("Bin 'mix': cutoff %s", cutoff)
+            logging.info("Bin 'mix': cutoff %s", cutoff)
             for connected_component in bs_network.get_connected_components(
                 cutoff, edge_param_id, all_bgc_records
             ):
+                # check and remove ref only cc
+                if bs_network.reference_only_connected_component(
+                    connected_component, all_bgc_records
+                ):
+                    bs_network.remove_connected_component(
+                        connected_component, cutoff, edge_param_id
+                    )
+
                 logging.debug(
                     "Found connected component with %d edges", len(connected_component)
                 )
@@ -339,6 +349,14 @@ def run_bigscape(run: dict) -> None:
                 for connected_component in bs_network.get_connected_components(
                     cutoff, edge_param_id, bin.source_records
                 ):
+                    # check and remove ref only cc
+                    if bs_network.reference_only_connected_component(
+                        connected_component, bin.source_records
+                    ):
+                        bs_network.remove_connected_component(
+                            connected_component, cutoff, edge_param_id
+                        )
+
                     regions_families = bs_families.generate_families(
                         connected_component, bin.label, cutoff
                     )
@@ -357,6 +375,14 @@ def run_bigscape(run: dict) -> None:
                 for connected_component in bs_network.get_connected_components(
                     cutoff, edge_param_id, bin.source_records
                 ):
+                    # check and remove ref only cc
+                    if bs_network.reference_only_connected_component(
+                        connected_component, bin.source_records
+                    ):
+                        bs_network.remove_connected_component(
+                            connected_component, cutoff, edge_param_id
+                        )
+
                     regions_families = bs_families.generate_families(
                         connected_component, bin.label, cutoff
                     )
@@ -444,8 +470,11 @@ def run_bigscape(run: dict) -> None:
         )
 
         for cutoff in run["gcf_cutoffs"]:
+            # cull singletons ref only
+            mix_bin.cull_singletons(cutoff, ref_only=True)
             if not run["include_singletons"]:
-                mix_bin.cull_singletons(cutoff)
+                # cull all records, ref and query
+                mix_bin.cull_singletons(cutoff, ref_only=False)
                 if len(mix_bin.record_ids) == 0:
                     logging.info(
                         f"Network {mix_bin.label} with cutoff {cutoff} is empty after culling singletons"
@@ -461,6 +490,7 @@ def run_bigscape(run: dict) -> None:
 
         for bin in legacy_class_bins:
             for cutoff in run["gcf_cutoffs"]:
+                bin.cull_singletons(cutoff, ref_only=True)
                 if not run["include_singletons"]:
                     bin.cull_singletons(cutoff)
                     if len(bin.record_ids) == 0:
@@ -478,6 +508,7 @@ def run_bigscape(run: dict) -> None:
 
         for bin in as_class_bins:
             for cutoff in run["gcf_cutoffs"]:
+                bin.cull_singletons(cutoff, ref_only=True)
                 if not run["include_singletons"]:
                     bin.cull_singletons(cutoff)
                     if len(bin.record_ids) == 0:
