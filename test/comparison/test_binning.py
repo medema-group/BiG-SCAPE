@@ -927,7 +927,7 @@ class TestBinGenerators(TestCase):
 
         self.assertEqual(expected_category, category)
 
-    def test_get_weight_category(self):
+    def test_get_legacy_weight_from_category(self):
         """Tests wether the correct legacy weight category is created from a region category"""
 
         run = {
@@ -1052,3 +1052,6 @@ class TestBinGenerators(TestCase):
         expected_weights = "other"
 
         self.assertEqual(expected_weights, weights)
+
+    def test_get_query_records(self):
+        self.skipTest("Not implemented")

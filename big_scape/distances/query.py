@@ -30,6 +30,93 @@ def calculate_distances_query(
     """
     logging.info("Generating query BGC mode bin")
 
+    query_records = get_query_records(run, all_bgc_records, query_record)
+
+    # if legacy weights are on, then use the legacy weights and pass as label to bin generator
+    if run["legacy_weights"]:
+        weights = bs_comparison.get_legacy_weights_from_category(
+            query_record, query_record.product, run
+        )
+    else:
+        weights = "mix"
+
+    edge_param_id = bs_comparison.get_edge_param_id(run, weights)
+
+    # generate initial query -> ref pairs
+    query_to_ref_bin = bs_comparison.QueryToRefRecordPairGenerator(
+        "Query_Ref", edge_param_id, weights
+    )
+    query_to_ref_bin.add_records(query_records)
+
+    # fetch any existing distances from database
+    missing_edge_bin = bs_comparison.MissingRecordPairGenerator(query_to_ref_bin)
+    # get the number of pairs that are missing
+
+    # calculate distances -> Query to Reference
+    calculate_distances(run, missing_edge_bin, "Query to Reference")
+
+    if run["skip_propagation"]:
+        return query_records
+
+    # at this point we have query -> ref edges
+    # we now need to propagate edges from those ref -> other ref
+
+    # TODO: see if we can implement missing for these
+    ref_to_ref_bin = bs_comparison.RefToRefRecordPairGenerator(
+        "Ref_Ref", edge_param_id, weights
+    )
+    ref_to_ref_bin.add_records(query_records)
+
+    # generating distances -> Connected Reference to Singleton Reference
+    calculate_distances(
+        run, ref_to_ref_bin, "Singleton Reference to Connected Reference"
+    )
+
+    # we will continue propagating until there are no more edges to generate
+    logging.info("Finished propagating edges")
+
+    # now we make any last connected ref <-> connected ref pairs that are missing
+    # get all the edges in the query connected component
+    query_connected_component = bs_network.get_connected_components(
+        1, edge_param_id, [query_record]
+    )
+
+    # get_connected_components returns a list of connected components, we only want the first one
+    query_connected_component = next(query_connected_component)
+
+    query_nodes = bs_network.get_nodes_from_cc(query_connected_component, query_records)
+
+    query_connected_bin = bs_comparison.RecordPairGenerator(
+        "Query", edge_param_id, record_type=run["record_type"]
+    )
+    query_connected_bin.add_records(query_nodes)
+
+    # fetch any existing distances from database
+    missing_ref_edge_bin = bs_comparison.MissingRecordPairGenerator(query_connected_bin)
+
+    # calculate distances -> Connected Reference to Connected Reference
+    calculate_distances(
+        run, missing_ref_edge_bin, "Connected Reference to Connected Reference"
+    )
+
+    return query_records
+
+
+def get_query_records(run, all_bgc_records, query_record) -> list[bs_gbk.BGCRecord]:
+    """returns the query records and checks if the query is a singleton
+
+    Args:
+        run (dict): run parameters
+        all_bgc_records (list[bs_gbk.BGCRecord]): all records
+        query_record (bs_gbk.BGCRecord): the query record
+
+    Returns:
+        list[bs_gbk.BGCRecord]: list of query records
+
+    Raises:
+        ValueError: if the query record is a singleton
+    """
+
     query_singleton = True
     query_records = [query_record]
 
@@ -81,159 +168,34 @@ def calculate_distances_query(
             "records have the same class/category"
         )
 
-    # if legacy weights are on, then use the legacy weights and pass as label to bin generator
-    if run["legacy_weights"]:
-        weights = bs_comparison.get_legacy_weights_from_category(
-            query_record, query_record.product, run
-        )
-    else:
-        weights = "mix"
+    return query_records
 
-    edge_param_id = bs_comparison.get_edge_param_id(run, weights)
 
-    # generate initial query -> ref pairs
-    query_to_ref_bin = bs_comparison.QueryToRefRecordPairGenerator(
-        "Query_Ref", edge_param_id, weights
-    )
-    query_to_ref_bin.add_records(query_records)
+def calculate_distances(run, bin, help_message):
+    """calculates distances between all records in a given dataset and saves them to the
+    database
 
-    # fetch any existing distances from database
-    missing_edge_bin = bs_comparison.MissingRecordPairGenerator(query_to_ref_bin)
-    # get the number of pairs that are missing
-    num_pairs = missing_edge_bin.num_pairs()
-
-    # calculate distances
-    if num_pairs > 0:
-        logging.info(
-            "Calculating distances for %d pairs (Query to Reference)",
-            num_pairs,
-        )
-
-        save_batch = []
-        num_edges = 0
-
-        with tqdm.tqdm(
-            total=num_pairs, unit="edge", desc="Calculating distances (qry2ref)"
-        ) as t:
-
-            def callback(edges):
-                nonlocal num_edges
-                nonlocal save_batch
-                batch_size = run["cores"] * 100000
-                for edge in edges:
-                    num_edges += 1
-                    t.update(1)
-                    save_batch.append(edge)
-                    if len(save_batch) > batch_size:
-                        bs_comparison.save_edges_to_db(save_batch, commit=True)
-                        save_batch = []
-
-            bs_comparison.generate_edges(
-                missing_edge_bin,
-                run["alignment_mode"],
-                run["cores"],
-                run["cores"] * 2,
-                callback,
-            )
-
-        bs_comparison.save_edges_to_db(save_batch)
-
-        bs_data.DB.commit()
-
-        logging.info("Generated %d edges", num_edges)
-
-    if run["skip_propagation"]:
-        return query_records
-
-    # at this point we have query -> ref edges
-    # we now need to propagate edges from those ref -> other ref
-
-    # TODO: see if we can implement missing for these
-    ref_to_ref_bin = bs_comparison.RefToRefRecordPairGenerator(
-        "Ref_Ref", edge_param_id, weights
-    )
-    ref_to_ref_bin.add_records(query_records)
+    Args:
+        run (bs_param.RunParameters): run parameters
+        gbks (list[bs_gbk.GBK]): list of gbks
+    """
 
     # we will continue propagating until there are no more edges to generate
     while True:
         # fetches the current number of singleton ref <-> connected ref pairs from the database
-        num_pairs = ref_to_ref_bin.num_pairs()
+        num_pairs = bin.num_pairs()
 
         # if there are no more singleton ref <-> connected ref pairs, then break and exit
         if num_pairs == 0:
             break
 
-        logging.info(
-            "Calculating distances for %d pairs (Connected Reference to Singleton Reference)",
-            num_pairs,
-        )
-        save_batch = []
-        num_edges = 0
-
-        with tqdm.tqdm(
-            total=num_pairs, unit="edge", desc="Calculating distances (ref2sng)"
-        ) as t:
-
-            def callback(edges):
-                nonlocal num_edges
-                nonlocal save_batch
-                batch_size = run["cores"] * 100000
-                for edge in edges:
-                    num_edges += 1
-                    t.update(1)
-                    save_batch.append(edge)
-                    if len(save_batch) > batch_size:
-                        bs_comparison.save_edges_to_db(save_batch, commit=True)
-                        save_batch = []
-
-            # generate edges for these pairs
-            bs_comparison.generate_edges(
-                ref_to_ref_bin,
-                run["alignment_mode"],
-                run["cores"],
-                run["cores"] * 2,
-                callback,
-            )
-
-        bs_comparison.save_edges_to_db(save_batch)
-
-        logging.info("Generated %d edges", num_edges)
-
-    logging.info("Finished propagating edges")
-
-    # now we make any last connected ref <-> connected ref pairs that are missing
-    # get all the edges in the query connected component
-    query_connected_component = bs_network.get_connected_components(
-        1, edge_param_id, [query_record]
-    )
-
-    # get_connected_components returns a list of connected components, we only want the first one
-    query_connected_component = next(query_connected_component)
-
-    query_nodes = bs_network.get_nodes_from_cc(query_connected_component, query_records)
-
-    query_connected_bin = bs_comparison.RecordPairGenerator(
-        "Query", edge_param_id, record_type=run["record_type"]
-    )
-    query_connected_bin.add_records(query_nodes)
-
-    # fetch any existing distances from database
-    missing_ref_edge_bin = bs_comparison.MissingRecordPairGenerator(query_connected_bin)
-    # get the number of pairs that are missing
-    num_pairs = missing_ref_edge_bin.num_pairs()
-
-    # calculate distances
-    if num_pairs > 0:
-        logging.info(
-            "Calculating distances for %d pairs (Connected Reference to Connected Reference)",
-            num_pairs,
-        )
+        logging.info("Calculating distances for %d pairs (%s)", num_pairs, help_message)
 
         save_batch = []
         num_edges = 0
 
         with tqdm.tqdm(
-            total=num_pairs, unit="edge", desc="Calculating distances (ref2ref)"
+            total=num_pairs, unit="edge", desc=f"Calculating distances ({help_message})"
         ) as t:
 
             def callback(edges):
@@ -249,7 +211,7 @@ def calculate_distances_query(
                         save_batch = []
 
             bs_comparison.generate_edges(
-                missing_ref_edge_bin,
+                bin,
                 run["alignment_mode"],
                 run["cores"],
                 run["cores"] * 2,
@@ -261,5 +223,3 @@ def calculate_distances_query(
         bs_data.DB.commit()
 
         logging.info("Generated %d edges", num_edges)
-
-    return query_records
