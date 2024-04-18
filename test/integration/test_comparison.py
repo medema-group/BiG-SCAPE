@@ -23,6 +23,10 @@ from big_scape.genbank import (
     ProtoCluster,
     ProtoCore,
 )
+import big_scape.distances.mix as bs_mix
+import big_scape.distances.legacy_classify as bs_legacy_classify
+import big_scape.distances.classify as bs_classify
+import big_scape.distances.query as bs_query
 import big_scape.enums as bs_enums
 
 
@@ -382,12 +386,12 @@ class TestComparison(TestCase):
                 i,
                 bs_enums.SOURCE_TYPE.QUERY,
             )
-            for i in range(3)
+            for i in range(0, 3)
         ]
 
         gbks_no_hsp = [
             create_mock_complete_single_gbk(i, bs_enums.SOURCE_TYPE.QUERY, "PKS", "PKS")
-            for i in range(3)
+            for i in range(3, 6)
         ]
 
         gbks = gbks_with_hsp + gbks_no_hsp
@@ -418,7 +422,8 @@ class TestComparison(TestCase):
             )
         )
 
-        self.assertEqual(len(scores), 12)
+        # 6 records make up a total of 15 edges
+        self.assertEqual(len(scores), 15)
 
         distances_seen = []
         for score in scores:
@@ -567,8 +572,40 @@ class TestComparison(TestCase):
 
         self.assertEqual(num_pairs, 0)
 
+    def test_calculate_distances_mix(self):
+        bs_data.DB.create_in_mem()
+
+        run = {
+            "alignment_mode": bs_enums.ALIGNMENT_MODE.AUTO,
+            "legacy_weights": True,
+            "record_type": bs_enums.RECORD_TYPE.REGION,
+            "cores": 1,
+        }
+
+        gbks = [create_mock_gbk(i, bs_enums.SOURCE_TYPE.QUERY) for i in range(3)]
+
+        for gbk in gbks:
+            gbk.save_all()
+
+        list_bgc_records = bs_files.get_all_bgc_records(run, gbks)
+
+        # check that there are no edges in db
+        distance_table = bs_data.DB.metadata.tables["distance"]
+        select_statement = select(distance_table.c.distance)
+        rows = len(bs_data.DB.execute(select_statement).fetchall())
+
+        self.assertEqual(rows, 0)
+
+        bs_mix.calculate_distances_mix(run, list_bgc_records)
+
+        # check that the edges are now in the db
+        select_statement = select(distance_table.c.distance)
+        rows = len(bs_data.DB.execute(select_statement).fetchall())
+
+        self.assertEqual(rows, 3)
+
     def test_generate_bins_classify_worflow(self):
-        """Tests the distance calculation workflow for mix mode"""
+        """Tests the distance calculation workflow for classify mode"""
 
         bs_data.DB.create_in_mem()
 
@@ -584,17 +621,17 @@ class TestComparison(TestCase):
             create_mock_complete_single_gbk(
                 i, bs_enums.SOURCE_TYPE.QUERY, "T1PKS", "PKS"
             )
-            for i in range(3)
+            for i in range(0, 3)
         ]
         nrps_gbks = [
             create_mock_complete_single_gbk(
                 i, bs_enums.SOURCE_TYPE.QUERY, "NRPS", "NRPS"
             )
-            for i in range(3)
+            for i in range(3, 6)
         ]
         nrps_pks_gbks = [
             create_mock_complete_chemhyb_gbk(i, bs_enums.SOURCE_TYPE.QUERY, "NRPS.PKS")
-            for i in range(3)
+            for i in range(6, 9)
         ]
 
         gbks = pks_gbks + nrps_gbks + nrps_pks_gbks
@@ -658,19 +695,242 @@ class TestComparison(TestCase):
 
         self.assertEqual(bin_pairs, [3, 3, 3])
 
-    def test_test_generate_bins_query_workflow(self):
-        self.skipTest("Not implemented")
+    def test_generate_bins_legacy_classify_worflow(self):
+        bs_data.DB.create_in_mem()
 
-    def test_calculate_distances_mix(self):
-        self.skipTest("Not implemented")
+        run = {
+            "alignment_mode": bs_enums.ALIGNMENT_MODE.AUTO,
+            "legacy_weights": True,
+            "classify": bs_enums.CLASSIFY_MODE.CLASS,
+            "record_type": bs_enums.RECORD_TYPE.REGION,
+            "hybrids_off": True,
+        }
 
-    def test_calculate_distances_classify(self):
-        self.skipTest("Not implemented")
+        pks_gbks = [
+            create_mock_complete_single_gbk(
+                i, bs_enums.SOURCE_TYPE.QUERY, "T1PKS", "PKS"
+            )
+            for i in range(0, 3)
+        ]
+        nrps_gbks = [
+            create_mock_complete_single_gbk(
+                i, bs_enums.SOURCE_TYPE.QUERY, "NRPS", "NRPS"
+            )
+            for i in range(3, 6)
+        ]
+        nrps_pks_gbks = [
+            create_mock_complete_chemhyb_gbk(
+                i, bs_enums.SOURCE_TYPE.QUERY, "NRPS.otherks"
+            )
+            for i in range(6, 9)
+        ]
 
-    def test_calculate_distances_hybrids_off(self):
-        self.skipTest("Not implemented")
+        gbks = pks_gbks + nrps_gbks + nrps_pks_gbks
+
+        for gbk in gbks:
+            gbk.save_all()
+
+        list_bgc_records = bs_files.get_all_bgc_records(run, gbks)
+
+        self.assertEqual(len(list_bgc_records), 9)
+
+        as_class_bins = list(bs_comparison.legacy_bin_generator(list_bgc_records, run))
+
+        self.assertEqual(len(as_class_bins), 3)
+
+        bin_labels = [bin.label for bin in as_class_bins]
+
+        self.assertEqual(bin_labels, ["PKSI", "NRPS", "PKSother"])
+
+        bin_weights = [bin.weights for bin in as_class_bins]
+
+        self.assertEqual(bin_weights, ["PKSI", "NRPS", "PKSother"])
+
+        bin_edge_param_ids = [bin.edge_param_id for bin in as_class_bins]
+
+        self.assertEqual(bin_edge_param_ids, [1, 2, 3])
+
+        bin_pairs = [bin.num_pairs() for bin in as_class_bins]
+
+        self.assertEqual(bin_pairs, [3, 15, 3])
+
+        run = {
+            "alignment_mode": bs_enums.ALIGNMENT_MODE.AUTO,
+            "legacy_weights": True,
+            "classify": bs_enums.CLASSIFY_MODE.CLASS,
+            "record_type": bs_enums.RECORD_TYPE.REGION,
+            "hybrids_off": False,
+        }
+
+        as_class_bins = list(bs_comparison.legacy_bin_generator(list_bgc_records, run))
+
+        self.assertEqual(len(as_class_bins), 3)
+
+        bin_labels = [bin.label for bin in as_class_bins]
+
+        self.assertEqual(bin_labels, ["PKSI", "NRPS", "PKS-NRP_Hybrids"])
+
+        bin_weights = [bin.weights for bin in as_class_bins]
+
+        self.assertEqual(bin_weights, ["PKSI", "NRPS", "PKS-NRP_Hybrids"])
+
+        bin_edge_param_ids = [bin.edge_param_id for bin in as_class_bins]
+
+        self.assertEqual(bin_edge_param_ids, [1, 2, 4])
+
+        bin_pairs = [bin.num_pairs() for bin in as_class_bins]
+
+        self.assertEqual(bin_pairs, [3, 3, 3])
 
     def test_calculate_distances_legacy_classify(self):
+        bs_data.DB.create_in_mem()
+
+        run = {
+            "alignment_mode": bs_enums.ALIGNMENT_MODE.AUTO,
+            "legacy_weights": True,
+            "classify": bs_enums.CLASSIFY_MODE.CLASS,
+            "record_type": bs_enums.RECORD_TYPE.REGION,
+            "hybrids_off": False,
+            "cores": 1,
+            "legacy_classify": True,
+        }
+
+        pks_gbks = [
+            create_mock_complete_single_gbk(
+                i, bs_enums.SOURCE_TYPE.QUERY, "T1PKS", "PKS"
+            )
+            for i in range(0, 3)
+        ]
+        nrps_gbks = [
+            create_mock_complete_single_gbk(
+                i, bs_enums.SOURCE_TYPE.QUERY, "NRPS", "NRPS"
+            )
+            for i in range(3, 6)
+        ]
+        nrps_pks_gbks = [
+            create_mock_complete_chemhyb_gbk(
+                i, bs_enums.SOURCE_TYPE.QUERY, "NRPS.otherks"
+            )
+            for i in range(6, 9)
+        ]
+
+        gbks = pks_gbks + nrps_gbks + nrps_pks_gbks
+
+        for gbk in gbks:
+            gbk.save_all()
+
+        list_bgc_records = bs_files.get_all_bgc_records(run, gbks)
+
+        self.assertEqual(len(list_bgc_records), 9)
+
+        # bin 1 PKSI 3 pairs
+        # bin 2 NRPS 3 pairs from 3 BGC records
+        # bin PKS-NRP_Hybrids 3 pairs from 3 BGC records
+
+        bs_legacy_classify.calculate_distances_legacy_classify(run, list_bgc_records)
+
+        distance_table = bs_data.DB.metadata.tables["distance"]
+        select_statement = select(distance_table.c.distance)
+        rows = len(bs_data.DB.execute(select_statement).fetchall())
+
+        self.assertEqual(rows, 9)
+
+        run = {
+            "alignment_mode": bs_enums.ALIGNMENT_MODE.AUTO,
+            "legacy_weights": True,
+            "classify": bs_enums.CLASSIFY_MODE.CLASS,
+            "record_type": bs_enums.RECORD_TYPE.REGION,
+            "hybrids_off": True,
+            "cores": 1,
+            "legacy_classify": True,
+        }
+
+        # bin 1 PKSI 3 pairs -> those were already in db
+        # bin 2 NRPS 15 pairs from 6 BGC records -> 3 pairs were already in db, so 12 new
+        # bin PKSother 3 pairs from 3 BGC records -> 3 new pairs
+        # 9 + 12 + 3 = 24
+
+        bs_legacy_classify.calculate_distances_legacy_classify(run, list_bgc_records)
+
+        select_statement = select(distance_table.c.distance)
+        rows = len(bs_data.DB.execute(select_statement).fetchall())
+
+        self.assertEqual(rows, 24)
+
+    def test_calculate_distances_classify(self):
+        """Tests the distance calculation workflow for classify mode"""
+
+        bs_data.DB.create_in_mem()
+
+        run = {
+            "alignment_mode": bs_enums.ALIGNMENT_MODE.AUTO,
+            "legacy_weights": True,
+            "classify": bs_enums.CLASSIFY_MODE.CLASS,
+            "record_type": bs_enums.RECORD_TYPE.REGION,
+            "hybrids_off": True,
+            "cores": 1,
+        }
+
+        pks_gbks = [
+            create_mock_complete_single_gbk(
+                i, bs_enums.SOURCE_TYPE.QUERY, "T1PKS", "PKS"
+            )
+            for i in range(0, 3)
+        ]
+        nrps_gbks = [
+            create_mock_complete_single_gbk(
+                i, bs_enums.SOURCE_TYPE.QUERY, "NRPS", "NRPS"
+            )
+            for i in range(3, 6)
+        ]
+        nrps_pks_gbks = [
+            create_mock_complete_chemhyb_gbk(
+                i, bs_enums.SOURCE_TYPE.QUERY, "NRPS.PKSother"
+            )
+            for i in range(6, 9)
+        ]
+
+        gbks = pks_gbks + nrps_gbks + nrps_pks_gbks
+
+        for gbk in gbks:
+            gbk.save_all()
+
+        list_bgc_records = bs_files.get_all_bgc_records(run, gbks)
+
+        bs_classify.calculate_distances_classify(run, list_bgc_records)
+
+        distance_table = bs_data.DB.metadata.tables["distance"]
+        select_statement = select(distance_table.c.distance)
+        rows = len(bs_data.DB.execute(select_statement).fetchall())
+
+        # bin 1 T1PKS has 3 pairs from 3 records
+        # bin 2 NRPS has 15 pairs from 6 records
+        # bin 3 PKSother has 3 pairs from 3 records
+
+        self.assertEqual(rows, 21)
+
+        run = {
+            "alignment_mode": bs_enums.ALIGNMENT_MODE.AUTO,
+            "legacy_weights": False,
+            "classify": bs_enums.CLASSIFY_MODE.CLASS,
+            "record_type": bs_enums.RECORD_TYPE.REGION,
+            "hybrids_off": False,
+            "cores": 1,
+        }
+
+        bs_classify.calculate_distances_classify(run, list_bgc_records)
+
+        distance_table = bs_data.DB.metadata.tables["distance"]
+        select_statement = select(distance_table.c.distance)
+        rows = len(bs_data.DB.execute(select_statement).fetchall())
+
+        # bin 1 T1PKS has 3 pairs from 3 records with mix weights -> 3 new pairs
+        # bin 2 NRPS has 3 pairs from 3 records with mix weights -> 3 new pairs
+        # bin 3 NRPS.PKSother has 3 pairs from 3 records with mix weights -> 3 new pairs
+
+        self.assertEqual(rows, 30)
+
+    def test_test_generate_bins_query_workflow(self):
         self.skipTest("Not implemented")
 
     def test_calculate_distances_query(self):

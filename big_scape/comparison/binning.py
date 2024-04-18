@@ -989,6 +989,7 @@ def legacy_bin_generator(
 
 
 # one of the few direct copy-and-pastes!
+# TODO: test
 def legacy_get_class(product):  # pragma no cover
     """Sort BGC by its type. Uses AntiSMASH annotations
     (see https://docs.antismash.secondarymetabolites.org/glossary/#cluster-types)
