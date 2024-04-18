@@ -6,14 +6,25 @@ import random
 import string
 import tqdm
 from typing import Optional, Generator, cast
-from sqlalchemy import Table, and_, distinct, or_, select, func
+from sqlalchemy import (
+    Column,
+    ForeignKey,
+    Integer,
+    Table,
+    and_,
+    delete,
+    distinct,
+    or_,
+    select,
+    func,
+)
 
 # from other modules
 from big_scape.data import DB
 from big_scape.genbank import BGCRecord
+import big_scape.enums as bs_enums
 
 
-# TODO: test
 def get_connected_components(
     cutoff: float,
     edge_param_id: int,
@@ -143,6 +154,7 @@ def generate_connected_components(
 
                 if record_id_a not in seen:
                     inserts.append((cc_id, record_id_a, cutoff, edge_param_id))
+
                 if record_id_b not in seen:
                     inserts.append((cc_id, record_id_b, cutoff, edge_param_id))
 
@@ -156,15 +168,15 @@ def generate_connected_components(
 
             cursor.executemany(q, inserts)
 
-            t.update(len(edges))
-
             last_len = len(edges)
 
             edges = get_cc_edges(cc_id, cutoff, edge_param_id)
 
-            if len(edges) == last_len:
+            if last_len == len(edges):
                 # print(f"cc: {', '.join([str(x) for x in seen])}, ({len(seen)})")
                 edge = get_random_edge(cutoff, edge_param_id, temp_record_table)
+
+                t.update(len(edges))
 
                 if edge is None:
                     break
@@ -180,6 +192,7 @@ def generate_connected_components(
     DB.commit()
 
 
+# TODO: not used, delete
 def has_missing_cc_assignments(
     cutoff: float, edge_param_id: int, temp_record_table: Optional[Table] = None
 ) -> bool:
@@ -318,6 +331,8 @@ def get_random_edge(
             distance_table.c.edge_param_id == edge_param_id,
             # return only one edge
         )
+
+        # return only one edge
         .limit(1)
     )
 
@@ -360,10 +375,14 @@ def get_cc_edges(
         and_(
             or_(
                 distance_table.c.record_a_id.in_(
-                    select(cc_table.c.record_id).where(cc_table.c.id == cc_id)
+                    select(cc_table.c.record_id)
+                    .where(cc_table.c.id == cc_id)
+                    .where(cc_table.c.cutoff == cutoff)
                 ),
                 distance_table.c.record_b_id.in_(
-                    select(cc_table.c.record_id).where(cc_table.c.id == cc_id)
+                    select(cc_table.c.record_id)
+                    .where(cc_table.c.id == cc_id)
+                    .where(cc_table.c.cutoff == cutoff)
                 ),
             ),
             distance_table.c.distance < cutoff,
@@ -378,8 +397,7 @@ def get_cc_edges(
 
 
 # generic functions
-
-
+# TODO: not used, delete
 def get_edge(
     include_nodes: set[int],
     exclude_nodes: set[int],
@@ -505,18 +523,33 @@ def create_temp_record_table(include_records: list[BGCRecord]) -> Table:
     # generate a short random string
     temp_table_name = "temp_" + "".join(random.choices(string.ascii_lowercase, k=10))
 
-    create_temp_table = f"""
-        CREATE TEMPORARY TABLE {temp_table_name} (
-            record_id INTEGER PRIMARY KEY NOT NULL references bgc_record(id)
-        );
-    """
+    temp_table = Table(
+        temp_table_name,
+        DB.metadata,
+        Column(
+            "record_id",
+            Integer,
+            ForeignKey(DB.metadata.tables["bgc_record"].c.id),
+            primary_key=True,
+            nullable=False,
+        ),
+        prefixes=["TEMPORARY"],
+    )
 
-    DB.execute_raw_query(create_temp_table)
+    DB.metadata.create_all(DB.engine)
+
+    # create_temp_table = f"""
+    #     CREATE TEMPORARY TABLE {temp_table_name} (
+    #         record_id INTEGER PRIMARY KEY NOT NULL references bgc_record(id)
+    #     );
+    # """
+
+    # DB.execute_raw_query(create_temp_table)
 
     if DB.engine is None:
         raise RuntimeError("DB engine is None")
 
-    cursor = DB.engine.raw_connection().cursor()
+    cursor = DB.engine.raw_connection().driver_connection.cursor()
 
     insert_query = f"""
         INSERT INTO {temp_table_name} (record_id) VALUES (?);
@@ -534,3 +567,91 @@ def create_temp_record_table(include_records: list[BGCRecord]) -> Table:
     table = Table(temp_table_name, DB.metadata, autoload_with=DB.engine)
 
     return table
+
+
+def reset_db_connected_components():
+    """Removes any data from the connected component table"""
+    DB.execute(DB.metadata.tables["connected_component"].delete())
+
+
+def reference_only_connected_component(connected_component, bgc_records) -> bool:
+    """Checks if this connected component is made up of only reference records"""
+
+    has_query = False
+
+    record_ids = []
+
+    for edge in connected_component:
+        record_a_id, record_b_id, _, _, _, _, _ = edge
+        record_ids.append(record_a_id)
+        record_ids.append(record_b_id)
+
+    for record in bgc_records:
+        if record._db_id is None:
+            raise ValueError("Record has no db id")
+        if (
+            record._db_id in record_ids
+            and record.parent_gbk.source_type == bs_enums.SOURCE_TYPE.QUERY
+        ):
+            has_query = True
+            break
+
+    return not has_query
+
+
+def get_connected_component_id(connected_component, cutoff, edge_param_id) -> int:
+    """Get the connected component id for the given connected component
+        expects all edges to be in one connected component, if thats not the
+        case, weird things might happen
+
+    Args:
+        connected_component: the connected component
+        cutoff: the distance cutoff
+        edge_param_id: the edge parameter id
+
+    Returns:
+        int: the connected component id
+    """
+
+    if DB.metadata is None:
+        raise RuntimeError("DB.metadata is None")
+
+    record_id = connected_component[0][0]
+
+    cc_table = DB.metadata.tables["connected_component"]
+
+    select_statement = (
+        select(cc_table.c.id)
+        .distinct()
+        .where(
+            and_(
+                cc_table.c.cutoff == cutoff,
+                cc_table.c.edge_param_id == edge_param_id,
+                cc_table.c.record_id == record_id,
+            )
+        )
+        .limit(1)
+    )
+
+    cc_ids = DB.execute(select_statement).fetchone()
+
+    return cc_ids[0]
+
+
+def remove_connected_component(connected_component, cutoff, edge_param_id) -> None:
+    """Removes a connected component from the cc table in the database"""
+
+    if DB.metadata is None:
+        raise RuntimeError("DB.metadata is None")
+
+    cc_id = get_connected_component_id(connected_component, cutoff, edge_param_id)
+
+    cc_table = DB.metadata.tables["connected_component"]
+
+    delete_statement = delete(cc_table).where(
+        cc_table.c.id == cc_id,
+    )
+
+    DB.execute(delete_statement)
+
+    DB.commit()

@@ -12,8 +12,9 @@ TODO: docstrings, none typings
 # from python
 import logging
 from concurrent.futures import ProcessPoolExecutor, Future
+import platform
 from threading import Event, Condition
-from typing import Generator, Callable, Optional, TypeVar
+from typing import Generator, Callable, Optional, TypeVar, Union
 from math import ceil
 
 from .record_pair import RecordPair
@@ -121,7 +122,19 @@ def generate_edges(
     # prepare a process pool
     logging.debug("Using %d cores", cores)
 
-    pair_ids = pair_generator.generate_pair_ids()
+    pair_data: Union[tuple[int, int], tuple[BGCRecord, BGCRecord]]
+    if platform.system() == "Darwin":
+        logging.debug(
+            "Running on %s: sending full records",
+            platform.system(),
+        )
+        pair_data = pair_generator.generate_pairs()
+    else:
+        logging.debug(
+            "Running on %s: sending pair ids",
+            platform.system(),
+        )
+        pair_data = pair_generator.generate_pair_ids()
 
     num_pairs = pair_generator.num_pairs()
 
@@ -152,7 +165,7 @@ def generate_edges(
             # to ensure that the executor is always working on something, even if
             # the main thread is busy submitting new tasks
             while len(running_futures) < max_queue_length:
-                batch = batch_generator(pair_ids, batch_size)
+                batch = batch_generator(pair_data, batch_size)
 
                 if len(batch) == 0:
                     all_done.set()
@@ -357,7 +370,12 @@ def expand_pair(pair: RecordPair) -> bool:
 
 # TODO: Test ?
 def calculate_scores_pair(
-    data: tuple[list[tuple[int, int]], bs_enums.ALIGNMENT_MODE, int, str]
+    data: tuple[
+        list[Union[tuple[int, int], tuple[BGCRecord, BGCRecord]]],
+        bs_enums.ALIGNMENT_MODE,
+        int,
+        str,
+    ]
 ) -> list[
     tuple[
         int,
@@ -381,18 +399,23 @@ def calculate_scores_pair(
         int, int, bool, str,]]: list of scores for each pair in the
         order as the input data list, including lcs and extension coordinates
     """
-    pair_ids, alignment_mode, edge_param_id, weights_label = data
+    data, alignment_mode, edge_param_id, weights_label = data
 
     # convert database ids to minimal record objects
-    records = fetch_records_from_database(pair_ids)
+    if isinstance(data[0][0], int):
+        pair_ids = data
+        records = fetch_records_from_database(pair_ids)
+    else:
+        pair_ids = []
+        records = {}
+        for pair in data:
+            pair_ids.append((pair[0]._db_id, pair[1]._db_id))
+            records[pair[0]._db_id] = pair[0]
+            records[pair[1]._db_id] = pair[1]
 
     results: list[
         tuple[int, int, float, float, float, float, int, bs_comparison.ComparableRegion]
     ] = []
-
-    # TODO: this fails since DB getting accessed from child processes
-    # seems to be a problem with the DB connection (for mac?)
-    # weights_label = bs_comparison.get_edge_weight(edge_param_id)
 
     for id_a, id_b in pair_ids:
         if id_a not in records or id_b not in records:

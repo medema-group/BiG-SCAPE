@@ -493,7 +493,7 @@ class TestCDS(TestCase):
         }
         parent_gbk = GBK.parse(parent_gbk_file_path, SOURCE_TYPE.QUERY, run)
 
-        feature = SeqFeature(FeatureLocation(1536, 2156, strand=1), type="CDS")
+        feature = SeqFeature(FeatureLocation(1536, 2157, strand=1), type="CDS")
 
         feature.qualifiers["translation"] = [
             "MTYRESARTTTRRIPGAVVPVARRIRGVLLAGLRAVGTRIARSPG"
@@ -501,6 +501,8 @@ class TestCDS(TestCase):
             "NSGWRSPEYQSRLLREAVAKYGSAAAAARWVATPETSIHVAGKAVDIGPPASASWLSEH"
             "GADYGLCRVYRNEPWHFELRPEAIEHGCPPLYADPSHDPRLRR"
         ]
+
+        CDS.parse(feature, parent_gbk)
 
         with self.assertLogs(level=logging.INFO) as cm:
             logging.info("nonsense")
