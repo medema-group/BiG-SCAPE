@@ -167,9 +167,17 @@ class RecordPairGenerator:
         if None in self.record_ids:
             raise ValueError("Record in bin has no db id!")
 
-    def cull_singletons(self, cutoff: float):
+    def cull_singletons(self, cutoff: float, ref_only: bool = False):
         """Culls singletons for given cutoff, i.e. records which have either no edges
-        in the database, or all edges have a distance above/equal to the cutoff"""
+        in the database, or all edges have a distance above/equal to the cutoff
+
+        Args:
+            cutoff (float): distance cuttoff
+            ref_only (False): if true only reference singletons are culled
+
+        Raises:
+            RuntimeError: DB.metadata is None
+        """
 
         if not DB.metadata:
             raise RuntimeError("DB.metadata is None")
@@ -189,16 +197,30 @@ class RecordPairGenerator:
         edges = DB.execute(select_statement).fetchall()
 
         # get all record_ids in the edges
-        filtered_record_ids: set[int] = set()
+        edge_record_ids: set[int] = set()
         for edge in edges:
-            filtered_record_ids.update(edge)
+            edge_record_ids.update(edge)
 
-        self.record_ids = filtered_record_ids
-        self.source_records = [
-            record
-            for record in self.source_records
-            if record._db_id in filtered_record_ids
-        ]
+        if ref_only:
+            singleton_record_ids = self.record_ids - edge_record_ids
+            self.source_records = [
+                record
+                for record in self.source_records
+                if (record._db_id in edge_record_ids)
+                or (
+                    record._db_id in singleton_record_ids
+                    and record.parent_gbk.source_type != SOURCE_TYPE.REFERENCE
+                )
+            ]
+            self.record_ids = {record._db_id for record in self.source_records}
+
+        else:
+            self.record_ids = edge_record_ids
+            self.source_records = [
+                record
+                for record in self.source_records
+                if record._db_id in edge_record_ids
+            ]
 
     def __repr__(self) -> str:
         return (

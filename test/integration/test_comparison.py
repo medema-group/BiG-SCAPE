@@ -26,7 +26,7 @@ from big_scape.genbank import (
 import big_scape.distances.mix as bs_mix
 import big_scape.distances.legacy_classify as bs_legacy_classify
 import big_scape.distances.classify as bs_classify
-import big_scape.distances.query as bs_query
+
 import big_scape.enums as bs_enums
 
 
