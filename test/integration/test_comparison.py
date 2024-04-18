@@ -26,11 +26,12 @@ from big_scape.genbank import (
 import big_scape.distances.mix as bs_mix
 import big_scape.distances.legacy_classify as bs_legacy_classify
 import big_scape.distances.classify as bs_classify
-
+import big_scape.distances.query as bs_query
 import big_scape.enums as bs_enums
+import big_scape.network.network as bs_network
 
 
-def create_mock_gbk(i, source_type: bs_enums.SOURCE_TYPE) -> GBK:
+def create_mock_gbk_hsp(i, source_type: bs_enums.SOURCE_TYPE) -> GBK:
     gbk = GBK(Path(f"test_path_{i}.gbk"), str(i), source_type)
     cds = CDS(0, 100)
     cds.parent_gbk = gbk
@@ -40,6 +41,22 @@ def create_mock_gbk(i, source_type: bs_enums.SOURCE_TYPE) -> GBK:
     cds.strand = 1
     gbk.genes.append(cds)
     gbk.region = Region(gbk, 1, 0, 100, False, "test")
+    gbk.metadata = {
+        "organism": "banana",
+        "taxonomy": "bananus;fruticus",
+        "description": "you can eat it",
+    }
+    return gbk
+
+
+def create_mock_gbk(i, source_type: bs_enums.SOURCE_TYPE, product: str = "test") -> GBK:
+    gbk = GBK(Path(f"test_path_{i}.gbk"), str(i), source_type)
+    cds = CDS(0, 100)
+    cds.parent_gbk = gbk
+    cds.orf_num = 1
+    cds.strand = 1
+    gbk.genes.append(cds)
+    gbk.region = Region(gbk, 1, 0, 100, False, product)
     gbk.metadata = {
         "organism": "banana",
         "taxonomy": "bananus;fruticus",
@@ -265,6 +282,62 @@ def create_mock_edge_entirely_different(a_id, b_id):
     )
 
 
+def create_mock_query_dataset(run):
+    """Creates a mock query dataset with 3 query records"""
+
+    query_gbk = create_mock_gbk(0, bs_enums.SOURCE_TYPE.QUERY, "NRPS")
+    cds = query_gbk.genes[0]
+    hsp_1 = bs_hmm.HSP(cds, "PF01234", 1.0, 0, 50)
+    cds.hsps.append(hsp_1)
+    hsp_1_alignment = bs_hmm.HSPAlignment(hsp_1, "AAAAAAAAAA")
+    hsp_1.alignment = hsp_1_alignment
+
+    gbk_1 = create_mock_gbk(1, bs_enums.SOURCE_TYPE.REFERENCE, "NRPS")
+    cds = gbk_1.genes[0]
+    hsp_1 = bs_hmm.HSP(cds, "PF01234", 1.0, 0, 50)
+    cds.hsps.append(hsp_1)
+    hsp_1_alignment = bs_hmm.HSPAlignment(hsp_1, "AAAAAAAAAA")
+    hsp_1.alignment = hsp_1_alignment
+
+    hsp_2 = bs_hmm.HSP(cds, "PF05678", 1.0, 50, 100)
+    cds.hsps.append(hsp_2)
+    hsp_2_alignment = bs_hmm.HSPAlignment(hsp_2, "BBBBBBBBBB")
+    hsp_2.alignment = hsp_2_alignment
+
+    gbk_2 = create_mock_gbk(2, bs_enums.SOURCE_TYPE.REFERENCE, "NRPS")
+    cds = gbk_2.genes[0]
+    hsp_2 = bs_hmm.HSP(cds, "PF05678", 1.0, 50, 100)
+    cds.hsps.append(hsp_2)
+    hsp_2_alignment = bs_hmm.HSPAlignment(hsp_2, "BBBBBBBBBB")
+    hsp_2.alignment = hsp_2_alignment
+
+    gbk_3 = create_mock_gbk(3, bs_enums.SOURCE_TYPE.REFERENCE, "NRPS")
+    cds = gbk_3.genes[0]
+    hsp_3 = bs_hmm.HSP(cds, "PF09101", 1.0, 50, 100)
+    cds.hsps.append(hsp_3)
+    hsp_alignment = bs_hmm.HSPAlignment(hsp_3, "CCCCCCCCCC")
+    hsp_3.alignment = hsp_alignment
+
+    gbk_4 = create_mock_gbk(4, bs_enums.SOURCE_TYPE.REFERENCE, "T1PKS")
+
+    gbks = [query_gbk, gbk_1, gbk_2, gbk_3, gbk_4]
+
+    for gbk in gbks:
+        gbk.save_all()
+        for hsp in gbk.genes[0].hsps:
+            hsp.save()
+            hsp.alignment.save()
+
+    query_gbk = gbks.pop(0)
+
+    query_record = bs_files.get_all_bgc_records(run, [query_gbk])
+    query_record = query_record[0]
+
+    list_bgc_records = bs_files.get_all_bgc_records(run, gbks)
+
+    return query_record, list_bgc_records
+
+
 class TestComparison(TestCase):
     """Test class for hmm search/scan workflow"""
 
@@ -331,7 +404,7 @@ class TestComparison(TestCase):
         weights = "mix"
 
         gbks_with_hsp = [
-            create_mock_gbk(
+            create_mock_gbk_hsp(
                 i,
                 bs_enums.SOURCE_TYPE.QUERY,
             )
@@ -382,7 +455,7 @@ class TestComparison(TestCase):
         weights = "mix"
 
         gbks_with_hsp = [
-            create_mock_gbk(
+            create_mock_gbk_hsp(
                 i,
                 bs_enums.SOURCE_TYPE.QUERY,
             )
@@ -582,7 +655,7 @@ class TestComparison(TestCase):
             "cores": 1,
         }
 
-        gbks = [create_mock_gbk(i, bs_enums.SOURCE_TYPE.QUERY) for i in range(3)]
+        gbks = [create_mock_gbk_hsp(i, bs_enums.SOURCE_TYPE.QUERY) for i in range(3)]
 
         for gbk in gbks:
             gbk.save_all()
@@ -931,7 +1004,164 @@ class TestComparison(TestCase):
         self.assertEqual(rows, 30)
 
     def test_test_generate_bins_query_workflow(self):
-        self.skipTest("Not implemented")
+        bs_data.DB.create_in_mem()
+
+        run = {
+            "alignment_mode": bs_enums.ALIGNMENT_MODE.AUTO,
+            "legacy_weights": False,
+            "record_type": bs_enums.RECORD_TYPE.REGION,
+            "cores": 1,
+            "classify": bs_enums.CLASSIFY_MODE.CLASS,
+        }
+
+        query_record, list_bgc_records = create_mock_query_dataset(run)
+
+        query_records = bs_query.get_query_records(run, list_bgc_records, query_record)
+
+        self.assertEqual(len(query_records), 4)
+
+        weights = "mix"
+
+        edge_param_id = bs_comparison.get_edge_param_id(run, weights)
+
+        self.assertEqual(edge_param_id, 1)
+
+        # final network should be:
+        # query_gbk <-> gbk_1 <-> gbk_2  gbk_3
+
+        # generate initial query -> ref pairs
+        query_to_ref_bin = bs_comparison.QueryToRefRecordPairGenerator(
+            "Query_Ref", edge_param_id, weights
+        )
+        query_to_ref_bin.add_records(query_records)
+
+        # fetch any existing distances from database
+        missing_edge_bin = bs_comparison.MissingRecordPairGenerator(query_to_ref_bin)
+
+        # there are no edges yet in db, and 1 query record and 3 ref records
+        # so 3 edges need to be generated
+        #     query_gbk <-> gbk_1
+        #     query_gbk <-> gbk_2
+        #     query_gbk <-> gbk_3
+        self.assertEqual(missing_edge_bin.num_pairs(), 3)
+
+        bs_query.calculate_distances(run, missing_edge_bin, "Query to Reference")
+
+        # all edges have been saved to db
+        self.assertEqual(missing_edge_bin.num_pairs(), 0)
+
+        distance_table = bs_data.DB.metadata.tables["distance"]
+        select_statement = select(distance_table.c.distance)
+        rows = len(bs_data.DB.execute(select_statement).fetchall())
+        self.assertEqual(rows, 3)
+
+        ref_to_ref_bin = bs_comparison.RefToRefRecordPairGenerator(
+            "Ref_Ref", edge_param_id, weights
+        )
+        ref_to_ref_bin.add_records(query_records)
+
+        # now we have 1 connected ref (gbk_1) and 2 singleton refs, so 2 edges need to be generated
+        #      gbk_1 <-> gbk_2 and gbk_1 <-> gbk_3
+        # in a second iteration, we will have 1 connected ref and 1 singleton ref, so 1 edge
+        # more will be generated
+        #       gbk_2 <-> gbk_3
+        self.assertEqual(ref_to_ref_bin.num_pairs(), 2)
+
+        # generating distances -> Connected Reference to Singleton Reference
+        bs_query.calculate_distances(
+            run, ref_to_ref_bin, "Singleton Reference to Connected Reference"
+        )
+
+        self.assertEqual(ref_to_ref_bin.num_pairs(), 0)
+
+        select_statement = select(distance_table.c.distance)
+        rows = len(bs_data.DB.execute(select_statement).fetchall())
+        self.assertEqual(rows, 6)
+
+        # now we make any last connected ref <-> connected ref pairs that are missing
+        # get all the edges in the query connected component
+        query_connected_component = bs_network.get_connected_components(
+            1, edge_param_id, [query_record]
+        )
+
+        # get_connected_components returns a list of connected components, we only want the first one
+        query_connected_component = next(query_connected_component)
+
+        # there are only 2 edges that have scores < 1.0
+        #   gbk_1 <-> gbk_2
+        #   query_gbks <-> gbk_1
+        self.assertEqual(len(query_connected_component), 2)
+
+        query_nodes = bs_network.get_nodes_from_cc(
+            query_connected_component, query_records
+        )
+
+        self.assertEqual(len(query_nodes), 3)
+
+        self.assertEqual(query_record, query_nodes[0])
+        self.assertEqual(query_records[1], query_nodes[1])
+        self.assertEqual(query_records[2], query_nodes[2])
+
+        query_connected_bin = bs_comparison.RecordPairGenerator(
+            "Query", edge_param_id, record_type=run["record_type"]
+        )
+        query_connected_bin.add_records(query_nodes)
+
+        # fetch any existing distances from database
+        missing_ref_edge_bin = bs_comparison.MissingRecordPairGenerator(
+            query_connected_bin
+        )
+
+        # there is 1 edge that is not in the cc if considering the cutoff
+        #   gbk_1 <-> gbk_2
+        # but this edge is already in database with a distance of 1!
+        # (from the first iteration)
+        self.assertEqual(missing_ref_edge_bin.num_pairs(), 0)
+
+        # calculate distances -> Connected Reference to Connected Reference
+        bs_query.calculate_distances(
+            run, missing_ref_edge_bin, "Connected Reference to Connected Reference"
+        )
+
+        select_statement = select(distance_table.c.distance)
+        rows = len(bs_data.DB.execute(select_statement).fetchall())
+        self.assertEqual(rows, 6)
 
     def test_calculate_distances_query(self):
-        self.skipTest("Not implemented")
+        bs_data.DB.create_in_mem()
+
+        run = {
+            "alignment_mode": bs_enums.ALIGNMENT_MODE.AUTO,
+            "legacy_weights": False,
+            "record_type": bs_enums.RECORD_TYPE.REGION,
+            "cores": 1,
+            "classify": bs_enums.CLASSIFY_MODE.CLASS,
+            "skip_propagation": False,
+        }
+
+        query_record, list_bgc_records = create_mock_query_dataset(run)
+
+        bs_query.calculate_distances_query(run, list_bgc_records, query_record)
+
+        query_connected_component = bs_network.get_connected_components(
+            1, 1, [query_record]
+        )
+
+        query_connected_component = next(query_connected_component)
+
+        # there are only 2 edges that have scores < 1.0
+        #   gbk_1 <-> gbk_2
+        #   query_gbks <-> gbk_1
+        self.assertEqual(len(query_connected_component), 2)
+
+        query_records = [query_record] + list_bgc_records
+
+        query_nodes = bs_network.get_nodes_from_cc(
+            query_connected_component, query_records
+        )
+
+        self.assertEqual(len(query_nodes), 3)
+
+        self.assertEqual(query_record, query_nodes[0])
+        self.assertEqual(query_records[1], query_nodes[1])
+        self.assertEqual(query_records[2], query_nodes[2])
