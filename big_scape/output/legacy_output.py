@@ -224,9 +224,7 @@ def generate_run_data_js(
         "classify": (
             "Legacy Groups"
             if run["legacy_classify"]
-            else run["classify"].name.title()
-            if run["classify"]
-            else "Not Classify"
+            else run["classify"].name.title() if run["classify"] else "Not Classify"
         ),
         "weights": "Legacy Weights" if run["legacy_weights"] else "Mix",
         "alignment_mode": run["alignment_mode"].name.title(),
@@ -873,9 +871,9 @@ def adjust_lcs_to_full_region(
 
 
 def generate_bs_family_alignment(
-    family_db_id: int,
-    family_members: list[int],
-    records: list[BGCRecord],
+    exemplar_records_list_id: int,
+    family_member_records_list_ids: list[int],
+    records_list: list[BGCRecord],
     edge_param_id: int,
     tree_path: Path,
 ):
@@ -891,18 +889,22 @@ def generate_bs_family_alignment(
     Returns:
         dict[str, Any]: alignment of family members
     """
-    family_name = "FAM_{:05d}".format(family_db_id)
+    family_name = "FAM_{:05d}".format(exemplar_records_list_id)
     logging.debug("Generating alignment for %s", family_name)
     # collects records within this GCF
-    family_records = [records[bgc_num] for bgc_num in family_members]
-    family_member_db_ids = [rec._db_id for rec in family_records]
-    fam_record_idx = family_member_db_ids.index(family_db_id)
-    fam_record = family_records[fam_record_idx]
+
+    family_member_db_ids = [
+        rec._db_id
+        for idx, rec in enumerate(records_list)
+        if idx in family_member_records_list_ids
+    ]
+
+    exemplar_record = records_list[exemplar_records_list_id]
 
     ref_genes_ = set()
     aln = []
-    for bgc, bgc_db_id in zip(family_members, family_member_db_ids):
-        bgc_record = records[bgc]
+    for bgc, bgc_db_id in zip(family_member_records_list_ids, family_member_db_ids):
+        bgc_record = records_list[bgc]
         bgc_gbk = bgc_record.parent_gbk
         if bgc_gbk is None:
             raise AttributeError("Record parent GBK is not set!")
@@ -911,28 +913,31 @@ def generate_bs_family_alignment(
 
         bgc_domains = bgc_record.get_hsps()
 
-        if bgc_db_id == family_db_id:
+        if bgc_db_id == exemplar_record._db_id:
+            # skip exemplar-exemplar comparison
+            continue
+        elif bgc == exemplar_records_list_id:
             aln.append([[dom_num, 0] for dom_num in range(len(bgc_domains))])
             continue
 
         # records from the same region will not already have an lcs computed,
         # should they end up in the same family we can try to align them
-        elif bgc_gbk == fam_record.parent_gbk:
+        elif bgc_gbk == exemplar_record.parent_gbk:
             a_start, b_start, reverse = align_subrecords(
-                fam_record.get_hsps(), bgc_domains
+                exemplar_record.get_hsps(), bgc_domains
             )
 
         else:
             lcs_data = fetch_lcs_from_db(
-                family_db_id,
+                exemplar_record._db_id,
                 bgc_db_id,
                 edge_param_id,
             )
 
             a_start, b_start, reverse = adjust_lcs_to_family_reference(
                 lcs_data,
-                family_db_id,
-                len(fam_record.get_hsps()),
+                exemplar_record._db_id,
+                len(exemplar_record.get_hsps()),
                 len(bgc_domains),
             )
 
@@ -954,9 +959,13 @@ def generate_bs_family_alignment(
     logging.debug("Generating newick tree for %s", family_name)
     fam_alignment = {
         "id": family_name,
-        "ref": family_members[fam_record_idx],
+        "ref": exemplar_records_list_id,
         "newick": generate_newick_tree(
-            family_records, fam_record_idx, family_members, family_name, tree_path
+            records_list,
+            exemplar_records_list_id,
+            family_member_records_list_ids,
+            family_name,
+            tree_path,
         ),
         "ref_genes": ref_genes,
         "aln": aln,
@@ -1035,6 +1044,9 @@ def generate_bs_families_members(
     """Generate a dictionary where keys are family indexes and values are list of region
     indexes that belong to that family
 
+    indexes correspond to the index of the record in a full list of records (in a bin)
+    this is very confusing, so this desperately needs to be refactored
+
     Args:
         cutoff (float): cutoff value
         pair_generator (BGCBin): BGC pair_generator
@@ -1042,17 +1054,22 @@ def generate_bs_families_members(
     Returns:
         dict[int, list[int]]: family to member regions index
     """
-    # get a dictionary of node id to family id
-    node_family = {}
+
+    families_members: dict[int, list[int]] = {}
+
+    # first make a dictionary of db id to record_list id
+    db_id_to_record_idx = {}
+    for idx, record in enumerate(pair_generator.source_records):
+        db_id_to_record_idx[record._db_id] = idx
 
     if not DB.metadata:
         raise RuntimeError("DB.metadata is None")
 
-    # get all families from the database
+    # first get all familes and their nodes
     family_table = DB.metadata.tables["family"]
     bgc_families_table = DB.metadata.tables["bgc_record_family"]
 
-    select_statement = (
+    family_select_statement = (
         select(
             bgc_families_table.c.record_id,
             family_table.c.center_id,
@@ -1065,29 +1082,41 @@ def generate_bs_families_members(
         .where(family_table.c.bin_label == pair_generator.label)
     )
 
-    result = DB.execute(select_statement).fetchall()
+    result = DB.execute(family_select_statement).fetchall()
 
     for row in result:
-        node_family[row.record_id] = row.center_id
+        center_id_list_idx = db_id_to_record_idx[row.center_id]
+        record_id_list_idx = db_id_to_record_idx[row.record_id]
+        families_members.setdefault(center_id_list_idx, []).append(record_id_list_idx)
 
-    families_members: dict[int, list[int]] = {}
+    # add singletons
 
-    for idx, record in enumerate(pair_generator.source_records):
-        record_id = record._db_id
+    record_table = DB.metadata.tables["bgc_record"]
 
-        if record_id is None:
-            raise AttributeError("Record id is None!")
+    singleton_select_statement = (
+        select(record_table.c.id)
+        .where(record_table.c.id.in_(pair_generator.record_ids))
+        .where(
+            record_table.c.id.not_in(
+                select(
+                    bgc_families_table.c.record_id,
+                )
+                .join(family_table, bgc_families_table.c.family_id == family_table.c.id)
+                .where(bgc_families_table.c.record_id.in_(pair_generator.record_ids))
+                .where(family_table.c.cutoff == cutoff)
+                .where(family_table.c.bin_label == pair_generator.label)
+            )
+        )
+    )
 
-        if record_id not in node_family:
-            families_members[record_id] = [idx]
+    result = DB.execute(singleton_select_statement).fetchall()
+
+    for row in result:
+        if row.id in families_members:
+            logging.warning("Singleton record %s is already in a family", row.id)
             continue
-
-        family_id = node_family[record_id]
-
-        if family_id not in families_members:
-            families_members[family_id] = []
-
-        families_members[family_id].append(idx)
+        singleton_list_idx = db_id_to_record_idx[row.id]
+        families_members[singleton_list_idx] = [singleton_list_idx]
 
     return families_members
 
@@ -1699,9 +1728,7 @@ def write_full_network_file(run: dict, all_bgc_records: list[BGCRecord]) -> None
     write_network_file(full_network_file_path, edgelist)
 
 
-def get_full_network_edgelist(
-    run: dict, all_bgc_records: list
-) -> set[
+def get_full_network_edgelist(run: dict, all_bgc_records: list) -> set[
     tuple[
         str,
         str,

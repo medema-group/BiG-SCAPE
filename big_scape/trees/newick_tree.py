@@ -135,7 +135,7 @@ def find_tree_domains(
 
 
 def generate_gcf_alignment(
-    records: list[BGCRecord], exemplar: int, family_members: list[int]
+    all_records: list[BGCRecord], all_exemplar: int, all_family_members: list[int]
 ) -> str:
     """Generate protein domain alignment for records in GCF
 
@@ -148,6 +148,9 @@ def generate_gcf_alignment(
         str: alignment of GCF based on protein domain
         TODO: refactor
     """
+    records = [all_records[i] for i in all_family_members]
+    exemplar = all_family_members.index(all_exemplar)
+
     record_ids = list(range(len(records)))
 
     # collect present domains for each GCF member
@@ -259,8 +262,8 @@ def generate_gcf_alignment(
     for bgc in delete_bgc:
         del alignments[bgc]
 
-    algn_string = f">{family_members[exemplar]}\n{alignments[exemplar]}\n"
+    algn_string = f">{all_family_members[exemplar]}\n{alignments[exemplar]}\n"
     for bgc in alignments:
         if bgc != exemplar:
-            algn_string += f">{family_members[bgc]}\n{alignments[bgc]}\n"
+            algn_string += f">{all_family_members[bgc]}\n{alignments[bgc]}\n"
     return algn_string
