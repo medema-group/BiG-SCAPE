@@ -31,8 +31,6 @@ from big_scape.enums import SOURCE_TYPE, CLASSIFY_MODE, RECORD_TYPE
 
 import big_scape.comparison as bs_comparison
 
-# from this module
-
 
 # weights are in the order JC, AI, DSS, Anchor boost
 LEGACY_WEIGHTS = {
@@ -1013,6 +1011,7 @@ def legacy_bin_generator(
 
 
 # one of the few direct copy-and-pastes!
+# TODO: test
 def legacy_get_class(product):  # pragma no cover
     """Sort BGC by its type. Uses AntiSMASH annotations
     (see https://docs.antismash.secondarymetabolites.org/glossary/#cluster-types)

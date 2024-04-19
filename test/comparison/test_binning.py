@@ -1024,6 +1024,86 @@ def mock_region() -> Region:
     return region
 
 
+def create_mock_complete_chemhyb_gbk(
+    i, source_type: bs_enums.SOURCE_TYPE, products, categories
+) -> GBK:
+    gbk = GBK(Path(f"test_path_{i}.gbk"), str(i), source_type)
+
+    region_feature = SeqFeature(FeatureLocation(0, 100), type="region")
+    region_feature.qualifiers = {
+        "region_number": ["1"],
+        "candidate_cluster_numbers": ["1"],
+        "product": products,
+    }
+
+    region = Region.parse_as5(region_feature, parent_gbk=gbk)
+
+    candidate_cluster_feature = SeqFeature(FeatureLocation(0, 100), type="cand_cluster")
+    candidate_cluster_feature.qualifiers = {
+        "candidate_cluster_number": ["1"],
+        "kind": ["single"],
+        "protoclusters": ["1", "2"],
+        "product": products,
+    }
+
+    candidate_cluster = CandidateCluster.parse(
+        candidate_cluster_feature, parent_gbk=gbk
+    )
+
+    protocluster_feature_1 = SeqFeature(FeatureLocation(0, 100), type="protocluster")
+    protocluster_feature_1.qualifiers = {
+        "protocluster_number": ["1"],
+        "category": [categories[0]],
+        "product": [products[0]],
+    }
+
+    protocluster_1 = ProtoCluster.parse(protocluster_feature_1, parent_gbk=gbk)
+
+    protocore_feature_1 = SeqFeature(FeatureLocation(0, 100), type="proto_core")
+    protocore_feature_1.qualifiers = {
+        "protocluster_number": ["1"],
+        "product": [products[0]],
+    }
+
+    protocore_1 = ProtoCore.parse(protocore_feature_1, parent_gbk=gbk)
+
+    protocluster_feature_2 = SeqFeature(FeatureLocation(0, 100), type="protocluster")
+    protocluster_feature_2.qualifiers = {
+        "protocluster_number": ["2"],
+        "category": [categories[1]],
+        "product": [products[1]],
+    }
+
+    protocluster_2 = ProtoCluster.parse(protocluster_feature_2, parent_gbk=gbk)
+
+    protocore_feature_2 = SeqFeature(FeatureLocation(0, 100), type="proto_core")
+    protocore_feature_2.qualifiers = {
+        "protocluster_number": ["2"],
+        "product": [products[1]],
+    }
+
+    protocore_2 = ProtoCore.parse(protocore_feature_2, parent_gbk=gbk)
+
+    protocluster_1.add_proto_core(protocore_1)
+    protocluster_2.add_proto_core(protocore_2)
+    candidate_cluster.add_proto_cluster(protocluster_1)
+    candidate_cluster.add_proto_cluster(protocluster_2)
+    region.add_cand_cluster(candidate_cluster)
+
+    cds = CDS(0, 100)
+    cds.parent_gbk = gbk
+    cds.orf_num = 1
+    cds.strand = 1
+    gbk.genes.append(cds)
+    gbk.region = region
+    gbk.metadata = {
+        "organism": "banana",
+        "taxonomy": "bananus;fruticus",
+        "description": "you can eat it",
+    }
+    return gbk
+
+
 class TestBinGenerators(TestCase):
     """Test class for the bin generators and associated functions"""
 
@@ -1035,19 +1115,43 @@ class TestBinGenerators(TestCase):
         super().__init__(methodName)
         self.addCleanup(self.clean_db)
 
-    def test_get_region_category(self):
+    def test_get_record_category_simple(self):
         """Tests whether a category is correclty parsed from a region of version as6 or higher"""
 
         region = mock_region()
         cc = region.cand_clusters[1]
-        pc = cc.proto_clusters[1]
 
-        expected_category = "PKS"
-        category = get_record_category(pc)
+        self.assertEqual("PKS", get_record_category(cc))
 
-        self.assertEqual(expected_category, category)
+    def test_get_record_category_chemhybrid_pc1(self):
+        gbk = create_mock_complete_chemhyb_gbk(
+            0, bs_enums.SOURCE_TYPE.QUERY, ["T1PKS", "NRPS"], ["PKS", "NRPS"]
+        )
 
-    def test_get_weight_category(self):
+        pc_1 = gbk.region.cand_clusters[1].proto_clusters[1]
+
+        self.assertEqual("PKS", get_record_category(pc_1))
+
+    def test_get_record_category_chemhybrid_pc2(self):
+        gbk = create_mock_complete_chemhyb_gbk(
+            0, bs_enums.SOURCE_TYPE.QUERY, ["T1PKS", "NRPS"], ["PKS", "NRPS"]
+        )
+
+        pc_2 = gbk.region.cand_clusters[1].proto_clusters[2]
+
+        self.assertEqual("NRPS", get_record_category(pc_2))
+
+    def test_get_record_category_chemhybrid_cc(self):
+        gbk = create_mock_complete_chemhyb_gbk(
+            0, bs_enums.SOURCE_TYPE.QUERY, ["T1PKS", "NRPS"], ["PKS", "NRPS"]
+        )
+
+        cc = gbk.region.cand_clusters[1]
+
+        self.assertIn("PKS", get_record_category(cc))
+        self.assertIn("NRPS", get_record_category(cc))
+
+    def test_get_legacy_weight_from_category(self):
         """Tests wether the correct legacy weight category is created from a region category"""
 
         run = {

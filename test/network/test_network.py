@@ -371,8 +371,6 @@ class TestNetwork(TestCase):
     def test_create_temp_record_table(self):
         """Test the create_temp_record_table function"""
 
-        # self.skipTest("Not implemented")
-
         bs_data.DB.create_in_mem()
 
         run = {"record_type": bs_enums.RECORD_TYPE.REGION}

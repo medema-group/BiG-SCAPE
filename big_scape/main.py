@@ -300,8 +300,6 @@ def run_bigscape(run: dict) -> None:
         DB.commit()
 
     # FAMILY GENERATION
-    # TODO: implement include nodes (all bgc records of this run) in cc component
-    # & egde param id (account for weights/alignment mode) to use only correct edges
     logging.info("Generating families")
 
     bs_families.reset_db_families()
@@ -349,6 +347,10 @@ def run_bigscape(run: dict) -> None:
                 for connected_component in bs_network.get_connected_components(
                     cutoff, edge_param_id, bin.source_records
                 ):
+                    logging.debug(
+                        "Found connected component with %d edges",
+                        len(connected_component),
+                    )
                     # check and remove ref only cc
                     if bs_network.reference_only_connected_component(
                         connected_component, bin.source_records
