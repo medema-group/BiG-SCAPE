@@ -1165,3 +1165,70 @@ class TestComparison(TestCase):
         self.assertEqual(query_record, query_nodes[0])
         self.assertEqual(query_records[1], query_nodes[1])
         self.assertEqual(query_records[2], query_nodes[2])
+
+    def test_get_query_records(self):
+        bs_data.DB.create_in_mem()
+
+        gbk_1 = create_mock_complete_single_gbk(
+            1, bs_enums.SOURCE_TYPE.REFERENCE, "T1PKS", "PKS"
+        )
+
+        gbk_2 = create_mock_complete_single_gbk(
+            2, bs_enums.SOURCE_TYPE.REFERENCE, "T2PKS", "PKS"
+        )
+
+        gbk_3 = create_mock_complete_single_gbk(
+            3, bs_enums.SOURCE_TYPE.REFERENCE, "NRPS", "NRPS"
+        )
+
+        gbk_4 = create_mock_complete_single_gbk(
+            4, bs_enums.SOURCE_TYPE.REFERENCE, "NRPS.T1PKS", "NRPS.PKS"
+        )
+
+        gbk_5 = create_mock_complete_single_gbk(
+            5, bs_enums.SOURCE_TYPE.REFERENCE, "NRPS.T2PKS", "NRPS.PKS"
+        )
+
+        gbks = [gbk_1, gbk_2, gbk_3, gbk_4, gbk_5]
+
+        for gbk in gbks:
+            gbk.save_all()
+
+        query_gbk = create_mock_complete_single_gbk(
+            0, bs_enums.SOURCE_TYPE.QUERY, "T1PKS", "PKS"
+        )
+        query_gbk.save_all()
+
+        run = {
+            "alignment_mode": bs_enums.ALIGNMENT_MODE.AUTO,
+            "legacy_weights": False,
+            "record_type": bs_enums.RECORD_TYPE.REGION,
+            "cores": 1,
+            "classify": bs_enums.CLASSIFY_MODE.CLASS,
+        }
+
+        list_bgc_records = bs_files.get_all_bgc_records(run, gbks)
+
+        query_record = bs_files.get_all_bgc_records(run, [query_gbk])
+        query_record = query_record[0]
+
+        query_records = bs_query.get_query_records(run, list_bgc_records, query_record)
+
+        self.assertEqual(len(query_records), 2)
+
+        run = {
+            "alignment_mode": bs_enums.ALIGNMENT_MODE.AUTO,
+            "legacy_weights": False,
+            "record_type": bs_enums.RECORD_TYPE.REGION,
+            "cores": 1,
+            "classify": bs_enums.CLASSIFY_MODE.CATEGORY,
+        }
+
+        list_bgc_records = bs_files.get_all_bgc_records(run, gbks)
+
+        query_record = bs_files.get_all_bgc_records(run, [query_gbk])
+        query_record = query_record[0]
+
+        query_records = bs_query.get_query_records(run, list_bgc_records, query_record)
+
+        self.assertEqual(len(query_records), 3)
