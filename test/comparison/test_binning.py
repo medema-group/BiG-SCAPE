@@ -948,8 +948,19 @@ class TestBGCBin(TestCase):
 
 
 class TestMixComparison(TestCase):
+    def clean_db(self):
+        if bs_data.DB.opened():
+            bs_data.DB.close_db()
+
+    def __init__(self, methodName: str = "runTest") -> None:
+        super().__init__(methodName)
+        self.addCleanup(self.clean_db)
+
     def test_mix_iter(self):
         """Tests whether a new mix bin can be created for comparison"""
+
+        bs_data.DB.create_in_mem()
+
         gbk1 = GBK(Path("test"), "test1", source_type=bs_enums.SOURCE_TYPE.QUERY)
         gbk2 = GBK(Path("test"), "test2", source_type=bs_enums.SOURCE_TYPE.QUERY)
         gbk3 = GBK(Path("test"), "test3", source_type=bs_enums.SOURCE_TYPE.QUERY)
@@ -968,7 +979,12 @@ class TestMixComparison(TestCase):
 
         bgc_list = [bgc_a, bgc_b, bgc_c]
 
-        new_bin = generate_mix_bin(bgc_list, 1, bs_enums.RECORD_TYPE.REGION)
+        run = {
+            "record_type": bs_enums.RECORD_TYPE.REGION,
+            "alignment_mode": bs_enums.ALIGNMENT_MODE.AUTO,
+        }
+
+        new_bin = generate_mix_bin(bgc_list, run)
 
         # expected representation of the bin object
         expected_pair_count = 3

@@ -401,7 +401,6 @@ class TestComparison(TestCase):
             "record_type": bs_enums.RECORD_TYPE.REGION,
             "cores": 1,
         }
-        weights = "mix"
 
         gbks_with_hsp = [
             create_mock_gbk_hsp(
@@ -430,11 +429,7 @@ class TestComparison(TestCase):
 
         list_bgc_records = bs_files.get_all_bgc_records(run, gbks)
 
-        edge_param_id = bs_comparison.get_edge_param_id(run, weights)
-
-        mix_bin = bs_comparison.generate_mix_bin(
-            list_bgc_records, edge_param_id, run["record_type"]
-        )
+        mix_bin = bs_comparison.generate_mix_bin(list_bgc_records, run)
 
         missing_edge_bin = bs_comparison.MissingRecordPairGenerator(mix_bin)
 
@@ -452,7 +447,6 @@ class TestComparison(TestCase):
             "record_type": bs_enums.RECORD_TYPE.REGION,
             "cores": 1,
         }
-        weights = "mix"
 
         gbks_with_hsp = [
             create_mock_gbk_hsp(
@@ -474,11 +468,7 @@ class TestComparison(TestCase):
 
         list_bgc_records = bs_files.get_all_bgc_records(run, gbks)
 
-        edge_param_id = bs_comparison.get_edge_param_id(run, weights)
-
-        mix_bin = bs_comparison.generate_mix_bin(
-            list_bgc_records, edge_param_id, run["record_type"]
-        )
+        mix_bin = bs_comparison.generate_mix_bin(list_bgc_records, run)
 
         missing_edge_bin = bs_comparison.MissingRecordPairGenerator(mix_bin)
 
@@ -520,7 +510,6 @@ class TestComparison(TestCase):
             "record_type": bs_enums.RECORD_TYPE.REGION,
             "cores": 1,
         }
-        weights = "mix"
 
         gbks = [
             create_mock_complete_single_gbk(i, bs_enums.SOURCE_TYPE.QUERY, "PKS", "PKS")
@@ -532,11 +521,7 @@ class TestComparison(TestCase):
 
         list_bgc_records = bs_files.get_all_bgc_records(run, gbks)
 
-        edge_param_id = bs_comparison.get_edge_param_id(run, weights)
-
-        mix_bin = bs_comparison.generate_mix_bin(
-            list_bgc_records, edge_param_id, run["record_type"]
-        )
+        mix_bin = bs_comparison.generate_mix_bin(list_bgc_records, run)
 
         missing_edge_bin = bs_comparison.MissingRecordPairGenerator(mix_bin)
 
@@ -615,9 +600,7 @@ class TestComparison(TestCase):
 
         self.assertEqual(edge_param_id, 1)
 
-        mix_bin = bs_comparison.generate_mix_bin(
-            list_bgc_records, edge_param_id, run["record_type"]
-        )
+        mix_bin = bs_comparison.generate_mix_bin(list_bgc_records, run)
 
         expected_repr = "Bin 'mix': 3 pairs from 3 BGC records"
 

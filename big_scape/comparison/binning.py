@@ -743,9 +743,7 @@ class MissingRecordPairGenerator(RecordPairGenerator):
         raise NotImplementedError("Cannot add records to a PartialRecordPairGenerator")
 
 
-def generate_mix_bin(
-    record_list: list[BGCRecord], edge_param_id: int, record_type: RECORD_TYPE
-) -> RecordPairGenerator:
+def generate_mix_bin(record_list: list[BGCRecord], run: dict) -> RecordPairGenerator:
     """Generate an all-vs-all bin of the supplied BGC records
 
     Args:
@@ -754,6 +752,10 @@ def generate_mix_bin(
     Returns:
         BGCBin: The all-vs-all BGC bin
     """
+
+    edge_param_id = bs_comparison.get_edge_param_id(run, "mix")
+
+    record_type = run["record_type"]
 
     mix_bin = RecordPairGenerator(
         label="mix", edge_param_id=edge_param_id, record_type=record_type

@@ -302,96 +302,30 @@ def run_bigscape(run: dict) -> None:
     # FAMILY GENERATION
     logging.info("Generating families")
 
-    bs_families.reset_db_families()
+    bs_families.reset_db_family_tables()
 
-    bs_network.reset_db_connected_components()
+    bs_network.reset_db_connected_components_table()
 
     # mix
 
     if not run["no_mix"] and not run["query_bgc_path"]:
-        edge_param_id = bs_comparison.get_edge_param_id(run, "mix")
-        for cutoff in run["gcf_cutoffs"]:
-            logging.info("Bin 'mix': cutoff %s", cutoff)
-            for connected_component in bs_network.get_connected_components(
-                cutoff, edge_param_id, all_bgc_records
-            ):
-                # check and remove ref only cc
-                if bs_network.reference_only_connected_component(
-                    connected_component, all_bgc_records
-                ):
-                    bs_network.remove_connected_component(
-                        connected_component, cutoff, edge_param_id
-                    )
-
-                logging.debug(
-                    "Found connected component with %d edges", len(connected_component)
-                )
-
-                regions_families = bs_families.generate_families(
-                    connected_component, "mix", cutoff
-                )
-
-                # save families to database
-                bs_families.save_to_db(regions_families)
-            bs_families.save_singletons(run["record_type"], cutoff, "mix")
-
-        DB.commit()
+        bs_families.run_family_assignments(
+            run, bs_comparison.generate_mix_bin, all_bgc_records
+        )
 
     # legacy_classify
 
     if run["legacy_classify"] and not run["query_bgc_path"]:
-        for bin in bs_comparison.legacy_bin_generator(all_bgc_records, run):
-            edge_param_id = bs_comparison.get_edge_param_id(run, bin.weights)
-            for cutoff in run["gcf_cutoffs"]:
-                logging.debug("Bin '%s': cutoff %s", bin.label, cutoff)
-                for connected_component in bs_network.get_connected_components(
-                    cutoff, edge_param_id, bin.source_records
-                ):
-                    logging.debug(
-                        "Found connected component with %d edges",
-                        len(connected_component),
-                    )
-                    # check and remove ref only cc
-                    if bs_network.reference_only_connected_component(
-                        connected_component, bin.source_records
-                    ):
-                        bs_network.remove_connected_component(
-                            connected_component, cutoff, edge_param_id
-                        )
-
-                    regions_families = bs_families.generate_families(
-                        connected_component, bin.label, cutoff
-                    )
-                    bs_families.save_to_db(regions_families)
-                bs_families.save_singletons(run["record_type"], cutoff, bin.label)
-
-        DB.commit()
+        bs_families.run_family_assignments(
+            run, bs_comparison.legacy_bin_generator, all_bgc_records
+        )
 
     # classify
 
     if run["classify"] and not run["query_bgc_path"]:
-        for bin in bs_comparison.as_class_bin_generator(all_bgc_records, run):
-            edge_param_id = bs_comparison.get_edge_param_id(run, bin.weights)
-            for cutoff in run["gcf_cutoffs"]:
-                logging.debug("Bin '%s': cutoff %s", bin.label, cutoff)
-                for connected_component in bs_network.get_connected_components(
-                    cutoff, edge_param_id, bin.source_records
-                ):
-                    # check and remove ref only cc
-                    if bs_network.reference_only_connected_component(
-                        connected_component, bin.source_records
-                    ):
-                        bs_network.remove_connected_component(
-                            connected_component, cutoff, edge_param_id
-                        )
-
-                    regions_families = bs_families.generate_families(
-                        connected_component, bin.label, cutoff
-                    )
-                    bs_families.save_to_db(regions_families)
-                bs_families.save_singletons(run["record_type"], cutoff, bin.label)
-
-        DB.commit()
+        bs_families.run_family_assignments(
+            run, bs_comparison.as_class_bin_generator, all_bgc_records
+        )
 
     # query BGC mode
     if run["query_bgc_path"]:
@@ -467,9 +401,7 @@ def run_bigscape(run: dict) -> None:
 
     if not run["no_mix"] and not run["query_bgc_path"]:
         edge_param_id = bs_comparison.get_edge_param_id(run, "mix")
-        mix_bin = bs_comparison.generate_mix_bin(
-            all_bgc_records, edge_param_id, run["record_type"]
-        )
+        mix_bin = bs_comparison.generate_mix_bin(all_bgc_records, run)
 
         for cutoff in run["gcf_cutoffs"]:
             # cull singletons ref only

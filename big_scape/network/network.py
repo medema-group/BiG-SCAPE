@@ -1,6 +1,5 @@
 """Contains functions to manipulate the in-db network"""
 
-
 # from dependencies
 import logging
 import random
@@ -557,7 +556,7 @@ def create_temp_record_table(include_records: list[BGCRecord]) -> Table:
     return table
 
 
-def reset_db_connected_components():
+def reset_db_connected_components_table():
     """Removes any data from the connected component table"""
     DB.execute(DB.metadata.tables["connected_component"].delete())
 
