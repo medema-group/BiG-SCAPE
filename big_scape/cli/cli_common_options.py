@@ -262,7 +262,9 @@ def common_cluster_query(fn):
             help=(
                 "Use BiG-SCAPE v1 class-based weights in distance calculations. "
                 "If not selected, the distance metric will be based on the 'mix' "
-                "weights distribution."
+                "weights distribution. Warning: these weights are not recommended "
+                "for use with the record types protocluster/protocore, as they have "
+                "been optimized and validated only for the 'region' record type."
             ),
         ),
         click.option(
