@@ -329,44 +329,7 @@ def run_bigscape(run: dict) -> None:
 
     # query BGC mode
     if run["query_bgc_path"]:
-        cc_cutoff: dict[
-            str, list[tuple[int, int, float, float, float, float, int]]
-        ] = {}
-        if run["legacy_weights"]:
-            weights = bs_comparison.get_legacy_weights_from_category(
-                query_record, query_record.product, run
-            )
-        else:
-            weights = "mix"
-        edge_param_id = bs_comparison.get_edge_param_id(run, weights)
-
-        for cutoff in run["gcf_cutoffs"]:
-            logging.info("Query BGC Bin: cutoff %s", cutoff)
-
-            # get_connected_components returns a list of connected components, but we only
-            # want the first one, so we use next()
-
-            query_connected_component = next(
-                bs_network.get_connected_components(
-                    cutoff, edge_param_id, [query_record]
-                )
-            )
-
-            cc_cutoff[cutoff] = query_connected_component
-
-            logging.debug(
-                "Found connected component with %d edges",
-                len(query_connected_component),
-            )
-
-            regions_families = bs_families.generate_families(
-                query_connected_component, weights, cutoff
-            )
-
-            # save families to database
-            bs_families.save_to_db(regions_families)
-
-        DB.commit()
+        cc_cutoff = bs_families.run_family_assignments_query(run, query_record)
 
     DB.save_to_disk(run["db_path"])
 
@@ -400,7 +363,6 @@ def run_bigscape(run: dict) -> None:
     # mix
 
     if not run["no_mix"] and not run["query_bgc_path"]:
-        edge_param_id = bs_comparison.get_edge_param_id(run, "mix")
         mix_bin = bs_comparison.generate_mix_bin(all_bgc_records, run)
 
         for cutoff in run["gcf_cutoffs"]:

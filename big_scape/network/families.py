@@ -339,3 +339,49 @@ def run_family_assignments(
             save_singletons(run["record_type"], cutoff, bin.label)
 
     DB.commit()
+
+
+def run_family_assignments_query(run: dict, query_record: BGCRecord) -> dict:
+    """Run the family assignment workflow for a single query record
+
+    Args:
+        run (dict): run configuration
+        query_record (BGCRecord): query record
+
+    """
+
+    cc_cutoff: dict[str, list[tuple[int, int, float, float, float, float, int]]] = {}
+
+    if run["legacy_weights"]:
+        weights = bs_comparison.get_legacy_weights_from_category(
+            query_record, query_record.product, run
+        )
+    else:
+        weights = "mix"
+    edge_param_id = bs_comparison.get_edge_param_id(run, weights)
+
+    for cutoff in run["gcf_cutoffs"]:
+        logging.info("Query BGC Bin: cutoff %s", cutoff)
+
+        # get_connected_components returns a list of connected components, but we only
+        # want the first one, so we use next()
+
+        query_connected_component = next(
+            bs_network.get_connected_components(cutoff, edge_param_id, [query_record])
+        )
+
+        cc_cutoff[cutoff] = query_connected_component
+
+        logging.debug(
+            "Found connected component with %d edges",
+            len(query_connected_component),
+        )
+
+        regions_families = generate_families(query_connected_component, weights, cutoff)
+
+        # save families to database
+        save_to_db(regions_families)
+
+    DB.commit()
+
+    return cc_cutoff
