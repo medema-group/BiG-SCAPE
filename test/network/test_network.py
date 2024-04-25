@@ -267,7 +267,7 @@ class TestNetwork(TestCase):
         # get a list of gbk ids to include
 
         # generate connected components
-        bs_network.generate_connected_components(1, 1)
+        bs_network.generate_connected_components(1, 1, "test")
 
         # get the distinct connected components
         q = """
@@ -318,10 +318,10 @@ class TestNetwork(TestCase):
         # get a list of gbk ids to include
 
         # generate connected components
-        bs_network.generate_connected_components(1, 1)
+        bs_network.generate_connected_components(1, 1, "test")
 
         # get the cc ids
-        cc_ids = bs_network.get_connected_component_ids(1, 1)
+        cc_ids = bs_network.get_connected_component_ids(1, 1, "test")
 
         # I insist on only having one assert per test
         # so we'll make things difficult for ourselves
@@ -363,10 +363,13 @@ class TestNetwork(TestCase):
         for edge in edges:
             bs_comparison.save_edge_to_db(edge)
 
-        random_edge = bs_network.get_random_edge(1, 1)
+        random_edge = bs_network.get_random_edge(1, 1, "test")
 
         # we expect the edge to be in the list of edges
         self.assertIn(random_edge, edges_small)
+
+    def test_get_random_edge_cc_and_temp_tables(self):
+        self.skipTest("Not implemented")
 
     def test_create_temp_record_table(self):
         """Test the create_temp_record_table function"""
@@ -435,11 +438,11 @@ class TestNetwork(TestCase):
             bs_comparison.save_edge_to_db(edge)
 
         # generate connected components
-        bs_network.generate_connected_components(0.5, 1)
+        bs_network.generate_connected_components(0.5, 1, "test")
 
-        cc_ids = bs_network.get_connected_component_ids(0.5, 1)
+        cc_ids = bs_network.get_connected_component_ids(0.5, 1, "test")
 
-        cc_edges_a = bs_network.get_cc_edges(cc_ids[0], 0.5, 1)
+        cc_edges_a = bs_network.get_cc_edges(cc_ids[0], 0.5, 1, "test")
 
         expected_data = {"cc_count": 1, "edge_count": len(edges_a)}
         seen_data = {"cc_count": len(cc_ids), "edge_count": len(cc_edges_a)}
@@ -495,7 +498,10 @@ class TestNetwork(TestCase):
     def test_is_ref_only_connected_component(self):
         bs_data.DB.create_in_mem()
 
-        run = {"record_type": bs_enums.RECORD_TYPE.REGION}
+        run = {
+            "record_type": bs_enums.RECORD_TYPE.REGION,
+            "alignment_mode": bs_enums.ALIGNMENT_MODE.AUTO,
+        }
 
         # create a bunch of gbk files
         gbks_a = []
@@ -517,6 +523,8 @@ class TestNetwork(TestCase):
         record = bs_files.get_all_bgc_records(run, gbks)
         include_records.extend(record)
 
+        mix_bin = bs_comparison.generate_mix_bin(include_records, run)
+
         # create a bunch of edges, generating a cc with edges of distance 0
         # and another with distance 0.6
         # gen_mock_edge_list creates edges for all combinations of gbks
@@ -530,7 +538,7 @@ class TestNetwork(TestCase):
             bs_comparison.save_edge_to_db(edge)
 
         # generate connected components
-        ccs = list(bs_network.get_connected_components(0.5, 1, include_records))
+        ccs = list(bs_network.get_connected_components(0.5, 1, mix_bin))
 
         ref_status = {}
 
@@ -550,7 +558,10 @@ class TestNetwork(TestCase):
         """Tests the get_connected_component_id function"""
         bs_data.DB.create_in_mem()
 
-        run = {"record_type": bs_enums.RECORD_TYPE.REGION}
+        run = {
+            "record_type": bs_enums.RECORD_TYPE.REGION,
+            "alignment_mode": bs_enums.ALIGNMENT_MODE.AUTO,
+        }
         # create a bunch of gbk files
         gbks = []
         for i in range(3):
@@ -563,12 +574,14 @@ class TestNetwork(TestCase):
         record = bs_files.get_all_bgc_records(run, gbks)
         include_records.extend(record)
 
+        mix_bin = bs_comparison.generate_mix_bin(include_records, run)
+
         edges = gen_mock_edge_list(gbks)
 
         for edge in edges:
             bs_comparison.save_edge_to_db(edge)
 
-        cc = next(bs_network.get_connected_components(0.5, 1, include_records))
+        cc = next(bs_network.get_connected_components(0.5, 1, mix_bin))
 
         cc_id = bs_network.get_connected_component_id(cc, 0.5, 1)
 
@@ -579,7 +592,10 @@ class TestNetwork(TestCase):
     def test_remove_connected_component(self):
         bs_data.DB.create_in_mem()
 
-        run = {"record_type": bs_enums.RECORD_TYPE.REGION}
+        run = {
+            "record_type": bs_enums.RECORD_TYPE.REGION,
+            "alignment_mode": bs_enums.ALIGNMENT_MODE.AUTO,
+        }
 
         # create a bunch of gbk files
         gbks_a = []
@@ -601,6 +617,8 @@ class TestNetwork(TestCase):
         record = bs_files.get_all_bgc_records(run, gbks)
         include_records.extend(record)
 
+        mix_bin = bs_comparison.generate_mix_bin(include_records, run)
+
         # create a bunch of edges, generating a cc with edges of distance 0
         # and another with distance 0.6
         # gen_mock_edge_list creates edges for all combinations of gbks
@@ -614,7 +632,7 @@ class TestNetwork(TestCase):
             bs_comparison.save_edge_to_db(edge)
 
         # generate connected components
-        ccs = list(bs_network.get_connected_components(0.5, 1, include_records))
+        ccs = list(bs_network.get_connected_components(0.5, 1, mix_bin))
 
         cc_table = bs_data.DB.metadata.tables["connected_component"]
 
