@@ -314,10 +314,14 @@ def run_family_assignments(
         edge_param_id = bs_comparison.get_edge_param_id(run, bin.weights)
 
         for cutoff in run["gcf_cutoffs"]:
-            logging.debug("Bin '%s': cutoff %s", bin.label, cutoff)
+            logging.info(
+                "Generating connected componnents for Bin '%s': cutoff %s",
+                bin.label,
+                cutoff,
+            )
 
             for connected_component in bs_network.get_connected_components(
-                cutoff, edge_param_id, bin.source_records
+                cutoff, edge_param_id, bin
             ):
                 # check and remove ref only cc
                 if bs_network.reference_only_connected_component(
@@ -341,24 +345,20 @@ def run_family_assignments(
     DB.commit()
 
 
-def run_family_assignments_query(run: dict, query_record: BGCRecord) -> dict:
+def run_family_assignments_query(
+    run: dict, query_bin: bs_comparison.RecordPairGenerator, query_record: BGCRecord
+) -> dict:
     """Run the family assignment workflow for a single query record
 
     Args:
         run (dict): run configuration
+        query_bin (bs_comparison.RecordPairGenerator): query bin, as generated from
+        distance calculations, contains all records at cutoff 1
         query_record (BGCRecord): query record
 
     """
 
     cc_cutoff: dict[str, list[tuple[int, int, float, float, float, float, int]]] = {}
-
-    if run["legacy_weights"]:
-        weights = bs_comparison.get_legacy_weights_from_category(
-            query_record, query_record.product, run
-        )
-    else:
-        weights = "mix"
-    edge_param_id = bs_comparison.get_edge_param_id(run, weights)
 
     for cutoff in run["gcf_cutoffs"]:
         logging.info("Query BGC Bin: cutoff %s", cutoff)
@@ -367,7 +367,9 @@ def run_family_assignments_query(run: dict, query_record: BGCRecord) -> dict:
         # want the first one, so we use next()
 
         query_connected_component = next(
-            bs_network.get_connected_components(cutoff, edge_param_id, [query_record])
+            bs_network.get_connected_components(
+                cutoff, query_bin.edge_param_id, query_bin, query_record
+            )
         )
 
         cc_cutoff[cutoff] = query_connected_component
@@ -377,7 +379,9 @@ def run_family_assignments_query(run: dict, query_record: BGCRecord) -> dict:
             len(query_connected_component),
         )
 
-        regions_families = generate_families(query_connected_component, weights, cutoff)
+        regions_families = generate_families(
+            query_connected_component, query_bin.label, cutoff
+        )
 
         # save families to database
         save_to_db(regions_families)

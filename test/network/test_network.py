@@ -371,6 +371,9 @@ class TestNetwork(TestCase):
     def test_get_random_edge_cc_and_temp_tables(self):
         self.skipTest("Not implemented")
 
+    def test_get_random_edge_seeded(self):
+        self.skipTest("Not implemented")
+
     def test_create_temp_record_table(self):
         """Test the create_temp_record_table function"""
 

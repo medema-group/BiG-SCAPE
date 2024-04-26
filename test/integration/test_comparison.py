@@ -1064,7 +1064,7 @@ class TestComparison(TestCase):
         # now we make any last connected ref <-> connected ref pairs that are missing
         # get all the edges in the query connected component
         query_connected_component = bs_network.get_connected_components(
-            1, edge_param_id, [query_record]
+            1, edge_param_id, ref_to_ref_bin, query_record
         )
 
         # get_connected_components returns a list of connected components, we only want the first one
@@ -1124,10 +1124,17 @@ class TestComparison(TestCase):
 
         query_record, list_bgc_records = create_mock_query_dataset(run)
 
+        query_to_ref_bin = bs_comparison.QueryToRefRecordPairGenerator(
+            "Query_Ref", 1, "mix"
+        )
+        query_records = bs_query.get_query_records(run, list_bgc_records, query_record)
+
+        query_to_ref_bin.add_records(query_records)
+
         bs_query.calculate_distances_query(run, list_bgc_records, query_record)
 
         query_connected_component = bs_network.get_connected_components(
-            1, 1, [query_record]
+            1, 1, query_to_ref_bin, query_record
         )
 
         query_connected_component = next(query_connected_component)

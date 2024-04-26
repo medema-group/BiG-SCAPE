@@ -293,7 +293,7 @@ def run_bigscape(run: dict) -> None:
     # query
 
     if run["query_bgc_path"]:
-        query_records = bs_query.calculate_distances_query(
+        query_bin = bs_query.calculate_distances_query(
             run, all_bgc_records, query_record
         )
 
@@ -329,7 +329,9 @@ def run_bigscape(run: dict) -> None:
 
     # query BGC mode
     if run["query_bgc_path"]:
-        cc_cutoff = bs_families.run_family_assignments_query(run, query_record)
+        cc_cutoff = bs_families.run_family_assignments_query(
+            run, query_bin, query_record
+        )
 
     DB.save_to_disk(run["db_path"])
 
@@ -420,6 +422,11 @@ def run_bigscape(run: dict) -> None:
     if run["query_bgc_path"]:
         # TODO: select largest cc once, instead of rebuilding bins?
         for cutoff in run["gcf_cutoffs"]:
+            query_connected_component = cc_cutoff[cutoff]
+            query_records = bs_network.get_nodes_from_cc(
+                query_connected_component, query_bin.source_records
+            )
+
             query_bin = bs_comparison.ConnectedComponentPairGenerator(
                 cc_cutoff[cutoff], "Query"
             )

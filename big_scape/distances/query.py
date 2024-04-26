@@ -20,7 +20,7 @@ import big_scape.data as bs_data
 
 def calculate_distances_query(
     run: dict, all_bgc_records: list[bs_gbk.BGCRecord], query_record: bs_gbk.BGCRecord
-) -> list[bs_gbk.BGCRecord]:
+) -> bs_comparison.RecordPairGenerator:
     """calculates distances between all queries and references in a given dataset and
     saves them to the database
 
@@ -56,7 +56,26 @@ def calculate_distances_query(
     calculate_distances(run, missing_edge_bin, "Query to Reference")
 
     if run["skip_propagation"]:
-        return query_records
+        query_connected_component = next(
+            bs_network.get_connected_components(
+                1, edge_param_id, query_to_ref_bin, query_record
+            )
+        )
+
+        query_nodes = bs_network.get_nodes_from_cc(
+            query_connected_component, query_records
+        )
+
+        bs_network.remove_connected_component(
+            query_connected_component, 1, edge_param_id
+        )
+
+        query_connected_bin = bs_comparison.RecordPairGenerator(
+            "Query", edge_param_id, weights, record_type=run["record_type"]
+        )
+        query_connected_bin.add_records(query_nodes)
+
+        return query_connected_bin
 
     # at this point we have query -> ref edges
     # we now need to propagate edges from those ref -> other ref
@@ -77,17 +96,18 @@ def calculate_distances_query(
 
     # now we make any last connected ref <-> connected ref pairs that are missing
     # get all the edges in the query connected component
-    query_connected_component = bs_network.get_connected_components(
-        1, edge_param_id, [query_record]
+    query_connected_component = next(
+        bs_network.get_connected_components(
+            1, edge_param_id, query_to_ref_bin, query_record
+        )
     )
-
-    # get_connected_components returns a list of connected components, we only want the first one
-    query_connected_component = next(query_connected_component)
 
     query_nodes = bs_network.get_nodes_from_cc(query_connected_component, query_records)
 
+    bs_network.remove_connected_component(query_connected_component, 1, edge_param_id)
+
     query_connected_bin = bs_comparison.RecordPairGenerator(
-        "Query", edge_param_id, record_type=run["record_type"]
+        "Query", edge_param_id, weights, record_type=run["record_type"]
     )
     query_connected_bin.add_records(query_nodes)
 
@@ -99,7 +119,7 @@ def calculate_distances_query(
         run, missing_ref_edge_bin, "Connected Reference to Connected Reference"
     )
 
-    return query_records
+    return query_connected_bin
 
 
 def get_query_records(run, all_bgc_records, query_record) -> list[bs_gbk.BGCRecord]:
