@@ -640,6 +640,15 @@ class TestBGCBin(TestCase):
 
         self.assertEqual(expected_pairs, actual_pairs)
 
+    def test_query_record_pair_generator(self):
+        self.skipTest("Not implemented")
+
+    def test_query_record_pair_generator_cycle_records(self):
+        self.skipTest("Not implemented")
+
+    def test_query_missing_record_pair_generator_num_pairs(self):
+        self.skipTest("Not implemented")
+
     def test_connected_component_pair_generator(self):
         """Tests whether the ConnectedComponenetPairGenerator correctly generates a set of
         pairs and memebers when given a connected component that only features a subset
