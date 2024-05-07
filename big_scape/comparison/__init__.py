@@ -3,8 +3,6 @@
 from .record_pair import RecordPair
 from .binning import (
     RecordPairGenerator,
-    QueryToRefRecordPairGenerator,
-    RefToRefRecordPairGenerator,
     MissingRecordPairGenerator,
     QueryRecordPairGenerator,
     QueryMissingRecordPairGenerator,
@@ -33,8 +31,6 @@ from . import extend
 __all__ = [
     "record_pair",
     "RecordPairGenerator",
-    "QueryToRefRecordPairGenerator",
-    "RefToRefRecordPairGenerator",
     "MissingRecordPairGenerator",
     "QueryRecordPairGenerator",
     "QueryMissingRecordPairGenerator",

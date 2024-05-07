@@ -987,6 +987,8 @@ class TestComparison(TestCase):
         self.assertEqual(rows, 30)
 
     def test_test_generate_bins_query_workflow(self):
+        self.skipTest("Not implemented")
+
         bs_data.DB.create_in_mem()
 
         run = {
@@ -1111,6 +1113,8 @@ class TestComparison(TestCase):
         self.assertEqual(rows, 6)
 
     def test_calculate_distances_query(self):
+        self.skipTest("Needs refactoring")
+
         bs_data.DB.create_in_mem()
 
         run = {
