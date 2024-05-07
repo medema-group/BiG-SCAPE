@@ -823,13 +823,6 @@ class QueryRecordPairGenerator(RecordPairGenerator):
                 self.reference_records.append(record)
                 self.working_ref_records.append(record)
 
-        for record in self.reference_records:
-            if (
-                record not in self.done_records
-                and record not in self.working_query_records
-            ):
-                self.working_ref_records.append(record)
-
         super().add_records(record_list)
 
         return None
@@ -852,7 +845,9 @@ class QueryRecordPairGenerator(RecordPairGenerator):
         working_ref_ids = [record._db_id for record in self.working_ref_records]
 
         select_statement = select(
-            distance_table.c.record_a_id, distance_table.c.record_b_id
+            distance_table.c.record_a_id,
+            distance_table.c.record_b_id,
+            distance_table.c.distance,
         ).where(
             or_(
                 and_(
@@ -878,8 +873,10 @@ class QueryRecordPairGenerator(RecordPairGenerator):
         for pair_ids in passing_distances:
             record_a = self.record_id_to_obj[pair_ids[0]]
             record_b = self.record_id_to_obj[pair_ids[1]]
-            passing_records.append(record_a)
-            passing_records.append(record_b)
+            if record_a not in passing_records:
+                passing_records.append(record_a)
+            if record_b not in passing_records:
+                passing_records.append(record_b)
 
         self.done_records += self.working_query_records
 
@@ -891,7 +888,12 @@ class QueryRecordPairGenerator(RecordPairGenerator):
             record
             for record in self.reference_records
             if record not in self.done_records
-            and record not in self.working_query_records
+            # and record not in self.working_query_records
+            # TODO: @Arjan hava a look at this: this line is commented out, but
+            # we should decide on whether to leave this in or not
+            # if in: need to run an extra final 'internal' set of edge gen for all the
+            # nodes in the bin to get the complete set of edges, maybe more efficient?
+            # if out, less efficient? but can do whole workflow with less code
         ]
 
         return None

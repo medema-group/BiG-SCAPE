@@ -1,6 +1,7 @@
 """Contains functions to execute affinity propagaion on arbitrary graphs"""
 
 # from python
+import sys
 from typing import Callable
 import warnings
 import numpy as np
@@ -366,26 +367,45 @@ def run_family_assignments_query(
         # get_connected_components returns a list of connected components, but we only
         # want the first one, so we use next()
 
-        query_connected_component = next(
-            bs_network.get_connected_components(
-                cutoff, query_bin.edge_param_id, query_bin, query_record
+        try:
+            query_connected_component = next(
+                bs_network.get_connected_components(
+                    cutoff, query_bin.edge_param_id, query_bin, query_record
+                )
             )
-        )
 
-        cc_cutoff[cutoff] = query_connected_component
+            cc_cutoff[cutoff] = query_connected_component
 
-        logging.debug(
-            "Found connected component with %d edges",
-            len(query_connected_component),
-        )
+            logging.debug(
+                "Found connected component with %d edges",
+                len(query_connected_component),
+            )
 
-        regions_families = generate_families(
-            query_connected_component, query_bin.label, cutoff
-        )
+            regions_families = generate_families(
+                query_connected_component, query_bin.label, cutoff
+            )
 
-        # save families to database
-        save_to_db(regions_families)
+            # save families to database
+            save_to_db(regions_families)
+
+        except StopIteration:
+            logging.warning(
+                "No connected components found for %s bin at cutoff %s",
+                query_bin.label,
+                cutoff,
+            )
+            continue
 
     DB.commit()
+
+    # no connected components found
+    if cc_cutoff == {}:
+        logging.warning(
+            "No connected components found for %s bin, stopping run. "
+            "The edges generated in this run are still saved to the database,"
+            " so you can try and re-running with a less strict cutoff(s)",
+            query_bin.label,
+        )
+        sys.exit(0)
 
     return cc_cutoff
