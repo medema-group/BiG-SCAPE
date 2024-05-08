@@ -401,7 +401,6 @@ class TestComparison(TestCase):
             "record_type": bs_enums.RECORD_TYPE.REGION,
             "cores": 1,
         }
-        weights = "mix"
 
         gbks_with_hsp = [
             create_mock_gbk_hsp(
@@ -430,11 +429,7 @@ class TestComparison(TestCase):
 
         list_bgc_records = bs_files.get_all_bgc_records(run, gbks)
 
-        edge_param_id = bs_comparison.get_edge_param_id(run, weights)
-
-        mix_bin = bs_comparison.generate_mix_bin(
-            list_bgc_records, edge_param_id, run["record_type"]
-        )
+        mix_bin = bs_comparison.generate_mix_bin(list_bgc_records, run)
 
         missing_edge_bin = bs_comparison.MissingRecordPairGenerator(mix_bin)
 
@@ -452,7 +447,6 @@ class TestComparison(TestCase):
             "record_type": bs_enums.RECORD_TYPE.REGION,
             "cores": 1,
         }
-        weights = "mix"
 
         gbks_with_hsp = [
             create_mock_gbk_hsp(
@@ -474,11 +468,7 @@ class TestComparison(TestCase):
 
         list_bgc_records = bs_files.get_all_bgc_records(run, gbks)
 
-        edge_param_id = bs_comparison.get_edge_param_id(run, weights)
-
-        mix_bin = bs_comparison.generate_mix_bin(
-            list_bgc_records, edge_param_id, run["record_type"]
-        )
+        mix_bin = bs_comparison.generate_mix_bin(list_bgc_records, run)
 
         missing_edge_bin = bs_comparison.MissingRecordPairGenerator(mix_bin)
 
@@ -520,7 +510,6 @@ class TestComparison(TestCase):
             "record_type": bs_enums.RECORD_TYPE.REGION,
             "cores": 1,
         }
-        weights = "mix"
 
         gbks = [
             create_mock_complete_single_gbk(i, bs_enums.SOURCE_TYPE.QUERY, "PKS", "PKS")
@@ -532,11 +521,7 @@ class TestComparison(TestCase):
 
         list_bgc_records = bs_files.get_all_bgc_records(run, gbks)
 
-        edge_param_id = bs_comparison.get_edge_param_id(run, weights)
-
-        mix_bin = bs_comparison.generate_mix_bin(
-            list_bgc_records, edge_param_id, run["record_type"]
-        )
+        mix_bin = bs_comparison.generate_mix_bin(list_bgc_records, run)
 
         missing_edge_bin = bs_comparison.MissingRecordPairGenerator(mix_bin)
 
@@ -615,9 +600,7 @@ class TestComparison(TestCase):
 
         self.assertEqual(edge_param_id, 1)
 
-        mix_bin = bs_comparison.generate_mix_bin(
-            list_bgc_records, edge_param_id, run["record_type"]
-        )
+        mix_bin = bs_comparison.generate_mix_bin(list_bgc_records, run)
 
         expected_repr = "Bin 'mix': 3 pairs from 3 BGC records"
 
@@ -1003,7 +986,455 @@ class TestComparison(TestCase):
 
         self.assertEqual(rows, 30)
 
-    def test_test_generate_bins_query_workflow(self):
+    def test_missing_query_pair_generator_first_iteration(self):
+            """Tests whether the QueryMissingRecordPairGenerator correctly generates a set of
+            pairs in the first iteration of a specific network
+            """
+
+            bs_data.DB.create_in_mem()
+
+            query_gbk = create_mock_gbk(0, bs_enums.SOURCE_TYPE.QUERY)
+            query_gbk.save_all()
+            ref_gbks = [
+                create_mock_gbk(i, bs_enums.SOURCE_TYPE.REFERENCE) for i in range(1, 5)
+            ]
+
+            query_pair_generator = bs_comparison.QueryRecordPairGenerator("mix", 1, "mix")
+            source_records = [query_gbk.region]
+            for ref_gbk in ref_gbks:
+                source_records.append(ref_gbk.region)
+                ref_gbk.save_all()
+
+            # the state at the network at this point should be that all query to ref pairs
+            # have been generated and their distances calculated. they are then added to
+            # the network
+
+            # the idea is that in the first iteration, since all query -> refs pairs
+            # are in network, the missing pair generator should not generate any pairs
+            # if we dont call the cycle.records() method
+            query_pair_generator.add_records(source_records)
+
+            missing_pair_generator = bs_comparison.QueryMissingRecordPairGenerator(query_pair_generator)
+
+            # we will want to do this manually
+            for idx, ref_gbk in enumerate(ref_gbks):
+                # mypy please leave me alone
+                if ref_gbk.region is None:
+                    continue
+                if ref_gbk.region._db_id is None:
+                    continue
+                if query_gbk.region is None:
+                    continue
+                if query_gbk.region._db_id is None:
+                    continue
+
+                # lets say two (0 and 1) of these distances are entirely similar
+                if idx < 2:
+                    bs_comparison.save_edge_to_db(
+                        (
+                            query_gbk.region._db_id,
+                            ref_gbk.region._db_id,
+                            0.0,
+                            1.0,
+                            1.0,
+                            1.0,
+                            1,
+                            bs_comparison.ComparableRegion(
+                                0,
+                                0,
+                                0,
+                                0,
+                                0,
+                                0,
+                                0,
+                                0,
+                                False,
+                            ),
+                        )
+                    )
+                else:
+                    # the other two (2 and 3) are entirely distant
+                    bs_comparison.save_edge_to_db(
+                        (
+                            query_gbk.region._db_id,
+                            ref_gbk.region._db_id,
+                            1.0,
+                            0.0,
+                            0.0,
+                            0.0,
+                            1,
+                            bs_comparison.ComparableRegion(
+                                0,
+                                0,
+                                0,
+                                0,
+                                0,
+                                0,
+                                0,
+                                0,
+                                False,
+                            ),
+                        )
+                    )
+
+            # so now we have a network where the query is has distances of 0.0 to two of the
+            # reference records, and 1.0 to the other two reference records
+
+            # in our first iteration, we should see the following pairs:
+            # (query, ref1)
+            # (query, ref2)
+            # (query, ref3)
+            # (query, ref4)
+
+            expected_pairs_query = set(
+                [
+                    (query_gbk.region, ref_gbks[0].region),
+                    (query_gbk.region, ref_gbks[1].region),
+                    (query_gbk.region, ref_gbks[2].region),
+                    (query_gbk.region, ref_gbks[3].region),
+                ]
+            )
+
+            actual_pairs_query = set(list(query_pair_generator.generate_pairs()))
+
+            self.assertEqual(expected_pairs_query, actual_pairs_query)
+
+            actual_num_pairs_query = query_pair_generator.num_pairs()
+
+            self.assertEqual(4, actual_num_pairs_query)
+
+            actual_pairs_missing = set(list(missing_pair_generator.generate_pairs()))
+
+            self.assertEqual(set(), actual_pairs_missing)
+
+            actual_num_pairs = missing_pair_generator.num_pairs()
+
+            self.assertEqual(0, actual_num_pairs)
+
+    def test_query_generators_workflow(self):
+        """Tests whether the RefTorefPairGenerator correctly generates a set of
+        pairs in the second iteration of a specific network
+        """
+
+        bs_data.DB.create_in_mem()
+
+        query_gbk = create_mock_gbk(0, bs_enums.SOURCE_TYPE.QUERY)
+        query_gbk.save_all()
+        ref_gbks = [
+            create_mock_gbk(i, bs_enums.SOURCE_TYPE.REFERENCE) for i in range(1, 5)
+        ]
+
+        query_pair_generator = bs_comparison.QueryRecordPairGenerator("mix", 1, "mix")
+        source_records = [query_gbk.region]
+        for ref_gbk in ref_gbks:
+            source_records.append(ref_gbk.region)
+            ref_gbk.save_all()
+
+        # the state at the network at this point should be that all query to ref pairs
+        # have been generated and their distances calculated. they are then added to
+        # the network
+
+        # the idea is that in the first iteration, this should compare all connected
+        # ref nodes to all singleton ref nodes
+
+        query_pair_generator.add_records(source_records)
+
+        missing_pair_generator = bs_comparison.QueryMissingRecordPairGenerator(
+            query_pair_generator
+        )
+
+        # we will want to do this manually
+        for idx, ref_gbk in enumerate(ref_gbks):
+            # mypy please leave me alone
+            if ref_gbk.region is None:
+                continue
+            if ref_gbk.region._db_id is None:
+                continue
+            if query_gbk.region is None:
+                continue
+            if query_gbk.region._db_id is None:
+                continue
+
+            # lets say two (0 and 1) of these distances are entirely similar
+            if idx < 2:
+                bs_comparison.save_edge_to_db(
+                    (
+                        query_gbk.region._db_id,
+                        ref_gbk.region._db_id,
+                        0.0,
+                        1.0,
+                        1.0,
+                        1.0,
+                        1,
+                        bs_comparison.ComparableRegion(
+                            0,
+                            0,
+                            0,
+                            0,
+                            0,
+                            0,
+                            0,
+                            0,
+                            False,
+                        ),
+                    )
+                )
+            else:
+                # the other two (2 and 3) are entirely distant
+                bs_comparison.save_edge_to_db(
+                    (
+                        query_gbk.region._db_id,
+                        ref_gbk.region._db_id,
+                        1.0,
+                        0.0,
+                        0.0,
+                        0.0,
+                        1,
+                        bs_comparison.ComparableRegion(
+                            0,
+                            0,
+                            0,
+                            0,
+                            0,
+                            0,
+                            0,
+                            0,
+                            False,
+                        ),
+                    )
+                )
+
+        # so now we have a network where the query is has distances of 0.0 to two of the
+        # reference records, and 1.0 to the other two reference records
+
+        # in our first iteration, we should see the following pairs:
+        # (query, ref1)
+        # (query, ref2)
+        # (query, ref3)
+        # (query, ref4)
+
+        expected_pairs_query = set(
+            [
+                (query_gbk.region, ref_gbks[0].region),
+                (query_gbk.region, ref_gbks[1].region),
+                (query_gbk.region, ref_gbks[2].region),
+                (query_gbk.region, ref_gbks[3].region),
+            ]
+        )
+
+        actual_pairs_query = set(list(query_pair_generator.generate_pairs()))
+
+        self.assertEqual(expected_pairs_query, actual_pairs_query)
+
+        actual_pairs_missing = set(list(missing_pair_generator.generate_pairs()))
+
+        self.assertEqual(set(), actual_pairs_missing)
+
+        query_pair_generator.cycle_records()
+
+        # passing distances will be query -> ref_1 and query -> ref_2
+
+        expected_working_query = set([ref_gbks[1].region, ref_gbks[0].region])
+
+        self.assertEqual(
+            query_pair_generator.working_query_records, expected_working_query
+        )
+
+        expected_working_refs = set([ref_gbks[2].region, ref_gbks[3].region])
+
+        self.assertEqual(
+            query_pair_generator.working_ref_records, expected_working_refs
+        )
+
+        # # now we should see all the pairs between the nodes in expected working query and the
+        # # working ref nodes, since none are in db yet.
+        # # so we should see the following pairs:
+        # # (ref1, ref0)
+        # # (ref1, ref3)
+        # # (ref2, ref0)
+        # # (ref2, ref3)
+
+        self.assertEqual(missing_pair_generator.num_pairs(), 4)
+
+        # we will connect ref1 and ref3
+        bs_comparison.save_edge_to_db(
+            (
+                ref_gbks[1].region._db_id,
+                ref_gbks[3].region._db_id,
+                0.0,
+                1.0,
+                1.0,
+                1.0,
+                1,
+                bs_comparison.ComparableRegion(
+                    0,
+                    0,
+                    0,
+                    0,
+                    0,
+                    0,
+                    0,
+                    0,
+                    False,
+                ),
+            )
+        )
+
+        # we will generate distant edges for the others
+        bs_comparison.save_edge_to_db(
+            (
+                ref_gbks[0].region._db_id,
+                ref_gbks[1].region._db_id,
+                1.0,
+                0.0,
+                0.0,
+                0.0,
+                1,
+                bs_comparison.ComparableRegion(
+                    0,
+                    0,
+                    0,
+                    0,
+                    0,
+                    0,
+                    0,
+                    0,
+                    False,
+                ),
+            )
+        )
+        bs_comparison.save_edge_to_db(
+            (
+                ref_gbks[0].region._db_id,
+                ref_gbks[2].region._db_id,
+                1.0,
+                0.0,
+                0.0,
+                0.0,
+                1,
+                bs_comparison.ComparableRegion(
+                    0,
+                    0,
+                    0,
+                    0,
+                    0,
+                    0,
+                    0,
+                    0,
+                    False,
+                ),
+            )
+        )
+        bs_comparison.save_edge_to_db(
+            (
+                ref_gbks[0].region._db_id,
+                ref_gbks[3].region._db_id,
+                1.0,
+                0.0,
+                0.0,
+                0.0,
+                1,
+                bs_comparison.ComparableRegion(
+                    0,
+                    0,
+                    0,
+                    0,
+                    0,
+                    0,
+                    0,
+                    0,
+                    False,
+                ),
+            )
+        )
+        bs_comparison.save_edge_to_db(
+            (
+                ref_gbks[1].region._db_id,
+                ref_gbks[2].region._db_id,
+                1.0,
+                0.0,
+                0.0,
+                0.0,
+                1,
+                bs_comparison.ComparableRegion(
+                    0,
+                    0,
+                    0,
+                    0,
+                    0,
+                    0,
+                    0,
+                    0,
+                    False,
+                ),
+            )
+        )
+        bs_comparison.save_edge_to_db(
+            (
+                ref_gbks[2].region._db_id,
+                ref_gbks[3].region._db_id,
+                1.0,
+                0.0,
+                0.0,
+                0.0,
+                1,
+                bs_comparison.ComparableRegion(
+                    0,
+                    0,
+                    0,
+                    0,
+                    0,
+                    0,
+                    0,
+                    0,
+                    False,
+                ),
+            )
+        )
+
+        # now the networks topology is this:
+        # ref0    ref1
+        #   \     /|
+        #    \   / |
+        #     \ /  |
+        #     query|
+        #          |
+        #          |
+        #          |
+        # ref2    ref3
+        # (There are more edges in the database, but these are all the ones with
+        # distances < 1.0)
+
+        # since we now put these edges in the databse, we should not see any missing pairs
+        self.assertEqual(missing_pair_generator.num_pairs(), 0)
+
+        query_pair_generator.cycle_records()
+
+        # passing distances will be ref_1 -> ref_3
+
+        expected_done = set([query_gbk.region, ref_gbks[0].region, ref_gbks[1].region])
+
+        self.assertEqual(query_pair_generator.done_records, expected_done)
+
+        expected_working_query = set([ref_gbks[3].region])
+
+        self.assertEqual(
+            query_pair_generator.working_query_records, expected_working_query
+        )
+
+        expected_working_refs = set([ref_gbks[2].region])
+
+        self.assertEqual(
+            query_pair_generator.working_ref_records, expected_working_refs
+        )
+
+        # one pair is going to be generated if we dont check the database
+        self.assertEqual(query_pair_generator.num_pairs(), 1)
+
+        # since the last missing pair is already in the database, we should not see any
+        self.assertEqual(missing_pair_generator.num_pairs(), 0)
+
+    def test_generate_bins_query_workflow(self):
         bs_data.DB.create_in_mem()
 
         run = {
@@ -1012,6 +1443,7 @@ class TestComparison(TestCase):
             "record_type": bs_enums.RECORD_TYPE.REGION,
             "cores": 1,
             "classify": bs_enums.CLASSIFY_MODE.CLASS,
+            "skip_propagation": False,
         }
 
         query_record, list_bgc_records = create_mock_query_dataset(run)
@@ -1030,13 +1462,13 @@ class TestComparison(TestCase):
         # query_gbk <-> gbk_1 <-> gbk_2  gbk_3
 
         # generate initial query -> ref pairs
-        query_to_ref_bin = bs_comparison.QueryToRefRecordPairGenerator(
-            "Query_Ref", edge_param_id, weights
+        query_bin = bs_comparison.QueryRecordPairGenerator(
+            "Query", edge_param_id, weights
         )
-        query_to_ref_bin.add_records(query_records)
+        query_bin.add_records(query_records)
 
         # fetch any existing distances from database
-        missing_edge_bin = bs_comparison.MissingRecordPairGenerator(query_to_ref_bin)
+        missing_edge_bin = bs_comparison.QueryMissingRecordPairGenerator(query_bin)
 
         # there are no edges yet in db, and 1 query record and 3 ref records
         # so 3 edges need to be generated
@@ -1045,43 +1477,51 @@ class TestComparison(TestCase):
         #     query_gbk <-> gbk_3
         self.assertEqual(missing_edge_bin.num_pairs(), 3)
 
-        bs_query.calculate_distances(run, missing_edge_bin, "Query to Reference")
+        bs_query.calculate_distances(run, missing_edge_bin)
 
-        # all edges have been saved to db
+        # here the iterations will make the following edges:
+        #     query_gbk <-> gbk_1   distance < 1.0
+        #     query_gbk <-> gbk_2   distance = 1.0
+        #     query_gbk <-> gbk_3   distance = 1.0
+        #     gbk_1 <-> gbk_2       distance < 1.0
+        #     gbk_1 <-> gbk_3       distance = 1.0
+        #     gbk_2 <-> gbk_3       distance = 1.0
+
+        # # all edges have been saved to db
         self.assertEqual(missing_edge_bin.num_pairs(), 0)
 
         distance_table = bs_data.DB.metadata.tables["distance"]
         select_statement = select(distance_table.c.distance)
         rows = len(bs_data.DB.execute(select_statement).fetchall())
-        self.assertEqual(rows, 3)
-
-        ref_to_ref_bin = bs_comparison.RefToRefRecordPairGenerator(
-            "Ref_Ref", edge_param_id, weights
-        )
-        ref_to_ref_bin.add_records(query_records)
-
-        # now we have 1 connected ref (gbk_1) and 2 singleton refs, so 2 edges need to be generated
-        #      gbk_1 <-> gbk_2 and gbk_1 <-> gbk_3
-        # in a second iteration, we will have 1 connected ref and 1 singleton ref, so 1 edge
-        # more will be generated
-        #       gbk_2 <-> gbk_3
-        self.assertEqual(ref_to_ref_bin.num_pairs(), 2)
-
-        # generating distances -> Connected Reference to Singleton Reference
-        bs_query.calculate_distances(
-            run, ref_to_ref_bin, "Singleton Reference to Connected Reference"
-        )
-
-        self.assertEqual(ref_to_ref_bin.num_pairs(), 0)
-
-        select_statement = select(distance_table.c.distance)
-        rows = len(bs_data.DB.execute(select_statement).fetchall())
         self.assertEqual(rows, 6)
+
+        # ref_to_ref_bin = bs_comparison.RefToRefRecordPairGenerator(
+        #     "Ref_Ref", edge_param_id, weights
+        # )
+        # ref_to_ref_bin.add_records(query_records)
+
+        # # now we have 1 connected ref (gbk_1) and 2 singleton refs, so 2 edges need to be generated
+        # #      gbk_1 <-> gbk_2 and gbk_1 <-> gbk_3
+        # # in a second iteration, we will have 1 connected ref and 1 singleton ref, so 1 edge
+        # # more will be generated
+        # #       gbk_2 <-> gbk_3
+        # self.assertEqual(ref_to_ref_bin.num_pairs(), 2)
+
+        # # generating distances -> Connected Reference to Singleton Reference
+        # bs_query.calculate_distances(
+        #     run, ref_to_ref_bin, "Singleton Reference to Connected Reference"
+        # )
+
+        # self.assertEqual(ref_to_ref_bin.num_pairs(), 0)
+
+        # select_statement = select(distance_table.c.distance)
+        # rows = len(bs_data.DB.execute(select_statement).fetchall())
+        # self.assertEqual(rows, 6)
 
         # now we make any last connected ref <-> connected ref pairs that are missing
         # get all the edges in the query connected component
         query_connected_component = bs_network.get_connected_components(
-            1, edge_param_id, [query_record]
+            1, edge_param_id, query_bin, query_record
         )
 
         # get_connected_components returns a list of connected components, we only want the first one
@@ -1120,7 +1560,8 @@ class TestComparison(TestCase):
 
         # calculate distances -> Connected Reference to Connected Reference
         bs_query.calculate_distances(
-            run, missing_ref_edge_bin, "Connected Reference to Connected Reference"
+            run,
+            missing_ref_edge_bin,
         )
 
         select_statement = select(distance_table.c.distance)
@@ -1141,10 +1582,15 @@ class TestComparison(TestCase):
 
         query_record, list_bgc_records = create_mock_query_dataset(run)
 
+        query_to_ref_bin = bs_comparison.QueryRecordPairGenerator("Query_Ref", 1, "mix")
+        query_records = bs_query.get_query_records(run, list_bgc_records, query_record)
+
+        query_to_ref_bin.add_records(query_records)
+
         bs_query.calculate_distances_query(run, list_bgc_records, query_record)
 
         query_connected_component = bs_network.get_connected_components(
-            1, 1, [query_record]
+            1, 1, query_to_ref_bin, query_record
         )
 
         query_connected_component = next(query_connected_component)

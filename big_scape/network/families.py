@@ -1,10 +1,13 @@
 """Contains functions to execute affinity propagaion on arbitrary graphs"""
 
 # from python
+import sys
+from typing import Callable
 import warnings
 import numpy as np
 import networkx
 import math
+import logging
 
 # from dependencies
 from sklearn.cluster import AffinityPropagation
@@ -15,6 +18,9 @@ from sqlalchemy import select
 from big_scape.data import DB
 from big_scape.enums import RECORD_TYPE
 from big_scape.cli.config import BigscapeConfig
+from big_scape.genbank.bgc_record import BGCRecord
+import big_scape.network.network as bs_network
+import big_scape.comparison as bs_comparison
 
 # from this module
 from .utility import edge_list_to_sim_matrix
@@ -233,7 +239,7 @@ def save_to_db(regions_families):
         DB.execute(insert_statement)
 
 
-def reset_db_families():
+def reset_db_family_tables():
     """Clear previous family assignments from database"""
     DB.execute(DB.metadata.tables["bgc_record_family"].delete())
     DB.execute(DB.metadata.tables["family"].delete())
@@ -281,3 +287,125 @@ def save_singletons(record_type: RECORD_TYPE, cutoff: float, bin_label: str) -> 
         singleton_regions.append((singleton[0], singleton[0], cutoff, bin_label))
 
     save_to_db(singleton_regions)
+
+
+def run_family_assignments(
+    run: dict, bin_generator: Callable, all_bgc_records: list[BGCRecord]
+) -> None:
+    """Run the family assignment workflow
+
+    Args:
+        run (dict): run configuration
+        bin_generator (function): generator function for bins
+        all_bgc_records (list[BgcRecord]): all BGC records
+
+    Returns:
+        None
+    """
+
+    bins = bin_generator(all_bgc_records, run)
+
+    # in the case of the mix bin generator, the function returns a single
+    # RecordPairGenerator object, in the classify/legacy_classify case, it
+    # returns an Iterator of RecordPairGenerator objects
+    if isinstance(bins, bs_comparison.RecordPairGenerator):
+        bins = [bins]
+
+    for bin in bins:
+        edge_param_id = bs_comparison.get_edge_param_id(run, bin.weights)
+
+        for cutoff in run["gcf_cutoffs"]:
+            logging.info(
+                "Generating connected componnents for Bin '%s': cutoff %s",
+                bin.label,
+                cutoff,
+            )
+
+            for connected_component in bs_network.get_connected_components(
+                cutoff, edge_param_id, bin
+            ):
+                # check and remove ref only cc
+                if bs_network.reference_only_connected_component(
+                    connected_component, bin.source_records
+                ):
+                    bs_network.remove_connected_component(
+                        connected_component, cutoff, edge_param_id
+                    )
+                    continue
+
+                logging.debug(
+                    "Found connected component with %d edges",
+                    len(connected_component),
+                )
+                regions_families = generate_families(
+                    connected_component, bin.label, cutoff
+                )
+                save_to_db(regions_families)
+            save_singletons(run["record_type"], cutoff, bin.label)
+
+    DB.commit()
+
+
+def run_family_assignments_query(
+    run: dict, query_bin: bs_comparison.RecordPairGenerator, query_record: BGCRecord
+) -> dict:
+    """Run the family assignment workflow for a single query record
+
+    Args:
+        run (dict): run configuration
+        query_bin (bs_comparison.RecordPairGenerator): query bin, as generated from
+        distance calculations, contains all records at cutoff 1
+        query_record (BGCRecord): query record
+
+    """
+
+    cc_cutoff: dict[str, list[tuple[int, int, float, float, float, float, int]]] = {}
+
+    for cutoff in run["gcf_cutoffs"]:
+        logging.info("Query BGC Bin: cutoff %s", cutoff)
+
+        # get_connected_components returns a list of connected components, but we only
+        # want the first one, so we use next()
+
+        try:
+            query_connected_component = next(
+                bs_network.get_connected_components(
+                    cutoff, query_bin.edge_param_id, query_bin, query_record
+                )
+            )
+
+            cc_cutoff[cutoff] = query_connected_component
+
+            logging.debug(
+                "Found connected component with %d edges",
+                len(query_connected_component),
+            )
+
+            regions_families = generate_families(
+                query_connected_component, query_bin.label, cutoff
+            )
+
+            # save families to database
+            save_to_db(regions_families)
+
+        except StopIteration:
+            logging.warning(
+                "No connected components found for %s bin at cutoff %s",
+                query_bin.label,
+                cutoff,
+            )
+            continue
+
+    DB.commit()
+
+    # no connected components found
+    if cc_cutoff == {}:
+        logging.warning(
+            "No connected components found for %s bin, stopping run. "
+            "The edges generated in this run are still saved to the database,"
+            " so you can try and re-running with a less strict cutoff(s)",
+            query_bin.label,
+        )
+        sys.exit(0)
+
+    return cc_cutoff
