@@ -210,7 +210,7 @@ class RecordPairGenerator:
                 not_reference = record.parent_gbk.source_type != SOURCE_TYPE.REFERENCE
 
                 if in_edge or (in_singletons and not_reference):
-                    self.source_records.append(record)
+                    new_records.append(record)
 
             self.source_records = new_records
 
