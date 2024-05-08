@@ -1,6 +1,7 @@
 """ Click parameters for the BiG-SCAPE Query CLI command """
 
 # from python
+from typing import no_type_check
 import click
 from pathlib import Path
 
@@ -21,6 +22,7 @@ from .cli_validations import (
 )
 
 
+@no_type_check
 @click.command()
 @common_all
 @common_cluster_query

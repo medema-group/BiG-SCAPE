@@ -14,7 +14,7 @@ import logging
 from concurrent.futures import ProcessPoolExecutor, Future
 import platform
 from threading import Event, Condition
-from typing import Generator, Callable, Optional, TypeVar, Union
+from typing import Generator, Callable, Optional, TypeVar, Union, cast, no_type_check
 from math import ceil
 
 from .record_pair import RecordPair
@@ -121,7 +121,9 @@ def generate_edges(
     # prepare a process pool
     logging.debug("Using %d cores", cores)
 
-    pair_data: Union[tuple[int, int], tuple[BGCRecord, BGCRecord]]
+    pair_data: Generator[
+        Union[tuple[int, int], tuple[BGCRecord, BGCRecord]], None, None
+    ]
     if platform.system() == "Darwin":
         logging.debug(
             "Running on %s: sending full records",
@@ -367,6 +369,11 @@ def expand_pair(pair: RecordPair) -> bool:
     return False
 
 
+# TODO: mypy is annoying here, partially because it's correct and partially because
+# mypy is just annoying and dumb. I'm done being all safe and secure with this function
+# refactor the entire thing to be slightly different depending on whether you're giving
+# it full records or just ids, and then mypy will be happy
+@no_type_check
 def calculate_scores_pair(
     data: tuple[
         list[Union[tuple[int, int], tuple[BGCRecord, BGCRecord]]],
@@ -388,6 +395,11 @@ def calculate_scores_pair(
 ]:  # pragma no cover
     """Calculate the scores for a list of pairs
 
+    Note that the input data can be in the form of either a list of database ids or a
+    list of full BGCRecord objects. This is because the function is designed to be run
+    in parallel, and the database ids are used to fetch the minimal information needed
+    to perform the distance calculations. This only works on non-mac systems.
+
     Args:
         data (tuple[list[tuple[int, int]], str, str]): list of pairs, alignment mode,
         bin label
@@ -397,19 +409,22 @@ def calculate_scores_pair(
         int, int, bool, str,]]: list of scores for each pair in the
         order as the input data list, including lcs and extension coordinates
     """
-    data, alignment_mode, edge_param_id, weights_label = data
+    pairs, alignment_mode, edge_param_id, weights_label = data
 
     # convert database ids to minimal record objects
-    if isinstance(data[0][0], int):
-        pair_ids = data
+    pair_ids: list[tuple[int, int]] = []
+
+    # if first is int, assume all are ints
+    if isinstance(pairs[0][0], int):
+        pair_ids.extend(pairs)
         records = fetch_records_from_database(pair_ids)
     else:
         pair_ids = []
         records = {}
-        for pair in data:
-            pair_ids.append((pair[0]._db_id, pair[1]._db_id))
-            records[pair[0]._db_id] = pair[0]
-            records[pair[1]._db_id] = pair[1]
+        for record_pair in pairs:
+            pair_ids.append((record_pair[0]._db_id, record_pair[1]._db_id))
+            records[record_pair[0]._db_id] = record_pair[0]
+            records[record_pair[1]._db_id] = record_pair[1]
 
     results: list[
         tuple[int, int, float, float, float, float, int, bs_comparison.ComparableRegion]

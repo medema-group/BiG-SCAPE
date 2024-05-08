@@ -14,7 +14,7 @@ almost certainly be abstracted somehow
 from __future__ import annotations
 import logging
 from itertools import combinations
-from typing import Generator, Iterator, Optional
+from typing import Generator, Iterator, Optional, cast
 from sqlalchemy import and_, select, func, or_
 
 # from other modules
@@ -200,16 +200,25 @@ class RecordPairGenerator:
 
         if ref_only:
             singleton_record_ids = self.record_ids - edge_record_ids
-            self.source_records = [
-                record
+
+            new_records: list[BGCRecord] = []
+            for record in self.source_records:
+                if record.parent_gbk is None:
+                    raise ValueError("Region in bin has no parent gbk!")
+                in_edge = record._db_id in edge_record_ids
+                in_singletons = record._db_id in singleton_record_ids
+                not_reference = record.parent_gbk.source_type != SOURCE_TYPE.REFERENCE
+
+                if in_edge or (in_singletons and not_reference):
+                    self.source_records.append(record)
+
+            self.source_records = new_records
+
+            self.record_ids = {
+                record._db_id
                 for record in self.source_records
-                if (record._db_id in edge_record_ids)
-                or (
-                    record._db_id in singleton_record_ids
-                    and record.parent_gbk.source_type != SOURCE_TYPE.REFERENCE
-                )
-            ]
-            self.record_ids = {record._db_id for record in self.source_records}
+                if record._db_id is not None
+            }
 
         else:
             self.record_ids = edge_record_ids
@@ -611,7 +620,7 @@ class QueryMissingRecordPairGenerator(RecordPairGenerator):
             )
         )
 
-        existing_distance_count = DB.execute(select_statement).scalar_one()
+        existing_distance_count = cast(int, DB.execute(select_statement).scalar_one())
 
         return self.bin.num_pairs() - existing_distance_count
 

@@ -66,6 +66,8 @@ def get_connected_components(
 
     distance_table = DB.get_table("distance")
 
+    cc_table = DB.get_table("connected_component")
+
     # return connected components per connected component id
     # cc_ids will be repeated accross cutoffs and bins, so
     # we also need to filter by cutoff and bin
@@ -81,23 +83,19 @@ def get_connected_components(
         ).where(
             and_(
                 distance_table.c.record_a_id.in_(
-                    select(DB.metadata.tables["connected_component"].c.record_id).where(
-                        DB.metadata.tables["connected_component"].c.id == cc_id,
-                        DB.metadata.tables["connected_component"].c.cutoff == cutoff,
-                        DB.metadata.tables["connected_component"].c.edge_param_id
-                        == edge_param_id,
-                        DB.metadata.tables["connected_component"].c.bin_label
-                        == bin.label,
+                    select(cc_table.c.record_id).where(
+                        cc_table.c.id == cc_id,
+                        cc_table.c.cutoff == cutoff,
+                        cc_table.c.edge_param_id == edge_param_id,
+                        cc_table.c.bin_label == bin.label,
                     )
                 ),
                 distance_table.c.record_b_id.in_(
-                    select(DB.metadata.tables["connected_component"].c.record_id).where(
-                        DB.metadata.tables["connected_component"].c.id == cc_id,
-                        DB.metadata.tables["connected_component"].c.cutoff == cutoff,
-                        DB.metadata.tables["connected_component"].c.edge_param_id
-                        == edge_param_id,
-                        DB.metadata.tables["connected_component"].c.bin_label
-                        == bin.label,
+                    select(cc_table.c.record_id).where(
+                        cc_table.c.id == cc_id,
+                        cc_table.c.cutoff == cutoff,
+                        cc_table.c.edge_param_id == edge_param_id,
+                        cc_table.c.bin_label == bin.label,
                     )
                 ),
                 distance_table.c.edge_param_id == edge_param_id,
@@ -400,7 +398,7 @@ def get_random_edge(
             )
         )
 
-    edge = DB.execute(random_edge_query).fetchone()
+    edge = cast(tuple[int, int], DB.execute(random_edge_query).fetchone())
 
     return edge
 
@@ -429,7 +427,7 @@ def get_random_edge_seeded(
     """
     if DB.metadata is None:
         raise RuntimeError("DB.metadata is None")
-    distance_table = DB.metadata.tables["distance"]
+    distance_table = DB.get_table("distance")
 
     random_edge_query = (
         # select edge as just record ids
@@ -522,7 +520,7 @@ def get_cc_edges(
             )
         )
 
-    edges = DB.execute(cc_edge_query).fetchall()
+    edges = cast(list[tuple[int, int]], DB.execute(cc_edge_query).fetchall())
 
     return edges
 
@@ -653,19 +651,26 @@ def create_temp_record_table(include_records: list[BGCRecord]) -> Table:
 
     # generate a short random string
     temp_table_name = "temp_" + "".join(random.choices(string.ascii_lowercase, k=10))
+    bgc_record_table = DB.get_table("bgc_record")
 
-    temp_table = Table(
+    Table(
         temp_table_name,
         DB.metadata,
         Column(
             "record_id",
             Integer,
-            ForeignKey(DB.metadata.tables["bgc_record"].c.id),
+            ForeignKey(bgc_record_table.c.id),
             primary_key=True,
             nullable=False,
         ),
         prefixes=["TEMPORARY"],
     )
+
+    if DB.metadata is None:
+        raise RuntimeError(
+            "DB metadata is None. This should never happen at this point "
+            "but it means that the database was somehow uninitialized"
+        )
 
     DB.metadata.create_all(DB.engine)
 
@@ -702,7 +707,7 @@ def create_temp_record_table(include_records: list[BGCRecord]) -> Table:
 
 def reset_db_connected_components_table():
     """Removes any data from the connected component table"""
-    DB.execute(DB.metadata.tables["connected_component"].delete())
+    DB.execute(DB.get_table("connected_component").delete())
 
 
 def reference_only_connected_component(connected_component, bgc_records) -> bool:
@@ -749,7 +754,7 @@ def get_connected_component_id(connected_component, cutoff, edge_param_id) -> in
 
     record_id = connected_component[0][0]
 
-    cc_table = DB.metadata.tables["connected_component"]
+    cc_table = DB.get_table("connected_component")
 
     select_statement = (
         select(cc_table.c.id)
@@ -764,9 +769,9 @@ def get_connected_component_id(connected_component, cutoff, edge_param_id) -> in
         .limit(1)
     )
 
-    cc_ids = DB.execute(select_statement).fetchone()
+    cc_id = int(DB.execute(select_statement).fetchone()[0])
 
-    return cc_ids[0]
+    return cc_id
 
 
 def remove_connected_component(connected_component, cutoff, edge_param_id) -> None:
@@ -777,7 +782,7 @@ def remove_connected_component(connected_component, cutoff, edge_param_id) -> No
 
     cc_id = get_connected_component_id(connected_component, cutoff, edge_param_id)
 
-    cc_table = DB.metadata.tables["connected_component"]
+    cc_table = DB.get_table("connected_component")
 
     delete_statement = delete(cc_table).where(
         cc_table.c.id == cc_id,

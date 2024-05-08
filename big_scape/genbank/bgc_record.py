@@ -62,6 +62,7 @@ class BGCRecord:
         self.nt_stop = nt_stop
         self.product = product
         self.merged: bool = False
+        self.merged_number: Optional[str] = None
 
         # for database operations
         self._db_id: Optional[int] = None
@@ -240,11 +241,10 @@ class BGCRecord:
         if not hasattr(self, "category"):
             self.category: Optional[str] = None
 
-        # why
-        if hasattr(self, "merged_number"):
+        if self.merged_number is not None:
             number = self.merged_number
         else:
-            number = self.number
+            number = str(self.number)
 
         contig_edge = None
         if self.contig_edge is not None:

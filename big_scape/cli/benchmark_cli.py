@@ -1,6 +1,7 @@
 """ Click parameters for the BiG-SCAPE Benchmark CLI command """
 
 # from python
+from typing import no_type_check
 import click
 from pathlib import Path
 
@@ -13,6 +14,7 @@ from .cli_common_options import common_all
 from .cli_validations import set_start, validate_output_paths
 
 
+@no_type_check
 # BiG-SCAPE benchmark mode
 @click.command()
 @common_all
@@ -26,6 +28,7 @@ from .cli_validations import set_start, validate_output_paths
         "a run output to these assignments."
     ),
 )
+@no_type_check
 @click.option(
     "--BiG_dir",
     type=click.Path(exists=True, file_okay=False, path_type=Path),

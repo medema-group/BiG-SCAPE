@@ -247,9 +247,9 @@ class ProtoCluster(BGCRecord):
                 new_proto_cluster._db_id = result.id
 
                 # add to parent CandidateCluster protocluster dict
-                parent_candidate_cluster.proto_clusters[
-                    result.record_number
-                ] = new_proto_cluster
+                parent_candidate_cluster.proto_clusters[result.record_number] = (
+                    new_proto_cluster
+                )
 
                 # add to dictionary
                 protocluster_dict[result.id] = new_proto_cluster
