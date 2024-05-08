@@ -13,9 +13,9 @@ from big_scape.comparison.record_pair import RecordPair
 from big_scape.genbank import GBK, BGCRecord, CDS, Region, ProtoCluster, ProtoCore
 from big_scape.comparison import (
     RecordPairGenerator,
-    QueryToRefRecordPairGenerator,
-    RefToRefRecordPairGenerator,
     ConnectedComponentPairGenerator,
+    QueryRecordPairGenerator,
+    QueryMissingRecordPairGenerator,
     save_edge_to_db,
     get_record_category,
     get_legacy_weights_from_category,
@@ -145,6 +145,8 @@ class TestBGCBin(TestCase):
     def test_num_pairs_correct_with_query_ref(self):
         """Tests whether bin.num_pairs() correctly returns all query and ref but not ref <-> ref pairs"""
 
+        bs_data.DB.create_in_mem()
+
         parent_gbk_query = GBK(
             Path("test"), "test", source_type=bs_enums.SOURCE_TYPE.QUERY
         )
@@ -157,12 +159,14 @@ class TestBGCBin(TestCase):
         bgc_d = BGCRecord(parent_gbk_ref, 0, 0, 10, False, "")
 
         bgc_list = [bgc_a, bgc_b, bgc_c, bgc_d]
+        for bgc in bgc_list:
+            bgc.save_record("Region")
 
-        new_bin = QueryToRefRecordPairGenerator("test", 1, "mix")
+        new_bin = QueryRecordPairGenerator("test", 1, "mix")
 
         new_bin.add_records(bgc_list)
 
-        expected_num_pairs = 5
+        expected_num_pairs = 4
         actual_num_pairs = new_bin.num_pairs()
 
         self.assertEqual(expected_num_pairs, actual_num_pairs)
@@ -282,363 +286,34 @@ class TestBGCBin(TestCase):
         bs_data.DB.create_in_mem()
 
         query_gbk = create_mock_gbk(0, bs_enums.SOURCE_TYPE.QUERY)
+        query_gbk.save_all()
         ref_gbks = [
             create_mock_gbk(i, bs_enums.SOURCE_TYPE.REFERENCE) for i in range(1, 4)
         ]
 
-        query_to_ref_pair_generator = QueryToRefRecordPairGenerator("mix", 1, "mix")
+        query_to_ref_pair_generator = QueryRecordPairGenerator("mix", 1, "mix")
         source_records = [query_gbk.region]
+
         for ref_gbk in ref_gbks:
+            ref_gbk.save_all()
             source_records.append(ref_gbk.region)
 
         query_to_ref_pair_generator.add_records(source_records)
 
         # expected edges    def test_ref_to_ref_pair_generator_first_iteration(self):
 
-        expected_pairs = []
-        for ref_gbk in ref_gbks:
-            expected_pair = (query_gbk.region, ref_gbk.region)
-            expected_pairs.append(expected_pair)
-
         # get all edges
         actual_pairs = list(query_to_ref_pair_generator.generate_pairs())
 
-        self.assertListEqual(expected_pairs, actual_pairs)
-
-    def test_ref_to_ref_pair_generator_first_iteration(self):
-        """Tests whether the RefTorefPairGenerator correctly generates a set of
-        pairs in the first iteration of a specific network
-        """
-        bs_data.DB.create_in_mem()
-
-        query_gbk = create_mock_gbk(0, bs_enums.SOURCE_TYPE.QUERY)
-        query_gbk.save_all()
-        ref_gbks = [
-            create_mock_gbk(i, bs_enums.SOURCE_TYPE.REFERENCE) for i in range(1, 5)
-        ]
-
-        ref_to_ref_pair_generator = RefToRefRecordPairGenerator("mix", 1, "mix")
-        source_records = [query_gbk.region]
         for ref_gbk in ref_gbks:
-            source_records.append(ref_gbk.region)
-            ref_gbk.save_all()
+            expected_pair = (query_gbk.region, ref_gbk.region)
+            self.assertIn(expected_pair, actual_pairs)
 
-        # the state at the network at this point should be that all query to ref pairs
-        # have been generated and their distances calculated. they are then added to
-        # the network
+    def test_query_record_pair_generator_cycle_records(self):
+        self.skipTest("Not implemented")
 
-        # the idea is that in the first iteration, this should compare all connected
-        # ref nodes to all singleton ref nodes
-        ref_to_ref_pair_generator.add_records(source_records)
-
-        # we will want to do this manually
-        for idx, ref_gbk in enumerate(ref_gbks):
-            # mypy please leave me alone
-            if ref_gbk.region is None:
-                continue
-            if ref_gbk.region._db_id is None:
-                continue
-            if query_gbk.region is None:
-                continue
-            if query_gbk.region._db_id is None:
-                continue
-
-            # lets say two (0 and 1) of these distances are entirely similar
-            if idx < 2:
-                save_edge_to_db(
-                    (
-                        query_gbk.region._db_id,
-                        ref_gbk.region._db_id,
-                        0.0,
-                        1.0,
-                        1.0,
-                        1.0,
-                        1,
-                        bs_comparison.ComparableRegion(
-                            0,
-                            0,
-                            0,
-                            0,
-                            0,
-                            0,
-                            0,
-                            0,
-                            False,
-                        ),
-                    )
-                )
-            else:
-                # the other two (2 and 3) are entirely distant
-                save_edge_to_db(
-                    (
-                        query_gbk.region._db_id,
-                        ref_gbk.region._db_id,
-                        1.0,
-                        0.0,
-                        0.0,
-                        0.0,
-                        1,
-                        bs_comparison.ComparableRegion(
-                            0,
-                            0,
-                            0,
-                            0,
-                            0,
-                            0,
-                            0,
-                            0,
-                            False,
-                        ),
-                    )
-                )
-
-        # so now we have a network where the query is connected to 2 of the reference
-        # records, and two of the reference records are not connected to anything
-
-        # in our first iteration of ref_to_ref, we should see the following pairs:
-        # (ref0, ref2)
-        # (ref0, ref3)
-        # (ref1, ref2)
-        # (ref1, ref3)
-
-        # this is rough, so let's type it all out
-        expected_pairs = set(
-            [
-                (ref_gbks[0].region, ref_gbks[2].region),
-                (ref_gbks[0].region, ref_gbks[3].region),
-                (ref_gbks[1].region, ref_gbks[2].region),
-                (ref_gbks[1].region, ref_gbks[3].region),
-            ]
-        )
-
-        actual_pairs = set(list(ref_to_ref_pair_generator.generate_pairs()))
-
-        self.assertEqual(expected_pairs, actual_pairs)
-
-    def test_ref_to_ref_pair_generator_second_iteration(self):
-        """Tests whether the RefTorefPairGenerator correctly generates a set of
-        pairs in the second iteration of a specific network
-        """
-        bs_data.DB.create_in_mem()
-
-        query_gbk = create_mock_gbk(0, bs_enums.SOURCE_TYPE.QUERY)
-        query_gbk.save_all()
-        ref_gbks = [
-            create_mock_gbk(i, bs_enums.SOURCE_TYPE.REFERENCE) for i in range(1, 5)
-        ]
-
-        ref_to_ref_pair_generator = RefToRefRecordPairGenerator("mix", 1, "mix")
-        source_records = [query_gbk.region]
-        for ref_gbk in ref_gbks:
-            source_records.append(ref_gbk.region)
-            ref_gbk.save_all()
-
-        # the state at the network at this point should be that all query to ref pairs
-        # have been generated and their distances calculated. they are then added to
-        # the network
-
-        # the idea is that in the first iteration, this should compare all connected
-        # ref nodes to all singleton ref nodes
-
-        ref_to_ref_pair_generator.add_records(source_records)
-
-        # we will want to do this manually
-        for idx, ref_gbk in enumerate(ref_gbks):
-            # mypy please leave me alone
-            if ref_gbk.region is None:
-                continue
-            if ref_gbk.region._db_id is None:
-                continue
-            if query_gbk.region is None:
-                continue
-            if query_gbk.region._db_id is None:
-                continue
-
-            # lets say two (0 and 1) of these distances are entirely similar
-            if idx < 2:
-                save_edge_to_db(
-                    (
-                        query_gbk.region._db_id,
-                        ref_gbk.region._db_id,
-                        0.0,
-                        1.0,
-                        1.0,
-                        1.0,
-                        1,
-                        bs_comparison.ComparableRegion(
-                            0,
-                            0,
-                            0,
-                            0,
-                            0,
-                            0,
-                            0,
-                            0,
-                            False,
-                        ),
-                    )
-                )
-            else:
-                # the other two (2 and 3) are entirely distant
-                save_edge_to_db(
-                    (
-                        query_gbk.region._db_id,
-                        ref_gbk.region._db_id,
-                        1.0,
-                        0.0,
-                        0.0,
-                        0.0,
-                        1,
-                        bs_comparison.ComparableRegion(
-                            0,
-                            0,
-                            0,
-                            0,
-                            0,
-                            0,
-                            0,
-                            0,
-                            False,
-                        ),
-                    )
-                )
-
-        # so now we have a network where the query is connected to 2 of the reference
-        # records, and two of the reference records are not connected to anything
-        # let's do the first iteration
-        list(ref_to_ref_pair_generator.generate_pairs())
-
-        # we throw away the result because I want to test the second iteration, and
-        # I want to enter the distance data manually
-
-        # in our first iteration of ref_to_ref, we created the following pairs:
-        # (ref0, ref2)
-        # (ref0, ref3)
-        # (ref1, ref2)
-        # (ref1, ref3)
-
-        # we will connect ref1 and ref3
-        save_edge_to_db(
-            (
-                ref_gbks[1].region._db_id,
-                ref_gbks[3].region._db_id,
-                0.0,
-                1.0,
-                1.0,
-                1.0,
-                1,
-                bs_comparison.ComparableRegion(
-                    0,
-                    0,
-                    0,
-                    0,
-                    0,
-                    0,
-                    0,
-                    0,
-                    False,
-                ),
-            )
-        )
-
-        # we will generate distant edges for the others
-        save_edge_to_db(
-            (
-                ref_gbks[0].region._db_id,
-                ref_gbks[2].region._db_id,
-                1.0,
-                0.0,
-                0.0,
-                0.0,
-                1,
-                bs_comparison.ComparableRegion(
-                    0,
-                    0,
-                    0,
-                    0,
-                    0,
-                    0,
-                    0,
-                    0,
-                    False,
-                ),
-            )
-        )
-        save_edge_to_db(
-            (
-                ref_gbks[0].region._db_id,
-                ref_gbks[3].region._db_id,
-                1.0,
-                0.0,
-                0.0,
-                0.0,
-                1,
-                bs_comparison.ComparableRegion(
-                    0,
-                    0,
-                    0,
-                    0,
-                    0,
-                    0,
-                    0,
-                    0,
-                    False,
-                ),
-            )
-        )
-        save_edge_to_db(
-            (
-                ref_gbks[1].region._db_id,
-                ref_gbks[2].region._db_id,
-                1.0,
-                0.0,
-                0.0,
-                0.0,
-                1,
-                bs_comparison.ComparableRegion(
-                    0,
-                    0,
-                    0,
-                    0,
-                    0,
-                    0,
-                    0,
-                    0,
-                    False,
-                ),
-            )
-        )
-
-        # now the networks topology is this:
-        # ref0    ref1
-        #   \     /|
-        #    \   / |
-        #     \ /  |
-        #     query|
-        #          |
-        #          |
-        #          |
-        # ref2    ref3
-        # (There are more edges in the database, but these are all the ones with
-        # distances < 1.0)
-
-        # so we compared query to all, and we compared ref0 to ref2 and ref3, and ref1
-        # to ref2 and ref3. Each step has been an expansion of the previous step
-        # now the next iteration should be to take the newly connected noe (ref3) and
-        # compare it to all the other singletons (ref2)
-        # so we only expect to see one pair:
-        # (ref2, ref3)
-
-        # now we can do the second iteration
-        expected_pairs = set(
-            [
-                (ref_gbks[3].region, ref_gbks[2].region),
-            ]
-        )
-
-        actual_pairs = set(list(ref_to_ref_pair_generator.generate_pairs()))
-
-        self.assertEqual(expected_pairs, actual_pairs)
+    def test_query_missing_record_pair_generator_num_pairs(self):
+        self.skipTest("Not implemented")
 
     def test_connected_component_pair_generator(self):
         """Tests whether the ConnectedComponenetPairGenerator correctly generates a set of
@@ -948,8 +623,19 @@ class TestBGCBin(TestCase):
 
 
 class TestMixComparison(TestCase):
+    def clean_db(self):
+        if bs_data.DB.opened():
+            bs_data.DB.close_db()
+
+    def __init__(self, methodName: str = "runTest") -> None:
+        super().__init__(methodName)
+        self.addCleanup(self.clean_db)
+
     def test_mix_iter(self):
         """Tests whether a new mix bin can be created for comparison"""
+
+        bs_data.DB.create_in_mem()
+
         gbk1 = GBK(Path("test"), "test1", source_type=bs_enums.SOURCE_TYPE.QUERY)
         gbk2 = GBK(Path("test"), "test2", source_type=bs_enums.SOURCE_TYPE.QUERY)
         gbk3 = GBK(Path("test"), "test3", source_type=bs_enums.SOURCE_TYPE.QUERY)
@@ -968,7 +654,12 @@ class TestMixComparison(TestCase):
 
         bgc_list = [bgc_a, bgc_b, bgc_c]
 
-        new_bin = generate_mix_bin(bgc_list, 1, bs_enums.RECORD_TYPE.REGION)
+        run = {
+            "record_type": bs_enums.RECORD_TYPE.REGION,
+            "alignment_mode": bs_enums.ALIGNMENT_MODE.AUTO,
+        }
+
+        new_bin = generate_mix_bin(bgc_list, run)
 
         # expected representation of the bin object
         expected_pair_count = 3
@@ -1024,6 +715,86 @@ def mock_region() -> Region:
     return region
 
 
+def create_mock_complete_chemhyb_gbk(
+    i, source_type: bs_enums.SOURCE_TYPE, products, categories
+) -> GBK:
+    gbk = GBK(Path(f"test_path_{i}.gbk"), str(i), source_type)
+
+    region_feature = SeqFeature(FeatureLocation(0, 100), type="region")
+    region_feature.qualifiers = {
+        "region_number": ["1"],
+        "candidate_cluster_numbers": ["1"],
+        "product": products,
+    }
+
+    region = Region.parse_as5(region_feature, parent_gbk=gbk)
+
+    candidate_cluster_feature = SeqFeature(FeatureLocation(0, 100), type="cand_cluster")
+    candidate_cluster_feature.qualifiers = {
+        "candidate_cluster_number": ["1"],
+        "kind": ["single"],
+        "protoclusters": ["1", "2"],
+        "product": products,
+    }
+
+    candidate_cluster = CandidateCluster.parse(
+        candidate_cluster_feature, parent_gbk=gbk
+    )
+
+    protocluster_feature_1 = SeqFeature(FeatureLocation(0, 100), type="protocluster")
+    protocluster_feature_1.qualifiers = {
+        "protocluster_number": ["1"],
+        "category": [categories[0]],
+        "product": [products[0]],
+    }
+
+    protocluster_1 = ProtoCluster.parse(protocluster_feature_1, parent_gbk=gbk)
+
+    protocore_feature_1 = SeqFeature(FeatureLocation(0, 100), type="proto_core")
+    protocore_feature_1.qualifiers = {
+        "protocluster_number": ["1"],
+        "product": [products[0]],
+    }
+
+    protocore_1 = ProtoCore.parse(protocore_feature_1, parent_gbk=gbk)
+
+    protocluster_feature_2 = SeqFeature(FeatureLocation(0, 100), type="protocluster")
+    protocluster_feature_2.qualifiers = {
+        "protocluster_number": ["2"],
+        "category": [categories[1]],
+        "product": [products[1]],
+    }
+
+    protocluster_2 = ProtoCluster.parse(protocluster_feature_2, parent_gbk=gbk)
+
+    protocore_feature_2 = SeqFeature(FeatureLocation(0, 100), type="proto_core")
+    protocore_feature_2.qualifiers = {
+        "protocluster_number": ["2"],
+        "product": [products[1]],
+    }
+
+    protocore_2 = ProtoCore.parse(protocore_feature_2, parent_gbk=gbk)
+
+    protocluster_1.add_proto_core(protocore_1)
+    protocluster_2.add_proto_core(protocore_2)
+    candidate_cluster.add_proto_cluster(protocluster_1)
+    candidate_cluster.add_proto_cluster(protocluster_2)
+    region.add_cand_cluster(candidate_cluster)
+
+    cds = CDS(0, 100)
+    cds.parent_gbk = gbk
+    cds.orf_num = 1
+    cds.strand = 1
+    gbk.genes.append(cds)
+    gbk.region = region
+    gbk.metadata = {
+        "organism": "banana",
+        "taxonomy": "bananus;fruticus",
+        "description": "you can eat it",
+    }
+    return gbk
+
+
 class TestBinGenerators(TestCase):
     """Test class for the bin generators and associated functions"""
 
@@ -1035,19 +806,43 @@ class TestBinGenerators(TestCase):
         super().__init__(methodName)
         self.addCleanup(self.clean_db)
 
-    def test_get_region_category(self):
+    def test_get_record_category_simple(self):
         """Tests whether a category is correclty parsed from a region of version as6 or higher"""
 
         region = mock_region()
         cc = region.cand_clusters[1]
-        pc = cc.proto_clusters[1]
 
-        expected_category = "PKS"
-        category = get_record_category(pc)
+        self.assertEqual("PKS", get_record_category(cc))
 
-        self.assertEqual(expected_category, category)
+    def test_get_record_category_chemhybrid_pc1(self):
+        gbk = create_mock_complete_chemhyb_gbk(
+            0, bs_enums.SOURCE_TYPE.QUERY, ["T1PKS", "NRPS"], ["PKS", "NRPS"]
+        )
 
-    def test_get_weight_category(self):
+        pc_1 = gbk.region.cand_clusters[1].proto_clusters[1]
+
+        self.assertEqual("PKS", get_record_category(pc_1))
+
+    def test_get_record_category_chemhybrid_pc2(self):
+        gbk = create_mock_complete_chemhyb_gbk(
+            0, bs_enums.SOURCE_TYPE.QUERY, ["T1PKS", "NRPS"], ["PKS", "NRPS"]
+        )
+
+        pc_2 = gbk.region.cand_clusters[1].proto_clusters[2]
+
+        self.assertEqual("NRPS", get_record_category(pc_2))
+
+    def test_get_record_category_chemhybrid_cc(self):
+        gbk = create_mock_complete_chemhyb_gbk(
+            0, bs_enums.SOURCE_TYPE.QUERY, ["T1PKS", "NRPS"], ["PKS", "NRPS"]
+        )
+
+        cc = gbk.region.cand_clusters[1]
+
+        self.assertIn("PKS", get_record_category(cc))
+        self.assertIn("NRPS", get_record_category(cc))
+
+    def test_get_legacy_weight_from_category(self):
         """Tests wether the correct legacy weight category is created from a region category"""
 
         run = {

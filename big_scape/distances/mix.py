@@ -25,11 +25,7 @@ def calculate_distances_mix(
 
     logging.info("Generating mix bin")
 
-    edge_param_id = bs_comparison.get_edge_param_id(run, "mix")
-
-    mix_bin = bs_comparison.generate_mix_bin(
-        list_bgc_records, edge_param_id, run["record_type"]
-    )
+    mix_bin = bs_comparison.generate_mix_bin(list_bgc_records, run)
 
     logging.info(mix_bin)
 

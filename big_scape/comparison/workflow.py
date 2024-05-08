@@ -96,7 +96,6 @@ def get_batch_size(cores: int, desired_batch_size: int, num_items: int):
     return desired_batch_size
 
 
-# TODO: Test ?
 def generate_edges(
     pair_generator: RecordPairGenerator,
     alignment_mode: bs_enums.ALIGNMENT_MODE,
@@ -368,7 +367,6 @@ def expand_pair(pair: RecordPair) -> bool:
     return False
 
 
-# TODO: Test ?
 def calculate_scores_pair(
     data: tuple[
         list[Union[tuple[int, int], tuple[BGCRecord, BGCRecord]]],
@@ -417,6 +415,12 @@ def calculate_scores_pair(
         tuple[int, int, float, float, float, float, int, bs_comparison.ComparableRegion]
     ] = []
 
+    # only relevant for when not working on mac -> records are fetched
+    # from db and not passed as full objects
+    # in cases where there are records without HSPs/domains, the
+    # fetch_records_from_database(pair_ids) function will not return
+    # record objects, so we need to spoof these edges/distances
+    # Update: this should be fixed now, but keeping this here for now just in case
     for id_a, id_b in pair_ids:
         if id_a not in records or id_b not in records:
             comparable_region = bs_comparison.ComparableRegion(
@@ -459,7 +463,6 @@ def calculate_scores_pair(
         ):
             needs_expand = do_lcs_pair(pair)
             if needs_expand:
-                # TODO: separate these into two functions, do the extend and then calculate jaccard
                 expand_pair(pair)
 
         if weights_label not in LEGACY_WEIGHTS:
@@ -543,10 +546,10 @@ def fetch_records_from_database(pairs: list[tuple[int, int]]) -> dict[int, BGCRe
             hsp_table.c.env_stop,
             algn_table.c.alignment,
         )
-        .join(record_table, record_table.c.gbk_id == gbk_table.c.id)
-        .join(cds_table, cds_table.c.gbk_id == gbk_table.c.id)
-        .join(hsp_table, hsp_table.c.cds_id == cds_table.c.id)
-        .join(algn_table, algn_table.c.hsp_id == hsp_table.c.id)
+        .join(record_table, record_table.c.gbk_id == gbk_table.c.id, full=True)
+        .join(cds_table, cds_table.c.gbk_id == gbk_table.c.id, full=True)
+        .join(hsp_table, hsp_table.c.cds_id == cds_table.c.id, full=True)
+        .join(algn_table, algn_table.c.hsp_id == hsp_table.c.id, full=True)
         .where(record_table.c.id.in_(pair_ids))
     )
 
@@ -599,7 +602,8 @@ def fetch_records_from_database(pairs: list[tuple[int, int]]) -> dict[int, BGCRe
             gbk_index[gbk_id].genes.append(cds_index[cds_id])
 
         # finally, assign HSPs to their respective CDS
-        if hsp_id not in added_hsp_ids:
+        if hsp_id is not None and hsp_id not in added_hsp_ids:
+            # if hsp_id not in added_hsp_ids:
             new_hsp = HSP(cds_index[cds_id], row[13], row[14], row[15], row[16])
             new_hsp.alignment = HSPAlignment(new_hsp, row[17])
             cds_index[cds_id].hsps.append(new_hsp)

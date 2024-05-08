@@ -3,9 +3,9 @@
 from .record_pair import RecordPair
 from .binning import (
     RecordPairGenerator,
-    QueryToRefRecordPairGenerator,
-    RefToRefRecordPairGenerator,
     MissingRecordPairGenerator,
+    QueryRecordPairGenerator,
+    QueryMissingRecordPairGenerator,
     ConnectedComponentPairGenerator,
     generate_mix_bin,
     legacy_bin_generator,
@@ -31,9 +31,9 @@ from . import extend
 __all__ = [
     "record_pair",
     "RecordPairGenerator",
-    "QueryToRefRecordPairGenerator",
-    "RefToRefRecordPairGenerator",
     "MissingRecordPairGenerator",
+    "QueryRecordPairGenerator",
+    "QueryMissingRecordPairGenerator",
     "ConnectedComponentPairGenerator",
     "generate_mix_bin",
     "ComparableRegion",
