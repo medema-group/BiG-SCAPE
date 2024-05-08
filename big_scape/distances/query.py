@@ -65,7 +65,9 @@ def calculate_distances_query(
     )
     query_bin_connected.add_records(query_nodes)
 
-    bs_distances.mix.calculate_distances_mix(run, query_bin_connected.source_records)
+    missing_edge_bin = bs_comparison.MissingRecordPairGenerator(query_bin_connected)
+
+    calculate_distances(run, missing_edge_bin)
 
     return query_bin_connected
 
@@ -139,7 +141,7 @@ def get_query_records(run, all_bgc_records, query_record) -> list[bs_gbk.BGCReco
     return query_records
 
 
-def calculate_distances(run: dict, bin: bs_comparison.QueryMissingRecordPairGenerator):
+def calculate_distances(run: dict, bin: bs_comparison.RecordPairGenerator):
     """calculates distances between all records in a given dataset and saves them to the
     database
 
