@@ -986,6 +986,131 @@ class TestComparison(TestCase):
 
         self.assertEqual(rows, 30)
 
+    def test_missing_query_pair_generator_first_iteration(self):
+            """Tests whether the QueryMissingRecordPairGenerator correctly generates a set of
+            pairs in the first iteration of a specific network
+            """
+
+            bs_data.DB.create_in_mem()
+
+            query_gbk = create_mock_gbk(0, bs_enums.SOURCE_TYPE.QUERY)
+            query_gbk.save_all()
+            ref_gbks = [
+                create_mock_gbk(i, bs_enums.SOURCE_TYPE.REFERENCE) for i in range(1, 5)
+            ]
+
+            query_pair_generator = bs_comparison.QueryRecordPairGenerator("mix", 1, "mix")
+            source_records = [query_gbk.region]
+            for ref_gbk in ref_gbks:
+                source_records.append(ref_gbk.region)
+                ref_gbk.save_all()
+
+            # the state at the network at this point should be that all query to ref pairs
+            # have been generated and their distances calculated. they are then added to
+            # the network
+
+            # the idea is that in the first iteration, since all query -> refs pairs
+            # are in network, the missing pair generator should not generate any pairs
+            # if we dont call the cycle.records() method
+            query_pair_generator.add_records(source_records)
+
+            missing_pair_generator = bs_comparison.QueryMissingRecordPairGenerator(query_pair_generator)
+
+            # we will want to do this manually
+            for idx, ref_gbk in enumerate(ref_gbks):
+                # mypy please leave me alone
+                if ref_gbk.region is None:
+                    continue
+                if ref_gbk.region._db_id is None:
+                    continue
+                if query_gbk.region is None:
+                    continue
+                if query_gbk.region._db_id is None:
+                    continue
+
+                # lets say two (0 and 1) of these distances are entirely similar
+                if idx < 2:
+                    bs_comparison.save_edge_to_db(
+                        (
+                            query_gbk.region._db_id,
+                            ref_gbk.region._db_id,
+                            0.0,
+                            1.0,
+                            1.0,
+                            1.0,
+                            1,
+                            bs_comparison.ComparableRegion(
+                                0,
+                                0,
+                                0,
+                                0,
+                                0,
+                                0,
+                                0,
+                                0,
+                                False,
+                            ),
+                        )
+                    )
+                else:
+                    # the other two (2 and 3) are entirely distant
+                    bs_comparison.save_edge_to_db(
+                        (
+                            query_gbk.region._db_id,
+                            ref_gbk.region._db_id,
+                            1.0,
+                            0.0,
+                            0.0,
+                            0.0,
+                            1,
+                            bs_comparison.ComparableRegion(
+                                0,
+                                0,
+                                0,
+                                0,
+                                0,
+                                0,
+                                0,
+                                0,
+                                False,
+                            ),
+                        )
+                    )
+
+            # so now we have a network where the query is has distances of 0.0 to two of the
+            # reference records, and 1.0 to the other two reference records
+
+            # in our first iteration, we should see the following pairs:
+            # (query, ref1)
+            # (query, ref2)
+            # (query, ref3)
+            # (query, ref4)
+
+            expected_pairs_query = set(
+                [
+                    (query_gbk.region, ref_gbks[0].region),
+                    (query_gbk.region, ref_gbks[1].region),
+                    (query_gbk.region, ref_gbks[2].region),
+                    (query_gbk.region, ref_gbks[3].region),
+                ]
+            )
+
+            actual_pairs_query = set(list(query_pair_generator.generate_pairs()))
+
+            self.assertEqual(expected_pairs_query, actual_pairs_query)
+
+            actual_num_pairs_query = query_pair_generator.num_pairs()
+
+            self.assertEqual(4, actual_num_pairs_query)
+
+            actual_pairs_missing = set(list(missing_pair_generator.generate_pairs()))
+
+            self.assertEqual(set(), actual_pairs_missing)
+
+            actual_num_pairs = missing_pair_generator.num_pairs()
+
+            self.assertEqual(0, actual_num_pairs)
+
     def test_query_generators_workflow(self):
         """Tests whether the RefTorefPairGenerator correctly generates a set of
         pairs in the second iteration of a specific network
