@@ -394,10 +394,10 @@ class QueryRecordPairGenerator(RecordPairGenerator):
         weights: str,
     ):
         super().__init__(label, edge_param_id, weights)
-        self.reference_records: list[BGCRecord] = []
-        self.done_records: list[BGCRecord] = []
-        self.working_query_records: list[BGCRecord] = []
-        self.working_ref_records: list[BGCRecord] = []
+        self.reference_records: set[BGCRecord] = set()
+        self.done_records: set[BGCRecord] = set()
+        self.working_query_records: set[BGCRecord] = set()
+        self.working_ref_records: set[BGCRecord] = set()
         self.record_id_to_obj: dict[int, BGCRecord] = {}
 
     def generate_pairs(
@@ -439,7 +439,9 @@ class QueryRecordPairGenerator(RecordPairGenerator):
         if len(self.source_records) < 2:
             return 0
 
-        return num_query_records * num_ref_records
+        num_pairs = num_query_records * num_ref_records
+
+        return num_pairs
 
     def add_records(self, record_list: list[BGCRecord]) -> None:
         """Adds BGC records to this bin, additionaly splitting them into query and
@@ -459,10 +461,10 @@ class QueryRecordPairGenerator(RecordPairGenerator):
                 record.parent_gbk is not None
                 and record.parent_gbk.source_type == SOURCE_TYPE.QUERY
             ):
-                self.working_query_records.append(record)
+                self.working_query_records.add(record)
             else:
-                self.reference_records.append(record)
-                self.working_ref_records.append(record)
+                self.reference_records.add(record)
+                self.working_ref_records.add(record)
 
         super().add_records(record_list)
 
@@ -482,6 +484,9 @@ class QueryRecordPairGenerator(RecordPairGenerator):
 
         distance_table = DB.metadata.tables["distance"]
 
+        # TODO: in case these lists get too big for the sqlalchemy searches and that
+        # crashes the run, add a temporary table to the database to store the working
+        # query and ref records
         working_query_ids = [record._db_id for record in self.working_query_records]
         working_ref_ids = [record._db_id for record in self.working_ref_records]
 
@@ -509,45 +514,42 @@ class QueryRecordPairGenerator(RecordPairGenerator):
         # generate a set of tuples of region id pairs
         passing_distances = set(DB.execute(select_statement).fetchall())
 
-        passing_records = []
+        passing_records = set()
 
         for pair_ids in passing_distances:
             record_a = self.record_id_to_obj[pair_ids[0]]
             record_b = self.record_id_to_obj[pair_ids[1]]
             if record_a not in passing_records:
-                passing_records.append(record_a)
+                passing_records.add(record_a)
             if record_b not in passing_records:
-                passing_records.append(record_b)
+                passing_records.add(record_b)
 
-        self.done_records += self.working_query_records
+        self.done_records.update(self.working_query_records)
 
-        self.working_query_records = [
-            record for record in passing_records if record not in self.done_records
-        ]
+        self.working_query_records = set(
+            [record for record in passing_records if record not in self.done_records]
+        )
 
-        self.working_ref_records = [
-            record
-            for record in self.reference_records
-            if record not in self.done_records
-            # and record not in self.working_query_records
-            # TODO: @Arjan hava a look at this: this line is commented out, but
-            # we should decide on whether to leave this in or not
-            # if in: need to run an extra final 'internal' set of edge gen for all the
-            # nodes in the bin to get the complete set of edges, maybe more efficient?
-            # if out, less efficient? but can do whole workflow with less code
-        ]
+        self.working_ref_records = set(
+            [
+                record
+                for record in self.reference_records
+                if record not in self.done_records
+                and record not in self.working_query_records
+            ]
+        )
 
         return None
 
 
-class QueryMissingRecordPairGenerator(QueryRecordPairGenerator):
+class QueryMissingRecordPairGenerator:
     """Generator that wraps around another RecordPairGenerator to exclude any distances
     already in the database"""
 
     def __init__(self, pair_generator):
-        super().__init__(
-            pair_generator.label, pair_generator.edge_param_id, pair_generator.weights
-        )
+        self.label = pair_generator.label
+        self.edge_param_id = pair_generator.edge_param_id
+        self.weights = pair_generator.weights
         self.bin: QueryRecordPairGenerator = pair_generator
 
     def generate_pairs(
@@ -620,6 +622,9 @@ class QueryMissingRecordPairGenerator(QueryRecordPairGenerator):
         existing_distance_count = DB.execute(select_statement).scalar_one()
 
         return self.bin.num_pairs() - existing_distance_count
+
+    def cycle_records(self):
+        self.bin.cycle_records()
 
 
 def generate_mix_bin(record_list: list[BGCRecord], run: dict) -> RecordPairGenerator:

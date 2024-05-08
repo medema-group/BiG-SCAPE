@@ -422,6 +422,8 @@ def run_bigscape(run: dict) -> None:
     if run["query_bgc_path"]:
         # TODO: select largest cc once, instead of rebuilding bins?
         for cutoff in run["gcf_cutoffs"]:
+            if cutoff not in cc_cutoff.keys():
+                continue
             query_connected_component = cc_cutoff[cutoff]
             query_records = bs_network.get_nodes_from_cc(
                 query_connected_component, query_bin.source_records
