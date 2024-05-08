@@ -542,14 +542,14 @@ class QueryRecordPairGenerator(RecordPairGenerator):
         return None
 
 
-class QueryMissingRecordPairGenerator:
+class QueryMissingRecordPairGenerator(RecordPairGenerator):
     """Generator that wraps around another RecordPairGenerator to exclude any distances
     already in the database"""
 
     def __init__(self, pair_generator):
-        self.label = pair_generator.label
-        self.edge_param_id = pair_generator.edge_param_id
-        self.weights = pair_generator.weights
+        super().__init__(
+            pair_generator.label, pair_generator.edge_param_id, pair_generator.weights
+        )
         self.bin: QueryRecordPairGenerator = pair_generator
 
     def generate_pairs(
