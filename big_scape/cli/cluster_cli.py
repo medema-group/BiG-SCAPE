@@ -12,7 +12,6 @@ from .cli_common_options import common_all, common_cluster_query
 from .cli_validations import (
     validate_output_paths,
     validate_binning_cluster_workflow,
-    validate_skip_hmmscan,
     validate_pfam_path,
     set_start,
 )
@@ -58,7 +57,6 @@ def cluster(ctx, *args, **kwargs):
 
     # workflow validations
     validate_binning_cluster_workflow(ctx)
-    validate_skip_hmmscan(ctx)
     validate_pfam_path(ctx)
     validate_output_paths(ctx)
 

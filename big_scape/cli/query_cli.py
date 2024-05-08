@@ -13,7 +13,6 @@ from big_scape.diagnostics import init_logger, init_logger_file
 from .cli_common_options import common_all, common_cluster_query
 from .cli_validations import (
     validate_output_paths,
-    validate_skip_hmmscan,
     validate_query_bgc,
     validate_pfam_path,
     set_start,
@@ -27,7 +26,7 @@ from .cli_validations import (
 @common_all
 @common_cluster_query
 @click.option(
-    "--query_bgc_path",
+    "-q" "--query_bgc_path",
     type=click.Path(exists=True, dir_okay=False, file_okay=True, path_type=Path),
     required=True,
     callback=validate_query_bgc,
@@ -38,7 +37,7 @@ from .cli_validations import (
     ),
 )
 @click.option(
-    "--query_record_number",
+    "-n" "--query_record_number",
     type=int,
     required=False,
     help=(

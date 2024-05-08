@@ -56,6 +56,7 @@ def common_all(fn):
         ),
         # run parameters
         click.option(
+            "-l",
             "--label",
             default=None,
             type=str,
@@ -154,6 +155,7 @@ def common_cluster_query(fn):
         ),
         # TODO: adjust choices
         click.option(
+            "-m",
             "--mibig_version",
             type=str,
             required=False,
@@ -164,6 +166,7 @@ def common_cluster_query(fn):
             "folder is present.",
         ),
         click.option(
+            "-r",
             "--reference_dir",
             callback=validate_not_empty_dir,
             type=click.Path(
@@ -224,25 +227,7 @@ def common_cluster_query(fn):
             ),
         ),
         click.option(
-            "--force_hmmscan",
-            is_flag=True,
-            help=(
-                "Force domain prediction using hmmscan even if BiG-SCAPE finds "
-                "processed gbk files (e.g. to use a new version of Pfam)."
-            ),
-        ),
-        # TODO: can this be deleted? if database is given, hmmscan is skipped anyway?
-        click.option(
-            "--skip_hmmscan",
-            is_flag=True,
-            help=(
-                "Skip domain prediction using hmmscan. "
-                "BiG-SCAPE expects to find "
-                "a database of already processed gbks."
-            ),
-        ),
-        click.option(
-            # TODO: check if implemented
+            # TODO: implement
             "--domain_includelist_path",
             type=click.Path(
                 exists=True, dir_okay=False, file_okay=True, path_type=Path
@@ -331,6 +316,7 @@ def common_cluster_query(fn):
             help="Path to output profile file. (default: output_dir/).",
         ),
         click.option(
+            "-db",
             "--db_path",
             type=click.Path(path_type=Path, dir_okay=False),
             help="Path to sqlite db output file. (default: output_dir/data_sqlite.db).",

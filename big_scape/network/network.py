@@ -142,13 +142,9 @@ def generate_connected_components(
 
     distance_table = DB.get_table("distance")
 
-    if seed_record is not None:
-        edge = get_random_edge_seeded(
-            cutoff, edge_param_id, seed_record, temp_record_table
-        )
-
-    else:
-        edge = get_random_edge(cutoff, edge_param_id, bin_label, temp_record_table)
+    edge = get_random_edge(
+        cutoff, edge_param_id, bin_label, temp_record_table, seed_record
+    )
 
     # could be that we already generated all connected components
     if edge is None:
@@ -335,6 +331,7 @@ def get_random_edge(
     edge_param_id: int,
     bin_label: str,
     temp_record_table: Optional[Table] = None,
+    seed_record: Optional[BGCRecord] = None,
 ) -> Optional[tuple[int, int]]:
     """
     Get a random edge from the database that is not in any connected component
@@ -355,13 +352,28 @@ def get_random_edge(
     distance_table = DB.get_table("distance")
     cc_table = DB.get_table("connected_component")
 
-    # this query is complicated, breaking it down:
-
     random_edge_query = (
         # select edge as just record ids
-        select(distance_table.c.record_a_id, distance_table.c.record_b_id)
-        # where record a id is not in a connected component with the same cutoff and edge param id
-        .where(
+        select(distance_table.c.record_a_id, distance_table.c.record_b_id).where(
+            # and where the edge has a distance less than the cutoff and the edge param id is the same
+            distance_table.c.distance < cutoff,
+            distance_table.c.edge_param_id == edge_param_id,
+        )
+        # return only one edge
+        .limit(1)
+    )
+
+    if seed_record is not None:
+        random_edge_query = random_edge_query.where(
+            or_(
+                distance_table.c.record_a_id == seed_record._db_id,
+                distance_table.c.record_b_id == seed_record._db_id,
+            )
+        )
+
+    else:
+        random_edge_query = random_edge_query.where(
+            # where record a id is not in a connected component with the same cutoff and edge param id
             distance_table.c.record_a_id.notin_(
                 select(cc_table.c.record_id).where(
                     cc_table.c.cutoff == cutoff,
@@ -369,9 +381,8 @@ def get_random_edge(
                     cc_table.c.bin_label == bin_label,
                 )
             )
+        ).where(
             # and where record b id is not in a connected component with the same cutoff and edge param id
-        )
-        .where(
             distance_table.c.record_b_id.notin_(
                 select(cc_table.c.record_id).where(
                     cc_table.c.cutoff == cutoff,
@@ -381,72 +392,6 @@ def get_random_edge(
             ),
             # and where the edge has a distance less than the cutoff and the edge param id is the same
         )
-        .where(
-            distance_table.c.distance < cutoff,
-            distance_table.c.edge_param_id == edge_param_id,
-            # return only one edge
-        )
-        # return only one edge
-        .limit(1)
-    )
-
-    if temp_record_table is not None:
-        random_edge_query = random_edge_query.where(
-            and_(
-                distance_table.c.record_a_id.in_(select(temp_record_table.c.record_id)),
-                distance_table.c.record_b_id.in_(select(temp_record_table.c.record_id)),
-            )
-        )
-
-    edge = cast(tuple[int, int], DB.execute(random_edge_query).fetchone())
-
-    return edge
-
-
-def get_random_edge_seeded(
-    cutoff: float,
-    edge_param_id: int,
-    seed_record: BGCRecord,
-    temp_record_table: Optional[Table] = None,
-) -> Optional[tuple[int, int]]:
-    """
-    Get a random edge from the database where record a id or
-    record b id is the seed record
-    and has a distance less than the cutoff
-
-    Note that this returns only the ids to reduce the amount of data
-
-    Args:
-        cutoff: the distance cutoff
-        edge_param_id: the edge parameter id
-        temp_record_table (Table, optional): a temporary table with the records to include in the
-        connected component. Defaults to None.
-
-    Returns:
-        Optional[tuple[int, int]]: a tuple with the record ids of the edge or None
-    """
-    if DB.metadata is None:
-        raise RuntimeError("DB.metadata is None")
-    distance_table = DB.get_table("distance")
-
-    random_edge_query = (
-        # select edge as just record ids
-        select(distance_table.c.record_a_id, distance_table.c.record_b_id)
-        .where(
-            # where record a id or record b id is the seed record
-            or_(
-                distance_table.c.record_a_id == seed_record._db_id,
-                distance_table.c.record_b_id == seed_record._db_id,
-            )
-        )
-        .where(
-            # and where the edge has a distance less than the cutoff and the edge param id is the same
-            distance_table.c.distance < cutoff,
-            distance_table.c.edge_param_id == edge_param_id,
-        )
-        # return only one edge
-        .limit(1)
-    )
 
     if temp_record_table is not None:
         random_edge_query = random_edge_query.where(
