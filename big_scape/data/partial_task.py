@@ -217,35 +217,3 @@ def get_comparison_data_state(gbks: list[GBK]) -> bs_enums.COMPARISON_TASK:
         return bs_enums.COMPARISON_TASK.NEW_DATA
 
     return bs_enums.COMPARISON_TASK.ALL_DONE
-
-
-# TODO: does not seem to be used
-def get_missing_distances(
-    pair_generator: RecordPairGenerator,
-) -> Generator[tuple[Optional[int], Optional[int]], None, None]:
-    """Get a generator of BGCPairs that are missing from a network
-
-    Args:
-        network (BSNetwork): network to check
-        bin (BGCBin): bin to check
-
-    Yields:
-        Generator[BGCPair]: generator of BGCPairs that are missing from the network
-    """
-
-    distance_table = DB.get_table("distance")
-
-    # get all region._db_id in the bin
-    select_statement = (
-        select(distance_table.c.record_a_id, distance_table.c.record_b_id)
-        .where(distance_table.c.record_a_id.in_(pair_generator.record_ids))
-        .where(distance_table.c.record_b_id.in_(pair_generator.record_ids))
-    )
-
-    # generate a set of tuples of region id pairs
-    existing_distances = set(DB.execute(select_statement).fetchall())
-
-    for pair in pair_generator.generate_pairs():
-        # if the pair is not in the set of existing distances, yield it
-        if pair not in existing_distances and pair[::-1] not in existing_distances:
-            yield pair
