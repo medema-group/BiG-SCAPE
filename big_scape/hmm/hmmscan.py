@@ -13,7 +13,7 @@ from big_scape.hmm import HMMer, HSP
 import big_scape.data as bs_data
 
 
-def run_hmmscan(run: dict[str, Any], gbks: list[Any], start_time: Any):
+def run_hmmscan(run: dict[str, Any], gbks: list[Any], start_time: Any) -> None:
     """Runs the hmmscan workflow
 
     Args:
@@ -96,4 +96,3 @@ def run_hmmscan(run: dict[str, Any], gbks: list[Any], start_time: Any):
             all_hsps.extend(cds.hsps)
 
     logging.info("%d hsps found in this run", len(all_hsps))
-

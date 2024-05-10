@@ -141,7 +141,6 @@ def run_bigscape(run: dict) -> None:
 
     # HMMER - Search/scan
     if run_state == bs_enums.TASK.HMM_SCAN:
-
         HMMer.init(run["pfam_path"])
 
         # first opportunity to set this is here
@@ -161,37 +160,7 @@ def run_bigscape(run: dict) -> None:
         if pfam_info is None:
             pfam_info = HMMer.get_pfam_info()
 
-        hsps_to_align = bs_data.get_hsp_to_align(gbks)
-
-        with tqdm.tqdm(unit="HSP", total=len(hsps_to_align), desc="HMMALIGN") as t:
-
-            def align_callback(tasks_done: int):
-                t.update(tasks_done)
-
-            HMMer.align_simple(hsps_to_align, align_callback)
-
-        alignment_count = 0
-
-        for hsp in hsps_to_align:
-            if hsp.alignment is None:
-                continue
-            hsp.alignment.save(False)
-            alignment_count += 1
-
-        logging.info("%d alignments", alignment_count)
-
-        exec_time = datetime.now() - start_time
-        logging.info("align done at %f seconds", exec_time.total_seconds())
-
-        DB.commit()
-        DB.save_to_disk(run["db_path"])
-
-        exec_time = datetime.now() - start_time
-        logging.info(
-            "DB: HSP alignment save done at %f seconds", exec_time.total_seconds()
-        )
-
-        HMMer.unload()
+        run_hmmalign(run, gbks, start_time)
 
         # set new run state
         run_state = bs_data.find_minimum_task(gbks)
