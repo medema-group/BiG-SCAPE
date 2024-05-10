@@ -7,16 +7,12 @@ import psutil
 import signal
 import logging
 from datetime import datetime
-import platform
 from pathlib import Path
-
-# from dependencies
-import tqdm
 
 # from other modules
 from big_scape.cli.config import BigscapeConfig
 from big_scape.data import DB
-from big_scape.hmm import HMMer, HSP
+from big_scape.hmm import HMMer, run_hmmscan, run_hmmalign
 from big_scape.diagnostics import Profiler
 from big_scape.output import (
     legacy_prepare_output,
@@ -146,79 +142,11 @@ def run_bigscape(run: dict) -> None:
         # first opportunity to set this is here
         pfam_info = HMMer.get_pfam_info()
 
-        # we certainly need to do some sort of scan, since the run_state is on hmm_scan. but we do
-        # not need to do everything. Find the CDS that need scanning
-        cds_to_scan = bs_data.get_cds_to_scan(gbks)
-
-        logging.info("Scanning %d CDS", len(cds_to_scan))
-
-        if platform.system() == "Darwin":
-            logging.debug(
-                "Running on %s: hmmsearch_simple with %d cores",
-                platform.system(),
-                run["cores"],
-            )
-            with tqdm.tqdm(unit="CDS", total=len(HMMer.profiles), desc="HMMSCAN") as t:
-                HMMer.hmmsearch_simple(
-                    cds_to_scan,
-                    domain_overlap_cutoff=run["domain_overlap_cutoff"],
-                    cores=run["cores"],
-                    callback=lambda x, y: t.update(),
-                )
-        else:
-            logging.debug(
-                "Running on %s: hmmsearch_multiprocess with %d cores",
-                platform.system(),
-                run["cores"],
-            )
-
-            with tqdm.tqdm(unit="CDS", total=len(cds_to_scan), desc="HMMSCAN") as t:
-
-                def callback(tasks_done):
-                    t.update(tasks_done)
-
-                # TODO: the overlap filtering in this function does not seem to work
-                HMMer.hmmsearch_multiprocess(
-                    cds_to_scan,
-                    domain_overlap_cutoff=run["domain_overlap_cutoff"],
-                    cores=run["cores"],
-                    callback=callback,
-                )
-
-        # TODO: move, or remove after the add_hsp_overlap function is fixed (if it is broken
-        # in the first place)
-        # this sorts all CDS and then filters them using the old filtering system, which
-        # is less efficient than the flitering using the CDS.add_hsp_overlap_filter
-        # method. however, that method seems to be broken somehow
-        for gbk in gbks:
-            for cds in gbk.genes:
-                cds.hsps = sorted(cds.hsps)
-
-        exec_time = datetime.now() - start_time
-        logging.info("scan done at %f seconds", exec_time.total_seconds())
-
-        # save hsps to database
-
-        for cds in cds_to_scan:
-            for hsp in cds.hsps:
-                hsp.save(False)
-        DB.commit()
-
-        exec_time = datetime.now() - start_time
-        logging.info("DB: HSP save done at %f seconds", exec_time.total_seconds())
-
-        HMMer.unload()
+        run_hmmscan(run, gbks, start_time)
 
         # set new run state
         run_state = bs_data.find_minimum_task(gbks)
         logging.info("Next task: %s", run_state)
-
-        all_hsps: list[HSP] = []
-        for gbk in gbks:
-            for cds in gbk.genes:
-                all_hsps.extend(cds.hsps)
-
-        logging.info("%d hsps found in this run", len(all_hsps))
 
     # HMMER - Align
     if run_state == bs_enums.TASK.HMM_ALIGN:
@@ -228,37 +156,7 @@ def run_bigscape(run: dict) -> None:
         if pfam_info is None:
             pfam_info = HMMer.get_pfam_info()
 
-        hsps_to_align = bs_data.get_hsp_to_align(gbks)
-
-        with tqdm.tqdm(unit="HSP", total=len(hsps_to_align), desc="HMMALIGN") as t:
-
-            def align_callback(tasks_done: int):
-                t.update(tasks_done)
-
-            HMMer.align_simple(hsps_to_align, align_callback)
-
-        alignment_count = 0
-
-        for hsp in hsps_to_align:
-            if hsp.alignment is None:
-                continue
-            hsp.alignment.save(False)
-            alignment_count += 1
-
-        logging.info("%d alignments", alignment_count)
-
-        exec_time = datetime.now() - start_time
-        logging.info("align done at %f seconds", exec_time.total_seconds())
-
-        DB.commit()
-        DB.save_to_disk(run["db_path"])
-
-        exec_time = datetime.now() - start_time
-        logging.info(
-            "DB: HSP alignment save done at %f seconds", exec_time.total_seconds()
-        )
-
-        HMMer.unload()
+        run_hmmalign(run, gbks, start_time)
 
         # set new run state
         run_state = bs_data.find_minimum_task(gbks)

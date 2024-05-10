@@ -317,23 +317,6 @@ def validate_binning_query_workflow(ctx) -> None:
         )
 
 
-def validate_skip_hmmscan(ctx) -> None:
-    """Validates whether a BiG-SCAPE db exists when running skip_hmm, which
-    requires already processed gbk files and hence a DB in output"""
-
-    if ctx.obj["skip_hmmscan"] and ctx.obj["db_path"] is None:
-        logging.error(
-            "Missing option '--db_path'."
-            "BiG-SCAPE database has not been given, skip_hmmscan requires "
-            "a DB of already processed gbk files."
-        )
-        raise click.UsageError(
-            "Missing option '--db_path'."
-            "BiG-SCAPE database has not been given, skip_hmmscan requires "
-            "a DB of already processed gbk files."
-        )
-
-
 def validate_pfam_path(ctx) -> None:
     """Validates whether a BiG-SCAPE db exists when pfam_path is not provided,
     which requires already processed gbk files and hence a DB in output"""

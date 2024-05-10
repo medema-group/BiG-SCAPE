@@ -16,7 +16,6 @@ import big_scape.comparison as bs_comparison
 import big_scape.enums as bs_enums
 import big_scape.network.network as bs_network
 import big_scape.data as bs_data
-import big_scape.distances as bs_distances
 
 
 def calculate_distances_query(
