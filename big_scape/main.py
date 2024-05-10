@@ -7,16 +7,12 @@ import psutil
 import signal
 import logging
 from datetime import datetime
-import platform
 from pathlib import Path
-
-# from dependencies
-import tqdm
 
 # from other modules
 from big_scape.cli.config import BigscapeConfig
 from big_scape.data import DB
-from big_scape.hmm import HMMer, HSP, run_hmmscan, run_hmmalign
+from big_scape.hmm import HMMer, run_hmmscan, run_hmmalign
 from big_scape.diagnostics import Profiler
 from big_scape.output import (
     legacy_prepare_output,
