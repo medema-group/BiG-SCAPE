@@ -47,33 +47,9 @@ def generate_families(
     # insertion into db
     regions_families = []
 
-    # hierarchical checks to see if affinity propagation should be applied or not
-    # AP is applied if the edge weight standard deviation is above a threshold
-    # or if the connected component connectivity is below a threshold
-    # or if the connected component breaks when removing the top nodes with
-    # highest betweenness centrality
-    # TODO: consider getting rid of centrality check, but still
-    # need a center node for trees
-    cc_edge_weight_std = get_cc_edge_weight_std(connected_component)
-    if cc_edge_weight_std < BigscapeConfig.EDGE_WEIGHT_STD_THRESHOLD:
-        cc_connectivity = get_cc_connectivity(connected_component)
-        if cc_connectivity > BigscapeConfig.CC_CONNECTIVITY_THRESHOLD:
-            cc_breaks, nodes_centrality = test_centrality(
-                connected_component, BigscapeConfig.BETWEENNESS_CENTRALITY_NODES
-            )
-            if not cc_breaks:
-                # node with highest betweenness centrality is the center of the family
-                family_id = nodes_centrality[0]
+    similarity_matrix, node_ids = edge_list_to_sim_matrix(connected_component)
 
-                for edge in connected_component:
-                    regions_families.append((edge[0], family_id, cutoff, bin_label))
-                    regions_families.append((edge[1], family_id, cutoff, bin_label))
-
-                return regions_families
-
-    distance_matrix, node_ids = edge_list_to_sim_matrix(connected_component)
-
-    labels, centers = aff_sim_matrix(distance_matrix)
+    labels, centers = aff_sim_matrix(similarity_matrix)
 
     for idx, label in enumerate(labels):
         label = int(label)
@@ -191,6 +167,7 @@ def aff_sim_matrix(matrix):
         max_iter=1000,
         convergence_iter=200,
         affinity="precomputed",
+        preference=BigscapeConfig.PREFERENCE,
     ).fit(matrix)
 
     return af_results.labels_, af_results.cluster_centers_indices_

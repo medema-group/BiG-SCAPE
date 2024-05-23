@@ -10,38 +10,35 @@ class BigscapeConfig:
     # static properties
 
     # PROFILER
-    PROFILER_UPDATE_INTERVAL = 0.5
+    PROFILER_UPDATE_INTERVAL: float = 0.5
 
     # INPUT
-    MERGED_CAND_CLUSTER_TYPE = ["chemical_hybrid", "interleaved"]
-    MIN_BGC_LENGTH = 0
-    MAX_BGC_LENGTH = 500000
+    MERGED_CAND_CLUSTER_TYPE: list[str] = ["chemical_hybrid", "interleaved"]
+    MIN_BGC_LENGTH: int = 0
+    MAX_BGC_LENGTH: int = 500000
 
     # LCS
-    REGION_MIN_LCS_LEN = 3
-    PROTO_MIN_LCS_LEN = 3
+    REGION_MIN_LCS_LEN: int = 3
+    PROTO_MIN_LCS_LEN: int = 3
 
     # EXPAND
-    REGION_MIN_EXPAND_LEN = 5
-    REGION_MIN_EXPAND_LEN_BIO = 5
-    PROTO_MIN_EXPAND_LEN = 3
-    NO_MIN_CLASSES = ["Terpene"]
-    EXPAND_MATCH_SCORE = 5
-    EXPAND_MISMATCH_SCORE = -3
-    EXPAND_GAP_SCORE = -2
-    EXPAND_MAX_MATCH_PERC = 0.1
+    REGION_MIN_EXPAND_LEN: int = 5
+    REGION_MIN_EXPAND_LEN_BIO: int = 5
+    PROTO_MIN_EXPAND_LEN: int = 3
+    NO_MIN_CLASSES: list[str] = ["Terpene"]
+    EXPAND_MATCH_SCORE: int = 5
+    EXPAND_MISMATCH_SCORE: int = -3
+    EXPAND_GAP_SCORE: int = -2
+    EXPAND_MAX_MATCH_PERC: float = 0.1
 
     # CLUSTER
-    # TODO: benchmark these values, or at least think better about them
-    EDGE_WEIGHT_STD_THRESHOLD = 0.1
-    CC_CONNECTIVITY_THRESHOLD = 0.8
-    BETWEENNESS_CENTRALITY_NODES = 0.3
+    PREFERENCE: float = 0.0
 
     # TREE
-    TOP_FREQS = 3
+    TOP_FREQS: int = 3
 
     @staticmethod
-    def parse_config(run) -> None:
+    def parse_config(run: dict) -> None:
         """parses config file
 
         Args:
@@ -90,15 +87,7 @@ class BigscapeConfig:
         )
 
         # CLUSTER
-        BigscapeConfig.EDGE_WEIGHT_STD_THRESHOLD = float(
-            config["CLUSTER"]["EDGE_WEIGHT_STD_THRESHOLD"]
-        )
-        BigscapeConfig.CC_CONNECTIVITY_THRESHOLD = float(
-            config["CLUSTER"]["CC_CONNECTIVITY_THRESHOLD"]
-        )
-        BigscapeConfig.BETWEENNESS_CENTRALITY_NODES = float(
-            config["CLUSTER"]["BETWEENNESS_CENTRALITY_NODES"]
-        )
+        BigscapeConfig.PREFERENCE = float(config["CLUSTER"]["PREFERENCE"])
 
         # TREE
         BigscapeConfig.TOP_FREQS = int(config["TREE"]["TOP_FREQS"])
@@ -107,14 +96,13 @@ class BigscapeConfig:
         BigscapeConfig.write_config_log(run, config)
 
     @staticmethod
-    def write_config_log(run, config) -> None:
-        """writes config lof file
+    def write_config_log(run: dict, config: configparser.ConfigParser) -> None:
+        """writes config log file
 
         Args:
             run (dict): run parameters
-            log_path (Path): path to log file
+            config (configparser.ConfigParser): config settings
         """
-
         log_path = run["log_path"]
         config_log_path = Path(str(log_path).replace(".log", ".config.log"))
 
