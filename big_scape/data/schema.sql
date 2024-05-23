@@ -125,3 +125,7 @@ CREATE TABLE IF NOT EXISTS edge_params (
     UNIQUE(id),
     UNIQUE(weights, alignment_mode)
 );
+
+CREATE INDEX IF NOT EXISTS record_id_index ON bgc_record(id);
+CREATE INDEX IF NOT EXISTS distance_record_id_index ON distance(record_a_id);
+CREATE INDEX IF NOT EXISTS distance_record_id_index ON distance(record_b_id);
