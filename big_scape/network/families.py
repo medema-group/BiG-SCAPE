@@ -370,7 +370,7 @@ def run_family_assignments_query(
         try:
             query_connected_component = next(
                 bs_network.get_connected_components(
-                    cutoff, query_bin.edge_param_id, query_bin, query_record
+                    cutoff, query_bin.edge_param_id, query_bin
                 )
             )
 
