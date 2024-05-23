@@ -146,9 +146,9 @@ class Region(BGCRecord):
                 # above dont always have features beyond region
                 return region
 
-            logging.warning(
-                "candidate_cluster_numbers qualifier not found in region feature!"
-                "consider checking whether there is something special about this gbk"
+            logging.error(
+                "candidate_cluster_numbers qualifier not found in region feature! "
+                "Consider checking whether there is something special about this gbk"
             )
             raise InvalidGBKError()
 
