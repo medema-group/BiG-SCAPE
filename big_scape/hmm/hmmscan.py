@@ -67,14 +67,11 @@ def run_hmmscan(run: dict[str, Any], gbks: list[Any], start_time: Any) -> None:
                 callback=callback,
             )
 
-    # # TODO: move, or remove after the add_hsp_overlap function is fixed (if it is broken
-    # # in the first place)
-    # # this sorts all CDS and then filters them using the old filtering system, which
-    # # is less efficient than the flitering using the CDS.add_hsp_overlap_filter
-    # # method. however, that method seems to be broken somehow
-    # for gbk in gbks:
-    #     for cds in gbk.genes:
-    #         cds.hsps = sorted(cds.hsps)
+    # sort hsps on starting position within the cds to ensure correct ordering during
+    # lcs/extend and distance calculations
+    for gbk in gbks:
+        for cds in gbk.genes:
+            cds.hsps = sorted(cds.hsps)
 
     exec_time = datetime.now() - start_time
     logging.info("scan done at %f seconds", exec_time.total_seconds())

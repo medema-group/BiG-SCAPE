@@ -548,6 +548,7 @@ def fetch_records_from_database(pairs: list[tuple[int, int]]) -> dict[int, BGCRe
         .join(hsp_table, hsp_table.c.cds_id == cds_table.c.id, full=True)
         .join(algn_table, algn_table.c.hsp_id == hsp_table.c.id, full=True)
         .where(record_table.c.id.in_(pair_ids))
+        .order_by(hsp_table.c.id)
     )
 
     pair_data = DB.execute(query_statement).fetchall()
