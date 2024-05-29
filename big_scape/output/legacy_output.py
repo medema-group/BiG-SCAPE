@@ -21,6 +21,7 @@ from big_scape.hmm import HSP
 from big_scape.enums import SOURCE_TYPE
 from big_scape.trees import generate_newick_tree
 from big_scape.comparison import get_record_category
+from big_scape.cli.constants import ROOT_DIR
 
 import big_scape.network.network as bs_network
 import big_scape.network.utility as bs_network_utility
@@ -34,7 +35,7 @@ def copy_base_output_templates(output_dir: Path):
         output_dir (Path): main output directory
     """
 
-    template_root = Path("big_scape/output/html_template")
+    template_root = ROOT_DIR / Path("big_scape/output/html_template")
     template_dir = template_root / "output"
 
     # copy html content
@@ -65,7 +66,7 @@ def prepare_cutoff_folders(output_dir: Path, label: str, cutoff: float) -> None:
     cutoff_network_path.mkdir(exist_ok=True)
     cutoff_files_path.mkdir(exist_ok=True)
 
-    template_root = Path("big_scape/output/html_template")
+    template_root = ROOT_DIR / Path("big_scape/output/html_template")
     overview_template = template_root / "overview_html"
 
     # copy overview html
@@ -100,7 +101,7 @@ def prepare_pair_generator_folders(
 
     tree_path.mkdir(exist_ok=True)
 
-    template_root = Path("big_scape/output/html_template")
+    template_root = ROOT_DIR / Path("big_scape/output/html_template")
     pair_generator_template = template_root / "index_html"
 
     shutil.copy(
@@ -118,7 +119,7 @@ def generate_pfams_js(output_dir: Path, pfam_info: list[tuple[str, str, str]]) -
     """
 
     # gather color information
-    pfam_colors_file_path = Path("big_scape/output/domain_colors.tsv")
+    pfam_colors_file_path = ROOT_DIR / Path("big_scape/output/domain_colors.tsv")
 
     # make accession to color dictionary
     pfam_colors_dict = {}
@@ -224,9 +225,7 @@ def generate_run_data_js(
         "classify": (
             "Legacy Groups"
             if run["legacy_classify"]
-            else run["classify"].name.title()
-            if run["classify"]
-            else "Not Classify"
+            else run["classify"].name.title() if run["classify"] else "Not Classify"
         ),
         "weights": "Legacy Weights" if run["legacy_weights"] else "Mix",
         "alignment_mode": run["alignment_mode"].name.title(),
@@ -1699,9 +1698,7 @@ def write_full_network_file(run: dict, all_bgc_records: list[BGCRecord]) -> None
     write_network_file(full_network_file_path, edgelist)
 
 
-def get_full_network_edgelist(
-    run: dict, all_bgc_records: list
-) -> set[
+def get_full_network_edgelist(run: dict, all_bgc_records: list) -> set[
     tuple[
         str,
         str,

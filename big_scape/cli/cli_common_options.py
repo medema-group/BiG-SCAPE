@@ -18,6 +18,7 @@ from .cli_validations import (
     validate_classify,
     validate_output_dir,
 )
+from .constants import ROOT_DIR
 
 
 def common_all(fn):
@@ -35,9 +36,9 @@ def common_all(fn):
             type=click.Path(
                 exists=True, dir_okay=False, file_okay=True, path_type=Path
             ),
-            default="./config.ini",
+            default=ROOT_DIR / "config.ini",
             help="Path to BiG-SCAPE config file, which stores values for a "
-            "series of advanced use parameters. (default: ./config.ini).",
+            "series of advanced use parameters. (default: [BiG-SCAPE directory]/config.ini).",
         ),
         # diagnostic parameters
         click.option(
