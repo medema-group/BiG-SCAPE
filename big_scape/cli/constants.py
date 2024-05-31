@@ -1,6 +1,12 @@
 """Contains constant values"""
 
-DB_SCHEMA_PATH = "big_scape/data/schema.sql"
+from sys import argv
+from pathlib import Path
+
+# TODO: this almost certainly will break when packaging
+ROOT_DIR = Path(argv[0]).parent
+
+DB_SCHEMA_PATH = ROOT_DIR / "big_scape/data/schema.sql"
 
 # TODO: add comments with notes as in BS1
 # TODO: move to config file
