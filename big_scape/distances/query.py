@@ -52,7 +52,7 @@ def calculate_distances_query(
     # add last edges
 
     query_connected_component = next(
-        bs_network.get_connected_components(1, edge_param_id, query_bin, query_record)
+        bs_network.get_connected_components(1, edge_param_id, query_bin)
     )
 
     query_nodes = bs_network.get_nodes_from_cc(query_connected_component, query_records)
