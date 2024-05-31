@@ -9,6 +9,7 @@ import shutil
 from distutils import dir_util
 from pathlib import Path
 from typing import Any
+import click
 from sqlalchemy import select, alias
 import logging
 
@@ -224,9 +225,7 @@ def generate_run_data_js(
         "classify": (
             "Legacy Groups"
             if run["legacy_classify"]
-            else run["classify"].name.title()
-            if run["classify"]
-            else "Not Classify"
+            else run["classify"].name.title() if run["classify"] else "Not Classify"
         ),
         "weights": "Legacy Weights" if run["legacy_weights"] else "Mix",
         "alignment_mode": run["alignment_mode"].name.title(),
@@ -1224,6 +1223,12 @@ def legacy_prepare_output(
         about the PFAM entries used in this analysis. tuples correspond to the accession
         name and description of a pfam entry
     """
+
+    click_context = click.get_current_context(silent=True)
+
+    if click_context and click_context.obj["no_interactive"]:
+        return
+
     copy_base_output_templates(output_dir)
 
     generate_pfams_js(output_dir, pfam_info)
@@ -1243,6 +1248,12 @@ def legacy_prepare_cutoff_output(run: dict, cutoff: float, gbks: list[GBK]) -> N
         cutoff (float): cutoff value
         gbks (list[GBK]): list of gbks used in the analysis
     """
+
+    click_context = click.get_current_context(silent=True)
+
+    if click_context and click_context.obj["no_interactive"]:
+        return
+
     prepare_cutoff_folders(run["output_dir"], run["label"], cutoff)
 
     generate_bigscape_results_js(run["output_dir"], run["label"], cutoff)
@@ -1261,6 +1272,11 @@ def legacy_prepare_bin_output(
         cutoff (float): cutoff value
         pair_generator (BGCBin): BGC pair_generator
     """
+
+    click_context = click.get_current_context(silent=True)
+
+    if click_context and click_context.obj["no_interactive"]:
+        return
 
     output_dir = run["output_dir"]
     label = run["label"]
@@ -1285,6 +1301,12 @@ def legacy_generate_bin_output(
         pair_generator (BGCBin): BGC pair_generator
         network (BSNetwork): the network object for the pair_generator
     """
+
+    click_context = click.get_current_context(silent=True)
+
+    if click_context and click_context.obj["no_interactive"]:
+        return
+
     output_dir = run["output_dir"]
     label = run["label"]
 
@@ -1309,6 +1331,11 @@ def write_record_annotations_file(run, cutoff, all_bgc_records) -> None:
     Raises:
         RuntimeError: if database not available
     """
+
+    click_context = click.get_current_context(silent=True)
+
+    if click_context and click_context.obj["no_interactive"]:
+        return
 
     output_dir = run["output_dir"]
     label = run["label"]
@@ -1686,6 +1713,11 @@ def write_full_network_file(run: dict, all_bgc_records: list[BGCRecord]) -> None
         all_bgc_records (list): BGC records in this run
     """
 
+    click_context = click.get_current_context(silent=True)
+
+    if click_context and click_context.obj["no_interactive"]:
+        return
+
     output_dir = run["output_dir"]
     label = run["label"]
 
@@ -1699,9 +1731,7 @@ def write_full_network_file(run: dict, all_bgc_records: list[BGCRecord]) -> None
     write_network_file(full_network_file_path, edgelist)
 
 
-def get_full_network_edgelist(
-    run: dict, all_bgc_records: list
-) -> set[
+def get_full_network_edgelist(run: dict, all_bgc_records: list) -> set[
     tuple[
         str,
         str,
