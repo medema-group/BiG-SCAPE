@@ -98,6 +98,14 @@ def common_all(fn):
             " re-start the run from scratch",
         ),
         click.option(
+            "--no-interactive",
+            type=bool,
+            is_flag=True,
+            default=False,
+            help="Do not generate an interactive visualization. This greatly speeds up runs, and "
+            "for runs with a large amount of BGCs, the interactive visualization can fail to load.",
+        ),
+        click.option(
             "--force-gbk",
             type=bool,
             is_flag=True,
