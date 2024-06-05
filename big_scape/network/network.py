@@ -13,10 +13,8 @@ from sqlalchemy import (
     Table,
     and_,
     delete,
-    distinct,
     or_,
     select,
-    func,
 )
 
 # from other modules
@@ -25,12 +23,14 @@ from big_scape.genbank import BGCRecord
 import big_scape.enums as bs_enums
 import big_scape.comparison as bs_comparison
 
+# from this module
+from big_scape.network.DBAdjList import DBAdjList
+
 
 def get_connected_components(
     cutoff: float,
     edge_param_id: int,
     bin: bs_comparison.RecordPairGenerator,
-    seed_record: Optional[BGCRecord] = None,
 ) -> Generator[list[tuple[int, int, float, float, float, float, int]], None, None]:
     """Generate a network for each connected component in the network
         If a seed record is given, the connected component will be generated starting from that record
@@ -39,8 +39,6 @@ def get_connected_components(
         cutoff (float): the distance cutoff
         edge_param_id (int): the edge parameter id
         bin (bs_comparison.RecordPairGenerator): the bin to generate the connected components for
-        seed_record (Optional[BGCRecord], optional): a seed record to start the connected component from.
-        Defaults to None.
 
     Yields:
         Generator[list[tuple[int, int, float, float, float, float, int]], None, None]:
@@ -48,18 +46,17 @@ def get_connected_components(
     """
 
     # create a temporary table with the records to include
-    # TODO: this is not used, delete and update tests
-    temp_record_table = None
+    include_record_table = None
     if bin is not None:
-        temp_record_table = create_temp_record_table(bin.source_records)
+        include_record_table = create_temp_record_table(bin.source_records)
 
     # generate connected components using dfs
     generate_connected_components(
-        cutoff, edge_param_id, bin.label, temp_record_table, seed_record
+        cutoff, edge_param_id, bin.label, include_record_table
     )
 
     cc_ids = get_connected_component_ids(
-        cutoff, edge_param_id, bin.label, temp_record_table
+        cutoff, edge_param_id, bin.label, include_record_table
     )
 
     logging.info(f"Found {len(cc_ids)} connected components")
@@ -107,14 +104,14 @@ def get_connected_components(
             )
         )
 
-        if temp_record_table is not None:
+        if include_record_table is not None:
             select_statement = select_statement.where(
                 and_(
                     distance_table.c.record_a_id.in_(
-                        select(temp_record_table.c.record_id)
+                        select(include_record_table.c.record_id)
                     ),
                     distance_table.c.record_b_id.in_(
-                        select(temp_record_table.c.record_id)
+                        select(include_record_table.c.record_id)
                     ),
                 )
             )
@@ -122,11 +119,31 @@ def get_connected_components(
         yield list(DB.execute(select_statement))
 
 
+def dfs(adj_list, start):
+    """Depth-first search algorithm
+
+    Args:
+        adj_list (dict): adjacency list
+        start (int): starting node
+
+    Returns:
+        set: set of visited nodes
+    """
+    stack = [start]
+    visited = set()
+    while stack:
+        node = stack.pop()
+        if node not in visited:
+            visited.add(node)
+            stack.extend([n for n in adj_list[node] if n not in visited])
+    return visited
+
+
 def generate_connected_components(
     cutoff: float,
     edge_param_id: int,
     bin_label: str,
-    temp_record_table: Optional[Table] = None,
+    include_record_table: Optional[Table] = None,
     seed_record: Optional[BGCRecord] = None,
 ) -> None:
     """Generate the connected components for the network with the given parameters
@@ -134,6 +151,7 @@ def generate_connected_components(
     This uses a rough depth first search to generate the connected components
 
     If a seed record is given, the connected component will be generated starting from that record
+    and the function will return JUST the one connected component
 
     Args:
         cutoff (Optional[float], optional): the distance cutoff. Defaults to None.
@@ -141,144 +159,97 @@ def generate_connected_components(
         bin_label (str): the bin label
         temp_record_table (Table, optional): a temporary table with the records to include in the
         connected component. Defaults to None.
-        seed_record (BGCRecord, optional): a seed record to start the connected component from.
+        seed_record (Optional[BGCRecord], optional): a seed record to start the connected component from.
+        Defaults to None.
     """
 
-    if DB.metadata is None:
-        raise RuntimeError("DB.metadata is None")
-    distance_table = DB.metadata.tables["distance"]
-
-    edge = get_random_edge(
-        cutoff, edge_param_id, bin_label, temp_record_table, seed_record
+    db_adj_list = DBAdjList(
+        include_record_table,
+        cutoff,
+        edge_param_id,
+        bin_label,
     )
 
-    # could be that we already generated all connected components
-    if edge is None:
+    visited = set()
+    connected_components = []
+
+    if seed_record is not None:
+        connected_component = generate_cc_from_node(
+            cutoff,
+            edge_param_id,
+            bin_label,
+            db_adj_list,
+            connected_components,
+            seed_record._db_id,
+        )
         return
 
-    cc_id = edge[0]
-
-    edges = [edge]
-
-    seen = set()
-
-    if DB.engine is None:
-        raise RuntimeError("DB.engine is None")
-    cursor = DB.engine.raw_connection().driver_connection.cursor()
-
-    edge_count_query = select(func.count(distance_table.c.record_a_id)).where(
-        and_(
-            distance_table.c.distance < cutoff,
-            distance_table.c.edge_param_id == edge_param_id,
-        )
+    t = tqdm.tqdm(
+        total=len(db_adj_list), unit="nodes", desc="Generating connected components"
     )
-    num_edges = DB.execute(edge_count_query).fetchone()[0]
 
-    with tqdm.tqdm(total=num_edges, desc="Generating connected components") as t:
-        while len(edges) > 0:
-            inserts = []
-
-            for edge in edges:
-                record_id_a = edge[0]
-                record_id_b = edge[1]
-
-                if record_id_a not in seen:
-                    inserts.append(
-                        (cc_id, record_id_a, cutoff, edge_param_id, bin_label)
-                    )
-
-                if record_id_b not in seen:
-                    inserts.append(
-                        (cc_id, record_id_b, cutoff, edge_param_id, bin_label)
-                    )
-
-                seen.add(record_id_a)
-                seen.add(record_id_b)
-
-            q = """
-            INSERT INTO connected_component (id, record_id, cutoff, edge_param_id, bin_label)
-            VALUES (?, ?, ?, ?, ?);
-            """
-
-            cursor.executemany(q, inserts)
-
-            last_len = len(edges)
-
-            edges = get_cc_edges(
-                cc_id, cutoff, edge_param_id, bin_label, temp_record_table
+    for node in db_adj_list:
+        if node not in visited:
+            connected_component = generate_cc_from_node(
+                cutoff,
+                edge_param_id,
+                bin_label,
+                db_adj_list,
+                node,
             )
 
-            if last_len == len(edges):
-                if seed_record is not None:
-                    break
-                # print(f"cc: {', '.join([str(x) for x in seen])}, ({len(seen)})")
-                edge = get_random_edge(
-                    cutoff, edge_param_id, bin_label, temp_record_table
-                )
+            connected_components.append(connected_component)
 
-                t.update(len(edges))
+            visited.update(connected_component)
 
-                if edge is None:
-                    break
+        t.update(1)
 
-                cc_id = edge[0]
-
-                edges = [edge]
-
-                seen = set()
-
-    cursor.close()
-
-    DB.commit()
+    t.close()
 
 
-# TODO: not used, delete
-def has_missing_cc_assignments(
-    cutoff: float, edge_param_id: int, temp_record_table: Optional[Table] = None
-) -> bool:
-    """Check if there are any missing connected component assignments for the given cutoff and edge parameter id
+def generate_cc_from_node(cutoff, edge_param_id, bin_label, db_adj_list, node):
+    """Generate a connected component from a node using depth first search
+    and write it to the database
 
     Args:
         cutoff (float): the distance cutoff
         edge_param_id (int): the edge parameter id
-        temp_table (Table, optional): a temporary table with the records to include in the connected
-        component. Defaults to None.
+        bin_label (str): the bin label
+        db_adj_list (DBAdjList): the adjacency list
+        node (int): the starting node
 
     Returns:
-        bool: True if there are missing connected component assignments, False otherwise
+        set: the connected component
     """
 
-    if DB.metadata is None:
-        raise RuntimeError("DB.metadata is None")
-    distance_table = DB.metadata.tables["distance"]
-    cc_table = DB.metadata.tables["connected_component"]
+    connected_component = dfs(db_adj_list, node)
 
-    select_statement = (
-        select(func.count(distinct(distance_table.c.record_a_id)))
-        .where(
-            and_(
-                distance_table.c.distance < cutoff,
-                distance_table.c.edge_param_id == edge_param_id,
+    cc_id = node
+
+    if len(connected_component) == 1:
+        return connected_component
+
+    for node in connected_component:
+        DB.execute(
+            DB.metadata.tables["connected_component"]
+            .insert()
+            .values(
+                id=cc_id,
+                record_id=node,
+                cutoff=cutoff,
+                edge_param_id=edge_param_id,
+                bin_label=bin_label,
             )
         )
-        .where(distance_table.c.record_a_id.notin_(select(cc_table.c.record_id)))
-    )
 
-    if temp_record_table is not None:
-        select_statement = select_statement.where(
-            distance_table.c.record_a_id.in_(select(temp_record_table.c.record_id))
-        )
-
-    num_missing = DB.execute(select_statement).fetchone()[0]
-
-    return num_missing > 0
+    return connected_component
 
 
 def get_connected_component_ids(
     cutoff: float,
     edge_param_id: int,
     bin_label: str,
-    temp_record_table: Optional[Table] = None,
+    include_record_table: Optional[Table] = None,
 ) -> list[int]:
     """Get the connected component ids for the given cutoff and edge parameter id
 
@@ -306,9 +277,9 @@ def get_connected_component_ids(
         )
     )
 
-    if temp_record_table is not None:
+    if include_record_table is not None:
         select_statement = select_statement.where(
-            cc_table.c.record_id.in_(select(temp_record_table.c.record_id))
+            cc_table.c.record_id.in_(select(include_record_table.c.record_id))
         )
 
     cc_ids = DB.execute(select_statement).fetchall()
@@ -397,113 +368,6 @@ def get_random_edge(
     edge = DB.execute(random_edge_query).fetchone()
 
     return edge
-
-
-def get_cc_edges(
-    cc_id: int,
-    cutoff: float,
-    edge_param_id: int,
-    bin_label: str,
-    temp_record_table: Optional[Table] = None,
-) -> list[tuple[int, int]]:
-    """
-    Get all edges connected to an existing connected component with a distance less than
-    the cutoff
-
-    Args:
-        cc_id: the connected component id
-        cutoff: the distance cutoff
-        edge_param_id: the edge parameter id
-        bin_label: the bin label
-        temp_record_table (Table, optional): a temporary table with the records to include in the
-        connected component. Defaults to None.
-
-    Returns:
-        Optional[tuple[int, int]]: a tuple with the record ids of the edge or none
-    """
-    if DB.metadata is None:
-        raise RuntimeError("DB.metadata is None")
-    distance_table = DB.metadata.tables["distance"]
-    cc_table = DB.metadata.tables["connected_component"]
-
-    cc_edge_query = select(
-        distance_table.c.record_a_id, distance_table.c.record_b_id
-    ).where(
-        and_(
-            or_(
-                distance_table.c.record_a_id.in_(
-                    select(cc_table.c.record_id)
-                    .where(cc_table.c.id == cc_id)
-                    .where(cc_table.c.cutoff == cutoff)
-                    .where(cc_table.c.bin_label == bin_label)
-                ),
-                distance_table.c.record_b_id.in_(
-                    select(cc_table.c.record_id)
-                    .where(cc_table.c.id == cc_id)
-                    .where(cc_table.c.cutoff == cutoff)
-                    .where(cc_table.c.bin_label == bin_label)
-                ),
-            ),
-            distance_table.c.distance < cutoff,
-            distance_table.c.edge_param_id == edge_param_id,
-        )
-    )
-
-    if temp_record_table is not None:
-        cc_edge_query = cc_edge_query.where(
-            and_(
-                distance_table.c.record_a_id.in_(select(temp_record_table.c.record_id)),
-                distance_table.c.record_b_id.in_(select(temp_record_table.c.record_id)),
-            )
-        )
-
-    edges = DB.execute(cc_edge_query).fetchall()
-
-    return edges
-
-
-# generic functions
-# TODO: not used, delete
-def get_edge(
-    include_nodes: set[int],
-    exclude_nodes: set[int],
-    edge_param_id: int,
-    cutoff: Optional[float] = None,
-) -> Optional[tuple[int, int, float, float, float, float, int]]:
-    """Get an edge from the database that is not connected to exclude_nodes"""
-
-    if cutoff is None:
-        cutoff = 1.0
-
-    # fetch an edge from the database
-
-    if not DB.metadata:
-        raise RuntimeError("DB.metadata is None")
-    distance_table = DB.metadata.tables["distance"]
-    select_statment = (
-        select(
-            distance_table.c.record_a_id,
-            distance_table.c.record_b_id,
-            distance_table.c.distance,
-            distance_table.c.jaccard,
-            distance_table.c.adjacency,
-            distance_table.c.dss,
-            distance_table.c.edge_param_id,
-        )
-        .where(distance_table.c.record_a_id.in_(include_nodes))
-        .where(distance_table.c.record_b_id.in_(include_nodes))
-        .where(distance_table.c.record_a_id.notin_(exclude_nodes))
-        .where(distance_table.c.record_b_id.notin_(exclude_nodes))
-        .where(distance_table.c.edge_param_id == edge_param_id)
-        .where(distance_table.c.distance < cutoff)
-    )
-
-    edge = DB.execute(select_statment).fetchone()
-
-    if edge is None:
-        return None
-
-    return cast(tuple[int, int, float, float, float, float, int], edge)
 
 
 def get_edges(
@@ -635,9 +499,7 @@ def create_temp_record_table(include_records: list[BGCRecord]) -> Table:
     if DB.metadata is None:
         raise ValueError("DB metadata is None")
 
-    table = Table(temp_table_name, DB.metadata, autoload_with=DB.engine)
-
-    return table
+    return temp_table
 
 
 def reset_db_connected_components_table():
