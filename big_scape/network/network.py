@@ -146,12 +146,14 @@ def generate_connected_components(
     edge_param_id: int,
     bin_label: str,
     include_record_table: Optional[Table] = None,
+    seed_record: Optional[BGCRecord] = None,
 ) -> None:
     """Generate the connected components for the network with the given parameters
 
     This uses a rough depth first search to generate the connected components
 
     If a seed record is given, the connected component will be generated starting from that record
+    and the function will return JUST the one connected component
 
     Args:
         cutoff (Optional[float], optional): the distance cutoff. Defaults to None.
@@ -171,39 +173,76 @@ def generate_connected_components(
     visited = set()
     connected_components = []
 
+    if seed_record is not None:
+        connected_component = generate_cc_from_node(
+            cutoff,
+            edge_param_id,
+            bin_label,
+            db_adj_list,
+            connected_components,
+            seed_record._db_id,
+        )
+        return
+
     t = tqdm.tqdm(
         total=len(db_adj_list), unit="nodes", desc="Generating connected components"
     )
 
     for node in db_adj_list:
         if node not in visited:
-            connected_component = dfs(db_adj_list, node)
+            connected_component = generate_cc_from_node(
+                cutoff,
+                edge_param_id,
+                bin_label,
+                db_adj_list,
+                node,
+            )
+
             connected_components.append(connected_component)
-
-            if len(connected_component) == 1:
-                t.update(1)
-                continue
-
-            cc_id = node
-
-            for node in connected_component:
-                DB.execute(
-                    DB.metadata.tables["connected_component"]
-                    .insert()
-                    .values(
-                        id=cc_id,
-                        record_id=node,
-                        cutoff=cutoff,
-                        edge_param_id=edge_param_id,
-                        bin_label=bin_label,
-                    )
-                )
 
             visited.update(connected_component)
 
         t.update(1)
 
     t.close()
+
+
+def generate_cc_from_node(cutoff, edge_param_id, bin_label, db_adj_list, node):
+    """Generate a connected component from a node using depth first search
+    and write it to the database
+
+    Args:
+        cutoff (float): the distance cutoff
+        edge_param_id (int): the edge parameter id
+        bin_label (str): the bin label
+        db_adj_list (DBAdjList): the adjacency list
+        node (int): the starting node
+
+    Returns:
+        set: the connected component
+    """
+
+    connected_component = dfs(db_adj_list, node)
+
+    cc_id = node
+
+    if len(connected_component) == 1:
+        return connected_component
+
+    for node in connected_component:
+        DB.execute(
+            DB.metadata.tables["connected_component"]
+            .insert()
+            .values(
+                id=cc_id,
+                record_id=node,
+                cutoff=cutoff,
+                edge_param_id=edge_param_id,
+                bin_label=bin_label,
+            )
+        )
+
+    return connected_component
 
 
 def get_connected_component_ids(
