@@ -39,8 +39,6 @@ def get_connected_components(
         cutoff (float): the distance cutoff
         edge_param_id (int): the edge parameter id
         bin (bs_comparison.RecordPairGenerator): the bin to generate the connected components for
-        seed_record (Optional[BGCRecord], optional): a seed record to start the connected component from.
-        Defaults to None.
 
     Yields:
         Generator[list[tuple[int, int, float, float, float, float, int]], None, None]:
@@ -161,6 +159,8 @@ def generate_connected_components(
         bin_label (str): the bin label
         temp_record_table (Table, optional): a temporary table with the records to include in the
         connected component. Defaults to None.
+        seed_record (Optional[BGCRecord], optional): a seed record to start the connected component from. 
+        Defaults to None.
     """
 
     db_adj_list = DBAdjList(
