@@ -7,6 +7,15 @@ import big_scape.data as bs_data
 
 
 class DBAdjList(Mapping):
+    """A mapping that represents the adjacency list of a graph stored in the database.
+
+    Args:
+        include_records_table (Table): A table that contains the records to include in the graph.
+        cutoff (float): The maximum distance between two records for them to be considered adjacent.
+        edge_param_id (int): The ID of the edge parameters to use.
+        bin_label (str): The label of the bin.
+    """
+
     def __init__(
         self,
         include_records_table: Table,
