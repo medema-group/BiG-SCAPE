@@ -35,7 +35,7 @@ def common_all(fn):
             type=click.Path(
                 exists=True, dir_okay=False, file_okay=True, path_type=Path
             ),
-            default="./config.ini",
+            default="./config.yml",
             help="Path to BiG-SCAPE config file, which stores values for a "
             "series of advanced use parameters. (default: ./config.ini).",
         ),
