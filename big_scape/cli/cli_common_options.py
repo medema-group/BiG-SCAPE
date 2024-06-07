@@ -35,7 +35,7 @@ def common_all(fn):
             type=click.Path(
                 exists=True, dir_okay=False, file_okay=True, path_type=Path
             ),
-            default="./config.ini",
+            default="./config.yml",
             help="Path to BiG-SCAPE config file, which stores values for a "
             "series of advanced use parameters. (default: ./config.ini).",
         ),
@@ -206,33 +206,12 @@ def common_cluster_query(fn):
             ),
         ),
         click.option(
-            "--cds_overlap_cutoff",
-            type=click.FloatRange(min=0, max=1),
-            default=0.1,
-            help=(
-                "Specify at which overlap percentage (as a decimal) two CDS in a gbk "
-                "are considered to overlap. This preserves longest overlapping CDS "
-                "(default=0.1)."
-            ),
-        ),
-        click.option(
             "-p",
             "--pfam_path",
             type=click.Path(
                 exists=True, dir_okay=False, file_okay=True, path_type=Path
             ),
             help="Path to Pfam database file.",
-        ),
-        # hmmer parameters
-        click.option(
-            "--domain_overlap_cutoff",
-            type=click.FloatRange(min=0, max=1),
-            default=0.1,
-            help=(
-                "Specify at which overlap percentage (as a decimal) two domains "
-                "in a CDS are considered to overlap. Domain with the "
-                "best score is kept (default=0.1)."
-            ),
         ),
         click.option(
             # TODO: implement

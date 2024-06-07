@@ -110,7 +110,7 @@ def load_dataset_folder(
     mode = run["input_mode"]
     include_gbk = run["include_gbk"]
     exclude_gbk = run["exclude_gbk"]
-    cds_overlap_cutoff = run["cds_overlap_cutoff"]
+    cds_overlap_cutoff = BigscapeConfig.CDS_OVERLAP_CUTOFF
     cores = run["cores"]
 
     if source_type in (bs_enums.SOURCE_TYPE.QUERY, bs_enums.SOURCE_TYPE.REFERENCE):
