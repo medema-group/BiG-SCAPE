@@ -69,7 +69,7 @@ LEGACY_ANTISMASH_CLASSES:
     pks1_products:
       - "t1pks"
       - "T1PKS"
-    pksother_products":
+    pksother_products:
       - transatpks
       - t2pks
       - t3pks
@@ -81,7 +81,7 @@ LEGACY_ANTISMASH_CLASSES:
       - T3PKS
       - PKS-like
       - hglE-KS
-    nrps_products":
+    nrps_products:
       - nrps
       - NRPS
       - NRPS-like

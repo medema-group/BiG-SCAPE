@@ -38,7 +38,7 @@ class BigscapeConfig:
     TOP_FREQS: int = 3
 
     # ANCHOR DOMAINS
-    LEGACY_ANCHOR_DOMAINS = [
+    ANCHOR_DOMAINS = [
         "PF02801",
         "PF02624",
         "PF00109",
