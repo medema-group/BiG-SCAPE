@@ -17,6 +17,10 @@ class BigscapeConfig:
     MIN_BGC_LENGTH: int = 0
     MAX_BGC_LENGTH: int = 500000
 
+    # CDS and DOMAIN
+    CDS_OVERLAP_CUTOFF: float = 0.1
+    DOMAIN_OVERLAP_CUTOFF: float = 0.1
+
     # LCS
     REGION_MIN_LCS_LEN: int = 3
     PROTO_MIN_LCS_LEN: int = 3
@@ -166,6 +170,10 @@ class BigscapeConfig:
         BigscapeConfig.MERGED_CAND_CLUSTER_TYPE = config["MERGED_CAND_CLUSTER_TYPE"]
         BigscapeConfig.MIN_BGC_LENGTH = config["MIN_BGC_LENGTH"]
         BigscapeConfig.MAX_BGC_LENGTH = config["MAX_BGC_LENGTH"]
+
+        # CDS and DOMAIN
+        BigscapeConfig.CDS_OVERLAP_CUTOFF = config["CDS_OVERLAP_CUTOFF"]
+        BigscapeConfig.DOMAIN_OVERLAP_CUTOFF = config["DOMAIN_OVERLAP_CUTOFF"]
 
         # LCS
         BigscapeConfig.REGION_MIN_LCS_LEN = config["REGION_MIN_LCS_LEN"]

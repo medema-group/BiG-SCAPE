@@ -11,7 +11,6 @@ import logging
 from Bio.SeqFeature import SeqFeature
 
 # from other modules
-from big_scape.cli.constants import ANTISMASH_CLASSES
 from big_scape.cli.config import BigscapeConfig
 from big_scape.data import DB
 from big_scape.errors import InvalidGBKError

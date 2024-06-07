@@ -7,10 +7,17 @@ PROFILER_UPDATE_INTERVAL: 0.5
 MERGED_CAND_CLUSTER_TYPE:
   - chemical_hybrid
   - interleaved
-
 # Minimum and maximum bgc lengths to be included in the analysis in number of base pairs
 MIN_BGC_LENGTH: 0
 MAX_BGC_LENGTH: 500000
+
+# CDS and DOMAIN
+# Specify at which overlap percentage (as a decimal) two CDS in a gbk
+# are considered to overlap. This preserves longest overlapping CDS
+CDS_OVERLAP_CUTOFF: 0.1
+# Specify at which overlap percentage (as a decimal) two domains
+# in a CDS are considered to overlap. Domain with the best score is kept
+DOMAIN_OVERLAP_CUTOFF: 0.1
 
 # LCS
 # Minimum length criteria for accepting a Longest Common Subcluster when comparing:

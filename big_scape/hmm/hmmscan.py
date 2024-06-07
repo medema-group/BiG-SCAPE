@@ -8,6 +8,7 @@ import tqdm
 from typing import Any
 
 # from other modules
+from big_scape.cli.config import BigscapeConfig
 from big_scape.data import DB
 from big_scape.hmm import HMMer, HSP
 import big_scape.data as bs_data
@@ -42,7 +43,7 @@ def run_hmmscan(run: dict[str, Any], gbks: list[Any], start_time: Any) -> None:
         with tqdm.tqdm(unit="CDS", total=len(HMMer.profiles), desc="HMMSCAN") as t:
             HMMer.hmmsearch_simple(
                 cds_to_scan,
-                domain_overlap_cutoff=run["domain_overlap_cutoff"],
+                domain_overlap_cutoff=BigscapeConfig.DOMAIN_OVERLAP_CUTOFF,
                 cores=run["cores"],
                 callback=lambda x, y: t.update(),
             )
@@ -62,7 +63,7 @@ def run_hmmscan(run: dict[str, Any], gbks: list[Any], start_time: Any) -> None:
             # TODO: the overlap filtering in this function does not seem to work
             HMMer.hmmsearch_multiprocess(
                 cds_to_scan,
-                domain_overlap_cutoff=run["domain_overlap_cutoff"],
+                domain_overlap_cutoff=BigscapeConfig.DOMAIN_OVERLAP_CUTOFF,
                 cores=run["cores"],
                 callback=callback,
             )
