@@ -36,6 +36,7 @@ class BigscapeConfig:
 
     # TREE
     TOP_FREQS: int = 3
+
     # ANCHOR DOMAINS
     LEGACY_ANCHOR_DOMAINS = [
         "PF02801",
@@ -51,6 +52,99 @@ class BigscapeConfig:
         "PF00668",
         "PF05147",
     ]
+
+    # LEGACY ANTISMASH CLASSES
+    LEGACY_ANTISMASH_CLASSES = {
+        "pks1_products": {"t1pks", "T1PKS"},
+        "pksother_products": {
+            "transatpks",
+            "t2pks",
+            "t3pks",
+            "otherks",
+            "hglks",
+            "transAT-PKS",
+            "transAT-PKS-like",
+            "T2PKS",
+            "T3PKS",
+            "PKS-like",
+            "hglE-KS",
+        },
+        "nrps_products": {"nrps", "NRPS", "NRPS-like", "thioamide-NRP", "NAPAA"},
+        "ripps_products": {
+            "lantipeptide",
+            "thiopeptide",
+            "bacteriocin",
+            "linaridin",
+            "cyanobactin",
+            "glycocin",
+            "LAP",
+            "lassopeptide",
+            "sactipeptide",
+            "bottromycin",
+            "head_to_tail",
+            "microcin",
+            "microviridin",
+            "proteusin",
+            "lanthipeptide",
+            "lipolanthine",
+            "RaS-RiPP",
+            "fungal-RiPP",
+            "TfuA-related",
+            "guanidinotides",
+            "RiPP-like",
+            "lanthipeptide-class-i",
+            "lanthipeptide-class-ii",
+            "lanthipeptide-class-iii",
+            "lanthipeptide-class-iv",
+            "lanthipeptide-class-v",
+            "ranthipeptide",
+            "redox-cofactor",
+            "thioamitides",
+            "epipeptide",
+            "cyclic-lactone-autoinducer",
+            "spliceotide",
+            "RRE-containing",
+        },
+        "saccharide_products": {
+            "amglyccycl",
+            "oligosaccharide",
+            "cf_saccharide",
+            "saccharide",
+        },
+        "others_products": {
+            "acyl_amino_acids",
+            "arylpolyene",
+            "aminocoumarin",
+            "ectoine",
+            "butyrolactone",
+            "nucleoside",
+            "melanin",
+            "phosphoglycolipid",
+            "phenazine",
+            "phosphonate",
+            "other",
+            "cf_putative",
+            "resorcinol",
+            "indole",
+            "ladderane",
+            "PUFA",
+            "furan",
+            "hserlactone",
+            "fused",
+            "cf_fatty_acid",
+            "siderophore",
+            "blactam",
+            "fatty_acid",
+            "PpyS-KS",
+            "CDPS",
+            "betalactone",
+            "PBDE",
+            "tropodithietic-acid",
+            "NAGGN",
+            "halogenated",
+            "pyrrolidine",
+        },
+    }
 
     @staticmethod
     def parse_config(run: dict) -> None:
@@ -95,6 +189,13 @@ class BigscapeConfig:
 
         # ANCHOR DOMAINS
         BigscapeConfig.ANCHOR_DOMAINS = config["ANCHOR_DOMAINS"]
+
+        # LEGACY ANTISMASH CLASSES
+        legacy_classes = config["LEGACY_ANTISMASH_CLASSES"]
+        for group, classes in legacy_classes.items():
+            if isinstance(classes, list):
+                legacy_classes[group] = set(classes)
+        BigscapeConfig.LEGACY_ANTISMASH_CLASSES = legacy_classes
 
         # write config log
         BigscapeConfig.write_config_log(run, config)
