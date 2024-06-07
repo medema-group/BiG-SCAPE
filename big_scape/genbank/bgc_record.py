@@ -11,7 +11,7 @@ import logging
 from Bio.SeqFeature import SeqFeature
 
 # from other modules
-from big_scape.cli.constants import ANTISMASH_CLASSES
+from big_scape.cli.config import BigscapeConfig
 from big_scape.data import DB
 from big_scape.errors import InvalidGBKError
 from big_scape.genbank.cds import CDS
@@ -368,8 +368,8 @@ class BGCRecord:
             raise InvalidGBKError()
 
         as4_products = []
-        for product_type in ANTISMASH_CLASSES:
-            for product in ANTISMASH_CLASSES[product_type]:
+        for product_type in BigscapeConfig.LEGACY_ANTISMASH_CLASSES:
+            for product in BigscapeConfig.LEGACY_ANTISMASH_CLASSES[product_type]:
                 as4_products.append(product)
 
         product = feature.qualifiers["product"][0]

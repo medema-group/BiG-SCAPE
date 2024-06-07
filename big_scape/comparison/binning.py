@@ -18,7 +18,7 @@ from typing import Generator, Iterator, Optional
 from sqlalchemy import and_, select, func, or_
 
 # from other modules
-from big_scape.cli.constants import ANTISMASH_CLASSES
+from big_scape.cli.config import BigscapeConfig
 from big_scape.data import DB
 from big_scape.genbank import (
     BGCRecord,
@@ -910,19 +910,19 @@ def legacy_get_class(product):  # pragma no cover
     """
 
     # PKS_Type I
-    if product in ANTISMASH_CLASSES["pks1_products"]:
+    if product in BigscapeConfig.LEGACY_ANTISMASH_CLASSES["pks1_products"]:
         return "PKSI"
     # PKS Other Types
-    elif product in ANTISMASH_CLASSES["pksother_products"]:
+    elif product in BigscapeConfig.LEGACY_ANTISMASH_CLASSES["pksother_products"]:
         return "PKSother"
     # NRPs
-    elif product in ANTISMASH_CLASSES["nrps_products"]:
+    elif product in BigscapeConfig.LEGACY_ANTISMASH_CLASSES["nrps_products"]:
         return "NRPS"
     # RiPPs
-    elif product in ANTISMASH_CLASSES["ripps_products"]:
+    elif product in BigscapeConfig.LEGACY_ANTISMASH_CLASSES["ripps_products"]:
         return "RiPP"
     # Saccharides
-    elif product in ANTISMASH_CLASSES["saccharide_products"]:
+    elif product in BigscapeConfig.LEGACY_ANTISMASH_CLASSES["saccharide_products"]:
         return "saccharide"
     # Terpenes
     elif product == "terpene":
@@ -937,21 +937,24 @@ def legacy_get_class(product):  # pragma no cover
             len(
                 subtypes
                 - (
-                    ANTISMASH_CLASSES["pks1_products"]
-                    | ANTISMASH_CLASSES["pksother_products"]
-                    | ANTISMASH_CLASSES["nrps_products"]
+                    BigscapeConfig.LEGACY_ANTISMASH_CLASSES["pks1_products"]
+                    | BigscapeConfig.LEGACY_ANTISMASH_CLASSES["pksother_products"]
+                    | BigscapeConfig.LEGACY_ANTISMASH_CLASSES["nrps_products"]
                 )
             )
             == 0
         ):
-            if len(subtypes - ANTISMASH_CLASSES["nrps_products"]) == 0:
+            if (
+                len(subtypes - BigscapeConfig.LEGACY_ANTISMASH_CLASSES["nrps_products"])
+                == 0
+            ):
                 return "NRPS"
             elif (
                 len(
                     subtypes
                     - (
-                        ANTISMASH_CLASSES["pks1_products"]
-                        | ANTISMASH_CLASSES["pksother_products"]
+                        BigscapeConfig.LEGACY_ANTISMASH_CLASSES["pks1_products"]
+                        | BigscapeConfig.LEGACY_ANTISMASH_CLASSES["pksother_products"]
                     )
                 )
                 == 0
@@ -959,14 +962,23 @@ def legacy_get_class(product):  # pragma no cover
                 return "PKSother"  # pks hybrids
             else:
                 return "PKS-NRP_Hybrids"
-        elif len(subtypes - ANTISMASH_CLASSES["ripps_products"]) == 0:
+        elif (
+            len(subtypes - BigscapeConfig.LEGACY_ANTISMASH_CLASSES["ripps_products"])
+            == 0
+        ):
             return "RiPP"
-        elif len(subtypes - ANTISMASH_CLASSES["saccharide_products"]) == 0:
+        elif (
+            len(
+                subtypes
+                - BigscapeConfig.LEGACY_ANTISMASH_CLASSES["saccharide_products"]
+            )
+            == 0
+        ):
             return "saccharide"
         else:
             return "other"  # other hybrid
     # Others
-    elif product in ANTISMASH_CLASSES["others_products"]:
+    elif product in BigscapeConfig.LEGACY_ANTISMASH_CLASSES["others_products"]:
         return "other"
     # ??
     elif product == "":
