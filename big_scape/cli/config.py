@@ -36,6 +36,21 @@ class BigscapeConfig:
 
     # TREE
     TOP_FREQS: int = 3
+    # ANCHOR DOMAINS
+    LEGACY_ANCHOR_DOMAINS = [
+        "PF02801",
+        "PF02624",
+        "PF00109",
+        "PF00501",
+        "PF02797",
+        "PF01397",
+        "PF03936",
+        "PF00432",
+        "PF00195",
+        "PF00494",
+        "PF00668",
+        "PF05147",
+    ]
 
     @staticmethod
     def parse_config(run: dict) -> None:
@@ -77,6 +92,9 @@ class BigscapeConfig:
 
         # TREE
         BigscapeConfig.TOP_FREQS = config["TOP_FREQS"]
+
+        # ANCHOR DOMAINS
+        BigscapeConfig.ANCHOR_DOMAINS = config["ANCHOR_DOMAINS"]
 
         # write config log
         BigscapeConfig.write_config_log(run, config)

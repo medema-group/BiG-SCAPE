@@ -46,3 +46,19 @@ PREFERENCE: 0.0
 # TREE
 # The number of common domains used to generate GCF trees in top frequencies of occurrence
 TOP_FREQS: 3
+
+# ANCHOR DOMAINS
+# These domains are given higher weight in the DSS calculations
+ANCHOR_DOMAINS:
+  - PF02801,  # Beta-ketoacyl synthase, C-terminal domain
+  - PF02624,  # YcaO cyclodehydratase, ATP-ad Mg2+-binding
+  - PF00109,  # Beta-ketoacyl synthase, N-terminal domain
+  - PF00501,  # AMP-binding enzyme
+  - PF02797,  # Chalcone and stilbene synthases, C-terminal domain
+  - PF01397,  # Terpene synthase, N-terminal domain
+  - PF03936,  # Terpene synthase family, metal binding domain
+  - PF00432,  # Prenyltransferase and squalene oxidase repeat
+  - PF00195,  # Chalcone and stilbene synthases, N-terminal domain
+  - PF00494,  # Squalene/phytoene synthase
+  - PF00668,  # Condensation domain
+  - PF05147,  # Lanthionine synthetase C-like protein

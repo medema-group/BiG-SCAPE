@@ -13,7 +13,7 @@ from numpy import ndarray
 from scipy.optimize import linear_sum_assignment
 
 # from other modules
-from big_scape.cli.constants import LEGACY_ANCHOR_DOMAINS
+from big_scape.cli.config import BigscapeConfig
 from big_scape.comparison.record_pair import RecordPair
 
 # from this module
@@ -192,7 +192,7 @@ def calc_dss_pair(
 
     # intialize an empty set of anchor domains if it is set to None
     if anchor_domains is None:
-        anchor_domains = set(LEGACY_ANCHOR_DOMAINS)
+        anchor_domains = set(BigscapeConfig.ANCHOR_DOMAINS)
 
     # initialize the distances by getting the distances from all unshared domains, which
     # all add 1 to the difference
