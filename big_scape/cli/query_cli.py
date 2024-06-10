@@ -5,7 +5,7 @@ import click
 from pathlib import Path
 
 # from other modules
-from big_scape.main import run_bigscape
+from big_scape.run_bigscape import run_bigscape
 from big_scape.diagnostics import init_logger, init_logger_file
 
 # from this module
@@ -75,7 +75,6 @@ def query(ctx, *args, **kwarg):
     ctx.obj["mode"] = "Query"
 
     # workflow validations
-    validate_skip_hmmscan(ctx)
     validate_pfam_path(ctx)
     validate_output_paths(ctx)
     validate_binning_query_workflow(ctx)
