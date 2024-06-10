@@ -35,7 +35,7 @@ A copy of GNU AGPL v3 should have been included in this software package in
 LICENSE.txt.
 """
 
-from big_scape import main
-
 if __name__ == "__main__":
-    main.main()
+    from big_scape import __main__
+
+    __main__.main()
