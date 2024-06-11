@@ -1,6 +1,7 @@
 """Click parameter that are shared between multiple BiG-SCAPE modules"""
 
 # from python
+import os
 import click
 from multiprocessing import cpu_count
 from pathlib import Path
@@ -36,9 +37,11 @@ def common_all(fn):
             type=click.Path(
                 exists=True, dir_okay=False, file_okay=True, path_type=Path
             ),
-            default="./config.yml",
+            default=Path(os.getcwd()) / "./config.yml",
             help="Path to BiG-SCAPE config file, which stores values for a "
-            "series of advanced use parameters. (default: ./config.ini).",
+            "series of advanced use parameters. (default: [working directory]/config.yml). "
+            "If this file does not exist, uses a default file packaged with BiG-SCAPE "
+            "([big_scape package]/config.yml).",
         ),
         # diagnostic parameters
         click.option(

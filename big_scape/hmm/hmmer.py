@@ -26,7 +26,7 @@ from pyhmmer import __version__ as pyhmmer_version
 from sqlalchemy import insert
 
 # from other modules
-from big_scape.data import DB
+import big_scape.data as bs_data
 
 # from this module
 from .hsp import HSP, HSPAlignment
@@ -173,13 +173,13 @@ class HMMer:
             cds (CDS): cds to update state for
         """
 
-        state_table = DB.metadata.tables["scanned_cds"]
+        state_table = bs_data.DB.metadata.tables["scanned_cds"]
 
         upignore_statement = (
             insert(state_table).prefix_with("OR IGNORE").values(cds_id=cds._db_id)
         )
 
-        DB.execute(upignore_statement, False)
+        bs_data.DB.execute(upignore_statement, False)
 
     @staticmethod
     def hmmsearch_simple(
@@ -241,7 +241,7 @@ class HMMer:
 
         # almost certainly not every cds has an HSP, so we can only assume that if this reached the
         # end of the function all of the CDS were scanned.
-        if DB.opened():
+        if bs_data.DB.opened():
             for cds in cds_list:
                 HMMer.set_hmm_scanned(cds)
 
@@ -376,7 +376,7 @@ class HMMer:
 
         # almost certainly not every cds has an HSP, so we can only assume that if this reached the
         # end of the function all of the CDS were scanned.
-        if DB.opened():
+        if bs_data.DB.opened():
             for cds in cds_list:
                 HMMer.set_hmm_scanned(cds)
 
@@ -586,7 +586,7 @@ def process_task_output(
     hsp = HSP(relevant_cds, domain, score, env_start, env_stop)
     relevant_cds.add_hsp_overlap_filter(hsp, domain_overlap_cutoff)
 
-    if DB.opened():
+    if bs_data.DB.opened():
         HMMer.set_hmm_scanned(relevant_cds)
 
 
