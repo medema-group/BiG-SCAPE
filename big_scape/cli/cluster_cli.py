@@ -4,7 +4,7 @@
 import click
 
 # from other modules
-from big_scape.main import run_bigscape
+from big_scape.run_bigscape import run_bigscape
 from big_scape.diagnostics import init_logger, init_logger_file
 
 # from this module

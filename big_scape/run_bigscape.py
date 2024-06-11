@@ -1,4 +1,6 @@
-"""Main file for BiG-SCAPE cluster module"""
+"""The highest-level module of BiG-SCAPE.
+This module is responsible for running the BiG-SCAPE analysis.
+"""
 
 # from python
 import sys
@@ -11,7 +13,6 @@ from pathlib import Path
 
 # from other modules
 from big_scape.cli.config import BigscapeConfig
-from big_scape.data import DB
 from big_scape.hmm import HMMer, run_hmmscan, run_hmmalign
 from big_scape.diagnostics import Profiler
 from big_scape.output import (
@@ -67,7 +68,7 @@ def run_bigscape(run: dict) -> None:
         # return if not main process
         if os.getpid() != main_pid:
             return
-        if DB.opened():
+        if bs_data.DB.opened():
             logging.warning("User requested SIGINT. Saving database and exiting")
             logging.warning("Press ctrl+c again to force exit")
 
@@ -78,8 +79,8 @@ def run_bigscape(run: dict) -> None:
             # reset to default handler in case we get another SIGINT
             signal.signal(signal.SIGINT, signal.SIG_DFL)
 
-            DB.commit()
-            DB.save_to_disk(run["db_path"])
+            bs_data.DB.commit()
+            bs_data.DB.save_to_disk(run["db_path"])
 
         sys.exit(0)
 
@@ -107,7 +108,7 @@ def run_bigscape(run: dict) -> None:
         mibig_version_dir = bs_files.get_mibig(run["mibig_version"], bigscape_dir)
         run["mibig_dir"] = mibig_version_dir
 
-    # INPUT - create an in memory DB or load from disk
+    # INPUT - create an in memory bs_data.DB or load from disk
     if not run["db_path"].exists():
         bs_data.DB.create_in_mem()
     else:
@@ -172,21 +173,21 @@ def run_bigscape(run: dict) -> None:
     if not run["no_mix"] and not run["query_bgc_path"]:
         bs_mix.calculate_distances_mix(run, all_bgc_records)
 
-        DB.commit()
+        bs_data.DB.commit()
 
     # legacy_classify
 
     if run["legacy_classify"] and not run["query_bgc_path"]:
         bs_legacy_classify.calculate_distances_legacy_classify(run, all_bgc_records)
 
-        DB.commit()
+        bs_data.DB.commit()
 
     # classify
 
     if run["classify"] and not run["query_bgc_path"]:
         bs_classify.calculate_distances_classify(run, all_bgc_records)
 
-        DB.commit()
+        bs_data.DB.commit()
 
     # query
 
@@ -195,7 +196,7 @@ def run_bigscape(run: dict) -> None:
             run, all_bgc_records, query_record
         )
 
-        DB.commit()
+        bs_data.DB.commit()
 
     # FAMILY GENERATION
     logging.info("Generating families")
@@ -231,7 +232,7 @@ def run_bigscape(run: dict) -> None:
             run, query_bin, query_record
         )
 
-    DB.save_to_disk(run["db_path"])
+    bs_data.DB.save_to_disk(run["db_path"])
 
     # OUTPUT GENERATION
 
