@@ -21,12 +21,12 @@ def reset(pair: RecordPair) -> None:
 
     pair.comparable_region.a_start = 0
     pair.comparable_region.b_start = 0
-    pair.comparable_region.a_stop = len(pair.record_a.get_cds_with_domains())
-    pair.comparable_region.b_stop = len(pair.record_b.get_cds_with_domains())
+    pair.comparable_region.a_stop = len(list(pair.record_a.get_cds_with_domains()))
+    pair.comparable_region.b_stop = len(list(pair.record_b.get_cds_with_domains()))
     pair.comparable_region.domain_a_start = 0
     pair.comparable_region.domain_b_start = 0
-    pair.comparable_region.domain_a_stop = len(pair.record_a.get_hsps())
-    pair.comparable_region.domain_b_stop = len(pair.record_b.get_hsps())
+    pair.comparable_region.domain_a_stop = len(list(pair.record_a.get_hsps()))
+    pair.comparable_region.domain_b_stop = len(list(pair.record_b.get_hsps()))
 
     pair.comparable_region.reverse = False
 
@@ -108,8 +108,8 @@ def extend(
     # get the cds lists
     # TODO: base extend on all domains in case of protoclusters, allow extend beyond
     # protocluster border
-    a_domains = pair.record_a.get_hsps()
-    b_domains = pair.record_b.get_hsps()
+    a_domains = list(pair.record_a.get_hsps())
+    b_domains = list(pair.record_b.get_hsps())
 
     a_max_dist = math.floor(len(a_domains) * max_match_dist_perc)
     b_max_dist = math.floor(len(b_domains) * max_match_dist_perc)

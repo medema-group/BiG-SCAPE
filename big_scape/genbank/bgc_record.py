@@ -4,7 +4,7 @@ AntiSMASh genbank records
 
 # from python
 from __future__ import annotations
-from typing import Optional, Sequence, TYPE_CHECKING
+from typing import Optional, Sequence, TYPE_CHECKING, Generator
 import logging
 
 # from dependencies
@@ -69,7 +69,7 @@ class BGCRecord:
         # for networking
         self._families: dict[float, int] = {}
 
-    def get_cds(self, return_all=False, reverse=False) -> list[CDS]:
+    def get_cds(self, return_all=False, reverse=False) -> Generator[CDS, None, None]:
         """Get a list of CDS that lie within the coordinates specified in this region
         from the parent GBK class
 
@@ -93,14 +93,13 @@ class BGCRecord:
         if return_all:
             # TODO: I don't like this solution. maybe go back to the more difficult one
             if reverse:
-                return list(reverse(self.parent_gbk.genes))
+                return reversed(self.parent_gbk.genes)
 
-            return list(self.parent_gbk.genes)
+            yield from self.parent_gbk.genes
+            return
 
         if self.nt_start is None or self.nt_stop is None:
             raise ValueError("Cannot CDS from region with no position information")
-
-        record_cds: list[CDS] = []
 
         if reverse:
             step = -1
@@ -114,11 +113,11 @@ class BGCRecord:
             if cds.nt_stop > self.nt_stop:
                 continue
 
-            record_cds.append(cds)
+            yield cds
 
-        return record_cds
-
-    def get_cds_with_domains(self, return_all=False, reverse=False) -> list[CDS]:
+    def get_cds_with_domains(
+        self, return_all=False, reverse=False
+    ) -> Generator[CDS, None, None]:
         """Get a list of CDS that lie within the coordinates specified in this region
         from the parent GBK class
 
@@ -137,42 +136,11 @@ class BGCRecord:
         if self.parent_gbk is None:
             raise ValueError("BGCRegion does not have a parent")
 
-        parent_gbk_cds: list[CDS] = self.parent_gbk.genes
+        for cds in self.get_cds(return_all, reverse):
+            if len(cds.hsps) > 0:
+                yield cds
 
-        if return_all:
-            # TODO: I don't like this solution. maybe go back to the more difficult one
-            if reverse:
-                return [
-                    cds for cds in reversed(self.parent_gbk.genes) if len(cds.hsps) > 0
-                ]
-
-            return [cds for cds in self.parent_gbk.genes if len(cds.hsps) > 0]
-
-        if self.nt_start is None or self.nt_stop is None:
-            raise ValueError("Cannot CDS from region with no position information")
-
-        record_cds: list[CDS] = []
-
-        if reverse:
-            step = -1
-        else:
-            step = 1
-
-        for cds in parent_gbk_cds[::step]:
-            if len(cds.hsps) == 0:
-                continue
-
-            if cds.nt_start < self.nt_start:
-                continue
-
-            if cds.nt_stop > self.nt_stop:
-                continue
-
-            record_cds.append(cds)
-
-        return record_cds
-
-    def get_hsps(self, return_all=False) -> list[HSP]:
+    def get_hsps(self, return_all=False) -> Generator[HSP, None, None]:
         """Get a list of all hsps in this region
 
         Args:
@@ -182,14 +150,13 @@ class BGCRecord:
         Returns:
             list[HSP]: List of all hsps in this region
         """
-        domains: list[HSP] = []
+
         for cds in self.get_cds_with_domains(return_all=return_all):
             if len(cds.hsps) > 0:
                 if cds.strand == 1:
-                    domains.extend(cds.hsps)
+                    yield from cds.hsps
                 elif cds.strand == -1:
-                    domains.extend(cds.hsps[::-1])
-        return domains
+                    yield from cds.hsps[::-1]
 
     def get_cds_start_stop(self) -> tuple[int, int]:
         """Get cds ORF number of record start and stop with respect to full region

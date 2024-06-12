@@ -31,10 +31,10 @@ class RecordPair:
             raise ValueError("Region in pair has no parent GBK!")
 
         # comparable regions start "deflated", meaning only CDS with domains
-        a_len = len(record_a.get_cds_with_domains())
-        b_len = len(record_b.get_cds_with_domains())
-        a_domain_len = len(record_a.get_hsps())
-        b_domain_len = len(record_b.get_hsps())
+        a_len = len(list(record_a.get_cds_with_domains()))
+        b_len = len(list(record_b.get_cds_with_domains()))
+        a_domain_len = len(list(record_a.get_hsps()))
+        b_domain_len = len(list(record_b.get_hsps()))
 
         self.comparable_region: ComparableRegion = ComparableRegion(
             0, a_len, 0, b_len, 0, a_domain_len, 0, b_domain_len, False
@@ -128,10 +128,11 @@ class RecordPair:
 
             reverse = self.comparable_region.reverse
 
-            a_cds_list = self.record_a.get_cds_with_domains()[a_start:a_stop]
-            b_cds_list = self.record_b.get_cds_with_domains(reverse=reverse)[
-                b_start:b_stop
-            ]
+            cds_list_a = list(self.record_a.get_cds_with_domains())
+            a_cds_list = cds_list_a[a_start:a_stop]
+
+            cds_list_b = list(self.record_b.get_cds_with_domains(reverse=reverse))
+            b_cds_list = cds_list_b[b_start:b_stop]
 
             a_domain_list: list[HSP] = []
             for a_cds in a_cds_list:
@@ -199,9 +200,9 @@ class RecordPair:
         if logging.getLogger().level > logging.DEBUG:
             return
 
-        a_cds_list = self.record_a.get_cds_with_domains()
-        b_cds_list = self.record_b.get_cds_with_domains(
-            reverse=self.comparable_region.reverse
+        a_cds_list = list(self.record_a.get_cds_with_domains())
+        b_cds_list = list(
+            self.record_b.get_cds_with_domains(reverse=self.comparable_region.reverse)
         )
 
         b_start = self.comparable_region.b_start

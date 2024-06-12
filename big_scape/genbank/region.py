@@ -3,7 +3,7 @@
 # from python
 from __future__ import annotations
 import logging
-from typing import Dict, Optional, TYPE_CHECKING
+from typing import Dict, Optional, TYPE_CHECKING, Generator
 
 # from dependencies
 from Bio.SeqFeature import SeqFeature
@@ -241,7 +241,9 @@ class Region(BGCRecord):
         region.cand_clusters = {}
         return region
 
-    def get_cds_with_domains(self, return_all=True, reverse=False) -> list[CDS]:
+    def get_cds_with_domains(
+        self, return_all=True, reverse=False
+    ) -> Generator[CDS, None, None]:
         return super().get_cds_with_domains(return_all, reverse)
 
     def __repr__(self):

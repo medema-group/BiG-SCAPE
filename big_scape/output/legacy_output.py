@@ -911,7 +911,7 @@ def generate_bs_family_alignment(
         if bgc_db_id is None:
             raise AttributeError("Record has no database id!")
 
-        bgc_domains = bgc_record.get_hsps()
+        bgc_domains = list(bgc_record.get_hsps())
 
         if bgc_db_id == family_db_id:
             aln.append([[dom_num, 0] for dom_num in range(len(bgc_domains))])
@@ -921,7 +921,7 @@ def generate_bs_family_alignment(
         # should they end up in the same family we can try to align them
         elif bgc_gbk == fam_record.parent_gbk:
             a_start, b_start, reverse = align_subrecords(
-                fam_record.get_hsps(), bgc_domains
+                list(fam_record.get_hsps()), bgc_domains
             )
 
         else:
@@ -934,7 +934,7 @@ def generate_bs_family_alignment(
             a_start, b_start, reverse = adjust_lcs_to_family_reference(
                 lcs_data,
                 family_db_id,
-                len(fam_record.get_hsps()),
+                len(list(fam_record.get_hsps())),
                 len(bgc_domains),
             )
 

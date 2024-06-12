@@ -40,7 +40,7 @@ class TestBGCRecord(TestCase):
         expected_cds_count = 8
 
         # TODO: use __len__
-        actual_cds_count = len(record.get_cds())
+        actual_cds_count = len(list(record.get_cds()))
 
         self.assertEqual(expected_cds_count, actual_cds_count)
 
@@ -70,7 +70,7 @@ class TestBGCRecord(TestCase):
         expected_cds_count = 10
 
         # TODO: use __len__
-        actual_cds_count = len(record.get_cds(True))
+        actual_cds_count = len(list(record.get_cds(True)))
 
         self.assertEqual(expected_cds_count, actual_cds_count)
 
@@ -122,7 +122,7 @@ class TestBGCRecord(TestCase):
         region = BGCRecord(gbk, 0, 0, 100, False, "")
 
         expected_cds_count = 4
-        actual_cds_count = len(region.get_cds_with_domains())
+        actual_cds_count = len(list(region.get_cds_with_domains()))
 
         self.assertEqual(expected_cds_count, actual_cds_count)
 
