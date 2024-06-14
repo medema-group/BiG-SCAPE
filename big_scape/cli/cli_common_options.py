@@ -39,9 +39,7 @@ def common_all(fn):
             ),
             default=Path(bs_paths.DEFAULT_CONFIG_FILE),
             help="Path to BiG-SCAPE config file, which stores values for a "
-            "series of advanced use parameters. (default: [working directory]/config.yml). "
-            "If this file does not exist, uses a default file packaged with BiG-SCAPE "
-            "([big_scape package]/config.yml).",
+            "series of advanced use parameters. (default: bundled big_scape/config.yml).",
         ),
         # diagnostic parameters
         click.option(
