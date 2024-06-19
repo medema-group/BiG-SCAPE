@@ -19,3 +19,4 @@ types-psutil
 networkx-stubs
 data-science-types
 types-tqdm
+types-setuptools
