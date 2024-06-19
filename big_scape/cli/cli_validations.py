@@ -208,14 +208,18 @@ def validate_includelist(ctx, param, domain_includelist_path):
     if not domain_includelist_path.exists():
         logging.error("domain_includelist file does not exist!")
         raise InvalidArgumentError(
-            "--domain_includelist_all_path", domain_includelist_path
+            "--domain_includelist_all/any_path", domain_includelist_path
         )
 
     with domain_includelist_path.open(encoding="utf-8") as domain_includelist_file:
         lines = domain_includelist_file.readlines()
 
-        lines = [line.strip() for line in lines]
-        pfams = [line[0] for line in [line.split("\t") for line in lines]]
+        pfams = []
+
+        for line in lines:
+            line = line.strip()
+            elemts = line.split("\t")
+            pfams.append(elemts[0])
 
         # expect Pfam accessions, i.e. PF00001 or PF00001.10
         lines_valid = map(
