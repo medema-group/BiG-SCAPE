@@ -13,6 +13,7 @@ from .cli_validations import (
     validate_output_paths,
     validate_binning_cluster_workflow,
     validate_pfam_path,
+    validate_domain_include_list,
     set_start,
 )
 
@@ -58,6 +59,7 @@ def cluster(ctx, *args, **kwargs):
     # workflow validations
     validate_binning_cluster_workflow(ctx)
     validate_pfam_path(ctx)
+    validate_domain_include_list(ctx)
     validate_output_paths(ctx)
 
     # set start time and run label

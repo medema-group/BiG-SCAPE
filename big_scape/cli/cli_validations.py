@@ -193,7 +193,7 @@ def validate_filter_gbk(ctx, param, filter_str) -> list[str]:
 # hmmer parameters
 
 
-def validate_includelist(ctx, param, domain_includelist_path) -> None:
+def validate_includelist(ctx, param, domain_includelist_path):
     """Validate the path to the domain include list and return a list of domain
     accession strings contained within this file
 
@@ -207,17 +207,24 @@ def validate_includelist(ctx, param, domain_includelist_path) -> None:
 
     if not domain_includelist_path.exists():
         logging.error("domain_includelist file does not exist!")
-        raise InvalidArgumentError("--domain_includelist", domain_includelist_path)
+        raise InvalidArgumentError(
+            "--domain_includelist_all/any_path", domain_includelist_path
+        )
 
     with domain_includelist_path.open(encoding="utf-8") as domain_includelist_file:
         lines = domain_includelist_file.readlines()
 
-        lines = [line.strip() for line in lines]
+        pfams = []
+
+        for line in lines:
+            line = line.strip()
+            elemts = line.split("\t")
+            pfams.append(elemts[0])
 
         # expect Pfam accessions, i.e. PF00001 or PF00001.10
         lines_valid = map(
             lambda string: string.startswith("PF") and len(string) in range(7, 11),
-            lines,
+            pfams,
         )
 
         if not all(lines_valid):
@@ -228,7 +235,37 @@ def validate_includelist(ctx, param, domain_includelist_path) -> None:
                 "Invalid Pfam accession(s) found in file %s", domain_includelist_path
             )
 
-        ctx.params["domain_includelist"] = lines
+        return pfams
+
+
+def validate_includelist_all(ctx, param, domain_includelist_all_path) -> None:
+    """Validate the path to the domain include list and return a list of domain
+    accession strings contained within this file
+
+    Returns:
+        list[str]: A list of domain accessions to include
+    """
+
+    pfams = validate_includelist(ctx, param, domain_includelist_all_path)
+
+    ctx.params["domain_includelist_all"] = pfams
+
+    return None
+
+
+def validate_includelist_any(ctx, param, domain_includelist_any_path) -> None:
+    """Validate the path to the domain include list and return a list of domain
+    accession strings contained within this file
+
+    Returns:
+        list[str]: A list of domain accessions to include
+    """
+
+    pfams = validate_includelist(ctx, param, domain_includelist_any_path)
+
+    ctx.params["domain_includelist_any"] = pfams
+
+    return None
 
 
 # workflow validations
@@ -331,6 +368,23 @@ def validate_pfam_path(ctx) -> None:
             "Missing option '-p/--pfam_path'."
             "BiG-SCAPE database not provided, a pfam file is "
             "required in order to detect domains."
+        )
+
+
+def validate_domain_include_list(ctx) -> None:
+    """Raise an error if both domain includelists are given at the same time"""
+
+    if (
+        ctx.obj["domain_includelist_all_path"]
+        and ctx.obj["domain_includelist_any_path"]
+    ):
+        logging.error(
+            "You have selected both all and any domain_includelist options. "
+            "Please select only one of the two at a time."
+        )
+        raise click.UsageError(
+            "You have selected both all and any domain_includelist options. "
+            "Please select only one of the two at a time."
         )
 
 

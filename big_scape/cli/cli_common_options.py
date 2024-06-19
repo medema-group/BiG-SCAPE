@@ -12,7 +12,8 @@ from .cli_validations import (
     validate_not_empty_dir,
     validate_input_mode,
     validate_alignment_mode,
-    validate_includelist,
+    validate_includelist_all,
+    validate_includelist_any,
     validate_gcf_cutoffs,
     validate_filter_gbk,
     validate_record_type,
@@ -218,13 +219,28 @@ def common_cluster_query(fn):
         ),
         click.option(
             # TODO: implement
-            "--domain_includelist_path",
+            "--domain_includelist_all_path",
             type=click.Path(
                 exists=True, dir_okay=False, file_okay=True, path_type=Path
             ),
-            callback=validate_includelist,
+            callback=validate_includelist_all,
             help=(
-                "Path to txt file with Pfam accessions. Only BGCs containing "
+                "Path to txt file with Pfam accessions. Only BGCs containing all "
+                "the listed accessions will be analysed. In this file, each "
+                "line contains a single Pfam accession (with an optional comment,"
+                " separated by a tab). Lines starting with '#' are ignored. Pfam "
+                "accessions are case-sensitive."
+            ),
+        ),
+        click.option(
+            # TODO: implement
+            "--domain_includelist_any_path",
+            type=click.Path(
+                exists=True, dir_okay=False, file_okay=True, path_type=Path
+            ),
+            callback=validate_includelist_any,
+            help=(
+                "Path to txt file with Pfam accessions. Only BGCs containing any of "
                 "the listed accessions will be analysed. In this file, each "
                 "line contains a single Pfam accession (with an optional comment,"
                 " separated by a tab). Lines starting with '#' are ignored. Pfam "
