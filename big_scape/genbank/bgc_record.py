@@ -141,7 +141,7 @@ class BGCRecord:
                 yield cds
 
     def get_hsps(self, return_all=False) -> Generator[HSP, None, None]:
-        """Get a list of all hsps in this region
+        """Get a generator of all hsps in this region
 
         Args:
             return_all (bool): If set to true, returns all HSP regardless of coordinate

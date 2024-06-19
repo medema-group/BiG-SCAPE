@@ -4,10 +4,14 @@ clasess inherit
 
 # from python
 from unittest import TestCase
+from pathlib import Path
 
 # from other modules
 from big_scape.genbank import GBK, BGCRecord, CDS, Region
 from big_scape.hmm import HSP
+from big_scape.utility import domain_includelist_filter
+from big_scape import enums as bs_enums
+from big_scape.file_input.load_files import get_all_bgc_records
 
 
 class TestBGCRecord(TestCase):
@@ -97,6 +101,96 @@ class TestBGCRecord(TestCase):
         actual_domains = [hsp.domain for hsp in hsps]
 
         self.assertEqual(expected_domains, actual_domains)
+
+    def test_domainincludelist_filter_all(self):
+        """Tests whether the domain_includelist_filter all
+        correctly filters out records that do not contain all domains"""
+
+        run = {
+            "input_dir": Path("test/test_data/alt_valid_gbk_input/"),
+            "input_mode": bs_enums.INPUT_MODE.RECURSIVE,
+            "include_gbk": None,
+            "exclude_gbk": None,
+            "cds_overlap_cutoff": None,
+            "cores": None,
+            "classify": False,
+            "legacy_classify": False,
+            "record_type": bs_enums.genbank.RECORD_TYPE.PROTO_CLUSTER,
+            "domain_includelist_all": ["PF00001", "PF00002"],
+            "domain_includelist_any": None,
+        }
+
+        gbk_1 = GBK("", "", "")
+        gbk_1.region = Region(gbk_1, 0, 0, 100, False, "")
+        cds_1 = CDS(10, 90)
+        cds_1.strand = 1
+        gbk_1.genes.append(cds_1)
+        domains_1 = ["PF00001", "PF00002", "PF00003", "PF00004", "PF00005"]
+        for domain in domains_1:
+            cds_1.hsps.append(HSP(cds_1, domain, 100, 0, 30))
+
+        gbk_2 = GBK("", "", "")
+        gbk_2.region = Region(gbk_2, 0, 0, 100, False, "")
+        cds_2 = CDS(10, 90)
+        cds_2.strand = 1
+        gbk_2.genes.append(cds_2)
+        domains_2 = ["PF00001", "PF00003", "PF00004", "PF00005"]
+        for domain in domains_2:
+            cds_2.hsps.append(HSP(cds_2, domain, 100, 0, 30))
+
+        gbks = [gbk_1, gbk_2]
+
+        all_bgc_records = get_all_bgc_records(run, gbks)
+
+        domainlist_bgc_records = domain_includelist_filter(run, all_bgc_records)
+
+        expected_records = get_all_bgc_records(run, [gbk_1])
+
+        self.assertEqual(expected_records, domainlist_bgc_records)
+
+    def test_domainincludelist_filter_any(self):
+        """Tests whether the domain_includelist_filter any
+        correctly filters out records that do not contain all domains"""
+
+        run = {
+            "input_dir": Path("test/test_data/alt_valid_gbk_input/"),
+            "input_mode": bs_enums.INPUT_MODE.RECURSIVE,
+            "include_gbk": None,
+            "exclude_gbk": None,
+            "cds_overlap_cutoff": None,
+            "cores": None,
+            "classify": False,
+            "legacy_classify": False,
+            "record_type": bs_enums.genbank.RECORD_TYPE.PROTO_CLUSTER,
+            "domain_includelist_all": None,
+            "domain_includelist_any": ["PF00001", "PF00002"],
+        }
+
+        gbk_1 = GBK("", "", "")
+        gbk_1.region = Region(gbk_1, 0, 0, 100, False, "")
+        cds_1 = CDS(10, 90)
+        cds_1.strand = 1
+        gbk_1.genes.append(cds_1)
+        domains_1 = ["PF00002", "PF00003", "PF00004", "PF00005"]
+        for domain in domains_1:
+            cds_1.hsps.append(HSP(cds_1, domain, 100, 0, 30))
+
+        gbk_2 = GBK("", "", "")
+        gbk_2.region = Region(gbk_2, 0, 0, 100, False, "")
+        cds_2 = CDS(10, 90)
+        cds_2.strand = 1
+        gbk_2.genes.append(cds_2)
+        domains_2 = ["PF00001", "PF00003", "PF00004", "PF00005"]
+        for domain in domains_2:
+            cds_2.hsps.append(HSP(cds_2, domain, 100, 0, 30))
+
+        gbks = [gbk_1, gbk_2]
+
+        all_bgc_records = get_all_bgc_records(run, gbks)
+
+        domainlist_bgc_records = domain_includelist_filter(run, all_bgc_records)
+
+        self.assertEqual(all_bgc_records, domainlist_bgc_records)
 
     def test_get_cds_with_domains(self):
         """Tests whether the test_get_cds_with_domains method correctly retrieves a

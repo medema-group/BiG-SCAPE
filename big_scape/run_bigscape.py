@@ -23,6 +23,7 @@ from big_scape.output import (
     write_record_annotations_file,
     write_full_network_file,
 )
+from big_scape.utility import domain_includelist_filter
 
 
 import big_scape.file_input as bs_files
@@ -165,6 +166,17 @@ def run_bigscape(run: dict) -> None:
 
     # TODO: idea: use sqlite to set distances of 1.0 for all pairs that have no domains
     # in common
+
+    # DOMAIN INCLUSION LIST FILTER
+    if run["domain_includelist_all"] or run["domain_includelist_any"]:
+        logging.info("Filtering records by domain_includelist")
+
+        all_bgc_records = domain_includelist_filter(run, all_bgc_records)
+
+        logging.info(
+            "Continuing with %i filtered records",
+            len(all_bgc_records),
+        )
 
     # DISTANCE GENERATION
 

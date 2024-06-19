@@ -367,6 +367,23 @@ def validate_pfam_path(ctx) -> None:
         )
 
 
+def validate_domain_include_list(ctx) -> None:
+    """Raise an error if both domain includelists are given at the same time"""
+
+    if (
+        ctx.obj["domain_includelist_all_path"]
+        and ctx.obj["domain_includelist_any_path"]
+    ):
+        logging.error(
+            "You have selected both all and any domain_includelist options. "
+            "Please select only one of the two at a time."
+        )
+        raise click.UsageError(
+            "You have selected both all and any domain_includelist options. "
+            "Please select only one of the two at a time."
+        )
+
+
 def validate_record_type(ctx, _, record_type) -> Optional[bs_enums.genbank.RECORD_TYPE]:
     """Validates whether a region_type is provided when running classify"""
     valid_types = {mode.value: mode for mode in bs_enums.genbank.RECORD_TYPE}
