@@ -243,7 +243,17 @@ def generate_run_data_js(
             "bgc": [],
         },
         "networks": [],
+        "domain_filter": "NA",
+        "domains_to_include": "NA",
     }
+
+    if run["domain_includelist_all"] is not None:
+        run_data["domain_filter"] = "All"
+        run_data["domains_to_include"] = ", ".join(run["domain_includelist_all"])
+
+    if run["domain_includelist_any"] is not None:
+        run_data["domain_filter"] = "Any"
+        run_data["domains_to_include"] = ", ".join(run["domain_includelist_any"])
 
     # these are mostly index dictionaries needed for certain fields
     members: dict[GBK, int] = {}
