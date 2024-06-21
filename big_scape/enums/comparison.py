@@ -7,6 +7,7 @@ from enum import Enum
 class ALIGNMENT_MODE(Enum):
     GLOBAL = "global"
     GLOCAL = "glocal"
+    LOCAL = "local"
     AUTO = "auto"
 
 

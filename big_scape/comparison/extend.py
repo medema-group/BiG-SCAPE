@@ -84,6 +84,35 @@ def biosynthetic_check(pair: RecordPair) -> bool:
     return False
 
 
+def expand_glocal(pair: RecordPair) -> None:
+    """Includes extension of shortest upstream/downstream arms in comparable region
+
+    Args:
+        pair (RecordPair): record pair to extend
+    """
+    # upstream
+    if pair.comparable_region.domain_a_start <= pair.comparable_region.domain_b_start:
+        pair.comparable_region.a_start = 0
+        pair.comparable_region.domain_a_start = 0
+    else:
+        pair.comparable_region.b_start = 0
+        pair.comparable_region.domain_b_start = 0
+
+    # downstream
+    a_len = len(pair.record_a.get_cds_with_domains())
+    b_len = len(pair.record_b.get_cds_with_domains())
+    a_domain_len = len(pair.record_a.get_hsps())
+    b_domain_len = len(pair.record_b.get_hsps())
+    a_arm = a_domain_len - pair.comparable_region.domain_a_stop
+    b_arm = b_domain_len - pair.comparable_region.domain_b_stop
+    if a_arm <= b_arm:
+        pair.comparable_region.a_stop = a_len
+        pair.comparable_region.domain_a_stop = a_domain_len
+    else:
+        pair.comparable_region.b_stop = b_len
+        pair.comparable_region.domain_b_stop = b_domain_len
+
+
 def extend(
     pair: RecordPair,
     match: int,
