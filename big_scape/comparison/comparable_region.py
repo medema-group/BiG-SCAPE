@@ -92,8 +92,8 @@ class ComparableRegion:
         comparable region has already been inflated, so this method should only be
         called once.
         """
-        a_cds_list = record_a.get_cds()
-        a_cds_with_domains = record_a.get_cds_with_domains()
+        a_cds_list = list(record_a.get_cds())
+        a_cds_with_domains = list(record_a.get_cds_with_domains())
         lcs_a_start_orf_num = a_cds_with_domains[self.lcs_a_start].orf_num
         lcs_a_stop_orf_num = a_cds_with_domains[self.lcs_a_stop - 1].orf_num
         a_start_orf_num = a_cds_with_domains[self.a_start].orf_num
@@ -121,8 +121,8 @@ class ComparableRegion:
         comparable region has already been inflated, so this method should only be
         called once.
         """
-        b_cds_list = record_b.get_cds()
-        b_cds_with_domains = record_b.get_cds_with_domains()
+        b_cds_list = list(record_b.get_cds())
+        b_cds_with_domains = list(record_b.get_cds_with_domains())
 
         if self.reverse:
             b_cds_list = b_cds_list[::-1]
@@ -246,7 +246,9 @@ class ComparableRegion:
         if end_inclusive:
             stop += 1
 
-        for cds in record.get_cds_with_domains(reverse=reverse)[cds_start:stop]:
+        cds_list = list(record.get_cds_with_domains(reverse=reverse))
+
+        for cds in cds_list[cds_start:stop]:
             if cds.gene_kind is None:
                 continue
 

@@ -171,8 +171,8 @@ def find_domain_lcs_region(
     logging.debug("region lcs")
 
     # these are regions, so we can get the full range of CDS
-    a_cds = pair.record_a.get_cds_with_domains()
-    b_cds = pair.record_b.get_cds_with_domains()
+    a_cds = list(pair.record_a.get_cds_with_domains())
+    b_cds = list(pair.record_b.get_cds_with_domains())
 
     # working on domains, not cds
     a_domains: list[bs_hmm.HSP] = []
@@ -431,8 +431,8 @@ def find_domain_lcs_protocluster(
     if not isinstance(pair.record_b, bs_genbank.ProtoCluster):
         raise TypeError("record_b must be a protocluster")
 
-    a_cds = pair.record_a.get_cds_with_domains()
-    b_cds = pair.record_b.get_cds_with_domains()
+    a_cds = list(pair.record_a.get_cds_with_domains())
+    b_cds = list(pair.record_b.get_cds_with_domains())
 
     # working on domains, not cds
     a_domains: list[bs_hmm.HSP] = []

@@ -173,9 +173,9 @@ class TestExtendUtilities(unittest.TestCase):
             0,
             len(cds_b),
             0,
-            len(record_a.get_hsps()),
+            len(list(record_a.get_hsps())),
             0,
-            len(record_b.get_hsps()),
+            len(list(record_b.get_hsps())),
             False,
         )
 
@@ -205,9 +205,9 @@ class TestExtendUtilities(unittest.TestCase):
             0,
             len(cds_b),
             0,
-            len(record_a.get_hsps()),
+            len(list(record_a.get_hsps())),
             0,
-            len(record_b.get_hsps()),
+            len(list(record_b.get_hsps())),
             False,
         )
 
