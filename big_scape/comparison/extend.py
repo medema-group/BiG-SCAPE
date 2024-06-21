@@ -42,10 +42,10 @@ def len_check(pair: RecordPair, min_len_perc: int) -> bool:
         min_len_perc: The minimum length of the comparable region
     """
     a_len = pair.comparable_region.domain_a_stop - pair.comparable_region.domain_a_start
-    a_total_len = len(pair.record_a.get_hsps())
+    a_total_len = len(list(pair.record_a.get_hsps()))
 
     b_len = pair.comparable_region.domain_b_stop - pair.comparable_region.domain_b_start
-    b_total_len = len(pair.record_b.get_hsps())
+    b_total_len = len(list(pair.record_b.get_hsps()))
 
     if a_len / a_total_len >= min_len_perc or b_len / b_total_len >= min_len_perc:
         return True
@@ -99,10 +99,10 @@ def expand_glocal(pair: RecordPair) -> None:
         pair.comparable_region.domain_b_start = 0
 
     # downstream
-    a_len = len(pair.record_a.get_cds_with_domains())
-    b_len = len(pair.record_b.get_cds_with_domains())
-    a_domain_len = len(pair.record_a.get_hsps())
-    b_domain_len = len(pair.record_b.get_hsps())
+    a_len = len(list(pair.record_a.get_cds_with_domains()))
+    b_len = len(list(pair.record_b.get_cds_with_domains()))
+    a_domain_len = len(list(pair.record_a.get_hsps()))
+    b_domain_len = len(list(pair.record_b.get_hsps()))
     a_arm = a_domain_len - pair.comparable_region.domain_a_stop
     b_arm = b_domain_len - pair.comparable_region.domain_b_stop
     if a_arm <= b_arm:
