@@ -236,7 +236,7 @@ class TestExtendUtilities(unittest.TestCase):
             False,
         )
         actual_result = (
-            bs_comp.extend.len_check(record_pair, 3),
+            bs_comp.extend.len_check(record_pair, 0.3),
             bs_comp.extend.biosynthetic_check(record_pair),
         )
 
@@ -264,7 +264,7 @@ class TestExtendUtilities(unittest.TestCase):
             True,
         )
         actual_result = (
-            bs_comp.extend.len_check(record_pair, 3),
+            bs_comp.extend.len_check(record_pair, 0.3),
             bs_comp.extend.biosynthetic_check(record_pair),
         )
 
@@ -291,7 +291,7 @@ class TestExtendUtilities(unittest.TestCase):
             False,
         )
         actual_result = (
-            bs_comp.extend.len_check(record_pair, 3),
+            bs_comp.extend.len_check(record_pair, 0.3),
             bs_comp.extend.biosynthetic_check(record_pair),
         )
 
@@ -432,7 +432,7 @@ class TestScoreExtend(unittest.TestCase):
         target_index = bs_comp.extend.get_target_indexes(target_domains)
         query_index = bs_comp.extend.get_query_indexes(query_domains)
 
-        expected_extends = (5, 5, 25)
+        expected_extends = (5, 5, 5, 5, 25)
 
         actual_extends = bs_comp.extend.score_extend(
             query_domains, query_index, 0, 0, target_index, 0, 0, 5, -5, -3, 10
@@ -452,7 +452,7 @@ class TestScoreExtend(unittest.TestCase):
         target_index = bs_comp.extend.get_target_indexes(target_dom)
         query_index = bs_comp.extend.get_query_indexes(query_dom)
 
-        expected_extends = (1, 1, 5)
+        expected_extends = (1, 1, 1, 1, 5)
 
         actual_extends = bs_comp.extend.score_extend(
             query_dom, query_index, 0, 0, target_index, 0, 0, 5, -3, -2, 10
@@ -470,7 +470,7 @@ class TestScoreExtend(unittest.TestCase):
         target_index = bs_comp.extend.get_target_indexes(target_dom)
         query_index = bs_comp.extend.get_query_indexes(query_dom)
 
-        expected_extends = (3, 5, 11)
+        expected_extends = (3, 3, 5, 5, 11)
 
         actual_extends = bs_comp.extend.score_extend(
             query_dom, query_index, 0, 0, target_index, 0, 0, 5, -3, -2, 10
@@ -495,7 +495,7 @@ class TestScoreExtend(unittest.TestCase):
         query_dom, target_dom = generate_mock_lcs_region(3, 3, q_domains, t_domains)
 
         # so we expect an extension of 3 on both sides, and a score of 15
-        expected_extends = (3, 3, 15)
+        expected_extends = (3, 3, 3, 3, 15)
 
         target_index = bs_comp.extend.get_target_indexes(target_dom)
         query_index = bs_comp.extend.get_query_indexes(query_dom)
@@ -515,7 +515,7 @@ class TestScoreExtend(unittest.TestCase):
         target_index = bs_comp.extend.get_target_indexes(target_dom)
         query_index = bs_comp.extend.get_query_indexes(query_dom)
 
-        expected_extends = (3, 3, 15)
+        expected_extends = (3, 3, 3, 3, 15)
 
         actual_extends = bs_comp.extend.score_extend(
             query_dom, query_index, 2, 2, target_index, 2, 2, 5, -3, -2, 10
@@ -532,7 +532,7 @@ class TestScoreExtend(unittest.TestCase):
         target_index = bs_comp.extend.get_target_indexes(target_dom)
         query_index = bs_comp.extend.get_query_indexes(query_dom)
 
-        expected_extends = (3, 3, 15)
+        expected_extends = (3, 3, 3, 3, 15)
 
         actual_extends = bs_comp.extend.score_extend(
             query_dom, query_index, 2, 2, target_index, 2, 2, 5, -3, -2, 10
@@ -550,7 +550,7 @@ class TestScoreExtend(unittest.TestCase):
         query_index = bs_comp.extend.get_query_indexes(query_dom)
 
         # B and C match, A mismatch -> 5+5-3 = 7
-        expected_extends = (3, 2, 7)
+        expected_extends = (3, 3, 2, 2, 7)
 
         actual_extends = bs_comp.extend.score_extend(
             query_dom, query_index, 2, 2, target_index, 3, 3, 5, -3, -2, 10
@@ -567,7 +567,7 @@ class TestScoreExtend(unittest.TestCase):
         target_index = bs_comp.extend.get_target_indexes(target_dom)
         query_index = bs_comp.extend.get_query_indexes(query_dom)
 
-        expected_extends = (1, 3, 15)
+        expected_extends = (1, 3, 3, 3, 15)
 
         actual_extends = bs_comp.extend.score_extend(
             query_dom, query_index, 2, 2, target_index, 2, 2, 5, -3, -2, 10
@@ -584,7 +584,7 @@ class TestScoreExtend(unittest.TestCase):
         target_index = bs_comp.extend.get_target_indexes(target_dom)
         query_index = bs_comp.extend.get_query_indexes(query_dom)
 
-        expected_extends = (3, 1, 15)
+        expected_extends = (3, 3, 1, 3, 15)
 
         actual_extends = bs_comp.extend.score_extend(
             query_dom, query_index, 2, 2, target_index, 2, 2, 5, -3, -2, 10
@@ -603,7 +603,7 @@ class TestScoreExtend(unittest.TestCase):
         query_index = bs_comp.extend.get_query_indexes(query_dom)
 
         # 4 matches ABDE, 2 mismatches QC, : 4*5 - 2*3 = 14
-        expected_extends = (3, 3, 14)
+        expected_extends = (3, 6, 3, 4, 14)
 
         actual_extends = bs_comp.extend.score_extend(
             query_dom, query_index, 2, 2, target_index, 2, 4, 5, -3, -2, 10
@@ -620,7 +620,7 @@ class TestScoreExtend(unittest.TestCase):
         target_index = bs_comp.extend.get_target_indexes(target_dom)
         query_index = bs_comp.extend.get_query_indexes(query_dom)
 
-        expected_extends = (3, 2, 20)
+        expected_extends = (3, 4, 2, 4, 20)
 
         actual_extends = bs_comp.extend.score_extend(
             query_dom, query_index, 0, 0, target_index, 2, 3, 5, -3, -2, 10
@@ -637,7 +637,7 @@ class TestScoreExtend(unittest.TestCase):
         target_index = bs_comp.extend.get_target_indexes(target_dom)
         query_index = bs_comp.extend.get_query_indexes(query_dom)
 
-        expected_extends = (2, 2, 20)
+        expected_extends = (2, 4, 2, 4, 20)
 
         actual_extends = bs_comp.extend.score_extend(
             query_dom, query_index, 2, 3, target_index, 2, 3, 5, -3, -2, 10
@@ -654,7 +654,7 @@ class TestScoreExtend(unittest.TestCase):
         target_index = bs_comp.extend.get_target_indexes(target_dom)
         query_index = bs_comp.extend.get_query_indexes(query_dom)
 
-        expected_extends = (3, 3, 15)
+        expected_extends = (3, 3, 3, 3, 15)
 
         actual_extends = bs_comp.extend.score_extend_rev(
             query_dom, query_index, 3, 3, target_index, 3, 3, 5, -3, -2, 10
@@ -671,7 +671,7 @@ class TestScoreExtend(unittest.TestCase):
         target_index = bs_comp.extend.get_target_indexes(target_dom)
         query_index = bs_comp.extend.get_query_indexes(query_dom)
 
-        expected_extends = (3, 2, 7)
+        expected_extends = (3, 3, 2, 2, 7)
 
         actual_extends = bs_comp.extend.score_extend_rev(
             query_dom, query_index, 3, 3, target_index, 2, 2, 5, -3, -2, 10
@@ -689,7 +689,7 @@ class TestScoreExtend(unittest.TestCase):
         query_index = bs_comp.extend.get_query_indexes(query_dom)
 
         # 4 matches ACDE, 1 gap B: 4*5 - 2 = 18
-        expected_extends = (2, 4, 18)
+        expected_extends = (2, 4, 4, 5, 18)
 
         actual_extends = bs_comp.extend.score_extend_rev(
             query_dom, query_index, 3, 5, target_index, 4, 5, 5, -3, -2, 10
@@ -707,7 +707,7 @@ class TestScoreExtend(unittest.TestCase):
         query_index = bs_comp.extend.get_query_indexes(query_dom)
 
         # 3 matches ABC, 1 gap C, 1 mismatch B: 3*5 - 2 - 3 = 10
-        expected_extends = (3, 3, 10)
+        expected_extends = (3, 4, 3, 4, 10)
 
         actual_extends = bs_comp.extend.score_extend_rev(
             query_dom, query_index, 3, 4, target_index, 3, 4, 5, -3, -2, 10
@@ -725,7 +725,7 @@ class TestScoreExtend(unittest.TestCase):
         query_index = bs_comp.extend.get_query_indexes(query_dom)
 
         # four matches QABC, one gap: 4*5 - 2 = 18
-        expected_extends = (2, 2, 18)
+        expected_extends = (2, 4, 2, 5, 18)
 
         actual_extends = bs_comp.extend.score_extend_rev(
             query_dom, query_index, 2, 4, target_index, 2, 5, 5, -3, -2, 10

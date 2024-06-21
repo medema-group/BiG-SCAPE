@@ -31,17 +31,23 @@ def reset(pair: RecordPair) -> None:
     pair.comparable_region.reverse = False
 
 
-def len_check(pair: RecordPair, min_len: int) -> bool:
-    """Checks if a pair's comparable region is longer than or equal to min_len
+def len_check(pair: RecordPair, min_len_perc: int) -> bool:
+    """Checks if a pair's comparable region is of sufficient length
+
+    Length is checked based on domains, the comparable region should be longer than
+    or equal to a min_len_percentage of the shortest record in the pair
 
     Args:
         pair: The record pair to check
-        min_len: The minimum length of the comparable region
+        min_len_perc: The minimum length of the comparable region
     """
     a_len = pair.comparable_region.domain_a_stop - pair.comparable_region.domain_a_start
-    b_len = pair.comparable_region.domain_b_stop - pair.comparable_region.domain_b_start
+    a_total_len = len(pair.record_a.get_hsps())
 
-    if a_len >= min_len and b_len >= min_len:
+    b_len = pair.comparable_region.domain_b_stop - pair.comparable_region.domain_b_start
+    b_total_len = len(pair.record_b.get_hsps())
+
+    if a_len / a_total_len >= min_len_perc or b_len / b_total_len >= min_len_perc:
         return True
 
     return False
@@ -162,7 +168,7 @@ def extend(
     if target_domain_stop != len(target_domains) and query_domain_stop != len(
         query_domains
     ):
-        query_exp, target_exp, score = score_extend(
+        query_exp, query_dom_exp, target_exp, target_dom_exp, score = score_extend(
             query_domains,
             query_index,
             query_stop,
@@ -179,13 +185,17 @@ def extend(
         # set the new start and stop positions
         if len(a_domains) > len(b_domains):
             pair.comparable_region.b_stop += query_exp
+            pair.comparable_region.domain_b_stop += query_dom_exp
             pair.comparable_region.a_stop += target_exp
+            pair.comparable_region.domain_a_stop += target_dom_exp
         else:
             pair.comparable_region.a_stop += query_exp
+            pair.comparable_region.domain_a_stop += query_dom_exp
             pair.comparable_region.b_stop += target_exp
+            pair.comparable_region.domain_b_stop += target_dom_exp
 
     if target_domain_start != 0 and query_domain_start != 0:
-        query_exp, target_exp, score = score_extend_rev(
+        query_exp, query_dom_exp, target_exp, target_dom_exp, score = score_extend_rev(
             query_domains,
             query_index,
             query_start,
@@ -202,10 +212,14 @@ def extend(
         # expand left
         if len(a_domains) > len(b_domains):
             pair.comparable_region.b_start -= query_exp
+            pair.comparable_region.domain_b_start -= query_dom_exp
             pair.comparable_region.a_start -= target_exp
+            pair.comparable_region.domain_a_start -= target_dom_exp
         else:
             pair.comparable_region.a_start -= query_exp
+            pair.comparable_region.domain_a_start -= query_dom_exp
             pair.comparable_region.b_start -= target_exp
+            pair.comparable_region.domain_b_start -= target_dom_exp
 
     logging.debug("after extend:")
     logging.debug(pair.comparable_region)
@@ -287,7 +301,7 @@ def score_extend(
     mismatch: int,
     gap: int,
     max_match_dist: int,
-) -> tuple[int, int, int]:
+) -> tuple[int, int, int, int, int]:
     """
     Calculate the score for extending a query sequence to a target sequence.
 
@@ -310,13 +324,15 @@ def score_extend(
         considered a mismatch
 
     Returns:
-        tuple: A tuple containing the query expansion index, target expansion index,
-        and the maximum score.
+        tuple: A tuple containing the query expansion index on cds and domain level,
+        target expansion index on cds and domain level, and the maximum score.
     """
     score = 0
     max_score = 0
     target_exp = 0
     query_exp = 0
+    query_domain_exp = 0
+    target_domain_exp = 0
 
     last_domain_idx = target_domain_start - 1
 
@@ -364,10 +380,12 @@ def score_extend(
             max_score = score
             query_cds_idx = query_index[query_domain_start + hsp_idx]
             query_exp = query_cds_idx + 1 - query_start
-            if cds_idx + 1 - target_start > target_exp:
+            query_domain_exp = hsp_idx + 1
+            if domain_idx + 1 - target_domain_start > target_domain_exp:
                 target_exp = cds_idx + 1 - target_start
+                target_domain_exp = domain_idx + 1 - target_domain_start
 
-    return query_exp, target_exp, max_score
+    return query_exp, query_domain_exp, target_exp, target_domain_exp, max_score
 
 
 def score_extend_rev(
@@ -382,7 +400,7 @@ def score_extend_rev(
     mismatch: int,
     gap: int,
     max_match_dist: int,
-) -> tuple[int, int, int]:
+) -> tuple[int, int, int, int, int]:
     """
     Calculate the score for extending a query sequence to a target sequence, in reverse
 
@@ -411,6 +429,8 @@ def score_extend_rev(
     max_score = 0
     target_exp = 0
     query_exp = 0
+    query_domain_exp = 0
+    target_domain_exp = 0
 
     # correct for inclusive start
     last_domain_idx = target_domain_start
@@ -462,7 +482,9 @@ def score_extend_rev(
             max_score = score
             query_cds_idx = query_index[query_domain_start - hsp_idx]
             query_exp = query_start - query_cds_idx
-            if target_start - cds_idx > target_exp:
+            query_domain_exp = hsp_idx + 1
+            if target_domain_start - domain_idx + 1 > target_domain_exp:
                 target_exp = target_start - cds_idx
+                target_domain_exp = target_domain_start - domain_idx + 1
 
-    return query_exp, target_exp, max_score
+    return query_exp, query_domain_exp, target_exp, target_domain_exp, max_score
