@@ -16,6 +16,7 @@ import platform
 from threading import Event, Condition
 from typing import Generator, Callable, Optional, TypeVar, Union
 from math import ceil
+from pathlib import Path
 from .record_pair import RecordPair
 
 # from dependencies
@@ -42,7 +43,7 @@ from big_scape.hmm import HSP, HSPAlignment
 # from this module
 from .binning import RecordPairGenerator
 from .binning import LEGACY_WEIGHTS
-from .extend import extend, reset, len_check, biosynthetic_check
+from .extend import extend, reset, len_check, biosynthetic_check, expand_glocal
 from .lcs import find_domain_lcs_region, find_domain_lcs_protocluster
 
 T = TypeVar("T")
@@ -284,11 +285,12 @@ def do_lcs_pair(pair: RecordPair) -> bool:  # pragma no cover
         return False
 
 
-def expand_pair(pair: RecordPair) -> bool:
+def expand_pair(pair: RecordPair, alignment_mode: bs_enums.ALIGNMENT_MODE) -> bool:
     """Expand the pair
 
     Args:
         pair (RecordPair): pair to expand
+        alignment_mode (ALIGNMENT_MODE): alignment mode to use for expansion
 
     Returns:
         bool: True if the pair was extended, False if it does not
@@ -300,6 +302,10 @@ def expand_pair(pair: RecordPair) -> bool:
         BigscapeConfig.EXPAND_GAP_SCORE,
         BigscapeConfig.EXPAND_MAX_MATCH_PERC,
     )
+
+    # after local expansion, additionally expand shortest arms in glocal/auto
+    if alignment_mode != bs_enums.ALIGNMENT_MODE.LOCAL:
+        expand_glocal(pair)
 
     # Region/CandCluster EXT checks: biosynthetic and min 3 or min 5 domains,
     # except no min for 1-dom rules (e.g. terpene)
@@ -448,19 +454,25 @@ def calculate_scores_pair(
             )
             continue
 
-        # GLOBAL/GLOCAL/AUTO
+        # GLOBAL/GLOCAL/LOCAL/AUTO
         # GLOBAL the comparable region is the full record
-        # GLOCAL computes a the comparable region based on LCS EXT
+        # GLOCAL computes a the comparable region based on LCS EXT assuming
+        # full extension of the shortest upstream/downstream arms
+        # LOCAL computes a the comparable region based on LCS EXT
         # AUTO computes a the comparable region based on LCS EXT if
         # either record is on a contig edge
 
-        if alignment_mode == bs_enums.ALIGNMENT_MODE.GLOCAL or (
-            alignment_mode == bs_enums.ALIGNMENT_MODE.AUTO
-            and (pair.record_a.contig_edge or pair.record_b.contig_edge)
+        if (
+            alignment_mode == bs_enums.ALIGNMENT_MODE.LOCAL
+            or alignment_mode == bs_enums.ALIGNMENT_MODE.GLOCAL
+            or (
+                alignment_mode == bs_enums.ALIGNMENT_MODE.AUTO
+                and (pair.record_a.contig_edge or pair.record_b.contig_edge)
+            )
         ):
             needs_expand = do_lcs_pair(pair)
             if needs_expand:
-                expand_pair(pair)
+                expand_pair(pair, alignment_mode)
 
         if weights_label not in LEGACY_WEIGHTS:
             bin_weights = LEGACY_WEIGHTS["mix"]["weights"]
@@ -525,6 +537,7 @@ def fetch_records_from_database(pairs: list[tuple[int, int]]) -> dict[int, BGCRe
     query_statement = (
         select(
             gbk_table.c.id,
+            gbk_table.c.path,
             record_table.c.id,
             record_table.c.record_type,
             record_table.c.nt_start,
@@ -548,7 +561,7 @@ def fetch_records_from_database(pairs: list[tuple[int, int]]) -> dict[int, BGCRe
         .join(hsp_table, hsp_table.c.cds_id == cds_table.c.id, full=True)
         .join(algn_table, algn_table.c.hsp_id == hsp_table.c.id, full=True)
         .where(record_table.c.id.in_(pair_ids))
-        .order_by(hsp_table.c.id)
+        .order_by(cds_table.c.id, hsp_table.c.id)
     )
 
     pair_data = DB.execute(query_statement).fetchall()
@@ -564,46 +577,46 @@ def fetch_records_from_database(pairs: list[tuple[int, int]]) -> dict[int, BGCRe
 
     # iteratively build the required data structures
     for row in pair_data:
-        gbk_id, rec_id, cds_id, hsp_id = row[0], row[1], row[6], row[12]
+        gbk_id, rec_id, cds_id, hsp_id = row[0], row[2], row[7], row[13]
 
         # create dummy GBK object to link records and CDSs
         if gbk_id not in gbk_index:
-            gbk_index[gbk_id] = GBK("", "", "")
+            gbk_index[gbk_id] = GBK(Path(row[1]), "", "")
 
         # keep track of record_type to enable comparison on e.g. protocluster level
         if rec_id not in record_index:
-            record_type = row[2]
+            record_type = row[3]
             if record_type == "region":
                 record_index[rec_id] = Region(
-                    gbk_index[gbk_id], 0, row[3], row[4], row[5], ""
+                    gbk_index[gbk_id], 0, row[4], row[5], row[6], ""
                 )
             elif record_type == "cand_cluster":
                 record_index[rec_id] = CandidateCluster(
-                    gbk_index[gbk_id], 0, row[3], row[4], row[5], "", "", {}
+                    gbk_index[gbk_id], 0, row[4], row[5], row[6], "", "", {}
                 )
             elif record_type == "protocluster":
                 record_index[rec_id] = ProtoCluster(
-                    gbk_index[gbk_id], 0, row[3], row[4], row[5], "", {}
+                    gbk_index[gbk_id], 0, row[4], row[5], row[6], "", {}
                 )
             elif record_type == "proto_core":
                 record_index[rec_id] = ProtoCore(
-                    gbk_index[gbk_id], 0, row[3], row[4], row[5], ""
+                    gbk_index[gbk_id], 0, row[4], row[5], row[6], ""
                 )
             record_index[rec_id]._db_id = rec_id
 
         # simultaneously save CDSs and assign to the correct parent GBK
         if cds_id not in cds_index:
-            cds_index[cds_id] = CDS(row[7], row[8])
-            cds_index[cds_id].orf_num = row[9]
-            cds_index[cds_id].strand = row[10]
-            cds_index[cds_id].gene_kind = row[11]
+            cds_index[cds_id] = CDS(row[8], row[9])
+            cds_index[cds_id].orf_num = row[10]
+            cds_index[cds_id].strand = row[11]
+            cds_index[cds_id].gene_kind = row[12]
             gbk_index[gbk_id].genes.append(cds_index[cds_id])
 
         # finally, assign HSPs to their respective CDS
         if hsp_id is not None and hsp_id not in added_hsp_ids:
             # if hsp_id not in added_hsp_ids:
-            new_hsp = HSP(cds_index[cds_id], row[13], row[14], row[15], row[16])
-            new_hsp.alignment = HSPAlignment(new_hsp, row[17])
+            new_hsp = HSP(cds_index[cds_id], row[14], row[15], row[16], row[17])
+            new_hsp.alignment = HSPAlignment(new_hsp, row[18])
             cds_index[cds_id].hsps.append(new_hsp)
             added_hsp_ids.add(hsp_id)
 

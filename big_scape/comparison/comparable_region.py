@@ -252,7 +252,7 @@ class ComparableRegion:
             if cds.gene_kind is None:
                 continue
 
-            if "biosynthetic" in cds.gene_kind:
+            if cds.gene_kind == "biosynthetic":
                 return True
 
         return False

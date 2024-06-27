@@ -287,15 +287,17 @@ def common_cluster_query(fn):
         ),
         click.option(
             "--alignment_mode",
-            type=click.Choice(["global", "glocal", "auto"]),
+            type=click.Choice(["global", "glocal", "local", "auto"]),
             default="glocal",
             callback=validate_alignment_mode,
             help=(
                 "Alignment mode for each pair of gene clusters. 'global': the whole "
-                "list of domains of each BGC are compared; 'glocal': Longest Common "
+                "list of domains of each BGC are compared; 'local': Longest Common "
                 "Subcluster mode. Redefine the subset of the domains used to "
                 "calculate distance by trying to find the longest slice of common "
                 "domain content per gene in both BGCs, then expand each slice. "
+                "'glocal': Similar to local, but expansion assumes full expansion "
+                "of the shortest upstream/downstream arms in a compared pair. "
                 "'auto': use glocal when at least one of the BGCs in each pair "
                 "has the 'contig_edge' annotation from antiSMASH v4+, otherwise "
                 "use global mode on that pair (default: glocal)."
