@@ -16,7 +16,6 @@ from sqlalchemy import select
 
 # from other modules
 from big_scape.data import DB
-from big_scape.enums import RECORD_TYPE
 from big_scape.cli.config import BigscapeConfig
 from big_scape.genbank.bgc_record import BGCRecord
 import big_scape.network.network as bs_network
@@ -222,16 +221,14 @@ def reset_db_family_tables():
     DB.execute(DB.metadata.tables["family"].delete())
 
 
-def save_singletons(record_type: RECORD_TYPE, cutoff: float, bin_label: str) -> None:
+def save_singletons(record_ids: list[int], cutoff: float, bin_label: str) -> None:
     """Create unique family for any singletons and save to database
 
     Args:
-        record_type (RECORD_TYPE): record type to create families for
+        record_ids (list[int]): record ids to create any singleton families for
         cutoff (float): cutoff value to create families for
         bin_label (str): label of the bin to create families for
     """
-    record_type_str = record_type.value
-
     if DB.metadata is None:
         raise RuntimeError("DB metadata is None!")
 
@@ -241,7 +238,7 @@ def save_singletons(record_type: RECORD_TYPE, cutoff: float, bin_label: str) -> 
 
     singleton_query = (
         select(record_table.c.id)
-        .where(record_table.c.record_type == record_type_str)
+        .where(record_table.c.id.in_(record_ids))
         .where(
             record_table.c.id.not_in(
                 select(bgc_record_family_table.c.record_id)
@@ -318,7 +315,7 @@ def run_family_assignments(
                     connected_component, bin.label, cutoff
                 )
                 save_to_db(regions_families)
-            save_singletons(run["record_type"], cutoff, bin.label)
+            save_singletons(bin.record_ids, cutoff, bin.label)
 
     DB.commit()
 
