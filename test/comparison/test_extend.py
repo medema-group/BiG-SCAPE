@@ -845,3 +845,40 @@ class TestExpandGlocal(unittest.TestCase):
         ]
 
         self.assertTrue(all(conditions))
+
+    def test_expand_greedy(self):
+        """Tests greedy expansion
+
+        This method of expansion should always expand the region to the maximum possible
+        CDS that still have a common domain between two records.
+
+        E.g. if we have the following two records:
+
+        A: XAXXBXXXXCX
+        B: XXXXXXXAXXXXXBCXXXXXXXXX
+
+        The comparable region should be expanded to the following:
+
+        A: XAXXBXXXXCX
+            [-------]
+        B: XXXXXXXAXXXXXBCXXXXXXXXX
+                  [------]
+        """
+
+        a_cds, b_cds = generate_mock_cds_lists(11, 24, [1, 4, 9], [11, 13, 14], False)
+        record_a = generate_mock_region(a_cds)
+        record_b = generate_mock_region(b_cds)
+        pair = big_scape.comparison.record_pair.RecordPair(record_a, record_b)
+
+        bs_comp.extend.extend_greedy(pair)
+        expected_greedy = bs_comp.ComparableRegion(1, 9, 11, 14, 1, 9, 11, 14, False)
+
+        conditions = [
+            pair.comparable_region == expected_greedy,  # tests cds start/stops
+            pair.comparable_region.domain_a_start == expected_greedy.domain_a_start,
+            pair.comparable_region.domain_b_start == expected_greedy.domain_b_start,
+            pair.comparable_region.domain_a_stop == expected_greedy.domain_a_stop,
+            pair.comparable_region.domain_b_stop == expected_greedy.domain_b_stop,
+        ]
+
+        self.assertTrue(all(conditions))
