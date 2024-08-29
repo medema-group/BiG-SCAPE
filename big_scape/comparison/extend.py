@@ -586,9 +586,9 @@ def extend_greedy(pair: RecordPair) -> None:
     pair.comparable_region.b_stop = b_cds_max + 1
 
     pair.comparable_region.domain_a_start = a_domain_min
-    pair.comparable_region.domain_a_stop = a_domain_max
+    pair.comparable_region.domain_a_stop = a_domain_max + 1
     pair.comparable_region.domain_b_start = b_domain_min
-    pair.comparable_region.domain_b_stop = b_domain_max
+    pair.comparable_region.domain_b_stop = b_domain_max + 1
 
     logging.debug("after greedy extend:")
     logging.debug(pair.comparable_region)

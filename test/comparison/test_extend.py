@@ -871,7 +871,7 @@ class TestExpandGlocal(unittest.TestCase):
         pair = big_scape.comparison.record_pair.RecordPair(record_a, record_b)
 
         bs_comp.extend.extend_greedy(pair)
-        expected_greedy = bs_comp.ComparableRegion(1, 10, 11, 15, 1, 9, 11, 14, False)
+        expected_greedy = bs_comp.ComparableRegion(1, 10, 11, 15, 1, 10, 11, 15, False)
 
         conditions = [
             pair.comparable_region == expected_greedy,  # tests cds start/stops
