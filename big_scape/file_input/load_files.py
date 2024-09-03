@@ -307,7 +307,7 @@ def load_gbks(run: dict, bigscape_dir: Path) -> list[GBK]:
             run["query_bgc_path"],
             bs_enums.SOURCE_TYPE.QUERY,
             run,
-            run["cds_overlap_cutoff"],
+            BigscapeConfig.CDS_OVERLAP_CUTOFF,
         )
         logging.info("Loaded query GBK %s", query_bgc_gbk)
 
