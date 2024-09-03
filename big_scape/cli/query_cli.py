@@ -24,7 +24,8 @@ from .cli_validations import (
 @common_all
 @common_cluster_query
 @click.option(
-    "-q" "--query_bgc_path",
+    "-q",
+    "--query_bgc_path",
     type=click.Path(exists=True, dir_okay=False, file_okay=True, path_type=Path),
     required=True,
     callback=validate_query_bgc,
@@ -35,7 +36,8 @@ from .cli_validations import (
     ),
 )
 @click.option(
-    "-n" "--query_record_number",
+    "-n",
+    "--query_record_number",
     type=int,
     required=False,
     help=(
