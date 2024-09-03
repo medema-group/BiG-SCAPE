@@ -1,6 +1,7 @@
 # from python
 from __future__ import annotations
 import logging
+from datetime import datetime
 from pathlib import Path
 from typing import Generator, Optional, Any
 import sqlite3
@@ -18,6 +19,7 @@ from sqlalchemy import (
     func,
     select,
     text,
+    update,
 )
 from sqlalchemy.pool import StaticPool
 import tqdm
@@ -325,6 +327,84 @@ class DB:
             if not rows:
                 break
             yield tuple(rows)
+
+    @staticmethod
+    def init_run(run: dict) -> None:
+        """Initialize a new run in the database
+
+        Args:
+            run (dict): run parameters
+        """
+        if not DB.metadata:
+            raise RuntimeError("DB.metadata is None")
+
+        run_table = DB.metadata.tables["run"]
+
+        run_insert = (
+            run_table.insert()
+            .values(
+                label=run["label"],
+                start_time=str(run["start_time"])[:-7],
+                mode=run["mode"],
+                input_dir=str(run["input_dir"].name) if run["input_dir"] else "None",
+                output_dir=str(run["output_dir"].name) if run["output_dir"] else "None",
+                reference_dir=(
+                    str(run["reference_dir"].name) if run["reference_dir"] else "None"
+                ),
+                query_path=(
+                    str(run["query_bgc_path"].name) if run["query_bgc_path"] else "None"
+                ),
+                mibig_version=run["mibig_version"] if run["mibig_version"] else "None",
+                record_type=run["record_type"].name.title(),
+                classify=(
+                    "Legacy Groups"
+                    if run["legacy_classify"]
+                    else (
+                        run["classify"].name.title()
+                        if run["classify"]
+                        else "Not Classify"
+                    )
+                ),
+                weights="Legacy Weights" if run["legacy_weights"] else "Mix",
+                alignment_mode=run["alignment_mode"].name.title(),
+                include_singletons=(
+                    "Yes"
+                    if "include_singletons" in run and run["include_singletons"]
+                    else "No"
+                ),
+                cutoffs=",".join(map(str, run["gcf_cutoffs"])),
+            )
+            .returning(run_table.c.id)
+            .compile()
+        )
+
+        cursor_result = DB.execute(run_insert, False).fetchone()
+        if cursor_result is None:
+            raise RuntimeError("No run id returned from database!")
+
+        run_id = cursor_result[0]
+        run["run_id"] = run_id
+
+    @staticmethod
+    def set_run_end(run_id: int, start: datetime, end: datetime):
+        """Record run end time and duration to the database
+
+        Args:
+            run_id (int): current run id
+            start (datetime): run start time
+            end (datetime): run end time
+        """
+        if not DB.metadata:
+            raise RuntimeError("DB.metadata is None")
+
+        run_table = DB.metadata.tables["run"]
+        update_stmt = (
+            update(run_table)
+            .where(run_table.c.id == run_id)
+            .values(end_time=str(end)[:-7], duration=str(end - start)[:-7])
+        ).compile()
+        DB.execute(update_stmt, False)
+        DB.commit()
 
 
 def read_schema(path: Path) -> list[str]:

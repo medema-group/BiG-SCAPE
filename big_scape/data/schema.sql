@@ -2,6 +2,26 @@
 
 
 -- regular tables
+CREATE TABLE IF NOT EXISTS run (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    label TEXT,
+    start_time TEXT,
+    end_time TEXT,
+    duration TEXT,
+    mode TEXT, --cluster/query
+    input_dir TEXT,
+    output_dir TEXT,
+    reference_dir TEXT,
+    query_path TEXT,
+    mibig_version TEXT,
+    record_type TEXT,
+    classify TEXT,
+    weights TEXT,
+    alignment_mode TEXT,
+    include_singletons TEXT,
+    cutoffs TEXT
+);
+
 CREATE TABLE IF NOT EXISTS gbk (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     path TEXT,
@@ -41,10 +61,13 @@ CREATE TABLE IF NOT EXISTS bgc_record_family (
 CREATE TABLE IF NOT EXISTS family (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     center_id INTEGER NOT NULL,
+    newick TEXT,
     cutoff REAL NOT NULL,
     bin_label TEXT NOT NULL,
+    run_id INTEGER NOT NULL,
     UNIQUE(id),
-    UNIQUE(center_id, cutoff, bin_label)
+    UNIQUE(center_id, cutoff, bin_label, run_id),
+    FOREIGN KEY(run_id) REFERENCES run(id)
 );
 
 CREATE TABLE IF NOT EXISTS scanned_cds (
@@ -114,8 +137,10 @@ CREATE TABLE IF NOT EXISTS connected_component (
     cutoff REAL NOT NULL,
     edge_param_id INTEGER NOT NULL,
     bin_label TEXT NOT NULL,
-    UNIQUE(record_id, cutoff, bin_label),
+    run_id INTEGER NOT NULL,
+    UNIQUE(record_id, cutoff, bin_label, run_id)
     FOREIGN KEY(record_id) REFERENCES bgc_record(id)
+    FOREIGN KEY(run_id) REFERENCES run(id)
 );
 
 CREATE TABLE IF NOT EXISTS edge_params (

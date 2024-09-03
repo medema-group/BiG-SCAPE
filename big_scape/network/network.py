@@ -31,6 +31,7 @@ def get_connected_components(
     cutoff: float,
     edge_param_id: int,
     bin: bs_comparison.RecordPairGenerator,
+    run_id: int,
 ) -> Generator[list[tuple[int, int, float, float, float, float, int]], None, None]:
     """Generate a network for each connected component in the network
         If a seed record is given, the connected component will be generated starting from that record
@@ -39,6 +40,7 @@ def get_connected_components(
         cutoff (float): the distance cutoff
         edge_param_id (int): the edge parameter id
         bin (bs_comparison.RecordPairGenerator): the bin to generate the connected components for
+        run_id (int): current run id
 
     Yields:
         Generator[list[tuple[int, int, float, float, float, float, int]], None, None]:
@@ -52,11 +54,15 @@ def get_connected_components(
 
     # generate connected components using dfs
     generate_connected_components(
-        cutoff, edge_param_id, bin.label, include_record_table
+        cutoff, edge_param_id, bin.label, run_id, include_record_table
     )
 
     cc_ids = get_connected_component_ids(
-        cutoff, edge_param_id, bin.label, include_record_table
+        cutoff,
+        edge_param_id,
+        bin.label,
+        run_id,
+        include_record_table,
     )
 
     logging.info(f"Found {len(cc_ids)} connected components")
@@ -87,6 +93,7 @@ def get_connected_components(
                         == edge_param_id,
                         DB.metadata.tables["connected_component"].c.bin_label
                         == bin.label,
+                        DB.metadata.tables["connected_component"].c.run_id == run_id,
                     )
                 ),
                 distance_table.c.record_b_id.in_(
@@ -97,6 +104,7 @@ def get_connected_components(
                         == edge_param_id,
                         DB.metadata.tables["connected_component"].c.bin_label
                         == bin.label,
+                        DB.metadata.tables["connected_component"].c.run_id == run_id,
                     )
                 ),
                 distance_table.c.edge_param_id == edge_param_id,
@@ -143,6 +151,7 @@ def generate_connected_components(
     cutoff: float,
     edge_param_id: int,
     bin_label: str,
+    run_id: int,
     include_record_table: Optional[Table] = None,
     seed_record: Optional[BGCRecord] = None,
 ) -> None:
@@ -157,6 +166,7 @@ def generate_connected_components(
         cutoff (Optional[float], optional): the distance cutoff. Defaults to None.
         edge_param_id (int): the edge parameter id
         bin_label (str): the bin label
+        run_id (int): the id of the current run
         temp_record_table (Table, optional): a temporary table with the records to include in the
         connected component. Defaults to None.
         seed_record (Optional[BGCRecord], optional): a seed record to start the connected component from.
@@ -171,15 +181,14 @@ def generate_connected_components(
     )
 
     visited = set()
-    connected_components = []
 
     if seed_record is not None:
         connected_component = generate_cc_from_node(
             cutoff,
             edge_param_id,
             bin_label,
+            run_id,
             db_adj_list,
-            connected_components,
             seed_record._db_id,
         )
         return
@@ -194,11 +203,10 @@ def generate_connected_components(
                 cutoff,
                 edge_param_id,
                 bin_label,
+                run_id,
                 db_adj_list,
                 node,
             )
-
-            connected_components.append(connected_component)
 
             visited.update(connected_component)
 
@@ -207,7 +215,14 @@ def generate_connected_components(
     t.close()
 
 
-def generate_cc_from_node(cutoff, edge_param_id, bin_label, db_adj_list, node):
+def generate_cc_from_node(
+    cutoff: float,
+    edge_param_id: int,
+    bin_label: str,
+    run_id: int,
+    db_adj_list: DBAdjList,
+    node: int,
+):
     """Generate a connected component from a node using depth first search
     and write it to the database
 
@@ -215,6 +230,7 @@ def generate_cc_from_node(cutoff, edge_param_id, bin_label, db_adj_list, node):
         cutoff (float): the distance cutoff
         edge_param_id (int): the edge parameter id
         bin_label (str): the bin label
+        run_id (int): the id of the current run
         db_adj_list (DBAdjList): the adjacency list
         node (int): the starting node
 
@@ -239,6 +255,7 @@ def generate_cc_from_node(cutoff, edge_param_id, bin_label, db_adj_list, node):
                 cutoff=cutoff,
                 edge_param_id=edge_param_id,
                 bin_label=bin_label,
+                run_id=run_id,
             )
         )
 
@@ -249,6 +266,7 @@ def get_connected_component_ids(
     cutoff: float,
     edge_param_id: int,
     bin_label: str,
+    run_id: int,
     include_record_table: Optional[Table] = None,
 ) -> list[int]:
     """Get the connected component ids for the given cutoff and edge parameter id
@@ -256,7 +274,9 @@ def get_connected_component_ids(
     Args:
         cutoff (float): the distance cutoff
         edge_param_id (int): the edge parameter id
-        temp_record_table (Table, optional): a temporary table with the records to include in the
+        bin_label (str): label if the current bin
+        run_id (int): the id of the current run
+        include_record_table (Table, optional): a temporary table with the records to include in the
         connected component. Defaults to None.
 
     Returns:
@@ -273,6 +293,7 @@ def get_connected_component_ids(
                 cc_table.c.cutoff == cutoff,
                 cc_table.c.edge_param_id == edge_param_id,
                 cc_table.c.bin_label == bin_label,
+                cc_table.c.run_id == run_id,
             )
         )
     )
@@ -532,7 +553,9 @@ def reference_only_connected_component(connected_component, bgc_records) -> bool
     return not has_query
 
 
-def get_connected_component_id(connected_component, cutoff, edge_param_id) -> int:
+def get_connected_component_id(
+    connected_component: list, cutoff: float, edge_param_id: int, run_id: int
+) -> int:
     """Get the connected component id for the given connected component
         expects all edges to be in one connected component, if thats not the
         case, weird things might happen
@@ -541,6 +564,7 @@ def get_connected_component_id(connected_component, cutoff, edge_param_id) -> in
         connected_component: the connected component
         cutoff: the distance cutoff
         edge_param_id: the edge parameter id
+        run_id: id of the current run
 
     Returns:
         int: the connected component id
@@ -561,6 +585,7 @@ def get_connected_component_id(connected_component, cutoff, edge_param_id) -> in
                 cc_table.c.cutoff == cutoff,
                 cc_table.c.edge_param_id == edge_param_id,
                 cc_table.c.record_id == record_id,
+                cc_table.c.run_id == run_id,
             )
         )
         .limit(1)
@@ -571,13 +596,17 @@ def get_connected_component_id(connected_component, cutoff, edge_param_id) -> in
     return cc_ids[0]
 
 
-def remove_connected_component(connected_component, cutoff, edge_param_id) -> None:
+def remove_connected_component(
+    connected_component: list, cutoff: float, edge_param_id: int, run_id: int
+) -> None:
     """Removes a connected component from the cc table in the database"""
 
     if DB.metadata is None:
         raise RuntimeError("DB.metadata is None")
 
-    cc_id = get_connected_component_id(connected_component, cutoff, edge_param_id)
+    cc_id = get_connected_component_id(
+        connected_component, cutoff, edge_param_id, run_id
+    )
 
     cc_table = DB.metadata.tables["connected_component"]
 

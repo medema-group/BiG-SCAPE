@@ -52,12 +52,14 @@ def calculate_distances_query(
     # add last edges
 
     query_connected_component = next(
-        bs_network.get_connected_components(1, edge_param_id, query_bin)
+        bs_network.get_connected_components(1, edge_param_id, query_bin, run["run_id"])
     )
 
     query_nodes = bs_network.get_nodes_from_cc(query_connected_component, query_records)
 
-    bs_network.remove_connected_component(query_connected_component, 1, edge_param_id)
+    bs_network.remove_connected_component(
+        query_connected_component, 1, edge_param_id, run["run_id"]
+    )
 
     query_bin_connected = bs_comparison.RecordPairGenerator(
         "Query", edge_param_id, weights, record_type=run["record_type"]
