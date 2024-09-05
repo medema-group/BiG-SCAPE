@@ -25,11 +25,12 @@ class TestTrees(TestCase):
             BGCRecord(GBK("", "", ""), 0, 0, 0, False, ""),
             BGCRecord(GBK("", "", ""), 0, 0, 0, False, ""),
         ]
+        records[0]._db_id = 3
+        records[1]._db_id = 64
         exemplar = 0
-        mock_family = [0, 1]
 
-        expected_tree = "(0:0.0,1:0.0):0.01;"
-        tree = generate_newick_tree(records, exemplar, mock_family, "", "")
+        expected_tree = "(3:0.0,64:0.0):0.01;"
+        tree = generate_newick_tree(records, exemplar, "", "")
 
         self.assertEqual(tree, expected_tree)
 
@@ -89,10 +90,11 @@ class TestTrees(TestCase):
             BGCRecord(gbk_a, 0, 0, 100, False, ""),
             BGCRecord(gbk_b, 1, 0, 100, False, ""),
         ]
+        records[0]._db_id = 0
+        records[1]._db_id = 1
         exemplar = 0
-        family_members = [0, 1]
         expected_alignment = ">0\nTEST-PF1--\n>1\nTEST--P-F1\n"
-        algn = generate_gcf_alignment(records, exemplar, family_members)
+        algn = generate_gcf_alignment(records, exemplar)
 
         self.assertEqual(algn, expected_alignment)
 

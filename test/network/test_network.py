@@ -174,7 +174,7 @@ class TestNetwork(TestCase):
         # get a list of gbk ids to include
 
         # generate connected components
-        bs_network.generate_connected_components(1, 1, "test")
+        bs_network.generate_connected_components(1, 1, "test", 1)
 
         # get the distinct connected components
         q = """
@@ -225,10 +225,10 @@ class TestNetwork(TestCase):
         # get a list of gbk ids to include
 
         # generate connected components
-        bs_network.generate_connected_components(1, 1, "test")
+        bs_network.generate_connected_components(1, 1, "test", 1)
 
         # get the cc ids
-        cc_ids = bs_network.get_connected_component_ids(1, 1, "test")
+        cc_ids = bs_network.get_connected_component_ids(1, 1, "test", 1)
 
         # I insist on only having one assert per test
         # so we'll make things difficult for ourselves
@@ -406,7 +406,7 @@ class TestNetwork(TestCase):
             bs_comparison.save_edge_to_db(edge)
 
         # generate connected components
-        ccs = list(bs_network.get_connected_components(0.5, 1, mix_bin))
+        ccs = list(bs_network.get_connected_components(0.5, 1, mix_bin, 1))
 
         ref_status = {}
 
@@ -449,9 +449,9 @@ class TestNetwork(TestCase):
         for edge in edges:
             bs_comparison.save_edge_to_db(edge)
 
-        cc = next(bs_network.get_connected_components(0.5, 1, mix_bin))
+        cc = next(bs_network.get_connected_components(0.5, 1, mix_bin, 1))
 
-        cc_id = bs_network.get_connected_component_id(cc, 0.5, 1)
+        cc_id = bs_network.get_connected_component_id(cc, 0.5, 1, 1)
 
         expected_data = 1
 
@@ -500,7 +500,7 @@ class TestNetwork(TestCase):
             bs_comparison.save_edge_to_db(edge)
 
         # generate connected components
-        ccs = list(bs_network.get_connected_components(0.5, 1, mix_bin))
+        ccs = list(bs_network.get_connected_components(0.5, 1, mix_bin, 1))
 
         cc_table = bs_data.DB.metadata.tables["connected_component"]
 
@@ -513,7 +513,7 @@ class TestNetwork(TestCase):
                 cc, include_records
             )
             if is_ref_only:
-                bs_network.remove_connected_component(cc, 0.5, 1)
+                bs_network.remove_connected_component(cc, 0.5, 1, 1)
 
         select_statement = select(cc_table.c.id).distinct()
 

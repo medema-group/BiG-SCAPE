@@ -1523,7 +1523,7 @@ class TestComparison(TestCase):
         # now we make any last connected ref <-> connected ref pairs that are missing
         # get all the edges in the query connected component
         query_connected_component = bs_network.get_connected_components(
-            1, edge_param_id, query_bin
+            1, edge_param_id, query_bin, 1
         )
 
         # get_connected_components returns a list of connected components, we only want the first one
@@ -1580,6 +1580,7 @@ class TestComparison(TestCase):
             "cores": 1,
             "classify": bs_enums.CLASSIFY_MODE.CLASS,
             "skip_propagation": False,
+            "run_id": 1,
         }
 
         query_record, list_bgc_records = create_mock_query_dataset(run)
@@ -1592,7 +1593,7 @@ class TestComparison(TestCase):
         bs_query.calculate_distances_query(run, list_bgc_records, query_record)
 
         query_connected_component = bs_network.get_connected_components(
-            1, 1, query_to_ref_bin
+            1, 1, query_to_ref_bin, 1
         )
 
         query_connected_component = next(query_connected_component)
