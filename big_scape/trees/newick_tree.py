@@ -6,20 +6,22 @@ import logging
 import numpy as np
 from typing import TextIO
 from Bio import Phylo
+from Bio.Phylo.BaseTree import Tree
 from pathlib import Path
 from collections import defaultdict
 from scipy.optimize import linear_sum_assignment
+from sqlalchemy import update, bindparam
 
 # from other modules
 from big_scape.genbank import BGCRecord
 from big_scape.cli.config import BigscapeConfig
+from big_scape.data import DB
 
 
 def generate_newick_tree(
     records: list[BGCRecord],
     exemplar: int,
-    family_members: list[int],
-    family_name: str,
+    exemplar_db_id: int,
     output_path: Path,
 ) -> str:
     """Generate newick formatted tree for each GCF
@@ -27,13 +29,13 @@ def generate_newick_tree(
     Args:
         records (list[BGCRecord]): list of records within GCF
         exemplar (int): index of exemplar to use during alignment
-        family_members (list[int]): list of bgc ids in one family
-        family_name (str): name of current family
+        exemplar_db_id (int): db id of family exemplar
         output_path (Path): folder to store alignments and trees
 
     Returns:
         str: Correctly formatted newick tree
     """
+    family_name = f"FAM_{exemplar_db_id:0>5}"
 
     algn_filename = output_path / Path(family_name + "_alignment.fasta")
     tree_filename = output_path / Path(family_name + ".newick")
@@ -43,9 +45,9 @@ def generate_newick_tree(
 
     # no need for alignment
     if len(records) < 3:
-        tree = f"({','.join([str(bgc_id)+':0.0' for bgc_id in family_members])}):0.01;"
+        tree = f"({','.join([str(rec._db_id)+':0.0' for rec in records])}):0.01;"
     else:
-        algn = generate_gcf_alignment(records, exemplar, family_members)
+        algn = generate_gcf_alignment(records, exemplar)
         with open(algn_filename, "w") as out_algn:
             out_algn.write(algn)
         with open(tree_filename, "w") as out_newick:
@@ -90,7 +92,7 @@ def process_newick_tree(tree_file: Path) -> str:
         raise FileNotFoundError()
     with open(tree_file, "r") as newick_file:
         try:
-            tree = Phylo.read(newick_file, "newick")
+            tree: Tree = Phylo.read(newick_file, "newick")
         except ValueError as e:
             logging.warning("Error encountered while reading newick tree: ", str(e))
             return ""
@@ -100,8 +102,56 @@ def process_newick_tree(tree_file: Path) -> str:
             except UnboundLocalError:
                 # Noticed this could happen if the sequences are exactly
                 # the same and all distances == 0
-                logging.debug("Unable to root at midpoint")
+                logging.debug(f"{tree_file.stem}: Unable to root at midpoint")
             return tree.format("newick")
+
+
+def save_tree(tree: str, family_id: int, run_id: int) -> None:
+    """Save a newick tree to the database family table
+
+    Args:
+        tree (str): newick formatted tree
+        family_id (int): family exemplar database id  (center_id)
+        run_id (int): id of the current run
+    """
+    if DB.metadata is None:
+        raise RuntimeError("DB metadata is None!")
+
+    family_table = DB.metadata.tables["family"]
+    update_statement = (
+        update(family_table)
+        .where(family_table.c.center_id == family_id)
+        .where(family_table.c.run_id == run_id)
+        .values(newick=tree)
+        .compile()
+    )
+    DB.execute(update_statement, False)
+
+
+def save_trees(trees: list[str], family_ids: list[int], run_id: int) -> None:
+    """Save multiple newick trees to corresponding family to the database
+
+    Args:
+        trees (list[str]): newick trees
+        family_ids (list[int]): family exemplar database ids
+        run_id (int): id of the current run
+    """
+    if not DB.connection:
+        raise RuntimeError("DB Connection is None!")
+    if DB.metadata is None:
+        raise RuntimeError("DB metadata is None!")
+
+    family_table = DB.metadata.tables["family"]
+    update_statement = (
+        update(family_table)
+        .where(family_table.c.center_id == bindparam("center"))
+        .where(family_table.c.run_id == run_id)
+        .values(newick=bindparam("tree"))
+    )
+    DB.connection.execute(
+        update_statement,
+        [{"center": exempl, "tree": tree} for exempl, tree in zip(family_ids, trees)],
+    )
 
 
 def find_tree_domains(
@@ -134,15 +184,14 @@ def find_tree_domains(
     return tree_domains
 
 
-def generate_gcf_alignment(
-    records: list[BGCRecord], exemplar: int, family_members: list[int]
-) -> str:
+def generate_gcf_alignment(records: list[BGCRecord], exemplar: int) -> str:
     """Generate protein domain alignment for records in GCF
+
+    Names of each record correspond to their database id
 
     Args:
         records (list[BGCRecord]): Records within one GCF to align
         exemplar (int): Index of exemplar to use during alignment
-        family_members (list[int]): list of bgc ids in one family
 
     Returns:
         str: alignment of GCF based on protein domain
@@ -259,8 +308,8 @@ def generate_gcf_alignment(
     for bgc in delete_bgc:
         del alignments[bgc]
 
-    algn_string = f">{family_members[exemplar]}\n{alignments[exemplar]}\n"
+    algn_string = f">{records[exemplar]._db_id}\n{alignments[exemplar]}\n"
     for bgc in alignments:
         if bgc != exemplar:
-            algn_string += f">{family_members[bgc]}\n{alignments[bgc]}\n"
+            algn_string += f">{records[bgc]._db_id}\n{alignments[bgc]}\n"
     return algn_string

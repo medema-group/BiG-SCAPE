@@ -216,10 +216,6 @@ def run_bigscape(run: dict) -> None:
     # FAMILY GENERATION
     logging.info("Generating families")
 
-    bs_families.reset_db_family_tables()
-
-    bs_network.reset_db_connected_components_table()
-
     # mix
 
     if not run["no_mix"] and not run["query_bgc_path"]:
@@ -250,10 +246,6 @@ def run_bigscape(run: dict) -> None:
     bs_data.DB.save_to_disk(run["db_path"])
 
     # OUTPUT GENERATION
-
-    exec_time = datetime.now() - start_time
-    run["duration"] = exec_time
-    run["end_time"] = datetime.now()
 
     # if this wasn't set in scan or align, set it now
     if pfam_info is None:
