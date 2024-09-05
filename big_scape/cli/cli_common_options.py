@@ -303,6 +303,13 @@ def common_cluster_query(fn):
                 "use global mode on that pair (default: glocal)."
             ),
         ),
+        click.option(
+            "--extend_strategy",
+            type=click.Choice(["legacy", "greedy"]),
+            default="legacy",
+            help="Strategy to extend BGCs. 'legacy' will use the original BiG-SCAPE extension strategy, "
+            "while 'greedy' will use a new greedy extension strategy. (default: legacy).",
+        ),
         # networking parameters
         click.option(
             "--gcf_cutoffs",

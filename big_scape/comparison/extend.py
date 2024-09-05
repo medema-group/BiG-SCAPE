@@ -517,3 +517,78 @@ def score_extend_rev(
                 target_domain_exp = target_domain_start - domain_idx + 1
 
     return query_exp, query_domain_exp, target_exp, target_domain_exp, max_score
+
+
+def extend_greedy(pair: RecordPair) -> None:
+    """Expands a comparable region in a greedy fashion
+
+    This will expand the included set of cds in a pair as much as it can,
+    based on the common domains found in the pair
+
+    E.g. if we have the following two records:
+
+    A: XAXXBXXXXCX
+    B: XXXXXXXAXXXXXBCXXXXXXXXX
+
+    The comparable region should be expanded to the following:
+
+    A: XAXXBXXXXCX
+        [-------]
+    B: XXXXXXXAXXXXXBCXXXXXXXXX
+              [------]
+    """
+    logging.debug("before greedy extend:")
+    logging.debug(pair.comparable_region)
+
+    a_cds = list(pair.record_a.get_cds())
+    b_cds = list(pair.record_b.get_cds())
+    a_domains = list(pair.record_a.get_hsps())
+    b_domains = list(pair.record_b.get_hsps())
+
+    # index of domain to cds position
+    a_index = get_target_indexes(a_domains)
+    b_index = get_target_indexes(b_domains)
+
+    common_domains = set(a_index.keys()).intersection(set(b_index.keys()))
+
+    a_cds_min = len(a_cds)
+    a_cds_max = 0
+    b_cds_min = len(b_cds)
+    b_cds_max = 0
+
+    a_domain_min = len(a_domains)
+    a_domain_max = 0
+    b_domain_min = len(b_domains)
+    b_domain_max = 0
+
+    for domain in common_domains:
+        for a_domain_index in a_index[domain]:
+            a_cds_idx = a_domain_index[0]
+            a_domain_idx = a_domain_index[1]
+
+            a_cds_min = min(a_cds_min, a_cds_idx)
+            a_cds_max = max(a_cds_max, a_cds_idx)
+            a_domain_min = min(a_domain_min, a_domain_idx)
+            a_domain_max = max(a_domain_max, a_domain_idx)
+
+        for b_domain_index in b_index[domain]:
+            b_cds_idx = b_domain_index[0]
+            b_domain_idx = b_domain_index[1]
+
+            b_cds_min = min(b_cds_min, b_cds_idx)
+            b_cds_max = max(b_cds_max, b_cds_idx)
+            b_domain_min = min(b_domain_min, b_domain_idx)
+            b_domain_max = max(b_domain_max, b_domain_idx)
+
+    pair.comparable_region.a_start = a_cds_min
+    pair.comparable_region.a_stop = a_cds_max + 1
+    pair.comparable_region.b_start = b_cds_min
+    pair.comparable_region.b_stop = b_cds_max + 1
+
+    pair.comparable_region.domain_a_start = a_domain_min
+    pair.comparable_region.domain_a_stop = a_domain_max + 1
+    pair.comparable_region.domain_b_start = b_domain_min
+    pair.comparable_region.domain_b_stop = b_domain_max + 1
+
+    logging.debug("after greedy extend:")
+    logging.debug(pair.comparable_region)

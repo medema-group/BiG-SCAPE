@@ -17,9 +17,11 @@ from threading import Event, Condition
 from typing import Generator, Callable, Optional, TypeVar, Union
 from math import ceil
 from pathlib import Path
+
 from .record_pair import RecordPair
 
 # from dependencies
+import click
 from sqlalchemy import select
 
 # from other modules
@@ -43,7 +45,14 @@ from big_scape.hmm import HSP, HSPAlignment
 # from this module
 from .binning import RecordPairGenerator
 from .binning import LEGACY_WEIGHTS
-from .extend import extend, reset, len_check, biosynthetic_check, expand_glocal
+from .extend import (
+    extend,
+    extend_greedy,
+    reset,
+    len_check,
+    biosynthetic_check,
+    expand_glocal,
+)
 from .lcs import find_domain_lcs_region, find_domain_lcs_protocluster
 
 T = TypeVar("T")
@@ -295,13 +304,23 @@ def expand_pair(pair: RecordPair, alignment_mode: bs_enums.ALIGNMENT_MODE) -> bo
     Returns:
         bool: True if the pair was extended, False if it does not
     """
-    extend(
-        pair,
-        BigscapeConfig.EXPAND_MATCH_SCORE,
-        BigscapeConfig.EXPAND_MISMATCH_SCORE,
-        BigscapeConfig.EXPAND_GAP_SCORE,
-        BigscapeConfig.EXPAND_MAX_MATCH_PERC,
-    )
+    # TODO: true arg means silent if there is no context. this is done so that unit
+    # tests don't complain. remove this and mock the context in unit tests instead
+    click_context = click.get_current_context(silent=True)
+
+    if not click_context:
+        raise RuntimeError("No click context found")
+
+    if click_context.obj["extend_strategy"] == "legacy":
+        extend(
+            pair,
+            BigscapeConfig.EXPAND_MATCH_SCORE,
+            BigscapeConfig.EXPAND_MISMATCH_SCORE,
+            BigscapeConfig.EXPAND_GAP_SCORE,
+            BigscapeConfig.EXPAND_MAX_MATCH_PERC,
+        )
+    if click_context.obj["extend_strategy"] == "greedy":
+        extend_greedy(pair)
 
     # after local expansion, additionally expand shortest arms in glocal/auto
     if alignment_mode != bs_enums.ALIGNMENT_MODE.LOCAL:
