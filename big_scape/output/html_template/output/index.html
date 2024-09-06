@@ -45,7 +45,7 @@
                     </li>
                 </ul>
                 Select bin:
-                <select id="network_selection">
+                <select id="network-selection">
                 </select>
             </span>
             <span id="cluster-type" style="float: right; padding-top: 0.2em; padding-left: 1em;">
@@ -241,11 +241,14 @@
                     <button id="search-btn">Search</button>
                     <button id="clear-filters">Clear Filters</button>
                     <br>
-                    <button id="load-selection">Load Current Selection</button>
+                    <button id="load-selection">Show Current Selection</button>
+                    <br>
+                    <button id="download-selection">Download Current Selection</button>
+                    <br>
                 </div>
             </div>
             <div style="margin:1em">
-                <button id="load-all">Load Full Network</button>
+                <button id="load-all">Show Full Network</button>
             </div>
             <div id="cc-table-container" class="w3-container" style="float:left; width:25%">
             </div>
@@ -433,7 +436,7 @@
 
         var run_id = run_data["id"]
         var cutoff = run_data["cutoff"]
-        var bin_label = $("#network_selection option:selected").text()
+        var bin_label = $("#network-selection option:selected").text()
         var cc_query = `SELECT cc.id, family.id, family.center_id, bgc_record_family.record_id, gbk.path FROM family
             INNER JOIN bgc_record_family ON family.id== bgc_record_family.family_id
             INNER JOIN bgc_record ON bgc_record.id==bgc_record_family.record_id
@@ -500,13 +503,17 @@
             var selected_ccs = $("#cc-table td:first-child").map((i, el) => parseInt($(el).text())).toArray()
             loadFullNetwork(sorted_bs_ccs, run_data, selected_ccs)
         })
+        $("#download-selection").off().on("click", function () {
+            var selected_ccs = $("#cc-table td:first-child").map((i, el) => parseInt($(el).text())).toArray()
+            downloadCcTable(sorted_bs_ccs, run_data, selected_ccs)
+        })
     }
 
     function filterCcTable(run_data) {
         [run_id, cutoff] = $("#bigscape-runs").val().split(",")
         run_params = run_data[run_id]
         run_params["cutoff"] = cutoff
-        var bin_label = $("#network_selection option:selected").text()
+        var bin_label = $("#network-selection option:selected").text()
 
         var org_filter = $("#organism-filter").val().toString().trim()
         var pf_filter = $("#domain-filter").val().toString().trim()
@@ -569,6 +576,37 @@
         var bs = new Bigscape(run_data, bs_cc_data, bs_family, bs_alignment, bs_similarity, "network-container", { "render_time": 1 })
     }
 
+    function downloadCcTable(bs_ccs, run_data, include_ccs) {
+        var selected_ccs = bs_ccs.filter(bs_cc => (include_ccs.indexOf(bs_cc["id"]) != -1))
+        var records = selected_ccs.flatMap(cc => cc.families).flatMap(fam => fam.members)
+        var bs_data = window.db.exec(`SELECT bgc_record.id, gbk.path, bgc_record.record_type,
+        bgc_record.record_number, bgc_record.product, bgc_record.category, gbk.organism,
+        gbk.taxonomy, gbk.description FROM bgc_record
+        INNER JOIN gbk ON bgc_record.gbk_id==gbk.id
+        WHERE bgc_record.id IN (${records})`)[0].values
+        var row_index = {}
+        for (row of bs_data) {
+            var rec_id = row.shift()
+            row[0] = row[0].split('/').reverse()[0]
+            row_index[rec_id] = row
+        }
+        var tsv_text = `# Collection of selected connected components
+# Run info: ${run_data["label"]} ${run_data["cutoff"]} ${$("#network-selection option:selected").text()}
+# Organism filter: ${$("#organism-filter").val()}
+# BGC filter: ${$("#bgc-filter").val()}
+# Pfam filter: ${$("#domain-filter").val()}
+# Family filter: ${$("#family-filter").val()}\n
+CC\tFamily\tGBK\tRecord_Type\tRecord_Number\tClass\tCategory\tOrganism\tTaxonomy\tDescription\n`
+        for (cc of selected_ccs) {
+            for (fam of cc["families"]) {
+                for (record of fam["members"]) {
+                    tsv_text += `${cc["id"]}\t${fam["id"]}\t${row_index[record].join("\t")}\n`
+                }
+            }
+        }
+        sendDownload(tsv_text, `${run_data["label"]}_filtered.tsv`)
+    }
+
     function generate_bs_data_domains(cds_ids) {
         let dom_query = `SELECT hsp.cds_id, hsp.accession, hsp.env_start, hsp.env_stop, hsp.bit_score FROM hsp
         WHERE hsp.cds_id IN (${cds_ids})`
@@ -600,7 +638,7 @@
         return cds_data
     }
     function generate_bs_data(record_ids) {
-        let records_query = `SELECT gbk.id, gbk.organism, length(gbk.nt_seq), gbk.hash, gbk.path,
+        var records_query = `SELECT gbk.id, gbk.organism, length(gbk.nt_seq), gbk.hash, gbk.path,
                         bgc_record.record_type, bgc_record.nt_start, bgc_record.nt_stop,
                         bgc_record.record_number, bgc_record.id FROM bgc_record
                         INNER JOIN gbk ON bgc_record.gbk_id==gbk.id
@@ -867,20 +905,20 @@
             }
             run_data["networks"][bin_lab_to_idx[bin]]["families"][fam_lab_to_idx[bin][fam]]["members"].push(acc_label_to_id[org])
         }
-        $("#network_selection").html("");
+        $("#network-selection").html("");
         for (var i in run_data["networks"]) {
-            $("#network_selection").append($("<option value=" + i + ">" + run_data["networks"][i]["label"] + "</option>"))
+            $("#network-selection").append($("<option value=" + i + ">" + run_data["networks"][i]["label"] + "</option>"))
         }
-        $("#network_selection").off().on("change", function () {
+        $("#network-selection").off().on("change", function () {
             viewNetwork(parseInt(this.value), run_data);
             populateCcTable(run_data)
         });
-        $("#network_selection").trigger("change")
+        $("#network-selection").trigger("change")
     }
 
     function viewNetwork(idx, run_data) {
-        $("#network_selection .tablink").removeClass("w3-border-red");
-        $("#network_selection .tablink").eq(idx).addClass("w3-border-red");
+        $("#network-selection .tablink").removeClass("w3-border-red");
+        $("#network-selection .tablink").eq(idx).addClass("w3-border-red");
         var maxBGC = 0;
         var sumBGC = 0;
         var mibigFamily = 0;
@@ -1427,10 +1465,14 @@
     }
 
     function downloadAbPresTsv() {
+        sendDownload(document.getElementById("abpres_tsv_text"), "absence_presence.tsv")
+    }
+
+    function sendDownload(content, filename) {
         // create download link and open it
         var element = document.createElement('a');
-        element.setAttribute('href', 'data:text/plain;charset=utf-8,' + encodeURIComponent(document.getElementById("abpres_tsv_text").value));
-        element.setAttribute('download', "absence_presence.tsv");
+        element.setAttribute('href', 'data:text/plain;charset=utf-8,' + encodeURIComponent(content));
+        element.setAttribute('download', filename);
         element.style.display = 'none';
         document.body.appendChild(element);
         element.click();
