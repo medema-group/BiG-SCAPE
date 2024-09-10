@@ -562,7 +562,7 @@
         var bs_records = bs_families.flatMap(fam => fam.members)
         var bs_data = generate_bs_data(bs_records)
         var bs_alignments = generate_bs_alignments(bs_families, bs_data)
-        var bs_similarities = generate_bs_similarity(bs_records, run_data["cutoff"])
+        var bs_similarities = generate_bs_similarity(bs_records, run_data)
         var bs = new Bigscape(run_data, bs_data, bs_families, bs_alignments, bs_similarities, "network-container", { "render_time": 5 })
     }
 
@@ -572,7 +572,7 @@
         var bs_records = bs_family.flatMap(fam => fam.members)
         var bs_cc_data = generate_bs_data(bs_records)
         var bs_alignment = generate_bs_alignments(bs_family, bs_cc_data)
-        var bs_similarity = generate_bs_similarity(bs_records, run_data["cutoff"])
+        var bs_similarity = generate_bs_similarity(bs_records, run_data)
         var bs = new Bigscape(run_data, bs_cc_data, bs_family, bs_alignment, bs_similarity, "network-container", { "render_time": 1 })
     }
 
@@ -681,13 +681,24 @@ CC\tFamily\tGBK\tRecord_Type\tRecord_Number\tClass\tCategory\tOrganism\tTaxonomy
         return bs_data
     }
 
-    function generate_bs_similarity(record_ids, cutoff) {
+    function generate_bs_similarity(record_ids, run_data) {
         if (record_ids.length < 2) {
             return []
         }
+
+        var cutoff = run_data["cutoff"]
+        var alignment_mode = run_data["alignment_mode"].toUpperCase()
+        if (run_data["weights"] == "Mix") {
+            var weight = "mix"
+        } else {
+            var weight = $("#network-selection option:selected").text()
+        }
+
         var distances = window.db.exec(`SELECT distance.record_a_id, distance.record_b_id, distance.distance FROM distance
+                            INNER JOIN edge_params ON edge_params.id==distance.edge_param_id
                             WHERE distance.distance<${cutoff} AND distance.record_a_id IN (${record_ids})
-                            AND distance.record_b_id IN (${record_ids})`)[0].values
+                            AND distance.record_b_id IN (${record_ids}) AND edge_params.weights=="${weight}"
+                            AND edge_params.alignment_mode=="${alignment_mode}"`)[0].values
         var bs_sim = {}
         for (row of distances) {
             var [a, b, d] = row
