@@ -305,10 +305,15 @@ def common_cluster_query(fn):
         ),
         click.option(
             "--extend_strategy",
-            type=click.Choice(["legacy", "greedy"]),
+            type=click.Choice(["legacy", "greedy", "simple_match"]),
             default="legacy",
-            help="Strategy to extend BGCs. 'legacy' will use the original BiG-SCAPE extension strategy, "
-            "while 'greedy' will use a new greedy extension strategy. (default: legacy).",
+            help="Strategy to extend BGCs. (default: legacy)\n"
+            "    legacy: will use the original BiG-SCAPE extension strategy\n"
+            "    greedy: will use an approach where the broadest comparable region is selected "
+            "that contains matching domains between the two regions in a pair. "
+            "See the documentation for more details\n"
+            "    simple_match: Will use an extension approach with only matches and gaps, ignoring "
+            "the type of domain, occurence or position of the domain. See the documentation for more details.",
         ),
         # networking parameters
         click.option(
