@@ -592,3 +592,107 @@ def extend_greedy(pair: RecordPair) -> None:
 
     logging.debug("after greedy extend:")
     logging.debug(pair.comparable_region)
+
+
+def extend_simple_match(pair: RecordPair, match, gap):
+    """Performs extension by first creating a simple match matrix, then
+    performing a match/gap extentsion similar to legaxy expansion
+
+    This method expects LCS to have been performed on the pair, and will
+    do all four directions at once
+
+    Args:
+        pair: The record pair to extend
+        match: The score for a match
+        gap: The score for a gap
+    """
+
+    # I *think* the simplest way to do this is to create a list of domains with their source cds. for reasons.
+    a_domains = []
+    b_domains = []
+
+    # so we'll do a loop through cds and through domains to keep track of everything
+    for cds_idx, cds in enumerate(pair.record_a.get_cds()):
+        for domain in cds.hsps:
+            a_domains.append((domain, cds_idx))
+
+    for cds_idx, cds in enumerate(pair.record_b.get_cds()):
+        for domain in cds.hsps:
+            b_domains.append((domain, cds_idx))
+
+    # get the common domains
+    common_domains = set([a[0] for a in a_domains]).intersection(
+        set([b[0] for b in b_domains])
+    )
+
+    # TODO: this is obviously repetitive, but beyond extracting a function I'm
+    # not sure how to make it better
+    # for now I'd prefer this to be obvious and clear over looking good
+
+    # a forward
+    score = 0
+    max_score = 0
+    for i in range(pair.comparable_region.lcs_a_stop + 1, len(a_domains)):
+        domain = a_domains[i][0]
+
+        if domain not in common_domains:
+            score += gap
+        else:
+            score += match
+
+        if score > max_score:
+            cds_idx = a_domains[i][1]
+            max_score = score
+            pair.comparable_region.a_stop = cds_idx
+            pair.comparable_region.domain_a_stop = i
+
+    # a reverse
+    score = 0
+    max_score = 0
+    for i in range(pair.comparable_region.lcs_a_start - 1, -1, -1):
+        domain = a_domains[i][0]
+
+        if domain not in common_domains:
+            score += gap
+        else:
+            score += match
+
+        if score > max_score:
+            cds_idx = a_domains[i][1]
+            max_score = score
+            pair.comparable_region.a_start = cds_idx
+            pair.comparable_region.domain_a_start = i
+
+    # b forward
+    score = 0
+    max_score = 0
+    for i in range(pair.comparable_region.lcs_b_stop + 1, len(b_domains)):
+        domain = b_domains[i][0]
+
+        if domain not in common_domains:
+            score += gap
+        else:
+            score += match
+
+        if score > max_score:
+            cds_idx = b_domains[i][1]
+            max_score = score
+            pair.comparable_region.b_stop = cds_idx
+            pair.comparable_region.domain_b_stop = i
+
+    # b reverse
+    score = 0
+    max_score = 0
+    for i in range(pair.comparable_region.lcs_b_start - 1, -1, -1):
+        domain = b_domains[i][0]
+
+        if domain not in common_domains:
+            score += gap
+        else:
+            score += match
+
+        if score > max_score:
+            cds_idx = b_domains[i][1]
+            max_score = score
+            pair.comparable_region.b_start = cds_idx
+            pair.comparable_region.domain_b_start = i

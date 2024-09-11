@@ -882,3 +882,54 @@ class TestExpandGlocal(unittest.TestCase):
         ]
 
         self.assertTrue(all(conditions))
+
+    def test_match_extend(self):
+        """Tests the new match extend implementation
+
+        This implmentation will be more lenient for domain matches which are
+        present on the other side of the lcs. Altogether this should be a more relaxed
+        approach to extension and will result in larger comparable regions
+
+        The following example:
+
+        A: XXXXXCXXABXXXX
+        B:     XXXXABCXXX
+        LCS:       ^^
+
+        Would fail to extend to C in the legacy extend implementation, but should extend
+        in the new implementation given a match score of 5 and mismatch of -2
+        """
+
+        a_cds, b_cds = generate_mock_cds_lists(14, 10, [6, 9, 10], [5, 6, 7], False)
+        record_a = generate_mock_region(a_cds)
+        record_b = generate_mock_region(b_cds)
+        pair = big_scape.comparison.record_pair.RecordPair(record_a, record_b)
+
+        # emulate LCS
+        pair.comparable_region = bs_comp.ComparableRegion(
+            9, 10, 6, 7, 9, 10, 6, 7, False
+        )
+
+        bs_comp.extend.extend_simple_match(pair, 5, -2)
+
+        expected_comparable_region = bs_comp.ComparableRegion(
+            6, 10, 5, 7, 6, 10, 5, 7, False
+        )
+
+        self.assertEqual(pair.comparable_region, expected_comparable_region)
+        self.assertEqual(
+            pair.comparable_region.domain_a_start,
+            expected_comparable_region.domain_a_start,
+        )
+        self.assertEqual(
+            pair.comparable_region.domain_b_start,
+            expected_comparable_region.domain_b_start,
+        )
+        self.assertEqual(
+            pair.comparable_region.domain_a_stop,
+            expected_comparable_region.domain_a_stop,
+        )
+        self.assertEqual(
+            pair.comparable_region.domain_b_stop,
+            expected_comparable_region.domain_b_stop,
+        )
