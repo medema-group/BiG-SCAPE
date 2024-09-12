@@ -221,7 +221,8 @@
             <div style="margin:1em">
                 <a id="toggle-filters"><u>Filter Table</u></a>
                 <div id="cc-table-filters" class="hidden">
-                    <span>Filter the connected components table. All filters allow for comma separated input.</span>
+                    <span>Filter the connected components table. All filters allow for comma separated input that will
+                        be handled as logical OR operators.</span>
                     <div>
                         <input id="organism-filter" placeholder="Search Organisms">
                         <span>Fuzzy search organism names, e.g. "Streptomyces"</span>
@@ -241,14 +242,12 @@
                     <button id="search-btn">Search</button>
                     <button id="clear-filters">Clear Filters</button>
                     <br>
-                    <button id="load-selection">Show Current Selection</button>
-                    <br>
                     <button id="download-selection">Download Current Selection</button>
                     <br>
                 </div>
             </div>
             <div style="margin:1em">
-                <button id="load-all">Show Full Network</button>
+                <button id="load-all" title="Render all CCs currently shown in the table">Visualize All</button>
             </div>
             <div id="cc-table-container" class="w3-container" style="float:left; width:25%">
             </div>
@@ -310,7 +309,6 @@
 <!-- Overview libs -->
 <script src="./html_content/js/kinetic-v5.1.0.min.js"></script>
 <script src="./html_content/js/chart-4.4.1.umd.js"></script>
-<script src="./html_content/js/biojs-io-newick.min.js"></script> <!-- TODO: check if used-->
 <script src="./html_content/js/clusterfck-0.1-satria.js"></script>
 <script src="./html_content/js/inchlib-1.2.0.1-satria.js"></script>
 <!-- Network libs -->
@@ -563,7 +561,7 @@
         var bs_data = generate_bs_data(bs_records)
         var bs_alignments = generate_bs_alignments(bs_families, bs_data)
         var bs_similarities = generate_bs_similarity(bs_records, run_data)
-        var bs = new Bigscape(run_data, bs_data, bs_families, bs_alignments, bs_similarities, "network-container", { "render_time": 5 })
+        var bs = new Bigscape(run_data, bs_data, bs_families, bs_alignments, bs_similarities, "network-container")
     }
 
     function loadConnectedComponent(bs_cc, run_data) {
@@ -959,7 +957,7 @@ CC\tFamily\tGBK\tRecord_Type\tRecord_Number\tClass\tCategory\tOrganism\tTaxonomy
         $("#abpres_heatmap-col_clustering").change(function (handler) { renderHeatmap(idx, run_data); });
         $("#abpres_heatmap-col_clustering").html("")
             .append("<option value='abpres' selected>Genomes Absence/Presence</option>")
-            .append("<option value='gcf'>BiG-SCAPE Distance Matrix</option>");
+        //.append("<option value='gcf'>BiG-SCAPE Distance Matrix</option>"); Not currently used
         $("#abpres_heatmap-col_showtop").change(function (handler) { renderHeatmap(idx, run_data); });
         renderHeatmap(idx, run_data);
     }
