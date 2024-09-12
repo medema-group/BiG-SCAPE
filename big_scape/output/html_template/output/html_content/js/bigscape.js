@@ -921,12 +921,21 @@ BigscapeFunc.updateDescription = function (ids, bs_svg, bs_data, bs_to_cl, bs_fa
           handler.data.bigscape.updateDescription();
           handler.stopPropagation();
         });
+        var downloadSel = $("<a style='padding-right:5px' href='##'>download</a>").click({ bigscape: bigscape, bs_data: bs_data }, function (handler) {
+          var highlightedNodes = handler.data.bigscape.getHighlightedNodes()
+          if (highlightedNodes.length > 0) {
+            var bs_sel_data = Object.fromEntries(Object.entries(handler.data.bs_data).filter(([k, v]) => highlightedNodes.indexOf(parseInt(k)) > -1))
+            BigscapeFunc.downloadSelection(bs_sel_data)
+          } else {
+            alert("No nodes are selected to download!")
+          }
+        })
         var textSel = $("<span>").text(
           "Selected: " + ids.length + " BGC" + (ids.length > 1 ? "s" : "")
           + ", " + sel_fam.length + " Famil" + (sel_fam.length > 1 ? "ies" : "y")
           + " "
         );
-        nav_ui.find(".selection-text").append(textSel).append(clearSel);
+        nav_ui.find(".selection-text").append(textSel).append(downloadSel).append(clearSel);
       } else {
         nav_ui.find("span").text(
           "Selected: " + ids.length + " BGC" + (ids.length > 1 ? "s" : "")
@@ -1437,4 +1446,30 @@ BigscapeFunc.showHideDomains = function (cont_ui, isOn) {
   } else {
     cont_ui.find(".arrower-domain").css("display", "none");
   }
+}
+
+BigscapeFunc.downloadSelection = function (data) {
+  var tsv_text = `# Collection of selected nodes
+# Run info: ${$("#bigscape-runs option:selected").text()} ${$("#network-selection option:selected").text()}
+# Used search query: ${$("#search-input").val()}\n
+Family\tGBK\tRecord_Type\tRecord_Number\tDescription\n`
+  for (i in data) {
+    var node = data[i]
+    console.log(node)
+    var id_parts = node["id"].split("_")
+    var [gbk, rec_type, rec_num] = [id_parts.slice(0, -2).join("_")].concat(id_parts.slice(-2))
+    tsv_text += `${node["family"]}\t${gbk}\t${rec_type}\t${rec_num}\t${node["desc"]}\n`
+  }
+  BigscapeFunc.sendDownload(tsv_text, `${$("#bigscape-runs option:selected").text()}_selection.tsv`)
+}
+
+BigscapeFunc.sendDownload = function (content, filename) {
+  // create download link and open it
+  var element = document.createElement('a');
+  element.setAttribute('href', 'data:text/plain;charset=utf-8,' + encodeURIComponent(content));
+  element.setAttribute('download', filename);
+  element.style.display = 'none';
+  document.body.appendChild(element);
+  element.click();
+  document.body.removeChild(element);
 }
