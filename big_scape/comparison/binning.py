@@ -315,11 +315,11 @@ class MissingRecordPairGenerator(RecordPairGenerator):
     already in the database
     """
 
-    def __init__(self, pair_generator):
+    def __init__(self, pair_generator: RecordPairGenerator):
         super().__init__(
             pair_generator.label, pair_generator.edge_param_id, pair_generator.weights
         )
-        self.bin: RecordPairGenerator = pair_generator
+        self.bin = pair_generator
 
     def num_pairs(self) -> int:
         if not DB.metadata:
@@ -470,13 +470,16 @@ class QueryRecordPairGenerator(RecordPairGenerator):
 
         return None
 
-    def cycle_records(self) -> None:
-        """
+    def cycle_records(self, max_cutoff: float) -> None:
+        """Cycle working records
+
         Resets the working sets of records for this bin, so that the working query
         records of the previous cycle now move to the done records, and for the pairs
-        that have been just generated, those nodes in pairs that pass the <1 distance
-        threshold and arent in the done records are moved to the working query records
+        that have been just generated, those nodes in pairs that pass the max_cutoff distance
+        threshold and arent in the done records are moved to the working query records,
         working ref records are also updated
+
+        max_cutoff (float): highest cutoff used in the run
         """
 
         if not DB.metadata:
@@ -500,13 +503,13 @@ class QueryRecordPairGenerator(RecordPairGenerator):
                     distance_table.c.record_a_id.in_(working_query_ids),
                     distance_table.c.record_b_id.in_(working_ref_ids),
                     distance_table.c.edge_param_id == self.edge_param_id,
-                    distance_table.c.distance < 1.0,
+                    distance_table.c.distance < max_cutoff,
                 ),
                 and_(
                     distance_table.c.record_a_id.in_(working_ref_ids),
                     distance_table.c.record_b_id.in_(working_query_ids),
                     distance_table.c.edge_param_id == self.edge_param_id,
-                    distance_table.c.distance < 1.0,
+                    distance_table.c.distance < max_cutoff,
                 ),
             )
         )
@@ -546,11 +549,11 @@ class QueryMissingRecordPairGenerator(RecordPairGenerator):
     """Generator that wraps around another RecordPairGenerator to exclude any distances
     already in the database"""
 
-    def __init__(self, pair_generator):
+    def __init__(self, pair_generator: QueryRecordPairGenerator):
         super().__init__(
             pair_generator.label, pair_generator.edge_param_id, pair_generator.weights
         )
-        self.bin: QueryRecordPairGenerator = pair_generator
+        self.bin = pair_generator
 
     def generate_pairs(
         self, legacy_sorting=False
@@ -623,8 +626,8 @@ class QueryMissingRecordPairGenerator(RecordPairGenerator):
 
         return self.bin.num_pairs() - existing_distance_count
 
-    def cycle_records(self):
-        self.bin.cycle_records()
+    def cycle_records(self, max_cutoff):
+        self.bin.cycle_records(max_cutoff)
 
 
 def generate_mix_bin(record_list: list[BGCRecord], run: dict) -> RecordPairGenerator:

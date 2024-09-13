@@ -611,7 +611,7 @@ def remove_connected_component(
     cc_table = DB.metadata.tables["connected_component"]
 
     delete_statement = delete(cc_table).where(
-        cc_table.c.id == cc_id,
+        cc_table.c.id == cc_id, cc_table.c.cutoff == cutoff, cc_table.c.run_id == run_id
     )
 
     DB.execute(delete_statement)
