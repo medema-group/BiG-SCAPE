@@ -15,7 +15,6 @@ from big_scape.comparison import (
     RecordPairGenerator,
     ConnectedComponentPairGenerator,
     QueryRecordPairGenerator,
-    QueryMissingRecordPairGenerator,
     save_edge_to_db,
     get_record_category,
     get_legacy_weights_from_category,
@@ -325,6 +324,7 @@ class TestBGCBin(TestCase):
 
         run = {
             "alignment_mode": bs_enums.ALIGNMENT_MODE.AUTO,
+            "extend_strategy": bs_enums.EXTEND_STRATEGY.LEGACY,
             "legacy_weights": True,
             "classify": bs_enums.CLASSIFY_MODE.CATEGORY,
         }
@@ -657,6 +657,7 @@ class TestMixComparison(TestCase):
         run = {
             "record_type": bs_enums.RECORD_TYPE.REGION,
             "alignment_mode": bs_enums.ALIGNMENT_MODE.AUTO,
+            "extend_strategy": bs_enums.EXTEND_STRATEGY.LEGACY,
         }
 
         new_bin = generate_mix_bin(bgc_list, run)
@@ -903,6 +904,7 @@ class TestBinGenerators(TestCase):
 
         run_category_weights = {
             "alignment_mode": bs_enums.ALIGNMENT_MODE.AUTO,
+            "extend_strategy": bs_enums.EXTEND_STRATEGY.LEGACY,
             "legacy_weights": True,
             "classify": bs_enums.CLASSIFY_MODE.CATEGORY,
             "hybrids_off": False,
@@ -921,6 +923,7 @@ class TestBinGenerators(TestCase):
         bs_data.DB.create_in_mem()
         run = {
             "alignment_mode": bs_enums.ALIGNMENT_MODE.AUTO,
+            "extend_strategy": bs_enums.EXTEND_STRATEGY.LEGACY,
             "legacy_weights": True,
             "classify": bs_enums.CLASSIFY_MODE.CATEGORY,
         }
@@ -937,6 +940,7 @@ class TestBinGenerators(TestCase):
         bs_data.DB.create_in_mem()
         run = {
             "alignment_mode": bs_enums.ALIGNMENT_MODE.AUTO,
+            "extend_strategy": bs_enums.EXTEND_STRATEGY.LEGACY,
             "legacy_weights": True,
             "classify": bs_enums.CLASSIFY_MODE.CATEGORY,
         }
@@ -955,6 +959,7 @@ class TestBinGenerators(TestCase):
         bs_data.DB.create_in_mem()
         run = {
             "alignment_mode": bs_enums.ALIGNMENT_MODE.AUTO,
+            "extend_strategy": bs_enums.EXTEND_STRATEGY.LEGACY,
             "legacy_weights": True,
             "classify": bs_enums.CLASSIFY_MODE.CATEGORY,
         }

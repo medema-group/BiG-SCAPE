@@ -369,6 +369,7 @@ class TestNetwork(TestCase):
         run = {
             "record_type": bs_enums.RECORD_TYPE.REGION,
             "alignment_mode": bs_enums.ALIGNMENT_MODE.AUTO,
+            "extend_strategy": bs_enums.EXTEND_STRATEGY.LEGACY,
         }
 
         # create a bunch of gbk files
@@ -429,6 +430,7 @@ class TestNetwork(TestCase):
         run = {
             "record_type": bs_enums.RECORD_TYPE.REGION,
             "alignment_mode": bs_enums.ALIGNMENT_MODE.AUTO,
+            "extend_strategy": bs_enums.EXTEND_STRATEGY.LEGACY,
         }
         # create a bunch of gbk files
         gbks = []
@@ -463,6 +465,7 @@ class TestNetwork(TestCase):
         run = {
             "record_type": bs_enums.RECORD_TYPE.REGION,
             "alignment_mode": bs_enums.ALIGNMENT_MODE.AUTO,
+            "extend_strategy": bs_enums.EXTEND_STRATEGY.LEGACY,
         }
 
         # create a bunch of gbk files

@@ -356,19 +356,24 @@ class TestComparison(TestCase):
 
         run_1 = {
             "alignment_mode": bs_enums.ALIGNMENT_MODE.AUTO,
+            "extend_strategy": bs_enums.EXTEND_STRATEGY.LEGACY,
             "legacy_weights": True,
             "classify": bs_enums.CLASSIFY_MODE.CATEGORY,
         }
         weights_1 = "mix"
-
         alignment_mode = run_1["alignment_mode"]
+        extend_strat = run_1["extend_strategy"]
 
-        edge_param_id = bs_comparison.edge_params_query(alignment_mode, weights_1)
+        edge_param_id = bs_comparison.edge_params_query(
+            alignment_mode, weights_1, extend_strat
+        )
 
         # the db is empty so we dont find an entry
         self.assertEqual(edge_param_id, None)
 
-        edge_param_id = bs_comparison.edge_params_insert(alignment_mode, weights_1)
+        edge_param_id = bs_comparison.edge_params_insert(
+            alignment_mode, weights_1, extend_strat
+        )
 
         edge_param_id = edge_param_id[0]
 
@@ -377,6 +382,7 @@ class TestComparison(TestCase):
 
         run_2 = {
             "alignment_mode": bs_enums.ALIGNMENT_MODE.GLOBAL,
+            "extend_strategy": bs_enums.EXTEND_STRATEGY.GREEDY,
             "legacy_weights": True,
             "classify": bs_enums.CLASSIFY_MODE.CATEGORY,
         }
@@ -397,6 +403,7 @@ class TestComparison(TestCase):
 
         run = {
             "alignment_mode": bs_enums.ALIGNMENT_MODE.AUTO,
+            "extend_strategy": bs_enums.EXTEND_STRATEGY.LEGACY,
             "legacy_weights": True,
             "record_type": bs_enums.RECORD_TYPE.REGION,
             "cores": 1,
@@ -764,6 +771,7 @@ class TestComparison(TestCase):
 
         run = {
             "alignment_mode": bs_enums.ALIGNMENT_MODE.AUTO,
+            "extend_strategy": bs_enums.EXTEND_STRATEGY.LEGACY,
             "legacy_weights": True,
             "classify": bs_enums.CLASSIFY_MODE.CLASS,
             "record_type": bs_enums.RECORD_TYPE.REGION,
@@ -820,6 +828,7 @@ class TestComparison(TestCase):
 
         run = {
             "alignment_mode": bs_enums.ALIGNMENT_MODE.AUTO,
+            "extend_strategy": bs_enums.EXTEND_STRATEGY.LEGACY,
             "legacy_weights": True,
             "classify": bs_enums.CLASSIFY_MODE.CLASS,
             "record_type": bs_enums.RECORD_TYPE.REGION,
