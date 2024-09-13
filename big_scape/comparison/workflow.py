@@ -21,7 +21,6 @@ from pathlib import Path
 from .record_pair import RecordPair
 
 # from dependencies
-import click
 from sqlalchemy import select
 
 # from other modules
@@ -310,13 +309,6 @@ def expand_pair(
     Returns:
         bool: True if the pair was extended, False if it does not
     """
-    # TODO: true arg means silent if there is no context. this is done so that unit
-    # tests don't complain. remove this and mock the context in unit tests instead
-    click_context = click.get_current_context(silent=True)
-
-    if not click_context:
-        raise RuntimeError("No click context found")
-
     if extend_strategy == bs_enums.EXTEND_STRATEGY.LEGACY:
         extend(
             pair,
