@@ -443,6 +443,7 @@ class TestComparison(TestCase):
 
         run = {
             "alignment_mode": bs_enums.ALIGNMENT_MODE.AUTO,
+            "extend_strategy": bs_enums.EXTEND_STRATEGY.LEGACY,
             "legacy_weights": True,
             "record_type": bs_enums.RECORD_TYPE.REGION,
             "cores": 1,
@@ -480,6 +481,7 @@ class TestComparison(TestCase):
             (
                 batch,
                 run["alignment_mode"],
+                run["extend_strategy"],
                 missing_edge_bin.edge_param_id,
                 missing_edge_bin.weights,
             )
@@ -506,6 +508,7 @@ class TestComparison(TestCase):
 
         run = {
             "alignment_mode": bs_enums.ALIGNMENT_MODE.AUTO,
+            "extend_strategy": bs_enums.EXTEND_STRATEGY.LEGACY,
             "legacy_weights": True,
             "record_type": bs_enums.RECORD_TYPE.REGION,
             "cores": 1,
@@ -535,6 +538,7 @@ class TestComparison(TestCase):
         bs_comparison.generate_edges(
             missing_edge_bin,
             run["alignment_mode"],
+            run["extend_strategy"],
             run["cores"],
             run["cores"] * 2,
             callback,
@@ -577,6 +581,7 @@ class TestComparison(TestCase):
 
         run = {
             "alignment_mode": bs_enums.ALIGNMENT_MODE.AUTO,
+            "extend_strategy": bs_enums.EXTEND_STRATEGY.LEGACY,
             "legacy_weights": True,
             "record_type": bs_enums.RECORD_TYPE.REGION,
         }
@@ -633,6 +638,7 @@ class TestComparison(TestCase):
 
         run = {
             "alignment_mode": bs_enums.ALIGNMENT_MODE.AUTO,
+            "extend_strategy": bs_enums.EXTEND_STRATEGY.LEGACY,
             "legacy_weights": True,
             "record_type": bs_enums.RECORD_TYPE.REGION,
             "cores": 1,
@@ -667,6 +673,7 @@ class TestComparison(TestCase):
 
         run = {
             "alignment_mode": bs_enums.ALIGNMENT_MODE.AUTO,
+            "extend_strategy": bs_enums.EXTEND_STRATEGY.LEGACY,
             "legacy_weights": True,
             "classify": bs_enums.CLASSIFY_MODE.CLASS,
             "record_type": bs_enums.RECORD_TYPE.REGION,
@@ -723,6 +730,7 @@ class TestComparison(TestCase):
 
         run = {
             "alignment_mode": bs_enums.ALIGNMENT_MODE.AUTO,
+            "extend_strategy": bs_enums.EXTEND_STRATEGY.LEGACY,
             "legacy_weights": False,
             "classify": bs_enums.CLASSIFY_MODE.CLASS,
             "record_type": bs_enums.RECORD_TYPE.REGION,
@@ -843,6 +851,7 @@ class TestComparison(TestCase):
 
         run = {
             "alignment_mode": bs_enums.ALIGNMENT_MODE.AUTO,
+            "extend_strategy": bs_enums.EXTEND_STRATEGY.LEGACY,
             "legacy_weights": True,
             "classify": bs_enums.CLASSIFY_MODE.CLASS,
             "record_type": bs_enums.RECORD_TYPE.REGION,
@@ -893,6 +902,7 @@ class TestComparison(TestCase):
 
         run = {
             "alignment_mode": bs_enums.ALIGNMENT_MODE.AUTO,
+            "extend_strategy": bs_enums.EXTEND_STRATEGY.LEGACY,
             "legacy_weights": True,
             "classify": bs_enums.CLASSIFY_MODE.CLASS,
             "record_type": bs_enums.RECORD_TYPE.REGION,
@@ -920,6 +930,7 @@ class TestComparison(TestCase):
 
         run = {
             "alignment_mode": bs_enums.ALIGNMENT_MODE.AUTO,
+            "extend_strategy": bs_enums.EXTEND_STRATEGY.LEGACY,
             "legacy_weights": True,
             "classify": bs_enums.CLASSIFY_MODE.CLASS,
             "record_type": bs_enums.RECORD_TYPE.REGION,
@@ -967,6 +978,7 @@ class TestComparison(TestCase):
 
         run = {
             "alignment_mode": bs_enums.ALIGNMENT_MODE.AUTO,
+            "extend_strategy": bs_enums.EXTEND_STRATEGY.LEGACY,
             "legacy_weights": False,
             "classify": bs_enums.CLASSIFY_MODE.CLASS,
             "record_type": bs_enums.RECORD_TYPE.REGION,
@@ -1441,6 +1453,7 @@ class TestComparison(TestCase):
 
         run = {
             "alignment_mode": bs_enums.ALIGNMENT_MODE.AUTO,
+            "extend_strategy": bs_enums.EXTEND_STRATEGY.LEGACY,
             "legacy_weights": False,
             "record_type": bs_enums.RECORD_TYPE.REGION,
             "cores": 1,
@@ -1575,6 +1588,7 @@ class TestComparison(TestCase):
 
         run = {
             "alignment_mode": bs_enums.ALIGNMENT_MODE.AUTO,
+            "extend_strategy": bs_enums.EXTEND_STRATEGY.LEGACY,
             "legacy_weights": False,
             "record_type": bs_enums.RECORD_TYPE.REGION,
             "cores": 1,
@@ -1649,6 +1663,7 @@ class TestComparison(TestCase):
 
         run = {
             "alignment_mode": bs_enums.ALIGNMENT_MODE.AUTO,
+            "extend_strategy": bs_enums.EXTEND_STRATEGY.LEGACY,
             "legacy_weights": False,
             "record_type": bs_enums.RECORD_TYPE.REGION,
             "cores": 1,
@@ -1666,6 +1681,7 @@ class TestComparison(TestCase):
 
         run = {
             "alignment_mode": bs_enums.ALIGNMENT_MODE.AUTO,
+            "extend_strategy": bs_enums.EXTEND_STRATEGY.LEGACY,
             "legacy_weights": False,
             "record_type": bs_enums.RECORD_TYPE.REGION,
             "cores": 1,

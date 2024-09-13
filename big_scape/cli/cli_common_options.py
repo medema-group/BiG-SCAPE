@@ -13,6 +13,7 @@ from .cli_validations import (
     validate_not_empty_dir,
     validate_input_mode,
     validate_alignment_mode,
+    validate_extend_strategy,
     validate_includelist_all,
     validate_includelist_any,
     validate_gcf_cutoffs,
@@ -307,6 +308,7 @@ def common_cluster_query(fn):
             "--extend_strategy",
             type=click.Choice(["legacy", "greedy"]),
             default="legacy",
+            callback=validate_extend_strategy,
             help="Strategy to extend BGCs. 'legacy' will use the original BiG-SCAPE extension strategy, "
             "while 'greedy' will use a new greedy extension strategy. (default: legacy).",
         ),

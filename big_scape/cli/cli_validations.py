@@ -162,6 +162,18 @@ def validate_alignment_mode(
     return None
 
 
+def validate_extend_strategy(
+    ctx, param, extend_strategy
+) -> Optional[bs_enums.EXTEND_STRATEGY]:
+    """Validate the passed extend strategy is one of the allowed modes"""
+    valid_strats = [strat.value for strat in bs_enums.EXTEND_STRATEGY]
+
+    for strat in valid_strats:
+        if extend_strategy == strat:
+            return bs_enums.EXTEND_STRATEGY[strat.upper()]
+    return None
+
+
 def validate_gcf_cutoffs(ctx, param, gcf_cutoffs) -> list[float]:
     """Validates range and formats into correct list[float] format"""
 
