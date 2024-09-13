@@ -558,7 +558,7 @@
         }
         var bs_families = bs_ccs.flatMap(cc => cc.families)
         var bs_records = bs_families.flatMap(fam => fam.members)
-        var bs_data = generate_bs_data(bs_records)
+        var bs_data = generate_bs_data(bs_records, run_data)
         var bs_alignments = generate_bs_alignments(bs_families, bs_data)
         var bs_similarities = generate_bs_similarity(bs_records, run_data)
         var bs = new Bigscape(run_data, bs_data, bs_families, bs_alignments, bs_similarities, "network-container")
@@ -568,7 +568,7 @@
         // load a single connected component
         var bs_family = bs_cc["families"]
         var bs_records = bs_family.flatMap(fam => fam.members)
-        var bs_cc_data = generate_bs_data(bs_records)
+        var bs_cc_data = generate_bs_data(bs_records, run_data)
         var bs_alignment = generate_bs_alignments(bs_family, bs_cc_data)
         var bs_similarity = generate_bs_similarity(bs_records, run_data)
         var bs = new Bigscape(run_data, bs_cc_data, bs_family, bs_alignment, bs_similarity, "network-container", { "render_time": 1 })
@@ -649,7 +649,9 @@ CC\tFamily\tGBK\tRecord_Type\tRecord_Number\tClass\tCategory\tOrganism\tTaxonomy
         for (row of records) {
             gbk_id = row.shift()
             // format id: filename_recordtype_recordnumber
-            row[3] = row[3].split('/').reverse()[0] + "_" + row.splice(4, 1) + "_" + row.splice(6, 1)
+            var gbk_path = row[3]
+            var filename = gbk_path.split('/').reverse()[0]
+            row[3] = filename + "_" + row.splice(4, 1) + "_" + row.splice(6, 1)
             record_id = row.pop()
 
             var new_row = {}
@@ -674,6 +676,18 @@ CC\tFamily\tGBK\tRecord_Type\tRecord_Number\tClass\tCategory\tOrganism\tTaxonomy
             }
             new_row["record_start"] = rec_start
             new_row["record_stop"] = rec_stop
+            if (run_data["mode"] == "Query") {
+                if (filename == run_data["query_path"]) {
+                    new_row["source"] = "query"
+                }
+            } else {
+                if (gbk_path.indexOf(run_data["reference_dir"]) > -1) {
+                    new_row["source"] = "reference"
+                }
+                if (gbk_path.indexOf(run_data["mibig_version"]) > -1) {
+                    new_row["source"] = "mibig"
+                }
+            }
             bs_data[record_id] = new_row
         }
         return bs_data

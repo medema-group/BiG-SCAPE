@@ -361,7 +361,7 @@ function Bigscape(run_data, bs_data, bs_families, bs_alignment, bs_similarity, n
       .attr('r', 10)
       .attr('fill', (fam_colors[bs_to_cl[node.id]]));
     if (run_data["mode"] == "Cluster") {
-      if (bs_data[node.id]["source"] == ("mibig" || "reference")) {
+      if (bs_data[node.id]["source"] == "mibig" || bs_data[node.id]["source"] == "reference") {
         ui.attr("stroke", "blue");
         ui.attr("stroke-width", "4px");
       }
