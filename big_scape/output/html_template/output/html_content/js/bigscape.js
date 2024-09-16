@@ -373,6 +373,11 @@ function Bigscape(run_data, bs_data, bs_families, bs_alignment, bs_similarity, n
         ui.attr("stroke-width", "6px");
       }
     }
+    if (options.topo_records) {
+      if (options.topo_records.indexOf(node.id) > -1) {
+        ui.attr("opacity", "0.5")
+      }
+    }
     $(ui).hover(function () { // mouse over
       var temp_highlight = [];
       for (var i in highlighted_nodes) {
@@ -468,8 +473,13 @@ function Bigscape(run_data, bs_data, bs_families, bs_alignment, bs_similarity, n
       .attr("stroke", "#777")
       .attr("stroke-width", link["data"]["weight"] * 10);
 
-    if (graph.getNode(link.fromId).data.hash === graph.getNode(link.toId).data.hash) {
+    var from = graph.getNode(link.fromId)
+    var to = graph.getNode(link.toId)
+    if (from.data.hash === to.data.hash) {
       line = line.attr("stroke-dasharray", "10,10").attr("stroke-width", link["data"]["weight"] * 500);
+    }
+    if (options.topo_records.indexOf(from.id) > -1 && options.topo_records.indexOf(to.id) > -1) {
+      line = line.attr("opacity", "0.4").attr("stroke-linecap", "round")
     }
     return line
   });

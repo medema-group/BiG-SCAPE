@@ -247,7 +247,9 @@
                 </div>
             </div>
             <div style="margin:1em">
-                <button id="load-all" title="Render all CCs currently shown in the table">Visualize All</button>
+                <button id="load-all" title="Load all CCs currently shown in the table">Visualize All</button>
+            </div>
+            <div id="topo-toggle-container" style="margin:1em">
             </div>
             <div id="cc-table-container" class="w3-container" style="float:left; width:25%">
             </div>
@@ -478,7 +480,34 @@
             bs_ccs[cc_index[cc_id]]["families"][fam_index[cc_id][fam_id]]["members"].push(record_id)
             bs_ccs[cc_index[cc_id]]["size"]++
         }
-        var sorted_bs_ccs = bs_ccs.sort((a, b) => b.size - a.size)
+
+        // add checkbox to load topologically connected CCs only if not region mode
+        var topolinks = {}
+        $("#topo-toggle-container").html("")
+        if (run_data["record_type"] != "Region") {
+            $("#topo-toggle-container").html(`<input id="topo-toggle" type="checkbox" checked>
+                                              <label for="topo-toggle">Render topologically connected CCs</label>`)
+            var topolink_ccs_query = `SELECT DISTINCT cc1.id, cc2.id FROM connected_component AS cc1
+                INNER JOIN bgc_record AS bgc1 ON bgc1.id==cc1.record_id
+                INNER JOIN gbk ON bgc1.gbk_id==gbk.id
+                INNER JOIN bgc_record AS bgc2 ON bgc2.gbk_id==gbk.id
+                INNER JOIN connected_component AS cc2 ON bgc2.id==cc2.record_id
+                WHERE cc1.id!=cc2.id
+                AND cc1.run_id==${run_id} AND cc2.run_id==${run_id}
+                AND cc1.cutoff==${cutoff} AND cc2.cutoff==${cutoff}
+                AND cc1.bin_label=="${bin_label}" AND cc2.bin_label=="${bin_label}"`
+            var topo_data = window.db.exec(topolink_ccs_query)[0]
+            if (topo_data) {
+                for (topolink of topo_data.values) {
+                    if (topolink[0] in topolinks) {
+                        topolinks[topolink[0]].push(topolink[1])
+                    } else {
+                        topolinks[topolink[0]] = [topolink[1]]
+                    }
+                }
+            }
+        }
+        var sorted_bs_ccs = bs_ccs.toSorted((a, b) => b.size - a.size)
         $("#cc-table-container").html(`<table id="cc-table" class="w3-table w3-striped w3border w3-hoverable w3-responsive"
                     style="max-height:560px;overflow:scroll">
                     <tr class="w3-light-grey">
@@ -489,17 +518,17 @@
                 </table>`)
         for (var bs_cc of sorted_bs_ccs) {
             row = $("<tr><td>" + bs_cc["id"] + "</td><td>" + bs_cc["families"].map(fam => fam.id).sort().join(", ") + "</td><td>" + bs_cc["size"] + "</td></tr>")
-            row.click({ bs_cc: bs_cc, run_data: run_data }, function (handler) {
-                loadConnectedComponent(handler.data.bs_cc, handler.data.run_data)
+            var topo_ccs = []
+            if (bs_cc["id"] in topolinks) {
+                topolinks[bs_cc["id"]].forEach(cc_id => topo_ccs.push(bs_ccs[cc_index[cc_id]]))
+            }
+            row.click({ bs_cc: bs_cc, run_data: run_data, topo_ccs: topo_ccs }, function (handler) {
+                loadConnectedComponent(handler.data.bs_cc, handler.data.run_data, handler.data.topo_ccs)
             })
             $("#cc-table").append(row)
         }
         $("#load-all").off().on("click", function () {
             loadFullNetwork(sorted_bs_ccs, run_data)
-        })
-        $("#load-selection").off().on("click", function () {
-            var selected_ccs = $("#cc-table td:first-child").map((i, el) => parseInt($(el).text())).toArray()
-            loadFullNetwork(sorted_bs_ccs, run_data, selected_ccs)
         })
         $("#download-selection").off().on("click", function () {
             var selected_ccs = $("#cc-table td:first-child").map((i, el) => parseInt($(el).text())).toArray()
@@ -564,14 +593,26 @@
         var bs = new Bigscape(run_data, bs_data, bs_families, bs_alignments, bs_similarities, "network-container")
     }
 
-    function loadConnectedComponent(bs_cc, run_data) {
-        // load a single connected component
+    function loadConnectedComponent(bs_cc, run_data, topo_ccs) {
+        // load a single connected component and topolinked ccs if present.
+        // to distinguish between the selected cc and topolinked ones, pass
+        // all topolinked record ids in render_options when creating a Bigscape object
+        var render_options = { "render_time": 1, "topo_records": [] }
         var bs_family = bs_cc["families"]
+        if (topo_ccs.length && $("#topo-toggle").is(":checked")) {
+            var topo_cc_ids = topo_ccs.map(cc => cc.id)
+            var topo_fams = topo_ccs.flatMap(cc => cc["families"])
+            render_options.topo_records = topo_fams.flatMap(fam => fam["members"])
+            bs_family = bs_family.concat(topo_fams)
+        }
         var bs_records = bs_family.flatMap(fam => fam.members)
         var bs_cc_data = generate_bs_data(bs_records, run_data)
         var bs_alignment = generate_bs_alignments(bs_family, bs_cc_data)
         var bs_similarity = generate_bs_similarity(bs_records, run_data)
-        var bs = new Bigscape(run_data, bs_cc_data, bs_family, bs_alignment, bs_similarity, "network-container", { "render_time": 1 })
+        var bs = new Bigscape(run_data, bs_cc_data, bs_family, bs_alignment, bs_similarity, "network-container", render_options)
+        if (topo_cc_ids && $("#topo-toggle").is(":checked")) {
+            $("#network-container").prepend($(`<div class="info-container" style="position:absolute;top:-30px;left:10px"><span><b>Connected component(s) ${topo_cc_ids.join(", ")} are connected via topological links</b></span></div>`))
+        }
     }
 
     function downloadCcTable(bs_ccs, run_data, include_ccs) {
@@ -635,7 +676,7 @@ CC\tFamily\tGBK\tRecord_Type\tRecord_Number\tClass\tCategory\tOrganism\tTaxonomy
         }
         return cds_data
     }
-    function generate_bs_data(record_ids) {
+    function generate_bs_data(record_ids, run_data) {
         var records_query = `SELECT gbk.id, gbk.organism, length(gbk.nt_seq), gbk.hash, gbk.path,
                         bgc_record.record_type, bgc_record.nt_start, bgc_record.nt_stop,
                         bgc_record.record_number, bgc_record.id FROM bgc_record
@@ -647,7 +688,7 @@ CC\tFamily\tGBK\tRecord_Type\tRecord_Number\tClass\tCategory\tOrganism\tTaxonomy
         var columns = ["desc", "end", "hash", "id"]
         var bs_data = {}
         for (row of records) {
-            gbk_id = row.shift()
+            var gbk_id = row.shift()
             // format id: filename_recordtype_recordnumber
             var gbk_path = row[3]
             var filename = gbk_path.split('/').reverse()[0]
@@ -660,7 +701,7 @@ CC\tFamily\tGBK\tRecord_Type\tRecord_Number\tClass\tCategory\tOrganism\tTaxonomy
             }
             new_row["start"] = 1
             new_row["orfs"] = cds_data[gbk_id]
-            // find record start/stop in orf index
+            // find record start/stop, 1-index based on orf ids, inclusive end
             var rec_start = 1
             var rec_stop = new_row["orfs"].length
             if (!new_row["orfs"][0].start >= row[4] || !new_row["orfs"].slice(-1).end <= row[5]) {
@@ -669,7 +710,7 @@ CC\tFamily\tGBK\tRecord_Type\tRecord_Number\tClass\tCategory\tOrganism\tTaxonomy
                         rec_start = new_row["orfs"][i].id + 1 // orf ids are 1-index
                     }
                     if (new_row["orfs"][i].end > row[5]) {
-                        rec_stop = new_row["orfs"][i].id - 1 // exclusive end
+                        rec_stop = new_row["orfs"][i].id - 1 // inclusive end
                         break
                     }
                 }
@@ -756,8 +797,8 @@ CC\tFamily\tGBK\tRecord_Type\tRecord_Number\tClass\tCategory\tOrganism\tTaxonomy
             rev_val = reverse ? -1 : 1
             if (a_id == family_center) {
                 if (rev_val < 0) {
-                    var rec_start = bs_data_family[b_id].record_start - 1
-                    var rec_stop = bs_data_family[b_id].record_stop + 1
+                    var rec_start = bs_data_family[b_id].record_start - 1 // convert to 0-index
+                    var rec_stop = bs_data_family[b_id].record_stop // converts to exclusive end
                     var total_dom_num = bs_data_family[b_id].orfs.slice(rec_start, rec_stop).flatMap(x => x.domains).length
                     b_start = total_dom_num - b_start - 1
                 }
@@ -765,7 +806,7 @@ CC\tFamily\tGBK\tRecord_Type\tRecord_Number\tClass\tCategory\tOrganism\tTaxonomy
             } else {
                 if (rev_val < 0) {
                     var rec_start = bs_data_family[b_id].record_start - 1
-                    var rec_stop = bs_data_family[b_id].record_stop + 1
+                    var rec_stop = bs_data_family[b_id].record_stop
                     var total_dom_num = bs_data_family[b_id].orfs.slice(rec_start, rec_stop).flatMap(x => x.domains).length
                     b_start = total_dom_num - b_stop
                     a_start = a_stop - 1
@@ -1069,7 +1110,6 @@ CC\tFamily\tGBK\tRecord_Type\tRecord_Number\tClass\tCategory\tOrganism\tTaxonomy
         //             }
         //
         //network_data: [{families: [{label:, members: [], mibig:,}]}]
-        var parser = require("biojs-io-newick");
         var family_data = network_data["families"].slice(0).sort(function (a, b) { return b["members"].length - a["members"].length });
         var get_fam_id = [];
         for (var i in family_data) {
@@ -1187,6 +1227,7 @@ CC\tFamily\tGBK\tRecord_Type\tRecord_Number\tClass\tCategory\tOrganism\tTaxonomy
                 result["data"]["nodes"] = clusterfck_tree_to_inchlib_nodes(cluster_fck[0]);
                 break;
             default: // currently not used
+                var parser = require("biojs-io-newick");
                 var newick_idx = parseInt($("#abpres_heatmap-row_clustering").val().split("newick_").pop());
                 var acc_tree = parser.parse_newick(input_data["accession_newick"][newick_idx]["newick"]);
                 for (var i in input_data["accession"]) {
