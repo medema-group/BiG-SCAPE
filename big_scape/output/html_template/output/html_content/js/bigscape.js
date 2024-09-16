@@ -925,13 +925,13 @@ BigscapeFunc.updateDescription = function (ids, bs_svg, bs_data, bs_to_cl, bs_fa
     }
     if (true) { // update nav_ui
       if (nav_ui.find(".selection-text").children().length < 1) {
-        var clearSel = $("<a href='##'>clear</a>").click({ bigscape: bigscape }, function (handler) {
+        var clearSel = $("<button>clear</button>").click({ bigscape: bigscape }, function (handler) {
           handler.data.bigscape.setHighlightedNodes([]);
           handler.data.bigscape.highlightNodes([]);
           handler.data.bigscape.updateDescription();
           handler.stopPropagation();
         });
-        var downloadSel = $("<a style='padding-right:5px' href='##'>download</a>").click({ bigscape: bigscape, bs_data: bs_data }, function (handler) {
+        var downloadSel = $("<button style='margin:0 5px'>download</button>").click({ bigscape: bigscape, bs_data: bs_data }, function (handler) {
           var highlightedNodes = handler.data.bigscape.getHighlightedNodes()
           if (highlightedNodes.length > 0) {
             var bs_sel_data = Object.fromEntries(Object.entries(handler.data.bs_data).filter(([k, v]) => highlightedNodes.indexOf(parseInt(k)) > -1))
@@ -1465,9 +1465,8 @@ BigscapeFunc.downloadSelection = function (data) {
 Family\tGBK\tRecord_Type\tRecord_Number\tDescription\n`
   for (i in data) {
     var node = data[i]
-    console.log(node)
-    var id_parts = node["id"].split("_")
-    var [gbk, rec_type, rec_num] = [id_parts.slice(0, -2).join("_")].concat(id_parts.slice(-2))
+    var id_parts = /^(.*)_(region|protocluster|cand_cluster|proto_core)_(.*)$/gm.exec(node["id"])
+    var [gbk, rec_type, rec_num] = id_parts.slice(1)
     tsv_text += `${node["family"]}\t${gbk}\t${rec_type}\t${rec_num}\t${node["desc"]}\n`
   }
   BigscapeFunc.sendDownload(tsv_text, `${$("#bigscape-runs option:selected").text()}_selection.tsv`)
