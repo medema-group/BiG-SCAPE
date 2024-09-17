@@ -103,6 +103,7 @@ class TestComparison(TestCase):
         run = {
             "record_type": bs_enums.RECORD_TYPE.REGION,
             "alignment_mode": bs_enums.ALIGNMENT_MODE.AUTO,
+            "extend_strategy": bs_enums.EXTEND_STRATEGY.LEGACY,
         }
 
         gbks_a = []
@@ -146,6 +147,7 @@ class TestComparison(TestCase):
         run = {
             "record_type": bs_enums.RECORD_TYPE.REGION,
             "alignment_mode": bs_enums.ALIGNMENT_MODE.AUTO,
+            "extend_strategy": bs_enums.EXTEND_STRATEGY.LEGACY,
         }
 
         gbks_a = []
@@ -398,6 +400,7 @@ class TestComparison(TestCase):
         run = {
             "record_type": bs_enums.RECORD_TYPE.REGION,
             "alignment_mode": bs_enums.ALIGNMENT_MODE.AUTO,
+            "extend_strategy": bs_enums.EXTEND_STRATEGY.LEGACY,
         }
 
         gbks_a = []
@@ -496,6 +499,7 @@ class TestComparison(TestCase):
             "record_type": bs_enums.RECORD_TYPE.REGION,
             "legacy_classify": True,
             "alignment_mode": bs_enums.ALIGNMENT_MODE.AUTO,
+            "extend_strategy": bs_enums.EXTEND_STRATEGY.LEGACY,
             "hybrids_off": False,
         }
 
@@ -553,6 +557,7 @@ class TestComparison(TestCase):
             "record_type": bs_enums.RECORD_TYPE.REGION,
             "legacy_classify": True,
             "alignment_mode": bs_enums.ALIGNMENT_MODE.AUTO,
+            "extend_strategy": bs_enums.EXTEND_STRATEGY.LEGACY,
             "hybrids_off": False,
         }
 

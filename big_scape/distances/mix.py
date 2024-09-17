@@ -56,6 +56,7 @@ def calculate_distances_mix(
             bs_comparison.generate_edges(
                 missing_edge_bin,
                 run["alignment_mode"],
+                run["extend_strategy"],
                 run["cores"],
                 run["cores"] * 2,
                 callback,
