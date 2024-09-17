@@ -1,50 +1,52 @@
 # PROFILER
-# Update interval in seconds when profiler functionality is active
+# Update interval in seconds when profiler functionality is active.
 PROFILER_UPDATE_INTERVAL: 0.5
 
 # INPUT
-# list of cand_cluster types where subrecords will be merged
+# list of cand_cluster types where subrecords will be merged.
 MERGED_CAND_CLUSTER_TYPE:
   - chemical_hybrid
   - interleaved
-# Minimum and maximum bgc lengths to be included in the analysis in number of base pairs
+# Minimum and maximum bgc lengths to be included in the analysis in number of base pairs.
 MIN_BGC_LENGTH: 0
 MAX_BGC_LENGTH: 500000
 
 # CDS and DOMAIN
 # Specify at which overlap percentage (as a decimal) two CDS in a gbk
-# are considered to overlap. This preserves longest overlapping CDS
+# are considered to overlap. This preserves longest overlapping CDS.
 CDS_OVERLAP_CUTOFF: 0.1
 # Specify at which overlap percentage (as a decimal) two domains
-# in a CDS are considered to overlap. Domain with the best score is kept
+# in a CDS are considered to overlap. Domain with the best score is kept.
 DOMAIN_OVERLAP_CUTOFF: 0.1
 
 # LCS
-# Minimum length criteria for accepting a Longest Common Subcluster (LCS), measured in
-# fraction of included domains in one of the compared records, when comparing:
-# Regions or Cand_clusters
+# Minimum length percentage for accepting a Longest Common Subcluster (LCS),
+# which must be satisfied in at least one of the compared records, measured in fraction
+# of included domains, when comparing:
+# - Regions or Cand_clusters
 REGION_MIN_LCS_LEN: 0.1
-#Protoclusters or Proto_cores
+# - Protoclusters or Proto_cores
 PROTO_MIN_LCS_LEN: 0
 
 # EXPAND
-# Minimum length citeria for accepting an extended LCS slice, measured in fraction of
-# included domains in one of the compared records, when comparing:
-# Regions or Cand_clusters with no biosynthetic domains in the extended slice
+# Minimum length percentage for accepting an extended LCS slice, which must be
+# satisfied in at least one of the compared records, measured in fraction of
+# included domains, when comparing:
+# - Regions or Cand_clusters with no biosynthetic domains in the extended slice
 REGION_MIN_EXPAND_LEN: 0.3
-# Regions or Cand_clusters with at least one biosynthetic domain in the extended slice
+# - Regions or Cand_clusters with at least one biosynthetic domain in the extended slice
 REGION_MIN_EXPAND_LEN_BIO: 0.2
-# Protoclusters or Proto_cores with at least one biosynthetic domain in the extended slice
+# - Protoclusters or Proto_cores with at least one biosynthetic domain in the extended slice
 PROTO_MIN_EXPAND_LEN: 0.2
-# list of product classes that do not require a minimum length
+# List of product classes that do not require a minimum length.
 NO_MIN_CLASSES:
   - terpene
-# Integer scoring metrics used in the LCS extension algorithm for match, mismatch and gap
+# Integer scoring metrics used in the LCS extension algorithm for match, mismatch and gap.
 EXPAND_MATCH_SCORE: 5
 EXPAND_MISMATCH_SCORE: -3
 EXPAND_GAP_SCORE: -2
 # Maximum distance to accept a matching domain as an actual match during LCS extension
-# as a percentage of total domains present in the compared record
+# as a percentage of total domains present in the compared record.
 EXPAND_MAX_MATCH_PERC: 0.1
 
 # CLUSTER
@@ -53,7 +55,7 @@ EXPAND_MAX_MATCH_PERC: 0.1
 PREFERENCE: 0.0
 
 # TREE
-# The number of common domains used to generate GCF trees in top frequencies of occurrence
+# The number of common domains used to generate GCF trees in top frequencies of occurrence.
 TOP_FREQS: 3
 
 # ANCHOR DOMAINS
