@@ -185,6 +185,7 @@ def calculate_distances(run: dict, bin: bs_comparison.RecordPairGenerator):
             bs_comparison.generate_edges(
                 bin,
                 run["alignment_mode"],
+                run["extend_strategy"],
                 run["cores"],
                 run["cores"] * 2,
                 callback,

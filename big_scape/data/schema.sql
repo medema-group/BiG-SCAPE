@@ -147,8 +147,9 @@ CREATE TABLE IF NOT EXISTS edge_params (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     weights TEXT NOT NULL,
     alignment_mode TEXT NOT NULL,
+    extend_strategy TEXT NOT NULL,
     UNIQUE(id),
-    UNIQUE(weights, alignment_mode)
+    UNIQUE(weights, alignment_mode, extend_strategy)
 );
 
 CREATE INDEX IF NOT EXISTS record_id_index ON bgc_record(id);

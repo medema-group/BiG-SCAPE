@@ -8,6 +8,7 @@ import sqlite3
 from sqlalchemy import insert, select
 
 # from other modules
+import big_scape.enums as bs_enums
 from big_scape.data import DB
 
 # from this module
@@ -183,7 +184,7 @@ def save_edges_to_db(
 #             yield pair, distance, jaccard, adjacency, dss, edge_param_id
 
 
-def get_edge_param_id(run, weights) -> int:
+def get_edge_param_id(run: dict, weights: str) -> int:
     """get edge params id if available, else create a new one
 
     Args:
@@ -201,23 +202,29 @@ def get_edge_param_id(run, weights) -> int:
         raise RuntimeError("DB.metadata is None")
 
     alignment_mode = run["alignment_mode"]
+    extend_strategy = run["extend_strategy"]
 
-    edge_param_id = edge_params_query(alignment_mode, weights)
+    edge_param_id = edge_params_query(alignment_mode, weights, extend_strategy)
 
     if edge_param_id is None:
-        edge_param_id = edge_params_insert(alignment_mode, weights)
+        edge_param_id = edge_params_insert(alignment_mode, weights, extend_strategy)
 
     logging.debug("Edge params id: %d", edge_param_id[0])
 
     return edge_param_id[0]
 
 
-def edge_params_query(alignment_mode, weights):
+def edge_params_query(
+    alignment_mode: bs_enums.ALIGNMENT_MODE,
+    weights: str,
+    extend_strategy: bs_enums.EXTEND_STRATEGY,
+):
     """Create and run a query for edge params
 
     Args:
         alignment_mode (enum): global, glocal or auto
         weights (str): weights category, i.e. "mix"
+        extend_strategy (enum): legacy, greedy
 
     Raises:
         RuntimeError: no dabatase
@@ -233,6 +240,7 @@ def edge_params_query(alignment_mode, weights):
     edge_params_query = (
         select(edge_params_table.c.id)
         .where(edge_params_table.c.alignment_mode == alignment_mode.name)
+        .where(edge_params_table.c.extend_strategy == extend_strategy.name)
         .where(edge_params_table.c.weights == weights)
     )
 
@@ -241,12 +249,17 @@ def edge_params_query(alignment_mode, weights):
     return edge_param_id
 
 
-def edge_params_insert(alignment_mode, weights):
+def edge_params_insert(
+    alignment_mode: bs_enums.ALIGNMENT_MODE,
+    weights: str,
+    extend_strategy: bs_enums.EXTEND_STRATEGY,
+):
     """Insert an edge param entry into the database
 
     Args:
-        alignment_mode (_type_): global, glocal or auto
-        weights (_type_): weights category, i.e. "mix"
+        alignment_mode (enum): global, glocal or auto
+        weights (str): weights category, i.e. "mix"
+        extend_strategy (enum): legacy, greedy
 
     Raises:
         RuntimeError: no dabatase
@@ -261,7 +274,11 @@ def edge_params_insert(alignment_mode, weights):
     edge_params_table = DB.metadata.tables["edge_params"]
     edge_params_insert = (
         edge_params_table.insert()
-        .values(alignment_mode=alignment_mode.name, weights=weights)
+        .values(
+            alignment_mode=alignment_mode.name,
+            weights=weights,
+            extend_strategy=extend_strategy.name,
+        )
         .returning(edge_params_table.c.id)
         .compile()
     )
