@@ -265,7 +265,8 @@
     </div>
 
     <div id="loadingWindow" class="w3-modal">
-        <div class="w3-modal-content" style="width: 400px; text-align: center; padding: 2em;">
+        <div class="w3-modal-content" style="width: 400px; text-align: center; padding: 1em; border-radius: 1em">
+            <button id="close-db-select" class="showhide-btn active"></button>
             <div class="w3-container">
                 <img src="./html_content/img/loading.gif"></img>
                 <br>
@@ -323,6 +324,39 @@
 <script src="./html_content/js/bigscape.js"></script>
 <script type="text/javascript">
 
+    function showLoading(enable, spinner) {
+        if (enable) {
+            $("#loadingWindow").css("display", "block");
+            if (spinner) {
+                $("#loadingWindow img").css("display", "inline");
+            } else {
+                $("#loadingWindow img").css("display", "none");
+            }
+        } else {
+            $("#loadingWindow").css("display", "none");
+        }
+    }
+
+    if (location.hostname === "localhost" || location.hostname === "127.0.0.1") {
+        // if on a hosted server, filepicker might not give access to remote files
+        // instead load the default database directly
+        initSqlJs().then(function (SQL) {
+            const xhr = new XMLHttpRequest();
+            xhr.open('GET', '/data_sqlite.db', true);
+            xhr.responseType = 'arraybuffer';
+
+            xhr.onload = e => {
+                const uInt8Array = new Uint8Array(xhr.response);
+                window.db = new SQL.Database(uInt8Array);
+                dataLoaded()
+            };
+            xhr.send();
+            $("#status").html("Loaded: data_sqlite.db")
+        })
+    } else {
+        showLoading(true, false);
+    }
+
     function readFile(inf) {
         var reader = new FileReader()
         reader.addEventListener("load", (event) => {
@@ -339,6 +373,9 @@
     }
     $("#change-db").on("click", (event) => {
         showLoading(true, false)
+    })
+    $("#close-db-select").on("click", (event) => {
+        showLoading(false, false)
     })
     $("#db-selector").on("change", (event) => {
         showLoading(true, true)
@@ -373,18 +410,6 @@
 
 <script type="text/javascript">
 
-    function showLoading(enable, spinner) {
-        if (enable) {
-            $("#loadingWindow").css("display", "block");
-            if (spinner) {
-                $("#loadingWindow img").css("display", "inline");
-            } else {
-                $("#loadingWindow img").css("display", "none");
-            }
-        } else {
-            $("#loadingWindow").css("display", "none");
-        }
-    }
     function getRandomColor() {
         var letters = '0123456789ABCDEF';
         var color = '#';
@@ -393,7 +418,7 @@
         }
         return color;
     }
-    showLoading(true, false);
+
     function dataLoaded() { // only called after a database is loaded
         showLoading(false, false);
         populateRunSelect();
@@ -523,6 +548,8 @@
                 topolinks[bs_cc["id"]].forEach(cc_id => topo_ccs.push(bs_ccs[cc_index[cc_id]]))
             }
             row.click({ bs_cc: bs_cc, run_data: run_data, topo_ccs: topo_ccs }, function (handler) {
+                $("#cc-table tr.selected").removeClass("selected")
+                $(this).addClass("selected")
                 loadConnectedComponent(handler.data.bs_cc, handler.data.run_data, handler.data.topo_ccs)
             })
             $("#cc-table").append(row)
@@ -707,10 +734,10 @@ CC\tFamily\tGBK\tRecord_Type\tRecord_Number\tClass\tCategory\tOrganism\tTaxonomy
             if (!new_row["orfs"][0].start >= row[4] || !new_row["orfs"].slice(-1).end <= row[5]) {
                 for (i in new_row["orfs"]) {
                     if (new_row["orfs"][i].start < row[4]) {
-                        rec_start = new_row["orfs"][i].id + 1 // orf ids are 1-index
+                        rec_start = parseInt(i) + 2 // orf ids are 1-index
                     }
                     if (new_row["orfs"][i].end > row[5]) {
-                        rec_stop = new_row["orfs"][i].id - 1 // inclusive end
+                        rec_stop = parseInt(i) // 1-index, inclusive end
                         break
                     }
                 }

@@ -9,7 +9,8 @@ html {
   --button-text-color: #eaeae9;
   --background-color: #fefefe;
   --background-header: rgba(234, 234, 233, 1);
-  --li-selected-color: red;
+  --li-selected-color: hsl(0, 100%, 50%);
+  --row-selected-color: hsl(0, 90%, 85%)
 }
 
 html[data-theme='dark'] {
@@ -26,6 +27,7 @@ html[data-theme='dark'] {
   /* --background-header: rgba(159, 159, 143, 0.188); */
   --background-header: hsl(var(--hue), 15%, 20%);
   --li-selected-color: hsl(var(--hue), 70%, 60%);
+  --row-selected-color: hsl(var(--hue), 60%, 70%)
 }
 
 /* invert svg coloring in dark mode */
@@ -37,9 +39,16 @@ html[data-theme='dark'] #abpres_heatmap {
   filter: invert(100%);
 }
 
-/* flesh out further */
+#cc-table tr.selected {
+  background-color: var(--row-selected-color);
+}
+
 html[data-theme='dark'] .w3-striped tbody tr:nth-child(2n) {
   background-color: var(--background-header);
+}
+
+html[data-theme='dark'] .w3-striped tbody tr:nth-child(2n):hover {
+  background-color: hsl(0, 0%, 80%);
 }
 
 #arrower-tooltip-1234567890 {

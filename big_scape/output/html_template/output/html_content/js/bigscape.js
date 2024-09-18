@@ -478,7 +478,7 @@ function Bigscape(run_data, bs_data, bs_families, bs_alignment, bs_similarity, n
     if (from.data.hash === to.data.hash) {
       line = line.attr("stroke-dasharray", "10,10").attr("stroke-width", link["data"]["weight"] * 500);
     }
-    if (options.topo_records.indexOf(from.id) > -1 && options.topo_records.indexOf(to.id) > -1) {
+    if (options.topo_records && options.topo_records.indexOf(from.id) > -1 && options.topo_records.indexOf(to.id) > -1) {
       line = line.attr("opacity", "0.4").attr("stroke-linecap", "round")
     }
     return line
@@ -1084,6 +1084,9 @@ BigscapeFunc.openFamDetail = function (id_fam, ids_highlighted, bs_svg, bs_data,
             domain_idx++
           }
         }
+      }
+      if (bgc_ref.hash === bgc.hash) {
+        return [0, 1]
       }
       var [bgc_domain, ref_domain, reverse] = matching_domains
 
