@@ -221,7 +221,7 @@ function Bigscape(run_data, bs_data, bs_families, bs_alignment, bs_similarity, n
   net_ui.after("<div class='navtext-container'>Shift+Drag: multi-select. Shift+Scroll: zoom in/out.</div>");
   //
   net_ui.after("<div class='detail-container hidden'></div>");
-  var det_ui = $("<div>");
+  var det_ui = $("<div class='bs-desc_ui-svgbox'>");
   var det_btn = $("<a title='Close' href='##' class='showhide-btn active' style='position: fixed;'></a>");
   det_btn.click(function (handler) {
     $(handler.target).parent().addClass("hidden");
@@ -899,7 +899,6 @@ BigscapeFunc.updateDescription = function (ids, bs_svg, bs_data, bs_to_cl, bs_fa
           compDiv.prepend(svg); // TODO: append in specific position
           svg.attr("width", svg.find("g")[0].getBoundingClientRect().width);
           svg.attr("height", svg.find("g")[0].getBoundingClientRect().height);
-          svg.css("margin", "10px 0px");
         }
       }
       BigscapeFunc.showHideDomains(compDiv, compDiv.parent().find(".bs-desc_ui-showdomains input[type=checkbox]").is(":checked"));
@@ -1324,8 +1323,11 @@ BigscapeFunc.openFamDetail = function (id_fam, ids_highlighted, bs_svg, bs_data,
       downloadLink.remove();
     }
     var btnExport = $("<button>Download SVG</button>").click({ treeSVG: treeSVG, gcf_id: bs_families[id_fam]["id"] }, exportSVG).appendTo(panZoomTree);
-    // hide domains....*temp*
-    //treeSVG.find("polygon.arrower-domain").css("display", "none");
+    var showHideDomainBtnFamily = $("<input id='showhidedomains-btn' style='margin-left:1em' type='checkbox' checked><label for='showhidedomains-btn'>domains</label>").appendTo(panZoomTree)
+    showHideDomainBtnFamily.change({ container: treeSVG }, function (handler) {
+      BigscapeFunc.showHideDomains(handler.data.container, $(handler.target).is(":checked"));
+      handler.stopPropagation();
+    });
 
     /* END OF FUNCTION BLOCK, DRAWING THE TREE */
     /* FUNCTION BLOCK, DRAWING THE CONTROL PANEL */
@@ -1462,16 +1464,18 @@ BigscapeFunc.showHideDomains = function (cont_ui, isOn) {
 }
 
 BigscapeFunc.downloadSelection = function (data) {
-  var tsv_text = `# Collection of selected nodes
-# Run info: ${$("#bigscape-runs option:selected").text()} ${$("#network-selection option:selected").text()}
-# Used search query: ${$("#search-input").val()}\n
-Family\tGBK\tRecord_Type\tRecord_Number\tDescription\n`
+  lines = []
   for (i in data) {
     var node = data[i]
     var id_parts = /^(.*)_(region|protocluster|cand_cluster|proto_core)_(.*)$/gm.exec(node["id"])
     var [gbk, rec_type, rec_num] = id_parts.slice(1)
-    tsv_text += `${node["family"]}\t${gbk}\t${rec_type}\t${rec_num}\t${node["desc"]}\n`
+    lines.push(`${node["family"]}\t${gbk}\t${rec_type}\t${rec_num}\t${node["desc"]}`)
   }
+  var tsv_text = `# Collection of selected nodes
+# Run info: ${$("#bigscape-runs option:selected").text()} ${$("#network-selection option:selected").text()}
+# Used search query: ${$("#search-input").val()}\n
+Family\tGBK\tRecord_Type\tRecord_Number\tDescription
+${lines.toSorted((a, b) => a > b).join("\n")}`
   BigscapeFunc.sendDownload(tsv_text, `${$("#bigscape-runs option:selected").text()}_selection.tsv`)
 }
 

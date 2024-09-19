@@ -21,7 +21,7 @@
                 <span>Version 2.0.0</span>
             </span>
             <span style="float: right; margin-top: 2em">
-                Theme (experimental):
+                Theme:
                 <select id="color-theme">
                     <option selected value="auto">Auto</option>
                     <option value="light">Light</option>
@@ -117,6 +117,10 @@
                     <div class="infobar">
                         <span class="infoleft">Alignment Mode:</span>
                         <span id="alignment_mode" class="inforight"></span>
+                    </div>
+                    <div class="infobar">
+                        <span class="infoleft">Extend Strategy:</span>
+                        <span id="extend_strategy" class="inforight"></span>
                     </div>
                     <div class="infobar">
                         <span class="infoleft">Include Singletons:</span>
@@ -440,7 +444,7 @@
                 $("#bigscape-runs").append("<option value='" + run_id + "," + cutoff + "'>" + data["label"] + "_c" + cutoff + "</option>");
             }
         }
-        $("#bigscape-runs").on("change", function () {
+        $("#bigscape-runs").off().on("change", function () {
             [run_id, cutoff] = this.value.split(",")
             run_params = run_data[run_id]
             run_params["cutoff"] = cutoff
@@ -448,7 +452,7 @@
         })
         $("#bigscape-runs").trigger("change");
 
-        $("#search-btn").on("click", function () {
+        $("#search-btn").off().on("click", function () {
             filterCcTable(run_data)
         })
     }
@@ -466,33 +470,18 @@
             INNER JOIN bgc_record_family ON family.id== bgc_record_family.family_id
             INNER JOIN bgc_record ON bgc_record.id==bgc_record_family.record_id
             INNER JOIN gbk ON gbk.id==bgc_record.gbk_id
-            LEFT JOIN
-                (SELECT connected_component.id, connected_component.record_id FROM connected_component
-                WHERE connected_component.run_id==${run_id} AND connected_component.cutoff==${cutoff}
-                AND connected_component.bin_label=="${bin_label}") cc
-            ON bgc_record_family.record_id==cc.record_id
-            WHERE family.run_id==${run_id} AND family.cutoff==${cutoff} AND family.bin_label=="${bin_label}"`
+            INNER JOIN connected_component AS cc ON bgc_record_family.record_id==cc.record_id
+            WHERE family.run_id==${run_id} AND family.cutoff==${cutoff} AND family.bin_label=="${bin_label}"
+            AND cc.run_id==${run_id} AND cc.cutoff==${cutoff} AND cc.bin_label=="${bin_label}"`
         if (cc_ids) {
             cc_query += ` AND cc.id IN (${cc_ids})`
         }
         var cc_data = window.db.exec(cc_query)[0].values
-
         cc_index = {}
         fam_index = {}
         bs_ccs = []
         for (row of cc_data) {
             var [cc_id, fam_id, fam_ref, record_id, path] = row
-            if (!cc_id) { // singleton ccs are not saved to the database
-                if (run_data["include_singletons"] == "No") {
-                    continue
-                }
-                // skip ref/mibig only ccs/singletons
-                if (path.indexOf(`mibig_antismash_${run_data["mibig_version"]}_gbk`) != -1 || path.indexOf(run_data["reference_dir"]) != -1) {
-                    continue
-                } else {
-                    cc_id = record_id
-                }
-            }
             if (!cc_index.hasOwnProperty(cc_id)) {
                 cc_index[cc_id] = bs_ccs.length
                 fam_index[cc_id] = {}
@@ -866,6 +855,7 @@ CC\tFamily\tGBK\tRecord_Type\tRecord_Number\tClass\tCategory\tOrganism\tTaxonomy
         $("#classify").html(run_data["classify"]);
         $("#weights").html(run_data["weights"]);
         $("#alignment_mode").html(run_data["alignment_mode"]);
+        $("#extend_strategy").html(run_data["extend_strategy"]);
         $("#include_singletons").html(run_data["include_singletons"]);
         // pie chart: BGC per Accession
         gbk_org_data = window.db.exec(`SELECT gbk.organism, COUNT(gbk.organism) FROM gbk
@@ -958,29 +948,18 @@ CC\tFamily\tGBK\tRecord_Type\tRecord_Number\tClass\tCategory\tOrganism\tTaxonomy
         run_data["input"] = { "accession": [], "accession_newick": [], "bgc": [], "classes": [] }
         run_data["networks"] = []
 
-        fam_org_query = `SELECT gbk.organism, family.id, family.bin_label FROM gbk
+        fam_org_query = `SELECT gbk.organism, gbk.path, family.id, family.bin_label FROM gbk
                         INNER JOIN bgc_record ON gbk.id==bgc_record.gbk_id
                         INNER JOIN bgc_record_family ON bgc_record.id==bgc_record_family.record_id
-                        INNER JOIN family ON bgc_record_family.family_id==family.id`
-
-        if (run_data["include_singletons"] == "No") {
-            fam_org_query += ` WHERE family.id IN
-                            (SELECT bgc_record_family.family_id FROM bgc_record_family
-                            INNER JOIN family ON family.id==bgc_record_family.family_id
-                            WHERE family.run_id==${run_id} AND family.cutoff==${cutoff}
-                            GROUP BY bgc_record_family.family_id
-                            HAVING COUNT(*) > 1
-                            )`
-        } else {
-            fam_org_query += ` WHERE family.run_id==${run_id} AND family.cutoff==${cutoff}`
-        }
+                        INNER JOIN family ON bgc_record_family.family_id==family.id
+                        WHERE family.run_id==${run_id} AND family.cutoff==${cutoff}`
         fam_org_data = window.db.exec(fam_org_query)[0].values
 
         var acc_label_to_id = {}
         var bin_lab_to_idx = {}
         var fam_lab_to_idx = {}
         for (row of fam_org_data) {
-            var [org, fam, bin] = row
+            var [org, path, fam, bin] = row
             if (!acc_label_to_id.hasOwnProperty(org)) {
                 acc_label_to_id[org] = "genome_" + run_data["input"]["accession"].length
                 run_data["input"]["accession"].push({ "id": acc_label_to_id[org], "label": org })
@@ -993,6 +972,9 @@ CC\tFamily\tGBK\tRecord_Type\tRecord_Number\tClass\tCategory\tOrganism\tTaxonomy
             if (!fam_lab_to_idx[bin].hasOwnProperty(fam)) {
                 fam_lab_to_idx[bin][fam] = run_data["networks"][bin_lab_to_idx[bin]]["families"].length
                 run_data["networks"][bin_lab_to_idx[bin]]["families"].push({ "label": "FAM_" + fam.toString().padStart(5, "0"), "members": [], "mibig": [] })
+            }
+            if (path.indexOf(`mibig_antismash_${run_data["mibig_version"]}_gbk`) != -1) {
+                run_data["networks"][bin_lab_to_idx[bin]]["families"][fam_lab_to_idx[bin][fam]]["mibig"].push(acc_label_to_id[org])
             }
             run_data["networks"][bin_lab_to_idx[bin]]["families"][fam_lab_to_idx[bin][fam]]["members"].push(acc_label_to_id[org])
         }

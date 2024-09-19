@@ -31,12 +31,17 @@ html[data-theme='dark'] {
 }
 
 /* invert svg coloring in dark mode */
-html[data-theme='dark'] .arrower-svg,
-html[data-theme='dark'] #det_fam_tree,
+html[data-theme='dark'] .bs-desc_ui-svgbox svg,
 html[data-theme='dark'] #bgc_per_acc,
 html[data-theme='dark'] #bgc_per_class,
 html[data-theme='dark'] #abpres_heatmap {
   filter: invert(100%);
+}
+
+/* keep original svg pfam domain colors by inverting again */
+html[data-theme='dark'] .arrower-orf,
+html[data-theme='dark'] .arrower-domain {
+  filter: invert(95%)
 }
 
 #cc-table tr.selected {
