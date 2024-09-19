@@ -222,6 +222,20 @@ class RecordPairGenerator:
                 if record._db_id in edge_record_ids
             ]
 
+    def get_query_source_record_ids(self) -> list[int]:
+        """Return a list of record ids of all QUERY source type records in this bin
+
+        Returns:
+            list[int]: record database ids
+        """
+        return [
+            record._db_id
+            for record in self.source_records
+            if record._db_id
+            and record.parent_gbk
+            and record.parent_gbk.source_type == SOURCE_TYPE.QUERY
+        ]
+
     def __repr__(self) -> str:
         return (
             f"Bin '{self.label}': {self.num_pairs()} pairs from "

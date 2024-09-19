@@ -294,7 +294,7 @@ def generate_newick_trees(
                 break
         if system == "Darwin":
             tree = generate_newick_tree(family_recs, exemplar_idx, exemplar, tree_path)
-            save_tree(tree, exemplar, run["run_id"])
+            save_tree(tree, exemplar, cutoff, pair_generator.label, run["run_id"])
         else:
             exemplars_db.append(exemplar)
             families_records.append(family_recs)
@@ -306,7 +306,7 @@ def generate_newick_trees(
             generate_newick_tree,
             zip(families_records, exemplars_idx, exemplars_db, repeat(tree_path)),
         )
-        save_trees(trees, exemplars_db, run["run_id"])
+        save_trees(trees, exemplars_db, cutoff, pair_generator.label, run["run_id"])
     DB.commit()
 
 
@@ -434,6 +434,7 @@ def write_clustering_file(run, cutoff, pair_generator) -> None:
     bgc_record_table = DB.metadata.tables["bgc_record"]
     family_table = DB.metadata.tables["family"]
     rec_fam_table = DB.metadata.tables["bgc_record_family"]
+    cc_table = DB.metadata.tables["connected_component"]
 
     record_ids = pair_generator.record_ids
     select_statement = (
@@ -441,36 +442,39 @@ def write_clustering_file(run, cutoff, pair_generator) -> None:
             gbk_table.c.path,
             bgc_record_table.c.record_type,
             bgc_record_table.c.record_number,
+            cc_table.c.id,
             rec_fam_table.c.family_id,
-            family_table.c.center_id,
         )
         .join(bgc_record_table, bgc_record_table.c.gbk_id == gbk_table.c.id)
         .join(rec_fam_table, bgc_record_table.c.id == rec_fam_table.c.record_id)
         .join(family_table, rec_fam_table.c.family_id == family_table.c.id)
+        .join(cc_table, cc_table.c.record_id == bgc_record_table.c.id)
         .where(rec_fam_table.c.record_id.in_(record_ids))
         .where(family_table.c.cutoff == cutoff)
         .where(family_table.c.bin_label == bin_label)
         .where(family_table.c.run_id == run_id)
+        .where(cc_table.c.cutoff == cutoff)
+        .where(cc_table.c.bin_label == bin_label)
+        .where(cc_table.c.run_id == run_id)
+        .order_by(rec_fam_table.c.family_id)
     )
 
     record_data = DB.execute(select_statement).fetchall()
 
     with open(clustering_file_path, "w") as clustering_file:
-        header = "\t".join(
-            ["GBK", "Record_Type", "Record_Number", "GCF_Number", "Family_Name"]
-        )
+        header = "\t".join(["GBK", "Record_Type", "Record_Number", "CC", "Family"])
         clustering_file.write(header + "\n")
 
         for record in record_data:
-            gbk_path, record_type, record_number, gcf_number, center = record
+            gbk_path, record_type, record_number, cc_number, family = record
 
             row = "\t".join(
                 [
                     Path(gbk_path).stem,
                     record_type,
                     str(record_number),
-                    str(gcf_number),
-                    f"FAM_{center:0>5}",
+                    str(cc_number),
+                    f"FAM_{family:0>5}",
                 ]
             )
             clustering_file.write(row + "\n")
@@ -573,6 +577,7 @@ def write_network_file(
         incl_weights = [weight]
 
     aln_mode = run["alignment_mode"].name
+    ext_strat = run["extend_strategy"].name
 
     record_ids = [record._db_id for record in bgc_records]
 
@@ -607,6 +612,7 @@ def write_network_file(
             distance_table.c.ext_b_stop,
             edge_params_table.c.weights,
             edge_params_table.c.alignment_mode,
+            edge_params_table.c.extend_strategy,
         )
         .join(bgc_record_a, distance_table.c.record_a_id == bgc_record_a.c.id)
         .join(bgc_record_b, distance_table.c.record_b_id == bgc_record_b.c.id)
@@ -620,6 +626,7 @@ def write_network_file(
         .where(distance_table.c.record_b_id.in_(record_ids))
         .where(edge_params_table.c.weights.in_(incl_weights))
         .where(edge_params_table.c.alignment_mode == aln_mode)
+        .where(edge_params_table.c.extend_strategy == ext_strat)
     )
 
     if cutoff is not None:
@@ -628,9 +635,11 @@ def write_network_file(
     edgelist = set(DB.execute(select_statement).fetchall())
 
     with open(output_path, "w") as network_file:
-        header = "GBK_a\tRecord_Type_a\tRecord_Number_a\tORF_coords_a\tGBK_b\t"
-        "Record_Type_b\tRecord_Number_b\tORF_coords_b\tdistance\tjaccard\tadjacency\t"
-        "dss\tweights\taligmnent_mode\n"
+        header = (
+            "GBK_a\tRecord_Type_a\tRecord_Number_a\tORF_coords_a\tGBK_b\t"
+            "Record_Type_b\tRecord_Number_b\tORF_coords_b\tdistance\tjaccard\tadjacency\t"
+            "dss\tweights\taligmnent_mode\textend_strategy\n"
+        )
 
         network_file.write(header)
 
@@ -651,6 +660,7 @@ def write_network_file(
             ext_b_stop,
             weights,
             alignment_mode,
+            extend_strategy,
         ) in edgelist:
             row = "\t".join(
                 [
@@ -668,6 +678,7 @@ def write_network_file(
                     f"{dss:.2f}",
                     weights,
                     alignment_mode,
+                    extend_strategy,
                 ]
             )
 

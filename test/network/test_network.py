@@ -228,7 +228,7 @@ class TestNetwork(TestCase):
         bs_network.generate_connected_components(1, 1, "test", 1)
 
         # get the cc ids
-        cc_ids = bs_network.get_connected_component_ids(1, 1, "test", 1)
+        cc_ids = bs_network.get_connected_component_ids(1, "test", 1)
 
         # I insist on only having one assert per test
         # so we'll make things difficult for ourselves
@@ -453,7 +453,7 @@ class TestNetwork(TestCase):
 
         cc = next(bs_network.get_connected_components(0.5, 1, mix_bin, 1))
 
-        cc_id = bs_network.get_connected_component_id(cc, 0.5, 1, 1)
+        cc_id = bs_network.get_connected_component_id(cc, 0.5, 1)
 
         expected_data = 1
 
@@ -516,7 +516,7 @@ class TestNetwork(TestCase):
                 cc, include_records
             )
             if is_ref_only:
-                bs_network.remove_connected_component(cc, 0.5, 1, 1)
+                bs_network.remove_connected_component(cc, 0.5, 1)
 
         select_statement = select(cc_table.c.id).distinct()
 

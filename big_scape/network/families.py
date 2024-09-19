@@ -273,6 +273,18 @@ def save_singletons(
             (singleton[0], singleton[0], cutoff, bin_label, run_id)
         )
 
+        DB.execute(
+            DB.metadata.tables["connected_component"]
+            .insert()
+            .values(
+                id=singleton[0],
+                record_id=singleton[0],
+                cutoff=cutoff,
+                bin_label=bin_label,
+                run_id=run_id,
+            )
+        )
+
     save_to_db(singleton_regions)
 
 
@@ -316,7 +328,7 @@ def run_family_assignments(
                     connected_component, bin.source_records
                 ):
                     bs_network.remove_connected_component(
-                        connected_component, cutoff, edge_param_id, run["run_id"]
+                        connected_component, cutoff, run["run_id"]
                     )
                     continue
 
@@ -328,7 +340,11 @@ def run_family_assignments(
                     connected_component, bin.label, cutoff, run["run_id"]
                 )
                 save_to_db(regions_families)
-            save_singletons(bin.record_ids, cutoff, bin.label, run["run_id"])
+
+            if run["include_singletons"]:
+                save_singletons(
+                    bin.get_query_source_record_ids(), cutoff, bin.label, run["run_id"]
+                )
 
     DB.commit()
 

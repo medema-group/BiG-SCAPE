@@ -18,6 +18,7 @@ CREATE TABLE IF NOT EXISTS run (
     classify TEXT,
     weights TEXT,
     alignment_mode TEXT,
+    extend_strategy TEXT,
     include_singletons TEXT,
     cutoffs TEXT
 );
@@ -135,7 +136,6 @@ CREATE TABLE IF NOT EXISTS connected_component (
     id INTEGER NOT NULL,
     record_id INTEGER NOT NULL,
     cutoff REAL NOT NULL,
-    edge_param_id INTEGER NOT NULL,
     bin_label TEXT NOT NULL,
     run_id INTEGER NOT NULL,
     UNIQUE(record_id, cutoff, bin_label, run_id)

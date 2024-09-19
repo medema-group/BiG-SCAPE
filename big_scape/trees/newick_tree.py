@@ -106,12 +106,16 @@ def process_newick_tree(tree_file: Path) -> str:
             return tree.format("newick")
 
 
-def save_tree(tree: str, family_id: int, run_id: int) -> None:
+def save_tree(
+    tree: str, family_id: int, cutoff: float, bin_label: str, run_id: int
+) -> None:
     """Save a newick tree to the database family table
 
     Args:
         tree (str): newick formatted tree
         family_id (int): family exemplar database id  (center_id)
+        cutoff (float): current cutoff
+        bin_label (str): current bin_label
         run_id (int): id of the current run
     """
     if DB.metadata is None:
@@ -121,6 +125,8 @@ def save_tree(tree: str, family_id: int, run_id: int) -> None:
     update_statement = (
         update(family_table)
         .where(family_table.c.center_id == family_id)
+        .where(family_table.c.cutoff == cutoff)
+        .where(family_table.c.bin_label == bin_label)
         .where(family_table.c.run_id == run_id)
         .values(newick=tree)
         .compile()
@@ -128,12 +134,16 @@ def save_tree(tree: str, family_id: int, run_id: int) -> None:
     DB.execute(update_statement, False)
 
 
-def save_trees(trees: list[str], family_ids: list[int], run_id: int) -> None:
+def save_trees(
+    trees: list[str], family_ids: list[int], cutoff: float, bin_label: str, run_id: int
+) -> None:
     """Save multiple newick trees to corresponding family to the database
 
     Args:
         trees (list[str]): newick trees
         family_ids (list[int]): family exemplar database ids
+        cutoff (float): current cutoff
+        bin_label (str): current bin_label
         run_id (int): id of the current run
     """
     if not DB.connection:
@@ -145,6 +155,8 @@ def save_trees(trees: list[str], family_ids: list[int], run_id: int) -> None:
     update_statement = (
         update(family_table)
         .where(family_table.c.center_id == bindparam("center"))
+        .where(family_table.c.cutoff == cutoff)
+        .where(family_table.c.bin_label == bin_label)
         .where(family_table.c.run_id == run_id)
         .values(newick=bindparam("tree"))
     )

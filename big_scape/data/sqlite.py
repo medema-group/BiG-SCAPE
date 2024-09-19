@@ -367,6 +367,7 @@ class DB:
                 ),
                 weights="Legacy Weights" if run["legacy_weights"] else "Mix",
                 alignment_mode=run["alignment_mode"].name.title(),
+                extend_strategy=run["extend_strategy"].name.title(),
                 include_singletons=(
                     "Yes"
                     if "include_singletons" in run and run["include_singletons"]

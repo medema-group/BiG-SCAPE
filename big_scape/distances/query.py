@@ -61,7 +61,7 @@ def calculate_distances_query(
     query_nodes = bs_network.get_nodes_from_cc(query_connected_component, query_records)
 
     bs_network.remove_connected_component(
-        query_connected_component, max_cutoff, edge_param_id, run["run_id"]
+        query_connected_component, max_cutoff, run["run_id"]
     )
 
     query_bin_connected = bs_comparison.RecordPairGenerator(
