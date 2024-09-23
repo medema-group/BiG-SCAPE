@@ -527,7 +527,7 @@
                     <tr class="w3-light-grey">
                         <th>CC</th>
                         <th>Families</th>
-                        <th>Members</th>
+                        <th>Records</th>
                     </tr>
                 </table>`)
         for (var bs_cc of sorted_bs_ccs) {
@@ -757,6 +757,7 @@ CC\tFamily\tGBK\tRecord_Type\tRecord_Number\tClass\tCategory\tOrganism\tTaxonomy
 
         var cutoff = run_data["cutoff"]
         var alignment_mode = run_data["alignment_mode"].toUpperCase()
+        var extend_strategy = run_data["extend_strategy"].toUpperCase()
         if (run_data["weights"] == "Mix") {
             var weight = "mix"
         } else {
@@ -767,7 +768,8 @@ CC\tFamily\tGBK\tRecord_Type\tRecord_Number\tClass\tCategory\tOrganism\tTaxonomy
                             INNER JOIN edge_params ON edge_params.id==distance.edge_param_id
                             WHERE distance.distance<${cutoff} AND distance.record_a_id IN (${record_ids})
                             AND distance.record_b_id IN (${record_ids}) AND edge_params.weights=="${weight}"
-                            AND edge_params.alignment_mode=="${alignment_mode}"`)[0].values
+                            AND edge_params.alignment_mode=="${alignment_mode}"
+                            AND edge_params.extend_strategy=="${extend_strategy}"`)[0].values
         var bs_sim = {}
         for (row of distances) {
             var [a, b, d] = row
