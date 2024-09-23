@@ -4,7 +4,6 @@
 from itertools import repeat
 import json
 from multiprocessing import Pool
-import platform
 from distutils import dir_util
 from pathlib import Path
 import click
@@ -15,7 +14,7 @@ from typing import Optional
 from big_scape.data import DB
 from big_scape.comparison import RecordPairGenerator
 from big_scape.genbank import GBK, BGCRecord
-from big_scape.trees import generate_newick_tree, save_tree, save_trees
+from big_scape.trees import generate_newick_tree, save_trees
 from big_scape.comparison import get_record_category
 
 import big_scape.paths as bs_paths
@@ -281,8 +280,6 @@ def generate_newick_trees(
         / "GCF_trees"
     )
 
-    system = platform.system()
-
     exemplars_db = []
     families_records = []
     exemplars_idx = []
@@ -292,21 +289,16 @@ def generate_newick_trees(
             if record._db_id == exemplar:
                 exemplar_idx = idx
                 break
-        if system == "Darwin":
-            tree = generate_newick_tree(family_recs, exemplar_idx, exemplar, tree_path)
-            save_tree(tree, exemplar, cutoff, pair_generator.label, run["run_id"])
-        else:
-            exemplars_db.append(exemplar)
-            families_records.append(family_recs)
-            exemplars_idx.append(exemplar_idx)
+        exemplars_db.append(exemplar)
+        families_records.append(family_recs)
+        exemplars_idx.append(exemplar_idx)
 
-    if system != "Darwin":
-        pool = Pool(processes=run["cores"])
-        trees = pool.starmap(
-            generate_newick_tree,
-            zip(families_records, exemplars_idx, exemplars_db, repeat(tree_path)),
-        )
-        save_trees(trees, exemplars_db, cutoff, pair_generator.label, run["run_id"])
+    pool = Pool(processes=run["cores"])
+    trees = pool.starmap(
+        generate_newick_tree,
+        zip(families_records, exemplars_idx, exemplars_db, repeat(tree_path)),
+    )
+    save_trees(trees, exemplars_db, cutoff, pair_generator.label, run["run_id"])
     DB.commit()
 
 
