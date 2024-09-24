@@ -1,149 +1,1558 @@
 <!DOCTYPE html>
 <html>
-  <head>
+
+<head>
     <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
     <meta http-equiv='cache-control' content='no-cache'>
     <meta http-equiv='expires' content='0'>
     <meta http-equiv='pragma' content='no-cache'>
     <title>BiG-SCAPE v2.0.0</title>
+    <link rel="stylesheet" type="text/css" href="./html_content/css/w3.css">
     <link rel="stylesheet" type="text/css" href="./html_content/css/style.css">
-  </head>
-  <body>
-    <div id="header">
-      <div class="top-header" style="padding-top: 0.5em;">
-        <img class="bigscape-logo" src="./html_content/img/bigscape.png" style="height: 80px;" alt="BiG-SCAPE">
-        <span class="bigscape-title"><a href="https://git.wageningenur.nl/medema-group/BiG-SCAPE">Biosynthetic Genes Similarity Clustering and Prospecting Engine</a><br>
-            <span>Version 2.0.0</span>
-        </span>
-        <span style="float: right; margin-top: 2em">
-          Theme (experimental):
-          <select id="color-theme">
-            <option selected value="auto">Auto</option>
-            <option value="light">Light</option>
-            <option value="dark">Dark</option>
-          </select>
-        </span>
-        <!--div id="icons">
-          <a href="#"><img src="./img/home.png" alt="home" title="Go to start page"></a>
-          <a href="#"><img src="./img/help.png" alt="help" title="Get help using BiG-SCAPE"></a>
-          <a href="#"><img src="./img/about.png" alt="about" title="About BiG-SCAPE"></a>
-          <a href="#" id="download"><img src="./img/download.png" alt="download" title="Download results"></a>
-        </div-->
-      </div>
+</head>
+
+<body>
+    <div id="header" class="top-header">
+        <div class="top-header" style="padding-top: 0.5em;">
+            <img class="bigscape-logo" src="./html_content/img/bigscape.png" style="height: 80px;margin-left:0.2em"
+                alt="BiG-SCAPE">
+            <span class="bigscape-title"><a href="https://github.com/medema-group/BiG-SCAPE">Biosynthetic Genes
+                    Similarity Clustering and Prospecting Engine</a><br>
+                <span>Version 2.0.0</span>
+            </span>
+            <span style="float: right; margin-top: 2em">
+                Theme:
+                <select id="color-theme">
+                    <option selected value="auto">Auto</option>
+                    <option value="light">Light</option>
+                    <option value="dark">Dark</option>
+                </select>
+            </span>
+            <!-- <div id="icons">
+                <a href="#"><img src="./html_content/img/home.png" alt="home" title="Go to start page"></a>
+                <a href="#"><img src="./html_content/img/help.png" alt="help" title="Get help using BiG-SCAPE"></a>
+                <a href="#"><img src="./html_content/img/about.png" alt="about" title="About BiG-SCAPE"></a>
+                <a href="#" id="download"><img src="./html_content/img/download.png" alt="download"
+                        title="Download results"></a>
+            </div> -->
+        </div>
+        <div id="buttons">
+            <span id="cluster-type" style="float: left; padding-top: 0.2em; padding-right: 1em">
+                <ul id="overviewbutton" style="float: left; padding-right: 2em">
+                    <li class='clbutton overview selected'><a href="#overview">Overview</a>
+                    </li>
+                    <li class='clbutton overview'><a href="#network">Network</a>
+                    </li>
+                </ul>
+                Select bin:
+                <select id="network-selection">
+                </select>
+            </span>
+            <span id="cluster-type" style="float: right; padding-top: 0.2em; padding-left: 1em;">
+                Runs:
+                <select id="bigscape-runs">
+                </select>
+            </span>
+            <span id="status" style="float: right; padding: 0.2em 1em 0 0.5em"> </span><button id="change-db"
+                style="float:right">Change database</button>
+        </div>
     </div>
     <div class="page">
-      <div id="buttons">
-        <span id="cluster-type" style="float: left; padding-top: 0.2em; padding-right: 1em">
-          Networks:
-          <ul id="overviewbutton" style="float: left; padding-right: 2em">
-          </ul>
-          <select id="clusterbuttons" style="float: right">
-          </select>
-        </span>
-        <span id="cluster-type" style="float: right; padding-top: 0.2em; padding-left: 1em;">
-          Runs:
-          <select id="bigscape-runs">
-          </select>
-        </span>
-      </div>
-      <div style="position: relative; padding-bottom: 52.5%; padding-top: 0px; height: 0;">
-        <iframe style="position: absolute; top: 0; left: 0; width: 100%; height: 100%;" id="contentframe" src=""></iframe>
-      </div>
+
+        <!-- Start of overview -->
+
+        <div class="overviewpage">
+            <a id="overview" class="anchor"></a>
+            <div class="overviewleft">
+                <div class="infocontainer">
+                    <h3>Run Information</h3>
+                    <div class="infobar">
+                        <span class="infoleft">Analysis Started:</span>
+                        <span id="analysis_started" class="inforight"></span>
+                    </div>
+                    <div class="infobar">
+                        <span class="infoleft">Analysis Completed:</span>
+                        <span id="analysis_completed" class="inforight"></span>
+                    </div>
+                    <div class="infobar">
+                        <span class="infoleft">Mode:</span>
+                        <span id="mode" class="inforight"></span>
+                    </div>
+                    <div class="infobar">
+                        <span class="infoleft">Input Dir:</span>
+                        <span id="input_dir" class="inforight"></span>
+                    </div>
+                    <div class="infobar">
+                        <span class="infoleft">Output Dir:</span>
+                        <span id="output_dir" class="inforight"></span>
+                    </div>
+                    <div class="infobar">
+                        <span class="infoleft">Reference Dir:</span>
+                        <span id="reference_dir" class="inforight"></span>
+                    </div>
+                    <div class="infobar">
+                        <span class="infoleft">Query BGC:</span>
+                        <span id="query_path" class="inforight"></span>
+                    </div>
+                    <div class="infobar">
+                        <span class="infoleft">MIBiG Version:</span>
+                        <span id="mibig" class="inforight"></span>
+                    </div>
+                    <div class="infobar">
+                        <span class="infoleft">Record Type:</span>
+                        <span id="record_type" class="inforight"></span>
+                    </div>
+                    <div class="infobar">
+                        <span class="infoleft">Minimum BGC length:</span>
+                        <span id="min_bgc_length" class="inforight"></span>
+                    </div>
+                    <div class="infobar">
+                        <span class="infoleft">Classify on:</span>
+                        <span id="classify" class="inforight"></span>
+                    </div>
+                    <div class="infobar">
+                        <span class="infoleft">Weights:</span>
+                        <span id="weights" class="inforight"></span>
+                    </div>
+                    <div class="infobar">
+                        <span class="infoleft">Alignment Mode:</span>
+                        <span id="alignment_mode" class="inforight"></span>
+                    </div>
+                    <div class="infobar">
+                        <span class="infoleft">Extend Strategy:</span>
+                        <span id="extend_strategy" class="inforight"></span>
+                    </div>
+                    <div class="infobar">
+                        <span class="infoleft">Include Singletons:</span>
+                        <span id="include_singletons" class="inforight"></span>
+                    </div>
+                </div>
+                <div class="infocontainer">
+                    <h3>Input Data</h3>
+                    <div class="infobar">
+                        <span class="infoleft">Total Number of Genomes:</span>
+                        <span id="total_accession" class="inforight"></span>
+                    </div>
+                    <div class="infobar">
+                        <span class="infoleft">Total BGCs:</span>
+                        <span id="total_bgc" class="inforight"></span>
+                    </div>
+                    <div class="infobar">
+                        <div style="float: left; width: 250px;">
+                            <canvas id="bgc_per_acc" width="250" height="250"></canvas>
+                        </div>
+                        <div style="float: right; width: 250px;">
+                            <canvas id="bgc_per_class" width="250" height="250"></canvas>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="overviewright">
+                <div class="infocontainer">
+                    <h3>Network Overview</h3>
+                    <div>
+                        <div class="infobar">
+                            <span class="infoleft">Number of families:</span>
+                            <span id="network_total_families" class="inforight"></span>
+                        </div>
+                        <div class="infobar">
+                            <span class="infoleft">Average number of BGCs per family:</span>
+                            <span id="network_avg_bgc_in_family" class="inforight"></span>
+                        </div>
+                        <div class="infobar">
+                            <span class="infoleft">Max number of BGCs in a family:</span>
+                            <span id="network_max_bgc_in_family" class="inforight"></span>
+                        </div>
+                        <div class="infobar">
+                            <span class="infoleft">Families with MIBiG Reference BGCs:</span>
+                            <span id="network_mibig_in_family" class="inforight"></span>
+                        </div>
+                        <div class="infobar">
+                        </div>
+                        <div class="infobar">
+                            <span style="font-weight: bold;">GCF absence/presence heatmap</span>
+                        </div>
+                        <div class="infobar">
+                            <span class="infoleft" style="font-size: 12px;">
+                                Cluster GCF based on: <br />
+                                <select id="abpres_heatmap-col_clustering">
+                                </select>
+                            </span>
+                            <span class="inforight" style="font-size: 12px;">
+                                Show: <br />
+                                <select id="abpres_heatmap-col_showtop">
+                                    <option value="20">20</option>
+                                    <option value="50">50</option>
+                                    <option value="100">100</option>
+                                    <option value="all">All</option>
+                                </select>
+                                largest GCFs
+                            </span>
+                        </div>
+                        <div class="infobar">
+                            <span class="infoleft" style="font-size: 12px;">
+                                Cluster Genomes based on: <br />
+                                <select id="abpres_heatmap-row_clustering">
+                                </select>
+                            </span>
+                        </div>
+                        <div class="infobar">
+                        </div>
+                        <div class="infobar">
+                            <span class="infoleft" style="font-size: 12px;">
+                                Download:
+                                <button onclick="javascript: downloadAbPresTsv();">Absence/Presence table (tsv)</button>
+                                <input type="hidden" id="abpres_tsv_text" value="" />
+                            </span>
+                        </div>
+                        <div class="infobar">
+                        </div>
+                        <div id="abpres_heatmap" style="overflow: scroll; max-height:400px">
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- End of overview -->
+
+        <div style="clear: both; border-bottom: solid 2px var(--background-header); margin: 10px 0px"></div>
+
+        <!-- Start of network visual -->
+        <div class="infocontainer">
+            <a id="network" class="anchor"></a>
+            <h3>Network</h3>
+            <div style="margin:1em">
+                <a id="toggle-filters"><u>Filter Table</u></a>
+                <div id="cc-table-filters" class="hidden">
+                    <span>Filter the connected components table. All filters allow for comma separated input that will
+                        be handled as logical OR operators.</span>
+                    <div>
+                        <input id="organism-filter" placeholder="Search Organisms">
+                        <span>Fuzzy search organism names, e.g. "Streptomyces"</span>
+                    </div>
+                    <div>
+                        <input id="bgc-filter" placeholder="Search BGC Names">
+                        <span>Fuzzy search input BGC names, e.g. "BGC0000001"</span>
+                    </div>
+                    <div>
+                        <input id="domain-filter" placeholder="Search Pfam Domains">
+                        <span>Exact search for Pfam protein domain accession, e.g. "PF00501"</span>
+                    </div>
+                    <div>
+                        <input id="family-filter" placeholder="Search Family Names">
+                        <span>Exact search for family identifiers, e.g. "FAM_00001" or "1"</span>
+                    </div>
+                    <button id="search-btn">Search</button>
+                    <button id="clear-filters">Clear Filters</button>
+                    <br>
+                    <button id="download-selection">Download Current Selection</button>
+                    <br>
+                </div>
+            </div>
+            <div style="margin:1em">
+                <button id="load-all" title="Load all CCs currently shown in the table">Visualize All</button>
+            </div>
+            <div id="topo-toggle-container" style="margin:1em">
+            </div>
+            <div id="cc-table-container" class="w3-container" style="float:left; width:25%">
+            </div>
+
+            <div id="network-container"
+                style="position: relative; width:75%;padding-bottom:35%;float:right;transform:translateX(0)">
+
+            </div>
+
+        </div>
+
+        <!-- End of network visual -->
     </div>
+
+    <div id="loadingWindow" class="w3-modal">
+        <div class="w3-modal-content" style="width: 400px; text-align: center; padding: 1em; border-radius: 1em">
+            <button id="close-db-select" class="showhide-btn active"></button>
+            <div class="w3-container">
+                <img src="./html_content/img/loading.gif"></img>
+                <br>
+                Select a database file to read from:
+            </div>
+            <div>
+                <input id="db-selector" type="file">
+            </div>
+        </div>
+    </div>
+
     <div>
-      <div id="logos">
-      	<table id="logo-table">
-      		<tbody><tr>
-      			<td>
-        			<img src="./html_content/img/wur-logo.png">
-        		</td>
-        		<td>
-        			<img src="./html_content/img/warwick-logo.png">
-        		</td>
-        		<td>
-        			<img src="./html_content/img/cfb-logo.png">
-        		</td>
-        	</tr>
-        </tbody></table>
-      </div>
-      <div id="copyright">
-          Found BiG-SCAPE useful? Please consider citing our paper:
-          <br />
-          Navarro-Muñoz, J.C., Selem-Mojica, N., Mullowney, M.W. et al. "A computational framework to explore large-scale biosynthetic diversity". Nature Chemical Biology (2019).
-          <br />
-          <a href="https://dx.doi.org/10.1038/s41589-019-0400-9">doi:0.1038/s41589-019-0400-9</a>.
-      </div>
+        <div id="logos">
+            <table id="logo-table">
+                <tbody>
+                    <tr>
+                        <td>
+                            <img src="./html_content/img/wur-logo.png">
+                        </td>
+                        <td>
+                            <img src="./html_content/img/warwick-logo.png">
+                        </td>
+                        <td>
+                            <img src="./html_content/img/cfb-logo.png">
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+        <div id="copyright">
+            Found BiG-SCAPE useful? Please consider citing our paper:
+            <br />
+            Navarro-Muñoz, J.C., Selem-Mojica, N., Mullowney, M.W. et al. "A computational framework to explore
+            large-scale
+            biosynthetic diversity". Nature Chemical Biology (2019).
+            <br />
+            <a href="https://dx.doi.org/10.1038/s41589-019-0400-9">doi:0.1038/s41589-019-0400-9</a>.
+        </div>
     </div>
-  </body>
-  <script type="text/javascript" src="./html_content/js/jquery-3.2.1.min.js"></script>
-  <script type="text/javascript" src="./html_content/js/bigscape_results.js"></script>
-  <script type="text/javascript">
-    function loadNetwork(name, sub) {
-      $('#contentframe').attr('src', './html_content/networks/' + name + '/' + sub + '/index.html');
-      $('#contentframe').trigger("focus");
-    }
-    function loadOverview(name) {
-      $('#contentframe').attr('src', './html_content/networks/' + name + '/overview.html');
-      $('#contentframe').trigger("focus");
-      $("#clusterbuttons").append($("<option selected disabled hidden>Select Network</option>"))
-    }
-    function loadRun(idx) {
-      var run_name = bigscape_results[idx]["label"];
-      $("#overviewbutton").html("");
-      $("#overviewbutton").append($("<li class='clbutton overview selected'><a href='javascript:loadOverview(\"" + run_name + "\");'>Overview</a></li>"));
-      $("#clusterbuttons").html("");
-      $("#clusterbuttons").append($("<option selected disabled hidden>Select Network</option>"))
-      // $("#clusterbuttons").append($("<li class='clbutton overview selected'><a href='javascript:loadOverview(\"" + run_name + "\");'>Overview</a></li>"));
-      for (var i in bigscape_results[idx]["networks"]) {
-        var sub = bigscape_results[idx]["networks"][i];
-        $("#clusterbuttons").append($("<option class='clbutton " + sub["css"] + " inactive'><a href='javascript:loadNetwork(\"" + run_name + "\",\"" + sub["name"] + "\");'>" + sub["label"] + "</a></option>"));
-      }
-      $("#clusterbuttons").on("change", function() {
-        loadNetwork(run_name, this.value);
-      })
-      // TODO: comment out temporarily, delete if no issues arise
-      // $(".clbutton").find("a").hover(function(handler){
-      //     var node = $(handler.target).parent();
-      //     $(".clbutton:not(.selected)").addClass("inactive");
-      //     node.removeClass("inactive");
-      //   }, function(handler){
-      //     $(".clbutton:not(.selected)").addClass("inactive");
-      // });
-      // $(".clbutton").click(function(handler){
-      //   $(".clbutton").removeClass("selected");
-      //   $(handler.target).parent().addClass("selected");
-      //   $(".clbutton:not(.selected)").addClass("inactive");
-      // })
-      loadOverview(run_name);
-    }
-    $(document).ready(function(){
-      for (var i in bigscape_results) {
-        var module = bigscape_results[i];
-        $("#bigscape-runs").append("<option value='" + i + "'>" + module["label"] + "</option>");
-      }
-      $("#bigscape-runs").on("change", function() {
-        loadRun(parseInt(this.value));
-      })
-      $("#bigscape-runs").trigger("change");
-    });
-    // communicate theme between windows
-    $('#color-theme').on('change', event => {
-      var theme = event.target.value
-      if (theme === "auto") {
-        if (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) {
-          theme = "dark"
+</body>
+<script src="./html_content/js/jquery-3.2.1.min.js"></script>
+<script src="./html_content/js/sql-asm.js"></script>
+<!-- Overview libs -->
+<script src="./html_content/js/kinetic-v5.1.0.min.js"></script>
+<script src="./html_content/js/chart-4.4.1.umd.js"></script>
+<script src="./html_content/js/clusterfck-0.1-satria.js"></script>
+<script src="./html_content/js/inchlib-1.2.0.1-satria.js"></script>
+<!-- Network libs -->
+<script src="./html_content/js/vivagraph.js"></script>
+<script src="./html_content/js/svg.js"></script>
+<script src="./html_content/js/fuse.min.js"></script>
+<script src="./html_content/js/treelib.js"></script>
+<script src="./html_content/js/pfams.js"></script>
+<script src="./html_content/js/arrower.js"></script>
+<script src="./html_content/js/bigscape.js"></script>
+<script type="text/javascript">
+
+    function showLoading(enable, spinner) {
+        if (enable) {
+            $("#loadingWindow").css("display", "block");
+            if (spinner) {
+                $("#loadingWindow img").css("display", "inline");
+            } else {
+                $("#loadingWindow img").css("display", "none");
+            }
         } else {
-          theme = "light"
+            $("#loadingWindow").css("display", "none");
         }
-      }
-      document.documentElement.setAttribute('data-theme', theme);
-      $('#contentframe')[0].contentWindow.postMessage(theme, "*");
+    }
+
+    if (location.hostname === "localhost" || location.hostname === "127.0.0.1") {
+        // if on a hosted server, filepicker might not give access to remote files
+        // instead load the default database directly
+        initSqlJs().then(function (SQL) {
+            const xhr = new XMLHttpRequest();
+            xhr.open('GET', '/data_sqlite.db', true);
+            xhr.responseType = 'arraybuffer';
+
+            xhr.onload = e => {
+                const uInt8Array = new Uint8Array(xhr.response);
+                window.db = new SQL.Database(uInt8Array);
+                dataLoaded()
+            };
+            xhr.send();
+            $("#status").html("Loaded: data_sqlite.db")
+        })
+    } else {
+        showLoading(true, false);
+    }
+
+    function readFile(inf) {
+        var reader = new FileReader()
+        reader.addEventListener("load", (event) => {
+            initSqlJs().then(function (SQL) {
+                var data = new Uint8Array(event.target.result)
+                window.db = new SQL.Database(data)
+                dataLoaded()
+            });
+
+        })
+        reader.readAsArrayBuffer(inf)
+        $("#status").html("Loaded: " + inf.name)
+
+    }
+    $("#change-db").on("click", (event) => {
+        showLoading(true, false)
+    })
+    $("#close-db-select").on("click", (event) => {
+        showLoading(false, false)
+    })
+    $("#db-selector").on("change", (event) => {
+        showLoading(true, true)
+        var fileList = event.target.files
+        for (file of fileList) {
+            readFile(file)
+        }
+    })
+    $("#toggle-filters").on("click", (event) => {
+        $("#cc-table-filters").toggleClass("hidden")
+    })
+    $("#clear-filters").on("click", (event) => {
+        $("#organism-filter").val("")
+        $("#bgc-filter").val("")
+        $("#domain-filter").val("")
+        $("#family-filter").val("")
+        $("#search-btn").trigger("click")
+    })
+    $('#color-theme').on('change', event => {
+        var theme = event.target.value
+        if (theme === "auto") {
+            if (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) {
+                theme = "dark"
+            } else {
+                theme = "light"
+            }
+        }
+        document.documentElement.setAttribute('data-theme', theme);
     });
     $('#color-theme').trigger('change');
-    window.addEventListener("message", (event) => {
-      if (event.data === "update data-theme") {
-        $('#color-theme').trigger('change');
-      }
-    });
-  </script>
+</script>
+
+<script type="text/javascript">
+
+    function getRandomColor() {
+        var letters = '0123456789ABCDEF';
+        var color = '#';
+        for (var i = 0; i < 6; i++) {
+            color += letters[Math.floor(Math.random() * 16)];
+        }
+        return color;
+    }
+
+    function dataLoaded() { // only called after a database is loaded
+        showLoading(false, false);
+        populateRunSelect();
+    }
+
+    function populateRunSelect() {
+        runs = window.db.exec(`SELECT * FROM run`)[0]
+        run_data = {}
+        for (i in runs.values) {
+            var run_id = runs.values[i][0]
+            run_data[run_id] = {}
+            for (j in runs.columns) {
+                run_data[run_id][runs.columns[j]] = runs.values[i][j]
+            }
+        }
+        $("#bigscape-runs").html("")
+        for (var [run_id, data] of Object.entries(run_data)) {
+            for (var cutoff of data["cutoffs"].split(",")) {
+                $("#bigscape-runs").append("<option value='" + run_id + "," + cutoff + "'>" + data["label"] + "_c" + cutoff + "</option>");
+            }
+        }
+        $("#bigscape-runs").off().on("change", function () {
+            [run_id, cutoff] = this.value.split(",")
+            run_params = run_data[run_id]
+            run_params["cutoff"] = cutoff
+            loadOverview(run_params);
+        })
+        $("#bigscape-runs").trigger("change");
+
+        $("#search-btn").off().on("click", function () {
+            filterCcTable(run_data)
+        })
+    }
+
+
+    function populateCcTable(run_data, cc_ids) {
+        // reset network container
+        // TODO: clear shift detection listeners
+        $("#network-container").html("<span>Click on any Connected Component to visualize its network</span>")
+
+        var run_id = run_data["id"]
+        var cutoff = run_data["cutoff"]
+        var bin_label = $("#network-selection option:selected").text()
+        var cc_query = `SELECT cc.id, family.id, family.center_id, bgc_record_family.record_id, gbk.path FROM family
+            INNER JOIN bgc_record_family ON family.id== bgc_record_family.family_id
+            INNER JOIN bgc_record ON bgc_record.id==bgc_record_family.record_id
+            INNER JOIN gbk ON gbk.id==bgc_record.gbk_id
+            INNER JOIN connected_component AS cc ON bgc_record_family.record_id==cc.record_id
+            WHERE family.run_id==${run_id} AND family.cutoff==${cutoff} AND family.bin_label=="${bin_label}"
+            AND cc.run_id==${run_id} AND cc.cutoff==${cutoff} AND cc.bin_label=="${bin_label}"`
+        if (cc_ids) {
+            cc_query += ` AND cc.id IN (${cc_ids})`
+        }
+        var cc_data = window.db.exec(cc_query)[0].values
+        cc_index = {}
+        fam_index = {}
+        bs_ccs = []
+        for (row of cc_data) {
+            var [cc_id, fam_id, fam_ref, record_id, path] = row
+            if (!cc_index.hasOwnProperty(cc_id)) {
+                cc_index[cc_id] = bs_ccs.length
+                fam_index[cc_id] = {}
+                bs_ccs.push({ "id": cc_id, "families": [], "size": 0 })
+            }
+            if (!fam_index[cc_id].hasOwnProperty(fam_id)) {
+                fam_index[cc_id][fam_id] = bs_ccs[cc_index[cc_id]]["families"].length
+                bs_ccs[cc_index[cc_id]]["families"].push({ "id": "FAM_" + fam_id.toString().padStart(5, "0"), "ref": fam_ref, "members": [] })
+            }
+            bs_ccs[cc_index[cc_id]]["families"][fam_index[cc_id][fam_id]]["members"].push(record_id)
+            bs_ccs[cc_index[cc_id]]["size"]++
+        }
+
+        // add checkbox to load topologically connected CCs only if not region mode
+        var topolinks = {}
+        $("#topo-toggle-container").html("")
+        if (run_data["record_type"] != "Region") {
+            $("#topo-toggle-container").html(`<input id="topo-toggle" type="checkbox" checked>
+                                              <label for="topo-toggle">Render topologically connected CCs</label>`)
+            var topolink_ccs_query = `SELECT DISTINCT cc1.id, cc2.id FROM connected_component AS cc1
+                INNER JOIN bgc_record AS bgc1 ON bgc1.id==cc1.record_id
+                INNER JOIN gbk ON bgc1.gbk_id==gbk.id
+                INNER JOIN bgc_record AS bgc2 ON bgc2.gbk_id==gbk.id
+                INNER JOIN connected_component AS cc2 ON bgc2.id==cc2.record_id
+                WHERE cc1.id!=cc2.id
+                AND cc1.run_id==${run_id} AND cc2.run_id==${run_id}
+                AND cc1.cutoff==${cutoff} AND cc2.cutoff==${cutoff}
+                AND cc1.bin_label=="${bin_label}" AND cc2.bin_label=="${bin_label}"`
+            var topo_data = window.db.exec(topolink_ccs_query)[0]
+            if (topo_data) {
+                for (topolink of topo_data.values) {
+                    if (topolink[0] in topolinks) {
+                        topolinks[topolink[0]].push(topolink[1])
+                    } else {
+                        topolinks[topolink[0]] = [topolink[1]]
+                    }
+                }
+            }
+        }
+        var sorted_bs_ccs = bs_ccs.toSorted((a, b) => b.size - a.size)
+        $("#cc-table-container").html(`<table id="cc-table" class="w3-table w3-striped w3border w3-hoverable w3-responsive"
+                    style="max-height:560px;overflow:scroll">
+                    <tr class="w3-light-grey">
+                        <th>CC</th>
+                        <th>Families</th>
+                        <th>Records</th>
+                    </tr>
+                </table>`)
+        for (var bs_cc of sorted_bs_ccs) {
+            row = $("<tr><td>" + bs_cc["id"] + "</td><td>" + bs_cc["families"].map(fam => fam.id).sort().join(", ") + "</td><td>" + bs_cc["size"] + "</td></tr>")
+            var topo_ccs = []
+            if (bs_cc["id"] in topolinks) {
+                topolinks[bs_cc["id"]].forEach(cc_id => topo_ccs.push(bs_ccs[cc_index[cc_id]]))
+            }
+            row.click({ bs_cc: bs_cc, run_data: run_data, topo_ccs: topo_ccs }, function (handler) {
+                $("#cc-table tr.selected").removeClass("selected")
+                $(this).addClass("selected")
+                loadConnectedComponent(handler.data.bs_cc, handler.data.run_data, handler.data.topo_ccs)
+            })
+            $("#cc-table").append(row)
+        }
+        $("#load-all").off().on("click", function () {
+            loadFullNetwork(sorted_bs_ccs, run_data)
+        })
+        $("#download-selection").off().on("click", function () {
+            var selected_ccs = $("#cc-table td:first-child").map((i, el) => parseInt($(el).text())).toArray()
+            downloadCcTable(sorted_bs_ccs, run_data, selected_ccs)
+        })
+    }
+
+    function filterCcTable(run_data) {
+        [run_id, cutoff] = $("#bigscape-runs").val().split(",")
+        run_params = run_data[run_id]
+        run_params["cutoff"] = cutoff
+        var bin_label = $("#network-selection option:selected").text()
+
+        var org_filter = $("#organism-filter").val().toString().trim()
+        var pf_filter = $("#domain-filter").val().toString().trim()
+        var fam_filter = $("#family-filter").val().toString().trim()
+        var bgc_filter = $("#bgc-filter").val().toString().trim()
+
+        var cc_query = `SELECT DISTINCT connected_component.id FROM connected_component
+                INNER JOIN bgc_record ON bgc_record.id==connected_component.record_id
+                INNER JOIN gbk ON gbk.id==bgc_record.gbk_id
+                INNER JOIN cds ON gbk.id==cds.gbk_id
+                INNER JOIN hsp ON cds.id==hsp.cds_id
+                INNER JOIN bgc_record_family ON bgc_record_family.record_id==bgc_record.id
+                WHERE connected_component.run_id==${run_id} AND connected_component.cutoff==${cutoff}
+                AND connected_component.bin_label=="${bin_label}"`
+
+        if (org_filter) {
+            var conditions = org_filter.split(",").map(org => `gbk.organism LIKE "%${org.trim()}%"`)
+            cc_query += ` AND (${conditions.join(" OR ")})`
+        }
+        if (pf_filter) {
+            var pfams = pf_filter.split(",").map(pfam => pfam.trim()).join('", "')
+            cc_query += ` AND hsp.accession IN (${'"' + pfams + '"'})`
+        }
+        if (fam_filter) {
+            var fams = fam_filter.split(",").map(fam => parseInt(fam.replace("FAM_", ""))).filter(num => !isNaN(num))
+            cc_query += ` AND bgc_record_family.family_id IN (${fams})`
+        }
+        if (bgc_filter) {
+            var conditions = bgc_filter.split(",").map(bgc => `gbk.path LIKE "%${bgc.trim()}%"`)
+            cc_query += ` AND (${conditions.join(" OR ")})`
+        }
+        var include_ccs = window.db.exec(cc_query)[0]
+        if (include_ccs) {
+            populateCcTable(run_params, include_ccs.values.flat())
+        } else {
+            alert("No results match the used filters")
+        }
+    }
+
+    function loadFullNetwork(bs_ccs, run_data, include_ccs) {
+        // load the full network, or a set of include_ccs
+        if (include_ccs) {
+            var bs_ccs = bs_ccs.filter(bs_cc => (include_ccs.indexOf(bs_cc["id"]) != -1))
+        }
+        var bs_families = bs_ccs.flatMap(cc => cc.families)
+        var bs_records = bs_families.flatMap(fam => fam.members)
+        var bs_data = generate_bs_data(bs_records, run_data)
+        var bs_alignments = generate_bs_alignments(bs_families, bs_data)
+        var bs_similarities = generate_bs_similarity(bs_records, run_data)
+        var bs = new Bigscape(run_data, bs_data, bs_families, bs_alignments, bs_similarities, "network-container")
+    }
+
+    function loadConnectedComponent(bs_cc, run_data, topo_ccs) {
+        // load a single connected component and topolinked ccs if present.
+        // to distinguish between the selected cc and topolinked ones, pass
+        // all topolinked record ids in render_options when creating a Bigscape object
+        var render_options = { "render_time": 1, "topo_records": [] }
+        var bs_family = bs_cc["families"]
+        if (topo_ccs.length && $("#topo-toggle").is(":checked")) {
+            var topo_cc_ids = topo_ccs.map(cc => cc.id)
+            var topo_fams = topo_ccs.flatMap(cc => cc["families"])
+            render_options.topo_records = topo_fams.flatMap(fam => fam["members"])
+            bs_family = bs_family.concat(topo_fams)
+        }
+        var bs_records = bs_family.flatMap(fam => fam.members)
+        var bs_cc_data = generate_bs_data(bs_records, run_data)
+        var bs_alignment = generate_bs_alignments(bs_family, bs_cc_data)
+        var bs_similarity = generate_bs_similarity(bs_records, run_data)
+        var bs = new Bigscape(run_data, bs_cc_data, bs_family, bs_alignment, bs_similarity, "network-container", render_options)
+        if (topo_cc_ids && $("#topo-toggle").is(":checked")) {
+            $("#network-container").prepend($(`<div class="info-container" style="position:absolute;top:-30px;left:10px"><span><b>Connected component(s) ${topo_cc_ids.join(", ")} are connected via topological links</b></span></div>`))
+        }
+    }
+
+    function downloadCcTable(bs_ccs, run_data, include_ccs) {
+        var selected_ccs = bs_ccs.filter(bs_cc => (include_ccs.indexOf(bs_cc["id"]) != -1))
+        var records = selected_ccs.flatMap(cc => cc.families).flatMap(fam => fam.members)
+        var bs_data = window.db.exec(`SELECT bgc_record.id, gbk.path, bgc_record.record_type,
+        bgc_record.record_number, bgc_record.product, bgc_record.category, gbk.organism,
+        gbk.taxonomy, gbk.description FROM bgc_record
+        INNER JOIN gbk ON bgc_record.gbk_id==gbk.id
+        WHERE bgc_record.id IN (${records})`)[0].values
+        var row_index = {}
+        for (row of bs_data) {
+            var rec_id = row.shift()
+            row[0] = row[0].split('/').reverse()[0]
+            row_index[rec_id] = row
+        }
+        var tsv_text = `# Collection of selected connected components
+# Run info: ${run_data["label"]} ${run_data["cutoff"]} ${$("#network-selection option:selected").text()}
+# Organism filter: ${$("#organism-filter").val()}
+# BGC filter: ${$("#bgc-filter").val()}
+# Pfam filter: ${$("#domain-filter").val()}
+# Family filter: ${$("#family-filter").val()}\n
+CC\tFamily\tGBK\tRecord_Type\tRecord_Number\tClass\tCategory\tOrganism\tTaxonomy\tDescription\n`
+        for (cc of selected_ccs) {
+            for (fam of cc["families"]) {
+                for (record of fam["members"]) {
+                    tsv_text += `${cc["id"]}\t${fam["id"]}\t${row_index[record].join("\t")}\n`
+                }
+            }
+        }
+        sendDownload(tsv_text, `${run_data["label"]}_filtered.tsv`)
+    }
+
+    function generate_bs_data_domains(cds_ids) {
+        let dom_query = `SELECT hsp.cds_id, hsp.accession, hsp.env_start, hsp.env_stop, hsp.bit_score FROM hsp
+        WHERE hsp.cds_id IN (${cds_ids})`
+        var domains = window.db.exec(dom_query)[0].values
+        var dom_data = {}
+        for (i in domains) {
+            var cds_id = domains[i][0]
+            if (!dom_data.hasOwnProperty(cds_id)) {
+                dom_data[cds_id] = []
+            }
+            dom_data[cds_id].push({ "code": domains[i][1], "start": domains[i][2], "end": domains[i][3], "bitscore": domains[i][4] })
+        }
+        return dom_data
+    }
+    function generate_bs_data_orfs(gbk_ids) {
+        let cds_query = `SELECT cds.gbk_id, cds.orf_num, cds.strand, cds.nt_start, cds.nt_stop, cds.id FROM cds
+                        WHERE cds.gbk_id IN (${gbk_ids})`
+        var cds = window.db.exec(cds_query)[0].values
+
+        var dom_data = generate_bs_data_domains(cds.map(c => c[5]))
+        var cds_data = {}
+        for (i in cds) {
+            var gbk_id = cds[i][0]
+            if (!cds_data.hasOwnProperty(gbk_id)) {
+                cds_data[gbk_id] = []
+            }
+            cds_data[gbk_id].push({ "id": cds[i][1], "strand": cds[i][2], "start": cds[i][3], "end": cds[i][4], "domains": dom_data[cds[i][5]] || [] })
+        }
+        return cds_data
+    }
+    function generate_bs_data(record_ids, run_data) {
+        var records_query = `SELECT gbk.id, gbk.organism, length(gbk.nt_seq), gbk.hash, gbk.path,
+                        bgc_record.record_type, bgc_record.nt_start, bgc_record.nt_stop,
+                        bgc_record.record_number, bgc_record.id FROM bgc_record
+                        INNER JOIN gbk ON bgc_record.gbk_id==gbk.id
+                        WHERE bgc_record.id IN (${record_ids})`
+        var records = window.db.exec(records_query)[0].values
+        cds_data = generate_bs_data_orfs(records.map(rec => rec[0]))
+
+        var columns = ["desc", "end", "hash", "id"]
+        var bs_data = {}
+        for (row of records) {
+            var gbk_id = row.shift()
+            // format id: filename_recordtype_recordnumber
+            var gbk_path = row[3]
+            var filename = gbk_path.split('/').reverse()[0]
+            row[3] = filename + "_" + row.splice(4, 1) + "_" + row.splice(6, 1)
+            record_id = row.pop()
+
+            var new_row = {}
+            for (j in columns) {
+                new_row[columns[j]] = row[j]
+            }
+            new_row["start"] = 1
+            new_row["orfs"] = cds_data[gbk_id]
+            // find record start/stop, 1-index based on orf ids, inclusive end
+            var rec_start = 1
+            var rec_stop = new_row["orfs"].length
+            if (!new_row["orfs"][0].start >= row[4] || !new_row["orfs"].slice(-1).end <= row[5]) {
+                for (i in new_row["orfs"]) {
+                    if (new_row["orfs"][i].start < row[4]) {
+                        rec_start = parseInt(i) + 2 // orf ids are 1-index
+                    }
+                    if (new_row["orfs"][i].end > row[5]) {
+                        rec_stop = parseInt(i) // 1-index, inclusive end
+                        break
+                    }
+                }
+            }
+            new_row["record_start"] = rec_start
+            new_row["record_stop"] = rec_stop
+            if (run_data["mode"] == "Query") {
+                if (filename == run_data["query_path"]) {
+                    new_row["source"] = "query"
+                }
+            } else {
+                if (gbk_path.indexOf(run_data["reference_dir"]) > -1) {
+                    new_row["source"] = "reference"
+                }
+                if (gbk_path.indexOf(run_data["mibig_version"]) > -1) {
+                    new_row["source"] = "mibig"
+                }
+            }
+            bs_data[record_id] = new_row
+        }
+        return bs_data
+    }
+
+    function generate_bs_similarity(record_ids, run_data) {
+        if (record_ids.length < 2) {
+            return []
+        }
+
+        var cutoff = run_data["cutoff"]
+        var alignment_mode = run_data["alignment_mode"].toUpperCase()
+        var extend_strategy = run_data["extend_strategy"].toUpperCase()
+        if (run_data["weights"] == "Mix") {
+            var weight = "mix"
+        } else {
+            var weight = $("#network-selection option:selected").text()
+        }
+
+        var distances = window.db.exec(`SELECT distance.record_a_id, distance.record_b_id, distance.distance FROM distance
+                            INNER JOIN edge_params ON edge_params.id==distance.edge_param_id
+                            WHERE distance.distance<${cutoff} AND distance.record_a_id IN (${record_ids})
+                            AND distance.record_b_id IN (${record_ids}) AND edge_params.weights=="${weight}"
+                            AND edge_params.alignment_mode=="${alignment_mode}"
+                            AND edge_params.extend_strategy=="${extend_strategy}"`)[0].values
+        var bs_sim = {}
+        for (row of distances) {
+            var [a, b, d] = row
+            if (a > b) {
+                if (!bs_sim.hasOwnProperty(a)) {
+                    bs_sim[a] = {}
+                }
+                bs_sim[a][b] = 1 - d
+            } else {
+                if (!bs_sim.hasOwnProperty(b)) {
+                    bs_sim[b] = {}
+                }
+                bs_sim[b][a] = 1 - d
+            }
+        }
+        return bs_sim
+    }
+
+    function generate_bs_alignments(bs_families, bs_data) {
+        bs_alignments = []
+        for (family of bs_families) {
+            bs_alignments.push({
+                "aln": generate_bs_alignment(family["members"], family["ref"], bs_data),
+                "ref": family["ref"],
+                "newick": fetch_tree(parseInt(family["id"].slice(4))).toString()
+            })
+        }
+        return bs_alignments
+    }
+
+    function generate_bs_alignment(family_members, family_center, bs_data_family) {
+        if (family_members.length < 2) {
+            return { family_center: [0, 0, 1] }
+        }
+        var aln_data = window.db.exec(`SELECT distance.record_a_id, distance.record_b_id, distance.lcs_domain_a_start,
+                            distance.lcs_domain_b_start, distance.lcs_domain_a_stop,
+                            distance.lcs_domain_b_stop,  distance.reverse FROM distance
+                            WHERE (distance.record_a_id IN (${family_members}) AND distance.record_b_id==${family_center})
+                            OR (distance.record_b_id IN (${family_members}) AND distance.record_a_id==${family_center})`)[0].values
+        var aln = {}
+        for (row of aln_data) {
+            var [a_id, b_id, a_start, b_start, a_stop, b_stop, reverse] = row
+            rev_val = reverse ? -1 : 1
+            if (a_id == family_center) {
+                if (rev_val < 0) {
+                    var rec_start = bs_data_family[b_id].record_start - 1 // convert to 0-index
+                    var rec_stop = bs_data_family[b_id].record_stop // converts to exclusive end
+                    var total_dom_num = bs_data_family[b_id].orfs.slice(rec_start, rec_stop).flatMap(x => x.domains).length
+                    b_start = total_dom_num - b_start - 1
+                }
+                aln[b_id] = [b_start, a_start, rev_val]
+            } else {
+                if (rev_val < 0) {
+                    var rec_start = bs_data_family[b_id].record_start - 1
+                    var rec_stop = bs_data_family[b_id].record_stop
+                    var total_dom_num = bs_data_family[b_id].orfs.slice(rec_start, rec_stop).flatMap(x => x.domains).length
+                    b_start = total_dom_num - b_stop
+                    a_start = a_stop - 1
+                }
+                aln[a_id] = [a_start, b_start, rev_val]
+            }
+        }
+        return aln
+    }
+
+    function fetch_tree(family_id) {
+        var tree = window.db.exec(`SELECT family.newick FROM family WHERE family.id == ${family_id}`)[0].values;
+        return tree
+    }
+
+    function loadOverview(run_data) {
+        var run_id = run_data["id"]
+        var cutoff = run_data["cutoff"]
+        // run information
+        $("#analysis_started").html(run_data["start_time"]);
+        $("#analysis_completed").html(run_data["end_time"] + " (" + run_data["duration"] + ")");
+        $("#mode").html("<strong>" + run_data["mode"] + "</strong>");
+        $("#input_dir").html(run_data["input_dir"]);
+        $("#output_dir").html(run_data["output_dir"]);
+        $("#reference_dir").html(run_data["reference_dir"]);
+        $("#query_path").html(run_data["query_path"]);
+        $("#mibig").html(run_data["mibig_version"]);
+        $("#record_type").html(run_data["record_type"]);
+        $("#min_bgc_length").html(run_data["min_bgc_length"]);
+        $("#classify").html(run_data["classify"]);
+        $("#weights").html(run_data["weights"]);
+        $("#alignment_mode").html(run_data["alignment_mode"]);
+        $("#extend_strategy").html(run_data["extend_strategy"]);
+        $("#include_singletons").html(run_data["include_singletons"]);
+        // pie chart: BGC per Accession
+        gbk_org_data = window.db.exec(`SELECT gbk.organism, COUNT(gbk.organism) FROM gbk
+                                    INNER JOIN bgc_record ON bgc_record.gbk_id==gbk.id
+                                    INNER JOIN bgc_record_family ON bgc_record.id==bgc_record_family.record_id
+                                    INNER JOIN family ON bgc_record_family.family_id==family.id
+                                    WHERE family.run_id==${run_id} AND family.cutoff==${cutoff}
+                                    GROUP BY gbk.organism`)[0].values
+        var pieLabels = []
+        var pieData = []
+        var pieColors = []
+        for (row of gbk_org_data) {
+            pieLabels.push(row[0])
+            pieData.push(row[1])
+            pieColors.push(getRandomColor())
+        }
+        $("#total_accession").html(pieLabels.length);
+        let chartStatus = Chart.getChart("bgc_per_acc")
+        if (chartStatus != undefined) {
+            chartStatus.destroy();
+        }
+        new Chart($("#bgc_per_acc"), {
+            type: 'pie',
+            data: {
+                labels: pieLabels,
+                datasets: [{
+                    label: "",
+                    backgroundColor: pieColors,
+                    data: pieData
+                }]
+            },
+            options: {
+                plugins: {
+                    title: {
+                        display: true,
+                        text: 'BGC per Genome'
+                    },
+
+                    legend: {
+                        display: false,
+                    }
+                },
+                responsive: false,
+            }
+        });
+        // pie chart: BGC per Class
+        bgc_class_data = window.db.exec(`SELECT bgc_record.product, COUNT(bgc_record.product) as c
+                                        FROM bgc_record INNER JOIN bgc_record_family ON bgc_record.id==bgc_record_family.record_id
+                                        INNER JOIN family ON bgc_record_family.family_id==family.id
+                                        WHERE family.run_id==${run_id} AND family.cutoff==${cutoff}
+                                        GROUP BY bgc_record.product ORDER BY c DESC`)[0].values
+        var pieLabels = [];
+        var pieData = [];
+        var pieColors = [];
+        for (row of bgc_class_data) {
+            pieLabels.push(row[0])
+            pieData.push(row[1])
+            pieColors.push(getRandomColor())
+        }
+        $("#total_bgc").html(pieData.reduce((a, b) => (a + b), 0));
+        chartStatus = Chart.getChart("bgc_per_class")
+        if (chartStatus != undefined) {
+            chartStatus.destroy();
+        }
+        new Chart($("#bgc_per_class"), {
+            type: 'pie',
+            data: {
+                labels: pieLabels,
+                datasets: [{
+                    label: "",
+                    backgroundColor: pieColors,
+                    data: pieData
+                }]
+            },
+            options: {
+                plugins: {
+                    title: {
+                        display: true,
+                        text: 'BGC per Class'
+                    },
+                    legend: {
+                        display: false,
+                    }
+                },
+                responsive: false,
+            }
+        });
+        // Network selector
+        // ignore accession_newick and classes
+        run_data["input"] = { "accession": [], "accession_newick": [], "bgc": [], "classes": [] }
+        run_data["networks"] = []
+
+        fam_org_query = `SELECT gbk.organism, gbk.path, family.id, family.bin_label FROM gbk
+                        INNER JOIN bgc_record ON gbk.id==bgc_record.gbk_id
+                        INNER JOIN bgc_record_family ON bgc_record.id==bgc_record_family.record_id
+                        INNER JOIN family ON bgc_record_family.family_id==family.id
+                        WHERE family.run_id==${run_id} AND family.cutoff==${cutoff}`
+        fam_org_data = window.db.exec(fam_org_query)[0].values
+
+        var acc_label_to_id = {}
+        var bin_lab_to_idx = {}
+        var fam_lab_to_idx = {}
+        for (row of fam_org_data) {
+            var [org, path, fam, bin] = row
+            if (!acc_label_to_id.hasOwnProperty(org)) {
+                acc_label_to_id[org] = "genome_" + run_data["input"]["accession"].length
+                run_data["input"]["accession"].push({ "id": acc_label_to_id[org], "label": org })
+            }
+            if (!bin_lab_to_idx.hasOwnProperty(bin)) {
+                bin_lab_to_idx[bin] = run_data["networks"].length
+                fam_lab_to_idx[bin] = {}
+                run_data["networks"].push({ "label": bin, "families": [], "families_similarity": [] })
+            }
+            if (!fam_lab_to_idx[bin].hasOwnProperty(fam)) {
+                fam_lab_to_idx[bin][fam] = run_data["networks"][bin_lab_to_idx[bin]]["families"].length
+                run_data["networks"][bin_lab_to_idx[bin]]["families"].push({ "label": "FAM_" + fam.toString().padStart(5, "0"), "members": [], "mibig": [] })
+            }
+            if (path.indexOf(`mibig_antismash_${run_data["mibig_version"]}_gbk`) != -1) {
+                run_data["networks"][bin_lab_to_idx[bin]]["families"][fam_lab_to_idx[bin][fam]]["mibig"].push(acc_label_to_id[org])
+            }
+            run_data["networks"][bin_lab_to_idx[bin]]["families"][fam_lab_to_idx[bin][fam]]["members"].push(acc_label_to_id[org])
+        }
+        $("#network-selection").html("");
+        for (var i in run_data["networks"]) {
+            $("#network-selection").append($("<option value=" + i + ">" + run_data["networks"][i]["label"] + "</option>"))
+        }
+        $("#network-selection").off().on("change", function () {
+            viewNetwork(parseInt(this.value), run_data);
+            populateCcTable(run_data)
+        });
+        $("#network-selection").trigger("change")
+    }
+
+    function viewNetwork(idx, run_data) {
+        $("#network-selection .tablink").removeClass("w3-border-red");
+        $("#network-selection .tablink").eq(idx).addClass("w3-border-red");
+        var maxBGC = 0;
+        var sumBGC = 0;
+        var mibigFamily = 0;
+        var totalFamily = run_data["networks"][idx]["families"].length;
+        for (var i in run_data["networks"][idx]["families"]) {
+            var members = run_data["networks"][idx]["families"][i]["members"];
+            if (members.length > maxBGC) {
+                maxBGC = members.length;
+            }
+            sumBGC += members.length;
+            if (run_data["networks"][idx]["families"][i]["mibig"].length > 0) {
+                mibigFamily++;
+            }
+        }
+        $("#network_total_families").html(totalFamily);
+        $("#network_avg_bgc_in_family").html((sumBGC / totalFamily).toFixed(0));
+        $("#network_max_bgc_in_family").html(maxBGC);
+        $("#network_mibig_in_family").html(mibigFamily);
+        // absence/presence heatmap
+        $("#abpres_heatmap-row_clustering").change(function (handler) { renderHeatmap(idx, run_data); });
+        $("#abpres_heatmap-row_clustering").html("")
+            .append("<option value='abpres' selected>Family Absence/Presence</option>")
+            .append("<option value='name'>Accession Label</option>");
+        for (var i in run_data["input"]["accession_newick"]) { // Not currently used
+            $("#abpres_heatmap-row_clustering").append("<option value='newick_" + i + "'>" + run_data["input"]["accession_newick"][i]["label"] + "</option>");
+        }
+        $("#abpres_heatmap-col_clustering").change(function (handler) { renderHeatmap(idx, run_data); });
+        $("#abpres_heatmap-col_clustering").html("")
+            .append("<option value='abpres' selected>Genomes Absence/Presence</option>")
+        //.append("<option value='gcf'>BiG-SCAPE Distance Matrix</option>"); Not currently used
+        $("#abpres_heatmap-col_showtop").change(function (handler) { renderHeatmap(idx, run_data); });
+        renderHeatmap(idx, run_data);
+    }
+
+    function renderHeatmap(idx, run_data) {
+        var genome_nr = parseInt($("#total_accession").text())
+        if (genome_nr <= 1) { // showing a heatmap with one row is not possible (or desired)
+            $("#abpres_heatmap").html("<span>Dataset contains only one genome identifier, no heatmap is shown.</span>");
+            $("#abpres_tsv_text").val("Dataset contains only one genome identifier, no heatmap was generated.");
+            return;
+        }
+        if (run_data["networks"][idx]["families"].length < 2) { // ^ same goes for one column
+            $("#abpres_heatmap").html("<span>Bin contains only one family, no heatmap is shown.</span>");
+            $("#abpres_tsv_text").val("Bin contains only one family, no heatmap was generated.");
+            return;
+        }
+
+        var inchlib_data = generateRealHeatmapData(run_data["input"], run_data["networks"][idx]);
+        var inchlib = new InCHlib({
+            target: "abpres_heatmap",
+            metadata: false,
+            heatmap_colors: "OrRd",
+            draw_row_ids: true,
+            dendrogram: true,
+            column_dendrogram: true,
+            column_metadata: true,
+            column_metadata_colors: "YlGn",
+            column_metadata_function: function (features) {
+                var str2num = {};
+                str2num["0 hit"] = 0;
+                for (var i in features) {
+                    for (var j in features[i]) {
+                        if (!str2num.hasOwnProperty("" + features[i][j])) {
+                            str2num["" + features[i][j]] = 1;
+                        }
+                    }
+                }
+                return {
+                    "0": {
+                        "min": 0,
+                        "max": 1,
+                        "middle": 0.5,
+                        "str2num": str2num
+                    }
+                };
+            },
+            heatmap_part_width: 0.9,
+            max_column_width: 15,
+            fixed_row_id_size: 5,
+            navigation_toggle: {
+                color_scale: false,
+                export_button: true,
+                hint_button: false,
+                filter_button: false,
+            },
+        });
+        inchlib.settings.ranges = [];
+        for (i = 0; i < inchlib_data.data.feature_names.length; i++) {
+            inchlib.settings.ranges.push([0, 1, 1]);
+        }
+        inchlib.read_data(inchlib_data);
+        inchlib.draw();
+    }
+
+    function calculateDistance(vector_1, vector_2, method) {
+        switch (method) {
+            case "eucledian":
+                var sumpower = 0.00;
+                for (var i in vector_1) {
+                    sumpower += Math.pow(vector_1[i] - vector_2[i], 2);
+                }
+                return Math.sqrt(sumpower);
+            case "jaccard":
+                var union = 0.00;
+                var intersection = 0.00;
+                for (var i in vector_1) {
+                    if ((vector_1[i] > 0) && (vector_2[i] > 0)) {
+                        intersection += 1.00;
+                        union += 1.00;
+                    } else if ((vector_1[i] > 0) || (vector_2[i] > 0)) {
+                        union += 1.00;
+                    }
+                }
+                return (union > 0 ? (1.00 - (intersection / union)) : 1.00);
+            default:
+                return 0
+        }
+    }
+
+    function generateRealHeatmapData(input_data, network_data) {
+        //input_data: {accession: [{id: , label: }],
+        //             accession_newick: ignore,
+        //             bgc: [(acc:, class:, id:, )],
+        //             classes: [label:, ],
+        //             }
+        //
+        //network_data: [{families: [{label:, members: [], mibig:,}]}]
+        var family_data = network_data["families"].slice(0).sort(function (a, b) { return b["members"].length - a["members"].length });
+        var get_fam_id = [];
+        for (var i in family_data) {
+            get_fam_id.push(network_data["families"].indexOf(family_data[i]));
+        }
+        var result = {
+            "data": {
+                "nodes": {},
+                "feature_names": []
+            },
+            "column_dendrogram": {
+                "nodes": {}
+            },
+            "column_metadata": {
+                "features": [[]],
+                "feature_names": ["MIBiG"]
+            }
+        }
+        // apply GCF filtering
+        var included_gcfs = [];
+        var gcf_to_show = 1;
+        switch ($("#abpres_heatmap-col_showtop").val()) {
+            case "all":
+                if (confirm("This will includes all " + family_data.length + " GCFs. It may affect performance and/or the visibility of the heatmap. Continue?")) {
+                    gcf_to_show = family_data.length;
+                } else {
+                    $("#abpres_heatmap-col_showtop").val("20");
+                    gcf_to_show = parseInt($("#abpres_heatmap-col_showtop").val());
+                }
+                break;
+            default:
+                gcf_to_show = parseInt($("#abpres_heatmap-col_showtop").val());
+                break;
+        }
+        for (var i = 0; i < gcf_to_show; i++) { // collect top 20/50/100/all gcfs to show
+            if (i < family_data.length) {
+                included_gcfs.push(i);
+            }
+        }
+        // calculate absence/presence
+        var acc_features = {};
+        var acc_labels = {};
+        var feature_names = [];
+        for (var i in input_data["accession"]) {
+            var accId = input_data["accession"][i]["id"];
+            acc_features[accId] = [];
+            for (var j = 0; j < included_gcfs.length; j++) {
+                acc_features[accId].push(0);
+            }
+        }
+        for (var i in included_gcfs) {
+            var fam_data = family_data[included_gcfs[i]];
+            feature_names.push(fam_data["label"]);
+            for (var j in fam_data["members"]) {
+                var accId = fam_data["members"][j];
+                acc_features[accId][i] += 1;
+            }
+            result["column_metadata"]["features"][0].push(fam_data["mibig"].length + (fam_data["mibig"].length > 1 ? " hits" : " hit"));
+        }
+        // apply Genomes filtering (only shows genomes with filtered GCFs, unless using custom newick)
+        var included_accessions = [];
+        for (var i = 0; i < input_data["accession"].length; i++) {
+            var accId = input_data["accession"][i]["id"];
+            for (var j in acc_features[accId]) {
+                if ((acc_features[accId][j] > 0) || (["abpres", "name"].indexOf($("#abpres_heatmap-row_clustering").val()) < 0)) {
+                    included_accessions.push(i);
+                    break;
+                }
+            }
+        }
+        // build row (accession) dendrogram
+        switch ($("#abpres_heatmap-row_clustering").val()) {
+            case "abpres":
+                var cluster_items = [];
+                for (var i in input_data["accession"]) {
+                    if (included_accessions.indexOf(parseInt(i)) > -1) {
+                        var accId = input_data["accession"][i]["id"];
+                        cluster_items.push({
+                            "id": accId,
+                            "features": acc_features[accId]
+                        });
+                        acc_labels[accId] = input_data["accession"][i]["label"];
+                    }
+                }
+                var cluster_fck = clusterfck.hcluster(cluster_items, function (f1, f2) {
+                    return calculateDistance(f1["features"], f2["features"], "jaccard");
+                }, clusterfck.COMPLETE_LINKAGE);
+                result["data"]["nodes"] = clusterfck_tree_to_inchlib_nodes(cluster_fck[0]);
+                break;
+            case "name":
+                var cluster_items = [];
+                for (var i in input_data["accession"]) {
+                    if (included_accessions.indexOf(parseInt(i)) > -1) {
+                        var accId = input_data["accession"][i]["id"];
+                        cluster_items.push({
+                            "id": accId,
+                            "features": input_data["accession"][i]["label"]
+                        });
+                        acc_labels[accId] = input_data["accession"][i]["label"];
+                    }
+                }
+                var cluster_fck = clusterfck.hcluster(cluster_items, function (f1, f2) {
+                    var label1 = f1["features"].toLowerCase();
+                    var label2 = f2["features"].toLowerCase();
+                    var word_length = Math.max(label1.length, label2.length);
+                    var matches = 0;
+                    for (var i = 0; i < word_length; i++) {
+                        if (label1[i] !== label2[i]) {
+                            break;
+                        }
+                        matches++;
+                    }
+                    return (word_length - matches) / word_length;
+                }, clusterfck.COMPLETE_LINKAGE);
+                result["data"]["nodes"] = clusterfck_tree_to_inchlib_nodes(cluster_fck[0]);
+                break;
+            default: // currently not used
+                var parser = require("biojs-io-newick");
+                var newick_idx = parseInt($("#abpres_heatmap-row_clustering").val().split("newick_").pop());
+                var acc_tree = parser.parse_newick(input_data["accession_newick"][newick_idx]["newick"]);
+                for (var i in input_data["accession"]) {
+                    acc_labels[input_data["accession"][i]["id"]] = input_data["accession"][i]["label"];
+                }
+                var incorporated_accession = get_all_labels_in_tree(acc_tree);
+                if ((acc_tree["children"][0]["name"] === undefined) || (acc_tree["children"][0]["name"].length < 1)) { // hack-ish catch
+                    acc_tree["children"].shift();
+                }
+                result["data"]["nodes"] = biojs_newick_tree_to_inchlib_nodes(acc_tree);
+                break;
+        }
+        // build column (family) dendrogram
+        switch ($("#abpres_heatmap-col_clustering").val()) {
+            case "abpres":
+                var cluster_items = [];
+                for (var i in included_gcfs) {
+                    var fam_features = [];
+                    for (var j in included_accessions) {
+                        var accId = input_data["accession"][included_accessions[j]]["id"];
+                        fam_features.push(acc_features[accId][i]);
+                    }
+                    cluster_items.push({
+                        "id": family_data[included_gcfs[i]]["label"],
+                        "features": fam_features
+                    });
+                }
+                var cluster_fck = clusterfck.hcluster(cluster_items, function (f1, f2) {
+                    return calculateDistance(f1["features"], f2["features"], "jaccard");
+                }, clusterfck.COMPLETE_LINKAGE);
+                result["column_dendrogram"]["nodes"] = clusterfck_tree_to_inchlib_nodes(cluster_fck[0]);
+                break;
+            case "gcf":
+                var cluster_items = [];
+                for (var i in included_gcfs) {
+                    cluster_items.push({
+                        "id": family_data[included_gcfs[i]]["label"],
+                        "features": [included_gcfs[i]]
+                    });
+                }
+                var cluster_fck = clusterfck.hcluster(cluster_items, function (f1, f2) {
+                    var famId_1 = get_fam_id[f1["features"][0]];
+                    var famId_2 = get_fam_id[f2["features"][0]];
+                    return (famId_1 > famId_2 ? 1.00 - network_data["families_similarity"][famId_1][famId_2][0] : 1.00 - network_data["families_similarity"][famId_2][famId_1][0]);
+                }, clusterfck.COMPLETE_LINKAGE);
+                result["column_dendrogram"]["nodes"] = clusterfck_tree_to_inchlib_nodes(cluster_fck[0]);
+                break;
+        }
+        // update row labels
+        for (var i in result["data"]["nodes"]) {
+            var node = result["data"]["nodes"][i];
+            if (node.hasOwnProperty("objects")) {
+                var accId = node["objects"][0];
+                node["objects"][0] = acc_labels[accId];
+                node["features"] = acc_features[accId];
+            }
+        }
+        // update columns based on column dendrogram
+        function fetchSortedTreeIdx(nodes, curNode = -1, sortedIdx = []) {
+            if (curNode === -1) { // look for the root node
+                for (var idx in nodes) {
+                    if (!nodes[idx].hasOwnProperty("parent")) {
+                        curNode = idx;
+                        break;
+                    }
+                }
+            }
+            var node = nodes[curNode];
+            if (node.hasOwnProperty("left_child")) {
+                sortedIdx = fetchSortedTreeIdx(nodes, node["right_child"], sortedIdx);
+                sortedIdx = fetchSortedTreeIdx(nodes, node["left_child"], sortedIdx);
+            } else {
+                sortedIdx.push(curNode);
+            }
+            return sortedIdx;
+        }
+        var col_dendrosorted = fetchSortedTreeIdx(result["column_dendrogram"]["nodes"]);
+        var colidx_dendrosorted = [];
+        for (var i in col_dendrosorted) {
+            var famId = result["column_dendrogram"]["nodes"][col_dendrosorted[i]]["objects"][0];
+            colidx_dendrosorted.push(feature_names.indexOf(famId));
+        }
+        var feature_names_dendrosorted = [];
+        for (i in colidx_dendrosorted) {
+            feature_names_dendrosorted.push(feature_names[colidx_dendrosorted[i]]);
+        }
+        feature_names = feature_names_dendrosorted;
+        result["data"]["feature_names"] = feature_names;
+        for (nodeId in result["data"]["nodes"]) {
+            var node = result["data"]["nodes"][nodeId];
+            if (node.hasOwnProperty("features")) {
+                var feature_dendrosorted = [];
+                for (i in colidx_dendrosorted) {
+                    feature_dendrosorted.push(node["features"][colidx_dendrosorted[i]]);
+                }
+                node["features"] = feature_dendrosorted;
+            }
+        }
+        // update tsv text
+        tsv_text = "";
+        tsv_text += "ACC";
+        for (var i in result["data"]["feature_names"]) {
+            tsv_text += "\t" + result["data"]["feature_names"][i];
+        }
+        tsv_text += "\n";
+        for (var key in result["data"]["nodes"]) {
+            var node = result["data"]["nodes"][key];
+            if (node.hasOwnProperty("objects")) {
+                tsv_text += node["objects"][0];
+                for (var j in node["features"]) {
+                    tsv_text += "\t" + node["features"][j];
+                }
+                tsv_text += "\n";
+            }
+        }
+        $("#abpres_tsv_text").val(tsv_text);
+        return result;
+    }
+
+    function get_all_labels_in_tree(node) {
+        var accession_list = [];
+        if (node.hasOwnProperty("children")) {
+            for (var i = 0; i < node["children"].length; i++) {
+                var accessions_children = get_all_labels_in_tree(node["children"][i]);
+                for (var j in accessions_children) {
+                    accession_list.push(accessions_children[j]);
+                }
+            }
+        } else {
+            accession_list.push(node["name"]);
+        }
+        return accession_list;
+    }
+
+    // convert clusterfck tree to inchlib nodes
+    function clusterfck_tree_to_inchlib_nodes(node, parentNode = -1, nodes = {}, leaf_count = 0, node_count = 0, branch_parent_length = 0, branch_total_length = 0, isLeftChild = true) {
+        if (node["size"] > 1) { // is a node
+            node_count++;
+            var nId = "node_" + node_count;
+            var branchLength = branch_parent_length + 1;
+            if (node.hasOwnProperty("dist")) {
+                //branchLength += node["dist"];
+            }
+            if (branchLength > branch_total_length) {
+                branch_total_length = branchLength;
+            }
+            nodes[nId] = {
+                "count": node["size"],
+                "distance": branchLength,
+            }
+            if (parentNode !== -1) {
+                nodes[nId]["parent"] = parentNode;
+            }
+            if (nodes.hasOwnProperty(parentNode)) {
+                if (isLeftChild) {
+                    nodes[parentNode]["left_child"] = nId;
+                } else {
+                    nodes[parentNode]["right_child"] = nId;
+                }
+            }
+            var recresult = clusterfck_tree_to_inchlib_nodes(node["left"], nId, nodes, leaf_count, node_count, branchLength, branch_total_length, true);
+            nodes = recresult[0];
+            leaf_count = recresult[1];
+            node_count = recresult[2];
+            if (recresult[3] > branch_total_length) {
+                branch_total_length = recresult[3];
+            }
+            recresult = clusterfck_tree_to_inchlib_nodes(node["right"], nId, nodes, leaf_count, node_count, branchLength, branch_total_length, false);
+            nodes = recresult[0];
+            leaf_count = recresult[1];
+            node_count = recresult[2];
+            if (recresult[3] > branch_total_length) {
+                branch_total_length = recresult[3];
+            }
+        } else { // is a leaf
+            leaf_count++;
+            var lId = "leaf_" + leaf_count;
+            var branchLength = branch_parent_length + 1;
+            if (node.hasOwnProperty("dist")) {
+                //branchLength += node["dist"];
+            }
+
+            if (branchLength > branch_total_length) {
+                branch_total_length = branchLength;
+            }
+            nodes[lId] = {
+                "count": 1,
+                "distance": branchLength,
+                "features": [],
+                "objects": [node["canonical"]["id"]],
+            };
+            if (nodes[lId]["parent"] !== -1) {
+                nodes[lId]["parent"] = parentNode;
+            }
+            if (nodes.hasOwnProperty(parentNode)) {
+                if (isLeftChild) {
+                    nodes[parentNode]["left_child"] = lId;
+                } else {
+                    nodes[parentNode]["right_child"] = lId;
+                }
+            }
+        }
+        if (parentNode == -1) {
+            // the root tree, fill left_child & right_child and churn results
+            for (var nodeId in nodes) {
+                // ignore branch length
+                if (nodeId.split("_")[0] == "node") {
+                    nodes[nodeId]["distance"] = branch_total_length - nodes[nodeId]["distance"];
+                } else {
+                    nodes[nodeId]["distance"] = 0;
+                }
+            }
+            return nodes;
+        } else {
+            // recursive return
+            return [nodes, leaf_count, node_count, branch_total_length];
+        }
+    }
+
+    // currently not used
+    // convert biojs-io-newick tree to inchlib nodes
+    function biojs_newick_tree_to_inchlib_nodes(node, parentNode = -1, nodes = {}, leaf_count = 0, node_count = 0, branch_parent_length = 0, branch_total_length = 0) {
+        if (node.hasOwnProperty("children")) { // is a node
+            node_count++;
+            var node_count_pre = node_count;
+            for (var i = 0; i < node["children"].length - 1; i++) {
+                var nId = "node_" + (node_count + i);
+                var branchLength = branch_parent_length + (i == 0 ? (node.hasOwnProperty("branch_length") ? node["branch_length"] : 0.00) : 0.00);
+                if (branchLength > branch_total_length) {
+                    branch_total_length = branchLength;
+                }
+                nodes[nId] = {
+                    "parent": (i == 0 ? parentNode : ("node_" + (node_count + i - 1))),
+                    "distance": branchLength,
+                    "count": 0,
+                };
+                if (nodes[nId]["parent"] === -1) {
+                    delete nodes[nId]["parent"];
+                }
+                if (i < node["children"].length - 2) {
+                    nodes[nId]["right_child"] = "node_" + (node_count + i + 1);
+                }
+            }
+            node_count += Math.max(0, node["children"].length - 2);
+            for (var i = 0; i < node["children"].length; i++) {
+                var pId = (i < node["children"].length - 2 ? (node_count_pre + i) : (node_count_pre + node["children"].length - 2));
+                var parentChild = "node_" + pId;
+                var branchLength = branch_parent_length + (node.hasOwnProperty("branch_length") ? node["branch_length"] : 0.00);
+                var recresult = biojs_newick_tree_to_inchlib_nodes(node["children"][i], parentChild, nodes, leaf_count, node_count, branchLength, 0);
+                nodes = recresult[0];
+                if (nodes[parentChild].hasOwnProperty("parent")) {
+                    nodes[nodes[parentChild]["parent"]]["count"] += nodes[parentChild]["count"];
+                }
+                leaf_count = recresult[1];
+                node_count = recresult[2];
+                if (recresult[3] > branch_total_length) {
+                    branch_total_length = recresult[3];
+                }
+            }
+            if (nodes.hasOwnProperty(parentNode)) {
+                nodes[parentNode]["left_child"] = "node_" + node_count_pre;
+            }
+        } else { // is a leaf
+            leaf_count++;
+            var lId = "leaf_" + leaf_count;
+            var branchLength = branch_parent_length + (node.hasOwnProperty("branch_length") ? node["branch_length"] : 0.00);
+            if (branchLength > branch_total_length) {
+                branch_total_length = branchLength;
+            }
+            nodes[lId] = {
+                "count": 1,
+                "distance": branchLength,
+                "features": [],
+                "parent": parentNode,
+                "objects": [node["name"]]
+            };
+            if (nodes[lId]["parent"] === -1) {
+                delete nodes[lId]["parent"];
+            }
+            if (nodes.hasOwnProperty(parentNode)) {
+                nodes[parentNode]["count"] += nodes[lId]["count"];
+                if (!nodes[parentNode].hasOwnProperty("right_child")) {
+                    nodes[parentNode]["right_child"] = lId;
+                } else {
+                    nodes[parentNode]["left_child"] = lId;
+                }
+            }
+        }
+        if (parentNode == -1) {
+            // the root tree, fill left_child & right_child and churn results
+            for (var nodeId in nodes) {
+                nodes[nodeId]["distance"] = branch_total_length - nodes[nodeId]["distance"];
+            }
+            return nodes;
+        } else {
+            // recursive return
+            return [nodes, leaf_count, node_count, branch_total_length];
+        }
+    }
+
+    function downloadAbPresTsv() {
+        sendDownload(document.getElementById("abpres_tsv_text"), "absence_presence.tsv")
+    }
+
+    function sendDownload(content, filename) {
+        // create download link and open it
+        var element = document.createElement('a');
+        element.setAttribute('href', 'data:text/plain;charset=utf-8,' + encodeURIComponent(content));
+        element.setAttribute('download', filename);
+        element.style.display = 'none';
+        document.body.appendChild(element);
+        element.click();
+        document.body.removeChild(element);
+    }
+</script>
+
 </html>

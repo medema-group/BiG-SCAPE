@@ -5,7 +5,9 @@ class InvalidGBKError(Exception):
     """Raised when a validation error occurs in parsing a GBK"""
 
     def __init__(self) -> None:
-        super().__init__("Validation error occurred when parsing a GeneBank file")
+        super().__init__(
+            "Validation error occurred when parsing a GenBank file, see log for more info"
+        )
 
 
 class InvalidGBKRegionChildError(Exception):

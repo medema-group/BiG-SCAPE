@@ -133,11 +133,11 @@ class TestComparison(TestCase):
         for edge in edges:
             bs_comparison.save_edge_to_db(edge)
 
-        ccs = list(bs_network.get_connected_components(0.5, 1, mix_bin))
+        ccs = list(bs_network.get_connected_components(0.5, 1, mix_bin, 1))
 
         self.assertEqual(len(ccs), 1)
 
-        ccs = list(bs_network.get_connected_components(1, 1, mix_bin))
+        ccs = list(bs_network.get_connected_components(1, 1, mix_bin, 1))
 
         self.assertEqual(len(ccs), 2)
 
@@ -192,12 +192,12 @@ class TestComparison(TestCase):
             bs_comparison.save_edge_to_db(edge)
 
         # distance cutoff 0.0
-        ccs = list(bs_network.get_connected_components(0.0, 1, mix_bin))
+        ccs = list(bs_network.get_connected_components(0.0, 1, mix_bin, 1))
 
         self.assertEqual(len(ccs), 0)
 
         # distance cutoff 0.1
-        ccs = list(bs_network.get_connected_components(0.1, 1, mix_bin))
+        ccs = list(bs_network.get_connected_components(0.1, 1, mix_bin, 1))
 
         self.assertEqual(len(ccs), 1)
 
@@ -216,7 +216,7 @@ class TestComparison(TestCase):
         self.assertEqual(total_edges_in_ccs, len(edges_a))
 
         # distance cutoff 0.2
-        ccs = list(bs_network.get_connected_components(0.2, 1, mix_bin))
+        ccs = list(bs_network.get_connected_components(0.2, 1, mix_bin, 1))
 
         self.assertEqual(len(ccs), 1)
 
@@ -235,7 +235,7 @@ class TestComparison(TestCase):
         self.assertEqual(total_edges_in_ccs, len(edges_a))
 
         # distance cutoff 0.3
-        ccs = list(bs_network.get_connected_components(0.3, 1, mix_bin))
+        ccs = list(bs_network.get_connected_components(0.3, 1, mix_bin, 1))
 
         self.assertEqual(len(ccs), 2)
 
@@ -254,7 +254,7 @@ class TestComparison(TestCase):
         self.assertEqual(total_edges_in_ccs, len(edges_a + edges_b))
 
         # distance cutoff 0.4
-        ccs = list(bs_network.get_connected_components(0.4, 1, mix_bin))
+        ccs = list(bs_network.get_connected_components(0.4, 1, mix_bin, 1))
 
         self.assertEqual(len(ccs), 2)
 
@@ -273,7 +273,7 @@ class TestComparison(TestCase):
         self.assertEqual(total_edges_in_ccs, len(edges_a + edges_b))
 
         # distance cutoff 0.5
-        ccs = list(bs_network.get_connected_components(0.5, 1, mix_bin))
+        ccs = list(bs_network.get_connected_components(0.5, 1, mix_bin, 1))
 
         self.assertEqual(len(ccs), 2)
 
@@ -292,7 +292,7 @@ class TestComparison(TestCase):
         self.assertEqual(total_edges_in_ccs, len(edges_a + edges_b))
 
         # distance cutoff 0.6
-        ccs = list(bs_network.get_connected_components(0.6, 1, mix_bin))
+        ccs = list(bs_network.get_connected_components(0.6, 1, mix_bin, 1))
 
         self.assertEqual(len(ccs), 2)
 
@@ -311,7 +311,7 @@ class TestComparison(TestCase):
         self.assertEqual(total_edges_in_ccs, len(edges_a + edges_b))
 
         # distance cutoff 0.7
-        ccs = list(bs_network.get_connected_components(0.7, 1, mix_bin))
+        ccs = list(bs_network.get_connected_components(0.7, 1, mix_bin, 1))
 
         self.assertEqual(len(ccs), 3)
 
@@ -330,7 +330,7 @@ class TestComparison(TestCase):
         self.assertEqual(total_edges_in_ccs, len(edges_a + edges_b + edges_c))
 
         # distance cutoff 0.8
-        ccs = list(bs_network.get_connected_components(0.8, 1, mix_bin))
+        ccs = list(bs_network.get_connected_components(0.8, 1, mix_bin, 1))
 
         self.assertEqual(len(ccs), 3)
 
@@ -349,7 +349,7 @@ class TestComparison(TestCase):
         self.assertEqual(total_edges_in_ccs, len(edges_a + edges_b + edges_c))
 
         # distance cutoff 0.9
-        ccs = list(bs_network.get_connected_components(0.9, 1, mix_bin))
+        ccs = list(bs_network.get_connected_components(0.9, 1, mix_bin, 1))
 
         self.assertEqual(len(ccs), 1)
 
@@ -448,7 +448,7 @@ class TestComparison(TestCase):
 
         # distance cutoff 0.8, here we should only get one connected component,
         # featuring all nodes from gbks_b and gbks_c
-        ccs = bs_network.get_connected_components(0.8, 1, mix_bin)
+        ccs = bs_network.get_connected_components(0.8, 1, mix_bin, 1)
 
         for cc in ccs:
             is_ref_only = bs_network.reference_only_connected_component(
@@ -471,7 +471,7 @@ class TestComparison(TestCase):
 
         # distance cutoff 0.5, here we should only get one connected component,
         # featuring nodes from gbks_b and one node from gbks_c
-        ccs = bs_network.get_connected_components(0.5, 1, mix_bin)
+        ccs = bs_network.get_connected_components(0.5, 1, mix_bin, 1)
 
         for cc in ccs:
             is_ref_only = bs_network.reference_only_connected_component(
@@ -533,7 +533,7 @@ class TestComparison(TestCase):
         # first we run the mix bin
         mix_bin = bs_comparison.generate_mix_bin(records, run)
 
-        ccs = list(bs_network.get_connected_components(1, edge_param_id, mix_bin))
+        ccs = list(bs_network.get_connected_components(1, edge_param_id, mix_bin, 1))
 
         self.assertEqual(len(ccs), 1)
         self.assertEqual(len(ccs[0]), 15)
@@ -543,7 +543,7 @@ class TestComparison(TestCase):
         legacy_bins = bs_comparison.legacy_bin_generator(records, run)
 
         for bin in legacy_bins:
-            ccs = list(bs_network.get_connected_components(1, edge_param_id, bin))
+            ccs = list(bs_network.get_connected_components(1, edge_param_id, bin, 1))
 
             self.assertEqual(len(ccs), 1)
             self.assertEqual(len(ccs[0]), 3)
@@ -617,7 +617,9 @@ class TestComparison(TestCase):
         self.assertNotEqual(random_edge[0], None)
 
         # now we generate the connected components for the mix bin
-        ccs = list(bs_network.get_connected_components(1, edge_param_id_mix, mix_bin))
+        ccs = list(
+            bs_network.get_connected_components(1, edge_param_id_mix, mix_bin, 1)
+        )
         self.assertEqual(len(ccs), 1)
         self.assertEqual(len(ccs[0]), 15)
 
@@ -647,7 +649,9 @@ class TestComparison(TestCase):
 
         self.assertNotEqual(random_edge[0], None)
 
-        ccs += list(bs_network.get_connected_components(1, edge_param_id_pks, pks_bin))
+        ccs += list(
+            bs_network.get_connected_components(1, edge_param_id_pks, pks_bin, 1)
+        )
 
         self.assertEqual(len(ccs), 2)
         self.assertEqual(len(ccs[1]), 3)
