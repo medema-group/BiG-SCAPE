@@ -42,8 +42,8 @@ from .cli_validations import (
     required=False,
     help=(
         "Query BGC record number. Used to select the specific record "
-        "from the query BGC gbk. Warning: interleaved or chemical hybrid proto "
-        "cluster/cores are merged, and the relevant number is that of the "
+        "from the query BGC gbk. Warning: if interleaved or chemical hybrid proto "
+        "cluster/cores are merged (see config), the relevant number is that of the "
         "first record of the merged cluster (the one with the lowest number). "
         "e.g. if records 1 and 2 get merged, the relevant number is 1. "
     ),
