@@ -13,13 +13,12 @@ function Bigscape(run_data, bs_data, bs_families, bs_alignment, bs_similarity, n
   var bigscape = this;
   var graph = Viva.Graph.graph();
   var graphics = Viva.Graph.View.svgGraphics();
-  var bs_data = bs_data;
+  var bs_data = bs_data
   var run_data = run_data;
   var bs_families = bs_families;
-  var bs_alignment = bs_alignment;
   var bs_similarity = bs_similarity;
   var bs_to_cl = [];
-  var bs_svg = [];
+  var bs_svg = {};
   for (var i in bs_data) {
     var cl_data = bs_data[i];
     var ext_start = cl_data.record_start ? cl_data.record_start - 1 : 0;
@@ -44,13 +43,17 @@ function Bigscape(run_data, bs_data, bs_families, bs_alignment, bs_similarity, n
         }
       })
     }
-    bs_svg.push(svg);
+    bs_svg[i] = svg;
   }
   // for search optimization
+  var bs_data_array = []
   for (fam of bs_families) {
     for (member of fam["members"]) {
-      bs_data[member]["family"] = fam["id"]
-      bs_data[member]["idx"] = member
+      if (member in bs_data) {
+        bs_data[member]["family"] = fam["id"]
+        bs_data[member]["idx"] = member
+        bs_data_array.push(bs_data[member])
+      }
     }
   }
   $("#" + network_container).html("<div class='network-layer' style='position: fixed; top: 0; left: 0; bottom: 0; right: 0;'><div class='network-overlay' style='display: none; position: fixed; top: 0; left: 0; bottom: 0; right: 0;'>");
@@ -59,12 +62,12 @@ function Bigscape(run_data, bs_data, bs_families, bs_alignment, bs_similarity, n
   var highlighted_nodes = [];
   var edge_count = 0;
   // set renderer
-  var sprLen = 100;
+  var sprLen = options.sprLen || 100;
   var layout = Viva.Graph.Layout.forceDirected(graph, {
     springLength: sprLen,
-    springCoeff: 0.0005,
-    dragCoeff: 0.095,
-    gravity: -1,
+    springCoeff: options.springCoeff || 0.0005,
+    dragCoeff: options.dragCoeff || 0.095,
+    gravity: options.gravity || -1,
     springTransform: function (link, spring) {
       spring.length = sprLen - (sprLen * (link.data.weight));
     }
@@ -102,7 +105,7 @@ function Bigscape(run_data, bs_data, bs_families, bs_alignment, bs_similarity, n
   var search_ui = $("<div class='' style='margin-top: 2px;'></div>");
   var search_bar = $("<textarea id='search-input' rows='1' cols='20'>");
   var search_result_ui = $("<div class='search-result hidden'></div>");
-  search_bar.keyup({ bigscape: bigscape, bs_data: bs_data, bs_families: bs_families, search_result_ui: search_result_ui }, function (handler) {
+  search_bar.keyup({ bigscape: bigscape, bs_data: bs_data_array, bs_families: bs_families, search_result_ui: search_result_ui }, function (handler) {
     var search_string = handler.target.value.trim();
     if (search_string.length > 0) {
       search_result_ui.html("");
@@ -113,7 +116,7 @@ function Bigscape(run_data, bs_data, bs_families, bs_alignment, bs_similarity, n
         includeMatches: true,
         threshold: 0,
         ignoreLocation: true,
-        keys: ["family", "id", "orfs.domains.code"] // searchable tags
+        keys: ["family", "id", "orfs.domains.code", "desc"] // searchable tags
       };
       var search_tokens = BigscapeFunc.filterUtil.tokenize(search_string);
       if (search_tokens.filter(x => x == "(").length != search_tokens.filter(x => x == ")").length) {
@@ -153,8 +156,9 @@ function Bigscape(run_data, bs_data, bs_families, bs_alignment, bs_similarity, n
     var advanced_search_ui = $("<div id='advanced-container' class=''></div>");
     var tag_select = $("<select id='tag-selector' style='width:96px'>" +
       "<option value=''>All tags</option>" +
-      "<option value='family'>Gene Cluster Family</option>" +
       "<option value='BGC'>BGC Name</option>" +
+      "<option value='organism'>Organism</option>" +
+      "<option value='family'>Gene Cluster Family</option>" +
       "<option value='domain'>Protein Domain</option></select>");
     var query_builder = $("<input id='query-builder' type='text' placeholder='Add new search term'>");
     var and_btn = $("<button onclick=\"BigscapeFunc.filterUtil.extendQuery('AND')\">AND</button>");
@@ -217,7 +221,7 @@ function Bigscape(run_data, bs_data, bs_families, bs_alignment, bs_similarity, n
   net_ui.after("<div class='navtext-container'>Shift+Drag: multi-select. Shift+Scroll: zoom in/out.</div>");
   //
   net_ui.after("<div class='detail-container hidden'></div>");
-  var det_ui = $("<div>");
+  var det_ui = $("<div class='bs-desc_ui-svgbox'>");
   var det_btn = $("<a title='Close' href='##' class='showhide-btn active' style='position: fixed;'></a>");
   det_btn.click(function (handler) {
     $(handler.target).parent().addClass("hidden");
@@ -234,13 +238,13 @@ function Bigscape(run_data, bs_data, bs_families, bs_alignment, bs_similarity, n
   net_ui.parent().find(".hover-container").append(hover_ui);
 
   // window clicks
-  document.addEventListener('keydown', function (e) {
+  $(document).off("keydown").on('keydown', function (e) {
     if (e.which === 16 && !multiSelectOverlay) { // shift key
       multiSelectOverlay = BigscapeFunc.startMultiSelect(graph, graphics, renderer, layout, bigscape);
       net_ui.css("cursor", "crosshair");
     }
   });
-  document.addEventListener('keyup', function (e) {
+  $(document).off("keyup").on('keyup', function (e) {
     if (e.which === 16 && multiSelectOverlay) {
       multiSelectOverlay.destroy();
       multiSelectOverlay = null;
@@ -322,14 +326,17 @@ function Bigscape(run_data, bs_data, bs_families, bs_alignment, bs_similarity, n
   }
 
   // construct the graph
-  for (var i = 0; i < bs_data.length; i++) {
+  for (var i in bs_data) {
+    i = parseInt(i)
     var bs_obj = bs_data[i];
     graph.addNode(i, { id: bs_obj["id"], hash: bs_obj["hash"], cl: bs_to_cl[i] });
   }
-  for (var a = 0; a < bs_data.length; a++) {
-    for (var b = 0; b < bs_data.length; b++) {
-      // skip self links
-      if (a === b) {
+  for (var a in bs_data) {
+    a = parseInt(a)
+    for (var b in bs_data) {
+      b = parseInt(b)
+      // skip self links and double topo links
+      if (a <= b) {
         continue
       }
       // add in a topo link
@@ -337,7 +344,7 @@ function Bigscape(run_data, bs_data, bs_families, bs_alignment, bs_similarity, n
         graph.addLink(a, b, { weight: 0.01 });
       }
       else {
-        if ((a > b) && (bs_similarity[a][b] > intra_cutoff)) {
+        if ((a > b) && (bs_similarity.hasOwnProperty(a)) && (bs_similarity[a][b] > intra_cutoff)) { // bs_similarity only has sims that pass cutoff
           if ((bs_to_cl[a] !== bs_to_cl[b]) && (bs_similarity[a][b] < inter_cutoff)) {
             continue;
           }
@@ -354,7 +361,7 @@ function Bigscape(run_data, bs_data, bs_families, bs_alignment, bs_similarity, n
       .attr('r', 10)
       .attr('fill', (fam_colors[bs_to_cl[node.id]]));
     if (run_data["mode"] == "Cluster") {
-      if (bs_data[node.id]["source"] == ("mibig" || "reference")) {
+      if (bs_data[node.id]["source"] == "mibig" || bs_data[node.id]["source"] == "reference") {
         ui.attr("stroke", "blue");
         ui.attr("stroke-width", "4px");
       }
@@ -364,6 +371,11 @@ function Bigscape(run_data, bs_data, bs_families, bs_alignment, bs_similarity, n
         // ui.attr("r", "20")
         ui.attr("stroke", "green");
         ui.attr("stroke-width", "6px");
+      }
+    }
+    if (options.topo_records) {
+      if (options.topo_records.indexOf(node.id) > -1) {
+        ui.attr("opacity", "0.5")
       }
     }
     $(ui).hover(function () { // mouse over
@@ -390,7 +402,7 @@ function Bigscape(run_data, bs_data, bs_families, bs_alignment, bs_similarity, n
       updateDescription(highlighted_nodes);
       handler.stopPropagation();
     });
-    $(ui).contextmenu({ id: node.id, bs_svg: bs_svg, bs_data: bs_data, bs_families: bs_families, bs_similarity: bs_similarity, bs_to_cl: bs_to_cl, det_ui: det_ui, context_ui: context_ui }, function (handler) {
+    $(ui).contextmenu({ id: node.id, bs_svg: bs_svg, bs_data: bs_data, bs_families: bs_families, bs_similarity: bs_similarity, bs_to_cl: bs_to_cl, det_ui: det_ui, context_ui: context_ui, bs_alignment: bs_alignment }, function (handler) {
       var ul = $("<ul>");
       //
       var aShowDetail = $("<a href='##'>Show details</a>");
@@ -407,8 +419,8 @@ function Bigscape(run_data, bs_data, bs_families, bs_alignment, bs_similarity, n
       ($("<li>").appendTo(ul)).append(aShowDetail);
       //
       var aShowFamDetail = $("<a href='##'>Show family details</a>");
-      aShowFamDetail.click({ id: handler.data.id, id_fam: bs_to_cl[handler.data.id], bs_svg: handler.data.bs_svg, bs_data: handler.data.bs_data, bs_families: handler.data.bs_families, bs_similarity: handler.data.bs_similarity, bs_to_cl: handler.data.bs_to_cl, det_ui: handler.data.det_ui, context_ui: handler.data.context_ui }, function (handler) {
-        BigscapeFunc.openFamDetail(handler.data.id_fam, [handler.data.id], handler.data.bs_svg, handler.data.bs_data, handler.data.bs_to_cl, handler.data.bs_families, handler.data.bs_similarity, handler.data.det_ui);;
+      aShowFamDetail.click({ id: handler.data.id, id_fam: bs_to_cl[handler.data.id], bs_svg: handler.data.bs_svg, bs_data: handler.data.bs_data, bs_families: handler.data.bs_families, bs_similarity: handler.data.bs_similarity, bs_to_cl: handler.data.bs_to_cl, det_ui: handler.data.det_ui, context_ui: handler.data.context_ui, bs_alignment: handler.data.bs_alignment }, function (handler) {
+        BigscapeFunc.openFamDetail(handler.data.id_fam, [handler.data.id], handler.data.bs_svg, handler.data.bs_data, handler.data.bs_to_cl, handler.data.bs_families, handler.data.bs_similarity, handler.data.det_ui, handler.data.bs_alignment);;
         handler.data.context_ui.addClass("hidden");
         handler.data.det_ui.parent().removeClass("hidden");
         handler.data.det_ui.find("svg.arrower-svg").each(function () {
@@ -429,8 +441,8 @@ function Bigscape(run_data, bs_data, bs_families, bs_alignment, bs_similarity, n
       handler.data.context_ui.append("<h3>" + handler.data.bs_data[handler.data.id]["id"] + "</h3>");
       handler.data.context_ui.append(ul);
       handler.data.context_ui.css({
-        top: handler.pageY + "px",
-        left: handler.pageX + "px",
+        top: (handler.pageY - handler.data.context_ui.parent()[0].offsetTop) + "px",
+        left: (handler.pageX - handler.data.context_ui.parent()[0].offsetLeft) + "px",
       });
       handler.data.context_ui.removeClass("hidden");
       handler.stopPropagation();
@@ -440,9 +452,10 @@ function Bigscape(run_data, bs_data, bs_families, bs_alignment, bs_similarity, n
       if (handler.data.bs_data[handler.data.id].hasOwnProperty("desc")) {
         handler.data.hover_ui.append("</b>" + "<br />" + handler.data.bs_data[handler.data.id]["desc"]);
       }
+      handler.data.hover_ui.append("</b>" + "<br />" + handler.data.bs_data[handler.data.id]["family"]);
       handler.data.hover_ui.parent().css({
-        top: (handler.pageY - handler.data.hover_ui.parent().height() - 20) + "px",
-        left: (handler.pageX) + "px",
+        top: (handler.pageY - handler.data.hover_ui.parent().height() - 20 - handler.data.hover_ui.parent().parent()[0].offsetTop) + "px",
+        left: (handler.pageX - handler.data.hover_ui.parent().parent()[0].offsetLeft) + "px",
       });
       handler.data.hover_ui.parent().removeClass("hidden");
     });
@@ -460,8 +473,13 @@ function Bigscape(run_data, bs_data, bs_families, bs_alignment, bs_similarity, n
       .attr("stroke", "#777")
       .attr("stroke-width", link["data"]["weight"] * 10);
 
-    if (graph.getNode(link.fromId).data.hash === graph.getNode(link.toId).data.hash) {
+    var from = graph.getNode(link.fromId)
+    var to = graph.getNode(link.toId)
+    if (from.data.hash === to.data.hash) {
       line = line.attr("stroke-dasharray", "10,10").attr("stroke-width", link["data"]["weight"] * 500);
+    }
+    if (options.topo_records && options.topo_records.indexOf(from.id) > -1 && options.topo_records.indexOf(to.id) > -1) {
+      line = line.attr("opacity", "0.4").attr("stroke-linecap", "round")
     }
     return line
   });
@@ -471,7 +489,7 @@ function Bigscape(run_data, bs_data, bs_families, bs_alignment, bs_similarity, n
   showSingletons(true);
   updateDescription(highlighted_nodes);
   net_ui.find("svg").css("height", "100%").css("width", "100%");
-  var countDown = 5 + parseInt(graph.getLinksCount() / 1000);
+  var countDown = options["render_time"] ? options["render_time"] : 5 + parseInt(graph.getLinksCount() / 1000);
   var perZoom = 5;
   var zoomCount = 0;
   info_ui.append("<div>Adjusting network layout for... <span class='network-layout-counter'>" + countDown + "</span> second(s)</div>");
@@ -495,8 +513,8 @@ function Bigscape(run_data, bs_data, bs_families, bs_alignment, bs_similarity, n
       // center graph in svgContainer
       var rootRect = graphics.getSvgRoot().getBoundingClientRect()
       var networkRect = graphics.getSvgRoot().getElementsByTagName("g")[0].getBoundingClientRect()
-      graphics.translateRel((rootRect.width / 2) - (networkRect.left + ((networkRect.right - networkRect.left) / 2)),
-        (rootRect.height / 2) - (networkRect.top + ((networkRect.bottom - networkRect.top) / 2)));
+      graphics.translateRel((rootRect.width / 2) - (networkRect.left + ((networkRect.right - networkRect.left) / 2)) + rootRect.x,
+        (rootRect.height / 2) - (networkRect.top + ((networkRect.bottom - networkRect.top) / 2)) + rootRect.y);
       info_ui.html("");
       var nodes_with_edges_count = 0;
       graph.forEachNode(function (node) {
@@ -526,6 +544,7 @@ BigscapeFunc.filterUtil = {
     "OR": "$or",
     "domain": "orfs.domains.code",
     "BGC": "id",
+    "organism": "desc",
     "family": "family"
   }
 }
@@ -681,9 +700,9 @@ BigscapeFunc.updateDescription = function (ids, bs_svg, bs_data, bs_to_cl, bs_fa
     // top part of the desc_ui
     var top = $("<div style='padding: 5px; position: absolute; top: 20px; right: 10px; left: 10px; bottom: 50%; border: 1px solid black; z-index: 10; overflow: scroll;'>");
     var showCompBtn = $("<a href='##' title='Details'>details</a>").appendTo($("<div style='position: absolute; bottom: 5px; right: 5px;'>").appendTo(top));
-    showCompBtn.click({ bigscape: bigscape, bs_svg: bs_svg, bs_data: bs_data, bs_families: bs_families, bs_alignment: bs_alignment, bs_to_cl: bs_to_cl, desc_ui: desc_ui, det_ui: det_ui }, function (handler) {
+    showCompBtn.click({ bigscape: bigscape, bs_svg: bs_svg, bs_data: bs_data, bs_families: bs_families, bs_to_cl: bs_to_cl, desc_ui: desc_ui, det_ui: det_ui }, function (handler) {
       var rendered_ids = handler.data.bigscape.getHighlightedNodes();
-      BigscapeFunc.openCompDetail(rendered_ids, handler.data.bs_svg, handler.data.bs_data, handler.data.bs_to_cl, handler.data.bs_families, handler.data.bs_alignment, handler.data.det_ui);
+      BigscapeFunc.openCompDetail(rendered_ids, handler.data.bs_svg, handler.data.bs_data, handler.data.bs_to_cl, handler.data.bs_families, handler.data.det_ui);
       handler.data.det_ui.parent().removeClass("hidden");
       handler.stopPropagation();
     });
@@ -707,8 +726,8 @@ BigscapeFunc.updateDescription = function (ids, bs_svg, bs_data, bs_to_cl, bs_fa
       var li = $("<li id='bs-desc_ui-li_fam-" + i + "'>");
       li.append("<a href='##' class='li-check'></a>");
       li.append("<a href='##' class='li-opendetail'>" + bs_families[i]["id"] + "</a>");
-      li.find("a.li-opendetail").click({ id_fam: i, ids_highlighted: ids, bs_svg: bs_svg, bs_data: bs_data, bs_families: bs_families, bs_to_cl: bs_to_cl, det_ui: det_ui, bs_similarity: bs_similarity }, function (handler) {
-        BigscapeFunc.openFamDetail(handler.data.id_fam, handler.data.ids_highlighted, handler.data.bs_svg, handler.data.bs_data, handler.data.bs_to_cl, handler.data.bs_families, handler.data.bs_similarity, handler.data.det_ui);
+      li.find("a.li-opendetail").click({ id_fam: i, ids_highlighted: ids, bs_svg: bs_svg, bs_data: bs_data, bs_families: bs_families, bs_to_cl: bs_to_cl, det_ui: det_ui, bs_similarity: bs_similarity, bs_alignment: bs_alignment }, function (handler) {
+        BigscapeFunc.openFamDetail(handler.data.id_fam, handler.data.ids_highlighted, handler.data.bs_svg, handler.data.bs_data, handler.data.bs_to_cl, handler.data.bs_families, handler.data.bs_similarity, handler.data.det_ui, handler.data.bs_alignment);
         handler.data.det_ui.parent().removeClass("hidden");
         handler.data.det_ui.find("svg.arrower-svg").each(function () {
           $(this).attr("width", $(this).find("g")[0].getBoundingClientRect().width);
@@ -880,7 +899,6 @@ BigscapeFunc.updateDescription = function (ids, bs_svg, bs_data, bs_to_cl, bs_fa
           compDiv.prepend(svg); // TODO: append in specific position
           svg.attr("width", svg.find("g")[0].getBoundingClientRect().width);
           svg.attr("height", svg.find("g")[0].getBoundingClientRect().height);
-          svg.css("margin", "10px 0px");
         }
       }
       BigscapeFunc.showHideDomains(compDiv, compDiv.parent().find(".bs-desc_ui-showdomains input[type=checkbox]").is(":checked"));
@@ -906,18 +924,27 @@ BigscapeFunc.updateDescription = function (ids, bs_svg, bs_data, bs_to_cl, bs_fa
     }
     if (true) { // update nav_ui
       if (nav_ui.find(".selection-text").children().length < 1) {
-        var clearSel = $("<a href='##'>clear</a>").click({ bigscape: bigscape }, function (handler) {
+        var clearSel = $("<button>clear</button>").click({ bigscape: bigscape }, function (handler) {
           handler.data.bigscape.setHighlightedNodes([]);
           handler.data.bigscape.highlightNodes([]);
           handler.data.bigscape.updateDescription();
           handler.stopPropagation();
         });
+        var downloadSel = $("<button style='margin:0 5px'>download</button>").click({ bigscape: bigscape, bs_data: bs_data }, function (handler) {
+          var highlightedNodes = handler.data.bigscape.getHighlightedNodes()
+          if (highlightedNodes.length > 0) {
+            var bs_sel_data = Object.fromEntries(Object.entries(handler.data.bs_data).filter(([k, v]) => highlightedNodes.indexOf(parseInt(k)) > -1))
+            BigscapeFunc.downloadSelection(bs_sel_data)
+          } else {
+            alert("No nodes are selected to download!")
+          }
+        })
         var textSel = $("<span>").text(
           "Selected: " + ids.length + " BGC" + (ids.length > 1 ? "s" : "")
           + ", " + sel_fam.length + " Famil" + (sel_fam.length > 1 ? "ies" : "y")
           + " "
         );
-        nav_ui.find(".selection-text").append(textSel).append(clearSel);
+        nav_ui.find(".selection-text").append(textSel).append(downloadSel).append(clearSel);
       } else {
         nav_ui.find("span").text(
           "Selected: " + ids.length + " BGC" + (ids.length > 1 ? "s" : "")
@@ -958,7 +985,7 @@ BigscapeFunc.openDetail = function (id, bs_svg, bs_data, bs_to_cl, bs_families, 
 }
 
 // ...
-BigscapeFunc.openCompDetail = function (ids, bs_svg, bs_data, bs_to_cl, bs_families, bs_alignment, det_ui) {
+BigscapeFunc.openCompDetail = function (ids, bs_svg, bs_data, bs_to_cl, bs_families, det_ui) {
   det_ui.html("");
   var svgs = [];
   for (var i in ids) {
@@ -973,7 +1000,7 @@ BigscapeFunc.openCompDetail = function (ids, bs_svg, bs_data, bs_to_cl, bs_famil
 }
 
 // ...
-BigscapeFunc.openFamDetail = function (id_fam, ids_highlighted, bs_svg, bs_data, bs_to_cl, bs_families, bs_similarity, det_ui) {
+BigscapeFunc.openFamDetail = function (id_fam, ids_highlighted, bs_svg, bs_data, bs_to_cl, bs_families, bs_similarity, det_ui, bs_alignment) {
   id_fam = parseInt(id_fam);
   det_ui.html("");
   det_ui.append("<h2>" + bs_families[id_fam]["id"] + "<h2>");
@@ -1040,10 +1067,10 @@ BigscapeFunc.openFamDetail = function (id_fam, ids_highlighted, bs_svg, bs_data,
       }
     }
     // get tree info
-    var fam_aln = bs_families_alignment[id_fam];
-    /* FUNCTION BLOCK, DRAWING THE TREE */
-    function getBGCOffset(bgc_ref, bgc, domains_ref, aln) {
+    var fam_aln = bs_alignment[id_fam];
+    function getBGCOffset(bgc_ref, bgc, matching_domains) {
       function scaleBGC(val, height = 20) { // << default: 40, scale x 0.5
+        console.log("scale", val, parseInt(val / (1000 / height)))
         return parseInt(val / (1000 / height)); // PLEASE DO SOMETHING WITH THIS
       }
       function findMatchGene(bgc, match_domain) {
@@ -1057,51 +1084,50 @@ BigscapeFunc.openFamDetail = function (id_fam, ids_highlighted, bs_svg, bs_data,
           }
         }
       }
-      for (var i = 0; i < domains_ref.length; i++) {
-        var ref_domain = domains_ref[i];
-        var [ref_gene, ref_gene_domain] = findMatchGene(bgc_ref, ref_domain)
-        for (var j = 0; j < aln.length; j++) {
-          if (aln[j][0] === ref_domain) {
-            var [match_gene, gene_domain] = findMatchGene(bgc, j)
-            // reference domain start
-            var ref_gene_obj = bgc_ref["orfs"][ref_gene]
-            if (ref_gene_obj["strand"] === 1) {
-              var ref_dom_obj = ref_gene_obj["domains"][ref_gene_domain]
-              var ref_domain_offset = 3 * ref_dom_obj["start"]
-            } else {
-              var ref_dom_idx = ref_gene_obj["domains"].length - ref_gene_domain - 1
-              var ref_dom_obj = ref_gene_obj["domains"][ref_dom_idx]
-              var ref_domain_offset = (ref_gene_obj["end"] - ref_gene_obj["start"]) - 3 * ref_dom_obj["end"]
-            }
-            ref_start = (ref_gene_obj["start"] + ref_domain_offset) - bgc_ref["start"]
-            // aligned bgc domain start
-            var gene_obj = bgc["orfs"][match_gene]
-            if (aln[j][1] < 0) {
-              if (gene_obj["strand"] === 1) {
-                var dom_obj = gene_obj["domains"][gene_domain]
-                var bgc_start = bgc["end"] - (gene_obj["start"] + (3 * dom_obj["end"]))
-              } else {
-                var dom_idx = gene_obj["domains"].length - gene_domain - 1
-                var dom_obj = gene_obj["domains"][dom_idx]
-                var bgc_start = bgc["end"] - (gene_obj["end"] - (3 * dom_obj["start"]))
-              }
-              return [scaleBGC(ref_start - bgc_start), aln[j][1]];
-            } else {
-              if (gene_obj["strand"] === 1) {
-                var dom_obj = gene_obj["domains"][gene_domain]
-                var domain_offset = 3 * dom_obj["start"]
-              } else {
-                var dom_idx = gene_obj["domains"].length - gene_domain - 1
-                var dom_obj = gene_obj["domains"][dom_idx]
-                var domain_offset = (gene_obj["end"] - gene_obj["start"]) - 3 * dom_obj["end"]
-              }
-              bgc_start = (gene_obj["start"] + domain_offset) - bgc["start"]
-              return [scaleBGC(ref_start - bgc_start), aln[j][1]];
-            }
-          }
-        }
+      if (bgc_ref.hash === bgc.hash) {
+        return [0, 1]
       }
-      return [0, 0];
+      var [bgc_domain, ref_domain, reverse] = matching_domains
+
+      var [ref_gene, ref_gene_domain] = findMatchGene(bgc_ref, ref_domain) // idx of cds, domain number within cds
+      var [match_gene, gene_domain] = findMatchGene(bgc, bgc_domain)
+
+      // reference domain start
+      var ref_gene_obj = bgc_ref["orfs"][ref_gene]
+      if (ref_gene_obj["strand"] === 1) {
+        var ref_dom_obj = ref_gene_obj["domains"][ref_gene_domain]
+        var ref_domain_offset = 3 * ref_dom_obj["start"]
+      } else {
+        var ref_dom_idx = ref_gene_obj["domains"].length - ref_gene_domain - 1
+        var ref_dom_obj = ref_gene_obj["domains"][ref_dom_idx]
+        var ref_domain_offset = (ref_gene_obj["end"] - ref_gene_obj["start"]) - 3 * ref_dom_obj["end"]
+      }
+      ref_start = (ref_gene_obj["start"] + ref_domain_offset) - bgc_ref["start"]
+
+      // aligned bgc domain start
+      var gene_obj = bgc["orfs"][match_gene]
+      if (reverse < 0) {
+        if (gene_obj["strand"] === 1) {
+          var dom_obj = gene_obj["domains"][gene_domain]
+          var bgc_start = bgc["end"] - (gene_obj["start"] + (3 * dom_obj["end"]))
+        } else {
+          var dom_idx = gene_obj["domains"].length - gene_domain - 1
+          var dom_obj = gene_obj["domains"][dom_idx]
+          var bgc_start = bgc["end"] - (gene_obj["end"] - (3 * dom_obj["start"]))
+        }
+        return [scaleBGC(ref_start - bgc_start), reverse];
+      } else {
+        if (gene_obj["strand"] === 1) {
+          var dom_obj = gene_obj["domains"][gene_domain]
+          var domain_offset = 3 * dom_obj["start"]
+        } else {
+          var dom_idx = gene_obj["domains"].length - gene_domain - 1
+          var dom_obj = gene_obj["domains"][dom_idx]
+          var domain_offset = (gene_obj["end"] - gene_obj["start"]) - 3 * dom_obj["end"]
+        }
+        bgc_start = (gene_obj["start"] + domain_offset) - bgc["start"]
+        return [scaleBGC(ref_start - bgc_start), reverse];
+      }
     }
     var treeData = new Tree();
     treeData.Parse(fam_aln["newick"]);
@@ -1119,14 +1145,11 @@ BigscapeFunc.openFamDetail = function (id_fam, ids_highlighted, bs_svg, bs_data,
     while (q != null) { // UGLY IMPLEMENTATION, PLEASE FIX
       if (q.IsLeaf()) {
         var bgcId = parseInt(q.label);
-        var bgcFamIdx = -1;
-        for (var i = 0; i < bs_families[id_fam]["members"].length; i++) {
-          if (bs_families[id_fam]["members"][i] === bgcId) {
-            bgcFamIdx = i;
-            break;
-          }
+        if (fam_aln["ref"] === bgcId) {
+          var bgcOffset = [0, 0]
+        } else {
+          var bgcOffset = getBGCOffset(bs_data[fam_aln["ref"]], bs_data[bgcId], fam_aln["aln"][bgcId]);
         }
-        var bgcOffset = getBGCOffset(bs_data[fam_aln["ref"]], bs_data[bgcId], fam_aln["ref_genes"], fam_aln["aln"][bgcFamIdx]);
         if (bgcOffset[0] < minOffset) {
           minOffset = bgcOffset[0];
         }
@@ -1300,8 +1323,11 @@ BigscapeFunc.openFamDetail = function (id_fam, ids_highlighted, bs_svg, bs_data,
       downloadLink.remove();
     }
     var btnExport = $("<button>Download SVG</button>").click({ treeSVG: treeSVG, gcf_id: bs_families[id_fam]["id"] }, exportSVG).appendTo(panZoomTree);
-    // hide domains....*temp*
-    //treeSVG.find("polygon.arrower-domain").css("display", "none");
+    var showHideDomainBtnFamily = $("<input id='showhidedomains-btn' style='margin-left:1em' type='checkbox' checked><label for='showhidedomains-btn'>domains</label>").appendTo(panZoomTree)
+    showHideDomainBtnFamily.change({ container: treeSVG }, function (handler) {
+      BigscapeFunc.showHideDomains(handler.data.container, $(handler.target).is(":checked"));
+      handler.stopPropagation();
+    });
 
     /* END OF FUNCTION BLOCK, DRAWING THE TREE */
     /* FUNCTION BLOCK, DRAWING THE CONTROL PANEL */
@@ -1370,12 +1396,16 @@ BigscapeFunc.createOverlay = function (overlayDom, bigscape) {
     width: 0,
     height: 0
   };
+  var bounds = $("#network-container")[0].getBoundingClientRect()
   var startX = 0;
+  var offsetX = bounds.x;
   var startY = 0;
+  var offsetY = bounds.y;
+
 
   dragndrop.onStart(function (e) {
-    startX = selectedArea.x = e.clientX;
-    startY = selectedArea.y = e.clientY;
+    startX = selectedArea.x = e.clientX - offsetX;
+    startY = selectedArea.y = e.clientY - offsetY;
     selectedArea.width = selectedArea.height = 0;
     updateSelectedAreaIndicator();
     selectionIndicator.style.display = 'block';
@@ -1411,10 +1441,10 @@ BigscapeFunc.createOverlay = function (overlayDom, bigscape) {
   }
 
   function recalculateSelectedArea(e) {
-    selectedArea.width = Math.abs(e.clientX - startX);
-    selectedArea.height = Math.abs(e.clientY - startY);
-    selectedArea.x = Math.min(e.clientX, startX);
-    selectedArea.y = Math.min(e.clientY, startY);
+    selectedArea.width = Math.abs(e.clientX - startX - offsetX);
+    selectedArea.height = Math.abs(e.clientY - startY - offsetY);
+    selectedArea.x = Math.min(e.clientX - offsetX, startX);
+    selectedArea.y = Math.min(e.clientY - offsetY, startY);
   }
 
   function updateSelectedAreaIndicator() {
@@ -1431,4 +1461,31 @@ BigscapeFunc.showHideDomains = function (cont_ui, isOn) {
   } else {
     cont_ui.find(".arrower-domain").css("display", "none");
   }
+}
+
+BigscapeFunc.downloadSelection = function (data) {
+  lines = []
+  for (i in data) {
+    var node = data[i]
+    var id_parts = /^(.*)_(region|protocluster|cand_cluster|proto_core)_(.*)$/gm.exec(node["id"])
+    var [gbk, rec_type, rec_num] = id_parts.slice(1)
+    lines.push(`${node["family"]}\t${gbk}\t${rec_type}\t${rec_num}\t${node["desc"]}`)
+  }
+  var tsv_text = `# Collection of selected nodes
+# Run info: ${$("#bigscape-runs option:selected").text()} ${$("#network-selection option:selected").text()}
+# Used search query: ${$("#search-input").val()}\n
+Family\tGBK\tRecord_Type\tRecord_Number\tDescription
+${lines.toSorted((a, b) => a > b).join("\n")}`
+  BigscapeFunc.sendDownload(tsv_text, `${$("#bigscape-runs option:selected").text()}_selection.tsv`)
+}
+
+BigscapeFunc.sendDownload = function (content, filename) {
+  // create download link and open it
+  var element = document.createElement('a');
+  element.setAttribute('href', 'data:text/plain;charset=utf-8,' + encodeURIComponent(content));
+  element.setAttribute('download', filename);
+  element.style.display = 'none';
+  document.body.appendChild(element);
+  element.click();
+  document.body.removeChild(element);
 }

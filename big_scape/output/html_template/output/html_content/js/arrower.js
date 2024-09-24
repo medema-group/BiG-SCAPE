@@ -312,7 +312,7 @@ if (divTooltip.length < 1) {
   divTooltip.css("font-size", "small");
   divTooltip.css("padding", "0 5px");
   divTooltip.css("pointer-events", "none");
-  divTooltip.css("position", "fixed");
+  divTooltip.css("position", "absolute");
   divTooltip.appendTo($(document.body));
 }
 divTooltip.html(html);
