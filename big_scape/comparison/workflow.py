@@ -325,7 +325,11 @@ def expand_pair(pair: RecordPair, alignment_mode: bs_enums.ALIGNMENT_MODE) -> bo
         extend_greedy(pair)
 
     if click_context.obj["extend_strategy"] == "simple_match":
-        extend_simple_match(pair)
+        extend_simple_match(
+            pair,
+            BigscapeConfig.EXPAND_MATCH_SCORE,
+            BigscapeConfig.EXPAND_GAP_SCORE,
+        )
 
     # after local expansion, additionally expand shortest arms in glocal/auto
     if alignment_mode != bs_enums.ALIGNMENT_MODE.LOCAL:
