@@ -49,8 +49,8 @@ def common_all(fn):
             "--verbose",
             is_flag=True,
             help=(
-                "Prints more detailed information of each step in the analysis,"
-                "output all kinds of logs, including debugging log info, and writes to logfile."
+                "Prints more detailed information of each step in the analysis, "
+                "output all kinds of logs, including debugging log info, and writes to logfile. "
                 "Toggle to activate."
             ),
         ),
@@ -99,9 +99,9 @@ def common_all(fn):
             type=bool,
             is_flag=True,
             default=False,
-            help="Do not dump the sqlite database to disk. This will speed up your run,"
-            " but in case of a crashed run no info will be stored and you'll have to"
-            " re-start the run from scratch",
+            help="Do not dump the sqlite database to disk. This will speed up your run, "
+            "but in case of a crashed run no info will be stored and you'll have to "
+            "re-start the run from scratch",
         ),
         click.option(
             "--no-interactive",
