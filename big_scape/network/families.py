@@ -370,34 +370,38 @@ def run_family_assignments_query(
         # get_connected_components returns a list of connected components, but we only
         # want the first one, so we use next()
 
-        try:
-            query_connected_component = next(
-                bs_network.get_connected_components(
-                    cutoff, query_bin.edge_param_id, query_bin, run["run_id"]
-                )
-            )
+        query_connected_component = next(
+            bs_network.get_connected_components(
+                cutoff,
+                query_bin.edge_param_id,
+                query_bin,
+                run["run_id"],
+                query_record,
+            ),
+            None,
+        )
 
-            cc_cutoff[cutoff] = query_connected_component
-
-            logging.debug(
-                "Found connected component with %d edges",
-                len(query_connected_component),
-            )
-
-            regions_families = generate_families(
-                query_connected_component, query_bin.label, cutoff, run["run_id"]
-            )
-
-            # save families to database
-            save_to_db(regions_families)
-
-        except StopIteration:
+        if query_connected_component is None:
             logging.warning(
                 "No connected components found for %s bin at cutoff %s",
                 query_bin.label,
                 cutoff,
             )
             continue
+
+        cc_cutoff[cutoff] = query_connected_component
+
+        logging.debug(
+            "Found connected component with %d edges",
+            len(query_connected_component),
+        )
+
+        regions_families = generate_families(
+            query_connected_component, query_bin.label, cutoff, run["run_id"]
+        )
+
+        # save families to database
+        save_to_db(regions_families)
 
     DB.commit()
 

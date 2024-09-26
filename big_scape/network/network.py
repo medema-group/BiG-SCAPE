@@ -32,6 +32,7 @@ def get_connected_components(
     edge_param_id: int,
     bin: bs_comparison.RecordPairGenerator,
     run_id: int,
+    seed_record: Optional[BGCRecord] = None,
 ) -> Generator[list[tuple[int, int, float, float, float, float, int]], None, None]:
     """Generate a network for each connected component in the network
         If a seed record is given, the connected component will be generated starting from that record
@@ -54,7 +55,7 @@ def get_connected_components(
 
     # generate connected components using dfs
     generate_connected_components(
-        cutoff, edge_param_id, bin.label, run_id, include_record_table
+        cutoff, edge_param_id, bin.label, run_id, include_record_table, seed_record
     )
 
     cc_ids = get_connected_component_ids(
