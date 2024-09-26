@@ -43,7 +43,9 @@ def calculate_distances_query(
     max_cutoff = max(run["gcf_cutoffs"])
     edge_param_id = bs_comparison.get_edge_param_id(run, weights)
 
-    query_bin = bs_comparison.QueryRecordPairGenerator("Query", edge_param_id, weights)
+    query_bin = bs_comparison.QueryRecordPairGenerator(
+        "Query", edge_param_id, weights, run["record_type"]
+    )
     query_bin.add_records(query_records)
 
     missing_query_bin = bs_comparison.QueryMissingRecordPairGenerator(query_bin)

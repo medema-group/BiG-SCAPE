@@ -133,7 +133,7 @@ class RecordPairGenerator:
             # find a collection of gbks with more than one subrecord
             member_table = (
                 select(func.count(record_table.c.gbk_id).label("rec_count"))
-                .where(record_table.c.record_type == self.record_type.value)
+                .where(record_table.c.id.in_(self.record_ids))
                 .group_by(record_table.c.gbk_id)
                 .having(func.count() > 1)
                 .subquery()
@@ -406,8 +406,9 @@ class QueryRecordPairGenerator(RecordPairGenerator):
         label: str,
         edge_param_id: int,
         weights: str,
+        record_type: Optional[RECORD_TYPE],
     ):
-        super().__init__(label, edge_param_id, weights)
+        super().__init__(label, edge_param_id, weights, record_type)
         self.reference_records: set[BGCRecord] = set()
         self.done_records: set[BGCRecord] = set()
         self.working_query_records: set[BGCRecord] = set()
@@ -424,6 +425,9 @@ class QueryRecordPairGenerator(RecordPairGenerator):
         for record_a in self.working_query_records:
             for record_b in self.working_ref_records:
                 if record_a == record_b:
+                    continue
+
+                if record_a.parent_gbk == record_b.parent_gbk:
                     continue
 
                 if legacy_sorting:
@@ -454,6 +458,48 @@ class QueryRecordPairGenerator(RecordPairGenerator):
             return 0
 
         num_pairs = num_query_records * num_ref_records
+
+        # delete pairs originating from the same parent gbk
+        if self.record_type is not None and self.record_type != RECORD_TYPE.REGION:
+            query_ids = [record._db_id for record in self.working_query_records]
+            ref_ids = [record._db_id for record in self.working_ref_records]
+
+            if DB.metadata is None:
+                raise RuntimeError("DB.metadata is None")
+
+            rec_table = DB.metadata.tables["bgc_record"]
+
+            # contruct two tables that hold the gbk id and the number of subrecords
+            # present in the set of query and ref records respectively
+            query_gbk = (
+                select(
+                    rec_table.c.gbk_id,
+                    func.count(rec_table.c.gbk_id).label("query_count"),
+                )
+                .where(rec_table.c.id.in_(query_ids))
+                .group_by(rec_table.c.gbk_id)
+                .subquery()
+            )
+
+            ref_gbk = (
+                select(
+                    rec_table.c.gbk_id,
+                    func.count(rec_table.c.gbk_id).label("ref_count"),
+                )
+                .where(rec_table.c.id.in_(ref_ids))
+                .group_by(rec_table.c.gbk_id)
+                .subquery()
+            )
+
+            # now we can join the two tables and obtain the number of links between
+            # records from the same gbks by multiplying their counts
+            same_gbk_query = select(
+                func.sum(query_gbk.c.query_count * ref_gbk.c.ref_count)
+            ).join(ref_gbk, query_gbk.c.gbk_id == ref_gbk.c.gbk_id)
+
+            same_gbks = DB.execute(same_gbk_query).scalar_one()
+            if same_gbks:
+                num_pairs -= same_gbks
 
         return num_pairs
 
