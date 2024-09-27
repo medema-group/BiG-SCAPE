@@ -112,7 +112,7 @@ def validate_output_paths(ctx) -> None:
     timestamp = time.strftime("%Y-%m-%d_%H-%M-%S", time.localtime())
 
     if "db_path" in ctx.obj and ctx.obj["db_path"] is None:
-        db_path = ctx.obj["output_dir"] / Path("data_sqlite.db")
+        db_path = ctx.obj["output_dir"] / Path(f"{ctx.obj['output_dir'].name}.db")
         ctx.obj["db_path"] = db_path
 
     if "log_path" in ctx.obj and ctx.obj["log_path"] is None:

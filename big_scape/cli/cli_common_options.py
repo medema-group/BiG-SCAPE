@@ -339,7 +339,7 @@ def common_cluster_query(fn):
             "-db",
             "--db_path",
             type=click.Path(path_type=Path, dir_okay=False),
-            help="Path to sqlite db output file. (default: output_dir/data_sqlite.db).",
+            help="Path to sqlite db output file. (default: output_dir/output_dir.db).",
         ),
         # TODO: implement cand_cluster here and LCS-ext
         click.option(
