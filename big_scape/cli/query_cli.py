@@ -73,6 +73,7 @@ def query(ctx, *args, **kwarg):
     ctx.obj.update(ctx.params)
     ctx.obj["no_mix"] = None
     ctx.obj["hybrids_off"] = False
+    ctx.obj["legacy_classify"] = False
     ctx.obj["mode"] = "Query"
 
     # workflow validations
