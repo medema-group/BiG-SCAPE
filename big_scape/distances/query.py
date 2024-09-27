@@ -202,7 +202,7 @@ def calculate_distances(run: dict, bin: bs_comparison.RecordPairGenerator):
 
             logging.info("Generated %d edges", num_edges)
 
-        if run["skip_propagation"]:
+        if not run["propagate"]:
             # in this case we only want one iteration, the Query -> Ref edges
             break
 

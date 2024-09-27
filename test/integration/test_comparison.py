@@ -1471,7 +1471,7 @@ class TestComparison(TestCase):
             "record_type": bs_enums.RECORD_TYPE.REGION,
             "cores": 1,
             "classify": bs_enums.CLASSIFY_MODE.CLASS,
-            "skip_propagation": False,
+            "propagate": True,
             "gcf_cutoffs": [0.1, 0.7],
         }
 
@@ -1607,7 +1607,7 @@ class TestComparison(TestCase):
             "record_type": bs_enums.RECORD_TYPE.REGION,
             "cores": 1,
             "classify": bs_enums.CLASSIFY_MODE.CLASS,
-            "skip_propagation": False,
+            "propagate": True,
             "run_id": 1,
             "gcf_cutoffs": [0.1, 0.8],
         }
