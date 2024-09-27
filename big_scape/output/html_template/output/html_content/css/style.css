@@ -24,7 +24,6 @@ html[data-theme='dark'] {
   --overview-button-background: hsl(var(--hue), 34%, 48%);
   --button-text-color: hsl(var(--hue), 10%, 10%);
   --background-color: hsl(var(--hue), 20%, 12%);
-  /* --background-header: rgba(159, 159, 143, 0.188); */
   --background-header: hsl(var(--hue), 15%, 20%);
   --li-selected-color: hsl(var(--hue), 70%, 60%);
   --row-selected-color: hsl(var(--hue), 60%, 70%)
@@ -160,6 +159,7 @@ a.anchor {
   color: var(--text-color-normal);
   background-color: var(--background-color);
   overflow: scroll;
+  opacity: 90%;
 }
 
 .desc-container.active {

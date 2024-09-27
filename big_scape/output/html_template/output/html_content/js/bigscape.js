@@ -360,11 +360,9 @@ function Bigscape(run_data, bs_data, bs_families, bs_alignment, bs_similarity, n
     var ui = Viva.Graph.svg('circle')
       .attr('r', 10)
       .attr('fill', (fam_colors[bs_to_cl[node.id]]));
-    if (run_data["mode"] == "Cluster") {
-      if (bs_data[node.id]["source"] == "mibig" || bs_data[node.id]["source"] == "reference") {
-        ui.attr("stroke", "blue");
-        ui.attr("stroke-width", "4px");
-      }
+    if (bs_data[node.id]["source"] == "mibig" || bs_data[node.id]["source"] == "reference") {
+      ui.attr("stroke", "blue");
+      ui.attr("stroke-width", "4px");
     }
     if (run_data["mode"] == "Query") {
       if (bs_data[node.id]["source"] == "query") {
