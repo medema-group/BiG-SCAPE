@@ -24,7 +24,8 @@ from .cli_validations import (
 @common_all
 @common_cluster_query
 @click.option(
-    "-q" "--query_bgc_path",
+    "-q",
+    "--query_bgc_path",
     type=click.Path(exists=True, dir_okay=False, file_okay=True, path_type=Path),
     required=True,
     callback=validate_query_bgc,
@@ -35,13 +36,14 @@ from .cli_validations import (
     ),
 )
 @click.option(
-    "-n" "--query_record_number",
+    "-n",
+    "--query_record_number",
     type=int,
     required=False,
     help=(
         "Query BGC record number. Used to select the specific record "
-        "from the query BGC gbk. Warning: interleaved or chemical hybrid proto "
-        "cluster/cores are merged, and the relevant number is that of the "
+        "from the query BGC gbk. Warning: if interleaved or chemical hybrid proto "
+        "cluster/cores are merged (see config), the relevant number is that of the "
         "first record of the merged cluster (the one with the lowest number). "
         "e.g. if records 1 and 2 get merged, the relevant number is 1. "
     ),

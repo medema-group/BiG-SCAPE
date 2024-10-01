@@ -29,7 +29,8 @@ def generate_families(
     connected_component: list[tuple[int, int, float, float, float, float, int]],
     bin_label: str,
     cutoff: float,
-) -> list[tuple[int, int, float, str]]:
+    run_id: int,
+) -> list[tuple[int, int, float, str, int]]:
     """Execute affinity propagation on a connected component
 
     Args:
@@ -37,12 +38,13 @@ def generate_families(
             connected component in the form of a list of edges
         bin_label (str): name of current bin to generate families for
         cutoff (float): cutoff used in generation of the connected_component
+        run_id (int): id of the current run
 
     Returns:
-        list[tuple[int, int, float, int]]: list of
-            (region_id, family, cutoff, edge_param_id) tuples
+        list[tuple[int, int, float, int, int]]: list of
+            (region_id, family, cutoff, edge_param_id, run_id) tuples
     """
-    # assemble list of (region_id, family, cutoff, edge_param_id) tuples for easy
+    # assemble list of (region_id, family, cutoff, edge_param_id, run_id) tuples for easy
     # insertion into db
     regions_families = []
 
@@ -60,7 +62,7 @@ def generate_families(
         center = centers[label]
         family = node_ids[center]
 
-        regions_families.append((region_id, family, cutoff, bin_label))
+        regions_families.append((region_id, family, cutoff, bin_label, run_id))
 
     return regions_families
 
@@ -172,23 +174,26 @@ def aff_sim_matrix(matrix):
     return af_results.labels_, af_results.cluster_centers_indices_
 
 
-def save_to_db(regions_families):
+def save_to_db(regions_families: list[tuple[int, int, float, str, int]]):
     """Save families to database
 
     Args:
-        regions_families (list[tuple[int, int, float]]): list of (region_id, family,
-        cutoff) tuples
+        regions_families (list[tuple[int, int, float, str, int]]): list of (region_id, family,
+        cutoff, bin_label, run_id) tuples
     """
+    if DB.metadata is None:
+        raise RuntimeError("DB metadata is None!")
     family_table = DB.metadata.tables["family"]
     bgc_record_family_table = DB.metadata.tables["bgc_record_family"]
 
-    for region_id, family, cutoff, bin_label in regions_families:
+    for region_id, family, cutoff, bin_label, run_id in regions_families:
         # obtain unique family id if present
         fam_id_query = (
             select(family_table.c.id)
             .where(family_table.c.center_id == family)
             .where(family_table.c.cutoff == cutoff)
             .where(family_table.c.bin_label == bin_label)
+            .where(family_table.c.run_id == run_id)
         )
         family_id = DB.execute(fam_id_query).fetchone()
 
@@ -197,7 +202,9 @@ def save_to_db(regions_families):
             insert_query = (
                 family_table.insert()
                 .returning(family_table.c.id)
-                .values(center_id=family, cutoff=cutoff, bin_label=bin_label)
+                .values(
+                    center_id=family, cutoff=cutoff, bin_label=bin_label, run_id=run_id
+                )
                 .compile()
             )
 
@@ -221,13 +228,16 @@ def reset_db_family_tables():
     DB.execute(DB.metadata.tables["family"].delete())
 
 
-def save_singletons(record_ids: list[int], cutoff: float, bin_label: str) -> None:
+def save_singletons(
+    record_ids: list[int], cutoff: float, bin_label: str, run_id: int
+) -> None:
     """Create unique family for any singletons and save to database
 
     Args:
         record_ids (list[int]): record ids to create any singleton families for
         cutoff (float): cutoff value to create families for
         bin_label (str): label of the bin to create families for
+        run_id (int): id of the current run
     """
     if DB.metadata is None:
         raise RuntimeError("DB metadata is None!")
@@ -248,6 +258,7 @@ def save_singletons(record_ids: list[int], cutoff: float, bin_label: str) -> Non
                 )
                 .where(family_table.c.cutoff == cutoff)
                 .where(family_table.c.bin_label == bin_label)
+                .where(family_table.c.run_id == run_id)
             )
         )
     )
@@ -258,7 +269,21 @@ def save_singletons(record_ids: list[int], cutoff: float, bin_label: str) -> Non
 
     singleton_regions = []
     for singleton in singletons.fetchall():
-        singleton_regions.append((singleton[0], singleton[0], cutoff, bin_label))
+        singleton_regions.append(
+            (singleton[0], singleton[0], cutoff, bin_label, run_id)
+        )
+
+        DB.execute(
+            DB.metadata.tables["connected_component"]
+            .insert()
+            .values(
+                id=singleton[0],
+                record_id=singleton[0],
+                cutoff=cutoff,
+                bin_label=bin_label,
+                run_id=run_id,
+            )
+        )
 
     save_to_db(singleton_regions)
 
@@ -296,14 +321,14 @@ def run_family_assignments(
             )
 
             for connected_component in bs_network.get_connected_components(
-                cutoff, edge_param_id, bin
+                cutoff, edge_param_id, bin, run["run_id"]
             ):
                 # check and remove ref only cc
                 if bs_network.reference_only_connected_component(
                     connected_component, bin.source_records
                 ):
                     bs_network.remove_connected_component(
-                        connected_component, cutoff, edge_param_id
+                        connected_component, cutoff, run["run_id"]
                     )
                     continue
 
@@ -312,10 +337,14 @@ def run_family_assignments(
                     len(connected_component),
                 )
                 regions_families = generate_families(
-                    connected_component, bin.label, cutoff
+                    connected_component, bin.label, cutoff, run["run_id"]
                 )
                 save_to_db(regions_families)
-            save_singletons(bin.record_ids, cutoff, bin.label)
+
+            if run["include_singletons"]:
+                save_singletons(
+                    bin.get_query_source_record_ids(), cutoff, bin.label, run["run_id"]
+                )
 
     DB.commit()
 
@@ -344,7 +373,7 @@ def run_family_assignments_query(
         try:
             query_connected_component = next(
                 bs_network.get_connected_components(
-                    cutoff, query_bin.edge_param_id, query_bin
+                    cutoff, query_bin.edge_param_id, query_bin, run["run_id"]
                 )
             )
 
@@ -356,7 +385,7 @@ def run_family_assignments_query(
             )
 
             regions_families = generate_families(
-                query_connected_component, query_bin.label, cutoff
+                query_connected_component, query_bin.label, cutoff, run["run_id"]
             )
 
             # save families to database

@@ -11,6 +11,11 @@ class ALIGNMENT_MODE(Enum):
     AUTO = "auto"
 
 
+class EXTEND_STRATEGY(Enum):
+    LEGACY = "legacy"
+    GREEDY = "greedy"
+
+
 class COMPARISON_MODE(Enum):
     CDS = "cds"
     DOMAIN = "domain"

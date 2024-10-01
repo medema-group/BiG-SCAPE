@@ -115,6 +115,9 @@ def run_bigscape(run: dict) -> None:
     else:
         bs_data.DB.load_from_disk(run["db_path"])
 
+    # initialize run in database
+    bs_data.DB.init_run(run)
+
     # INPUT - load data
     gbks = bs_files.load_gbks(run, bigscape_dir)
 
@@ -213,10 +216,6 @@ def run_bigscape(run: dict) -> None:
     # FAMILY GENERATION
     logging.info("Generating families")
 
-    bs_families.reset_db_family_tables()
-
-    bs_network.reset_db_connected_components_table()
-
     # mix
 
     if not run["no_mix"] and not run["query_bgc_path"]:
@@ -247,10 +246,6 @@ def run_bigscape(run: dict) -> None:
     bs_data.DB.save_to_disk(run["db_path"])
 
     # OUTPUT GENERATION
-
-    exec_time = datetime.now() - start_time
-    run["duration"] = exec_time
-    run["end_time"] = datetime.now()
 
     # if this wasn't set in scan or align, set it now
     if pfam_info is None:
@@ -352,8 +347,10 @@ def run_bigscape(run: dict) -> None:
     if run["profiling"]:
         profiler.stop()
 
-    exec_time = datetime.now() - start_time
-    run["duration"] = exec_time
-    run["end_time"] = datetime.now()
+    end = datetime.now()
+    exec_time = end - start_time
+
+    bs_data.DB.set_run_end(run["run_id"], start_time, end)
+    bs_data.DB.save_to_disk(run["db_path"])
 
     logging.info("All tasks done at %f seconds", exec_time.total_seconds())

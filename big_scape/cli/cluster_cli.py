@@ -39,7 +39,7 @@ from .cli_validations import (
 @click.option(
     "--include_singletons",
     is_flag=True,
-    help=("Include singletons in the network. (default: False)"),
+    help=("Include singletons in the network."),
 )
 @click.pass_context
 def cluster(ctx, *args, **kwargs):

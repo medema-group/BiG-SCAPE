@@ -21,7 +21,6 @@ from pathlib import Path
 from .record_pair import RecordPair
 
 # from dependencies
-import click
 from sqlalchemy import select
 
 # from other modules
@@ -109,6 +108,7 @@ def get_batch_size(cores: int, desired_batch_size: int, num_items: int):
 def generate_edges(
     pair_generator: RecordPairGenerator,
     alignment_mode: bs_enums.ALIGNMENT_MODE,
+    extend_strategy: bs_enums.EXTEND_STRATEGY,
     cores: int,
     max_queue_length: int,
     callback: Optional[Callable] = None,
@@ -185,6 +185,7 @@ def generate_edges(
                     (
                         batch,
                         alignment_mode,
+                        extend_strategy,
                         pair_generator.edge_param_id,
                         pair_generator.weights,
                     ),
@@ -295,7 +296,11 @@ def do_lcs_pair(pair: RecordPair) -> bool:  # pragma no cover
         return False
 
 
-def expand_pair(pair: RecordPair, alignment_mode: bs_enums.ALIGNMENT_MODE) -> bool:
+def expand_pair(
+    pair: RecordPair,
+    alignment_mode: bs_enums.ALIGNMENT_MODE,
+    extend_strategy: bs_enums.EXTEND_STRATEGY,
+) -> bool:
     """Expand the pair
 
     Args:
@@ -305,14 +310,7 @@ def expand_pair(pair: RecordPair, alignment_mode: bs_enums.ALIGNMENT_MODE) -> bo
     Returns:
         bool: True if the pair was extended, False if it does not
     """
-    # TODO: true arg means silent if there is no context. this is done so that unit
-    # tests don't complain. remove this and mock the context in unit tests instead
-    click_context = click.get_current_context(silent=True)
-
-    if not click_context:
-        raise RuntimeError("No click context found")
-
-    if click_context.obj["extend_strategy"] == "legacy":
+    if extend_strategy == bs_enums.EXTEND_STRATEGY.LEGACY:
         extend(
             pair,
             BigscapeConfig.EXPAND_MATCH_SCORE,
@@ -320,11 +318,10 @@ def expand_pair(pair: RecordPair, alignment_mode: bs_enums.ALIGNMENT_MODE) -> bo
             BigscapeConfig.EXPAND_GAP_SCORE,
             BigscapeConfig.EXPAND_MAX_MATCH_PERC,
         )
-
-    if click_context.obj["extend_strategy"] == "greedy":
+    if extend_strategy == bs_enums.EXTEND_STRATEGY.GREEDY:
         extend_greedy(pair)
 
-    if click_context.obj["extend_strategy"] == "simple_match":
+    if extend_strategy == bs_enums.EXTEND_STRATEGY.SIMPLE_MATCH:
         extend_simple_match(
             pair,
             BigscapeConfig.EXPAND_MATCH_SCORE,
@@ -404,6 +401,7 @@ def calculate_scores_pair(
     data: tuple[
         list[Union[tuple[int, int], tuple[BGCRecord, BGCRecord]]],
         bs_enums.ALIGNMENT_MODE,
+        bs_enums.EXTEND_STRATEGY,
         int,
         str,
     ]
@@ -423,14 +421,14 @@ def calculate_scores_pair(
 
     Args:
         data (tuple[list[tuple[int, int]], str, str]): list of pairs, alignment mode,
-        bin label
+        extend_strategy, edge_param_id, bin label
 
     Returns:
         list[tuple[int, int, float, float, float, float, int, int, int, int, int, int,
         int, int, bool, str,]]: list of scores for each pair in the
         order as the input data list, including lcs and extension coordinates
     """
-    data, alignment_mode, edge_param_id, weights_label = data
+    data, alignment_mode, extend_strategy, edge_param_id, weights_label = data
 
     # convert database ids to minimal record objects
     if isinstance(data[0][0], int):
@@ -500,7 +498,7 @@ def calculate_scores_pair(
         ):
             needs_expand = do_lcs_pair(pair)
             if needs_expand:
-                expand_pair(pair, alignment_mode)
+                expand_pair(pair, alignment_mode, extend_strategy)
 
         if weights_label not in LEGACY_WEIGHTS:
             bin_weights = LEGACY_WEIGHTS["mix"]["weights"]

@@ -13,6 +13,7 @@ from .cli_validations import (
     validate_not_empty_dir,
     validate_input_mode,
     validate_alignment_mode,
+    validate_extend_strategy,
     validate_includelist_all,
     validate_includelist_any,
     validate_gcf_cutoffs,
@@ -48,8 +49,9 @@ def common_all(fn):
             "--verbose",
             is_flag=True,
             help=(
-                "output all kinds of logs, "
-                "including debugging log info, and write to logfile."
+                "Prints more detailed information of each step in the analysis, "
+                "output all kinds of logs, including debugging log info, and writes to logfile. "
+                "Toggle to activate."
             ),
         ),
         click.option(
@@ -63,7 +65,8 @@ def common_all(fn):
             "--label",
             default=None,
             type=str,
-            help="A run label to be added to the output results folder name. "
+            help="A run label to be added to the output results folder name, as well as "
+            "dropdown menu in the visualization page. "
             "By default, BiG-SCAPE runs will have a name such as YYYY-MM-DD_HH-MM-SS_[label]",
         ),
         click.option(
@@ -96,16 +99,16 @@ def common_all(fn):
             type=bool,
             is_flag=True,
             default=False,
-            help="Do not dump the sqlite database to disk. This will speed up your run,"
-            " but in case of a crashed run no info will be stored and you’ll have to"
-            " re-start the run from scratch",
+            help="Do not dump the sqlite database to disk. This will speed up your run, "
+            "but in case of a crashed run no info will be stored and you'll have to "
+            "re-start the run from scratch",
         ),
         click.option(
             "--no-interactive",
             type=bool,
             is_flag=True,
             default=False,
-            help="Do not generate an interactive visualization. This greatly speeds up runs, and "
+            help="Do not generate an interactive visualization. This speeds up runs, and "
             "for runs with a large amount of BGCs, the interactive visualization can fail to load.",
         ),
         click.option(
@@ -170,7 +173,7 @@ def common_cluster_query(fn):
             "--mibig_version",
             type=str,
             required=False,
-            help="MIBiG release number (e.g. 3.1). If not provided, MIBiG will not be "
+            help="MIBiG release number (from 3.1 onwards). If not provided, MIBiG will not be "
             "included in the analysis. If required, BiG-SCAPE will download the "
             "MIBiG database to ./big_scape/MIBiG/mibig_antismash_<version>_gbk. "
             "(Advanced) Any custom MIBiG collection can be used as long as the expected "
@@ -191,8 +194,8 @@ def common_cluster_query(fn):
             default="cluster,region",
             callback=validate_filter_gbk,
             help=(
-                "A comma separated list of strings. "
-                "Only gbk files with this string(s) will be used for the analysis "
+                "A comma separated list of strings. Only gbk files that have "
+                "the string(s) in their filename will be used for the analysis "
                 "(default: 'cluster,region'). Use an asterisk to accept every "
                 "file (overrides '--exclude_gbk_str')."
             ),
@@ -277,7 +280,7 @@ def common_cluster_query(fn):
                 "Does not use antiSMASH BGC classes to run analyses on "
                 "class-based bins, instead it uses BiG-SCAPE v1 predefined groups: "
                 "PKS1, PKSOther, NRPS, NRPS-PKS-hybrid, RiPP, Saccharide, Terpene, Others. "
-                "Will also use BiG-SCAPEv1 legacy_weights for distance calculations. "
+                "Will also use BiG-SCAPE v1 legacy_weights for distance calculations. "
                 "This feature is available for backwards compatibility with "
                 "antiSMASH versions up to v7. For higher antiSMASH versions, use "
                 "at your own risk, as BGC classes may have changed. All antiSMASH "
@@ -300,20 +303,18 @@ def common_cluster_query(fn):
                 "of the shortest upstream/downstream arms in a compared pair. "
                 "'auto': use glocal when at least one of the BGCs in each pair "
                 "has the 'contig_edge' annotation from antiSMASH v4+, otherwise "
-                "use global mode on that pair (default: glocal)."
+                "use global mode on that pair. For an in depth description, see the wiki."
+                " (default: glocal)."
             ),
         ),
         click.option(
             "--extend_strategy",
             type=click.Choice(["legacy", "greedy", "simple_match"]),
             default="legacy",
-            help="Strategy to extend BGCs. (default: legacy)\n"
-            "    legacy: will use the original BiG-SCAPE extension strategy\n"
-            "    greedy: will use an approach where the broadest comparable region is selected "
-            "that contains matching domains between the two regions in a pair. "
-            "See the documentation for more details\n"
-            "    simple_match: Will use an extension approach with only matches and gaps, ignoring "
-            "the type of domain, occurence or position of the domain. See the documentation for more details.",
+            callback=validate_extend_strategy,
+            help="Strategy to extend BGCs. 'legacy' will use the original BiG-SCAPE extension strategy, "
+            "while 'greedy' or 'simple_match' will use new extension strategies. For an in depth description,"
+            " see the wiki. (default: legacy).",
         ),
         # networking parameters
         click.option(

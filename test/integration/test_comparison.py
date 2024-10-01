@@ -356,19 +356,24 @@ class TestComparison(TestCase):
 
         run_1 = {
             "alignment_mode": bs_enums.ALIGNMENT_MODE.AUTO,
+            "extend_strategy": bs_enums.EXTEND_STRATEGY.LEGACY,
             "legacy_weights": True,
             "classify": bs_enums.CLASSIFY_MODE.CATEGORY,
         }
         weights_1 = "mix"
-
         alignment_mode = run_1["alignment_mode"]
+        extend_strat = run_1["extend_strategy"]
 
-        edge_param_id = bs_comparison.edge_params_query(alignment_mode, weights_1)
+        edge_param_id = bs_comparison.edge_params_query(
+            alignment_mode, weights_1, extend_strat
+        )
 
         # the db is empty so we dont find an entry
         self.assertEqual(edge_param_id, None)
 
-        edge_param_id = bs_comparison.edge_params_insert(alignment_mode, weights_1)
+        edge_param_id = bs_comparison.edge_params_insert(
+            alignment_mode, weights_1, extend_strat
+        )
 
         edge_param_id = edge_param_id[0]
 
@@ -377,6 +382,7 @@ class TestComparison(TestCase):
 
         run_2 = {
             "alignment_mode": bs_enums.ALIGNMENT_MODE.GLOBAL,
+            "extend_strategy": bs_enums.EXTEND_STRATEGY.GREEDY,
             "legacy_weights": True,
             "classify": bs_enums.CLASSIFY_MODE.CATEGORY,
         }
@@ -397,6 +403,7 @@ class TestComparison(TestCase):
 
         run = {
             "alignment_mode": bs_enums.ALIGNMENT_MODE.AUTO,
+            "extend_strategy": bs_enums.EXTEND_STRATEGY.LEGACY,
             "legacy_weights": True,
             "record_type": bs_enums.RECORD_TYPE.REGION,
             "cores": 1,
@@ -443,6 +450,7 @@ class TestComparison(TestCase):
 
         run = {
             "alignment_mode": bs_enums.ALIGNMENT_MODE.AUTO,
+            "extend_strategy": bs_enums.EXTEND_STRATEGY.LEGACY,
             "legacy_weights": True,
             "record_type": bs_enums.RECORD_TYPE.REGION,
             "cores": 1,
@@ -480,6 +488,7 @@ class TestComparison(TestCase):
             (
                 batch,
                 run["alignment_mode"],
+                run["extend_strategy"],
                 missing_edge_bin.edge_param_id,
                 missing_edge_bin.weights,
             )
@@ -506,6 +515,7 @@ class TestComparison(TestCase):
 
         run = {
             "alignment_mode": bs_enums.ALIGNMENT_MODE.AUTO,
+            "extend_strategy": bs_enums.EXTEND_STRATEGY.LEGACY,
             "legacy_weights": True,
             "record_type": bs_enums.RECORD_TYPE.REGION,
             "cores": 1,
@@ -535,6 +545,7 @@ class TestComparison(TestCase):
         bs_comparison.generate_edges(
             missing_edge_bin,
             run["alignment_mode"],
+            run["extend_strategy"],
             run["cores"],
             run["cores"] * 2,
             callback,
@@ -577,6 +588,7 @@ class TestComparison(TestCase):
 
         run = {
             "alignment_mode": bs_enums.ALIGNMENT_MODE.AUTO,
+            "extend_strategy": bs_enums.EXTEND_STRATEGY.LEGACY,
             "legacy_weights": True,
             "record_type": bs_enums.RECORD_TYPE.REGION,
         }
@@ -633,6 +645,7 @@ class TestComparison(TestCase):
 
         run = {
             "alignment_mode": bs_enums.ALIGNMENT_MODE.AUTO,
+            "extend_strategy": bs_enums.EXTEND_STRATEGY.LEGACY,
             "legacy_weights": True,
             "record_type": bs_enums.RECORD_TYPE.REGION,
             "cores": 1,
@@ -667,6 +680,7 @@ class TestComparison(TestCase):
 
         run = {
             "alignment_mode": bs_enums.ALIGNMENT_MODE.AUTO,
+            "extend_strategy": bs_enums.EXTEND_STRATEGY.LEGACY,
             "legacy_weights": True,
             "classify": bs_enums.CLASSIFY_MODE.CLASS,
             "record_type": bs_enums.RECORD_TYPE.REGION,
@@ -723,6 +737,7 @@ class TestComparison(TestCase):
 
         run = {
             "alignment_mode": bs_enums.ALIGNMENT_MODE.AUTO,
+            "extend_strategy": bs_enums.EXTEND_STRATEGY.LEGACY,
             "legacy_weights": False,
             "classify": bs_enums.CLASSIFY_MODE.CLASS,
             "record_type": bs_enums.RECORD_TYPE.REGION,
@@ -756,6 +771,7 @@ class TestComparison(TestCase):
 
         run = {
             "alignment_mode": bs_enums.ALIGNMENT_MODE.AUTO,
+            "extend_strategy": bs_enums.EXTEND_STRATEGY.LEGACY,
             "legacy_weights": True,
             "classify": bs_enums.CLASSIFY_MODE.CLASS,
             "record_type": bs_enums.RECORD_TYPE.REGION,
@@ -812,6 +828,7 @@ class TestComparison(TestCase):
 
         run = {
             "alignment_mode": bs_enums.ALIGNMENT_MODE.AUTO,
+            "extend_strategy": bs_enums.EXTEND_STRATEGY.LEGACY,
             "legacy_weights": True,
             "classify": bs_enums.CLASSIFY_MODE.CLASS,
             "record_type": bs_enums.RECORD_TYPE.REGION,
@@ -843,6 +860,7 @@ class TestComparison(TestCase):
 
         run = {
             "alignment_mode": bs_enums.ALIGNMENT_MODE.AUTO,
+            "extend_strategy": bs_enums.EXTEND_STRATEGY.LEGACY,
             "legacy_weights": True,
             "classify": bs_enums.CLASSIFY_MODE.CLASS,
             "record_type": bs_enums.RECORD_TYPE.REGION,
@@ -893,6 +911,7 @@ class TestComparison(TestCase):
 
         run = {
             "alignment_mode": bs_enums.ALIGNMENT_MODE.AUTO,
+            "extend_strategy": bs_enums.EXTEND_STRATEGY.LEGACY,
             "legacy_weights": True,
             "classify": bs_enums.CLASSIFY_MODE.CLASS,
             "record_type": bs_enums.RECORD_TYPE.REGION,
@@ -920,6 +939,7 @@ class TestComparison(TestCase):
 
         run = {
             "alignment_mode": bs_enums.ALIGNMENT_MODE.AUTO,
+            "extend_strategy": bs_enums.EXTEND_STRATEGY.LEGACY,
             "legacy_weights": True,
             "classify": bs_enums.CLASSIFY_MODE.CLASS,
             "record_type": bs_enums.RECORD_TYPE.REGION,
@@ -967,6 +987,7 @@ class TestComparison(TestCase):
 
         run = {
             "alignment_mode": bs_enums.ALIGNMENT_MODE.AUTO,
+            "extend_strategy": bs_enums.EXTEND_STRATEGY.LEGACY,
             "legacy_weights": False,
             "classify": bs_enums.CLASSIFY_MODE.CLASS,
             "record_type": bs_enums.RECORD_TYPE.REGION,
@@ -1232,7 +1253,7 @@ class TestComparison(TestCase):
 
         self.assertEqual(set(), actual_pairs_missing)
 
-        query_pair_generator.cycle_records()
+        query_pair_generator.cycle_records(1.0)
 
         # passing distances will be query -> ref_1 and query -> ref_2
 
@@ -1410,7 +1431,7 @@ class TestComparison(TestCase):
         # since we now put these edges in the databse, we should not see any missing pairs
         self.assertEqual(missing_pair_generator.num_pairs(), 0)
 
-        query_pair_generator.cycle_records()
+        query_pair_generator.cycle_records(1.0)
 
         # passing distances will be ref_1 -> ref_3
 
@@ -1441,11 +1462,13 @@ class TestComparison(TestCase):
 
         run = {
             "alignment_mode": bs_enums.ALIGNMENT_MODE.AUTO,
+            "extend_strategy": bs_enums.EXTEND_STRATEGY.LEGACY,
             "legacy_weights": False,
             "record_type": bs_enums.RECORD_TYPE.REGION,
             "cores": 1,
             "classify": bs_enums.CLASSIFY_MODE.CLASS,
             "skip_propagation": False,
+            "gcf_cutoffs": [0.1, 0.7],
         }
 
         query_record, list_bgc_records = create_mock_query_dataset(run)
@@ -1523,7 +1546,7 @@ class TestComparison(TestCase):
         # now we make any last connected ref <-> connected ref pairs that are missing
         # get all the edges in the query connected component
         query_connected_component = bs_network.get_connected_components(
-            1, edge_param_id, query_bin
+            1, edge_param_id, query_bin, 1
         )
 
         # get_connected_components returns a list of connected components, we only want the first one
@@ -1575,11 +1598,14 @@ class TestComparison(TestCase):
 
         run = {
             "alignment_mode": bs_enums.ALIGNMENT_MODE.AUTO,
+            "extend_strategy": bs_enums.EXTEND_STRATEGY.LEGACY,
             "legacy_weights": False,
             "record_type": bs_enums.RECORD_TYPE.REGION,
             "cores": 1,
             "classify": bs_enums.CLASSIFY_MODE.CLASS,
             "skip_propagation": False,
+            "run_id": 1,
+            "gcf_cutoffs": [0.1, 0.8],
         }
 
         query_record, list_bgc_records = create_mock_query_dataset(run)
@@ -1592,7 +1618,7 @@ class TestComparison(TestCase):
         bs_query.calculate_distances_query(run, list_bgc_records, query_record)
 
         query_connected_component = bs_network.get_connected_components(
-            1, 1, query_to_ref_bin
+            1, 1, query_to_ref_bin, 1
         )
 
         query_connected_component = next(query_connected_component)
@@ -1649,6 +1675,7 @@ class TestComparison(TestCase):
 
         run = {
             "alignment_mode": bs_enums.ALIGNMENT_MODE.AUTO,
+            "extend_strategy": bs_enums.EXTEND_STRATEGY.LEGACY,
             "legacy_weights": False,
             "record_type": bs_enums.RECORD_TYPE.REGION,
             "cores": 1,
@@ -1666,6 +1693,7 @@ class TestComparison(TestCase):
 
         run = {
             "alignment_mode": bs_enums.ALIGNMENT_MODE.AUTO,
+            "extend_strategy": bs_enums.EXTEND_STRATEGY.LEGACY,
             "legacy_weights": False,
             "record_type": bs_enums.RECORD_TYPE.REGION,
             "cores": 1,

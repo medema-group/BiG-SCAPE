@@ -40,6 +40,7 @@ def calculate_distances_query(
     else:
         weights = "mix"
 
+    max_cutoff = max(run["gcf_cutoffs"])
     edge_param_id = bs_comparison.get_edge_param_id(run, weights)
 
     query_bin = bs_comparison.QueryRecordPairGenerator("Query", edge_param_id, weights)
@@ -52,12 +53,16 @@ def calculate_distances_query(
     # add last edges
 
     query_connected_component = next(
-        bs_network.get_connected_components(1, edge_param_id, query_bin)
+        bs_network.get_connected_components(
+            max_cutoff, edge_param_id, query_bin, run["run_id"]
+        )
     )
 
     query_nodes = bs_network.get_nodes_from_cc(query_connected_component, query_records)
 
-    bs_network.remove_connected_component(query_connected_component, 1, edge_param_id)
+    bs_network.remove_connected_component(
+        query_connected_component, max_cutoff, run["run_id"]
+    )
 
     query_bin_connected = bs_comparison.RecordPairGenerator(
         "Query", edge_param_id, weights, record_type=run["record_type"]
@@ -180,6 +185,7 @@ def calculate_distances(run: dict, bin: bs_comparison.RecordPairGenerator):
             bs_comparison.generate_edges(
                 bin,
                 run["alignment_mode"],
+                run["extend_strategy"],
                 run["cores"],
                 run["cores"] * 2,
                 callback,
@@ -196,4 +202,4 @@ def calculate_distances(run: dict, bin: bs_comparison.RecordPairGenerator):
             break
 
         if isinstance(bin, bs_comparison.QueryMissingRecordPairGenerator):
-            bin.cycle_records()
+            bin.cycle_records(max(run["gcf_cutoffs"]))
