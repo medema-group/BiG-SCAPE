@@ -14,6 +14,7 @@ class ALIGNMENT_MODE(Enum):
 class EXTEND_STRATEGY(Enum):
     LEGACY = "legacy"
     GREEDY = "greedy"
+    SIMPLE_MATCH = "simple_match"
 
 
 class COMPARISON_MODE(Enum):

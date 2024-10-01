@@ -47,6 +47,7 @@ from .binning import LEGACY_WEIGHTS
 from .extend import (
     extend,
     extend_greedy,
+    extend_simple_match,
     reset,
     len_check,
     biosynthetic_check,
@@ -319,6 +320,13 @@ def expand_pair(
         )
     if extend_strategy == bs_enums.EXTEND_STRATEGY.GREEDY:
         extend_greedy(pair)
+
+    if extend_strategy == bs_enums.EXTEND_STRATEGY.SIMPLE_MATCH:
+        extend_simple_match(
+            pair,
+            BigscapeConfig.EXPAND_MATCH_SCORE,
+            BigscapeConfig.EXPAND_GAP_SCORE,
+        )
 
     # after local expansion, additionally expand shortest arms in glocal/auto
     if alignment_mode != bs_enums.ALIGNMENT_MODE.LOCAL:

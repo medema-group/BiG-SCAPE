@@ -309,11 +309,11 @@ def common_cluster_query(fn):
         ),
         click.option(
             "--extend_strategy",
-            type=click.Choice(["legacy", "greedy"]),
+            type=click.Choice(["legacy", "greedy", "simple_match"]),
             default="legacy",
             callback=validate_extend_strategy,
             help="Strategy to extend BGCs. 'legacy' will use the original BiG-SCAPE extension strategy, "
-            "while 'greedy' will use a new greedy extension strategy. For an in depth description,"
+            "while 'greedy' or 'simple_match' will use new extension strategies. For an in depth description,"
             " see the wiki. (default: legacy).",
         ),
         # networking parameters
