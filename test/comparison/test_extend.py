@@ -907,15 +907,56 @@ class TestExpandGlocal(unittest.TestCase):
 
         # emulate LCS
         pair.comparable_region = bs_comp.ComparableRegion(
-            9, 10, 6, 7, 9, 10, 6, 7, False
+            9, 11, 6, 8, 9, 11, 6, 8, False
         )
 
         bs_comp.extend.extend_simple_match(pair, 5, -2)
 
         expected_comparable_region = bs_comp.ComparableRegion(
-            6, 10, 5, 7, 6, 10, 5, 7, False
+            6, 11, 5, 8, 6, 11, 5, 8, False
         )
 
+        self.assertEqual(pair.comparable_region, expected_comparable_region)
+        self.assertEqual(
+            pair.comparable_region.domain_a_start,
+            expected_comparable_region.domain_a_start,
+        )
+        self.assertEqual(
+            pair.comparable_region.domain_b_start,
+            expected_comparable_region.domain_b_start,
+        )
+        self.assertEqual(
+            pair.comparable_region.domain_a_stop,
+            expected_comparable_region.domain_a_stop,
+        )
+        self.assertEqual(
+            pair.comparable_region.domain_b_stop,
+            expected_comparable_region.domain_b_stop,
+        )
+
+    def test_expand_simple_match_multi_domain(self):
+        """Tests glocal expand with multi domain cdss"""
+        # brackets indicate a cds with multiple domains
+        #
+        # A:        [XX]BX[A BC]DEX XXXX
+        # B: XXXXXXXXXX XX A[BC]EDX[XXXX]
+        #
+        a_cds, b_cds = generate_mock_cds_lists(
+            10, 17, [3, 3, 3, 4, 5], [12, 13, 13, 15, 14], False
+        )
+        a_cds[0].hsps.append(a_cds[0].hsps[0])
+        a_cds[1].hsps = [a_cds[3].hsps[1]]
+        b_cds[-1].hsps.extend([b_cds[-1].hsps[0]] * 3)
+        record_a = generate_mock_region(a_cds)
+        record_b = generate_mock_region(b_cds)
+        pair = big_scape.comparison.record_pair.RecordPair(record_a, record_b)
+        pair.comparable_region = bs_comp.ComparableRegion(
+            3, 4, 12, 14, 4, 7, 12, 15, False
+        )
+        bs_comp.extend.extend_simple_match(pair, 5, -2)
+        expected_comparable_region = bs_comp.ComparableRegion(
+            1, 6, 12, 16, 2, 9, 12, 17, False
+        )
         self.assertEqual(pair.comparable_region, expected_comparable_region)
         self.assertEqual(
             pair.comparable_region.domain_a_start,
