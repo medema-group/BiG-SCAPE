@@ -43,7 +43,9 @@ def calculate_distances_query(
     max_cutoff = max(run["gcf_cutoffs"])
     edge_param_id = bs_comparison.get_edge_param_id(run, weights)
 
-    query_bin = bs_comparison.QueryRecordPairGenerator("Query", edge_param_id, weights)
+    query_bin = bs_comparison.QueryRecordPairGenerator(
+        "Query", edge_param_id, weights, run["record_type"]
+    )
     query_bin.add_records(query_records)
 
     missing_query_bin = bs_comparison.QueryMissingRecordPairGenerator(query_bin)
@@ -54,9 +56,13 @@ def calculate_distances_query(
 
     query_connected_component = next(
         bs_network.get_connected_components(
-            max_cutoff, edge_param_id, query_bin, run["run_id"]
-        )
+            max_cutoff, edge_param_id, query_bin, run["run_id"], query_record
+        ),
+        None,
     )
+    if query_connected_component is None:
+        # no nodes are connected even with the highest cutoffs in the run
+        return query_bin
 
     query_nodes = bs_network.get_nodes_from_cc(query_connected_component, query_records)
 
@@ -159,47 +165,56 @@ def calculate_distances(run: dict, bin: bs_comparison.RecordPairGenerator):
         # fetches the current number of singleton ref <-> connected ref pairs from the database
         num_pairs = bin.num_pairs()
 
-        # if there are no more singleton ref <-> connected ref pairs, then break and exit
-        if num_pairs == 0:
-            break
+        if num_pairs > 0:
+            logging.info("Calculating distances for %d pairs", num_pairs)
 
-        logging.info("Calculating distances for %d pairs", num_pairs)
+            save_batch = []
+            num_edges = 0
 
-        save_batch = []
-        num_edges = 0
+            with tqdm.tqdm(
+                total=num_pairs, unit="edge", desc="Calculating distances"
+            ) as t:
 
-        with tqdm.tqdm(total=num_pairs, unit="edge", desc="Calculating distances") as t:
+                def callback(edges):
+                    nonlocal num_edges
+                    nonlocal save_batch
+                    batch_size = run["cores"] * 100000
+                    for edge in edges:
+                        num_edges += 1
+                        t.update(1)
+                        save_batch.append(edge)
+                        if len(save_batch) > batch_size:
+                            bs_comparison.save_edges_to_db(save_batch, commit=True)
+                            save_batch = []
 
-            def callback(edges):
-                nonlocal num_edges
-                nonlocal save_batch
-                batch_size = run["cores"] * 100000
-                for edge in edges:
-                    num_edges += 1
-                    t.update(1)
-                    save_batch.append(edge)
-                    if len(save_batch) > batch_size:
-                        bs_comparison.save_edges_to_db(save_batch, commit=True)
-                        save_batch = []
+                bs_comparison.generate_edges(
+                    bin,
+                    run["alignment_mode"],
+                    run["extend_strategy"],
+                    run["cores"],
+                    run["cores"] * 2,
+                    callback,
+                )
 
-            bs_comparison.generate_edges(
-                bin,
-                run["alignment_mode"],
-                run["extend_strategy"],
-                run["cores"],
-                run["cores"] * 2,
-                callback,
-            )
+            bs_comparison.save_edges_to_db(save_batch)
 
-        bs_comparison.save_edges_to_db(save_batch)
+            bs_data.DB.commit()
 
-        bs_data.DB.commit()
+            logging.info("Generated %d edges", num_edges)
 
-        logging.info("Generated %d edges", num_edges)
-
-        if run["skip_propagation"]:
+        if not run["propagate"]:
             # in this case we only want one iteration, the Query -> Ref edges
             break
 
+        if isinstance(bin, bs_comparison.MissingRecordPairGenerator):
+            # in this case we only need edges within one cc, no cycles needed
+            break
+
         if isinstance(bin, bs_comparison.QueryMissingRecordPairGenerator):
+            # use the num_pairs from the parent bin because in a partial database,
+            # all distances for the first cycle(s) might already be present.
+            # we still only want to stop when no other connected nodes are discovered.
+            if bin.bin.num_pairs() == 0:
+                break
+
             bin.cycle_records(max(run["gcf_cutoffs"]))

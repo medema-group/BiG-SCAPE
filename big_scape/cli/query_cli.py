@@ -49,14 +49,13 @@ from .cli_validations import (
     ),
 )
 @click.option(
-    "--skip_propagation",
+    "--propagate",
     is_flag=True,
     help=(
-        "Only generate edges between the query and reference BGCs. If not set, "
-        "BiG-SCAPE will also propagate edge generation to reference BGCs. "
-        "Warning: if the database already contains all edges, this will not work, "
-        "and the output will still showcase all edges between nodes "
-        "in the query connected component."
+        "By default, BiG-SCAPE will only generate edges between the query and reference"
+        " BGCs. With the propagate flag, BiG-SCAPE will go through multiple cycles of "
+        "edge generation until no new reference BGCs are connected to the query "
+        "connected component."
     ),
 )
 @click.pass_context
@@ -74,6 +73,7 @@ def query(ctx, *args, **kwarg):
     ctx.obj.update(ctx.params)
     ctx.obj["no_mix"] = None
     ctx.obj["hybrids_off"] = False
+    ctx.obj["legacy_classify"] = False
     ctx.obj["mode"] = "Query"
 
     # workflow validations

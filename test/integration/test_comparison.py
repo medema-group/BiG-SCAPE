@@ -1020,7 +1020,9 @@ class TestComparison(TestCase):
             create_mock_gbk(i, bs_enums.SOURCE_TYPE.REFERENCE) for i in range(1, 5)
         ]
 
-        query_pair_generator = bs_comparison.QueryRecordPairGenerator("mix", 1, "mix")
+        query_pair_generator = bs_comparison.QueryRecordPairGenerator(
+            "mix", 1, "mix", None
+        )
         source_records = [query_gbk.region]
         for ref_gbk in ref_gbks:
             source_records.append(ref_gbk.region)
@@ -1147,7 +1149,9 @@ class TestComparison(TestCase):
             create_mock_gbk(i, bs_enums.SOURCE_TYPE.REFERENCE) for i in range(1, 5)
         ]
 
-        query_pair_generator = bs_comparison.QueryRecordPairGenerator("mix", 1, "mix")
+        query_pair_generator = bs_comparison.QueryRecordPairGenerator(
+            "mix", 1, "mix", None
+        )
         source_records = [query_gbk.region]
         for ref_gbk in ref_gbks:
             source_records.append(ref_gbk.region)
@@ -1467,7 +1471,7 @@ class TestComparison(TestCase):
             "record_type": bs_enums.RECORD_TYPE.REGION,
             "cores": 1,
             "classify": bs_enums.CLASSIFY_MODE.CLASS,
-            "skip_propagation": False,
+            "propagate": True,
             "gcf_cutoffs": [0.1, 0.7],
         }
 
@@ -1488,7 +1492,7 @@ class TestComparison(TestCase):
 
         # generate initial query -> ref pairs
         query_bin = bs_comparison.QueryRecordPairGenerator(
-            "Query", edge_param_id, weights
+            "Query", edge_param_id, weights, run["record_type"]
         )
         query_bin.add_records(query_records)
 
@@ -1603,14 +1607,16 @@ class TestComparison(TestCase):
             "record_type": bs_enums.RECORD_TYPE.REGION,
             "cores": 1,
             "classify": bs_enums.CLASSIFY_MODE.CLASS,
-            "skip_propagation": False,
+            "propagate": True,
             "run_id": 1,
             "gcf_cutoffs": [0.1, 0.8],
         }
 
         query_record, list_bgc_records = create_mock_query_dataset(run)
 
-        query_to_ref_bin = bs_comparison.QueryRecordPairGenerator("Query_Ref", 1, "mix")
+        query_to_ref_bin = bs_comparison.QueryRecordPairGenerator(
+            "Query_Ref", 1, "mix", run["record_type"]
+        )
         query_records = bs_query.get_query_records(run, list_bgc_records, query_record)
 
         query_to_ref_bin.add_records(query_records)

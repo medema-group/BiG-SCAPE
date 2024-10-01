@@ -228,8 +228,8 @@
                     <span>Filter the connected components table. All filters allow for comma separated input that will
                         be handled as logical OR operators.</span>
                     <div>
-                        <input id="organism-filter" placeholder="Search Organisms">
-                        <span>Fuzzy search organism names, e.g. "Streptomyces"</span>
+                        <input id="desc-filter" placeholder="Search Descriptions">
+                        <span>Fuzzy search GBK descriptions, e.g. "Streptomyces"</span>
                     </div>
                     <div>
                         <input id="bgc-filter" placeholder="Search BGC Names">
@@ -392,7 +392,7 @@
         $("#cc-table-filters").toggleClass("hidden")
     })
     $("#clear-filters").on("click", (event) => {
-        $("#organism-filter").val("")
+        $("#desc-filter").val("")
         $("#bgc-filter").val("")
         $("#domain-filter").val("")
         $("#family-filter").val("")
@@ -558,7 +558,7 @@
         run_params["cutoff"] = cutoff
         var bin_label = $("#network-selection option:selected").text()
 
-        var org_filter = $("#organism-filter").val().toString().trim()
+        var org_filter = $("#desc-filter").val().toString().trim()
         var pf_filter = $("#domain-filter").val().toString().trim()
         var fam_filter = $("#family-filter").val().toString().trim()
         var bgc_filter = $("#bgc-filter").val().toString().trim()
@@ -573,7 +573,7 @@
                 AND connected_component.bin_label=="${bin_label}"`
 
         if (org_filter) {
-            var conditions = org_filter.split(",").map(org => `gbk.organism LIKE "%${org.trim()}%"`)
+            var conditions = org_filter.split(",").map(org => `gbk.description LIKE "%${org.trim()}%"`)
             cc_query += ` AND (${conditions.join(" OR ")})`
         }
         if (pf_filter) {
@@ -647,7 +647,7 @@
         }
         var tsv_text = `# Collection of selected connected components
 # Run info: ${run_data["label"]} ${run_data["cutoff"]} ${$("#network-selection option:selected").text()}
-# Organism filter: ${$("#organism-filter").val()}
+# Description filter: ${$("#desc-filter").val()}
 # BGC filter: ${$("#bgc-filter").val()}
 # Pfam filter: ${$("#domain-filter").val()}
 # Family filter: ${$("#family-filter").val()}\n
@@ -672,7 +672,7 @@ CC\tFamily\tGBK\tRecord_Type\tRecord_Number\tClass\tCategory\tOrganism\tTaxonomy
             if (!dom_data.hasOwnProperty(cds_id)) {
                 dom_data[cds_id] = []
             }
-            dom_data[cds_id].push({ "code": domains[i][1], "start": domains[i][2], "end": domains[i][3], "bitscore": domains[i][4] })
+            dom_data[cds_id].push({ "code": domains[i][1], "start": domains[i][2], "end": domains[i][3], "bitscore": domains[i][4].toFixed(3) })
         }
         return dom_data
     }
@@ -693,7 +693,7 @@ CC\tFamily\tGBK\tRecord_Type\tRecord_Number\tClass\tCategory\tOrganism\tTaxonomy
         return cds_data
     }
     function generate_bs_data(record_ids, run_data) {
-        var records_query = `SELECT gbk.id, gbk.organism, length(gbk.nt_seq), gbk.hash, gbk.path,
+        var records_query = `SELECT gbk.id, gbk.description, length(gbk.nt_seq), gbk.hash, gbk.path,
                         bgc_record.record_type, bgc_record.nt_start, bgc_record.nt_stop,
                         bgc_record.record_number, bgc_record.id FROM bgc_record
                         INNER JOIN gbk ON bgc_record.gbk_id==gbk.id
@@ -733,16 +733,16 @@ CC\tFamily\tGBK\tRecord_Type\tRecord_Number\tClass\tCategory\tOrganism\tTaxonomy
             }
             new_row["record_start"] = rec_start
             new_row["record_stop"] = rec_stop
+
+            if (gbk_path.indexOf(run_data["reference_dir"]) > -1) {
+                new_row["source"] = "reference"
+            }
+            if (gbk_path.indexOf(`mibig_antismash_${run_data["mibig_version"]}_gbk`) > -1) {
+                new_row["source"] = "mibig"
+            }
             if (run_data["mode"] == "Query") {
                 if (filename == run_data["query_path"]) {
                     new_row["source"] = "query"
-                }
-            } else {
-                if (gbk_path.indexOf(run_data["reference_dir"]) > -1) {
-                    new_row["source"] = "reference"
-                }
-                if (gbk_path.indexOf(run_data["mibig_version"]) > -1) {
-                    new_row["source"] = "mibig"
                 }
             }
             bs_data[record_id] = new_row

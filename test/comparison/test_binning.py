@@ -161,7 +161,7 @@ class TestBGCBin(TestCase):
         for bgc in bgc_list:
             bgc.save_record("Region")
 
-        new_bin = QueryRecordPairGenerator("test", 1, "mix")
+        new_bin = QueryRecordPairGenerator("test", 1, "mix", None)
 
         new_bin.add_records(bgc_list)
 
@@ -290,7 +290,7 @@ class TestBGCBin(TestCase):
             create_mock_gbk(i, bs_enums.SOURCE_TYPE.REFERENCE) for i in range(1, 4)
         ]
 
-        query_to_ref_pair_generator = QueryRecordPairGenerator("mix", 1, "mix")
+        query_to_ref_pair_generator = QueryRecordPairGenerator("mix", 1, "mix", None)
         source_records = [query_gbk.region]
 
         for ref_gbk in ref_gbks:

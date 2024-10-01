@@ -409,21 +409,16 @@ def get_all_bgc_records_query(
     """Get all BGC records from the working list of GBKs
 
     Args:
-        gbks (list[GBK]): list of GBK objects
         run (dict): run parameters
+        gbks (list[GBK]): list of GBK objects
 
     Returns:
-        list[bs_gbk.BGCRecord]: list of BGC records
+        list[bs_gbk.BGCRecord], bs_gbk.BGCRecord: list of BGC records, query BGC record
     """
     all_bgc_records: list[bs_gbk.BGCRecord] = []
     for gbk in gbks:
         if gbk.region is not None:
-            gbk_records = bs_gbk.bgc_record.get_sub_records(
-                gbk.region, run["record_type"]
-            )
             if gbk.source_type == bs_enums.SOURCE_TYPE.QUERY:
-                query_record_type = run["record_type"]
-
                 query_record_type = run["record_type"]
                 query_record_number = run["query_record_number"]
 
@@ -435,15 +430,24 @@ def get_all_bgc_records_query(
                     query_record = query_sub_records[0]
 
                 else:
-                    query_record = [
+                    matching_query_records = [
                         record
                         for record in query_sub_records
                         if record.number == query_record_number
-                    ][0]
+                    ]
+                    if len(matching_query_records) == 0:
+                        raise RuntimeError(
+                            f"Could not find {query_record_type.value} number {query_record_number} in query GBK. "
+                            "Depending on config settings, overlapping records will be merged and take on the lower number."
+                        )
+                    query_record = matching_query_records[0]
 
                 all_bgc_records.append(query_record)
 
             else:
+                gbk_records = bs_gbk.bgc_record.get_sub_records(
+                    gbk.region, run["record_type"]
+                )
                 all_bgc_records.extend(gbk_records)
 
     return all_bgc_records, query_record
