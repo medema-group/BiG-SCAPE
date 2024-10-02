@@ -1,0 +1,82 @@
+[project]
+name ="big-scape"
+version = "2.0.0"
+description = "Biosynthetic Gene Similarity Clustering and Prospecting Engine"
+requires-python = ">=3.11"
+license = { file = "LICENSE" }
+authors = [
+    { name = "Arjan Draisma", email = "arjan.draisma@wur.nl"},
+    { name = "Catarina Loureiro", email = "catarina.salesesantosloureiro@wur.nl"},
+    { name = "Nico Louwen", email = "nico.louwen@wur.nl"},
+    { name = "Jorge Navarro", email = "jorge.navarromunoz@wur.nl"},
+    { name = "Marnix Medema", email = "marnix.medema@wur.nl"}
+]
+
+[project.scripts]
+bs = "big_scape.__main__:main"
+
+[project.optional-dependencies]
+dev = [
+    # testing
+    "pytest",
+    "coverage",
+    "coverage-badge",
+
+    # documentation
+    "mkdocs",
+    "mkdocstrings-python",
+
+    # other tools
+    "pre-commit",
+    "anybadge",
+
+    # linting
+    "pylint",
+
+    # type stubs (https://mypy.readthedocs.io/en/stable/running_mypy.html#missing-imports)
+    "types-psutil",
+    "networkx-stubs",
+    "data-science-types",
+    "types-tqdm",
+    "types-setuptools"
+]
+
+[project.urls]
+"Repository" = "https://github.com/medema-group/BiG-SCAPE"
+# TODO: documentation
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+
+[tool.hatch.envs.bigscape]
+type = "conda"
+command = "mamba"
+environment-file = "environment.yml"
+
+[tool.hatch.envs.dev]
+type = "conda"
+command = "mamba"
+environment-file = "environment.yml"
+features = [
+    "dev"
+]
+
+[tool.hatch.envs.hatch-test]
+features = [
+    "dev"
+]
+type = "conda"
+command = "mamba"
+environment-file = "environment.yml"
+default-args = ["test"]
+
+[tool.coverage.run]
+omit = [
+    "test/*"
+]
+
+[tool.black]
+line-length = 88
+target-version = ["py311"]
