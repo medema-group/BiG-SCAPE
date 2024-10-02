@@ -93,7 +93,8 @@ class BGCRecord:
         if return_all:
             # TODO: I don't like this solution. maybe go back to the more difficult one
             if reverse:
-                return reversed(self.parent_gbk.genes)
+                yield from reversed(self.parent_gbk.genes)
+                return
 
             yield from self.parent_gbk.genes
             return
