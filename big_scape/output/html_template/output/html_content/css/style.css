@@ -1265,11 +1265,11 @@ table {
 #logos {
   float: left;
   padding-left: 0.5em;
-  margin-top: 5px;
+  margin: 0px 15px 15px 60px;
 }
 
 #logos img {
-  padding-right: 25px;
+  padding: 0 25px;
 }
 
 #logo-table tr td {
@@ -1277,11 +1277,30 @@ table {
   padding: 5px;
 }
 
+/* swap between logo themes */
+.logo {
+  display: inline-block;
+  max-height: 60px;
+}
+
+html[data-theme='dark'] .logo {
+  display: none;
+}
+
+.logo-dark {
+  display: none;
+}
+
+html[data-theme='dark'] .logo-dark {
+  display: inline-block;
+  max-height: 60px;
+}
+
 #copyright {
   font-size: 60%;
   float: right;
-  width: 40%;
-  margin-right: 1.5em;
+  width: 20%;
+  margin-top: 5em;
   padding: 0.5em;
 }
 
