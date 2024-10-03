@@ -13,7 +13,7 @@ authors = [
 ]
 
 [project.scripts]
-bs = "big_scape.__main__:main"
+bigscape = "big_scape.__main__:main"
 
 [project.optional-dependencies]
 dev = [
