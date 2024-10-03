@@ -13,7 +13,7 @@ from .record_pair import RecordPair
 
 
 def reset(pair: RecordPair) -> None:
-    """Resets the expansion of a pair's comparable region
+    """Resets the extension of a pair's comparable region
 
     Args:
         pair: The record pair to reset
@@ -84,7 +84,7 @@ def biosynthetic_check(pair: RecordPair) -> bool:
     return False
 
 
-def expand_glocal(pair: RecordPair) -> None:
+def extend_glocal(pair: RecordPair) -> None:
     """Includes extension of shortest upstream/downstream arms in comparable region
 
     Args:
@@ -120,9 +120,9 @@ def extend(
     gap: int,
     max_match_dist_perc: float,
 ) -> None:
-    """Expands a comparable region
+    """Extends a comparable region
 
-    This will expand the included set of cds in a pair based on a scoring
+    This will extend the included set of cds in a pair based on a scoring
     mechanism. If the pair in the comparable region consists of protoclusters, the
     this will not be limited to the bounds of those protoclusters
 
@@ -157,7 +157,7 @@ def extend(
     # the shorter cds is the query
     # the longer cds is the target
     # generate a dictionary of domain positions in the target
-    # we try to expand the target by finding matching domains in the query
+    # we try to extend the target by finding matching domains in the query
     # when we do not find a match, this counts as a mismatch and we add a penalty
     # when we find a match, add gap penalties for the number of gaps we have to insert
     # if we find a match before the current position, subtract a gap penalty
@@ -238,7 +238,7 @@ def extend(
             max_match_dist,
         )
 
-        # expand left
+        # extend left
         if len(a_domains) > len(b_domains):
             pair.comparable_region.b_start -= query_exp
             pair.comparable_region.domain_b_start -= query_dom_exp
@@ -353,8 +353,8 @@ def score_extend(
         considered a mismatch
 
     Returns:
-        tuple: A tuple containing the query expansion index on cds and domain level,
-        target expansion index on cds and domain level, and the maximum score.
+        tuple: A tuple containing the query extension index on cds and domain level,
+        target extension index on cds and domain level, and the maximum score.
     """
     score = 0
     max_score = 0
@@ -451,7 +451,7 @@ def score_extend_rev(
         considered a mismatch
 
     Returns:
-        tuple: A tuple containing the query expansion index, target expansion index,
+        tuple: A tuple containing the query extension index, target extension index,
         and the maximum score.
     """
     score = 0
@@ -520,9 +520,9 @@ def score_extend_rev(
 
 
 def extend_greedy(pair: RecordPair) -> None:
-    """Expands a comparable region in a greedy fashion
+    """Extends a comparable region in a greedy fashion
 
-    This will expand the included set of cds in a pair as much as it can,
+    This will extend the included set of cds in a pair as much as it can,
     based on the common domains found in the pair
 
     E.g. if we have the following two records:
@@ -530,7 +530,7 @@ def extend_greedy(pair: RecordPair) -> None:
     A: XAXXBXXXXCX
     B: XXXXXXXAXXXXXBCXXXXXXXXX
 
-    The comparable region should be expanded to the following:
+    The comparable region should be extended to the following:
 
     A: XAXXBXXXXCX
         [-------]
@@ -596,7 +596,7 @@ def extend_greedy(pair: RecordPair) -> None:
 
 def extend_simple_match(pair: RecordPair, match, gap):
     """Performs extension by first creating a simple match matrix, then
-    performing a match/gap extentsion similar to legacy expansion
+    performing a match/gap extension similar to legacy extension
 
     This method expects LCS to have been performed on the pair, and will
     do all four directions at once

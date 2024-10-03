@@ -25,15 +25,15 @@ class BigscapeConfig:
     REGION_MIN_LCS_LEN: int = 3
     PROTO_MIN_LCS_LEN: int = 3
 
-    # EXPAND
-    REGION_MIN_EXPAND_LEN: int = 5
-    REGION_MIN_EXPAND_LEN_BIO: int = 5
-    PROTO_MIN_EXPAND_LEN: int = 3
+    # EXTEND
+    REGION_MIN_EXTEND_LEN: int = 5
+    REGION_MIN_EXTEND_LEN_BIO: int = 5
+    PROTO_MIN_EXTEND_LEN: int = 3
     NO_MIN_CLASSES: list[str] = ["Terpene"]
-    EXPAND_MATCH_SCORE: int = 5
-    EXPAND_MISMATCH_SCORE: int = -3
-    EXPAND_GAP_SCORE: int = -2
-    EXPAND_MAX_MATCH_PERC: float = 0.1
+    EXTEND_MATCH_SCORE: int = 5
+    EXTEND_MISMATCH_SCORE: int = -3
+    EXTEND_GAP_SCORE: int = -2
+    EXTEND_MAX_MATCH_PERC: float = 0.1
 
     # CLUSTER
     PREFERENCE: float = 0.0
@@ -179,15 +179,15 @@ class BigscapeConfig:
         BigscapeConfig.REGION_MIN_LCS_LEN = config["REGION_MIN_LCS_LEN"]
         BigscapeConfig.PROTO_MIN_LCS_LEN = config["PROTO_MIN_LCS_LEN"]
 
-        # EXPAND
-        BigscapeConfig.REGION_MIN_EXPAND_LEN = config["REGION_MIN_EXPAND_LEN"]
-        BigscapeConfig.REGION_MIN_EXPAND_LEN_BIO = config["REGION_MIN_EXPAND_LEN_BIO"]
-        BigscapeConfig.PROTO_MIN_EXPAND_LEN = config["PROTO_MIN_EXPAND_LEN"]
+        # EXTEND
+        BigscapeConfig.REGION_MIN_EXTEND_LEN = config["REGION_MIN_EXTEND_LEN"]
+        BigscapeConfig.REGION_MIN_EXTEND_LEN_BIO = config["REGION_MIN_EXTEND_LEN_BIO"]
+        BigscapeConfig.PROTO_MIN_EXTEND_LEN = config["PROTO_MIN_EXTEND_LEN"]
         BigscapeConfig.NO_MIN_CLASSES = config["NO_MIN_CLASSES"]
-        BigscapeConfig.EXPAND_MATCH_SCORE = config["EXPAND_MATCH_SCORE"]
-        BigscapeConfig.EXPAND_MISMATCH_SCORE = config["EXPAND_MISMATCH_SCORE"]
-        BigscapeConfig.EXPAND_GAP_SCORE = config["EXPAND_GAP_SCORE"]
-        BigscapeConfig.EXPAND_MAX_MATCH_PERC = config["EXPAND_MAX_MATCH_PERC"]
+        BigscapeConfig.EXTEND_MATCH_SCORE = config["EXTEND_MATCH_SCORE"]
+        BigscapeConfig.EXTEND_MISMATCH_SCORE = config["EXTEND_MISMATCH_SCORE"]
+        BigscapeConfig.EXTEND_GAP_SCORE = config["EXTEND_GAP_SCORE"]
+        BigscapeConfig.EXTEND_MAX_MATCH_PERC = config["EXTEND_MAX_MATCH_PERC"]
 
         # CLUSTER
         BigscapeConfig.PREFERENCE = config["PREFERENCE"]

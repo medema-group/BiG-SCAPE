@@ -164,7 +164,7 @@ class TestExtendUtilities(unittest.TestCase):
             5, 6, 5, 6, 0, 0, 0, 0, False
         )
 
-        # reset the expansion
+        # reset the extension
         bs_comp.extend.reset(record_pair)
 
         expected_comparable_region = bs_comp.ComparableRegion(
@@ -196,7 +196,7 @@ class TestExtendUtilities(unittest.TestCase):
             5, 6, 5, 6, 0, 0, 0, 0, False
         )
 
-        # reset the expansion
+        # reset the extension
         bs_comp.extend.reset(record_pair)
 
         expected_comparable_region = bs_comp.ComparableRegion(
@@ -645,7 +645,7 @@ class TestScoreExtend(unittest.TestCase):
         self.assertEqual(expected_extends, actual_extends)
 
     def test_score_extend_rev(self):
-        """Tests correct expansion in reverse"""
+        """Tests correct extension in reverse"""
         q_domains = {0: ["A"], 1: ["B"], 2: ["C"], 3: ["X"], 4: ["X"]}
         t_domains = {0: ["A"], 1: ["B"], 2: ["C"], 3: ["X"], 4: ["X"]}
         query_dom, target_dom = generate_mock_lcs_region(5, 6, q_domains, t_domains)
@@ -662,7 +662,7 @@ class TestScoreExtend(unittest.TestCase):
         self.assertEqual(expected_extends, actual_extends)
 
     def test_extend_rev_no_match_before_lcs(self):
-        """Tests correct expansion in reverse"""
+        """Tests correct extension in reverse"""
         q_domains = {0: ["A"], 1: ["B"], 2: ["C"], 3: ["X"], 4: ["X"]}
         t_domains = {0: ["A"], 1: ["B"], 2: ["X"], 3: ["X"], 4: ["C"]}
         query_dom, target_dom = generate_mock_lcs_region(5, 6, q_domains, t_domains)
@@ -697,7 +697,7 @@ class TestScoreExtend(unittest.TestCase):
         self.assertEqual(expected_extends, actual_extends)
 
     def test_extend_rev_double_domains(self):
-        """Tests correct expansion in reverse with double domains"""
+        """Tests correct extension in reverse with double domains"""
         q_domains = {0: ["A"], 1: ["B", "B"], 2: ["C"], 3: ["X"], 4: ["X"]}
         t_domains = {0: ["A"], 1: ["B"], 2: ["C", "C"], 3: ["X"], 4: ["X"]}
         query_dom, target_dom = generate_mock_lcs_region(5, 6, q_domains, t_domains)
@@ -733,13 +733,13 @@ class TestScoreExtend(unittest.TestCase):
         self.assertEqual(expected_extends, actual_extends)
 
 
-class TestExpandGlocal(unittest.TestCase):
-    """Tests for Glocal expansion"""
+class TestExtendGlocal(unittest.TestCase):
+    """Tests for Glocal extension"""
 
-    def test_expand_glocal(self):
-        """Tests expand local"""
+    def test_extend_glocal(self):
+        """Tests extend local"""
         # easy case: one short (record A) and one long (record B)
-        # should expand both downstream/upstream arms of record A
+        # should extend both downstream/upstream arms of record A
         #
         # A:           XXXABCXXXXX
         # B: XXXXXXXXXXXXXABCXXXXXXXXX
@@ -751,7 +751,7 @@ class TestExpandGlocal(unittest.TestCase):
         pair.comparable_region = bs_comp.ComparableRegion(
             3, 6, 12, 15, 3, 6, 12, 15, False
         )
-        bs_comp.extend.expand_glocal(pair)
+        bs_comp.extend.extend_glocal(pair)
         expected_glocal = bs_comp.ComparableRegion(0, 10, 12, 15, 0, 10, 12, 15, False)
 
         conditions = [
@@ -764,8 +764,8 @@ class TestExpandGlocal(unittest.TestCase):
 
         self.assertTrue(all(conditions))
 
-    def test_expand_glocal_reverse(self):
-        """Tests glocal expand in reverse comparable region"""
+    def test_extend_glocal_reverse(self):
+        """Tests glocal extend in reverse comparable region"""
         a_cds, b_cds = generate_mock_cds_lists(10, 25, [3, 4, 5], [12, 13, 14], True)
         record_a = generate_mock_region(a_cds)
         record_b = generate_mock_region(b_cds)
@@ -773,7 +773,7 @@ class TestExpandGlocal(unittest.TestCase):
         pair.comparable_region = bs_comp.ComparableRegion(
             3, 6, 12, 15, 3, 6, 12, 15, True
         )
-        bs_comp.extend.expand_glocal(pair)
+        bs_comp.extend.extend_glocal(pair)
         expected_glocal = bs_comp.ComparableRegion(0, 10, 12, 15, 0, 10, 12, 15, True)
 
         conditions = [
@@ -786,10 +786,10 @@ class TestExpandGlocal(unittest.TestCase):
 
         self.assertTrue(all(conditions))
 
-    def test_expand_glocal_diff_arms(self):
-        """Tests glocal expand when different record arms are shortest"""
+    def test_extend_glocal_diff_arms(self):
+        """Tests glocal extend when different record arms are shortest"""
         # both record A and B have a shorter arm
-        # should expand upstream A and downstream B arms
+        # should extend upstream A and downstream B arms
         #
         # A:           XXXABCXXXXX
         # B: XXXXXXXXXXXXXABCXX
@@ -801,7 +801,7 @@ class TestExpandGlocal(unittest.TestCase):
         pair.comparable_region = bs_comp.ComparableRegion(
             3, 6, 12, 15, 3, 6, 12, 15, False
         )
-        bs_comp.extend.expand_glocal(pair)
+        bs_comp.extend.extend_glocal(pair)
         expected_glocal = bs_comp.ComparableRegion(0, 6, 12, 17, 0, 6, 12, 17, False)
 
         conditions = [
@@ -814,8 +814,8 @@ class TestExpandGlocal(unittest.TestCase):
 
         self.assertTrue(all(conditions))
 
-    def test_expand_glocal_multi_domain(self):
-        """Tests glocal expand with multi domain cdss"""
+    def test_extend_glocal_multi_domain(self):
+        """Tests glocal extend with multi domain cdss"""
         # brackets indicate a cds with multiple domains
         #
         # A:      [XX]XX[A BC] DE XXXX
@@ -833,7 +833,7 @@ class TestExpandGlocal(unittest.TestCase):
         pair.comparable_region = bs_comp.ComparableRegion(
             3, 6, 12, 15, 4, 9, 12, 17, False
         )
-        bs_comp.extend.expand_glocal(pair)
+        bs_comp.extend.extend_glocal(pair)
         expected_glocal = bs_comp.ComparableRegion(0, 10, 12, 15, 0, 13, 12, 17, False)
 
         conditions = [
@@ -846,10 +846,10 @@ class TestExpandGlocal(unittest.TestCase):
 
         self.assertTrue(all(conditions))
 
-    def test_expand_greedy(self):
-        """Tests greedy expansion
+    def test_extend_greedy(self):
+        """Tests greedy extension
 
-        This method of expansion should always expand the region to the maximum possible
+        This method of extension should always extend the region to the maximum possible
         CDS that still have a common domain between two records.
 
         E.g. if we have the following two records:
@@ -857,7 +857,7 @@ class TestExpandGlocal(unittest.TestCase):
         A: XAXXBXXXXCX
         B: XXXXXXXAXXXXXBCXXXXXXXXX
 
-        The comparable region should be expanded to the following:
+        The comparable region should be extended to the following:
 
         A: XAXXBXXXXCX
             [-------]
@@ -934,8 +934,8 @@ class TestExpandGlocal(unittest.TestCase):
             expected_comparable_region.domain_b_stop,
         )
 
-    def test_expand_simple_match_multi_domain(self):
-        """Tests glocal expand with multi domain cdss"""
+    def test_extend_simple_match_multi_domain(self):
+        """Tests simple match extend with multi domain cdss"""
         # brackets indicate a cds with multiple domains
         #
         # A:        [XX]BX[A BC]DEX XXXX

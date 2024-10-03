@@ -51,7 +51,7 @@ from .extend import (
     reset,
     len_check,
     biosynthetic_check,
-    expand_glocal,
+    extend_glocal,
 )
 from .lcs import find_domain_lcs_region, find_domain_lcs_protocluster
 
@@ -208,7 +208,7 @@ def do_lcs_pair(pair: RecordPair) -> bool:  # pragma no cover
         pair (RecordPair): pair to find the lcs for
 
     Returns:
-        bool: True if the pair needs expansion, False if it does not
+        bool: True if the pair needs extension, False if it does not
     """
 
     if isinstance(pair.record_a, bs_gbk.ProtoCluster) and isinstance(
@@ -296,16 +296,16 @@ def do_lcs_pair(pair: RecordPair) -> bool:  # pragma no cover
         return False
 
 
-def expand_pair(
+def extend_pair(
     pair: RecordPair,
     alignment_mode: bs_enums.ALIGNMENT_MODE,
     extend_strategy: bs_enums.EXTEND_STRATEGY,
 ) -> bool:
-    """Expand the pair
+    """Extend the pair
 
     Args:
-        pair (RecordPair): pair to expand
-        alignment_mode (ALIGNMENT_MODE): alignment mode to use for expansion
+        pair (RecordPair): pair to extend
+        alignment_mode (ALIGNMENT_MODE): alignment mode to use for extension
 
     Returns:
         bool: True if the pair was extended, False if it does not
@@ -313,10 +313,10 @@ def expand_pair(
     if extend_strategy == bs_enums.EXTEND_STRATEGY.LEGACY:
         extend(
             pair,
-            BigscapeConfig.EXPAND_MATCH_SCORE,
-            BigscapeConfig.EXPAND_MISMATCH_SCORE,
-            BigscapeConfig.EXPAND_GAP_SCORE,
-            BigscapeConfig.EXPAND_MAX_MATCH_PERC,
+            BigscapeConfig.EXTEND_MATCH_SCORE,
+            BigscapeConfig.EXTEND_MISMATCH_SCORE,
+            BigscapeConfig.EXTEND_GAP_SCORE,
+            BigscapeConfig.EXTEND_MAX_MATCH_PERC,
         )
     if extend_strategy == bs_enums.EXTEND_STRATEGY.GREEDY:
         extend_greedy(pair)
@@ -324,13 +324,13 @@ def expand_pair(
     if extend_strategy == bs_enums.EXTEND_STRATEGY.SIMPLE_MATCH:
         extend_simple_match(
             pair,
-            BigscapeConfig.EXPAND_MATCH_SCORE,
-            BigscapeConfig.EXPAND_GAP_SCORE,
+            BigscapeConfig.EXTEND_MATCH_SCORE,
+            BigscapeConfig.EXTEND_GAP_SCORE,
         )
 
-    # after local expansion, additionally expand shortest arms in glocal/auto
+    # after local extension, additionally extend shortest arms in glocal/auto
     if alignment_mode != bs_enums.ALIGNMENT_MODE.LOCAL:
-        expand_glocal(pair)
+        extend_glocal(pair)
 
     # Region/CandCluster EXT checks: biosynthetic and min 3 or min 5 domains,
     # except no min for 1-dom rules (e.g. terpene)
@@ -346,14 +346,14 @@ def expand_pair(
             and pair.record_a.product in BigscapeConfig.NO_MIN_CLASSES
         ):
             if len_check(
-                pair, BigscapeConfig.REGION_MIN_EXPAND_LEN
+                pair, BigscapeConfig.REGION_MIN_EXTEND_LEN
             ) or biosynthetic_check(pair):
                 return True
 
         # returns True if EXT is min 5 domains, or contains a biosynthetic domain and is min 3 domains
         else:
-            if len_check(pair, BigscapeConfig.REGION_MIN_EXPAND_LEN) or (
-                len_check(pair, BigscapeConfig.REGION_MIN_EXPAND_LEN_BIO)
+            if len_check(pair, BigscapeConfig.REGION_MIN_EXTEND_LEN) or (
+                len_check(pair, BigscapeConfig.REGION_MIN_EXTEND_LEN_BIO)
                 and biosynthetic_check(pair)
             ):
                 return True
@@ -373,7 +373,7 @@ def expand_pair(
         # biosynthetic & min_len = 3
         else:
             if len_check(
-                pair, BigscapeConfig.PROTO_MIN_EXPAND_LEN
+                pair, BigscapeConfig.PROTO_MIN_EXTEND_LEN
             ) and biosynthetic_check(pair):
                 return True
 
@@ -496,9 +496,9 @@ def calculate_scores_pair(
                 and (pair.record_a.contig_edge or pair.record_b.contig_edge)
             )
         ):
-            needs_expand = do_lcs_pair(pair)
-            if needs_expand:
-                expand_pair(pair, alignment_mode, extend_strategy)
+            needs_extend = do_lcs_pair(pair)
+            if needs_extend:
+                extend_pair(pair, alignment_mode, extend_strategy)
 
         if weights_label not in LEGACY_WEIGHTS:
             bin_weights = LEGACY_WEIGHTS["mix"]["weights"]

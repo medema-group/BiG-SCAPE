@@ -28,26 +28,26 @@ REGION_MIN_LCS_LEN: 0.1
 # - Protoclusters or Proto_cores
 PROTO_MIN_LCS_LEN: 0
 
-# EXPAND
+# EXTEND
 # Minimum length percentage for accepting an extended LCS slice, which must be
 # satisfied in at least one of the compared records, measured in fraction of
 # included domains, when comparing:
 # - Regions or Cand_clusters with no biosynthetic domains in the extended slice
-REGION_MIN_EXPAND_LEN: 0.3
+REGION_MIN_EXTEND_LEN: 0.3
 # - Regions or Cand_clusters with at least one biosynthetic domain in the extended slice
-REGION_MIN_EXPAND_LEN_BIO: 0.2
+REGION_MIN_EXTEND_LEN_BIO: 0.2
 # - Protoclusters or Proto_cores with at least one biosynthetic domain in the extended slice
-PROTO_MIN_EXPAND_LEN: 0.2
+PROTO_MIN_EXTEND_LEN: 0.2
 # List of product classes that do not require a minimum length.
 NO_MIN_CLASSES:
   - terpene
 # Integer scoring metrics used in the LCS extension algorithm for match, mismatch and gap.
-EXPAND_MATCH_SCORE: 5
-EXPAND_MISMATCH_SCORE: -3
-EXPAND_GAP_SCORE: -2
+EXTEND_MATCH_SCORE: 5
+EXTEND_MISMATCH_SCORE: -3
+EXTEND_GAP_SCORE: -2
 # Maximum distance to accept a matching domain as an actual match during LCS extension
 # as a percentage of total domains present in the compared record.
-EXPAND_MAX_MATCH_PERC: 0.1
+EXTEND_MAX_MATCH_PERC: 0.1
 
 # CLUSTER
 # Internal parameter of the Affinity Propagation clustering algorithm, governs the number
