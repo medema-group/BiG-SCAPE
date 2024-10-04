@@ -31,7 +31,7 @@ def reset(pair: RecordPair) -> None:
     pair.comparable_region.reverse = False
 
 
-def len_check(pair: RecordPair, min_len_perc: int) -> bool:
+def len_check(pair: RecordPair, min_len_perc: float) -> bool:
     """Checks if a pair's comparable region is of sufficient length
 
     Length is checked based on domains, the comparable region should be longer than

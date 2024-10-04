@@ -20,7 +20,8 @@ CREATE TABLE IF NOT EXISTS run (
     alignment_mode TEXT,
     extend_strategy TEXT,
     include_singletons TEXT,
-    cutoffs TEXT
+    cutoffs TEXT,
+    config_hash TEXT
 );
 
 CREATE TABLE IF NOT EXISTS gbk (

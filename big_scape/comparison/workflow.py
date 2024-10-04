@@ -109,6 +109,7 @@ def generate_edges(
     pair_generator: RecordPairGenerator,
     alignment_mode: bs_enums.ALIGNMENT_MODE,
     extend_strategy: bs_enums.EXTEND_STRATEGY,
+    config_path: Path,
     cores: int,
     max_queue_length: int,
     callback: Optional[Callable] = None,
@@ -118,7 +119,9 @@ def generate_edges(
 
     Args:
         pair_generator (RecordPairGenerator): generator for pairs
-        alignment_mode (str): alignment mode
+        alignment_mode (bs_enums.ALIGNMENT_MODE): alignment mode
+        extend_strategy (bs_enums.EXTEND_STRATEGY): extend strategy
+        config_path (Path): path to config file
         cores (int): number of cores to use
         callback (Optional[Callable]): callback to call when a batch is done. this is
         called with the results of the batch as the only argument
@@ -131,7 +134,9 @@ def generate_edges(
     # prepare a process pool
     logging.debug("Using %d cores", cores)
 
-    pair_data: Union[tuple[int, int], tuple[BGCRecord, BGCRecord]]
+    pair_data: Generator[
+        Union[tuple[int, int], tuple[BGCRecord, BGCRecord]], None, None
+    ]
     if platform.system() == "Darwin":
         logging.debug(
             "Running on %s: sending full records",
@@ -143,7 +148,7 @@ def generate_edges(
             "Running on %s: sending pair ids",
             platform.system(),
         )
-        pair_data = pair_generator.generate_pair_ids()
+        pair_data = pair_generator.generate_pairs()
 
     num_pairs = pair_generator.num_pairs()
 
@@ -188,6 +193,7 @@ def generate_edges(
                         extend_strategy,
                         pair_generator.edge_param_id,
                         pair_generator.weights,
+                        config_path,
                     ),
                 )
 
@@ -404,6 +410,7 @@ def calculate_scores_pair(
         bs_enums.EXTEND_STRATEGY,
         int,
         str,
+        Path,
     ]
 ) -> list[
     tuple[
@@ -421,20 +428,30 @@ def calculate_scores_pair(
 
     Args:
         data (tuple[list[tuple[int, int]], str, str]): list of pairs, alignment mode,
-        extend_strategy, edge_param_id, bin label
+        extend_strategy, edge_param_id, bin label, config path
 
     Returns:
         list[tuple[int, int, float, float, float, float, int, int, int, int, int, int,
         int, int, bool, str,]]: list of scores for each pair in the
         order as the input data list, including lcs and extension coordinates
     """
-    data, alignment_mode, extend_strategy, edge_param_id, weights_label = data
+    (
+        data,
+        alignment_mode,
+        extend_strategy,
+        edge_param_id,
+        weights_label,
+        config_path,
+    ) = data
 
-    # convert database ids to minimal record objects
     if isinstance(data[0][0], int):
+        # if not on Mac, only database ids were passed
+        # convert database ids to minimal record objects
         pair_ids = data
         records = fetch_records_from_database(pair_ids)
     else:
+        # on Mac, we need to re-initialize passed config values
+        BigscapeConfig.parse_config(config_path)
         pair_ids = []
         records = {}
         for pair in data:

@@ -2,12 +2,15 @@
 
 # from python
 import yaml
+import hashlib
 from pathlib import Path
+from typing import Optional
 
 
 # config class
 class BigscapeConfig:
-    # static properties
+    # static default properties
+    HASH: str = ""
 
     # PROFILER
     PROFILER_UPDATE_INTERVAL: float = 0.5
@@ -22,14 +25,14 @@ class BigscapeConfig:
     DOMAIN_OVERLAP_CUTOFF: float = 0.1
 
     # LCS
-    REGION_MIN_LCS_LEN: int = 3
-    PROTO_MIN_LCS_LEN: int = 3
+    REGION_MIN_LCS_LEN: float = 0.1
+    PROTO_MIN_LCS_LEN: float = 0.0
 
     # EXTEND
-    REGION_MIN_EXTEND_LEN: int = 5
-    REGION_MIN_EXTEND_LEN_BIO: int = 5
-    PROTO_MIN_EXTEND_LEN: int = 3
-    NO_MIN_CLASSES: list[str] = ["Terpene"]
+    REGION_MIN_EXTEND_LEN: float = 0.3
+    REGION_MIN_EXTEND_LEN_BIO: float = 0.2
+    PROTO_MIN_EXTEND_LEN: float = 0.2
+    NO_MIN_CLASSES: list[str] = ["terpene"]
     EXTEND_MATCH_SCORE: int = 5
     EXTEND_MISMATCH_SCORE: int = -3
     EXTEND_GAP_SCORE: int = -2
@@ -151,17 +154,18 @@ class BigscapeConfig:
     }
 
     @staticmethod
-    def parse_config(run: dict) -> None:
-        """parses config file
+    def parse_config(config_file_path: Path, log_path: Optional[Path] = None) -> None:
+        """parses config file and writes a config.log if log_path is given
 
         Args:
-            run (dict): run parameters
+            config_file_path (Path): path to passed config file
+            log_file_path (Optional[Path]): path to log file. Defaults to None.
         """
-
-        config_file_path = run["config_file_path"]
-
-        with open(config_file_path) as f:
-            config = yaml.load(f, Loader=yaml.FullLoader)
+        print("PARSING CONFIG")
+        with open(config_file_path, "rb") as f:
+            content = f.read()
+            BigscapeConfig.HASH = hashlib.sha256(content).hexdigest()
+            config = yaml.load(content, Loader=yaml.FullLoader)
 
         # PROFILER
         BigscapeConfig.PROFILER_UPDATE_INTERVAL = config["PROFILER_UPDATE_INTERVAL"]
@@ -206,17 +210,17 @@ class BigscapeConfig:
         BigscapeConfig.LEGACY_ANTISMASH_CLASSES = legacy_classes
 
         # write config log
-        BigscapeConfig.write_config_log(run, config)
+        if log_path is not None:
+            BigscapeConfig.write_config_log(log_path, config)
 
     @staticmethod
-    def write_config_log(run: dict, config: dict) -> None:
+    def write_config_log(log_path: Path, config: dict) -> None:
         """writes config log file
 
         Args:
-            run (dict): run parameters
+            log_path (Path): path to log file
             config (configparser.ConfigParser): config settings
         """
-        log_path = run["log_path"]
         config_log_path = Path(str(log_path).replace(".log", ".config.log"))
 
         with open(config_log_path, "w") as config_log:

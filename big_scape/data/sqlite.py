@@ -20,6 +20,7 @@ from sqlalchemy import (
     select,
     text,
     update,
+    desc,
 )
 from sqlalchemy.pool import StaticPool
 import tqdm
@@ -27,6 +28,7 @@ import click
 
 # from other modules
 import big_scape.paths as bs_paths
+from big_scape.cli.config import BigscapeConfig
 from big_scape.errors import DBClosedError, DBAlreadyOpenError
 
 
@@ -374,6 +376,7 @@ class DB:
                     else "No"
                 ),
                 cutoffs=",".join(map(str, run["gcf_cutoffs"])),
+                config_hash=BigscapeConfig.HASH,
             )
             .returning(run_table.c.id)
             .compile()
@@ -406,6 +409,24 @@ class DB:
         ).compile()
         DB.execute(update_stmt, False)
         DB.commit()
+
+    @staticmethod
+    def check_config_hash():
+        """Check config file content is the same as the previous run"""
+        if DB.metadata is None:
+            raise RuntimeError("DB metadata is None")
+
+        run_table = DB.metadata.tables["run"]
+        latest_config = DB.execute(
+            select(run_table.c.config_hash).order_by(desc(run_table.c.id)).limit(1)
+        ).scalar_one()
+
+        if BigscapeConfig.HASH != latest_config:
+            raise RuntimeError(
+                "Config file values have changed from the previous run! "
+                "Existing data is not guarenteed to be reusable, please "
+                "run with a fresh output directory/database."
+            )
 
 
 def read_schema(path: Path) -> list[str]:

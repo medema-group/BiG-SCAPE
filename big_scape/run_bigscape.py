@@ -60,7 +60,7 @@ def run_bigscape(run: dict) -> None:
 
     # parse config file
     logging.info("Using config file %s", run["config_file_path"])
-    BigscapeConfig.parse_config(run)
+    BigscapeConfig.parse_config(run["config_file_path"], run["log_path"])
 
     # capture ctrl-c for database saving and other cleanup
     def signal_handler(sig, frame):
@@ -114,6 +114,7 @@ def run_bigscape(run: dict) -> None:
         bs_data.DB.create_in_mem()
     else:
         bs_data.DB.load_from_disk(run["db_path"])
+        bs_data.DB.check_config_hash()
 
     # initialize run in database
     bs_data.DB.init_run(run)
