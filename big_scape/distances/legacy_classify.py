@@ -59,6 +59,7 @@ def calculate_distances_legacy_classify(
                     missing_edge_bin,
                     run["alignment_mode"],
                     run["extend_strategy"],
+                    run["config_file_path"],
                     run["cores"],
                     run["cores"] * 2,
                     callback,

@@ -454,6 +454,7 @@ class TestComparison(TestCase):
             "legacy_weights": True,
             "record_type": bs_enums.RECORD_TYPE.REGION,
             "cores": 1,
+            "config_file_path": Path("config.yml"),
         }
 
         gbks_with_hsp = [
@@ -491,6 +492,7 @@ class TestComparison(TestCase):
                 run["extend_strategy"],
                 missing_edge_bin.edge_param_id,
                 missing_edge_bin.weights,
+                run["config_file_path"],
             )
         )
 
@@ -519,6 +521,7 @@ class TestComparison(TestCase):
             "legacy_weights": True,
             "record_type": bs_enums.RECORD_TYPE.REGION,
             "cores": 1,
+            "config_file_path": Path("config.yml"),
         }
 
         gbks = [
@@ -546,6 +549,7 @@ class TestComparison(TestCase):
             missing_edge_bin,
             run["alignment_mode"],
             run["extend_strategy"],
+            run["config_file_path"],
             run["cores"],
             run["cores"] * 2,
             callback,
@@ -649,6 +653,7 @@ class TestComparison(TestCase):
             "legacy_weights": True,
             "record_type": bs_enums.RECORD_TYPE.REGION,
             "cores": 1,
+            "config_file_path": Path("config.yml"),
         }
 
         gbks = [create_mock_gbk_hsp(i, bs_enums.SOURCE_TYPE.QUERY) for i in range(3)]
@@ -867,6 +872,7 @@ class TestComparison(TestCase):
             "hybrids_off": False,
             "cores": 1,
             "legacy_classify": True,
+            "config_file_path": Path("config.yml"),
         }
 
         pks_gbks = [
@@ -918,6 +924,7 @@ class TestComparison(TestCase):
             "hybrids_off": True,
             "cores": 1,
             "legacy_classify": True,
+            "config_file_path": Path("config.yml"),
         }
 
         # bin 1 PKSI 3 pairs -> those were already in db
@@ -945,6 +952,7 @@ class TestComparison(TestCase):
             "record_type": bs_enums.RECORD_TYPE.REGION,
             "hybrids_off": True,
             "cores": 1,
+            "config_file_path": Path("config.yml"),
         }
 
         pks_gbks = [
@@ -993,6 +1001,7 @@ class TestComparison(TestCase):
             "record_type": bs_enums.RECORD_TYPE.REGION,
             "hybrids_off": False,
             "cores": 1,
+            "config_file_path": Path("config.yml"),
         }
 
         bs_classify.calculate_distances_classify(run, list_bgc_records)
@@ -1473,6 +1482,7 @@ class TestComparison(TestCase):
             "classify": bs_enums.CLASSIFY_MODE.CLASS,
             "propagate": True,
             "gcf_cutoffs": [0.1, 0.7],
+            "config_file_path": Path("config.yml"),
         }
 
         query_record, list_bgc_records = create_mock_query_dataset(run)
@@ -1610,6 +1620,7 @@ class TestComparison(TestCase):
             "propagate": True,
             "run_id": 1,
             "gcf_cutoffs": [0.1, 0.8],
+            "config_file_path": Path("config.yml"),
         }
 
         query_record, list_bgc_records = create_mock_query_dataset(run)

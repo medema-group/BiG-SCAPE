@@ -51,7 +51,7 @@ from .extend import (
     reset,
     len_check,
     biosynthetic_check,
-    expand_glocal,
+    extend_glocal,
 )
 from .lcs import find_domain_lcs_region, find_domain_lcs_protocluster
 
@@ -109,6 +109,7 @@ def generate_edges(
     pair_generator: RecordPairGenerator,
     alignment_mode: bs_enums.ALIGNMENT_MODE,
     extend_strategy: bs_enums.EXTEND_STRATEGY,
+    config_path: Path,
     cores: int,
     max_queue_length: int,
     callback: Optional[Callable] = None,
@@ -118,7 +119,9 @@ def generate_edges(
 
     Args:
         pair_generator (RecordPairGenerator): generator for pairs
-        alignment_mode (str): alignment mode
+        alignment_mode (bs_enums.ALIGNMENT_MODE): alignment mode
+        extend_strategy (bs_enums.EXTEND_STRATEGY): extend strategy
+        config_path (Path): path to config file
         cores (int): number of cores to use
         callback (Optional[Callable]): callback to call when a batch is done. this is
         called with the results of the batch as the only argument
@@ -131,7 +134,9 @@ def generate_edges(
     # prepare a process pool
     logging.debug("Using %d cores", cores)
 
-    pair_data: Union[tuple[int, int], tuple[BGCRecord, BGCRecord]]
+    pair_data: Generator[
+        Union[tuple[int, int], tuple[BGCRecord, BGCRecord]], None, None
+    ]
     if platform.system() == "Darwin":
         logging.debug(
             "Running on %s: sending full records",
@@ -188,6 +193,7 @@ def generate_edges(
                         extend_strategy,
                         pair_generator.edge_param_id,
                         pair_generator.weights,
+                        config_path,
                     ),
                 )
 
@@ -208,7 +214,7 @@ def do_lcs_pair(pair: RecordPair) -> bool:  # pragma no cover
         pair (RecordPair): pair to find the lcs for
 
     Returns:
-        bool: True if the pair needs expansion, False if it does not
+        bool: True if the pair needs extension, False if it does not
     """
 
     if isinstance(pair.record_a, bs_gbk.ProtoCluster) and isinstance(
@@ -296,16 +302,16 @@ def do_lcs_pair(pair: RecordPair) -> bool:  # pragma no cover
         return False
 
 
-def expand_pair(
+def extend_pair(
     pair: RecordPair,
     alignment_mode: bs_enums.ALIGNMENT_MODE,
     extend_strategy: bs_enums.EXTEND_STRATEGY,
 ) -> bool:
-    """Expand the pair
+    """Extend the pair
 
     Args:
-        pair (RecordPair): pair to expand
-        alignment_mode (ALIGNMENT_MODE): alignment mode to use for expansion
+        pair (RecordPair): pair to extend
+        alignment_mode (ALIGNMENT_MODE): alignment mode to use for extension
 
     Returns:
         bool: True if the pair was extended, False if it does not
@@ -313,10 +319,10 @@ def expand_pair(
     if extend_strategy == bs_enums.EXTEND_STRATEGY.LEGACY:
         extend(
             pair,
-            BigscapeConfig.EXPAND_MATCH_SCORE,
-            BigscapeConfig.EXPAND_MISMATCH_SCORE,
-            BigscapeConfig.EXPAND_GAP_SCORE,
-            BigscapeConfig.EXPAND_MAX_MATCH_PERC,
+            BigscapeConfig.EXTEND_MATCH_SCORE,
+            BigscapeConfig.EXTEND_MISMATCH_SCORE,
+            BigscapeConfig.EXTEND_GAP_SCORE,
+            BigscapeConfig.EXTEND_MAX_MATCH_PERC,
         )
     if extend_strategy == bs_enums.EXTEND_STRATEGY.GREEDY:
         extend_greedy(pair)
@@ -324,13 +330,13 @@ def expand_pair(
     if extend_strategy == bs_enums.EXTEND_STRATEGY.SIMPLE_MATCH:
         extend_simple_match(
             pair,
-            BigscapeConfig.EXPAND_MATCH_SCORE,
-            BigscapeConfig.EXPAND_GAP_SCORE,
+            BigscapeConfig.EXTEND_MATCH_SCORE,
+            BigscapeConfig.EXTEND_GAP_SCORE,
         )
 
-    # after local expansion, additionally expand shortest arms in glocal/auto
+    # after local extension, additionally extend shortest arms in glocal/auto
     if alignment_mode != bs_enums.ALIGNMENT_MODE.LOCAL:
-        expand_glocal(pair)
+        extend_glocal(pair)
 
     # Region/CandCluster EXT checks: biosynthetic and min 3 or min 5 domains,
     # except no min for 1-dom rules (e.g. terpene)
@@ -346,14 +352,14 @@ def expand_pair(
             and pair.record_a.product in BigscapeConfig.NO_MIN_CLASSES
         ):
             if len_check(
-                pair, BigscapeConfig.REGION_MIN_EXPAND_LEN
+                pair, BigscapeConfig.REGION_MIN_EXTEND_LEN
             ) or biosynthetic_check(pair):
                 return True
 
         # returns True if EXT is min 5 domains, or contains a biosynthetic domain and is min 3 domains
         else:
-            if len_check(pair, BigscapeConfig.REGION_MIN_EXPAND_LEN) or (
-                len_check(pair, BigscapeConfig.REGION_MIN_EXPAND_LEN_BIO)
+            if len_check(pair, BigscapeConfig.REGION_MIN_EXTEND_LEN) or (
+                len_check(pair, BigscapeConfig.REGION_MIN_EXTEND_LEN_BIO)
                 and biosynthetic_check(pair)
             ):
                 return True
@@ -373,7 +379,7 @@ def expand_pair(
         # biosynthetic & min_len = 3
         else:
             if len_check(
-                pair, BigscapeConfig.PROTO_MIN_EXPAND_LEN
+                pair, BigscapeConfig.PROTO_MIN_EXTEND_LEN
             ) and biosynthetic_check(pair):
                 return True
 
@@ -404,6 +410,7 @@ def calculate_scores_pair(
         bs_enums.EXTEND_STRATEGY,
         int,
         str,
+        Path,
     ]
 ) -> list[
     tuple[
@@ -421,20 +428,30 @@ def calculate_scores_pair(
 
     Args:
         data (tuple[list[tuple[int, int]], str, str]): list of pairs, alignment mode,
-        extend_strategy, edge_param_id, bin label
+        extend_strategy, edge_param_id, bin label, config path
 
     Returns:
         list[tuple[int, int, float, float, float, float, int, int, int, int, int, int,
         int, int, bool, str,]]: list of scores for each pair in the
         order as the input data list, including lcs and extension coordinates
     """
-    data, alignment_mode, extend_strategy, edge_param_id, weights_label = data
+    (
+        data,
+        alignment_mode,
+        extend_strategy,
+        edge_param_id,
+        weights_label,
+        config_path,
+    ) = data
 
-    # convert database ids to minimal record objects
     if isinstance(data[0][0], int):
+        # if not on Mac, only database ids were passed
+        # convert database ids to minimal record objects
         pair_ids = data
         records = fetch_records_from_database(pair_ids)
     else:
+        # on Mac, we need to re-initialize passed config values
+        BigscapeConfig.parse_config(config_path)
         pair_ids = []
         records = {}
         for pair in data:
@@ -496,9 +513,9 @@ def calculate_scores_pair(
                 and (pair.record_a.contig_edge or pair.record_b.contig_edge)
             )
         ):
-            needs_expand = do_lcs_pair(pair)
-            if needs_expand:
-                expand_pair(pair, alignment_mode, extend_strategy)
+            needs_extend = do_lcs_pair(pair)
+            if needs_extend:
+                extend_pair(pair, alignment_mode, extend_strategy)
 
         if weights_label not in LEGACY_WEIGHTS:
             bin_weights = LEGACY_WEIGHTS["mix"]["weights"]
