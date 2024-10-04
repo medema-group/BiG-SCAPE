@@ -5,6 +5,7 @@ import logging
 import random
 import string
 import tqdm
+import click
 from typing import Optional, Generator, cast
 from sqlalchemy import (
     Column,
@@ -133,13 +134,20 @@ def dfs(adj_list, start):
     Returns:
         set: set of visited nodes
     """
+    click_context = click.get_current_context()
+
     stack = [start]
     visited = set()
     while stack:
         node = stack.pop()
         if node not in visited:
             visited.add(node)
-            stack.extend([n for n in adj_list[node] if n not in visited])
+
+            # in query mode, only expand beyond the query if propagate flag is given
+            if click_context and click_context.obj["propagate"]:
+                stack.extend([n for n in adj_list[node] if n not in visited])
+            else:
+                visited.update([n for n in adj_list[node]])
     return visited
 
 
