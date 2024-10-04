@@ -5,6 +5,8 @@ nodes and edges from the database
 # from python
 import pathlib
 from unittest import TestCase
+from unittest.mock import MagicMock
+from click.globals import push_context
 from itertools import combinations
 
 # from dependencies
@@ -142,6 +144,8 @@ class TestNetwork(TestCase):
 
     def test_generate_cc(self):
         """Test the generate_connected_components function"""
+        ctx = MagicMock(obj={"propagate": True})
+        push_context(ctx)
         bs_data.DB.create_in_mem()
 
         # create a bunch of gbk files
@@ -189,6 +193,8 @@ class TestNetwork(TestCase):
 
     def test_get_cc_ids(self):
         """Test the get_connected_component_ids function"""
+        ctx = MagicMock(obj={"propagate": True})
+        push_context(ctx)
         bs_data.DB.create_in_mem()
 
         # create a bunch of gbk files
@@ -364,6 +370,8 @@ class TestNetwork(TestCase):
         self.assertEqual(len(cc_nodes), len(gbks_a))
 
     def test_is_ref_only_connected_component(self):
+        ctx = MagicMock(obj={"propagate": True})
+        push_context(ctx)
         bs_data.DB.create_in_mem()
 
         run = {
@@ -425,6 +433,8 @@ class TestNetwork(TestCase):
 
     def test_get_connected_component_id(self):
         """Tests the get_connected_component_id function"""
+        ctx = MagicMock(obj={"propagate": True})
+        push_context(ctx)
         bs_data.DB.create_in_mem()
 
         run = {
@@ -460,6 +470,8 @@ class TestNetwork(TestCase):
         self.assertEqual(expected_data, cc_id)
 
     def test_remove_connected_component(self):
+        ctx = MagicMock(obj={"propagate": True})
+        push_context(ctx)
         bs_data.DB.create_in_mem()
 
         run = {
@@ -527,3 +539,61 @@ class TestNetwork(TestCase):
         expected_data = {"pre": 2, "post": 1}
 
         self.assertEqual(expected_data, cc_status)
+
+    def test_query_no_propagate_cc_generation(self):
+        """Tests generation of connected components does not propagate"""
+        ctx = MagicMock(obj={"propagate": False})
+        push_context(ctx)
+
+        bs_data.DB.create_in_mem()
+
+        run = {
+            "record_type": bs_enums.RECORD_TYPE.REGION,
+            "query_record_number": 1,
+            "alignment_mode": bs_enums.ALIGNMENT_MODE.AUTO,
+            "extend_strategy": bs_enums.EXTEND_STRATEGY.LEGACY,
+        }
+
+        query_gbk = create_mock_gbk(1, bs_enums.SOURCE_TYPE.QUERY)
+        first_layer_gbk = create_mock_gbk(2, bs_enums.SOURCE_TYPE.REFERENCE)
+        second_layer_gbk = create_mock_gbk(3, bs_enums.SOURCE_TYPE.REFERENCE)
+        third_layer_gbk = create_mock_gbk(4, bs_enums.SOURCE_TYPE.REFERENCE)
+        gbks = [query_gbk, first_layer_gbk, second_layer_gbk, third_layer_gbk]
+        for gbk in gbks:
+            gbk.save_all()
+
+        include_records, q_record = bs_files.get_all_bgc_records_query(run, gbks)
+
+        # query is connected to first layer, but not to second layer
+        qf_edges = gen_mock_edge_list([query_gbk, first_layer_gbk], 0.5)
+        fs_edges = gen_mock_edge_list([first_layer_gbk, second_layer_gbk], 0.5)
+        st_edges = gen_mock_edge_list([second_layer_gbk, third_layer_gbk], 0.5)
+
+        edges = qf_edges + fs_edges + st_edges
+
+        # save the edges
+        for edge in edges:
+            bs_comparison.save_edge_to_db(edge)
+
+        query_bin = bs_comparison.QueryRecordPairGenerator(
+            "Query", 1, "mix", run["record_type"]
+        )
+        query_bin.add_records(include_records)
+
+        query_cc = next(
+            bs_network.get_connected_components(1, 1, query_bin, 1, q_record), None
+        )
+
+        # if not propagated correctly, cc should contain only one edge: between the
+        # query and the first layer
+        self.assertEqual(len(query_cc), 1)
+
+        ctx = MagicMock(obj={"propagate": True})
+        push_context(ctx)
+
+        query_cc = next(
+            bs_network.get_connected_components(0.99, 1, query_bin, 1, q_record), None
+        )
+
+        # with propagation, the second and third layers are included in the cc: 3 edges
+        self.assertEqual(len(query_cc), 3)

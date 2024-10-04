@@ -69,6 +69,7 @@ def cluster(ctx, *args, **kwargs):
     # get context parameters
     ctx.obj.update(ctx.params)
     ctx.obj["query_bgc_path"] = None
+    ctx.obj["propagate"] = True  # compatibility with query wrt cc generation
     ctx.obj["mode"] = "Cluster"
 
     # workflow validations

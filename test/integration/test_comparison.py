@@ -2,6 +2,8 @@
 
 # from python
 from unittest import TestCase
+from unittest.mock import MagicMock
+from click.globals import push_context
 from pathlib import Path
 from itertools import combinations
 
@@ -1471,6 +1473,8 @@ class TestComparison(TestCase):
         self.assertEqual(missing_pair_generator.num_pairs(), 0)
 
     def test_generate_bins_query_workflow(self):
+        ctx = MagicMock(obj={"propagate": True})
+        push_context(ctx)
         bs_data.DB.create_in_mem()
 
         run = {
@@ -1608,6 +1612,8 @@ class TestComparison(TestCase):
         self.assertEqual(rows, 6)
 
     def test_calculate_distances_query(self):
+        ctx = MagicMock(obj={"propagate": True})
+        push_context(ctx)
         bs_data.DB.create_in_mem()
 
         run = {

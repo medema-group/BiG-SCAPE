@@ -2,6 +2,8 @@
 
 # from python
 from unittest import TestCase
+from unittest.mock import MagicMock
+from click.globals import push_context
 from pathlib import Path
 from itertools import combinations
 
@@ -98,6 +100,9 @@ class TestComparison(TestCase):
         self.addCleanup(self.clean_db)
 
     def test_get_connected_components_two_cutoffs(self):
+        ctx = MagicMock(obj={"propagate": True})
+        push_context(ctx)
+
         bs_data.DB.create_in_mem()
 
         run = {
@@ -142,6 +147,9 @@ class TestComparison(TestCase):
         self.assertEqual(len(ccs), 2)
 
     def test_get_connected_components_all_cutoffs(self):
+        ctx = MagicMock(obj={"propagate": True})
+        push_context(ctx)
+
         bs_data.DB.create_in_mem()
 
         run = {
@@ -395,6 +403,8 @@ class TestComparison(TestCase):
 
     def test_get_connected_components_no_ref_to_ref_ccs(self):
         """Tests whether ref only ccs are correclty excluded from the analysis"""
+        ctx = MagicMock(obj={"propagate": True})
+        push_context(ctx)
         bs_data.DB.create_in_mem()
 
         run = {
@@ -493,6 +503,8 @@ class TestComparison(TestCase):
         self.assertEqual(rows, len(gbks_b + [gbks_c[0]]))
 
     def test_get_connected_components_two_bins(self):
+        ctx = MagicMock(obj={"propagate": True})
+        push_context(ctx)
         bs_data.DB.create_in_mem()
 
         run = {
@@ -551,6 +563,8 @@ class TestComparison(TestCase):
         # bs_data.DB.save_to_disk(Path("after_legacy.db"))
 
     def test_get_connected_components_two_bins_different_edge_params(self):
+        ctx = MagicMock(obj={"propagate": True})
+        push_context(ctx)
         bs_data.DB.create_in_mem()
 
         run = {
