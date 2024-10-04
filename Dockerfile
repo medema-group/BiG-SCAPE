@@ -30,7 +30,7 @@ RUN micromamba install \
     # clean up cache
     micromamba clean --all --yes
 
-RUN chmod u+x bigscape.py
+RUN chmod 777 bigscape.py
 
 ENTRYPOINT [ "/usr/local/bin/_entrypoint.sh", "./bigscape.py" ]
 CMD [ "--help" ]
