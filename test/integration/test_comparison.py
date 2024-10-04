@@ -521,7 +521,7 @@ class TestComparison(TestCase):
             "legacy_weights": True,
             "record_type": bs_enums.RECORD_TYPE.REGION,
             "cores": 1,
-            "config_file_path": Path(""),
+            "config_file_path": Path("config.yml"),
         }
 
         gbks = [
