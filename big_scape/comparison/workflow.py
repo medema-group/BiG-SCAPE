@@ -148,7 +148,7 @@ def generate_edges(
             "Running on %s: sending pair ids",
             platform.system(),
         )
-        pair_data = pair_generator.generate_pairs()
+        pair_data = pair_generator.generate_pair_ids()
 
     num_pairs = pair_generator.num_pairs()
 

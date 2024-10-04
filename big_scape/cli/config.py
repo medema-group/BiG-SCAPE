@@ -161,7 +161,6 @@ class BigscapeConfig:
             config_file_path (Path): path to passed config file
             log_file_path (Optional[Path]): path to log file. Defaults to None.
         """
-        print("PARSING CONFIG")
         with open(config_file_path, "rb") as f:
             content = f.read()
             BigscapeConfig.HASH = hashlib.sha256(content).hexdigest()
