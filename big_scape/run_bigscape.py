@@ -111,8 +111,14 @@ def run_bigscape(run: dict) -> None:
 
     # INPUT - create an in memory bs_data.DB or load from disk
     if not run["db_path"].exists():
-        bs_data.DB.create_in_mem()
+        if run["disk_only"]:
+            logging.info("Creating on disk database")
+            bs_data.DB.create_on_disk(run["db_path"])
+        else:
+            logging.info("Creating in memory database")
+            bs_data.DB.create_in_mem()
     else:
+        logging.info("Loading database from disk")
         bs_data.DB.load_from_disk(run["db_path"])
         bs_data.DB.check_config_hash()
 
