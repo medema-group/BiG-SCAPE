@@ -352,6 +352,6 @@ def run_bigscape(run: dict) -> None:
     exec_time = end - start_time
 
     bs_data.DB.set_run_end(run["run_id"], start_time, end)
-    bs_data.DB.save_to_disk(run["db_path"])
+    bs_data.DB.save_to_disk(run["db_path"], True)
 
     logging.info("All tasks done at %f seconds", exec_time.total_seconds())

@@ -106,7 +106,7 @@ class DB:
         DB.reflect()
 
     @staticmethod
-    def save_to_disk(db_path: Path) -> None:
+    def save_to_disk(db_path: Path, force=False) -> None:
         """Saves the in-memory database to a .db file. This overwrites any last database
         file in the same location
         """
@@ -116,7 +116,13 @@ class DB:
         click_context = click.get_current_context(silent=True)
 
         if click_context and click_context.obj["no_db_dump"]:
-            return
+            # added force to override this override. fun times.
+            # this is used when you use the --no-db-dump flag so that we can force it
+            # to save at the end anyway
+            # TODO: this logic should be moved out, where the no_db_dump flag is checked
+            # when it is appropriate to do so
+            if not force:
+                return
 
         if not DB.opened():
             raise DBClosedError()
