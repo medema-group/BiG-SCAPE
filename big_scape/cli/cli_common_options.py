@@ -104,6 +104,15 @@ def common_all(fn):
             "re-start the run from scratch",
         ),
         click.option(
+            "--disk-only",
+            type=bool,
+            is_flag=True,
+            default=False,
+            help="Do not store any results in memory, only on disk. This is almost certainly "
+            "slower than the default behaviour, but can be useful for very large runs or "
+            "runs with limited memory.",
+        ),
+        click.option(
             "--no-interactive",
             type=bool,
             is_flag=True,
