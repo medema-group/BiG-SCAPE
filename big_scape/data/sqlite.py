@@ -148,6 +148,10 @@ class DB:
         if click_context and click_context.obj["disk_only"]:
             return
 
+        # skip this if we are using disk-only mode
+        if click_context and click_context.obj["disk_only"]:
+            return
+
         if not DB.opened():
             raise DBClosedError()
 
