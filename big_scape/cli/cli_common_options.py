@@ -345,6 +345,7 @@ def common_cluster_query(fn):
             help="Use a specific type of antiSMASH record for comparison. (default: region).",
         ),
     ]
+
     for opt in options[::-1]:
         fn = opt(fn)
     return fn

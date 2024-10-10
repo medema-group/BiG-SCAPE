@@ -12,6 +12,7 @@ from big_scape.diagnostics import init_logger, init_logger_file
 from .cli_common_options import common_all, common_cluster_query
 from .cli_validations import (
     validate_output_paths,
+    validate_disk_only,
     validate_query_bgc,
     validate_pfam_path,
     set_start,
@@ -81,6 +82,7 @@ def query(ctx, *args, **kwarg):
     validate_output_paths(ctx)
     validate_binning_query_workflow(ctx)
     validate_query_record(ctx)
+    validate_disk_only(ctx)
 
     # set start time and label
     set_start(ctx.obj)
