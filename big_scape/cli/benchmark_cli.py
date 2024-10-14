@@ -10,7 +10,11 @@ from big_scape.diagnostics import init_logger, init_logger_file
 
 # from this module
 from .cli_common_options import common_all
-from .cli_validations import set_start, validate_output_paths
+from .cli_validations import (
+    set_start,
+    validate_output_paths,
+    validate_disk_only,
+)
 
 
 # BiG-SCAPE benchmark mode
@@ -49,6 +53,7 @@ def benchmark(ctx, *args, **kwargs):
 
     # workflow validations
     validate_output_paths(ctx)
+    validate_disk_only(ctx)
 
     # set start time and label
     set_start(ctx.obj)

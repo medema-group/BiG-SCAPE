@@ -96,6 +96,26 @@ class DB:
         )
         DB.connection = DB.engine.connect()
 
+    def open_disk_connection(db_path: Path) -> None:
+        if DB.opened():
+            raise DBAlreadyOpenError()
+
+        DB.engine = create_engine(
+            "sqlite:///" + str(db_path),
+            connect_args={"check_same_thread": False},
+            poolclass=StaticPool,
+        )
+        DB.connection = DB.engine.connect()
+
+    @staticmethod
+    def create_on_disk(db_path: Path) -> None:
+        """Open a connection to a database file"""
+        DB.open_disk_connection(db_path)
+
+        DB.create_tables()
+
+        DB.reflect()
+
     @staticmethod
     def create_in_mem() -> None:
         """Create a new database in-memory"""
@@ -123,6 +143,14 @@ class DB:
             # when it is appropriate to do so
             if not force:
                 return
+
+        # skip this if we are using disk-only mode
+        if click_context and click_context.obj["disk_only"]:
+            return
+
+        # skip this if we are using disk-only mode
+        if click_context and click_context.obj["disk_only"]:
+            return
 
         if not DB.opened():
             raise DBClosedError()
@@ -180,6 +208,12 @@ class DB:
 
         if not db_path.exists():
             raise FileNotFoundError()
+
+        # disk only means we don't have to dump to memory
+        click_context = click.get_current_context(silent=True)
+        if click_context and click_context.obj["disk_only"]:
+            DB.create_on_disk(db_path)
+            return
 
         file_engine = create_engine("sqlite:///" + str(db_path))
         file_engine.connect()

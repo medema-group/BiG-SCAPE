@@ -128,6 +128,25 @@ def validate_output_paths(ctx) -> None:
     return None
 
 
+# db modes validations
+def validate_disk_only(ctx) -> None:
+    """Checks if the database storage/dumping modes that were set are compatible"""
+
+    if not ("no_db_dump" in ctx.obj and "disk_only" in ctx.obj):
+        raise RuntimeError(
+            "Something went wrong with the database storage/dumping mode parameters. "
+            "Please contact the developers."
+        )
+
+    if ctx.obj["no_db_dump"] and ctx.obj["disk_only"]:
+        logging.error(
+            "You have selected both --no-db-dump and --disk-only. Please select only one"
+        )
+        raise click.UsageError(
+            "You have selected both --no-db-dump and --disk-only. Please select only one"
+        )
+
+
 # comparison validations
 
 
