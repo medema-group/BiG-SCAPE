@@ -72,7 +72,7 @@ def query(ctx, *args, **kwarg):
     """
     # get context parameters
     ctx.obj.update(ctx.params)
-    ctx.obj["no_mix"] = None
+    ctx.obj["mix"] = None
     ctx.obj["hybrids_off"] = False
     ctx.obj["legacy_classify"] = False
     ctx.obj["mode"] = "Query"

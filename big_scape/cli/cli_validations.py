@@ -157,12 +157,12 @@ def validate_classify(ctx, param, classify) -> Optional[bs_enums.CLASSIFY_MODE]:
     # check if the property matches one of the enum values
     valid_modes = [mode.value for mode in bs_enums.CLASSIFY_MODE]
 
+    if classify == "none":
+        classify = False
+
     for mode in valid_modes:
         if classify == mode:
             return bs_enums.CLASSIFY_MODE[mode.upper()]
-
-    if classify is None:
-        classify = False
 
     return classify
 
@@ -323,21 +323,21 @@ def validate_binning_cluster_workflow(ctx) -> None:
             "Please select --legacy_classify or --classify"
         )
 
-    # --no_mix needs a classification method, otherwise no work will be done
+    # running without --mix needs a classification method, otherwise no work will be done
 
     if (
-        ctx.obj["no_mix"] is True
+        ctx.obj["mix"] is False
         and ctx.obj["legacy_classify"] is False
         and ctx.obj["classify"] is False
     ):
         logging.error(
             "The combination of arguments you have selected for binning means no work will "
-            "be done. Please remove either --no_mix, or add --legacy_classify/--classify"
+            "be done. Please run BiG-SCAPE using --mix, or add --legacy_classify/--classify"
             " in order to enable comparisons"
         )
         raise click.UsageError(
             "The combination of arguments you have selected for binning means no work will "
-            "be done. Please remove either --no_mix, or add --legacy_classify/--classify"
+            "be done. Please run BiG-SCAPE using --mix, or add --legacy_classify/--classify"
             " in order to enable comparisons"
         )
 

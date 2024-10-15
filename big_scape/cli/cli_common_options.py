@@ -271,7 +271,8 @@ def common_cluster_query(fn):
         ),
         click.option(
             "--classify",
-            type=click.Choice(["class", "category"]),
+            type=click.Choice(["none", "class", "category"]),
+            default="class",
             callback=validate_classify,
             help=(
                 "Use antiSMASH/BGC classes or categories to run analyses on class-based bins. "
