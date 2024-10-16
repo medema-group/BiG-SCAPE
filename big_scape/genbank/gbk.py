@@ -40,7 +40,7 @@ from .cds import CDS
 # TODO: generalize creating temp tables. this is copied from network.py
 
 
-def create_temp_hash_table(hashes: list[str]) -> Table:
+def create_temp_hash_table(gbks: list[GBK]) -> Table:
     """Create a temporary table with ids of given records
 
     Args:
@@ -77,7 +77,13 @@ def create_temp_hash_table(hashes: list[str]) -> Table:
         INSERT INTO {temp_table_name} (hash) VALUES (?);
     """
 
-    cursor.executemany(insert_query, [(x,) for x in hashes])  # type: ignore
+    def batch_hash(gbks: list[GBK], n: int):
+        l = len(gbks)
+        for ndx in range(0, l, n):
+            yield [gbk.hash for gbk in gbks[ndx : min(ndx + n, l)]]
+
+    for hash_batch in batch_hash(gbks, 1000):
+        cursor.executemany(insert_query, [(x,) for x in hash_batch])  # type: ignore
 
     cursor.close()
 
@@ -315,11 +321,7 @@ class GBK:
             list[GBK]: loaded GBK objects
         """
 
-        def iter_hashes():
-            for gbk in input_gbks:
-                yield gbk.hash
-
-        temp_hash_table = create_temp_hash_table(iter_hashes())
+        temp_hash_table = create_temp_hash_table(input_gbks)
 
         if not DB.metadata:
             raise RuntimeError("DB.metadata is None")
