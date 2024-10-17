@@ -3,6 +3,8 @@ from __future__ import annotations
 import logging
 from datetime import datetime
 from pathlib import Path
+import random
+import string
 from typing import Generator, Optional, Any
 import sqlite3
 
@@ -15,6 +17,7 @@ from sqlalchemy import (
     Select,
     Insert,
     CursorResult,
+    Table,
     create_engine,
     func,
     select,
@@ -22,6 +25,7 @@ from sqlalchemy import (
     update,
     desc,
 )
+from sqlalchemy.schema import SchemaItem
 from sqlalchemy.pool import StaticPool
 import tqdm
 import click
@@ -467,6 +471,39 @@ class DB:
                 "Existing data is not guarenteed to be reusable, please "
                 "run with a fresh output directory/database."
             )
+
+    @staticmethod
+    def create_temp_table(*columns: SchemaItem):
+        """Create a temporary table with the given columns
+
+        Args:
+            columns (SchemaItem): columns to create the table with
+
+        Returns:
+            Table: the temporary table
+        """
+
+        # generate a short random string
+        temp_table_name = "temp_" + "".join(
+            random.choices(string.ascii_lowercase, k=10)
+        )
+
+        temp_table = Table(
+            temp_table_name,
+            DB.metadata,
+            *columns,
+            prefixes=["TEMPORARY"],
+        )
+
+        DB.metadata.create_all(DB.engine)
+
+        if DB.engine is None:
+            raise RuntimeError("DB engine is None")
+
+        if DB.metadata is None:
+            raise ValueError("DB metadata is None")
+
+        return temp_table
 
 
 def read_schema(path: Path) -> list[str]:

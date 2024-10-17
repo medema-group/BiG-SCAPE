@@ -9,7 +9,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING, Generator, Optional
 
 # from dependencies
-from sqlalchemy import select
+from sqlalchemy import Column, ForeignKey, Integer, String, Table, insert, select
 
 # from other modules
 from big_scape.data import DB
@@ -267,3 +267,62 @@ def get_missing_distances(
         # if the pair is not in the set of existing distances, yield it
         if pair not in existing_distances and pair[::-1] not in existing_distances:
             yield pair
+
+
+def generate_tmp_hash_table(gbks: list[GBK]) -> Table:
+
+    temp_table = DB.create_temp_table(
+        Column(
+            "hash",
+            String,
+            ForeignKey(DB.metadata.tables["gbk"].c.hash),
+            primary_key=True,
+            nullable=False,
+        ),
+    )
+
+    cursor = DB.engine.raw_connection().driver_connection.cursor()
+
+    insert_query = f"""
+        INSERT INTO {temp_table.name} (hash) VALUES (?);
+    """
+
+    def batch_hashes(gbks: list[GBK], n: int):
+        num_gbks = len(gbks)
+        for i in range(0, num_gbks, n):
+            yield [gbk.hash for gbk in gbks[i : min(i + n, num_gbks)]]
+
+    for hash_batch in batch_hashes(gbks, 1000):
+        cursor.executemany(insert_query, [(x,) for x in hash_batch])  # type: ignore
+
+    cursor.close()
+
+    DB.commit()
+
+    return temp_table
+
+
+def generate_tmp_gbk_id_table(hash_table: Table) -> Table:
+
+    temp_table = DB.create_temp_table(
+        Column(
+            "gbk_id",
+            Integer,
+            ForeignKey(DB.metadata.tables["gbk"].c.id),
+            primary_key=True,
+            nullable=False,
+        ),
+    )
+
+    gbk_table = DB.metadata.tables["gbk"]
+
+    insert_query = insert(temp_table).from_select(
+        ["gbk_id"],
+        select(gbk_table.c.id).where(gbk_table.c.hash.in_(select(hash_table.c.hash))),
+    )
+
+    DB.execute(insert_query)  # type: ignore
+
+    DB.commit()
+
+    return temp_table

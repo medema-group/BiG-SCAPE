@@ -7,6 +7,7 @@ from typing import Dict, Optional, TYPE_CHECKING
 
 # from dependencies
 from Bio.SeqFeature import SeqFeature
+from sqlalchemy import Table, select
 
 # from other modules
 from big_scape.data import DB
@@ -175,7 +176,10 @@ class ProtoCluster(BGCRecord):
         return f"{self.parent_gbk} ProtoCluster {self.number} {self.nt_start}-{self.nt_stop} "
 
     @staticmethod
-    def load_all(candidate_cluster_dict: dict[int, CandidateCluster]):
+    def load_all(
+        candidate_cluster_dict: dict[int, CandidateCluster],
+        tmp_gbk_id_table: Table = None,
+    ):
         """Load all ProtoCluster objects from the database
 
         This function populates the CandidateCluster objects in the GBKs provided in the
@@ -184,6 +188,8 @@ class ProtoCluster(BGCRecord):
         Args:
             candidate_cluster_dict (dict[int, GBK]): Dictionary of CandidateCluster
             objects with database ids as keys. Used for reassembling the hierarchy
+            tmp_gbk_id_table (Table): Temporary table containing the database ids of GKBs for
+            which to load protoclusters. If None, all protoclusters will be loaded. Defaults to None.
         """
 
         if not DB.metadata:
@@ -206,9 +212,14 @@ class ProtoCluster(BGCRecord):
                 record_table.c.merged,
             )
             .where(record_table.c.record_type == "protocluster")
-            .where(record_table.c.parent_id.in_(candidate_cluster_dict.keys()))
-            .compile()
         )
+
+        if tmp_gbk_id_table is not None:
+            protocluster_select_query = protocluster_select_query.where(
+                record_table.c.parent_id.in_(select(tmp_gbk_id_table.c.gbk_id))
+            )
+
+        protocluster_select_query = protocluster_select_query.compile()
 
         cursor_result = DB.execute(protocluster_select_query)
 
@@ -250,14 +261,14 @@ class ProtoCluster(BGCRecord):
                 new_proto_cluster._db_id = result.id
 
                 # add to parent CandidateCluster protocluster dict
-                parent_candidate_cluster.proto_clusters[
-                    result.record_number
-                ] = new_proto_cluster
+                parent_candidate_cluster.proto_clusters[result.record_number] = (
+                    new_proto_cluster
+                )
 
                 # add to dictionary
                 protocluster_dict[result.id] = new_proto_cluster
 
-        ProtoCore.load_all(protocluster_dict)
+        ProtoCore.load_all(protocluster_dict, tmp_gbk_id_table)
 
 
 class MergedProtoCluster(ProtoCluster):

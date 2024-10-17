@@ -8,6 +8,7 @@ from typing import Dict, Optional, TYPE_CHECKING, Generator
 # from dependencies
 from Bio.SeqFeature import SeqFeature
 from Bio.SeqRecord import SeqRecord
+from sqlalchemy import Column, ForeignKey, Integer, Table, select
 
 # from other modules
 from big_scape.data import DB
@@ -250,7 +251,7 @@ class Region(BGCRecord):
         return f"{self.parent_gbk} Region {self.number} {self.nt_start}-{self.nt_stop} "
 
     @staticmethod
-    def load_all(gbk_dict: dict[int, GBK]) -> None:
+    def load_all(gbk_dict: dict[int, GBK], temp_gbk_id_table: Table = None) -> None:
         """Load all Region objects from the database
 
         This function populates the region objects in the GBKs provided in the input
@@ -259,6 +260,8 @@ class Region(BGCRecord):
         Args:
             gbk_dict (dict[int, GBK]): Dictionary of GBK objects with database ids as
             keys. Used for reassembling the hierarchy
+            temp_gbk_id_table (Table): Temporary table to filter the regions to load.
+            If None, all regions are loaded. Defaults to None
         """
 
         if not DB.metadata:
@@ -280,9 +283,14 @@ class Region(BGCRecord):
                 record_table.c.product,
             )
             .where(record_table.c.record_type == "region")
-            .where(record_table.c.gbk_id.in_(gbk_dict.keys()))
-            .compile()
         )
+
+        if temp_gbk_id_table is not None:
+            region_select_query = region_select_query.where(
+                record_table.c.gbk_id.in_(select(temp_gbk_id_table.c.gbk_id))
+            )
+
+        region_select_query = region_select_query.compile()
 
         cursor_result = DB.execute(region_select_query)
 
@@ -308,4 +316,4 @@ class Region(BGCRecord):
             # add to dictionary
             region_dict[result.id] = new_region
 
-        CandidateCluster.load_all(region_dict)
+        CandidateCluster.load_all(region_dict, temp_gbk_id_table)
