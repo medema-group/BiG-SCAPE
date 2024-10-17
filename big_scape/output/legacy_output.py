@@ -325,6 +325,7 @@ def write_record_annotations_file(run, cutoff, all_bgc_records) -> None:
     if click_context and click_context.obj["no_interactive"]:
         return
 
+    run_id = run["run_id"]
     output_dir = run["output_dir"]
     label = run["label"]
     output_files_root = output_dir / "output_files"
@@ -335,6 +336,7 @@ def write_record_annotations_file(run, cutoff, all_bgc_records) -> None:
         raise RuntimeError("DB.metadata is None")
     bgc_record_table = DB.metadata.tables["bgc_record"]
     gbk_table = DB.metadata.tables["gbk"]
+    cc_table = DB.metadata.tables["connected_component"]
 
     record_categories = {}
     for record in all_bgc_records:
@@ -351,8 +353,11 @@ def write_record_annotations_file(run, cutoff, all_bgc_records) -> None:
             bgc_record_table.c.record_type,
             bgc_record_table.c.product,
         )
-        .where(bgc_record_table.c.id.in_(record_categories.keys()))
         .join(bgc_record_table, bgc_record_table.c.gbk_id == gbk_table.c.id)
+        .join(cc_table, cc_table.c.record_id == bgc_record_table.c.id)
+        .where(cc_table.c.cutoff == cutoff)
+        .where(cc_table.c.run_id == run_id)
+        .distinct()
     )
 
     record_data = DB.execute(select_statement).fetchall()
