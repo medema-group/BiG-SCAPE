@@ -15,9 +15,10 @@ from big_scape.data import DB
 from big_scape.comparison import RecordPairGenerator
 from big_scape.genbank import GBK, BGCRecord
 from big_scape.trees import generate_newick_tree, save_trees
-from big_scape.comparison import get_record_category
+from big_scape.comparison import lcs, get_record_category
 
 import big_scape.paths as bs_paths
+import big_scape.enums as bs_enums
 
 
 def copy_base_output_templates(output_dir: Path):
@@ -292,6 +293,10 @@ def generate_newick_trees(
         exemplars_db.append(exemplar)
         families_records.append(family_recs)
         exemplars_idx.append(exemplar_idx)
+
+    if run["alignment_mode"] == bs_enums.ALIGNMENT_MODE.GLOBAL:
+        for records, exemplar in zip(families_records, exemplars_idx):
+            lcs.construct_missing_global_lcs(records, exemplar)
 
     pool = Pool(processes=run["cores"])
     trees = pool.starmap(

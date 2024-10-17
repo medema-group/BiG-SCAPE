@@ -18,11 +18,13 @@ NOTE: The matches correspond to slices of region CDS that do not have domains!
 import logging
 from typing import Any
 from difflib import Match, SequenceMatcher
+from sqlalchemy import select, update, or_, and_
 
 # from other modules
 import big_scape.genbank as bs_genbank
 import big_scape.comparison.record_pair as bs_comparison
 import big_scape.hmm as bs_hmm
+from big_scape.data import DB
 
 
 def find_lcs(list_a: list[Any], list_b: list[Any]) -> tuple[Match, list[Match]]:
@@ -642,3 +644,70 @@ def find_domain_lcs_protocluster(
         b_cds_stop,
         reverse,
     )
+
+
+def construct_missing_global_lcs(records: list[bs_genbank.BGCRecord], exemplar: int):
+    """calculate missing lcs between family exemplar and family members
+
+    Only relevant in GLOBAL alignment mode, as no lcs were calculated during comparisons
+
+    Args:
+        records (list[bs_genbank.BGCRecord]): family member records
+        exemplar (int): idx of family exemplar record
+    """
+    record_db_dict = {record._db_id: record for record in records}
+
+    # construct a list of member db ids, and separately exemplar db id
+    db_ids = list(record_db_dict.keys())
+    exemplar_id = db_ids.pop(exemplar)
+
+    if DB.metadata is None:
+        raise RuntimeError("DB metadata is None!")
+
+    distance_table = DB.metadata.tables["distance"]
+
+    # find exemplar->member pairs that do not have an lcs calculated yet
+    missing_lcs_query = (
+        select(distance_table.c.record_a_id, distance_table.c.record_b_id)
+        .where(
+            or_(
+                and_(
+                    distance_table.c.record_a_id == exemplar_id,
+                    distance_table.c.record_b_id.in_(db_ids),
+                ),
+                and_(
+                    distance_table.c.record_a_id.in_(db_ids),
+                    distance_table.c.record_b_id == exemplar_id,
+                ),
+            )
+        )
+        .where(distance_table.c.lcs_domain_a_start == 0)
+        .where(distance_table.c.lcs_domain_b_start == 0)
+        .where(distance_table.c.reverse == 0)
+    )
+
+    missing_lcs_pairs = DB.execute(missing_lcs_query).fetchall()
+
+    for missing_pair in missing_lcs_pairs:
+        rec_a_id, rec_b_id = missing_pair
+        pair = bs_comparison.RecordPair(
+            record_db_dict[rec_a_id], record_db_dict[rec_b_id]
+        )
+        if isinstance(pair.record_a, bs_genbank.ProtoCluster) and isinstance(
+            pair.record_b, bs_genbank.ProtoCluster
+        ):
+            lcs_data = find_domain_lcs_protocluster(pair)
+        else:
+            lcs_data = find_domain_lcs_region(pair)
+
+        DB.execute(
+            update(distance_table)
+            .where(distance_table.c.record_a_id == rec_a_id)
+            .where(distance_table.c.record_b_id == rec_b_id)
+            .values(
+                lcs_domain_a_start=lcs_data[0],
+                lcs_domain_b_start=lcs_data[2],
+                reverse=lcs_data[8],
+            )
+            .compile()
+        )
