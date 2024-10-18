@@ -192,7 +192,7 @@ def run_bigscape(run: dict) -> None:
 
     # mix
 
-    if not run["no_mix"] and not run["query_bgc_path"]:
+    if run["mix"] and not run["query_bgc_path"]:
         bs_mix.calculate_distances_mix(run, all_bgc_records)
 
         bs_data.DB.commit()
@@ -225,7 +225,7 @@ def run_bigscape(run: dict) -> None:
 
     # mix
 
-    if not run["no_mix"] and not run["query_bgc_path"]:
+    if run["mix"] and not run["query_bgc_path"]:
         bs_families.run_family_assignments(
             run, bs_comparison.generate_mix_bin, all_bgc_records
         )
@@ -277,7 +277,7 @@ def run_bigscape(run: dict) -> None:
 
     # mix
 
-    if not run["no_mix"] and not run["query_bgc_path"]:
+    if run["mix"] and not run["query_bgc_path"]:
         mix_bin = bs_comparison.generate_mix_bin(all_bgc_records, run)
 
         for cutoff in run["gcf_cutoffs"]:

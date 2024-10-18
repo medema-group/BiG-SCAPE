@@ -35,7 +35,17 @@ from .cli_validations import (
     ),
 )
 # binning parameters
-@click.option("--no_mix", is_flag=True, help=("Don't run the all-vs-all analysis."))
+@click.option(
+    "--mix",
+    is_flag=True,
+    help=(
+        "Calculate distances using a 'mix' bin, wherein no classification is applied. "
+        "This will do an all-vs-all comparison, and is likely going to take a long time. "
+        "This bin will use weights from the 'mix' weights distribution. Warning: these "
+        "weights are not recommended for use with the record types protocluster/protocore, "
+        "as they have been optimized and validated only for the 'region' record type."
+    ),
+)
 @click.option(
     "--legacy_classify",
     is_flag=True,

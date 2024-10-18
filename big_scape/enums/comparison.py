@@ -28,5 +28,6 @@ class LCS_MODE(Enum):
 
 
 class CLASSIFY_MODE(Enum):
+    NONE = "none"
     CLASS = "class"
     CATEGORY = "category"
