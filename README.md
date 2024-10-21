@@ -30,24 +30,6 @@ Software:
 - python 3.11 or up
 - conda/mamba
 
-The most straightforward way of installing is using Hatch.
-However, this does not allow you to run the application from anywhere using a command like `big-scape`.
-If you want to do that, follow the **Using Conda/Mamba** steps.
-
-### Using Hatch
-
-1. `git clone https://github.com/medema-group/BiG-SCAPE`.
-2. `cd BiG-SCAPE`
-3. `pip install hatch`
-4. `hatch -v env create bigscape`
-
-Run the application through hatch in the BiG-SCAPE folder:
-
-3. `hatch run bigscape:bigscape --help`
-
-This command only works inside the BiG-SCAPE folder.
-
-
 ### Using Conda/Mamba
 
 These steps use `mamba`.
@@ -140,23 +122,3 @@ To run tests:
 `python -m pytest`
 
 When developing, make sure to use the mamba environment you created (called bigscape).
-
-### Using hatch
-
-1. `pip install hatch`
-2. `git clone https://github.com/medema-group/BiG-SCAPE`.
-3. `cd BiG-SCAPE`
-4. `hatch env create dev`
-5. `hatch run dev:pre-commit install`
-
-To run BiG-SCAPE:
-
-`hatch run bigscape:dev --help`
-
-To run tests:
-
-`hatch test`
-
-These commands only work inside the BiG-SCAPE folder.
-
-When developing, make sure to use the hatch environment under .venv/dev.
