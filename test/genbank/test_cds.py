@@ -542,7 +542,7 @@ class TestCDS(TestCase):
             "GADYGLCRVYRNEPWHFELRPEAIEHGCPPLYADPSHDPXXXX"
         ]
 
-        with self.assertLogs(level=logging.INFO) as cm:
+        with self.assertLogs(level=logging.DEBUG) as cm:
             logging.info("nonsense")
             CDS.parse(feature, parent_gbk)
 
