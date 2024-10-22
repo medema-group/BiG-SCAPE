@@ -2,6 +2,7 @@
 
 # from python
 import logging
+import sys
 
 
 def init_logger(run) -> None:  # pragma: no cover
@@ -36,3 +37,4 @@ def init_logger_file(run) -> None:  # pragma: no cover
     file_handler = logging.FileHandler(run["log_path"])
     file_handler.setFormatter(log_formatter)
     root_logger.addHandler(file_handler)
+    logging.info(" ".join(sys.argv))
