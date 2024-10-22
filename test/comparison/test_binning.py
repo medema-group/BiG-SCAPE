@@ -15,7 +15,6 @@ from big_scape.comparison import (
     RecordPairGenerator,
     ConnectedComponentPairGenerator,
     QueryRecordPairGenerator,
-    save_edge_to_db,
     get_record_category,
     get_legacy_weights_from_category,
     as_class_bin_generator,
@@ -399,11 +398,11 @@ class TestBGCBin(TestCase):
         """Tests whether singletons are correctly culled"""
 
         bs_data.DB.create_in_mem()
-        query_gbk = create_mock_gbk(0, bs_enums.SOURCE_TYPE.QUERY)
+        query_gbk = create_mock_gbk(1, bs_enums.SOURCE_TYPE.QUERY)
         # query -> test_path_0.gbk, rec_id 1
         query_gbk.save_all()
         ref_gbks = [
-            create_mock_gbk(i, bs_enums.SOURCE_TYPE.REFERENCE) for i in range(1, 5)
+            create_mock_gbk(i, bs_enums.SOURCE_TYPE.REFERENCE) for i in range(2, 6)
         ]
         # ref[0] -> test_path_1.gbk, rec_id 2
         # ref[1] -> test_path_2.gbk, rec_id 3
@@ -413,213 +412,24 @@ class TestBGCBin(TestCase):
             source_records.append(ref_gbk.region)
             ref_gbk.save_all()
 
-        new_bin = RecordPairGenerator("Test", weights="mix", edge_param_id=1)
+        new_bin = RecordPairGenerator("mix", edge_param_id=1)
         new_bin.add_records(source_records)
 
-        # making query <-> ref_1 edge with distance 0.0
-
-        save_edge_to_db(
-            (
-                query_gbk.region._db_id,
-                ref_gbks[0].region._db_id,
-                0.0,
-                1.0,
-                1.0,
-                1.0,
-                1,
-                bs_comparison.ComparableRegion(
-                    0,
-                    0,
-                    0,
-                    0,
-                    0,
-                    0,
-                    0,
-                    0,
-                    False,
-                ),
-            )
+        # making connected components for records 1, 2, 3
+        bs_data.DB.execute_raw_query(
+            "INSERT INTO connected_component VALUES "
+            "(1, 1, 0.5, 'mix', 1), "
+            "(1, 2, 0.5, 'mix', 1), "
+            "(3, 3, 0.5, 'mix', 1);"
         )
 
-        save_edge_to_db(
-            (
-                query_gbk.region._db_id,
-                ref_gbks[1].region._db_id,
-                1.0,
-                0.0,
-                0.0,
-                0.0,
-                1,
-                bs_comparison.ComparableRegion(
-                    0,
-                    0,
-                    0,
-                    0,
-                    0,
-                    0,
-                    0,
-                    0,
-                    False,
-                ),
-            )
-        )
-
-        save_edge_to_db(
-            (
-                ref_gbks[0].region._db_id,
-                ref_gbks[1].region._db_id,
-                0.0,
-                1.0,
-                1.0,
-                1.0,
-                1,
-                bs_comparison.ComparableRegion(
-                    0,
-                    0,
-                    0,
-                    0,
-                    0,
-                    0,
-                    0,
-                    0,
-                    False,
-                ),
-            )
-        )
-
-        # edges above cutoff:
-        # query <-> ref_1 | rec_id 1 <-> rec_id 2
-        # ref_1 <-> ref_2 | rec_id 2 <-> rec_id 3
-
-        new_bin.cull_singletons(0.5)
+        new_bin.cull_singletons(0.5, 1)
 
         expected_records = [source_records[0], source_records[1], source_records[2]]
-        # expected_record_ids = set([1, 2, 3])
 
         actual_records = new_bin.source_records
-        # actual_record_ids = new_bin.record_ids
 
         self.assertEqual(expected_records, actual_records)
-
-    def test_cull_singletons_ref_only(self):
-        """Tests whether singletons are correctly culled"""
-
-        bs_data.DB.create_in_mem()
-
-        query_gbks = [
-            create_mock_gbk(i, bs_enums.SOURCE_TYPE.QUERY) for i in range(0, 3)
-        ]
-
-        ref_gbks = [
-            create_mock_gbk(i, bs_enums.SOURCE_TYPE.REFERENCE) for i in range(0, 3)
-        ]
-
-        all_gbks = query_gbks + ref_gbks
-        # ref[0] -> test_path_1.gbk, rec_id 2
-        # ref[1] -> test_path_2.gbk, rec_id 3
-
-        source_records = []
-        for gbk in all_gbks:
-            source_records.append(gbk.region)
-            gbk.save_all()
-
-        new_bin = RecordPairGenerator("Test", weights="mix", edge_param_id=1)
-        new_bin.add_records(source_records)
-
-        # making query_1 <-> ref_1 edge with distance 0.0
-
-        save_edge_to_db(
-            (
-                query_gbks[0].region._db_id,
-                ref_gbks[0].region._db_id,
-                0.0,
-                1.0,
-                1.0,
-                1.0,
-                1,
-                bs_comparison.ComparableRegion(
-                    0,
-                    0,
-                    0,
-                    0,
-                    0,
-                    0,
-                    0,
-                    0,
-                    False,
-                ),
-            )
-        )
-
-        save_edge_to_db(
-            (
-                query_gbks[1].region._db_id,
-                ref_gbks[1].region._db_id,
-                1.0,
-                0.0,
-                0.0,
-                0.0,
-                1,
-                bs_comparison.ComparableRegion(
-                    0,
-                    0,
-                    0,
-                    0,
-                    0,
-                    0,
-                    0,
-                    0,
-                    False,
-                ),
-            )
-        )
-
-        save_edge_to_db(
-            (
-                ref_gbks[0].region._db_id,
-                ref_gbks[1].region._db_id,
-                0.0,
-                1.0,
-                1.0,
-                1.0,
-                1,
-                bs_comparison.ComparableRegion(
-                    0,
-                    0,
-                    0,
-                    0,
-                    0,
-                    0,
-                    0,
-                    0,
-                    False,
-                ),
-            )
-        )
-
-        # edges above cutoff:
-        # query_1 <-> ref_1 | rec_id 1 <-> rec_id 2
-        # ref_1 <-> ref_2 | rec_id 2 <-> rec_id 3
-        # query_2, query_3, ref_3 are singletons
-
-        pre_cull_records = len(new_bin.source_records)
-
-        new_bin.cull_singletons(0.5, ref_only=True)
-
-        actual_records_post_ref_cull = len(new_bin.source_records)
-
-        new_bin.cull_singletons(0.5, ref_only=False)
-
-        actual_records_post_full_cull = len(new_bin.source_records)
-
-        seen_data = [
-            pre_cull_records,
-            actual_records_post_ref_cull,
-            actual_records_post_full_cull,
-        ]
-        expected_data = [6, 5, 3]
-
-        self.assertEqual(seen_data, expected_data)
 
 
 class TestMixComparison(TestCase):
