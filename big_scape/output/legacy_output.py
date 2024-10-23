@@ -262,7 +262,6 @@ def legacy_generate_bin_output(
     write_cutoff_network_file(run, cutoff, pair_generator)
 
     if click_context and click_context.obj["no_trees"]:
-        logging.info("Skipping GCF alignments and trees generation")
         return
 
     generate_newick_trees(run, cutoff, pair_generator, families_members)
