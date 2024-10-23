@@ -540,10 +540,11 @@ def extend_greedy(pair: RecordPair) -> None:
     logging.debug("before greedy extend:")
     logging.debug(pair.comparable_region)
 
-    a_cds = list(pair.record_a.get_cds())
-    b_cds = list(pair.record_b.get_cds())
     a_domains = list(pair.record_a.get_hsps())
     b_domains = list(pair.record_b.get_hsps())
+
+    if pair.comparable_region.reverse:
+        b_domains = b_domains[::-1]
 
     # index of domain to cds position
     a_index = get_target_indexes(a_domains)
@@ -551,9 +552,9 @@ def extend_greedy(pair: RecordPair) -> None:
 
     common_domains = set(a_index.keys()).intersection(set(b_index.keys()))
 
-    a_cds_min = len(a_cds)
+    a_cds_min = len(list(pair.record_a.get_cds()))
     a_cds_max = 0
-    b_cds_min = len(b_cds)
+    b_cds_min = len(list(pair.record_b.get_cds()))
     b_cds_max = 0
 
     a_domain_min = len(a_domains)
@@ -613,12 +614,23 @@ def extend_simple_match(pair: RecordPair, match, gap):
 
     # so we'll do a loop through cds and through domains to keep track of everything
     for cds_idx, cds in enumerate(pair.record_a.get_cds_with_domains()):
-        for domain in cds.hsps:
-            a_domains.append((domain, cds_idx))
+        if cds.strand == 1:
+            a_domains.extend([(domain, cds_idx) for domain in cds.hsps])
+        else:
+            a_domains.extend([(domain, cds_idx) for domain in cds.hsps[::-1]])
 
-    for cds_idx, cds in enumerate(pair.record_b.get_cds_with_domains()):
-        for domain in cds.hsps:
-            b_domains.append((domain, cds_idx))
+    b_cds = list(pair.record_b.get_cds_with_domains())
+
+    if pair.comparable_region.reverse:
+        b_cds = b_cds[::-1]
+
+    for cds_idx, cds in enumerate(b_cds):
+        if (cds.strand == 1 and not pair.comparable_region.reverse) or (
+            cds.strand == -1 and pair.comparable_region.reverse
+        ):
+            b_domains.extend([(domain, cds_idx) for domain in cds.hsps])
+        else:
+            b_domains.extend([(domain, cds_idx) for domain in cds.hsps[::-1]])
 
     # get the common domains
     common_domains = set([a[0] for a in a_domains]).intersection(
