@@ -113,7 +113,7 @@ def common_all(fn):
             "runs with limited memory.",
         ),
         click.option(
-            "--no-output",
+            "--db-only-output",
             type=bool,
             is_flag=True,
             default=False,

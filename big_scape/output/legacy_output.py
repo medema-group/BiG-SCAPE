@@ -163,7 +163,7 @@ def legacy_prepare_output(
 
     click_context = click.get_current_context(silent=True)
 
-    if click_context and click_context.obj["no_output"]:
+    if click_context and click_context.obj["db_only_output"]:
         logging.info("Skipping all output generation")
         return
 
@@ -189,7 +189,7 @@ def legacy_prepare_cutoff_output(run: dict, cutoff: float, gbks: list[GBK]) -> N
 
     click_context = click.get_current_context(silent=True)
 
-    if click_context and click_context.obj["no_output"]:
+    if click_context and click_context.obj["db_only_output"]:
         return
 
     output_dir: Path = run["output_dir"]
@@ -215,7 +215,7 @@ def legacy_prepare_bin_output(
 
     click_context = click.get_current_context(silent=True)
 
-    if click_context and click_context.obj["no_output"]:
+    if click_context and click_context.obj["db_only_output"]:
         return
 
     output_dir: Path = run["output_dir"]
@@ -252,7 +252,7 @@ def legacy_generate_bin_output(
 
     click_context = click.get_current_context(silent=True)
 
-    if click_context and click_context.obj["no_output"]:
+    if click_context and click_context.obj["db_only_output"]:
         return
 
     families_members = generate_bs_families_members(
@@ -331,7 +331,7 @@ def write_record_annotations_file(run, cutoff, all_bgc_records) -> None:
 
     click_context = click.get_current_context(silent=True)
 
-    if click_context and click_context.obj["no_output"]:
+    if click_context and click_context.obj["db_only_output"]:
         return
 
     run_id = run["run_id"]
@@ -536,7 +536,7 @@ def write_full_network_file(run: dict, all_bgc_records: list[BGCRecord]) -> None
 
     click_context = click.get_current_context(silent=True)
 
-    if click_context and click_context.obj["no_output"]:
+    if click_context and click_context.obj["db_only_output"]:
         return
 
     output_dir = run["output_dir"]
