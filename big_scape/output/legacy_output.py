@@ -3,6 +3,7 @@
 # from python
 from itertools import repeat
 import json
+import logging
 from multiprocessing import Pool
 from distutils import dir_util
 from pathlib import Path
@@ -162,7 +163,8 @@ def legacy_prepare_output(
 
     click_context = click.get_current_context(silent=True)
 
-    if click_context and click_context.obj["no_interactive"]:
+    if click_context and click_context.obj["no_output"]:
+        logging.info("Skipping all output generation")
         return
 
     copy_base_output_templates(output_dir)
@@ -187,7 +189,7 @@ def legacy_prepare_cutoff_output(run: dict, cutoff: float, gbks: list[GBK]) -> N
 
     click_context = click.get_current_context(silent=True)
 
-    if click_context and click_context.obj["no_interactive"]:
+    if click_context and click_context.obj["no_output"]:
         return
 
     output_dir: Path = run["output_dir"]
@@ -213,7 +215,7 @@ def legacy_prepare_bin_output(
 
     click_context = click.get_current_context(silent=True)
 
-    if click_context and click_context.obj["no_interactive"]:
+    if click_context and click_context.obj["no_output"]:
         return
 
     output_dir: Path = run["output_dir"]
@@ -224,6 +226,9 @@ def legacy_prepare_bin_output(
     cutoff_files_path = output_files_root / f"{label}_c{cutoff}"
     pair_generator_files_path = cutoff_files_path / pair_generator.label
     pair_generator_files_path.mkdir(exist_ok=True)
+
+    if click_context and click_context.obj["no_trees"]:
+        return
 
     tree_path = pair_generator_files_path / Path("GCF_trees")
     tree_path.mkdir(exist_ok=True)
@@ -247,7 +252,7 @@ def legacy_generate_bin_output(
 
     click_context = click.get_current_context(silent=True)
 
-    if click_context and click_context.obj["no_interactive"]:
+    if click_context and click_context.obj["no_output"]:
         return
 
     families_members = generate_bs_families_members(
@@ -255,6 +260,11 @@ def legacy_generate_bin_output(
     )
     write_clustering_file(run, cutoff, pair_generator)
     write_cutoff_network_file(run, cutoff, pair_generator)
+
+    if click_context and click_context.obj["no_trees"]:
+        logging.info("Skipping GCF alignments and trees generation")
+        return
+
     generate_newick_trees(run, cutoff, pair_generator, families_members)
 
 
@@ -322,7 +332,7 @@ def write_record_annotations_file(run, cutoff, all_bgc_records) -> None:
 
     click_context = click.get_current_context(silent=True)
 
-    if click_context and click_context.obj["no_interactive"]:
+    if click_context and click_context.obj["no_output"]:
         return
 
     run_id = run["run_id"]
@@ -527,7 +537,7 @@ def write_full_network_file(run: dict, all_bgc_records: list[BGCRecord]) -> None
 
     click_context = click.get_current_context(silent=True)
 
-    if click_context and click_context.obj["no_interactive"]:
+    if click_context and click_context.obj["no_output"]:
         return
 
     output_dir = run["output_dir"]
