@@ -540,10 +540,11 @@ def extend_greedy(pair: RecordPair) -> None:
     logging.debug("before greedy extend:")
     logging.debug(pair.comparable_region)
 
-    a_cds = list(pair.record_a.get_cds())
-    b_cds = list(pair.record_b.get_cds())
     a_domains = list(pair.record_a.get_hsps())
     b_domains = list(pair.record_b.get_hsps())
+
+    if pair.comparable_region.reverse:
+        b_domains = b_domains[::-1]
 
     # index of domain to cds position
     a_index = get_target_indexes(a_domains)
@@ -551,9 +552,9 @@ def extend_greedy(pair: RecordPair) -> None:
 
     common_domains = set(a_index.keys()).intersection(set(b_index.keys()))
 
-    a_cds_min = len(a_cds)
+    a_cds_min = len(list(pair.record_a.get_cds()))
     a_cds_max = 0
-    b_cds_min = len(b_cds)
+    b_cds_min = len(list(pair.record_b.get_cds()))
     b_cds_max = 0
 
     a_domain_min = len(a_domains)

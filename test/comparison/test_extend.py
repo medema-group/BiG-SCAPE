@@ -297,7 +297,7 @@ class TestExtendUtilities(unittest.TestCase):
         self.assertEqual(expected_result, actual_result)
 
 
-class TestScoreExtend(unittest.TestCase):
+class TestExtendLegacy(unittest.TestCase):
     """Tests for score extension"""
 
     def test_get_target_indexes(self):
@@ -846,6 +846,8 @@ class TestExtendGlocal(unittest.TestCase):
 
         self.assertTrue(all(conditions))
 
+
+class TestExtendGreedy(unittest.TestCase):
     def test_extend_greedy(self):
         """Tests greedy extension
 
@@ -883,6 +885,29 @@ class TestExtendGlocal(unittest.TestCase):
 
         self.assertTrue(all(conditions))
 
+    def test_extend_greedy_rev(self):
+        """Tests greedy extension on a reverse pair"""
+
+        a_cds, b_cds = generate_mock_cds_lists(11, 24, [1, 4, 9], [11, 13, 14], True)
+        record_a = generate_mock_region(a_cds)
+        record_b = generate_mock_region(b_cds)
+        pair = big_scape.comparison.record_pair.RecordPair(record_a, record_b)
+        pair.comparable_region.reverse = True
+
+        bs_comp.extend.extend_greedy(pair)
+        expected_greedy = bs_comp.ComparableRegion(1, 10, 11, 15, 1, 10, 11, 15, True)
+        conditions = [
+            pair.comparable_region == expected_greedy,  # tests cds start/stops
+            pair.comparable_region.domain_a_start == expected_greedy.domain_a_start,
+            pair.comparable_region.domain_b_start == expected_greedy.domain_b_start,
+            pair.comparable_region.domain_a_stop == expected_greedy.domain_a_stop,
+            pair.comparable_region.domain_b_stop == expected_greedy.domain_b_stop,
+        ]
+
+        self.assertTrue(all(conditions))
+
+
+class TestExtendSimple(unittest.TestCase):
     def test_match_extend(self):
         """Tests the new match extend implementation
 
