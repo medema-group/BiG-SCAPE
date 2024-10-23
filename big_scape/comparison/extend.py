@@ -614,12 +614,23 @@ def extend_simple_match(pair: RecordPair, match, gap):
 
     # so we'll do a loop through cds and through domains to keep track of everything
     for cds_idx, cds in enumerate(pair.record_a.get_cds_with_domains()):
-        for domain in cds.hsps:
-            a_domains.append((domain, cds_idx))
+        if cds.strand == 1:
+            a_domains.extend([(domain, cds_idx) for domain in cds.hsps])
+        else:
+            a_domains.extend([(domain, cds_idx) for domain in cds.hsps[::-1]])
 
-    for cds_idx, cds in enumerate(pair.record_b.get_cds_with_domains()):
-        for domain in cds.hsps:
-            b_domains.append((domain, cds_idx))
+    b_cds = list(pair.record_b.get_cds_with_domains())
+
+    if pair.comparable_region.reverse:
+        b_cds = b_cds[::-1]
+
+    for cds_idx, cds in enumerate(b_cds):
+        if (cds.strand == 1 and not pair.comparable_region.reverse) or (
+            cds.strand == -1 and pair.comparable_region.reverse
+        ):
+            b_domains.extend([(domain, cds_idx) for domain in cds.hsps])
+        else:
+            b_domains.extend([(domain, cds_idx) for domain in cds.hsps[::-1]])
 
     # get the common domains
     common_domains = set([a[0] for a in a_domains]).intersection(

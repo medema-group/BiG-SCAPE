@@ -999,3 +999,47 @@ class TestExtendSimple(unittest.TestCase):
             pair.comparable_region.domain_b_stop,
             expected_comparable_region.domain_b_stop,
         )
+
+    def test_extend_simple_match_multi_domain_rev_stranded(self):
+        """Tests simple match on multidomain cdss, reverse pair, strand-aware"""
+        # brackets indicate a cds with multiple domains
+        #
+        #          vvvvv complementary strand
+        # A:  [XX][XXXXB]X[A BC]D EX XXXX
+        # B: XXXXXXXXXXX X A[BC]E[DXXXX]X[XXXX]
+        #
+        a_cds, b_cds = generate_mock_cds_lists(
+            10, 18, [3, 3, 3, 4, 5], [12, 13, 13, 15, 14], True
+        )
+        a_cds[0].hsps.append(a_cds[0].hsps[0])
+        a_cds[1].hsps = [a_cds[3].hsps[1]] + [a_cds[0].hsps[0]] * 4
+        a_cds[1].strand = -1
+        b_cds[0].hsps.extend([b_cds[0].hsps[0]] * 3)
+        b_cds[2].hsps = [b_cds[0].hsps[0]] * 4 + b_cds[2].hsps
+        record_a = generate_mock_region(a_cds)
+        record_b = generate_mock_region(b_cds)
+        pair = big_scape.comparison.record_pair.RecordPair(record_a, record_b)
+        pair.comparable_region = bs_comp.ComparableRegion(
+            3, 4, 12, 14, 8, 11, 12, 15, True
+        )
+        bs_comp.extend.extend_simple_match(pair, 5, -2)
+        expected_comparable_region = bs_comp.ComparableRegion(
+            1, 6, 12, 16, 6, 13, 12, 17, True
+        )
+        self.assertEqual(pair.comparable_region, expected_comparable_region)
+        self.assertEqual(
+            pair.comparable_region.domain_a_start,
+            expected_comparable_region.domain_a_start,
+        )
+        self.assertEqual(
+            pair.comparable_region.domain_b_start,
+            expected_comparable_region.domain_b_start,
+        )
+        self.assertEqual(
+            pair.comparable_region.domain_a_stop,
+            expected_comparable_region.domain_a_stop,
+        )
+        self.assertEqual(
+            pair.comparable_region.domain_b_stop,
+            expected_comparable_region.domain_b_stop,
+        )
