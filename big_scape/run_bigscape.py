@@ -281,16 +281,12 @@ def run_bigscape(run: dict) -> None:
         mix_bin = bs_comparison.generate_mix_bin(all_bgc_records, run)
 
         for cutoff in run["gcf_cutoffs"]:
-            # cull singletons ref only
-            mix_bin.cull_singletons(cutoff, ref_only=True)
-            if not run["include_singletons"]:
-                # cull all records, ref and query
-                mix_bin.cull_singletons(cutoff, ref_only=False)
-                if len(mix_bin.record_ids) == 0:
-                    logging.info(
-                        f"Network {mix_bin.label} with cutoff {cutoff} is empty after culling singletons"
-                    )
-                    continue
+            mix_bin.cull_singletons(cutoff, run["run_id"])
+            if len(mix_bin.record_ids) == 0:
+                logging.info(
+                    f"Network '{mix_bin.label}' with cutoff {cutoff} is empty after culling singletons"
+                )
+                continue
             legacy_prepare_bin_output(run, cutoff, mix_bin)
             legacy_generate_bin_output(run, cutoff, mix_bin)
 
@@ -301,14 +297,12 @@ def run_bigscape(run: dict) -> None:
 
         for bin in legacy_class_bins:
             for cutoff in run["gcf_cutoffs"]:
-                bin.cull_singletons(cutoff, ref_only=True)
-                if not run["include_singletons"]:
-                    bin.cull_singletons(cutoff)
-                    if len(bin.record_ids) == 0:
-                        logging.info(
-                            f"Network '{bin.label}' with cutoff {cutoff} is empty after culling singletons"
-                        )
-                        continue
+                bin.cull_singletons(cutoff, run["run_id"])
+                if len(bin.record_ids) == 0:
+                    logging.info(
+                        f"Network '{bin.label}' with cutoff {cutoff} is empty after culling singletons"
+                    )
+                    continue
                 legacy_prepare_bin_output(run, cutoff, bin)
                 legacy_generate_bin_output(run, cutoff, bin)
 
@@ -319,14 +313,12 @@ def run_bigscape(run: dict) -> None:
 
         for bin in as_class_bins:
             for cutoff in run["gcf_cutoffs"]:
-                bin.cull_singletons(cutoff, ref_only=True)
-                if not run["include_singletons"]:
-                    bin.cull_singletons(cutoff)
-                    if len(bin.record_ids) == 0:
-                        logging.info(
-                            f"Network '{bin.label}' with cutoff {cutoff} is empty after culling singletons"
-                        )
-                        continue
+                bin.cull_singletons(cutoff, run["run_id"])
+                if len(bin.record_ids) == 0:
+                    logging.info(
+                        f"Network '{bin.label}' with cutoff {cutoff} is empty after culling singletons"
+                    )
+                    continue
                 legacy_prepare_bin_output(run, cutoff, bin)
                 legacy_generate_bin_output(run, cutoff, bin)
 

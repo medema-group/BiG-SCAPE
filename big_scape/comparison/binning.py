@@ -167,13 +167,13 @@ class RecordPairGenerator:
         if None in self.record_ids:
             raise ValueError("Record in bin has no db id!")
 
-    def cull_singletons(self, cutoff: float, ref_only: bool = False):
-        """Culls singletons for given cutoff, i.e. records which have either no edges
-        in the database, or all edges have a distance above/equal to the cutoff
+    def cull_singletons(self, cutoff: float, run_id: int):
+        """Culls singletons for given cutoff, i.e. records that do not occur in any
+        connected components
 
         Args:
             cutoff (float): distance cuttoff
-            ref_only (False): if true only reference singletons are culled
+            run_id (int): id of the current run
 
         Raises:
             RuntimeError: DB.metadata is None
@@ -182,45 +182,24 @@ class RecordPairGenerator:
         if not DB.metadata:
             raise RuntimeError("DB.metadata is None")
 
-        distance_table = DB.metadata.tables["distance"]
+        cc_table = DB.metadata.tables["connected_component"]
 
-        # get all distances/edges in the table for the records in this bin and
-        # with distances below the cutoff
+        # get all record ids that occur in a connected component
         select_statement = (
-            select(distance_table.c.record_a_id, distance_table.c.record_b_id)
-            .where(distance_table.c.record_a_id.in_(self.record_ids))
-            .where(distance_table.c.record_b_id.in_(self.record_ids))
-            .where(distance_table.c.distance < cutoff)
-            .where(distance_table.c.edge_param_id == self.edge_param_id)
+            select(cc_table.c.record_id)
+            .where(cc_table.c.cutoff == cutoff)
+            .where(cc_table.c.bin_label == self.label)
+            .where(cc_table.c.run_id == run_id)
         )
 
-        edges = DB.execute(select_statement).fetchall()
+        connected_records = set(DB.execute(select_statement).scalars())
 
-        # get all record_ids in the edges
-        edge_record_ids: set[int] = set()
-        for edge in edges:
-            edge_record_ids.update(edge)
-
-        if ref_only:
-            singleton_record_ids = self.record_ids - edge_record_ids
-            self.source_records = [
-                record
-                for record in self.source_records
-                if (record._db_id in edge_record_ids)
-                or (
-                    record._db_id in singleton_record_ids
-                    and record.parent_gbk.source_type != SOURCE_TYPE.REFERENCE
-                )
-            ]
-            self.record_ids = {record._db_id for record in self.source_records}
-
-        else:
-            self.record_ids = edge_record_ids
-            self.source_records = [
-                record
-                for record in self.source_records
-                if record._db_id in edge_record_ids
-            ]
+        self.record_ids = connected_records
+        self.source_records = [
+            record
+            for record in self.source_records
+            if record._db_id in connected_records
+        ]
 
     def get_query_source_record_ids(self) -> list[int]:
         """Return a list of record ids of all QUERY source type records in this bin
