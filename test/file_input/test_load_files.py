@@ -141,7 +141,6 @@ class TestLoadGBK(TestCase):
             "cds_overlap_cutoff": None,
             "cores": None,
             "classify": False,
-            "legacy_classify": False,
             "force_gbk": False,
         }
 
@@ -164,7 +163,6 @@ class TestLoadGBK(TestCase):
             "cds_overlap_cutoff": None,
             "cores": None,
             "classify": False,
-            "legacy_classify": False,
         }
 
         with self.assertRaises(FileNotFoundError):
@@ -182,7 +180,6 @@ class TestLoadGBK(TestCase):
             "cds_overlap_cutoff": None,
             "cores": None,
             "classify": False,
-            "legacy_classify": False,
         }
         with self.assertRaises(IsADirectoryError):
             load_gbk(gbk_file_path, SOURCE_TYPE.QUERY, run)
@@ -202,7 +199,6 @@ class TestLoadGBK(TestCase):
             "cds_overlap_cutoff": None,
             "cores": None,
             "classify": False,
-            "legacy_classify": False,
         }
         gbk = load_gbk(gbk_file_path, SOURCE_TYPE.QUERY, run)
 
@@ -219,7 +215,6 @@ class TestLoadGBK(TestCase):
             "cds_overlap_cutoff": None,
             "cores": None,
             "classify": False,
-            "legacy_classify": False,
         }
 
         load_result = load_dataset_folder(run["input_dir"], run, SOURCE_TYPE.QUERY)
@@ -240,7 +235,6 @@ class TestLoadGBK(TestCase):
             "cds_overlap_cutoff": None,
             "cores": None,
             "classify": False,
-            "legacy_classify": False,
         }
 
         load_result = load_dataset_folder(run["input_dir"], run, SOURCE_TYPE.QUERY)
@@ -339,7 +333,6 @@ class TestLoadGBK(TestCase):
             "cds_overlap_cutoff": None,
             "cores": None,
             "classify": False,
-            "legacy_classify": False,
             "record_type": bs_enums.genbank.RECORD_TYPE.PROTO_CLUSTER,
         }
 
@@ -367,7 +360,6 @@ class TestLoadGBK(TestCase):
             "cds_overlap_cutoff": None,
             "cores": None,
             "classify": False,
-            "legacy_classify": False,
             "record_type": bs_enums.genbank.RECORD_TYPE.PROTO_CLUSTER,
             "query_record_number": 1,
         }

@@ -869,11 +869,10 @@ class TestComparison(TestCase):
             "alignment_mode": bs_enums.ALIGNMENT_MODE.AUTO,
             "extend_strategy": bs_enums.EXTEND_STRATEGY.LEGACY,
             "legacy_weights": True,
-            "classify": bs_enums.CLASSIFY_MODE.CLASS,
+            "classify": bs_enums.CLASSIFY_MODE.LEGACY,
             "record_type": bs_enums.RECORD_TYPE.REGION,
             "hybrids_off": False,
             "cores": 1,
-            "legacy_classify": True,
             "config_file_path": Path("config.yml"),
         }
 
@@ -921,11 +920,10 @@ class TestComparison(TestCase):
             "alignment_mode": bs_enums.ALIGNMENT_MODE.AUTO,
             "extend_strategy": bs_enums.EXTEND_STRATEGY.LEGACY,
             "legacy_weights": True,
-            "classify": bs_enums.CLASSIFY_MODE.CLASS,
+            "classify": bs_enums.CLASSIFY_MODE.LEGACY,
             "record_type": bs_enums.RECORD_TYPE.REGION,
             "hybrids_off": True,
             "cores": 1,
-            "legacy_classify": True,
             "config_file_path": Path("config.yml"),
         }
 

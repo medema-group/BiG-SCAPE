@@ -41,7 +41,6 @@ class TestGBK(TestCase):
             "cds_overlap_cutoff": None,
             "cores": None,
             "classify": False,
-            "legacy_classify": False,
         }
 
         gbk = GBK.parse(gbk_file_path, SOURCE_TYPE.QUERY, run)
@@ -63,7 +62,6 @@ class TestGBK(TestCase):
             "cds_overlap_cutoff": None,
             "cores": None,
             "classify": False,
-            "legacy_classify": False,
             "force_gbk": False,
         }
         gbk = GBK.parse(gbk_file_path, SOURCE_TYPE.QUERY, run)
@@ -85,7 +83,6 @@ class TestGBK(TestCase):
             "cds_overlap_cutoff": None,
             "cores": None,
             "classify": False,
-            "legacy_classify": False,
             "force_gbk": False,
         }
         gbk = GBK.parse(gbk_file_path, SOURCE_TYPE.QUERY, run)
@@ -258,7 +255,6 @@ class TestGBK(TestCase):
             "cds_overlap_cutoff": None,
             "cores": None,
             "classify": False,
-            "legacy_classify": False,
             "force_gbk": False,
         }
         self.assertRaises(
@@ -279,7 +275,6 @@ class TestGBK(TestCase):
             "cds_overlap_cutoff": None,
             "cores": None,
             "classify": False,
-            "legacy_classify": False,
         }
         gbk = GBK.parse(gbk_file_path, SOURCE_TYPE.QUERY, run)
 
@@ -297,7 +292,6 @@ class TestGBK(TestCase):
             "cds_overlap_cutoff": None,
             "cores": None,
             "classify": False,
-            "legacy_classify": False,
         }
         gbk = GBK.parse(gbk_file_path, SOURCE_TYPE.MIBIG, run)
 
@@ -315,7 +309,6 @@ class TestGBK(TestCase):
             "cds_overlap_cutoff": None,
             "cores": None,
             "classify": False,
-            "legacy_classify": False,
         }
         gbk = GBK.parse(gbk_file_path, SOURCE_TYPE.MIBIG, run)
 
@@ -335,7 +328,6 @@ class TestGBK(TestCase):
             "cds_overlap_cutoff": None,
             "cores": None,
             "classify": False,
-            "legacy_classify": False,
         }
         self.assertRaises(
             InvalidGBKError, GBK.parse, gbk_file_path, SOURCE_TYPE.QUERY, run
@@ -354,7 +346,6 @@ class TestGBK(TestCase):
             "cds_overlap_cutoff": None,
             "cores": None,
             "classify": False,
-            "legacy_classify": False,
         }
         self.assertRaises(
             InvalidGBKError, GBK.parse, gbk_file_path, SOURCE_TYPE.QUERY, run
@@ -373,7 +364,6 @@ class TestGBK(TestCase):
             "cds_overlap_cutoff": None,
             "cores": None,
             "classify": False,
-            "legacy_classify": False,
         }
 
         with self.assertLogs(level=logging.INFO) as cm:
@@ -399,7 +389,6 @@ class TestGBK(TestCase):
             "cds_overlap_cutoff": None,
             "cores": None,
             "classify": False,
-            "legacy_classify": False,
         }
 
         self.assertRaises(
@@ -419,7 +408,6 @@ class TestGBK(TestCase):
             "cds_overlap_cutoff": None,
             "cores": None,
             "classify": False,
-            "legacy_classify": False,
         }
 
         self.assertRaises(
@@ -437,7 +425,6 @@ class TestGBK(TestCase):
             "cds_overlap_cutoff": None,
             "cores": None,
             "classify": False,
-            "legacy_classify": False,
         }
 
         self.assertRaises(
@@ -478,7 +465,6 @@ class TestGBK(TestCase):
             "cds_overlap_cutoff": None,
             "cores": None,
             "classify": False,
-            "legacy_classify": False,
         }
         gbk = GBK.parse(gbk_file_path, SOURCE_TYPE.QUERY, run)
 
@@ -497,7 +483,6 @@ class TestGBK(TestCase):
             "cds_overlap_cutoff": None,
             "cores": None,
             "classify": False,
-            "legacy_classify": False,
         }
         gbk = GBK.parse(gbk_file_path, SOURCE_TYPE.QUERY, run)
 
@@ -515,7 +500,6 @@ class TestGBK(TestCase):
             "cds_overlap_cutoff": None,
             "cores": None,
             "classify": False,
-            "legacy_classify": False,
         }
         gbk = GBK.parse(gbk_file_path, SOURCE_TYPE.MIBIG, run)
 
@@ -534,7 +518,6 @@ class TestGBK(TestCase):
             "cds_overlap_cutoff": None,
             "cores": None,
             "classify": False,
-            "legacy_classify": False,
         }
         gbk = GBK.parse(gbk_file_path, SOURCE_TYPE.QUERY, run)
 
@@ -554,7 +537,6 @@ class TestGBK(TestCase):
             "cds_overlap_cutoff": None,
             "cores": None,
             "classify": False,
-            "legacy_classify": False,
         }
         gbk = GBK.parse(gbk_file_path, SOURCE_TYPE.QUERY, run)
 
@@ -649,7 +631,6 @@ class TestGBK(TestCase):
             "cds_overlap_cutoff": None,
             "cores": None,
             "classify": False,
-            "legacy_classify": False,
         }
 
         gbk = GBK.parse(gbk_file_path, SOURCE_TYPE.QUERY, run)
@@ -677,7 +658,6 @@ class TestGBK(TestCase):
             "cds_overlap_cutoff": None,
             "cores": None,
             "classify": False,
-            "legacy_classify": False,
         }
 
         gbk = GBK.parse(gbk_file_path, SOURCE_TYPE.QUERY, run)
@@ -728,7 +708,6 @@ class TestGBK(TestCase):
             "cds_overlap_cutoff": None,
             "cores": None,
             "classify": False,
-            "legacy_classify": False,
         }
 
         gbk = GBK.parse(gbk_file_path, SOURCE_TYPE.QUERY, run)
@@ -766,7 +745,6 @@ class TestGBK(TestCase):
             "cds_overlap_cutoff": None,
             "cores": None,
             "classify": False,
-            "legacy_classify": False,
             "force_gbk": True,
         }
 
