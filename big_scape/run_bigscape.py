@@ -335,7 +335,7 @@ def run_bigscape(run: dict) -> None:
             )
 
             query_bin = bs_comparison.ConnectedComponentPairGenerator(
-                cc_cutoff[cutoff], "Query"
+                cc_cutoff[cutoff], query_bin.label
             )
             query_bin.add_records(
                 [record for record in query_records if record is not None]
