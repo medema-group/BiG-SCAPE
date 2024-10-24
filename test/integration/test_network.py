@@ -509,7 +509,7 @@ class TestComparison(TestCase):
 
         run = {
             "record_type": bs_enums.RECORD_TYPE.REGION,
-            "legacy_classify": True,
+            "classify": bs_enums.CLASSIFY_MODE.LEGACY,
             "alignment_mode": bs_enums.ALIGNMENT_MODE.AUTO,
             "extend_strategy": bs_enums.EXTEND_STRATEGY.LEGACY,
             "hybrids_off": False,
@@ -569,7 +569,7 @@ class TestComparison(TestCase):
 
         run = {
             "record_type": bs_enums.RECORD_TYPE.REGION,
-            "legacy_classify": True,
+            "classify": bs_enums.CLASSIFY_MODE.LEGACY,
             "alignment_mode": bs_enums.ALIGNMENT_MODE.AUTO,
             "extend_strategy": bs_enums.EXTEND_STRATEGY.LEGACY,
             "hybrids_off": False,

@@ -47,7 +47,6 @@ class TestLoadFiles(TestCase):
             "cds_overlap_cutoff": None,
             "cores": None,
             "classify": False,
-            "legacy_classify": False,
         }
 
         if not run["db_path"].exists():
@@ -74,7 +73,6 @@ class TestLoadFiles(TestCase):
             "cds_overlap_cutoff": None,
             "cores": None,
             "classify": False,
-            "legacy_classify": False,
         }
 
         input_gbks = []
@@ -118,7 +116,6 @@ class TestLoadFiles(TestCase):
             "cds_overlap_cutoff": None,
             "cores": None,
             "classify": False,
-            "legacy_classify": False,
             "force_gbk": False,
         }
 
@@ -176,7 +173,6 @@ class TestLoadFiles(TestCase):
             "cds_overlap_cutoff": None,
             "cores": None,
             "classify": False,
-            "legacy_classify": False,
             "force_gbk": False,
         }
 
@@ -233,7 +229,6 @@ class TestLoadFiles(TestCase):
             "cds_overlap_cutoff": None,
             "cores": None,
             "classify": False,
-            "legacy_classify": False,
             "force_gbk": False,
         }
 

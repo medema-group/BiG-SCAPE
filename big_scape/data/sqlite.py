@@ -96,6 +96,7 @@ class DB:
         )
         DB.connection = DB.engine.connect()
 
+    @staticmethod
     def open_disk_connection(db_path: Path) -> None:
         if DB.opened():
             raise DBAlreadyOpenError()
@@ -399,13 +400,9 @@ class DB:
                 mibig_version=run["mibig_version"] if run["mibig_version"] else "None",
                 record_type=run["record_type"].name.title(),
                 classify=(
-                    "Legacy Groups"
-                    if run["legacy_classify"]
-                    else (
-                        run["classify"].name.title()
-                        if run["classify"]
-                        else "Not Classify"
-                    )
+                    f'{run["classify"].name.title()} Groups'
+                    if run["classify"]
+                    else "No Classify"
                 ),
                 weights="Legacy Weights" if run["legacy_weights"] else "Mix",
                 alignment_mode=run["alignment_mode"].name.title(),

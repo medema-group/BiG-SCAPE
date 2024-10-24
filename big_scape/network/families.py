@@ -305,7 +305,7 @@ def run_family_assignments(
     bins = bin_generator(all_bgc_records, run)
 
     # in the case of the mix bin generator, the function returns a single
-    # RecordPairGenerator object, in the classify/legacy_classify case, it
+    # RecordPairGenerator object, in the classify case, it
     # returns an Iterator of RecordPairGenerator objects
     if isinstance(bins, bs_comparison.RecordPairGenerator):
         bins = [bins]

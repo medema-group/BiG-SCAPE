@@ -1,4 +1,5 @@
 """Contains tests for the GBK class and functions"""
+
 # from python
 from unittest import TestCase
 from pathlib import Path
@@ -88,7 +89,6 @@ class TestRegion(TestCase):
             "cds_overlap_cutoff": None,
             "cores": None,
             "classify": False,
-            "legacy_classify": False,
         }
 
         parent_gbk = GBK.parse(gbk_file_path, SOURCE_TYPE.QUERY, run)

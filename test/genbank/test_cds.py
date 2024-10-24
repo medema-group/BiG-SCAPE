@@ -62,7 +62,6 @@ class TestCDS(TestCase):
             "cds_overlap_cutoff": None,
             "cores": None,
             "classify": False,
-            "legacy_classify": False,
         }
         parent_gbk = GBK.parse(parent_gbk_file_path, SOURCE_TYPE.QUERY, run)
 
@@ -91,7 +90,6 @@ class TestCDS(TestCase):
             "cds_overlap_cutoff": None,
             "cores": None,
             "classify": False,
-            "legacy_classify": False,
         }
         parent_gbk = GBK.parse(parent_gbk_file_path, SOURCE_TYPE.QUERY, run)
 
@@ -117,7 +115,6 @@ class TestCDS(TestCase):
             "cds_overlap_cutoff": None,
             "cores": None,
             "classify": False,
-            "legacy_classify": False,
         }
         parent_gbk = GBK.parse(parent_gbk_file_path, SOURCE_TYPE.QUERY, run)
 
@@ -135,7 +132,6 @@ class TestCDS(TestCase):
             "cds_overlap_cutoff": None,
             "cores": None,
             "classify": False,
-            "legacy_classify": False,
         }
         gbk_file_path = Path("test/test_data/valid_gbk_folder/valid_input_region.gbk")
 
@@ -425,7 +421,6 @@ class TestCDS(TestCase):
             "cds_overlap_cutoff": None,
             "cores": None,
             "classify": False,
-            "legacy_classify": False,
         }
         parent_gbk = GBK.parse(parent_gbk_file_path, SOURCE_TYPE.QUERY, run)
         cds_1 = parent_gbk.genes[1]
@@ -457,7 +452,6 @@ class TestCDS(TestCase):
             "cds_overlap_cutoff": None,
             "cores": None,
             "classify": False,
-            "legacy_classify": False,
         }
         parent_gbk = GBK.parse(parent_gbk_file_path, SOURCE_TYPE.QUERY, run)
         cds_0 = parent_gbk.genes[0]
@@ -489,7 +483,6 @@ class TestCDS(TestCase):
             "cds_overlap_cutoff": None,
             "cores": None,
             "classify": False,
-            "legacy_classify": False,
         }
         parent_gbk = GBK.parse(parent_gbk_file_path, SOURCE_TYPE.QUERY, run)
 
@@ -529,7 +522,6 @@ class TestCDS(TestCase):
             "cds_overlap_cutoff": None,
             "cores": None,
             "classify": False,
-            "legacy_classify": False,
         }
         parent_gbk = GBK.parse(parent_gbk_file_path, SOURCE_TYPE.QUERY, run)
 
@@ -564,7 +556,6 @@ class TestCDS(TestCase):
             "cds_overlap_cutoff": None,
             "cores": None,
             "classify": False,
-            "legacy_classify": False,
         }
 
         parent_gbk_mibig = GBK.parse(
