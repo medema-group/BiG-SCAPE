@@ -6,15 +6,11 @@ BiG-SCAPE
 PI: Marnix Medema                   marnix.medema@wur.nl
 
 Maintainers:
-Jorge Navarro                       jorge.navarromunoz@wur.nl
 Arjan Draisma                       arjan.draisma@wur.nl
 Catarina Loureiro                   catarina.salesesantosloureiro@wur.nl
 Nico Louwen                         nico.louwen@wur.nl
 
 Developers:
-Jorge Navarro                       jorge.navarromunoz@wur.nl
-Satria Kautsar                      sakautsar@lbl.gov
-Emmanuel (Emzo) de los Santos       E.De-Los-Santos@warwick.ac.uk
 Arjan Draisma                       arjan.draisma@wur.nl
 Catarina Loureiro                   catarina.salesesantosloureiro@wur.nl
 Nico Louwen                         nico.louwen@wur.nl
