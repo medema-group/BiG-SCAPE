@@ -11,6 +11,7 @@ from big_scape.diagnostics import init_logger, init_logger_file
 # from this module
 from .cli_common_options import common_all, common_cluster_query
 from .cli_validations import (
+    validate_classify,
     validate_output_paths,
     validate_disk_only,
     validate_query_bgc,
@@ -24,6 +25,21 @@ from .cli_validations import (
 @click.command()
 @common_all
 @common_cluster_query
+@click.option(
+    "--classify",
+    type=click.Choice(["none", "class", "category"]),
+    default="none",
+    callback=validate_classify,
+    help=(
+        "By default BiG-SCAPE will query against any other supplied BGCs regardless of "
+        "class/category. Instead, select 'class' or 'category' to run analyses on "
+        "class-based bins. Only gene clusters with the same class/category will be "
+        "compared. Can be used in combination with '--legacy_weights' for gbks "
+        "produced by antiSMASH version 6 or higher. For older antiSMASH versions, "
+        "deselect '--legacy_weights', leading to the use of a generic 'mix' weight. "
+        "(default: none)"
+    ),
+)
 @click.option(
     "-q",
     "--query_bgc_path",

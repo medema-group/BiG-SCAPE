@@ -10,6 +10,7 @@ from big_scape.diagnostics import init_logger, init_logger_file
 # from this module
 from .cli_common_options import common_all, common_cluster_query
 from .cli_validations import (
+    validate_classify,
     validate_output_paths,
     validate_disk_only,
     validate_binning_cluster_workflow,
@@ -22,6 +23,36 @@ from .cli_validations import (
 @click.command()
 @common_all
 @common_cluster_query
+# binning parameters
+@click.option(
+    "--classify",
+    type=click.Choice(["none", "class", "category", "legacy"]),
+    default="class",
+    callback=validate_classify,
+    help=(
+        "Use antiSMASH/BGC 'class' or 'category' to run analyses on class-based bins. "
+        "Only gene clusters with the same class/category will be compared. Can be used "
+        "in combination with '--legacy_weights' for gbks produced by antiSMASH version "
+        "6 or higher. For older antiSMASH versions, either (1) deselect "
+        "'--legacy_weights', leading to the use of a generic 'mix' weight or (2) use "
+        "'--classify legacy' which is based on BiG-SCAPE v1 predefined groups: PKS1, "
+        "PKSOther, NRPS, NRPS-PKS-hybrid, RiPP, Saccharide, Terpene, Others, and will "
+        "automatically use complementary '--legacy_weights'. This feature is available "
+        "for backwards compatibility up to antiSMASH version 7. For higher antiSMASH "
+        "versions, use at your own risk, as BGC classes may have changed. All "
+        "antiSMASH classes that this legacy mode does not recognize will be grouped in "
+        "'others'. (default: class)"
+    ),
+)
+@click.option(
+    "--mix",
+    is_flag=True,
+    help=(
+        "Calculate distances using a 'mix' bin, wherein no classification is applied. "
+        "This will do an all-vs-all comparison, and is likely going to take a long time. "
+        "This bin will use weights from the 'mix' weights distribution."
+    ),
+)
 # comparison parameters
 @click.option(
     "--hybrids_off",
@@ -31,34 +62,7 @@ from .cli_validations import (
         "subclass instead of a hybrid class/network (e.g. a 'terpene-nrps' BGC "
         "would be added to both the terpene and NRPS classes/networks instead of "
         "the terpene.nrps network). "
-        "Only works if --classify/--legacy_classify is selected."
-    ),
-)
-# binning parameters
-@click.option(
-    "--mix",
-    is_flag=True,
-    help=(
-        "Calculate distances using a 'mix' bin, wherein no classification is applied. "
-        "This will do an all-vs-all comparison, and is likely going to take a long time. "
-        "This bin will use weights from the 'mix' weights distribution. Warning: these "
-        "weights are not recommended for use with the record types protocluster/protocore, "
-        "as they have been optimized and validated only for the 'region' record type."
-    ),
-)
-@click.option(
-    "--legacy_classify",
-    is_flag=True,
-    help=(
-        "Does not use antiSMASH BGC classes to run analyses on "
-        "class-based bins, instead it uses BiG-SCAPE v1 predefined groups: "
-        "PKS1, PKSOther, NRPS, NRPS-PKS-hybrid, RiPP, Saccharide, Terpene, Others. "
-        "Will also use BiG-SCAPE v1 legacy_weights for distance calculations. "
-        "This feature is available for backwards compatibility with "
-        "antiSMASH versions up to v7. For higher antiSMASH versions, use "
-        "at your own risk, as BGC classes may have changed. All antiSMASH "
-        "classes that this legacy mode does not recognize will be grouped in "
-        "'others'."
+        "Only works if any --classify mode is selected."
     ),
 )
 # networking parameters

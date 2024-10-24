@@ -199,14 +199,18 @@ def run_bigscape(run: dict) -> None:
 
     # legacy_classify
 
-    if run["legacy_classify"] and not run["query_bgc_path"]:
+    if run["classify"] == bs_enums.CLASSIFY_MODE.LEGACY and not run["query_bgc_path"]:
         bs_legacy_classify.calculate_distances_legacy_classify(run, all_bgc_records)
 
         bs_data.DB.commit()
 
     # classify
 
-    if run["classify"] and not run["query_bgc_path"]:
+    if (
+        run["classify"]
+        and run["classify"] != bs_enums.CLASSIFY_MODE.LEGACY
+        and not run["query_bgc_path"]
+    ):
         bs_classify.calculate_distances_classify(run, all_bgc_records)
 
         bs_data.DB.commit()
@@ -232,14 +236,18 @@ def run_bigscape(run: dict) -> None:
 
     # legacy_classify
 
-    if run["legacy_classify"] and not run["query_bgc_path"]:
+    if run["classify"] == bs_enums.CLASSIFY_MODE.LEGACY and not run["query_bgc_path"]:
         bs_families.run_family_assignments(
             run, bs_comparison.legacy_bin_generator, all_bgc_records
         )
 
     # classify
 
-    if run["classify"] and not run["query_bgc_path"]:
+    if (
+        run["classify"]
+        and run["classify"] != bs_enums.CLASSIFY_MODE.LEGACY
+        and not run["query_bgc_path"]
+    ):
         bs_families.run_family_assignments(
             run, bs_comparison.as_class_bin_generator, all_bgc_records
         )
@@ -296,7 +304,7 @@ def run_bigscape(run: dict) -> None:
 
     # legacy_classify
 
-    if run["legacy_classify"] and not run["query_bgc_path"]:
+    if run["classify"] == bs_enums.CLASSIFY_MODE.LEGACY and not run["query_bgc_path"]:
         legacy_class_bins = bs_comparison.legacy_bin_generator(all_bgc_records, run)
 
         for bin in legacy_class_bins:
@@ -314,7 +322,11 @@ def run_bigscape(run: dict) -> None:
 
     # classify
 
-    if run["classify"] and not run["query_bgc_path"]:
+    if (
+        run["classify"]
+        and run["classify"] != bs_enums.CLASSIFY_MODE.LEGACY
+        and not run["query_bgc_path"]
+    ):
         as_class_bins = bs_comparison.as_class_bin_generator(all_bgc_records, run)
 
         for bin in as_class_bins:

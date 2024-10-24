@@ -444,6 +444,27 @@ class TestGBK(TestCase):
             InvalidGBKError, GBK.parse, gbk_file_path, SOURCE_TYPE.MIBIG, run
         )
 
+    def test_as_below_6_legacy_weights(self):
+        """Tests valid combinations of classify and legacy_weights"""
+        gbk_file_path = Path(
+            "test/test_data/valid_gbk_folder/CM001015.1.cluster001.gbk"
+        )
+        run = {
+            "force_gbk": False,
+            "classify": bs_enums.CLASSIFY_MODE.LEGACY,
+            "legacy_weights": True,
+        }
+
+        # no errors for legacy + legacy_weights
+        GBK.parse(gbk_file_path, SOURCE_TYPE.MIBIG, run)
+
+        run["classify"] = bs_enums.CLASSIFY_MODE.CLASS
+
+        # error for not legacy + legacy_weights (on AS4 gbk)
+        self.assertRaises(
+            InvalidGBKError, GBK.parse, gbk_file_path, SOURCE_TYPE.MIBIG, run
+        )
+
     def test_populate_regions(self):
         """Tests whether parsing a GBK correctly populates the underlying region"""
 

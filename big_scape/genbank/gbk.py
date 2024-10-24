@@ -18,7 +18,7 @@ from Bio.SeqFeature import SeqFeature
 # from other modules
 from big_scape.errors import InvalidGBKError
 from big_scape.data import DB
-from big_scape.enums import SOURCE_TYPE
+from big_scape.enums import SOURCE_TYPE, CLASSIFY_MODE
 from big_scape.cli.config import BigscapeConfig
 
 # from this module
@@ -386,11 +386,16 @@ class GBK:
             raise InvalidGBKError()
         gbk.as_version = as_version
 
-        if int(as_version[0]) < 6 and run["classify"] and run["legacy_weights"]:
+        if (
+            int(as_version[0]) < 6
+            and run["classify"]
+            and run["classify"] != CLASSIFY_MODE.LEGACY
+            and run["legacy_weights"]
+        ):
             logging.error(
-                "The parameters --classify and --legacy_weights are not compatible with "
-                "gbks produced by antiSMASH versions under v6. You can either remove "
-                "--legacy_weights or use --legacy_classify instead."
+                "The parameters --classify 'class/category' and --legacy_weights are "
+                "not compatible with gbks produced by antiSMASH versions under v6. You "
+                "can either remove --legacy_weights or use --classify 'legacy' instead."
             )
             raise InvalidGBKError()
 

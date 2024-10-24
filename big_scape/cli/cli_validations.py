@@ -309,63 +309,46 @@ def validate_binning_cluster_workflow(ctx) -> None:
 
     # --legacy_weights needs a classification method
 
-    if (
-        ctx.obj["legacy_weights"]
-        and not ctx.obj["legacy_classify"]
-        and not ctx.obj["classify"]
-    ):
+    if ctx.obj["legacy_weights"] and not ctx.obj["classify"]:
         logging.error(
             "You have selected --legacy_weights but no classification method. "
-            "Please select --legacy_classify or --classify"
+            "Please select any --classify method"
         )
         raise click.UsageError(
             "You have selected --legacy_weights but no classification method. "
-            "Please select --legacy_classify or --classify"
+            "Please select any --classify method"
         )
 
     # running without --mix needs a classification method, otherwise no work will be done
 
-    if (
-        ctx.obj["mix"] is False
-        and ctx.obj["legacy_classify"] is False
-        and ctx.obj["classify"] is False
-    ):
+    if ctx.obj["mix"] is False and ctx.obj["classify"] is False:
         logging.error(
             "The combination of arguments you have selected for binning means no work will "
-            "be done. Please run BiG-SCAPE using --mix, or add --legacy_classify/--classify"
+            "be done. Please run BiG-SCAPE using --mix, or add any --classify method"
             " in order to enable comparisons"
         )
         raise click.UsageError(
             "The combination of arguments you have selected for binning means no work will "
-            "be done. Please run BiG-SCAPE using --mix, or add --legacy_classify/--classify"
+            "be done. Please run BiG-SCAPE using --mix, or add any --classify method"
             " in order to enable comparisons"
         )
 
-    # --legacy_classify and --classify are mutually exclusive
-    # --legacy_classify turns on --legacy_weights
+    # --classify legacy turns on --legacy_weights
 
-    if ctx.obj["legacy_classify"]:
-        if ctx.obj["classify"]:
-            logging.error(
-                "You have selected both --legacy_classify and --classify. Please select only one"
-            )
-            raise click.UsageError(
-                "You have selected both --legacy_classify and --classify. Please select only one"
-            )
-        else:
-            ctx.obj["legacy_weights"] = True
+    if ctx.obj["classify"] == bs_enums.CLASSIFY_MODE.LEGACY:
+        ctx.obj["legacy_weights"] = True
 
-    # --hybrids_off needs --legacy_classify or --classify
+    # --hybrids_off needs --classify
 
     if ctx.obj["hybrids_off"]:
-        if not (ctx.obj["classify"] or ctx.obj["legacy_classify"]):
+        if not (ctx.obj["classify"]):
             logging.error(
                 "You have selected --hybrids_off but no classification method. "
-                "Please select --classify or --legacy_classify"
+                "Please select any --classify method"
             )
             raise click.UsageError(
                 "You have selected --hybrids_off but no classification method. "
-                "Please select --classify or --legacy_classify"
+                "Please select any --classify method"
             )
 
 
@@ -377,11 +360,11 @@ def validate_binning_query_workflow(ctx) -> None:
     if ctx.obj["legacy_weights"] and not ctx.obj["classify"]:
         logging.error(
             "You have selected --legacy_weights but no classification method. "
-            "Please select --classify, or remove this parameter"
+            "Please select any --classify method, or remove this parameter"
         )
         raise click.UsageError(
             "You have selected --legacy_weights but no classification method. "
-            "Please select --classify, or remove this parameter"
+            "Please select any --classify method, or remove this parameter"
         )
 
 
