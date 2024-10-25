@@ -8,6 +8,7 @@ import click
 from big_scape.cli import cluster_cli as cluster
 from big_scape.cli import query_cli as query
 from big_scape.cli import benchmark_cli as benchmark
+from big_scape.cli.cli_config import CommandOrder
 
 
 def print_version(ctx, param, value):
@@ -17,7 +18,7 @@ def print_version(ctx, param, value):
     ctx.exit()
 
 
-@click.group(context_settings={"help_option_names": ["-h", "--help"]})
+@click.group(cls=CommandOrder, context_settings={"help_option_names": ["-h", "--help"]})
 @click.option(
     "--version", is_flag=True, callback=print_version, expose_value=False, is_eager=True
 )
@@ -28,6 +29,7 @@ def cli(ctx, *args, **kwargs):
 
     Biosynthetic Gene Similarity Clustering and Prospecting Engine.
 
+    \b
     BiG-SCAPE can be run in three modes: cluster, query, and benchmark.
     See the help menu for each mode for more information.
     For a more comprehensive help menu and tutorials see GitHub Wiki.

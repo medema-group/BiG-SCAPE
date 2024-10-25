@@ -19,7 +19,6 @@ from .cli_validations import (
     validate_gcf_cutoffs,
     validate_filter_gbk,
     validate_record_type,
-    validate_classify,
     validate_output_dir,
 )
 
@@ -274,22 +273,9 @@ def common_cluster_query(fn):
             help=(
                 "Use BiG-SCAPE v1 class-based weights in distance calculations. "
                 "If not selected, the distance metric will be based on the 'mix' "
-                "weights distribution. Warning: these weights are not recommended "
-                "for use with the record types protocluster/protocore, as they have "
+                "weights distribution. Warning: these legacy weights are not recommended "
+                "for use with the record types 'protocluster'/'protocore', as they have "
                 "been optimized and validated only for the 'region' record type."
-            ),
-        ),
-        click.option(
-            "--classify",
-            type=click.Choice(["class", "category"]),
-            callback=validate_classify,
-            help=(
-                "Use antiSMASH/BGC classes or categories to run analyses on class-based bins. "
-                "Can be used in combination with --legacy_weights if BGC gbks "
-                "have been produced by antiSMASH version6 or higher. For older "
-                "antiSMASH versions, either use --legacy_classify or do not select "
-                "--legacy_weights, which will perform the weighted distance calculations "
-                "based on the generic 'mix' weights."
             ),
         ),
         click.option(

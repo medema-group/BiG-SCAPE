@@ -580,7 +580,7 @@ def write_network_file(
         ]
         incl_weights = ["mix"]
 
-        if run["no_mix"]:
+        if not run["mix"]:
             incl_weights.remove("mix")
         if run["legacy_weights"]:
             incl_weights.extend(legacy_weights)
