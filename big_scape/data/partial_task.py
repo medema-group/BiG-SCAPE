@@ -63,7 +63,7 @@ def get_input_data_state(gbks: list[GBK]) -> bs_enums.INPUT_TASK:
 
     # get set of gbks in database
     db_gbk_rows = DB.execute(select(gbk_table.c.hash))
-    db_gbk_hashes: set[int] = {row[0] for row in db_gbk_rows.all()}
+    db_gbk_hashes: set[str] = {row[0] for row in db_gbk_rows.all()}
     input_gbk_hashes: set[str] = {str(gbk.hash) for gbk in gbks}
 
     if db_gbk_hashes == input_gbk_hashes:
@@ -102,7 +102,7 @@ def get_missing_gbks(gbks: list[GBK]) -> list[GBK]:
 
     # get set of gbks in database
     db_gbk_rows = DB.execute(select(gbk_table.c.hash))
-    db_gbk_hashes: set[int] = {row[0] for row in db_gbk_rows.all()}
+    db_gbk_hashes: set[str] = {row[0] for row in db_gbk_rows.all()}
 
     missing_gbks = []
 
