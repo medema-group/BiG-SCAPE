@@ -137,11 +137,6 @@ def run_bigscape(run: dict) -> None:
     # get fist task
     run_state = bs_data.find_minimum_task(gbks)
 
-    # nothing to do!
-    if run_state == bs_enums.TASK.NOTHING_TO_DO:
-        logging.info("Nothing to do!")
-        sys.exit(0)
-
     logging.info("First task: %s", run_state)
 
     # we will need this later. this can be set in hmmscan, hmmalign or not at all

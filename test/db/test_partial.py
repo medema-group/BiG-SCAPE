@@ -13,7 +13,6 @@ from big_scape.data import (
     find_minimum_task,
     get_input_data_state,
     get_hmm_data_state,
-    get_comparison_data_state,
     get_cds_to_scan,
     get_hsp_to_align,
 )
@@ -294,10 +293,8 @@ class TestPartialHMM(TestCase):
     def test_no_scans_done(self):
         DB.create_in_mem()
 
-        gbks = [create_mock_gbk(1)]
-
         expected_state = bs_enums.HMM_TASK.NO_DATA
-        actual_state = get_hmm_data_state(gbks)
+        actual_state = get_hmm_data_state()
 
         self.assertEqual(expected_state, actual_state)
 
@@ -319,7 +316,7 @@ class TestPartialHMM(TestCase):
         HMMer.set_hmm_scanned(gbks[0].genes[0])
 
         expected_state = bs_enums.HMM_TASK.NEED_SCAN
-        actual_state = get_hmm_data_state(gbks)
+        actual_state = get_hmm_data_state()
 
         self.assertEqual(expected_state, actual_state)
 
@@ -345,7 +342,7 @@ class TestPartialHMM(TestCase):
         gbks[0].genes[0].hsps[0].alignment.save()
 
         expected_state = bs_enums.HMM_TASK.NEED_ALIGN
-        actual_state = get_hmm_data_state(gbks)
+        actual_state = get_hmm_data_state()
 
         self.assertEqual(expected_state, actual_state)
 
@@ -371,7 +368,7 @@ class TestPartialHMM(TestCase):
             gbk.genes[0].hsps[0].alignment.save()
 
         expected_state = bs_enums.HMM_TASK.ALL_ALIGNED
-        actual_state = get_hmm_data_state(gbks)
+        actual_state = get_hmm_data_state()
 
         self.assertEqual(expected_state, actual_state)
 
@@ -433,97 +430,6 @@ class TestPartialComparison(TestCase):
     def __init__(self, methodName: str = "runTest") -> None:
         super().__init__(methodName)
         self.addCleanup(self.clean_db)
-
-    def test_no_comparisons_done(self):
-        DB.create_in_mem()
-
-        gbks = [create_mock_gbk(i) for i in range(3)]
-
-        # add hsp to both gbks
-        add_mock_hsp_cds(gbks[0].genes[0])
-        add_mock_hsp_cds(gbks[1].genes[0])
-        add_mock_hsp_cds(gbks[2].genes[0])
-        # add hspalignment to both hsps
-        add_mock_hsp_alignment_hsp(gbks[0].genes[0].hsps[0])
-        add_mock_hsp_alignment_hsp(gbks[1].genes[0].hsps[0])
-        add_mock_hsp_alignment_hsp(gbks[2].genes[0].hsps[0])
-
-        # add gbks, hsps and alignments to db
-        for gbk in gbks:
-            gbk.save_all()
-            gbk.genes[0].hsps[0].save()
-            HMMer.set_hmm_scanned(gbk.genes[0])
-            gbk.genes[0].hsps[0].alignment.save()
-
-        # no alignments done. expect no data
-
-        expected_state = bs_enums.COMPARISON_TASK.NO_DATA
-        actual_state = get_comparison_data_state(gbks)
-
-        self.assertEqual(expected_state, actual_state)
-
-    def test_new_comparisons_to_do(self):
-        DB.create_in_mem()
-
-        gbks = [create_mock_gbk(i) for i in range(3)]
-
-        # add hsp to both gbks
-        add_mock_hsp_cds(gbks[0].genes[0])
-        add_mock_hsp_cds(gbks[1].genes[0])
-        add_mock_hsp_cds(gbks[2].genes[0])
-        # add hspalignment to both hsps
-        add_mock_hsp_alignment_hsp(gbks[0].genes[0].hsps[0])
-        add_mock_hsp_alignment_hsp(gbks[1].genes[0].hsps[0])
-        add_mock_hsp_alignment_hsp(gbks[2].genes[0].hsps[0])
-
-        # add gbks, hsps and alignments to db
-        for gbk in gbks:
-            gbk.save_all()
-            gbk.genes[0].hsps[0].save()
-            HMMer.set_hmm_scanned(gbk.genes[0])
-            gbk.genes[0].hsps[0].alignment.save()
-
-        # only one distance done. (1-2, missing 1-3 and 2-3)
-        edges = gen_mock_edge_list(gbks[0:2])
-        for edge in edges:
-            bs_comparison.save_edge_to_db(edge)
-
-        expected_state = bs_enums.COMPARISON_TASK.NEW_DATA
-        actual_state = get_comparison_data_state(gbks)
-
-        self.assertEqual(expected_state, actual_state)
-
-    def test_no_new_comparisons(self):
-        self.skipTest("Broken")
-        DB.create_in_mem()
-
-        gbks = [create_mock_gbk(i) for i in range(3)]
-
-        # add hsp to gbks
-        add_mock_hsp_cds(gbks[0].genes[0])
-        add_mock_hsp_cds(gbks[1].genes[0])
-        add_mock_hsp_cds(gbks[2].genes[0])
-        # add hspalignment to hsps
-        add_mock_hsp_alignment_hsp(gbks[0].genes[0].hsps[0])
-        add_mock_hsp_alignment_hsp(gbks[1].genes[0].hsps[0])
-        add_mock_hsp_alignment_hsp(gbks[2].genes[0].hsps[0])
-
-        # add gbks, hsps and alignments to db
-        for gbk in gbks:
-            gbk.save_all()
-            gbk.genes[0].hsps[0].save()
-            HMMer.set_hmm_scanned(gbk.genes[0])
-            gbk.genes[0].hsps[0].alignment.save()
-
-        # only one distance done. (1-2, missing 1-3 and 2-3)
-        edges = gen_mock_edge_list(gbks[0:3])
-        for edge in edges:
-            bs_comparison.save_edge_to_db(edge)
-
-        expected_state = bs_enums.COMPARISON_TASK.ALL_DONE
-        actual_state = get_comparison_data_state(gbks)
-
-        self.assertEqual(expected_state, actual_state)
 
     def test_partial_pair_generator(self):
         DB.create_in_mem()

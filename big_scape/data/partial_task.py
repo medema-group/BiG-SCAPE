@@ -6,7 +6,7 @@ Also contains functions to determine subsets of tasks that need to be done
 
 # from python
 from __future__ import annotations
-from typing import TYPE_CHECKING, Generator, Optional
+from typing import TYPE_CHECKING
 
 # from dependencies
 from sqlalchemy import select
@@ -17,7 +17,6 @@ import big_scape.enums as bs_enums
 
 # from circular imports
 if TYPE_CHECKING:
-    from big_scape.comparison import RecordPairGenerator
     from big_scape.genbank.gbk import GBK, CDS
     from big_scape.hmm import HSP
 
@@ -38,7 +37,7 @@ def find_minimum_task(gbks: list[GBK]):
         # gbks from input need to be loaded into the in-memory database
         return bs_enums.TASK.SAVE_GBKS
 
-    hmm_data_state = get_hmm_data_state(gbks)
+    hmm_data_state = get_hmm_data_state()
 
     if hmm_data_state.value < bs_enums.HMM_TASK.NEED_ALIGN.value:
         return bs_enums.TASK.HMM_SCAN
@@ -46,12 +45,8 @@ def find_minimum_task(gbks: list[GBK]):
     if hmm_data_state.value < bs_enums.HMM_TASK.ALL_ALIGNED.value:
         return bs_enums.TASK.HMM_ALIGN
 
-    comparison_data_state = get_comparison_data_state(gbks)
-
-    if comparison_data_state.value < bs_enums.COMPARISON_TASK.ALL_DONE.value:
-        return bs_enums.TASK.COMPARISON
-
-    return bs_enums.TASK.NOTHING_TO_DO
+    # if scan and align are finished, we are ready for comparison
+    return bs_enums.TASK.COMPARISON
 
 
 def get_input_data_state(gbks: list[GBK]) -> bs_enums.INPUT_TASK:
@@ -67,8 +62,8 @@ def get_input_data_state(gbks: list[GBK]) -> bs_enums.INPUT_TASK:
     gbk_table = DB.metadata.tables["gbk"]
 
     # get set of gbks in database
-    db_gbk_rows = DB.execute(gbk_table.select()).all()
-    db_gbk_hashes: set[str] = {db_gbk_row[2] for db_gbk_row in db_gbk_rows}
+    db_gbk_rows = DB.execute(select(gbk_table.c.hash))
+    db_gbk_hashes: set[int] = {row[0] for row in db_gbk_rows.all()}
     input_gbk_hashes: set[str] = {str(gbk.hash) for gbk in gbks}
 
     if db_gbk_hashes == input_gbk_hashes:
@@ -106,8 +101,8 @@ def get_missing_gbks(gbks: list[GBK]) -> list[GBK]:
     gbk_table = DB.metadata.tables["gbk"]
 
     # get set of gbks in database
-    db_gbk_rows = DB.execute(gbk_table.select()).all()
-    db_gbk_hashes: set[int] = {db_gbk_row[2] for db_gbk_row in db_gbk_rows}
+    db_gbk_rows = DB.execute(select(gbk_table.c.hash))
+    db_gbk_hashes: set[int] = {row[0] for row in db_gbk_rows.all()}
 
     missing_gbks = []
 
@@ -118,7 +113,7 @@ def get_missing_gbks(gbks: list[GBK]) -> list[GBK]:
     return missing_gbks
 
 
-def get_hmm_data_state(gbks: list[GBK]) -> bs_enums.HMM_TASK:
+def get_hmm_data_state() -> bs_enums.HMM_TASK:
     """Retuns the state of data hmm processing in the in-memory database"""
     hsp_count = DB.get_table_row_count("hsp")
 
@@ -148,7 +143,7 @@ def get_cds_to_scan(gbks: list[GBK]) -> list[CDS]:
     Returns:
         list[CDS]: List of CDS which were not scanned according to the data in scanned_cds table
     """
-    hmm_state = get_hmm_data_state(gbks)
+    hmm_state = get_hmm_data_state()
 
     if hmm_state == bs_enums.HMM_TASK.NO_DATA:
         cds_to_scan = []
@@ -191,79 +186,3 @@ def get_hsp_to_align(gbks: list[GBK]) -> list[HSP]:
                 if hsp.alignment is None:
                     hsps_to_align.append(hsp)
     return hsps_to_align
-
-
-def get_comparison_data_state(gbks: list[GBK]) -> bs_enums.COMPARISON_TASK:
-    """Retuns the state of pairwise comparison data in the in-memory database"""
-
-    distance_count = DB.get_table_row_count("distance")
-
-    if distance_count == 0:
-        return bs_enums.COMPARISON_TASK.NO_DATA
-
-    # TODO: this needs changing once we implement protocluster/protocore
-    # stuff. currently this is a naive way of calculating this
-
-    # check if all record ids are present in the comparison region ids
-
-    if not DB.metadata:
-        raise RuntimeError("DB.metadata is None")
-
-    bgc_record_table = DB.metadata.tables["bgc_record"]
-
-    select_statement = select(bgc_record_table.c.id)
-
-    record_ids = set(DB.execute(select_statement).fetchall())
-
-    if not DB.metadata:
-        raise RuntimeError("DB.metadata is None")
-
-    distance_table = DB.metadata.tables["distance"]
-
-    select_statement = select(distance_table.c.record_a_id).distinct()
-
-    regions_a = set(DB.execute(select_statement).fetchall())
-
-    select_statement = select(distance_table.c.record_b_id).distinct()
-
-    regions_b = set(DB.execute(select_statement).fetchall())
-
-    if len(record_ids.symmetric_difference(regions_a & regions_b)) > 0:
-        return bs_enums.COMPARISON_TASK.NEW_DATA
-
-    return bs_enums.COMPARISON_TASK.ALL_DONE
-
-
-# TODO: does not seem to be used
-def get_missing_distances(
-    pair_generator: RecordPairGenerator,
-) -> Generator[tuple[Optional[int], Optional[int]], None, None]:
-    """Get a generator of BGCPairs that are missing from a network
-
-    Args:
-        network (BSNetwork): network to check
-        bin (BGCBin): bin to check
-
-    Yields:
-        Generator[BGCPair]: generator of BGCPairs that are missing from the network
-    """
-
-    if not DB.metadata:
-        raise RuntimeError("DB.metadata is None")
-
-    distance_table = DB.metadata.tables["distance"]
-
-    # get all region._db_id in the bin
-    select_statement = (
-        select(distance_table.c.record_a_id, distance_table.c.record_b_id)
-        .where(distance_table.c.record_a_id.in_(pair_generator.record_ids))
-        .where(distance_table.c.record_b_id.in_(pair_generator.record_ids))
-    )
-
-    # generate a set of tuples of region id pairs
-    existing_distances = set(DB.execute(select_statement).fetchall())
-
-    for pair in pair_generator.generate_pairs():
-        # if the pair is not in the set of existing distances, yield it
-        if pair not in existing_distances and pair[::-1] not in existing_distances:
-            yield pair

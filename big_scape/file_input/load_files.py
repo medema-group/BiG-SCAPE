@@ -50,8 +50,8 @@ def get_mibig(mibig_version: str, bigscape_dir: Path):
         os.makedirs(mibig_dir)
 
     contents_dir = os.listdir(mibig_dir)
-    if len(contents_dir) > 0 and any(mibig_version in dir for dir in contents_dir):
-        logging.info("MIBiG version %s already downloaded", mibig_version)
+    if len(contents_dir) > 0 and mibig_version_dir.name in contents_dir:
+        logging.info("MIBiG version %s already present", mibig_version)
         # we assume that if a folder is here, that it is uncompressed and ready to use
         return mibig_version_dir
 
@@ -142,7 +142,7 @@ def load_dataset_folder(
     filtered_files = filter_files(files, include_gbk, exclude_gbk)
     num_files = len(filtered_files)
 
-    logging.info("Loading %d GBKs", num_files)
+    logging.info("Loading %d %s GBKs", num_files, source_type.value)
 
     if cores is None:
         cores = multiprocessing.cpu_count()
@@ -365,9 +365,9 @@ def load_gbks(run: dict, bigscape_dir: Path) -> list[GBK]:
         return input_gbks_from_db
 
     # if we end up here, we are in some halfway state and need to load in the new data
-    logging.info("Loading existing run from disk and adding new data...")
+    logging.info("Adding new data to the database...")
     missing_gbks = bs_data.get_missing_gbks(input_gbks)
-    logging.info("Found %d missing gbks", len(missing_gbks))
+    logging.info("Found %d new gbks to process", len(missing_gbks))
 
     for gbk in missing_gbks:
         gbk.save_all()

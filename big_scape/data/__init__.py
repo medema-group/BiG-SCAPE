@@ -1,4 +1,5 @@
 """Contains database functionality modules"""
+
 from .sqlite import DB
 from .partial_task import (
     find_minimum_task,
@@ -7,7 +8,6 @@ from .partial_task import (
     get_hmm_data_state,
     get_cds_to_scan,
     get_hsp_to_align,
-    get_comparison_data_state,
 )
 
 
@@ -19,5 +19,4 @@ __all__ = [
     "get_hmm_data_state",
     "get_cds_to_scan",
     "get_hsp_to_align",
-    "get_comparison_data_state",
 ]
