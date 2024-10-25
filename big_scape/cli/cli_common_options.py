@@ -118,7 +118,8 @@ def common_all(fn):
             is_flag=True,
             default=False,
             help="Do not generate any output besides the data stored in the database. "
-            "Suitable for advanced users that work with the SQL database directly.",
+            "Suitable for advanced users that wish to only make use of the results "
+            "stored in the SQLite database.",
         ),
         click.option(
             "--no-trees",
@@ -126,7 +127,8 @@ def common_all(fn):
             is_flag=True,
             default=False,
             help="Do not generate any GCF newick trees. Suitable for users that do not "
-            "utilize our output visualization, but work with output tsv files directly.",
+            "utilize our output visualization, but only make use of the output stored "
+            "in the tsv files and/or SQLite database.",
         ),
         click.option(
             "--force-gbk",

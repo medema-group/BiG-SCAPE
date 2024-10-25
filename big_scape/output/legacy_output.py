@@ -164,7 +164,7 @@ def legacy_prepare_output(
     click_context = click.get_current_context(silent=True)
 
     if click_context and click_context.obj["db_only_output"]:
-        logging.info("Skipping all output generation")
+        logging.info("Skipping all (non-SQLite db related) output generation")
         return
 
     copy_base_output_templates(output_dir)
