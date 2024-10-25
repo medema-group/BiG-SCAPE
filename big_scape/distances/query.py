@@ -44,7 +44,7 @@ def calculate_distances_query(
     edge_param_id = bs_comparison.get_edge_param_id(run, weights)
 
     query_bin = bs_comparison.QueryRecordPairGenerator(
-        "Query", edge_param_id, weights, run["record_type"]
+        weights, edge_param_id, weights, run["record_type"]
     )
     query_bin.add_records(query_records)
 
@@ -71,7 +71,7 @@ def calculate_distances_query(
     )
 
     query_bin_connected = bs_comparison.RecordPairGenerator(
-        "Query", edge_param_id, weights, record_type=run["record_type"]
+        weights, edge_param_id, weights, record_type=run["record_type"]
     )
     query_bin_connected.add_records(query_nodes)
 
