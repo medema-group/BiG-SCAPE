@@ -36,8 +36,8 @@ from .cli_validations import (
         "class-based bins. Only gene clusters with the same class/category will be "
         "compared. Can be used in combination with '--legacy_weights' for gbks "
         "produced by antiSMASH version 6 or higher. For older antiSMASH versions, "
-        "deselect '--legacy_weights', leading to the use of a generic 'mix' weight. "
-        "(default: none)"
+        "deselect '--legacy_weights', leading to the use of a generic 'mix' weight: "
+        "{JC: 0.2, AI: 0.05, DSS: 0.75, Anchor boost: 2.0}. (default: none)"
     ),
 )
 @click.option(
