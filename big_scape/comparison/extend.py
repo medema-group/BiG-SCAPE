@@ -405,7 +405,7 @@ def score_extend(
         if not match_after_lcs:
             score += mismatch
 
-        if score > max_score:
+        if score >= max_score:
             max_score = score
             query_cds_idx = query_index[query_domain_start + hsp_idx]
             query_exp = query_cds_idx + 1 - query_start
@@ -498,8 +498,9 @@ def score_extend_rev(
             if domain_idx < last_domain_idx:
                 last_domain_idx = domain_idx
 
-            # remove the current target index from the index
-            target_index[hsp.domain].pop(dict_idx)
+            # remove the current target index from the index, reverse the dict_idx
+            # since we move through the target index domain lists in reverse
+            target_index[hsp.domain].pop(-dict_idx - 1)
 
             break
 
@@ -507,7 +508,7 @@ def score_extend_rev(
             score += mismatch
             continue
 
-        if score > max_score:
+        if score >= max_score:
             max_score = score
             query_cds_idx = query_index[query_domain_start - hsp_idx]
             query_exp = query_start - query_cds_idx

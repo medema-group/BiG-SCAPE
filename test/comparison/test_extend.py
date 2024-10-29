@@ -629,7 +629,7 @@ class TestExtendLegacy(unittest.TestCase):
 
     def test_extend_forward_mid_cds_query_start(self):
         """Tests extend when starting in the middle of cds"""
-        q_domains = {2: ["X", "X"], 3: ["X", "Q"], 4: ["A", "B"], 5: ["C"]}
+        q_domains = {2: ["X", "X"], 3: ["X", "Q"], 4: ["A", "C"], 5: ["B"]}
         t_domains = {0: ["X"], 1: ["X", "X", "Q"], 2: ["A"], 3: ["B", "C"]}
         query_dom, target_dom = generate_mock_lcs_region(6, 5, q_domains, t_domains)
 
@@ -716,18 +716,18 @@ class TestExtendLegacy(unittest.TestCase):
 
     def test_extend_reverse_mid_cds_starts(self):
         """Tests extend when starting in the middle of cds"""
-        q_domains = {2: ["C"], 3: ["B", "A"], 4: ["Q", "X"], 5: ["X", "A"]}
-        t_domains = {0: ["B", "C"], 1: ["A"], 2: ["N", "Q", "X"], 3: ["X"]}
+        q_domains = {2: ["C"], 3: ["B", "A", "A"], 4: ["Q", "X"], 5: ["X"]}
+        t_domains = {0: ["B", "C"], 1: ["A"], 2: ["N", "Q", "X"], 3: ["X", "A"]}
         query_dom, target_dom = generate_mock_lcs_region(6, 5, q_domains, t_domains)
 
         target_index = bs_comp.extend.get_target_indexes(target_dom)
         query_index = bs_comp.extend.get_query_indexes(query_dom)
 
-        # four matches QABC, one gap: 4*5 - 2 = 18
-        expected_extends = (2, 4, 2, 5, 18)
+        # four matches QABC, one gap, one mismatch (extra A): 4*5 - 2 - 3 = 15
+        expected_extends = (2, 5, 2, 5, 15)
 
         actual_extends = bs_comp.extend.score_extend_rev(
-            query_dom, query_index, 2, 4, target_index, 2, 5, 5, -3, -2, 10
+            query_dom, query_index, 2, 5, target_index, 2, 5, 5, -3, -2, 10
         )
 
         self.assertEqual(expected_extends, actual_extends)
