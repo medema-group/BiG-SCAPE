@@ -11,6 +11,7 @@ from big_scape.diagnostics import init_logger, init_logger_file
 from .cli_common_options import common_all, common_cluster_query
 from .cli_validations import (
     validate_classify,
+    validate_class_category_filter,
     validate_output_paths,
     validate_disk_only,
     validate_binning_cluster_workflow,
@@ -71,6 +72,44 @@ based on the generic 'mix' weights. For more detail, see wiki.
         "would be added to both the terpene and NRPS classes/networks instead of "
         "the terpene.nrps network). "
         "Only works if any --classify mode is selected."
+    ),
+)
+@click.option(
+    "--exclude_categories",
+    callback=validate_class_category_filter,
+    help=(
+        "A comma separated list of categories. BGCs that have at least one of the product "
+        "categories in this list will be excluded from the comparison (e.g. 'NRPS,PKS' "
+        "will exclude all NRPS or PKS BGCs, even hybrids like NRPS-terpene). Only "
+        "available for .gbks produced by antiSMASH version 6 or higher."
+    ),
+)
+@click.option(
+    "--include_categories",
+    callback=validate_class_category_filter,
+    help=(
+        "A comma separated list of categories. Only BGCs that have at least one of the "
+        "product categories in this list will be included in the comparison (e.g. 'NRPS' "
+        "will include only NRPS BGCs, including hybrids like NRPS-PKS). Only available "
+        "for .gbks produced by antiSMASH version 6 or higher."
+    ),
+)
+@click.option(
+    "--exclude_classes",
+    callback=validate_class_category_filter,
+    help=(
+        "A comma separated list of classes. BGCs that have at least one of the product "
+        "classes in this list will be excluded from the comparison (e.g. 'T1PKS,T2PKS' "
+        "will exclude all T1PKS and T2PKS BGCs, even hybrids like NRPS-T1PKS)."
+    ),
+)
+@click.option(
+    "--include_classes",
+    callback=validate_class_category_filter,
+    help=(
+        "A comma separated list of classes. Only BGCs that have at least one of the "
+        "product classes in this list will be included in the comparison (e.g. 'T1PKS' "
+        "will include only T1PKS BGCs, including hybrids like NRPS-T1PKS)."
     ),
 )
 # networking parameters

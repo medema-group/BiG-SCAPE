@@ -85,6 +85,13 @@ def validate_query_bgc(ctx, param, query_bgc_path) -> Path:
     return query_bgc_path
 
 
+def validate_class_category_filter(crx, param, filters) -> set[str]:
+    """Parses provided include/exclude class/category filters into sets"""
+    if filters is None:
+        return set()
+    return set(filters.split(","))
+
+
 # output parameter validations
 
 

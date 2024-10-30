@@ -89,6 +89,8 @@ class TestRegion(TestCase):
             "cds_overlap_cutoff": None,
             "cores": None,
             "classify": False,
+            "include_categories": set(),
+            "exclude_categories": set(),
         }
 
         parent_gbk = GBK.parse(gbk_file_path, SOURCE_TYPE.QUERY, run)
