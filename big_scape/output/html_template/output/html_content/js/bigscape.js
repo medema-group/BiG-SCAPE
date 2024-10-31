@@ -1068,7 +1068,6 @@ BigscapeFunc.openFamDetail = function (id_fam, ids_highlighted, bs_svg, bs_data,
     var fam_aln = bs_alignment[id_fam];
     function getBGCOffset(bgc_ref, bgc, matching_domains) {
       function scaleBGC(val, height = 20) { // << default: 40, scale x 0.5
-        console.log("scale", val, parseInt(val / (1000 / height)))
         return parseInt(val / (1000 / height)); // PLEASE DO SOMETHING WITH THIS
       }
       function findMatchGene(bgc, match_domain) {
