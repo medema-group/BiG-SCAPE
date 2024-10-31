@@ -127,6 +127,22 @@
                         <span class="infoleft">Include Singletons:</span>
                         <span id="include_singletons" class="inforight"></span>
                     </div>
+                    <div class="infobar">
+                        <span class="infoleft">Include Categories:</span>
+                        <span id="include_categories" class="inforight"></span>
+                    </div>
+                    <div class="infobar">
+                        <span class="infoleft">Exclude Categories:</span>
+                        <span id="exclude_categories" class="inforight"></span>
+                    </div>
+                    <div class="infobar">
+                        <span class="infoleft">Include Classes:</span>
+                        <span id="include_classes" class="inforight"></span>
+                    </div>
+                    <div class="infobar">
+                        <span class="infoleft">Exclude Classes:</span>
+                        <span id="exclude_classes" class="inforight"></span>
+                    </div>
                 </div>
                 <div class="infocontainer">
                     <h3>Input Data</h3>
@@ -850,6 +866,10 @@ CC\tFamily\tGBK\tRecord_Type\tRecord_Number\tClass\tCategory\tOrganism\tTaxonomy
         $("#alignment_mode").html(run_data["alignment_mode"]);
         $("#extend_strategy").html(run_data["extend_strategy"]);
         $("#include_singletons").html(run_data["include_singletons"]);
+        $("#include_categories").html(run_data["include_categories"]);
+        $("#exclude_categories").html(run_data["exclude_categories"]);
+        $("#include_classes").html(run_data["include_classes"]);
+        $("#exclude_classes").html(run_data["exclude_classes"]);
         // pie chart: BGC per Accession
         gbk_org_data = window.db.exec(`SELECT gbk.organism, COUNT(gbk.organism) FROM gbk
                                     INNER JOIN bgc_record ON bgc_record.gbk_id==gbk.id

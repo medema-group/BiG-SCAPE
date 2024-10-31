@@ -21,6 +21,11 @@ CREATE TABLE IF NOT EXISTS run (
     extend_strategy TEXT,
     include_singletons TEXT,
     cutoffs TEXT,
+    min_bgc_length INTEGER,
+    include_categories TEXT,
+    exclude_categories TEXT,
+    include_classes TEXT,
+    exclude_classes TEXT,
     config_hash TEXT
 );
 
