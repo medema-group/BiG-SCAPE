@@ -8,7 +8,6 @@ class TASK(Enum):
     HMM_SCAN = 1
     HMM_ALIGN = 2
     COMPARISON = 3
-    NOTHING_TO_DO = 4
 
 
 class INPUT_TASK(Enum):
@@ -24,9 +23,3 @@ class HMM_TASK(Enum):
     NEED_SCAN = 1  # new CDS need to be scanned
     NEED_ALIGN = 2  # new HSP need alignment
     ALL_ALIGNED = 3  # all HSP in database were aligned
-
-
-class COMPARISON_TASK(Enum):
-    NO_DATA = 0  # nothing done yet
-    NEW_DATA = 1  # new comparisons to be done
-    ALL_DONE = 2  # all pairwise comparisons present

@@ -2,7 +2,7 @@
 
 from .input_parameters import INPUT_MODE
 from .source_type import SOURCE_TYPE
-from .partial_task import TASK, INPUT_TASK, HMM_TASK, COMPARISON_TASK
+from .partial_task import TASK, INPUT_TASK, HMM_TASK
 from .comparison import (
     ALIGNMENT_MODE,
     EXTEND_STRATEGY,
@@ -18,7 +18,6 @@ __all__ = [
     "TASK",
     "INPUT_TASK",
     "HMM_TASK",
-    "COMPARISON_TASK",
     "ALIGNMENT_MODE",
     "EXTEND_STRATEGY",
     "LCS_MODE",

@@ -315,7 +315,7 @@ def run_family_assignments(
 
         for cutoff in run["gcf_cutoffs"]:
             logging.info(
-                "Generating connected componnents for Bin '%s': cutoff %s",
+                "Generating connected components for Bin '%s': cutoff %s",
                 bin.label,
                 cutoff,
             )
