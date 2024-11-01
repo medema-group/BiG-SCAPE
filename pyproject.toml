@@ -45,6 +45,10 @@ dev = [
 "Repository" = "https://github.com/medema-group/BiG-SCAPE"
 # TODO: documentation
 
+[tool.setuptools.package-data]
+'big_scape' = ['config.yml']
+'data' = ['data/schema.sql']
+
 [build-system]
 requires = ["hatchling"]
 build-backend = "hatchling.build"
