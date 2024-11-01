@@ -21,10 +21,17 @@ if TYPE_CHECKING:
     from big_scape.hmm import HSP
 
 
-def find_minimum_task(gbks: list[GBK]):
-    """Finds the earliest bs_enums.TASK to start at. if new data was added, this will
-    always be the load_gbks bs_enums.TASK. otherwise, it tries to find the latest
-    bs_enums.TASK with unfinished business
+def find_minimum_task(gbks: list[GBK]) -> bs_enums.TASK:
+    """Finds the earliest bs_enums.TASK to start at based on data in the database
+
+    If new data was added, this will always be the load_gbks bs_enums.TASK,
+    otherwise, it tries to find the latest bs_enums.TASK with unfinished business
+
+    Args:
+        gbks (list[GBK]): input_gbks
+
+    Returns:
+        bs_enums.TASK: minimum task
     """
     input_data_state = get_input_data_state(gbks)
 
@@ -50,10 +57,17 @@ def find_minimum_task(gbks: list[GBK]):
 
 
 def get_input_data_state(gbks: list[GBK]) -> bs_enums.INPUT_TASK:
-    """Returns the status of input data (gbks and regions) in the in-memory database"""
-    distance_count = DB.get_table_row_count("gbk")
+    """Returns the status of input data (gbks and regions) in the in-memory database
 
-    if distance_count == 0:
+    Args:
+        gbks (list[GBK]): input gbks
+
+    Returns:
+        bs_enums.INPUT_TASK: status of input data
+    """
+    gbk_count = DB.get_table_row_count("gbk")
+
+    if gbk_count == 0:
         return bs_enums.INPUT_TASK.NO_DATA
 
     if not DB.metadata:
@@ -114,7 +128,11 @@ def get_missing_gbks(gbks: list[GBK]) -> list[GBK]:
 
 
 def get_hmm_data_state() -> bs_enums.HMM_TASK:
-    """Retuns the state of data hmm processing in the in-memory database"""
+    """Returns the state of data hmm processing in the in-memory database
+
+    Returns:
+        bs_enums.HMM_TASK: state of hmm data
+    """
     hsp_count = DB.get_table_row_count("hsp")
 
     if hsp_count == 0:
