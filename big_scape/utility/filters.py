@@ -44,19 +44,19 @@ def domain_includelist_filter(run: dict, all_bgc_records: list[bs_gbk.BGCRecord]
 def generic_category_class_filter(
     class_categ: set[str], include: set[str], exclude: set[str]
 ) -> bool:
-    """Generic function for both class and category based filtering of records
+    """Generic function for both class and category based filtering of a single record
 
-    exclude class/category is checked first, removing any records that contain any of
-    these classes/categories. Then, include class/category is checked, keeping only any
+    exclude class/category is checked first, failing any records that contain any of
+    these classes/categories. Then, include class/category is checked, passing only any
     records that contain any of these classes/categories.
 
     Args:
-        class_categ (set[str]): set of classes or categories
+        class_categ (set[str]): set of classes or categories present in a single record
         include (set[str]): set of classes or categories to include
         exclude (set[str]): set of classes or categories to exclude
 
     Returns:
-        bool: false if filtered out, true if kept
+        bool: True if the current record passes filters, False if it is filtered out
     """
     if exclude:
         if class_categ & exclude:
@@ -97,13 +97,13 @@ def category_filter(
 
     if len(filtered_bgc_records) == 0:
         logging.error(
-            "No GBKs remain after include/exclude categories filtering",
+            "No BGC records remain after include/exclude categories filtering",
         )
         raise RuntimeError()
 
     if orig_size != len(filtered_bgc_records):
         logging.info(
-            "%s GBKs remain after include/exclude categories filtering",
+            "Continuing with %s BGC records after include/exclude categories filtering",
             len(filtered_bgc_records),
         )
     return filtered_bgc_records
@@ -136,13 +136,13 @@ def class_filter(
 
     if len(filtered_bgc_records) == 0:
         logging.error(
-            "No GBKs remain after include/exclude classes filtering",
+            "No BGC records remain after include/exclude classes filtering",
         )
         raise RuntimeError()
 
     if orig_size != len(filtered_bgc_records):
         logging.info(
-            "%s GBKs remain after include/exclude classes filtering",
+            "Continuing with %s BGC records after include/exclude classes filtering",
             len(filtered_bgc_records),
         )
     return filtered_bgc_records

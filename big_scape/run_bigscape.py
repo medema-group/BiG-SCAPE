@@ -134,6 +134,8 @@ def run_bigscape(run: dict) -> None:
     else:
         all_bgc_records = bs_files.get_all_bgc_records(run, gbks)
 
+    logging.info("Continuing with %s BGC records", len(all_bgc_records))
+
     # INCLUDE/EXCLUDE CATEGORIES
     if run["include_categories"] or run["exclude_categories"]:
         all_bgc_records = category_filter(run, all_bgc_records)
@@ -187,12 +189,10 @@ def run_bigscape(run: dict) -> None:
 
     # DOMAIN INCLUSION LIST FILTER
     if run["domain_includelist_all"] or run["domain_includelist_any"]:
-        logging.info("Filtering records by domain_includelist")
-
         all_bgc_records = domain_includelist_filter(run, all_bgc_records)
 
         logging.info(
-            "Continuing with %i filtered records",
+            "Continuing with %i BGC records after domain_includelist filtering",
             len(all_bgc_records),
         )
 
