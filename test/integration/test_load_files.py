@@ -117,6 +117,8 @@ class TestLoadFiles(TestCase):
             "cores": None,
             "classify": False,
             "force_gbk": False,
+            "include_categories": set(),
+            "exclude_categories": set(),
         }
 
         input_gbks = []
@@ -174,6 +176,8 @@ class TestLoadFiles(TestCase):
             "cores": None,
             "classify": False,
             "force_gbk": False,
+            "include_categories": set(),
+            "exclude_categories": set(),
         }
 
         if not run["db_path"].exists():
@@ -230,6 +234,8 @@ class TestLoadFiles(TestCase):
             "cores": None,
             "classify": False,
             "force_gbk": False,
+            "include_categories": set(),
+            "exclude_categories": set(),
         }
 
         if not run["db_path"].exists():

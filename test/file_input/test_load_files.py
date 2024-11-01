@@ -20,6 +20,7 @@ from big_scape.genbank import (
     CandidateCluster,
 )
 from big_scape.cli.config import BigscapeConfig
+from big_scape.utility import class_filter, category_filter
 
 # from this module
 from big_scape.file_input.load_files import (
@@ -34,12 +35,17 @@ from big_scape.file_input.load_files import (
 )
 
 
-def create_mock_complete_single_gbk(i, source_type: bs_enums.SOURCE_TYPE) -> GBK:
+def create_mock_complete_single_gbk(
+    i,
+    source_type: bs_enums.SOURCE_TYPE,
+    product: list[str] = ["T1PKS"],
+    category: list[str] = ["PKS"],
+) -> GBK:
     region_feature = SeqFeature(FeatureLocation(0, 100), type="region")
     region_feature.qualifiers = {
         "region_number": ["1"],
         "candidate_cluster_numbers": ["1"],
-        "product": ["T1PKS"],
+        "product": product,
     }
 
     region = Region.parse_as5(region_feature)
@@ -49,7 +55,7 @@ def create_mock_complete_single_gbk(i, source_type: bs_enums.SOURCE_TYPE) -> GBK
         "candidate_cluster_number": ["1"],
         "kind": ["single"],
         "protoclusters": ["1"],
-        "product": ["T1PKS"],
+        "product": product,
     }
 
     candidate_cluster = CandidateCluster.parse(candidate_cluster_feature)
@@ -57,8 +63,8 @@ def create_mock_complete_single_gbk(i, source_type: bs_enums.SOURCE_TYPE) -> GBK
     protocluster_feature = SeqFeature(FeatureLocation(0, 100), type="protocluster")
     protocluster_feature.qualifiers = {
         "protocluster_number": ["1"],
-        "category": ["PKS"],
-        "product": ["T1PKS"],
+        "category": category,
+        "product": product,
     }
 
     protocluster = ProtoCluster.parse(protocluster_feature)
@@ -66,7 +72,7 @@ def create_mock_complete_single_gbk(i, source_type: bs_enums.SOURCE_TYPE) -> GBK
     protocore_feature = SeqFeature(FeatureLocation(0, 100), type="proto_core")
     protocore_feature.qualifiers = {
         "protocluster_number": ["1"],
-        "product": ["T1PKS"],
+        "product": product,
     }
 
     protocore = ProtoCore.parse(protocore_feature)
@@ -91,14 +97,14 @@ def create_mock_complete_single_gbk(i, source_type: bs_enums.SOURCE_TYPE) -> GBK
     return gbk
 
 
-def create_mock_gbk(i, sequence) -> GBK:
+def create_mock_gbk(i, sequence, product="test") -> GBK:
     gbk = GBK(Path(f"test_path_{i}.gbk"), str(i), bs_enums.SOURCE_TYPE.QUERY)
     cds = CDS(0, 100)
     cds.parent_gbk = gbk
     cds.orf_num = 1
     cds.strand = 1
     gbk.genes.append(cds)
-    gbk.region = Region(gbk, 1, 0, 100, False, "test")
+    gbk.region = Region(gbk, 1, 0, 100, False, product)
     gbk.region._db_id = i
     gbk.metadata = {
         "organism": "banana",
@@ -142,6 +148,8 @@ class TestLoadGBK(TestCase):
             "cores": None,
             "classify": False,
             "force_gbk": False,
+            "include_categories": set(),
+            "exclude_categories": set(),
         }
 
         load_result = load_dataset_folder(run["input_dir"], run, SOURCE_TYPE.QUERY)
@@ -321,6 +329,117 @@ class TestLoadGBK(TestCase):
         actual_count = len(filtered_gbks)
 
         self.assertEqual(expected_count, actual_count)
+
+    def test_include_category(self):
+        """Tests whether include category filter works correctly"""
+        gbk_a = create_mock_complete_single_gbk(1, SOURCE_TYPE.QUERY, category=["NRPS"])
+        gbk_b = create_mock_complete_single_gbk(2, SOURCE_TYPE.QUERY, category=["PKS"])
+
+        # include any records with NRPS
+        run = {"include_categories": {"PKS"}, "exclude_categories": set()}
+
+        bgc_records = [gbk.region for gbk in [gbk_a, gbk_b]]
+
+        filtered_bgcs = category_filter(run, bgc_records)
+
+        self.assertEqual(filtered_bgcs, [bgc_records[1]])
+
+    def test_exclude_category(self):
+        """Tests whether exclude category filter works correctly"""
+        gbk_a = create_mock_complete_single_gbk(1, SOURCE_TYPE.QUERY, category=["NRPS"])
+        gbk_b = create_mock_complete_single_gbk(
+            2, SOURCE_TYPE.QUERY, category=["PKS.NRPS"]  # merged protocluster
+        )
+
+        # exclude any records with PKS
+        run = {"include_categories": {"NRPS"}, "exclude_categories": {"PKS"}}
+
+        bgc_records = [gbk.region for gbk in [gbk_a, gbk_b]]
+
+        filtered_bgcs = category_filter(run, bgc_records)
+
+        self.assertEqual(filtered_bgcs, [bgc_records[0]])
+
+    def test_include_class(self):
+        """Tests whether include class filter works correctly"""
+        gbk_a = create_mock_gbk(1, "N", product="NRPS.PKS")
+        gbk_b = create_mock_gbk(2, "N", product="NRPS")
+        gbk_c = create_mock_gbk(3, "N", product="NRPS-like")
+
+        # include any records with NRPS
+        run = {"include_classes": {"NRPS"}, "exclude_classes": set()}
+
+        bgc_records = [gbk.region for gbk in [gbk_a, gbk_b, gbk_c]]
+
+        filtered_bgcs = class_filter(run, bgc_records)
+
+        # NRPS-like is not included
+        self.assertEqual(filtered_bgcs, bgc_records[0:2])
+
+    def test_exclude_class(self):
+        """Tests whether exclude class filter works correctly"""
+        gbk_a = create_mock_gbk(1, "N", product="NRPS.PKS")
+        gbk_b = create_mock_gbk(2, "N", product="NRPS")
+        gbk_c = create_mock_gbk(3, "N", product="NRPS-like")
+
+        # exclude any records with NRPS
+        run = {"include_classes": set(), "exclude_classes": {"NRPS"}}
+
+        bgc_records = [gbk.region for gbk in [gbk_a, gbk_b, gbk_c]]
+
+        filtered_bgcs = class_filter(run, bgc_records)
+
+        # NRPS-like is not excluded
+        self.assertEqual(filtered_bgcs, [bgc_records[-1]])
+
+    def test_include_and_exclude_class(self):
+        """Tests whether include and exclude class filter work together correctly"""
+        gbk_a = create_mock_gbk(1, "N", product="NRPS.PKS")
+        gbk_b = create_mock_gbk(2, "N", product="NRPS")
+        gbk_c = create_mock_gbk(3, "N", product="NRPS-like")
+
+        # exclude any PKS, then only keep NRPS
+        run = {"include_classes": {"NRPS"}, "exclude_classes": {"PKS"}}
+
+        bgc_records = [gbk.region for gbk in [gbk_a, gbk_b, gbk_c]]
+
+        filtered_bgcs = class_filter(run, bgc_records)
+
+        # PKS is excluded, meaning only the pure NRPS is kept
+        self.assertEqual(filtered_bgcs, [bgc_records[1]])
+
+    def test_category_and_class_filter(self):
+        """Tests whether category filter works together with class correctly"""
+        gbk_a = create_mock_complete_single_gbk(
+            1, SOURCE_TYPE.QUERY, product=["NRPS"], category=["NRPS"]
+        )
+        gbk_b = create_mock_complete_single_gbk(
+            2,
+            SOURCE_TYPE.QUERY,
+            product=["NRPS", "T1PKS"],
+            category=["PKS.NRPS"],  # merged protocluster
+        )
+        gbk_c = create_mock_complete_single_gbk(
+            3,
+            SOURCE_TYPE.QUERY,
+            product=["NRPS", "T2PKS"],
+            category=["PKS.NRPS"],  # merged protocluster
+        )
+
+        # include all PKS category except T1PKS products
+        run = {
+            "include_categories": {"PKS"},
+            "exclude_categories": set(),
+            "include_classes": set(),
+            "exclude_classes": {"T1PKS"},
+        }
+
+        bgc_records = [gbk.region for gbk in [gbk_a, gbk_b, gbk_c]]
+
+        categ_bgcs = category_filter(run, bgc_records)
+        filtered_bgcs = class_filter(run, categ_bgcs)
+
+        self.assertEqual(filtered_bgcs, [bgc_records[2]])
 
     def test_get_all_bgc_records(self):
         """Tests whether all records are correctly loaded from a list of gbks"""

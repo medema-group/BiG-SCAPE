@@ -127,6 +127,22 @@
                         <span class="infoleft">Include Singletons:</span>
                         <span id="include_singletons" class="inforight"></span>
                     </div>
+                    <div class="infobar">
+                        <span class="infoleft">Include Categories:</span>
+                        <span id="include_categories" class="inforight"></span>
+                    </div>
+                    <div class="infobar">
+                        <span class="infoleft">Exclude Categories:</span>
+                        <span id="exclude_categories" class="inforight"></span>
+                    </div>
+                    <div class="infobar">
+                        <span class="infoleft">Include Classes:</span>
+                        <span id="include_classes" class="inforight"></span>
+                    </div>
+                    <div class="infobar">
+                        <span class="infoleft">Exclude Classes:</span>
+                        <span id="exclude_classes" class="inforight"></span>
+                    </div>
                 </div>
                 <div class="infocontainer">
                     <h3>Input Data</h3>
@@ -283,6 +299,17 @@
         </div>
     </div>
 
+    <div id="errorWindow" class="w3-modal">
+        <div class="w3-modal-content" style="width: 400px; text-align: center; padding: 1em; border-radius: 1em">
+            <button id="close-error" class="showhide-btn active"></button>
+            <div class="w3-container">
+                An error has occured:
+                <br>
+                <span id="errormsg"></span>
+            </div>
+        </div>
+    </div>
+
     <div>
         <div id="logos">
             <table id="logo-table">
@@ -343,7 +370,7 @@
             xhr.onload = e => {
                 const uInt8Array = new Uint8Array(xhr.response);
                 window.db = new SQL.Database(uInt8Array);
-                dataLoaded()
+                try { dataLoaded() } catch (err) { sendError(err.message) }
             };
             xhr.send();
             $("#status").html("Loaded: data_sqlite.db")
@@ -358,9 +385,8 @@
             initSqlJs().then(function (SQL) {
                 var data = new Uint8Array(event.target.result)
                 window.db = new SQL.Database(data)
-                dataLoaded()
-            });
-
+                try { dataLoaded() } catch (err) { sendError(err.message) }
+            })
         })
         reader.readAsArrayBuffer(inf)
         $("#status").html("Loaded: " + inf.name)
@@ -371,6 +397,9 @@
     })
     $("#close-db-select").on("click", (event) => {
         showLoading(false, false)
+    })
+    $("#close-error").on("click", (event) => {
+        $("#errorWindow").css("display", "none")
     })
     $("#db-selector").on("change", (event) => {
         showLoading(true, true)
@@ -439,7 +468,7 @@
             [run_id, cutoff] = this.value.split(",")
             run_params = run_data[run_id]
             run_params["cutoff"] = cutoff
-            loadOverview(run_params);
+            try { loadOverview(run_params) } catch (err) { sendError(err.message) };
         })
         $("#bigscape-runs").trigger("change");
 
@@ -850,17 +879,24 @@ CC\tFamily\tGBK\tRecord_Type\tRecord_Number\tClass\tCategory\tOrganism\tTaxonomy
         $("#alignment_mode").html(run_data["alignment_mode"]);
         $("#extend_strategy").html(run_data["extend_strategy"]);
         $("#include_singletons").html(run_data["include_singletons"]);
+        $("#include_categories").html(run_data["include_categories"]);
+        $("#exclude_categories").html(run_data["exclude_categories"]);
+        $("#include_classes").html(run_data["include_classes"]);
+        $("#exclude_classes").html(run_data["exclude_classes"]);
         // pie chart: BGC per Accession
         gbk_org_data = window.db.exec(`SELECT gbk.organism, COUNT(gbk.organism) FROM gbk
                                     INNER JOIN bgc_record ON bgc_record.gbk_id==gbk.id
                                     INNER JOIN bgc_record_family ON bgc_record.id==bgc_record_family.record_id
                                     INNER JOIN family ON bgc_record_family.family_id==family.id
                                     WHERE family.run_id==${run_id} AND family.cutoff==${cutoff}
-                                    GROUP BY gbk.organism`)[0].values
+                                    GROUP BY gbk.organism`)[0]
+        if (gbk_org_data === undefined) {
+            throw Error("There were no networks created in this run")
+        }
         var pieLabels = []
         var pieData = []
         var pieColors = []
-        for (row of gbk_org_data) {
+        for (row of gbk_org_data.values) {
             pieLabels.push(row[0])
             pieData.push(row[1])
             pieColors.push(getRandomColor())
@@ -974,9 +1010,12 @@ CC\tFamily\tGBK\tRecord_Type\tRecord_Number\tClass\tCategory\tOrganism\tTaxonomy
             run_data["networks"][bin_lab_to_idx[bin]]["families"][fam_lab_to_idx[bin][fam]]["members"].push(acc_label_to_id[org])
         }
         $("#network-selection").html("");
+        var network_opts = []
         for (var i in run_data["networks"]) {
-            $("#network-selection").append($("<option value=" + i + ">" + run_data["networks"][i]["label"] + "</option>"))
+            network_opts.push($("<option value=" + i + ">" + run_data["networks"][i]["label"] + "</option>"))
         }
+        network_opts.sort(function (a, b) { return $(a).text().toLowerCase() > $(b).text().toLowerCase() ? 1 : -1; })
+        $("#network-selection").append(network_opts)
         $("#network-selection").off().on("change", function () {
             viewNetwork(parseInt(this.value), run_data);
             populateCcTable(run_data)
@@ -1545,6 +1584,11 @@ CC\tFamily\tGBK\tRecord_Type\tRecord_Number\tClass\tCategory\tOrganism\tTaxonomy
         document.body.appendChild(element);
         element.click();
         document.body.removeChild(element);
+    }
+
+    function sendError(message) {
+        $("#errormsg").html(message)
+        $("#errorWindow").css("display", "block")
     }
 </script>
 

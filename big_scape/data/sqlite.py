@@ -413,6 +413,27 @@ class DB:
                     else "No"
                 ),
                 cutoffs=",".join(map(str, run["gcf_cutoffs"])),
+                min_bgc_length=BigscapeConfig.MIN_BGC_LENGTH,
+                include_categories=(
+                    ",".join(run["include_categories"])
+                    if run["include_categories"]
+                    else "All"
+                ),
+                exclude_categories=(
+                    ",".join(run["exclude_categories"])
+                    if run["exclude_categories"]
+                    else "None"
+                ),
+                include_classes=(
+                    ",".join(run["include_classes"])
+                    if run["include_classes"]
+                    else "All"
+                ),
+                exclude_classes=(
+                    ",".join(run["exclude_classes"])
+                    if run["exclude_classes"]
+                    else "None"
+                ),
                 config_hash=BigscapeConfig.HASH,
             )
             .returning(run_table.c.id)
