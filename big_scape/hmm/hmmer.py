@@ -651,7 +651,9 @@ def cds_batch_generator(
 
     i = 0
     while (i * batch_size) < len(cds_list):
-        batch = cds_list[i * batch_size : min(((i + 1) * batch_size), len(cds_list))]
+        cds_start = i * batch_size
+        cds_stop = min(((i + 1) * batch_size), len(cds_list))
+        batch = cds_list[cds_start:cds_stop]
 
         yield (batch)
 

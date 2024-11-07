@@ -437,8 +437,12 @@ def get_all_bgc_records_query(
                     ]
                     if len(matching_query_records) == 0:
                         raise RuntimeError(
-                            f"Could not find {query_record_type.value} number {query_record_number} in query GBK. "
-                            "Depending on config settings, overlapping records will be merged and take on the lower number."
+                            (
+                                f"Could not find {query_record_type.value} number "
+                                f"{query_record_number} in query GBK. "
+                                "Depending on config settings, overlapping records "
+                                "will be merged and take on the lower number."
+                            )
                         )
                     query_record = matching_query_records[0]
 
