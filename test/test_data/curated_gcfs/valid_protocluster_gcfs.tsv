@@ -1,5 +1,5 @@
-BGC_filename	record_type	record_number	GCF_number	product(s)
-AGCF01000001.1.cluster077	protocluster	1	ectoine	['ectoine']
-CM001149.1.cluster003	protocluster	1	ectoine	['ectoine']
-CM001149.1.cluster001	protocluster	1	FAS	['fatty_acid']
-CM002177.1.cluster025	region	1	FAS	['fatty_acid']
+BGC_filename	record_type	record_number	product(s)	GCF_number
+AGCF01000001.1.cluster077	protocluster	1	['ectoine']	ectoine
+CM001149.1.cluster003	protocluster	1	['ectoine']	ectoine
+CM001149.1.cluster001	protocluster	1	['fatty_acid']	FAS
+CM002177.1.cluster025	region	1	['fatty_acid']	FAS
