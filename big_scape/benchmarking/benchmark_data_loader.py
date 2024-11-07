@@ -60,7 +60,7 @@ class BenchmarkData:
             else:
                 bgc = f"{clean_name}_{parts[1]}_{parts[2]}"
 
-            data[bgc] = parts[3]
+            data[bgc] = parts[4].replace("FAM_", "")
         return data
 
     def load_curated_labels(self) -> None:
@@ -106,6 +106,8 @@ class BenchmarkData:
             data_path (Path): Path pointing to output files of BS2 output directory
         """
         logging.info("Loading computed GCFs from BiG-SCAPE 2 output")
+        self.tool = "BiG-SCAPE 2"
+
         run_times = [
             p.stem.replace("_full", "") for p in data_path.glob("*_full.network")
         ]
@@ -148,6 +150,8 @@ class BenchmarkData:
             FileNotFoundError: Missing BS1 results in given output directory
         """
         logging.info("Loading computed GCFs from BiG-SCAPE 1 output")
+        self.tool = "BiG-SCAPE 1"
+
         runs = list(data_path.glob("*"))
         if len(runs) == 0:
             raise FileNotFoundError("No BiG-SCAPE 1 output found")
@@ -196,6 +200,11 @@ class BenchmarkData:
             "SELECT clustering.threshold, clustering.id FROM clustering"
         )
         threshs = {thresh: run_id for thresh, run_id in thresh_data}
+
+        if max(threshs.keys()) > 1.2:
+            self.tool = "BiG-SLiCE 1"
+        else:
+            self.tool = "BiG-SLiCE 2"
 
         # collect bgc and their family assignment per threshold
         cursor_results = cur.execute(
