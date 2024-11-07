@@ -367,7 +367,7 @@ def load_gbks(run: dict, bigscape_dir: Path) -> list[GBK]:
     # if we end up here, we are in some halfway state and need to load in the new data
     logging.info("Adding new data to the database...")
     missing_gbks = bs_data.get_missing_gbks(input_gbks)
-    logging.info("Found %d new gbks to process", len(missing_gbks))
+    logging.info("Found %d new GBKs to process", len(missing_gbks))
 
     for gbk in missing_gbks:
         gbk.save_all()

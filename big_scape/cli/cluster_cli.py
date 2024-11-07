@@ -28,7 +28,7 @@ from .cli_validations import (
 @click.option(
     "--classify",
     type=click.Choice(["none", "class", "category", "legacy"]),
-    default="class",
+    default="category",
     callback=validate_classify,
     help=(
         """Define which method BiG-SCAPE should use to separate BGC records into
@@ -49,7 +49,7 @@ classes that this legacy mode does not recognise will be grouped in 'others'.
 higher. For older antiSMASH versions, either use --classify 'legacy' or do not
 select --legacy_weights, which will perform the weighted distance calculations
 based on the generic 'mix' weights. For more detail, see wiki.
-(default: class)"""
+(default: category)"""
     ),
 )
 @click.option(
