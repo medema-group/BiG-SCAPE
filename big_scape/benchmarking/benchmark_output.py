@@ -24,10 +24,13 @@ class OutputGenerator:
         run_name (str): Dataset name and starttime added to each filename
     """
 
-    def __init__(self, output_dir: Path, metadata: str, name: str) -> None:
+    def __init__(
+        self, output_dir: Path, metadata: str, name: str, tool: Optional[str] = None
+    ) -> None:
         self.output_dir = output_dir
         self.metadata = metadata
         self.name = name
+        self.tool = tool
 
     def initialize_output_dir(self) -> None:
         """Set up output directory"""
@@ -163,7 +166,7 @@ class OutputGenerator:
         Args:
             metrics: data dictionary storing all metrics per used cutoff
         """
-        cutoffs = sorted(metrics.keys())
+        cutoffs = sorted(metrics.keys(), key=float)
         homogeneity = [metrics[cut]["homogeneity"] for cut in cutoffs]
         completeness = [metrics[cut]["completeness"] for cut in cutoffs]
         v_measure = [metrics[cut]["v_measure"] for cut in cutoffs]
@@ -206,7 +209,7 @@ class OutputGenerator:
         )
         ax.text(0, -0.4, self.metadata, transform=ax.transAxes)
         plt.title("External cluster evaluation metrics per used cutoff")
-        plt.xlabel("BiG-SCAPE family cutoff")
+        plt.xlabel(f"{self.tool} family cutoff")
         plt.ylabel("Score")
         plots = h + c + v + wl + ml
         ax.legend(plots, [p.get_label() for p in plots], loc=0)

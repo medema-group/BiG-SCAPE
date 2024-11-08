@@ -477,9 +477,9 @@ class DB:
         run_table = DB.metadata.tables["run"]
         latest_config = DB.execute(
             select(run_table.c.config_hash).order_by(desc(run_table.c.id)).limit(1)
-        ).scalar_one()
+        ).scalar_one_or_none()
 
-        if BigscapeConfig.HASH != latest_config:
+        if latest_config and BigscapeConfig.HASH != latest_config:
             raise RuntimeError(
                 "Config file values have changed from the previous run! "
                 "Existing data is not guarenteed to be reusable, please "

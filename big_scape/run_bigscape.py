@@ -45,8 +45,9 @@ def run_bigscape(run: dict) -> None:
     command line arguments, loads the data, runs the analysis and saves the output.
     """
     # starting information
+    # TODO: add automatic updating of version number
     logging.info(
-        "Starting BiG-SCAPE %s run on %s level with %s alignment and %s weights",
+        "Starting BiG-SCAPE 2.0.0 %s run on %s level with %s alignment and %s weights",
         run["mode"],
         run["record_type"].value,
         run["alignment_mode"].value,

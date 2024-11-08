@@ -35,7 +35,7 @@ def run_bigscape_benchmark(run: dict):
     logging.info("Generating summary output")
     # output summary of all cutoffs
     metadata = OutputGenerator.generate_metadata(run)
-    outputter = OutputGenerator(run["output_dir"], metadata, run["label"])
+    outputter = OutputGenerator(run["output_dir"], metadata, run["label"], data.tool)
     outputter.plot_per_cutoff(metrics)
     outputter.output_summary_per_cutoff(metrics)
     logging.info("Benchmark done!")

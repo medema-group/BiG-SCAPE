@@ -87,16 +87,16 @@ class TestBenchmarkData(TestCase):
 
         expected_data = {
             "0.5": {
-                "CM000578.1.cluster047_protocluster_1": "72",
-                "CM000578.1.cluster038_protocluster_1": "77",
-                "CM000578.1.cluster038_protocluster_2": "179",
-                "CM000578.1.cluster033": "167",
+                "CM000578.1.cluster047_protocluster_1": "00072",
+                "CM000578.1.cluster038_protocluster_1": "00077",
+                "CM000578.1.cluster038_protocluster_2": "00179",
+                "CM000578.1.cluster033": "00167",
             },
             "0.7": {
-                "CM000578.1.cluster038_protocluster_1": "6",
-                "CM000578.1.cluster038_protocluster_2": "6",
-                "CM000578.1.cluster042_protocluster_1_2": "10",
-                "CM000578.1.cluster033": "62",
+                "CM000578.1.cluster038_protocluster_1": "00006",
+                "CM000578.1.cluster038_protocluster_2": "00006",
+                "CM000578.1.cluster042_protocluster_1_2": "00010",
+                "CM000578.1.cluster033": "00062",
             },
         }
 
