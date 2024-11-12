@@ -245,11 +245,6 @@ class DB:
                 + str(type(raw_memory_connection))
             )
 
-        # backup only writes those tables that have data, it seems
-        DB.create_tables()
-
-        DB.reflect()
-
         page_count = raw_file_connection.execute("PRAGMA page_count;")
         page_count = page_count.fetchone()[0]
 
@@ -259,6 +254,11 @@ class DB:
                 t.update(total - remaining)
 
             raw_file_connection.backup(raw_memory_connection, progress=progress)
+
+        # backup only writes those tables that have data, it seems
+        DB.create_tables()
+
+        DB.reflect()
 
     @staticmethod
     def close_db() -> None:

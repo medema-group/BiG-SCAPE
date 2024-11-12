@@ -102,7 +102,7 @@ class CandidateCluster(BGCRecord):
     def parse(
         cls, feature: SeqFeature, parent_gbk: Optional[GBK] = None
     ) -> CandidateCluster:
-        """_summary_Creates a cand_cluster object from a region feature in a GBK file
+        """Creates a cand_cluster object from a region feature in a GBK file
 
         Args:
             feature (SeqFeature): cand_cluster GBK feature
@@ -113,29 +113,38 @@ class CandidateCluster(BGCRecord):
         Returns:
             CandidateCluster: Candidate cluster object
         """
+        err_path = parent_gbk.path if parent_gbk else ""
+
         if feature.type != "cand_cluster":
             logging.error(
-                "Feature is not of correct type! (expected: cand_cluster, was: %s)",
+                "%s: feature is not of correct type! (expected: cand_cluster, was: %s)",
+                err_path,
                 feature.type,
             )
             raise InvalidGBKError()
 
         if "candidate_cluster_number" not in feature.qualifiers:
             logging.error(
-                "candidate_cluster_number qualifier not found in cand_cluster feature!"
+                "%s: candidate_cluster_number qualifier not found in cand_cluster feature!",
+                err_path,
             )
             raise InvalidGBKError()
 
         cand_cluster_number = int(feature.qualifiers["candidate_cluster_number"][0])
 
         if "kind" not in feature.qualifiers:
-            logging.error("kind qualifier not found in cand_cluster feature!")
+            logging.error(
+                "%s: kind qualifier not found in cand_cluster feature!", err_path
+            )
             raise InvalidGBKError()
 
         cand_cluster_kind = feature.qualifiers["kind"][0]
 
         if "protoclusters" not in feature.qualifiers:
-            logging.error("protoclusters qualifier not found in region feature!")
+            logging.error(
+                "%s: protoclusters qualifier not found in cand_cluster feature!",
+                err_path,
+            )
             raise InvalidGBKError()
 
         proto_clusters: dict[int, Optional[ProtoCluster]] = {}
