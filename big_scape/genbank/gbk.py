@@ -478,7 +478,7 @@ class GBK:
         if not force_gbk:
             logging.error(
                 "%s: GBK file does not contain an antiSMASH cluster or region feature. "
-                "Consider using --force_gbk to include this GBK anyways.",
+                "Consider using --force-gbk to include this GBK anyways.",
                 self.path,
             )
             raise InvalidGBKError()
