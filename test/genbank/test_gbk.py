@@ -773,4 +773,4 @@ class TestGBK(TestCase):
         actual_coords = (gbk.region.nt_start, gbk.region.nt_stop)
         expected_coords = (0, 94757)
 
-        self.assertEqual(expected_len, actual_len)
+        self.assertEqual(expected_coords, actual_coords)
