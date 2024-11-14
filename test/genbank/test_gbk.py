@@ -771,6 +771,6 @@ class TestGBK(TestCase):
         gbk = GBK.parse(test_file, SOURCE_TYPE.QUERY, run)
 
         actual_coords = (gbk.region.nt_start, gbk.region.nt_stop)
-        expected_len = (0, 94757)
+        expected_coords = (0, 94757)
 
         self.assertEqual(expected_len, actual_len)
