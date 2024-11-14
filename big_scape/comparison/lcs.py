@@ -693,12 +693,17 @@ def construct_missing_global_lcs(records: list[bs_genbank.BGCRecord], exemplar: 
         pair = bs_comparison.RecordPair(
             record_db_dict[rec_a_id], record_db_dict[rec_b_id]
         )
-        if isinstance(pair.record_a, bs_genbank.ProtoCluster) and isinstance(
-            pair.record_b, bs_genbank.ProtoCluster
-        ):
-            lcs_data = find_domain_lcs_protocluster(pair)
-        else:
-            lcs_data = find_domain_lcs_region(pair)
+        # try to find an lcs. if no lcs is present this record has no domain overlap
+        # with the exemplar, meaning it will be removed from the tree anyways.
+        try:
+            if isinstance(pair.record_a, bs_genbank.ProtoCluster) and isinstance(
+                pair.record_b, bs_genbank.ProtoCluster
+            ):
+                lcs_data = find_domain_lcs_protocluster(pair)
+            else:
+                lcs_data = find_domain_lcs_region(pair)
+        except RuntimeError:
+            continue
 
         DB.execute(
             update(distance_table)
