@@ -1,6 +1,7 @@
 """Module containing code to handle logging"""
 
 # from python
+from contextlib import AbstractContextManager
 import logging
 import sys
 
@@ -38,3 +39,13 @@ def init_logger_file(run) -> None:  # pragma: no cover
     file_handler.setFormatter(log_formatter)
     root_logger.addHandler(file_handler)
     logging.info(" ".join(sys.argv))
+
+
+class DisableLogger(AbstractContextManager):
+    """Context manager to temporarily disable logs"""
+
+    def __enter__(self) -> None:
+        logging.disable(logging.CRITICAL)
+
+    def __exit__(self, exc_type, exc_value, traceback) -> None:
+        logging.disable(logging.NOTSET)
