@@ -477,14 +477,15 @@ class GBK:
         # If no cluster feature was found and force-gbk is false, GBK is invalid
         if not force_gbk:
             logging.error(
-                "%s: GBK file does not contain an antiSMASH cluster feature", self.path
+                "%s: GBK file does not contain an antiSMASH cluster or region feature. "
+                "Consider using --force_gbk to include this GBK anyways.",
+                self.path,
             )
             raise InvalidGBKError()
 
         # at this point we need to make a region object from the whole GBK
         logging.warning(
-            "%s: GBK file does not contain an antiSMASH region feature. "
-            "Using --force_gbk, assuming AS4",
+            "%s: non-antiSMASH GBK file detected, forcing artificial region feature.",
             self.path,
         )
 

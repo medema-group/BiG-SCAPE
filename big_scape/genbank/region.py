@@ -233,8 +233,8 @@ class Region(BGCRecord):
         Returns:
             Region: region object
         """
-        nt_start = 1
-        nt_stop = len(record.seq) // 3
+        nt_start = 0
+        nt_stop = len(record.seq)
         contig_edge = False
 
         # record may have multiple products. handle them here
