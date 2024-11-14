@@ -163,6 +163,8 @@ class TestRegion(TestCase):
 
         region.add_cand_cluster(candidate_cluster)
 
+        self.assertEqual(candidate_cluster, region.cand_clusters[1])
+
     def test_save(self):
         """Tests whether a Region object is correctly stored in the SQLite database"""
 

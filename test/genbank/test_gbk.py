@@ -770,7 +770,7 @@ class TestGBK(TestCase):
 
         gbk = GBK.parse(test_file, SOURCE_TYPE.QUERY, run)
 
-        actual_len = gbk.region.nt_stop
-        expected_len = 31585
+        actual_coords = (gbk.region.nt_start, gbk.region.nt_stop)
+        expected_coords = (0, 94757)
 
-        self.assertEqual(expected_len, actual_len)
+        self.assertEqual(expected_coords, actual_coords)

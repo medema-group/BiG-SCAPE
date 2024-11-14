@@ -24,6 +24,7 @@ from sqlalchemy import select, update, or_, and_
 import big_scape.genbank as bs_genbank
 import big_scape.comparison.record_pair as bs_comparison
 import big_scape.hmm as bs_hmm
+from big_scape.diagnostics import DisableLogger
 from big_scape.data import DB
 
 
@@ -223,11 +224,9 @@ def find_domain_lcs_region(
 
     # quickly check if we didn't find an LCS
     if fwd_match_len == 0 and rev_match_len == 0:
-        logging.error(
-            "No match found in LCS. This should not happen after first jaccard"
-        )
-        logging.error("a domains: %s", a_domains)
-        logging.error("b domains: %s", b_domains)
+        logging.error("%s: No match found in LCS", pair)
+        logging.debug("a domains: %s", a_domains)
+        logging.debug("b domains: %s", b_domains)
         raise RuntimeError("No match found in LCS.")
 
     # now we need to do something silly. we want to assemble a list of these matching
@@ -472,11 +471,9 @@ def find_domain_lcs_protocluster(
 
     # quickly check if we didn't find an LCS
     if fwd_match_len == 0 and rev_match_len == 0:
-        logging.error(
-            "No match found in LCS. This should not happen after first jaccard"
-        )
-        logging.error("a domains: %s", a_domains)
-        logging.error("b domains: %s", b_domains)
+        logging.error("%s: No match found in LCS", pair)
+        logging.debug("a domains: %s", a_domains)
+        logging.debug("b domains: %s", b_domains)
         raise RuntimeError("No match found in LCS.")
 
     # now we need to do something silly. we want to assemble a list of these matching
@@ -693,12 +690,20 @@ def construct_missing_global_lcs(records: list[bs_genbank.BGCRecord], exemplar: 
         pair = bs_comparison.RecordPair(
             record_db_dict[rec_a_id], record_db_dict[rec_b_id]
         )
-        if isinstance(pair.record_a, bs_genbank.ProtoCluster) and isinstance(
-            pair.record_b, bs_genbank.ProtoCluster
-        ):
-            lcs_data = find_domain_lcs_protocluster(pair)
-        else:
-            lcs_data = find_domain_lcs_region(pair)
+
+        # try to find an lcs. if no lcs is present this record has no domain overlap
+        # with the exemplar, meaning it will be removed from the tree anyways.
+        try:
+            # we don't really care about error logs at this point
+            with DisableLogger():
+                if isinstance(pair.record_a, bs_genbank.ProtoCluster) and isinstance(
+                    pair.record_b, bs_genbank.ProtoCluster
+                ):
+                    lcs_data = find_domain_lcs_protocluster(pair)
+                else:
+                    lcs_data = find_domain_lcs_region(pair)
+        except RuntimeError:
+            continue
 
         DB.execute(
             update(distance_table)

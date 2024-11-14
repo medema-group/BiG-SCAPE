@@ -136,16 +136,20 @@ class ProtoCluster(BGCRecord):
         Returns:
             ProtoCluster: protocluster object
         """
+        err_path = parent_gbk.path if parent_gbk else ""
+
         if feature.type != "protocluster":
             logging.error(
-                "Feature is not of correct type! (expected: protocluster, was: %s)",
+                "%s: feature is not of correct type! (expected: protocluster, was: %s)",
+                err_path,
                 feature.type,
             )
             raise InvalidGBKError()
 
         if "protocluster_number" not in feature.qualifiers:
             logging.error(
-                "protocluster_number qualifier not found in protocluster feature!"
+                "%s: protocluster_number qualifier not found in protocluster feature!",
+                err_path,
             )
             raise InvalidGBKError()
 

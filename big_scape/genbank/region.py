@@ -109,9 +109,12 @@ class Region(BGCRecord):
         Returns:
             Region: region object
         """
+        err_path = parent_gbk.path if parent_gbk else ""
+
         if feature.type != "region":
             logging.error(
-                "Feature is not of correct type! (expected: region, was: %s)",
+                "%s: feature is not of correct type! (expected: region, was: %s)",
+                err_path,
                 feature.type,
             )
             raise InvalidGBKError()
@@ -120,7 +123,10 @@ class Region(BGCRecord):
         # children classes (protocluster, protocore)
 
         if "region_number" not in feature.qualifiers:
-            logging.error("region number qualifier not found in region feature!")
+            logging.error(
+                "%s: region number qualifier not found in region feature!",
+                err_path,
+            )
             raise InvalidGBKError()
 
         region_number = int(feature.qualifiers["region_number"][0])
@@ -147,8 +153,9 @@ class Region(BGCRecord):
                 return region
 
             logging.error(
-                "candidate_cluster_numbers qualifier not found in region feature! "
-                "Consider checking whether there is something special about this gbk"
+                "%s: candidate_cluster_numbers qualifier not found in region feature! "
+                "Consider checking whether there is something special about this gbk",
+                err_path,
             )
             raise InvalidGBKError()
 
@@ -172,9 +179,12 @@ class Region(BGCRecord):
         Returns:
             Region: region object
         """
+        err_path = parent_gbk.path if parent_gbk else ""
+
         if feature.type != "cluster":
             logging.error(
-                "Feature is not of correct type! (expected: cluster, was: %s)",
+                "%s: feature is not of correct type! (expected: cluster, was: %s)",
+                err_path,
                 feature.type,
             )
             raise InvalidGBKError()
@@ -186,7 +196,9 @@ class Region(BGCRecord):
             "note" not in feature.qualifiers
             or "Cluster number" not in feature.qualifiers["note"][0]
         ):
-            logging.error("cluster number qualifier not found in cluster feature!")
+            logging.error(
+                "%s: Cluster number qualifier not found in cluster feature!", err_path
+            )
             raise InvalidGBKError()
 
         cluster_note_number = feature.qualifiers["note"][0]
@@ -221,8 +233,8 @@ class Region(BGCRecord):
         Returns:
             Region: region object
         """
-        nt_start = 1
-        nt_stop = len(record.seq) // 3
+        nt_start = 0
+        nt_stop = len(record.seq)
         contig_edge = False
 
         # record may have multiple products. handle them here

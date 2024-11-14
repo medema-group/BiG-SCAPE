@@ -354,7 +354,14 @@ class GBK:
         gbk = cls(path, hash, source_type)
 
         # get record. should only ever be one for Antismash GBK
-        record: SeqRecord = next(SeqIO.parse(path, "genbank"))
+        records = list(SeqIO.parse(path, "genbank"))
+        if len(records) > 1:
+            logging.warning(
+                "%s: GBK contains multiple sequence records! "
+                "Only the first will be considered.",
+                path,
+            )
+        record: SeqRecord = records.pop(0)
         gbk.nt_seq = record.seq
 
         gbk.metadata["description"] = record.description
@@ -470,14 +477,15 @@ class GBK:
         # If no cluster feature was found and force-gbk is false, GBK is invalid
         if not force_gbk:
             logging.error(
-                "%s: GBK file does not contain an antiSMASH cluster feature", self.path
+                "%s: GBK file does not contain an antiSMASH cluster or region feature. "
+                "Consider using --force-gbk to include this GBK anyways.",
+                self.path,
             )
             raise InvalidGBKError()
 
         # at this point we need to make a region object from the whole GBK
         logging.warning(
-            "%s: GBK file does not contain an antiSMASH region feature. "
-            "Using --force_gbk, assuming AS4",
+            "%s: non-antiSMASH GBK file detected, forcing artificial region feature.",
             self.path,
         )
 
@@ -627,15 +635,15 @@ class GBK:
                     for number in cand_cluster.proto_clusters.keys()
                 ]
                 merged_protocluster = MergedProtoCluster.merge(protoclusters)
-                merged_tmp_proto_clusters[merged_protocluster.number] = (
-                    merged_protocluster
-                )
+                merged_tmp_proto_clusters[
+                    merged_protocluster.number
+                ] = merged_protocluster
 
                 # update the protocluster old:new ids for the merged protoclusters of this cand_cluster
                 for proto_cluster_num in cand_cluster.proto_clusters.keys():
-                    merged_protocluster_ids[proto_cluster_num] = (
-                        merged_protocluster.number
-                    )
+                    merged_protocluster_ids[
+                        proto_cluster_num
+                    ] = merged_protocluster.number
 
         # now we build a new version of the tmp_proto_clusters dict that contains the merged protoclusters
         # as well as protoclusters which did not need merging, with updated unique IDs/numbers
@@ -649,9 +657,9 @@ class GBK:
                     # this protocluster has been merged, so we need to add it to
                     # the dict with its new protocluster number
                     new_proto_cluster_num = merged_protocluster_ids[proto_cluster_num]
-                    updated_tmp_proto_clusters[new_proto_cluster_num] = (
-                        merged_tmp_proto_clusters[new_proto_cluster_num]
-                    )
+                    updated_tmp_proto_clusters[
+                        new_proto_cluster_num
+                    ] = merged_tmp_proto_clusters[new_proto_cluster_num]
                     updated_proto_cluster_dict[new_proto_cluster_num] = None
                 else:
                     # protoclusters which have not been merged are added to the dict as is

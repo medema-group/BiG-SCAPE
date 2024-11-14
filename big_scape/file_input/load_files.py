@@ -280,7 +280,7 @@ def load_gbk(
     """
 
     if not path.is_file():
-        logging.error("GBK path does not point to a file!")
+        logging.error("%s: GBK path does not point to a file!", path)
         raise IsADirectoryError()
 
     return GBK.parse(path, source_type, run, cds_overlap_cutoff)
