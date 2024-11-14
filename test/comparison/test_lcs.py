@@ -4,9 +4,10 @@
 import unittest
 import random
 import string
-import big_scape.comparison.record_pair
+from pathlib import Path
 
 # from other modules
+import big_scape.comparison.record_pair
 import big_scape.genbank as bs_genbank
 import big_scape.hmm as bs_hmmer
 import big_scape.comparison as bs_comparison
@@ -145,7 +146,9 @@ class TestRegionDomainLCS(unittest.TestCase):
         cds_a, cds_b = generate_mock_cds_lists(0, 0, [], [], False)
 
         pc_a = generate_mock_protocluster(cds_a)
+        pc_a.parent_gbk = bs_genbank.GBK(Path("test1"), "", "")
         pc_b = generate_mock_protocluster(cds_b)
+        pc_b.parent_gbk = bs_genbank.GBK(Path("test2"), "", "")
         pair = big_scape.comparison.record_pair.RecordPair(pc_a, pc_b)
 
         with self.assertRaises(RuntimeError):
