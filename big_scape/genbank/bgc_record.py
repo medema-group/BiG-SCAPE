@@ -403,6 +403,8 @@ def get_sub_records(
     Returns:
         list[BGCRecord]: list of records of the specified type
     """
+    err_path = region.parent_gbk.path if region.parent_gbk else ""
+
     if region is None:
         return []
 
@@ -410,6 +412,11 @@ def get_sub_records(
         return [region]
 
     if region.cand_clusters is None:
+        logging.warning(
+            "%s: No %s records found, using region instead.",
+            err_path,
+            record_type.value,
+        )
         return [region]
 
     cand_clusters = [
@@ -419,6 +426,11 @@ def get_sub_records(
     ]
 
     if len(cand_clusters) == 0:
+        logging.warning(
+            "%s: No %s records found, using region instead.",
+            err_path,
+            record_type.value,
+        )
         return [region]
 
     # TODO: check if properly implemented, or at all
@@ -445,6 +457,11 @@ def get_sub_records(
                 proto_cluster_numbers.append(proto_cluster.number)
 
     if len(proto_clusters) == 0:
+        logging.warning(
+            "%s: No %s records found, using cand_cluster instead.",
+            err_path,
+            record_type.value,
+        )
         return cand_clusters
 
     if record_type == bs_enums.genbank.RECORD_TYPE.PROTO_CLUSTER:
@@ -461,6 +478,11 @@ def get_sub_records(
                 proto_core_numbers.append(proto_core.number)
 
     if len(proto_cores) == 0:
+        logging.warning(
+            "%s: No %s records found, using protocluster instead.",
+            err_path,
+            record_type.value,
+        )
         return proto_clusters
 
     return proto_cores

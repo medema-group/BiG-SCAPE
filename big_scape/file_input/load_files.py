@@ -197,7 +197,7 @@ def remove_duplicate_gbk(gbks: list[GBK]) -> list[GBK]:
     unique_gbks = set()
     for gbk in gbks:
         if gbk in unique_gbks:
-            logging.info("Skipping duplicate %s", gbk)
+            logging.info("Skipping duplicate %s", gbk.path)
             continue
         unique_gbks.add(gbk)
 
