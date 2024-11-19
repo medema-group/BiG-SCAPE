@@ -91,6 +91,10 @@ def query(ctx, *args, **kwarg):
     ctx.obj["mix"] = None
     ctx.obj["hybrids_off"] = False
     ctx.obj["mode"] = "Query"
+    ctx.obj["exclude_categories"] = None
+    ctx.obj["include_categories"] = None
+    ctx.obj["exclude_classes"] = None
+    ctx.obj["include_classes"] = None
 
     # workflow validations
     validate_pfam_path(ctx)
