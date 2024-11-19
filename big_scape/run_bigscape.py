@@ -272,7 +272,7 @@ def run_bigscape(run: dict) -> None:
         pfam_info = HMMer.get_pfam_info()
         HMMer.unload()
 
-    logging.info("Generating GCF alignments, trees and outputfiles")
+    logging.info("Generating GCF trees and output files")
 
     # prepare output files
     legacy_prepare_output(run["output_dir"], pfam_info)
