@@ -137,7 +137,7 @@ def common_cluster_query(fn):
             callback=validate_input_mode,
             type=click.Choice(["recursive", "flat"]),
             help=(
-                "Tells BiG-SCAPE Where to look for input GBK files. "
+                "Tells BiG-SCAPE where to look for input GBK files. "
                 "recursive: search for .gbk files recursively in input directory. "
                 "flat: search for .gbk files in input directory only. "
                 "(default: recursive)."
