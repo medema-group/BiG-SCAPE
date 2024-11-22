@@ -180,7 +180,7 @@ def common_cluster_query(fn):
                 "A comma separated list of strings. Only .gbk files that have "
                 "the string(s) in their filename will be used for the analysis. "
                 "Use an asterisk to accept every file ('*' overrides '--exclude_gbk_str'). "
-                "(default: cluster, region)."
+                "(default: cluster,region)."
             ),
         ),
         click.option(
