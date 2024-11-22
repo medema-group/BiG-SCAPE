@@ -430,11 +430,13 @@ def validate_query_record(ctx) -> None:
     ):
         logging.error(
             "Missing option '--query_record_number'."
-            "A query record number is required when running query mode with a given record type."
+            "A query record number is required when running query mode with "
+            "a record type other than 'region'."
         )
         raise click.UsageError(
             "Missing option '--query_record_number'."
-            "A query record number is required when running query mode with a given record type."
+            "A query record number is required when running query mode with "
+            "a record type other than 'region'."
         )
 
     return None

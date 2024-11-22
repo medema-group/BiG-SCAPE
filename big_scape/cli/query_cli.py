@@ -26,41 +26,28 @@ from .cli_validations import (
 @common_all
 @common_cluster_query
 @click.option(
-    "--classify",
-    type=click.Choice(["none", "class", "category"]),
-    default="none",
-    callback=validate_classify,
-    help=(
-        "By default BiG-SCAPE will query against any other supplied BGCs regardless of "
-        "class/category. Instead, select 'class' or 'category' to run analyses on "
-        "class-based bins. Only gene clusters with the same class/category will be "
-        "compared. Can be used in combination with '--legacy_weights' for gbks "
-        "produced by antiSMASH version 6 or higher. For older antiSMASH versions, "
-        "deselect '--legacy_weights', leading to the use of a generic 'mix' weight: "
-        "{JC: 0.2, AI: 0.05, DSS: 0.75, Anchor boost: 2.0}. (default: none)"
-    ),
-)
-@click.option(
     "-q",
-    "--query_bgc_path",
+    "--query-bgc-path",
     type=click.Path(exists=True, dir_okay=False, file_okay=True, path_type=Path),
     required=True,
     callback=validate_query_bgc,
     help=(
-        "Path to query BGC file. BiG-SCAPE will compare "
-        "all BGCs in the input and reference folders to the query"
+        "Path to query BGC .gbk file. BiG-SCAPE will compare "
+        "all BGCs records in the input and reference folders to the query"
         " in a one-vs-all mode."
     ),
 )
 @click.option(
     "-n",
-    "--query_record_number",
+    "--query-record-number",
     type=int,
     required=False,
     help=(
         "Query BGC record number. Used to select the specific record "
-        "from the query BGC gbk. Warning: if interleaved or chemical hybrid proto "
-        "cluster/cores are merged (see config), the relevant number is that of the "
+        "from the query BGC .gbk, and is only relevant when running "
+        "--record-type cand_cluster, protocluster or proto_core."
+        " Warning: if interleaved or chemical hybrid proto cluster/cores "
+        "are merged (see config.yml), the relevant number is that of the "
         "first record of the merged cluster (the one with the lowest number). "
         "e.g. if records 1 and 2 get merged, the relevant number is 1. "
     ),
@@ -70,9 +57,25 @@ from .cli_validations import (
     is_flag=True,
     help=(
         "By default, BiG-SCAPE will only generate edges between the query and reference"
-        " BGCs. With the propagate flag, BiG-SCAPE will go through multiple cycles of "
+        " BGC records. With the propagate flag, BiG-SCAPE will go through multiple cycles of "
         "edge generation until no new reference BGCs are connected to the query "
-        "connected component."
+        "connected component. For more details, see the Wiki."
+    ),
+)
+@click.option(
+    "--classify",
+    type=click.Choice(["none", "class", "category"]),
+    default="none",
+    callback=validate_classify,
+    help=(
+        "By default BiG-SCAPE will compare the query BGC record against any other "
+        "supplied reference BGC records regardless of antiSMASH  product class/category. "
+        "Instead, select 'class' or 'category' to run analyses on one class-specific bin, "
+        "in which case only reference BGC records with the same class/category as the "
+        "query record will be compared. Can be used in combination with --legacy-weights "
+        "for .gbks produced by antiSMASH version 6 or higher. For older antiSMASH versions "
+        "or if --legacy-weights is not selected, BiG-SCAPE will use the generic 'mix' weights: "
+        "{JC: 0.2, AI: 0.05, DSS: 0.75, Anchor boost: 2.0}. (default: none)"
     ),
 )
 @click.pass_context
