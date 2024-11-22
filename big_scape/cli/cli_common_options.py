@@ -52,7 +52,7 @@ def common_all(fn):
             help=(
                 "Prints more detailed information of each step in the analysis, "
                 "output all kinds of logs, including debugging log info, and writes to logfile. "
-                "Toggle to activate."
+                "Toggle to activate. Disclaimer: developed in linux, might not work as well in macOS."
             ),
         ),
         click.option(
@@ -260,7 +260,7 @@ def common_cluster_query(fn):
                 "Alignment mode for each pair of gene clusters. global: the whole list of domains of "
                 "each BGC record is compared; local: Seeds the subset of the domains used to calculate "
                 "distance by trying to find the longest slice of common domain content (Longest Common "
-                "Subcluster, LCS) between both records, then extends each side (see --extension-strategy). "
+                "Subcluster, LCS) between both records, then extends each side (see --extend-strategy). "
                 "glocal: Starts with performing local, but domain selection is then extended to the "
                 "shortest upstream/downstream arms in a compared record pair. "
                 "auto: use glocal when at least one of the BGCs in each pair has the contig_edge annotation "

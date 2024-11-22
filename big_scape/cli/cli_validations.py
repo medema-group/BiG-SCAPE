@@ -118,19 +118,19 @@ def validate_output_paths(ctx) -> None:
 
     timestamp = time.strftime("%Y-%m-%d_%H-%M-%S", time.localtime())
 
-    if "db_path" in ctx.obj and ctx.obj["db_path"] is None:
-        db_path = ctx.obj["output_dir"] / Path(f"{ctx.obj['output_dir'].name}.db")
-        ctx.obj["db_path"] = db_path
+    if "db-path" in ctx.obj and ctx.obj["db-path"] is None:
+        db_path = ctx.obj["output-dir"] / Path(f"{ctx.obj['output-dir'].name}.db")
+        ctx.obj["db-path"] = db_path
 
-    if "log_path" in ctx.obj and ctx.obj["log_path"] is None:
+    if "log-path" in ctx.obj and ctx.obj["log-path"] is None:
         log_filename = timestamp + ".log"
-        log_path = ctx.obj["output_dir"] / Path(log_filename)
-        ctx.obj["log_path"] = log_path
+        log_path = ctx.obj["output-dir"] / Path(log_filename)
+        ctx.obj["log-path"] = log_path
 
-    if "profile_path" in ctx.obj and ctx.obj["profile_path"] is None:
+    if "profile-path" in ctx.obj and ctx.obj["profile-path"] is None:
         profile_filename = timestamp + ".profile"
-        profile_path = ctx.obj["output_dir"] / Path(profile_filename)
-        ctx.obj["profile_path"] = profile_path
+        profile_path = ctx.obj["output-dir"] / Path(profile_filename)
+        ctx.obj["profile-path"] = profile_path
 
     return None
 
@@ -139,13 +139,13 @@ def validate_output_paths(ctx) -> None:
 def validate_disk_only(ctx) -> None:
     """Checks if the database storage/dumping modes that were set are compatible"""
 
-    if not ("no_db_dump" in ctx.obj and "disk_only" in ctx.obj):
+    if not ("no-db-dump" in ctx.obj and "disk-only" in ctx.obj):
         raise RuntimeError(
             "Something went wrong with the database storage/dumping mode parameters. "
             "Please contact the developers."
         )
 
-    if ctx.obj["no_db_dump"] and ctx.obj["disk_only"]:
+    if ctx.obj["no-db-dump"] and ctx.obj["disk-only"]:
         logging.error(
             "You have selected both --no-db-dump and --disk-only. Please select only one"
         )
@@ -244,9 +244,9 @@ def validate_includelist(ctx, param, domain_includelist_path):
         return None
 
     if not domain_includelist_path.exists():
-        logging.error("domain_includelist file does not exist!")
+        logging.error("domain-includelist file does not exist!")
         raise InvalidArgumentError(
-            "--domain_includelist_all/any_path", domain_includelist_path
+            "--domain-includelist-all/any-path", domain_includelist_path
         )
 
     with domain_includelist_path.open(encoding="utf-8") as domain_includelist_file:
@@ -286,7 +286,7 @@ def validate_includelist_all(ctx, param, domain_includelist_all_path) -> None:
 
     pfams = validate_includelist(ctx, param, domain_includelist_all_path)
 
-    ctx.params["domain_includelist_all"] = pfams
+    ctx.params["domain-includelist-all"] = pfams
 
     return None
 
@@ -301,7 +301,7 @@ def validate_includelist_any(ctx, param, domain_includelist_any_path) -> None:
 
     pfams = validate_includelist(ctx, param, domain_includelist_any_path)
 
-    ctx.params["domain_includelist_any"] = pfams
+    ctx.params["domain-includelist-any"] = pfams
 
     return None
 
@@ -316,13 +316,13 @@ def validate_binning_cluster_workflow(ctx) -> None:
 
     # --legacy_weights needs a classification method
 
-    if ctx.obj["legacy_weights"] and not ctx.obj["classify"]:
+    if ctx.obj["legacy-weights"] and not ctx.obj["classify"]:
         logging.error(
-            "You have selected --legacy_weights but no classification method. "
+            "You have selected --legacy-weights but no classification method. "
             "Please select any --classify method"
         )
         raise click.UsageError(
-            "You have selected --legacy_weights but no classification method. "
+            "You have selected --legacy-weights but no classification method. "
             "Please select any --classify method"
         )
 
@@ -343,18 +343,18 @@ def validate_binning_cluster_workflow(ctx) -> None:
     # --classify legacy turns on --legacy_weights
 
     if ctx.obj["classify"] == bs_enums.CLASSIFY_MODE.LEGACY:
-        ctx.obj["legacy_weights"] = True
+        ctx.obj["legacy-weights"] = True
 
     # --hybrids_off needs --classify
 
-    if ctx.obj["hybrids_off"]:
+    if ctx.obj["hybrids-off"]:
         if not (ctx.obj["classify"]):
             logging.error(
-                "You have selected --hybrids_off but no classification method. "
+                "You have selected --hybrids-off but no classification method. "
                 "Please select any --classify method"
             )
             raise click.UsageError(
-                "You have selected --hybrids_off but no classification method. "
+                "You have selected --hybrids-off but no classification method. "
                 "Please select any --classify method"
             )
 
@@ -366,11 +366,11 @@ def validate_binning_query_workflow(ctx) -> None:
 
     if ctx.obj["legacy_weights"] and not ctx.obj["classify"]:
         logging.error(
-            "You have selected --legacy_weights but no classification method. "
+            "You have selected --legacy-weights but no classification method. "
             "Please select any --classify method, or remove this parameter"
         )
         raise click.UsageError(
-            "You have selected --legacy_weights but no classification method. "
+            "You have selected --legacy-weights but no classification method. "
             "Please select any --classify method, or remove this parameter"
         )
 
@@ -379,14 +379,14 @@ def validate_pfam_path(ctx) -> None:
     """Validates whether a BiG-SCAPE db exists when pfam_path is not provided,
     which requires already processed gbk files and hence a DB in output"""
 
-    if ctx.obj["pfam_path"] is None and ctx.obj["db_path"] is None:
+    if ctx.obj["pfam-path"] is None and ctx.obj["db-path"] is None:
         logging.error(
-            "Missing option '-p/--pfam_path'."
+            "Missing option '-p/--pfam-path'."
             "BiG-SCAPE database not provided, a pfam file is "
             "required in order to detect domains."
         )
         raise click.UsageError(
-            "Missing option '-p/--pfam_path'."
+            "Missing option '-p/--pfam-path'."
             "BiG-SCAPE database not provided, a pfam file is "
             "required in order to detect domains."
         )
@@ -396,26 +396,26 @@ def validate_domain_include_list(ctx) -> None:
     """Raise an error if both domain includelists are given at the same time"""
 
     if (
-        ctx.obj["domain_includelist_all_path"]
-        and ctx.obj["domain_includelist_any_path"]
+        ctx.obj["domain-includelist-all-path"]
+        and ctx.obj["domain-includelist-any-path"]
     ):
         logging.error(
-            "You have selected both all and any domain_includelist options. "
+            "You have selected both all and any domain-includelist options. "
             "Please select only one of the two at a time."
         )
         raise click.UsageError(
-            "You have selected both all and any domain_includelist options. "
+            "You have selected both all and any domain-includelist options. "
             "Please select only one of the two at a time."
         )
 
 
 def validate_record_type(ctx, _, record_type) -> Optional[bs_enums.genbank.RECORD_TYPE]:
-    """Validates whether a region_type is provided when running classify"""
+    """Validates whether a record-type is provided when running classify"""
     valid_types = {mode.value: mode for mode in bs_enums.genbank.RECORD_TYPE}
 
     if record_type not in valid_types:
-        logging.error("Provided --record_type is invalid")
-        raise click.UsageError("Provided --record_type in invalid")
+        logging.error("Provided --record-type is invalid")
+        raise click.UsageError("Provided --record-type in invalid")
 
     return valid_types[record_type]
 
@@ -425,16 +425,16 @@ def validate_query_record(ctx) -> None:
     with a given record type"""
 
     if (
-        ctx.obj["query_record_number"] is None
-        and ctx.obj["record_type"] != bs_enums.genbank.RECORD_TYPE.REGION
+        ctx.obj["query-record-number"] is None
+        and ctx.obj["record-type"] != bs_enums.genbank.RECORD_TYPE.REGION
     ):
         logging.error(
-            "Missing option '--query_record_number'."
+            "Missing option '--query-record-number'."
             "A query record number is required when running query mode with "
             "a record type other than 'region'."
         )
         raise click.UsageError(
-            "Missing option '--query_record_number'."
+            "Missing option '--query-record-number'."
             "A query record number is required when running query mode with "
             "a record type other than 'region'."
         )
