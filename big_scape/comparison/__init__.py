@@ -1,6 +1,5 @@
 """Contains code to create and manage comparison objects"""
 
-from .record_pair import RecordPair
 from .binning import (
     RecordPairGenerator,
     MissingRecordPairGenerator,

@@ -5,6 +5,8 @@ on:
     branches:
       - dev
       - feature/*
+      - chore/*
+      - hotfix/*
   pull_request:
     branches:
       - master
@@ -37,7 +39,7 @@ jobs:
       shell: micromamba-shell {0}
       run: |
         pytest
-  
+
   generate_coverage:
     runs-on: ubuntu-latest
     if: ${{ !contains(github.event.head_commit.message, 'docs') && !contains(github.event.head_commit.message, 'documentation')  }}
@@ -76,7 +78,7 @@ jobs:
         destination_dir: badges
         keep_files: true
 
-  run_pylint:
+  run_linters:
     runs-on: ubuntu-latest
     if: ${{ !contains(github.event.head_commit.message, 'docs') && !contains(github.event.head_commit.message, 'documentation')  }}
     steps:
@@ -90,12 +92,16 @@ jobs:
 
     - name: Install dependencies
       shell: bash
-      run: python -m pip install pylint anybadge
+      run: python -m pip install pylint flake8 anybadge
 
-    - name: Run pylint
+    - name: Run flake8
+      shell: bash
+      run: flake8 big_scape
+
+    - name: Run pylint & generate badge
       shell: bash
       run: |
-        score=$(pylint bigscape.py --exit-zero | grep 'rated at' | sed -r 's/^.*at ([0-9]+\.[0-9]+).*$/\1/')
+        score=$(pylint big_scape --exit-zero | grep 'rated at' | sed -r 's/^.*at ([0-9]+\.[0-9]+).*$/\1/')
         echo $score
         mkdir badges
         rm -f badges/pylint.svg
