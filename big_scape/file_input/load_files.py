@@ -131,7 +131,9 @@ def load_dataset_folder(
 
     if mode == bs_enums.INPUT_MODE.RECURSIVE:
         # Path.glob does not traverse symlinked directories, fixed in python 3.13
-        files = [Path(f) for f in glob.glob(f"{path}/**/*.gbk", recursive=True)]
+        files = [
+            Path(f) for f in glob.glob(os.path.join(path, "**/*.gbk"), recursive=True)
+        ]
 
     if mode == bs_enums.INPUT_MODE.FLAT:
         files = list(path.glob("*.gbk"))
