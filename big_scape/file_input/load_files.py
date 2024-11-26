@@ -5,6 +5,7 @@ import logging
 from pathlib import Path
 from typing import List, Optional
 import os
+import glob
 import tarfile
 import multiprocessing
 
@@ -129,7 +130,8 @@ def load_dataset_folder(
         raise NotADirectoryError()
 
     if mode == bs_enums.INPUT_MODE.RECURSIVE:
-        files = list(path.glob("**/*.gbk"))
+        # Path.glob does not traverse symlinked directories, fixed in python 3.13
+        files = [Path(f) for f in glob.glob(f"{path}/**/*.gbk", recursive=True)]
 
     if mode == bs_enums.INPUT_MODE.FLAT:
         files = list(path.glob("*.gbk"))
