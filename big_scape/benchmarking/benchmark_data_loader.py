@@ -111,6 +111,10 @@ class BenchmarkData:
         run_times = [
             p.stem.replace("_full", "") for p in data_path.glob("*_full.network")
         ]
+
+        # assume date-time is the last element, remove eventual labels
+        run_times = [rt[-19:] for rt in run_times]
+
         if len(run_times) == 0:
             raise FileNotFoundError("No BiG-SCAPE 2 output found")
         elif len(run_times) == 1:
