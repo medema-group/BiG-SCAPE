@@ -224,7 +224,7 @@
                         </div>
                         <div class="infobar">
                         </div>
-                        <div id="abpres_heatmap" style="overflow: scroll; max-height:400px">
+                        <div id="abpres_heatmap" style="overflow: scroll; max-height:465px">
                         </div>
                     </div>
                 </div>
@@ -329,7 +329,15 @@
         </div>
     </div>
 </body>
-<script src="./html_content/js/jquery-3.2.1.min.js"></script>
+<script>
+    var loadError = function (el) {
+        var msg = 'Always open the index.html in the same directory as the "html_content"' +
+            ' folder, as this contains needed scripts and styles.'
+        alert(`Error loading script:\n\n${el.src}\n\n${msg}`)
+        window.stop()
+    }
+</script>
+<script src="./html_content/js/jquery-3.2.1.min.js" onerror=loadError(this)></script>
 <script src="./html_content/js/sql-asm.js"></script>
 <!-- Overview libs -->
 <script src="./html_content/js/kinetic-v5.1.0.min.js"></script>
