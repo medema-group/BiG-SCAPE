@@ -220,12 +220,13 @@ a.anchor {
   height: 10px;
   width: 10px;
   display: block;
-  border: 1px solid black;
+  border: 1px solid var(--text-color-tooltip);
   background: green;
 }
 
 .showhide-btn.active {
-  background: red;
+  background: -webkit-linear-gradient(-45deg, transparent 0%, transparent 45%, black 45%, black 55%, transparent 55%, transparent 100%), -webkit-linear-gradient(45deg, transparent 0%, transparent 45%, black 46%, black 56%, transparent 56%, transparent 100%);
+  background-color: red;
 }
 
 .navtext-container {

@@ -468,8 +468,14 @@
         }
         $("#bigscape-runs").html("")
         for (var [run_id, data] of Object.entries(run_data)) {
+            var inc = data["end_time"] ? "" : "(Unfinished) " // label runs that did not finish
             for (var cutoff of data["cutoffs"].split(",")) {
-                $("#bigscape-runs").append("<option value='" + run_id + "," + cutoff + "'>" + data["label"] + "_c" + cutoff + "</option>");
+                var val = run_id + "," + cutoff
+                $("#bigscape-runs").append("<option value='" + val + "'>" + inc + data["label"] + "_c" + cutoff + "</option>");
+            }
+            // set default loaded run to the most recent finished run
+            if (!inc) {
+                $("#bigscape-runs").val(val)
             }
         }
         $("#bigscape-runs").off().on("change", function () {
@@ -899,7 +905,7 @@ CC\tFamily\tGBK\tRecord_Type\tRecord_Number\tClass\tCategory\tOrganism\tTaxonomy
                                     WHERE family.run_id==${run_id} AND family.cutoff==${cutoff}
                                     GROUP BY gbk.organism`)[0]
         if (gbk_org_data === undefined) {
-            throw Error("There were no networks created in this run")
+            throw Error("There were no networks created in this run;\nPlease select another run from the dropdown menu")
         }
         var pieLabels = []
         var pieData = []
