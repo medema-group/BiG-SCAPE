@@ -905,7 +905,7 @@ CC\tFamily\tGBK\tRecord_Type\tRecord_Number\tClass\tCategory\tOrganism\tTaxonomy
                                     WHERE family.run_id==${run_id} AND family.cutoff==${cutoff}
                                     GROUP BY gbk.organism`)[0]
         if (gbk_org_data === undefined) {
-            throw Error("There were no networks created in this run;\nPlease select another from the dropdown")
+            throw Error("There were no networks created in this run;\nPlease select another run from the dropdown menu")
         }
         var pieLabels = []
         var pieData = []
