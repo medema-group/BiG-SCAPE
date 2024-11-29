@@ -33,17 +33,6 @@ def common_all(fn):
         function decorated with new click options
     """
     options = [
-        click.option(
-            "--config-file-path",
-            type=click.Path(
-                exists=True, dir_okay=False, file_okay=True, path_type=Path
-            ),
-            default=Path(bs_paths.DEFAULT_CONFIG_FILE),
-            help=(
-                "Path to BiG-SCAPE config.yml file, which stores values for a "
-                "series of advanced use parameters. (default: bundled big_scape/config.yml)."
-            ),
-        ),
         # diagnostic parameters
         click.option(
             "-v",
@@ -72,15 +61,6 @@ def common_all(fn):
                 "By default, BiG-SCAPE runs will have a name such as [label]_YYYY-MM-DD_HH-MM-SS."
             ),
         ),
-        click.option(
-            "-c",
-            "--cores",
-            default=cpu_count(),
-            type=int,
-            help=(
-                "Set the max number of cores available (default: use all available cores)."
-            ),
-        ),
         # output parameters
         click.option(
             "-o",
@@ -93,7 +73,7 @@ def common_all(fn):
         click.option(
             "--log-path",
             type=click.Path(
-                path_type=Path(exists=False), dir_okay=True, file_okay=False
+                path_type=Path, dir_okay=False, file_okay=True, exists=False
             ),
             help="Path to output log file. (default: output_dir/timestamp.log).",
         ),
@@ -130,6 +110,26 @@ def common_cluster_query(fn):
             ),
             required=True,
             help="Input directory containing .gbk files to be used by BiG-SCAPE. See the wiki for more details.",
+        ),
+        click.option(
+            "--config-file-path",
+            type=click.Path(
+                exists=True, dir_okay=False, file_okay=True, path_type=Path
+            ),
+            default=Path(bs_paths.DEFAULT_CONFIG_FILE),
+            help=(
+                "Path to BiG-SCAPE config.yml file, which stores values for a "
+                "series of advanced use parameters. (default: bundled big_scape/config.yml)."
+            ),
+        ),
+        click.option(
+            "-c",
+            "--cores",
+            default=cpu_count(),
+            type=int,
+            help=(
+                "Set the max number of cores available (default: use all available cores)."
+            ),
         ),
         click.option(
             "--input-mode",
@@ -210,7 +210,6 @@ def common_cluster_query(fn):
             ),
         ),
         click.option(
-            # TODO: implement
             "--domain-includelist-all-path",
             type=click.Path(
                 exists=True, dir_okay=False, file_okay=True, path_type=Path
@@ -226,7 +225,6 @@ def common_cluster_query(fn):
             ),
         ),
         click.option(
-            # TODO: implement
             "--domain-includelist-any-path",
             type=click.Path(
                 exists=True, dir_okay=False, file_okay=True, path_type=Path
@@ -291,7 +289,7 @@ def common_cluster_query(fn):
             help=(
                 "A comma separated list of floats. "
                 "Generate networks using multiple distance cutoff values. "
-                "Values should be in the range [0.0, 1.0]. Example: --gcf_cutoffs 0.1,"
+                "Values should be in the range [0.0, 1.0]. Example: --gcf-cutoffs 0.1,"
                 "0.25,0.5,1.0. For more detail see the wiki. (default: 0.3)."
             ),
         ),

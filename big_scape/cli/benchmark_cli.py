@@ -13,7 +13,6 @@ from .cli_common_options import common_all
 from .cli_validations import (
     set_start,
     validate_output_paths,
-    validate_disk_only,
 )
 
 
@@ -22,8 +21,9 @@ from .cli_validations import (
 @common_all
 # input parameters
 @click.option(
-    "--GCF_assignment_file",
-    type=click.Path(exists=True, file_okay=True, path_type=Path),
+    "-g",
+    "--GCF-assignment-file",
+    type=click.Path(exists=True, dir_okay=False, file_okay=True, path_type=Path),
     required=True,
     help=(
         "Path to GCF assignments file. BiG-SCAPE will compare "
@@ -31,8 +31,9 @@ from .cli_validations import (
     ),
 )
 @click.option(
-    "--BiG_dir",
-    type=click.Path(exists=True, file_okay=False, path_type=Path),
+    "-b",
+    "--BiG-dir",
+    type=click.Path(exists=True, dir_okay=True, file_okay=False, path_type=Path),
     required=True,
     help="Path to BiG-SCAPE (v1 or v2) or BiG-SLICE output directory.",
 )
@@ -53,7 +54,6 @@ def benchmark(ctx, *args, **kwargs):
 
     # workflow validations
     validate_output_paths(ctx)
-    validate_disk_only(ctx)
 
     # set start time and label
     set_start(ctx.obj)
