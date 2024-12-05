@@ -638,11 +638,13 @@ def write_network_file(
         .where(edge_params_table.c.weights.in_(incl_weights))
         .where(edge_params_table.c.alignment_mode == aln_mode)
         .where(edge_params_table.c.extend_strategy == ext_strat)
-        .where(distance_table.c.distance < 1)
     )
 
     if cutoff is not None:
         select_statement = select_statement.where(distance_table.c.distance < cutoff)
+    else:
+        # still do not include edges with a distance of 1
+        select_statement = select_statement.where(distance_table.c.distance < 1)
 
     edgelist = set(DB.execute(select_statement).fetchall())
 
