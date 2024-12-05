@@ -138,15 +138,15 @@ def cluster(ctx, *args, **kwargs):
     ctx.obj["propagate"] = True  # compatibility with query wrt cc generation
     ctx.obj["mode"] = "Cluster"
 
+    # set start time and run label
+    set_start(ctx.obj)
+
     # workflow validations
     validate_binning_cluster_workflow(ctx)
     validate_pfam_path(ctx)
     validate_domain_include_list(ctx)
     validate_output_paths(ctx)
     validate_disk_only(ctx)
-
-    # set start time and run label
-    set_start(ctx.obj)
 
     # initialize logger
     init_logger(ctx.obj)

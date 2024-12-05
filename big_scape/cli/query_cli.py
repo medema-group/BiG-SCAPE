@@ -99,15 +99,15 @@ def query(ctx, *args, **kwarg):
     ctx.obj["exclude_classes"] = None
     ctx.obj["include_classes"] = None
 
+    # set start time and label
+    set_start(ctx.obj)
+
     # workflow validations
     validate_pfam_path(ctx)
     validate_output_paths(ctx)
     validate_binning_query_workflow(ctx)
     validate_query_record(ctx)
     validate_disk_only(ctx)
-
-    # set start time and label
-    set_start(ctx.obj)
 
     # initialize logger
     init_logger(ctx.obj)

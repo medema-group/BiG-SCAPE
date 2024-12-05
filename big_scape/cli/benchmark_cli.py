@@ -52,11 +52,11 @@ def benchmark(ctx, *args, **kwargs):
     ctx.obj.update(ctx.params)
     ctx.obj["mode"] = "Benchmark"
 
-    # workflow validations
-    validate_output_paths(ctx)
-
     # set start time and label
     set_start(ctx.obj)
+
+    # workflow validations
+    validate_output_paths(ctx)
 
     # initialize logger
     init_logger(ctx.obj)

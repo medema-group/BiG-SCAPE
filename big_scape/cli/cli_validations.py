@@ -22,7 +22,7 @@ def set_start(param_dict) -> None:
     """get start time and set label in a run parameter dict"""
 
     start_time: datetime = datetime.now()
-    timestamp = start_time.strftime("%d-%m-%Y_%H-%M-%S")
+    timestamp = start_time.strftime("%Y-%m-%d_%H-%M-%S")
     if param_dict["label"]:
         param_dict["label"] = f"{param_dict['label']}_{timestamp}"
     else:
@@ -116,7 +116,7 @@ def validate_output_dir(ctx, param, output_dir) -> Path:
 def validate_output_paths(ctx) -> None:
     """Sets the output paths to default output_dir if not provided"""
 
-    timestamp = time.strftime("%Y-%m-%d_%H-%M-%S", time.localtime())
+    timestamp = ctx.obj["label"]
 
     if "db_path" in ctx.obj and ctx.obj["db_path"] is None:
         db_path = ctx.obj["output_dir"] / Path(f"{ctx.obj['output_dir'].name}.db")
