@@ -642,6 +642,9 @@ def write_network_file(
 
     if cutoff is not None:
         select_statement = select_statement.where(distance_table.c.distance < cutoff)
+    else:
+        # still do not include edges with a distance of 1
+        select_statement = select_statement.where(distance_table.c.distance < 1)
 
     edgelist = set(DB.execute(select_statement).fetchall())
 

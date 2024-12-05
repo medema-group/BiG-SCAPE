@@ -287,9 +287,12 @@ def find_domain_lcs_region(
 
         # Length
 
-        # clear the list if it's not empty and the current match is longer
+        # clear the longest list if it's not empty and the current match is longer.
+        # also clear the central list as we do not care about a shorter LCS even if it
+        # is more central
         if len(use_longest_list) > 0 and length > use_longest_list[0][1]:
             use_longest_list.clear()
+            use_central_list.clear()
 
         # add the match to the list if it's empty or the current match is equal length
         # or longer than the existing match
@@ -523,9 +526,12 @@ def find_domain_lcs_protocluster(
 
         # Length
 
-        # clear the list if it's not empty and the current match is longer
+        # clear the longest list if it's not empty and the current match is longer.
+        # also clear the central list as we do not care about a shorter LCS even if it
+        # is more central
         if len(use_longest_list) > 0 and length > use_longest_list[0][1]:
             use_longest_list.clear()
+            use_central_list.clear()
 
         # add the match to the list if it's empty or the current match is equal length
         # or longer than the existing match
