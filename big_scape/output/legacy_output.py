@@ -377,6 +377,7 @@ def write_record_annotations_file(run, cutoff, all_bgc_records) -> None:
                 "GBK",
                 "Record_Type",
                 "Record_Number",
+                "Full_Name",
                 "Class",
                 "Category",
                 "Organism",
@@ -403,6 +404,7 @@ def write_record_annotations_file(run, cutoff, all_bgc_records) -> None:
                     Path(gbk_path).stem,
                     record_type,
                     str(record_number),
+                    f"{Path(gbk_path).name}_{record_type}_{record_number}",
                     product,
                     record_categories[rec_id],
                     organism,
@@ -473,7 +475,9 @@ def write_clustering_file(run, cutoff, pair_generator) -> None:
     record_data = DB.execute(select_statement).fetchall()
 
     with open(clustering_file_path, "w") as clustering_file:
-        header = "\t".join(["GBK", "Record_Type", "Record_Number", "CC", "Family"])
+        header = "\t".join(
+            ["GBK", "Record_Type", "Record_Number", "CC", "Family", "Full_Name"]
+        )
         clustering_file.write(header + "\n")
 
         for record in record_data:
@@ -486,6 +490,7 @@ def write_clustering_file(run, cutoff, pair_generator) -> None:
                     str(record_number),
                     str(cc_number),
                     f"FAM_{family:0>5}",
+                    f"{Path(gbk_path).name}_{record_type}_{record_number}",
                 ]
             )
             clustering_file.write(row + "\n")
@@ -650,9 +655,9 @@ def write_network_file(
 
     with open(output_path, "w") as network_file:
         header = (
-            "GBK_a\tRecord_Type_a\tRecord_Number_a\tORF_coords_a\tGBK_b\t"
-            "Record_Type_b\tRecord_Number_b\tORF_coords_b\tdistance\tjaccard\tadjacency\t"
-            "dss\tweights\taligmnent_mode\textend_strategy\n"
+            "GBK_a\tRecord_Type_a\tRecord_Number_a\tFull_Name_a\tORF_coords_a\tGBK_b\t"
+            "Record_Type_b\tRecord_Number_b\tFull_Name_b\tORF_coords_b\tdistance\t"
+            "jaccard\tadjacency\tdss\tweights\taligmnent_mode\textend_strategy\n"
         )
 
         network_file.write(header)
@@ -681,10 +686,12 @@ def write_network_file(
                     Path(gbk_path_a).stem,
                     record_type_a,
                     str(record_number_a),
+                    f"{Path(gbk_path_a).name}_{record_type_a}_{record_number_a}",
                     f"{ext_a_start}:{ext_a_stop}",
                     Path(gbk_path_b).stem,
                     record_type_b,
                     str(record_number_b),
+                    f"{Path(gbk_path_b).name}_{record_type_b}_{record_number_b}",
                     f"{ext_b_start}:{ext_b_stop}",
                     f"{distance:.2f}",
                     f"{jaccard:.2f}",
