@@ -8,6 +8,7 @@ import os
 import psutil
 import signal
 import logging
+import toml
 from datetime import datetime
 from pathlib import Path
 
@@ -40,14 +41,42 @@ import big_scape.distances.classify as bs_classify
 import big_scape.distances.query as bs_query
 
 
+def get_bigscape_version() -> str:
+    """Get the version of BiG-SCAPE.
+    The way we retrieve the version is different depending on whether the package is
+    installed or not.
+
+    We need a dedicated library for this because the python community has not figured
+    out that version numbers are pretty core to software development and there is no
+    single place to put them. We want it to only be in the pyproject.toml file and not
+    anywhere else, but this file is not available when installed as a package
+    """
+    # can we get to the pyproject.toml file?
+    pyproject_toml = Path(__file__).parent.parent / "pyproject.toml"
+
+    if pyproject_toml.exists():
+        return toml.load(pyproject_toml)["project"]["version"]
+
+    # if not, we're probably running as a package. get the version of the currently
+    # installed big-scape package
+    import importlib.metadata
+
+    return importlib.metadata.version("big-scape")
+
+
 def run_bigscape(run: dict) -> None:
     """Run a bigscape cluster analysis. This is the main function of the program that parses the
     command line arguments, loads the data, runs the analysis and saves the output.
     """
     # starting information
-    # TODO: add automatic updating of version number
+    # this is, lightly and delicately put, *not a great way to get the version*
+    # but after some research, it seems no one had the idea to make this easy
+
+    bigscape_version = get_bigscape_version()
+
     logging.info(
-        "Starting BiG-SCAPE 2.0.0 %s run on %s level with %s alignment and %s weights",
+        "Starting BiG-SCAPE %s %s run on %s level with %s alignment and %s weights",
+        bigscape_version,
         run["mode"],
         run["record_type"].value,
         run["alignment_mode"].value,
