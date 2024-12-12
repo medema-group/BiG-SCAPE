@@ -13,7 +13,7 @@ RUN chown $MAMBA_USER /home/data
 USER $MAMBA_USER
 
 # get source code
-RUN git clone https://github.com/medema-group/BiG-SCAPE.git -b feature/repo-updates
+RUN git clone https://github.com/medema-group/BiG-SCAPE.git
 
 WORKDIR /home/$MAMBA_USER/BiG-SCAPE
 
