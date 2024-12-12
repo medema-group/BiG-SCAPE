@@ -133,19 +133,19 @@ class TestAffinityPropagation(TestCase):
 
         self.assertEqual(expected_std, actual_std)
 
-    def test_get_cc_connectivity(self):
-        """Tests whether the connectivity of a connected component is correctly
+    def test_get_cc_density(self):
+        """Tests whether the density of a connected component is correctly
         calculated
         """
         adj_list = TestAffinityPropagation.gen_edge_list()
 
         # 8 nodes, 15 edges
         # 115 / (8 * (8 - 1) / 2) = 0.54
-        expected_connectivity = 0.54
+        expected_density = 0.54
 
-        actual_connectivity = bs_families.get_cc_connectivity(adj_list)
+        actual_density = bs_families.get_cc_density(adj_list)
 
-        self.assertEqual(expected_connectivity, actual_connectivity)
+        self.assertEqual(expected_density, actual_density)
 
     def test_test_centrality(self):
         """Tests whether the test_centrality function correctly identifies a network
