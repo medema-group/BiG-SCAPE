@@ -9,12 +9,14 @@ from big_scape.cli import cluster_cli as cluster
 from big_scape.cli import query_cli as query
 from big_scape.cli import benchmark_cli as benchmark
 from big_scape.cli.cli_config import CommandOrder
+from big_scape.utility.version import get_bigscape_version
 
 
 def print_version(ctx, param, value):
     if not value or ctx.resilient_parsing:
         return
-    click.echo("BiG-SCAPE 2.0 beta")
+    bigscape_version = get_bigscape_version()
+    click.echo(f"BiG-SCAPE {bigscape_version}")
     ctx.exit()
 
 

@@ -8,7 +8,6 @@ import os
 import psutil
 import signal
 import logging
-import toml
 from datetime import datetime
 from pathlib import Path
 
@@ -30,6 +29,7 @@ from big_scape.utility import domain_includelist_filter, class_filter, category_
 import big_scape.file_input as bs_files
 
 # import big_scape.genbank as bs_gbk
+from big_scape.utility.version import get_bigscape_version
 import big_scape.data as bs_data
 import big_scape.enums as bs_enums
 import big_scape.comparison as bs_comparison
@@ -39,29 +39,6 @@ import big_scape.distances.mix as bs_mix
 import big_scape.distances.legacy_classify as bs_legacy_classify
 import big_scape.distances.classify as bs_classify
 import big_scape.distances.query as bs_query
-
-
-def get_bigscape_version() -> str:
-    """Get the version of BiG-SCAPE.
-    The way we retrieve the version is different depending on whether the package is
-    installed or not.
-
-    We need a dedicated library for this because the python community has not figured
-    out that version numbers are pretty core to software development and there is no
-    single place to put them. We want it to only be in the pyproject.toml file and not
-    anywhere else, but this file is not available when installed as a package
-    """
-    # can we get to the pyproject.toml file?
-    pyproject_toml = Path(__file__).parent.parent / "pyproject.toml"
-
-    if pyproject_toml.exists():
-        return toml.load(pyproject_toml)["project"]["version"]
-
-    # if not, we're probably running as a package. get the version of the currently
-    # installed big-scape package
-    import importlib.metadata
-
-    return importlib.metadata.version("big-scape")
 
 
 def run_bigscape(run: dict) -> None:
