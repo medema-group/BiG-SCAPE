@@ -40,6 +40,8 @@ class BigscapeConfig:
 
     # CLUSTER
     PREFERENCE: float = 0.0
+    DENSITY: float = 0.85
+    DENSE_PREFERENCE: float = -5.0
 
     # TREE
     TOP_FREQS: int = 3
@@ -194,6 +196,8 @@ class BigscapeConfig:
 
         # CLUSTER
         BigscapeConfig.PREFERENCE = config["PREFERENCE"]
+        BigscapeConfig.DENSITY = config["DENSITY"]
+        BigscapeConfig.DENSE_PREFERENCE = config["DENSE_PREFERENCE"]
 
         # TREE
         BigscapeConfig.TOP_FREQS = config["TOP_FREQS"]

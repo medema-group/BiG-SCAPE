@@ -58,6 +58,10 @@ EXTEND_MAX_MATCH_PERC: 0.1
 # Internal parameter of the Affinity Propagation clustering algorithm, governs the number
 # of families created. Higher preference will result in more families and vice versa.
 PREFERENCE: 0.0
+# Connected component density threshold and Affinity Propagation preference to be used
+# on dense connected components.
+DENSITY: 0.85
+DENSE_PREFERENCE: -5.0
 
 # GCF TREE
 # The number of common domains (present in the exemplar BGC record) used to
