@@ -2,7 +2,7 @@
 
 # from python
 import sys
-from typing import Callable
+from typing import Callable, Optional
 import warnings
 import numpy as np
 import networkx
@@ -50,7 +50,45 @@ def generate_families(
 
     similarity_matrix, node_ids = edge_list_to_sim_matrix(connected_component)
 
-    labels, centers = aff_sim_matrix(similarity_matrix)
+    if get_cc_density(connected_component) >= BigscapeConfig.DENSITY:
+        # if a connected component is highly connected, no (or less) splitting is needed
+        # run affinity propagation with a lower preference to find the best family center
+        labels, centers = aff_sim_matrix(
+            similarity_matrix, BigscapeConfig.DENSE_PREFERENCE
+        )
+    else:
+        labels, centers = aff_sim_matrix(similarity_matrix)
+
+    # If affinity propagation did not converge, no centers are returned.
+    # to show them in the network anyways, merge them into one arbitrary family
+    if len(centers) == 0:
+        center = node_ids[0]
+
+        if DB.metadata is None:
+            raise RuntimeError("DB metadata is None!")
+
+        gbk_table = DB.metadata.tables["gbk"]
+        record_table = DB.metadata.tables["bgc_record"]
+        center_data = DB.execute(
+            select(
+                gbk_table.c.path,
+                record_table.c.record_type,
+                record_table.c.record_number,
+            )
+            .join(record_table, record_table.c.gbk_id == gbk_table.c.id)
+            .where(record_table.c.id == center)
+        ).fetchone()
+
+        if center_data is None:
+            raise RuntimeError("Family center not found in database: %s", center)
+
+        c_path, c_type, c_number = center_data
+        logging.warning(
+            "Affinity Propagation did not converge, records in this connected component "
+            "have been merged into one arbitrary family with center: %s",
+            "_".join(map(str, [c_path.split("/")[-1], c_type, c_number])),
+        )
+        return [(rec_id, center, cutoff, bin_label, run_id) for rec_id in node_ids]
 
     for idx, label in enumerate(labels):
         label = int(label)
@@ -85,15 +123,17 @@ def get_cc_edge_weight_std(connected_component) -> float:
     return edge_std
 
 
-def get_cc_connectivity(connected_component) -> float:
-    """calculates the connectivity of a connected component
+def get_cc_density(
+    connected_component: list[tuple[int, int, float, float, float, float, int]]
+) -> float:
+    """calculates the density of a connected component: nr edges / nr of possible edges
 
     Args:
-        connected_component (list[tuple[int, int, float, float, float, float, str]]):
+        connected_component (list[tuple[int, int, float, float, float, float, int]]):
             connected component in the form of a list of edges
 
     Returns:
-        float: connectivity of the connected component
+        float: density of the connected component
     """
 
     nr_edges = len(connected_component)
@@ -102,10 +142,10 @@ def get_cc_connectivity(connected_component) -> float:
     nodes_b = [edge[1] for edge in connected_component]
     nr_nodes = len(set(nodes_a + nodes_b))
 
-    cc_connectivity = nr_edges / (nr_nodes * (nr_nodes - 1) / 2)
-    cc_connectivity = round(cc_connectivity, 2)
+    cc_density = nr_edges / (nr_nodes * (nr_nodes - 1) / 2)
+    cc_density = round(cc_density, 2)
 
-    return cc_connectivity
+    return cc_density
 
 
 def test_centrality(connected_component, node_fraction) -> tuple[bool, list[int]]:
@@ -148,7 +188,7 @@ def test_centrality(connected_component, node_fraction) -> tuple[bool, list[int]
     return False, sorted_between_bentrality_nodes
 
 
-def aff_sim_matrix(matrix):
+def aff_sim_matrix(matrix, preference: Optional[float] = None):
     """Execute affinity propagation on a __similarity__ matrix
 
     Note: a similarity matrix. Not a distance matrix.
@@ -156,6 +196,7 @@ def aff_sim_matrix(matrix):
     Args:
         matrix (numpy.array[numpy.array]): similarity matrix in numpy array of array
         format.
+        preference (float, optional): Affinity propagation preference.
 
     Returns:
         tuple[list[int], list[int]]: list of labels and list of cluster center ids
@@ -163,12 +204,15 @@ def aff_sim_matrix(matrix):
     # thanks numpy but we sort of know what we're doing
     warnings.filterwarnings(action="ignore", category=ConvergenceWarning)
 
+    if preference is None:
+        preference = BigscapeConfig.PREFERENCE
+
     af_results = AffinityPropagation(
         damping=0.90,
         max_iter=1000,
         convergence_iter=200,
         affinity="precomputed",
-        preference=BigscapeConfig.PREFERENCE,
+        preference=preference,
     ).fit(matrix)
 
     return af_results.labels_, af_results.cluster_centers_indices_

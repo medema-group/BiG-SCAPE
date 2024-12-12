@@ -124,7 +124,7 @@ class BenchmarkData:
             run_time = datetime(1, 1, 1)
             for dt_str in run_times:
                 date, time = dt_str.split("_")
-                day, month, year = map(int, date.split("-"))
+                year, month, day = map(int, date.split("-"))
                 hour, minute, second = map(int, time.split("-"))
                 current_dt = datetime(year, month, day, hour, minute, second)
                 if current_dt > run_time:
