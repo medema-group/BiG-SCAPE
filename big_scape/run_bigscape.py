@@ -29,6 +29,7 @@ from big_scape.utility import domain_includelist_filter, class_filter, category_
 import big_scape.file_input as bs_files
 
 # import big_scape.genbank as bs_gbk
+from big_scape.utility.version import get_bigscape_version
 import big_scape.data as bs_data
 import big_scape.enums as bs_enums
 import big_scape.comparison as bs_comparison
@@ -45,9 +46,14 @@ def run_bigscape(run: dict) -> None:
     command line arguments, loads the data, runs the analysis and saves the output.
     """
     # starting information
-    # TODO: add automatic updating of version number
+    # this is, lightly and delicately put, *not a great way to get the version*
+    # but after some research, it seems no one had the idea to make this easy
+
+    bigscape_version = get_bigscape_version()
+
     logging.info(
-        "Starting BiG-SCAPE 2.0.0 %s run on %s level with %s alignment and %s weights",
+        "Starting BiG-SCAPE %s %s run on %s level with %s alignment and %s weights",
+        bigscape_version,
         run["mode"],
         run["record_type"].value,
         run["alignment_mode"].value,
