@@ -15,9 +15,9 @@ BiG-SCAPE uses [antiSMASH](https://antismash.secondarymetabolites.org) processed
 
 In principle, BiG-SCAPE can also be used on any other gene clusters, such as pathogenicity islands, secretion system-encoding gene clusters, or even whole viral genomes.
 
-For installation instructions, see [here](https://github.com/CatarinaCarolina/Test_BS_Wiki/wiki/Installing-and-Running-BiG-SCAPE).
+For installation instructions, see [here](https://github.com/medema-group/BiG-SCAPE/wiki/Installing-and-Running-BiG-SCAPE).
 
-Learn more about BiG-SCAPE in the [wiki](https://github.com/CatarinaCarolina/Test_BS_Wiki/wiki).
+Learn more about BiG-SCAPE in the [wiki](https://github.com/medema-group/BiG-SCAPE/wiki).
 
 
 ![BiG-SCAPE workflow](Figures/BiG-SCAPE-CORASON_Fig1_20171122_v01_MM_nocorason.png)
