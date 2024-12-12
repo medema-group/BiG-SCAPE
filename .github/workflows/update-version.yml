@@ -1,0 +1,27 @@
+# from https://github.com/actinia-org/actinia-core/blob/main/.github/workflows/update-version.yml
+name: Update Version Number
+
+on:
+  release:
+    types: [published]
+
+jobs:
+  update-version-number:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4
+        with:
+          fetch-depth: 0
+      - name: Update Version Number
+        run: |
+          OLD_VERSION=$(grep ^version pyproject.toml | cut -d '"' -f 2)
+          OLD_VERSION="\"$OLD_VERSION\""
+          NEW_VERSION="\"$GITHUB_REF_NAME\""
+          sed -i "s+version = $OLD_VERSION+version = $NEW_VERSION+g" pyproject.toml
+      - name: Commit Changes
+        run: |
+          git config user.name "$GITHUB_ACTOR"
+          git config user.email "$GITHUB_ACTOR@users.noreply.github.com"
+          git commit -a -m "Update version number to new_version"
+          git push origin HEAD:main
