@@ -50,7 +50,7 @@ def generate_families(
 
     similarity_matrix, node_ids = edge_list_to_sim_matrix(connected_component)
 
-    if get_cc_density(connected_component) > BigscapeConfig.DENSITY:
+    if get_cc_density(connected_component) >= BigscapeConfig.DENSITY:
         # if a connected component is highly connected, no (or less) splitting is needed
         # run affinity propagation with a lower preference to find the best family center
         labels, centers = aff_sim_matrix(
