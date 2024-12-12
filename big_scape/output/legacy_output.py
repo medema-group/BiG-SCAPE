@@ -568,22 +568,22 @@ def write_network_file(
         cutoff (float, optional): distance cutoff for returned edges. Defaults to None.
     """
     if weight is None:
-        legacy_weights = [
-            "PKSI",
-            "PKSother",
-            "NRPS",
-            "RiPPs",
-            "saccharides",
-            "terpene",
-            "PKS-NRP_Hybrids",
-            "other",
-        ]
         incl_weights = ["mix"]
-
-        if not run["mix"]:
-            incl_weights.remove("mix")
         if run["legacy_weights"]:
-            incl_weights.extend(legacy_weights)
+            incl_weights.extend(
+                [
+                    "PKSI",
+                    "PKSother",
+                    "NRPS",
+                    "RiPPs",
+                    "saccharides",
+                    "terpene",
+                    "PKS-NRP_Hybrids",
+                    "other",
+                ]
+            )
+            if not run["mix"]:
+                incl_weights.remove("mix")
     else:
         incl_weights = [weight]
 
