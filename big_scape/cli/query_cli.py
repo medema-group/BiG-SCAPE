@@ -99,6 +99,9 @@ def query(ctx, *args, **kwarg):
     ctx.obj["exclude_classes"] = None
     ctx.obj["include_classes"] = None
 
+    # TODO: remove when reimplementing disk-only
+    ctx.obj["disk_only"] = False
+
     # set start time and label
     set_start(ctx.obj)
 

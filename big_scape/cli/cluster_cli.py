@@ -138,6 +138,9 @@ def cluster(ctx, *args, **kwargs):
     ctx.obj["propagate"] = True  # compatibility with query wrt cc generation
     ctx.obj["mode"] = "Cluster"
 
+    # TODO: remove when reimplementing disk-only
+    ctx.obj["disk_only"] = False
+
     # set start time and run label
     set_start(ctx.obj)
 
