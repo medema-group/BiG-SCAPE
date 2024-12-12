@@ -24,4 +24,4 @@ jobs:
           git config user.name "$GITHUB_ACTOR"
           git config user.email "$GITHUB_ACTOR@users.noreply.github.com"
           git commit -a -m "Update version number to new_version"
-          git push origin GITHUB_REF_NAME
+          git push origin $GITHUB_REF_NAME
