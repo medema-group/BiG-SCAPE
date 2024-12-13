@@ -2,6 +2,10 @@ FROM mambaorg/micromamba
 
 WORKDIR /home/$MAMBA_USER
 
+# default branch name is master, but
+# this is overridden by the build script
+ARG BRANCH_NAME=master
+
 # root level stuff
 USER root
 RUN apt-get update
@@ -13,7 +17,7 @@ RUN chown $MAMBA_USER /home/data
 USER $MAMBA_USER
 
 # get source code
-RUN git clone https://github.com/medema-group/BiG-SCAPE.git
+RUN git clone https://github.com/medema-group/BiG-SCAPE.git -b $BRANCH_NAME
 
 WORKDIR /home/$MAMBA_USER/BiG-SCAPE
 
