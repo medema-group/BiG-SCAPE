@@ -18,7 +18,6 @@ def get_bigscape_version() -> str:
     anywhere else, but this file is not available when installed as a package
     """
     # can we get to the pyproject.toml file?
-    print(__file__)
     pyproject_toml = Path(__file__).parent.parent.parent / "pyproject.toml"
 
     if pyproject_toml.exists():
