@@ -7,6 +7,9 @@ on:
 env:
   REGISTRY: ghcr.io
   IMAGE_NAME: ${{ github.repository }}
+  # not sure if this works. the branch name env does not
+  # seem to want to propagate into the docker build step
+  BRANCH_NAME: ${{ github.ref }}
 
 jobs:
   push_to_registry:
