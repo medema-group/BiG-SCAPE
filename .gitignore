@@ -1,0 +1,25 @@
+# ide stuff
+.vscode/
+
+# python stuff
+*.pyc
+
+# documentation build
+site/
+
+# test coverage report and svg
+.coverage
+coverage.svg
+coverage.xml
+
+# misc temp files
+tmp/
+test/test_data/tmp
+
+
+# test hmm files
+# pressed test hmms
+test/test_data/hmm/valid.hmm.h3*
+
+# mibig
+MIBiG/

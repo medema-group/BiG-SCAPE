@@ -1,0 +1,147 @@
+name: CI/CD
+
+on:
+  push:
+    branches:
+      - master
+
+jobs:
+  run_pytest:
+    runs-on: ubuntu-latest
+    if: ${{ !contains(github.event.head_commit.message, 'docs') && !contains(github.event.head_commit.message, 'documentation')  }}
+    timeout-minutes: 15
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v3
+
+    - name: Set up mamba environment
+      uses: mamba-org/setup-micromamba@v1
+      with:
+        micromamba-version: '1.3.1-0'
+        environment-file: environment.yml
+        environment-name: BiG-SCAPE
+        init-shell: bash
+        generate-run-shell: true
+
+    - name: Install dependencies
+      shell: micromamba-shell {0}
+      run: |
+        python -m pip install pytest
+
+    - name: Test with Pytest
+      shell: micromamba-shell {0}
+      run: |
+        pytest
+
+  generate_coverage:
+    runs-on: ubuntu-latest
+    if: ${{ !contains(github.event.head_commit.message, 'docs') && !contains(github.event.head_commit.message, 'documentation')  }}
+    timeout-minutes: 15
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v3
+
+    - name: Set up mamba environment
+      uses: mamba-org/setup-micromamba@v1
+      with:
+        micromamba-version: '1.3.1-0'
+        environment-file: environment.yml
+        environment-name: BiG-SCAPE
+        init-shell: bash
+        generate-run-shell: true
+
+    - name: Install dependencies
+      shell: micromamba-shell {0}
+      run: |
+        python -m pip install pytest coverage coverage-badge
+
+    - name: Test with Pytest
+      shell: micromamba-shell {0}
+      run: |
+        coverage run -m pytest
+        coverage report
+        mkdir badges
+        coverage-badge -o badges/coverage.svg
+
+    - name: Upload badges folder
+      uses: peaceiris/actions-gh-pages@v3
+      with:
+        github_token: ${{ secrets.GITHUB_TOKEN }}
+        publish_dir: badges
+        destination_dir: badges
+        keep_files: true
+
+  run_linters:
+    runs-on: ubuntu-latest
+    if: ${{ !contains(github.event.head_commit.message, 'docs') && !contains(github.event.head_commit.message, 'documentation')  }}
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v3
+
+    - name: Set up python
+      uses: actions/setup-python@main
+      with:
+        python-version: "3.9"
+
+    - name: Install dependencies
+      shell: bash
+      run: python -m pip install pylint flake8 anybadge
+
+    - name: Run flake8
+      shell: bash
+      run: flake8 big_scape
+
+    - name: Run pylint & generate badge
+      shell: bash
+      run: |
+        score=$(pylint big_scape --exit-zero | grep 'rated at' | sed -r 's/^.*at ([0-9]+\.[0-9]+).*$/\1/')
+        echo $score
+        mkdir badges
+        rm -f badges/pylint.svg
+        anybadge -l pylint -v $score -f badges/pylint.svg 2=red 4=orange 8=yellow 10=green
+
+    - name: Save badge to cache
+      uses: actions/cache/save@v3
+      with:
+        path: badges
+        key: cache-${{ github.run_id }}-${{ github.run_attempt }}
+
+    - name: Upload badges folder
+      uses: peaceiris/actions-gh-pages@v3
+      with:
+        github_token: ${{ secrets.GITHUB_TOKEN }}
+        publish_dir: badges
+        destination_dir: badges
+        keep_files: true
+
+# upload_badges:
+#     runs-on: ubuntu-latest
+#     if: ${{ !contains(github.event.head_commit.message, 'docs') && !contains(github.event.head_commit.message, 'documentation')  }}
+#     needs:
+#       - run_pytest
+#       - run_pylint
+#     steps:
+#       - name: Setup cache
+#         uses: actions/cache/restore@v3
+#         with:
+#           path: badges
+#           key: cache-${{ github.run_id }}-${{ github.run_attempt }}
+
+#       - name: Check cache hit
+#         if: steps.cache.outputs.cache-hit != 'true'
+#         run: |
+#           Could not find cache
+#           exit 1
+
+#       - name: LS badges dir
+#         shell: bash
+#         run: |
+#           ls -l
+#           ls -l badges
+
+#       - name: Upload badges folder
+#         uses: peaceiris/actions-gh-pages@v3
+#         with:
+#           github_token: ${{ secrets.GITHUB_TOKEN }}
+#           publish_dir: badges
+#           destination_dir: badges

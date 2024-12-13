@@ -1,0 +1,44 @@
+name: Docs
+
+on:
+  pull_request:
+    branches:
+    - dev
+
+# placeholder job just to do something
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Run a one-line script
+        run: echo Hello, world!
+
+# jobs:
+#   build:
+#     name: Deploy docs
+#     runs-on: ubuntu-latest
+
+#     steps:
+#       - name: Checkout code
+#         uses: actions/checkout@v3
+
+#       - name: Set up Python
+#         uses: actions/setup-python@main
+#         with:
+#           python-version: 3.9
+
+#       - name: Install dependencies
+#         shell: bash
+#         run: python -m pip install mkdocs mkdocstrings-python
+
+#       - name: Build docs site
+#         run: mkdocs build
+
+#       - name: Deploy to github pages
+#         uses: peaceiris/actions-gh-pages@v3
+#         with:
+#           github_token: ${{ secrets.GITHUB_TOKEN }}
+#           publish_dir: ./site

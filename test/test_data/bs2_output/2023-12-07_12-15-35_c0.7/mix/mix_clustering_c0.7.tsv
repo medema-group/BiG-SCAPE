@@ -1,0 +1,5 @@
+GBK	Record_Type	Record_Number	CC	Family
+../data/benchmark_antismash_files/extracted/Fusarium/Fusarium_108/CM000578.1.cluster038.gbk	protocluster	1	1	FAM_00006
+../data/benchmark_antismash_files/extracted/Fusarium/Fusarium_108/CM000578.1.cluster038.gbk	protocluster	2	1	FAM_00006
+../data/benchmark_antismash_files/extracted/Fusarium/Fusarium_19/CM000578.1.cluster042.gbk	protocluster	1_2	1	FAM_00010
+../data/benchmark_antismash_files/extracted/Fusarium/Fusarium_75/CM000578.1.cluster033.gbk	region	33	1	FAM_00062

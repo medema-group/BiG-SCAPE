@@ -1,0 +1,299 @@
+"""Module to generate newick GCF trees"""
+
+# from python
+import subprocess
+import logging
+import numpy as np
+from typing import TextIO
+from Bio import Phylo
+from Bio.Phylo.BaseTree import Tree
+from pathlib import Path
+from collections import defaultdict
+from scipy.optimize import linear_sum_assignment
+from sqlalchemy import update, bindparam
+
+# from other modules
+from big_scape.genbank import BGCRecord
+from big_scape.cli.config import BigscapeConfig
+from big_scape.data import DB
+
+
+def generate_newick_tree(
+    records: list[BGCRecord],
+    exemplar: int,
+    exemplar_db_id: int,
+    output_path: Path,
+) -> str:
+    """Generate newick formatted tree for each GCF
+
+    Args:
+        records (list[BGCRecord]): list of records within GCF
+        exemplar (int): index of exemplar to use during alignment
+        exemplar_db_id (int): db id of family exemplar
+        output_path (Path): folder to store alignments and trees
+
+    Returns:
+        str: Correctly formatted newick tree
+    """
+    family_name = f"FAM_{exemplar_db_id:0>5}"
+
+    algn_filename = output_path / Path(family_name + "_alignment.fasta")
+    tree_filename = output_path / Path(family_name + ".newick")
+
+    if algn_filename.exists() and tree_filename.exists():
+        return process_newick_tree(tree_filename)
+
+    # no need for alignment
+    if len(records) < 3:
+        tree = f"({','.join([str(rec._db_id)+':0.0' for rec in records])}):0.01;"
+    else:
+        algn = generate_gcf_alignment(records, exemplar)
+        with open(algn_filename, "w") as out_algn:
+            out_algn.write(algn)
+        with open(tree_filename, "w") as out_newick:
+            run_fasttree(algn_filename, out_newick)
+        tree = process_newick_tree(tree_filename)
+    return tree
+
+
+def run_fasttree(algn_file: Path, out_file: TextIO):
+    """Generate FastTree newick GCF tree
+
+    Args:
+        algn_file (Path): Path to alignment file
+        out_file (TextIO): Opened output file object
+    """
+
+    result = subprocess.run(
+        ["fasttree", "-quiet", "-nopr", algn_file],
+        capture_output=True,
+        shell=False,
+    )
+    stdout = result.stdout.decode("utf-8")
+    out_file.write(stdout)
+
+    if result.stderr:
+        stderr = result.stderr.decode("utf-8")
+        stderr = stderr.replace("\n", " ")
+        logging.debug(f"FastTree says: {stderr}")
+
+
+def process_newick_tree(tree_file: Path) -> str:
+    """Process newick tree file format
+
+    Args:
+        tree_file (Path): Path to tree file
+
+    Returns:
+        str: processed newick tree
+    """
+    if not tree_file.exists():
+        logging.error("Failed to create newick tree")
+        raise FileNotFoundError()
+    with open(tree_file, "r") as newick_file:
+        try:
+            tree: Tree = Phylo.read(newick_file, "newick")
+        except ValueError as e:
+            logging.warning("Error encountered while reading newick tree: ", str(e))
+            return ""
+        else:
+            try:
+                tree.root_at_midpoint()
+            except UnboundLocalError:
+                # Noticed this could happen if the sequences are exactly
+                # the same and all distances == 0
+                logging.debug(f"{tree_file.stem}: Unable to root at midpoint")
+            return tree.format("newick")
+
+
+def save_trees(
+    trees: list[str], family_ids: list[int], cutoff: float, bin_label: str, run_id: int
+) -> None:
+    """Save multiple newick trees to corresponding family to the database
+
+    Args:
+        trees (list[str]): newick trees
+        family_ids (list[int]): family exemplar database ids
+        cutoff (float): current cutoff
+        bin_label (str): current bin_label
+        run_id (int): id of the current run
+    """
+    if not DB.connection:
+        raise RuntimeError("DB Connection is None!")
+    if DB.metadata is None:
+        raise RuntimeError("DB metadata is None!")
+
+    family_table = DB.metadata.tables["family"]
+    update_statement = (
+        update(family_table)
+        .where(family_table.c.center_id == bindparam("center"))
+        .where(family_table.c.cutoff == cutoff)
+        .where(family_table.c.bin_label == bin_label)
+        .where(family_table.c.run_id == run_id)
+        .values(newick=bindparam("tree"))
+    )
+    DB.connection.execute(
+        update_statement,
+        [{"center": exempl, "tree": tree} for exempl, tree in zip(family_ids, trees)],
+    )
+
+
+def find_tree_domains(
+    frequency_table: dict[str, int], exemplar_domains: set[str], top_freqs: int
+) -> set[str]:
+    """Find the set of tree domains to base alignment on
+
+    Tries to pick domains that appear with the highest frequency (i.e. that are present
+    in most family members) and that appear in the exemplar.
+
+    Args:
+        frequency_table (dict): the number of family members each domain appears in
+        exemplar (set[str]): domains in family exemplar
+        top_freqs (int): the number of highest frequencies to include in alignment
+    """
+    tree_domains: set[str] = set()
+    frequencies = sorted(set(frequency_table.values()), reverse=True)
+
+    if len(frequencies) < top_freqs:
+        accepted_f = frequencies
+        # make sure frequency 1 is not included
+        if 1 in accepted_f:
+            accepted_f.remove(1)
+    else:
+        accepted_f = frequencies[:top_freqs]
+
+    for domain in frequency_table:
+        if frequency_table[domain] in accepted_f and domain in exemplar_domains:
+            tree_domains.add(domain)
+    return tree_domains
+
+
+def generate_gcf_alignment(records: list[BGCRecord], exemplar: int) -> str:
+    """Generate protein domain alignment for records in GCF
+
+    Names of each record correspond to their database id
+
+    Args:
+        records (list[BGCRecord]): Records within one GCF to align
+        exemplar (int): Index of exemplar to use during alignment
+
+    Returns:
+        str: alignment of GCF based on protein domain
+        TODO: refactor
+    """
+    record_ids = list(range(len(records)))
+
+    # collect present domains for each GCF member
+    domain_sets = {}
+    # count the frequency of occurrence of each domain (excluding copies)
+    frequency_table: dict[str, int] = defaultdict(int)
+    for idx, record in enumerate(records):
+        domain_sets[idx] = set([domain.domain for domain in record.get_hsps()])
+        for domain in domain_sets[idx]:
+            frequency_table[domain] += 1
+
+    tree_domains = find_tree_domains(
+        frequency_table, domain_sets[exemplar], top_freqs=BigscapeConfig.TOP_FREQS
+    )
+    if len(tree_domains) == 1:
+        logging.debug(
+            "core shared domains for GCF {} consists of a single domain ({})".format(
+                exemplar, [x for x in tree_domains][0]
+            )
+        )
+
+    alignments: dict[int, str] = {}
+    alignments[exemplar] = ""
+
+    # store number of missed domains in bgc wrt exemplar
+    missed_domains: dict[int, int] = {}
+    record_ids.remove(exemplar)
+    for record_idx in record_ids:
+        alignments[record_idx] = ""
+        missed_domains[record_idx] = 0
+
+    match_dict: dict[int, int] = {}
+    for domain in tree_domains:
+        specific_domain_list_a = [
+            hsp for hsp in records[exemplar].get_hsps() if hsp.domain == domain
+        ]
+        num_copies_a = len(specific_domain_list_a)
+        for hsp in specific_domain_list_a:
+            if hsp.alignment is not None:
+                alignments[exemplar] += hsp.alignment.align_string
+                seq_length = len(hsp.alignment.align_string)  # TODO: find better spot
+
+        for bgc in alignments:
+            match_dict.clear()
+            if bgc == exemplar:
+                pass
+            elif domain not in domain_sets[bgc]:
+                missed_domains[bgc] += 1
+                alignments[bgc] += "-" * seq_length * num_copies_a
+            else:
+                specific_domain_list_b = [
+                    hsp for hsp in records[bgc].get_hsps() if hsp.domain == domain
+                ]
+                num_copies_b = len(specific_domain_list_b)
+                dist_matrix: np.ndarray = np.ndarray((num_copies_a, num_copies_b))
+
+                for domsa in range(num_copies_a):
+                    for domsb in range(num_copies_b):
+                        hsp_a = specific_domain_list_a[domsa]
+                        hsp_b = specific_domain_list_b[domsb]
+
+                        if hsp_a.alignment is None or hsp_b.alignment is None:
+                            logging.error(
+                                "Trying to compare unaligned domains", hsp_a, hsp_b
+                            )
+                            raise AttributeError()
+                        aligned_seq_a = hsp_a.alignment.align_string
+                        aligned_seq_b = hsp_b.alignment.align_string
+
+                        matches = 0
+                        gaps = 0
+
+                        for position in range(seq_length):
+                            if aligned_seq_a[position] == aligned_seq_b[position]:
+                                if aligned_seq_a[position] != "-":
+                                    matches += 1
+                                else:
+                                    gaps += 1
+
+                        dist_matrix[domsa][domsb] = 1 - (matches / (seq_length - gaps))
+
+                best_indexes = linear_sum_assignment(dist_matrix)
+
+                # at this point is not ensured that we have the same order
+                # for the exemplar's copies (rows in BestIndexes)
+                # ideally they should go from 0-numcopies. Better make sure
+
+                for x in range(len(best_indexes[0])):
+                    match_dict[best_indexes[0][x]] = best_indexes[1][x]
+
+                for copy in range(num_copies_a):
+                    try:
+                        hsp_b = specific_domain_list_b[match_dict[copy]]
+                        if hsp_b.alignment is None:
+                            logging.error("Encountered unaligned domain", hsp_b)
+                            raise AttributeError()
+                        alignments[bgc] += hsp_b.alignment.align_string
+                    except KeyError:
+                        # This means that this copy of exemplar did not
+                        # have a match in bgc (i.e. bgc has less copies
+                        # of this domain than exemplar)
+                        alignments[bgc] += "-" * seq_length
+
+    # if a bgc is missing all tree domains, remove it from the tree
+    delete_bgc: set[int] = set()
+    for bgc in alignments:
+        if bgc != exemplar and missed_domains[bgc] == len(tree_domains):
+            delete_bgc.add(bgc)
+    for bgc in delete_bgc:
+        del alignments[bgc]
+
+    algn_string = f">{records[exemplar]._db_id}\n{alignments[exemplar]}\n"
+    for bgc in alignments:
+        if bgc != exemplar:
+            algn_string += f">{records[bgc]._db_id}\n{alignments[bgc]}\n"
+    return algn_string

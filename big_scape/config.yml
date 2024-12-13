@@ -1,0 +1,184 @@
+# For more details on the config options, see the documentation at
+# the github wiki (https://github.com/medema-group/BiG-SCAPE/wiki).
+
+# PROFILER
+# Update interval in seconds when profiler functionality is active.
+PROFILER_UPDATE_INTERVAL: 0.5
+
+# INPUT
+# List of cand_cluster types where subrecords will be merged.
+MERGED_CAND_CLUSTER_TYPE:
+  - chemical_hybrid
+  - interleaved
+# Minimum and maximum bgc lengths to be included in the analysis in number of base pairs.
+MIN_BGC_LENGTH: 0
+MAX_BGC_LENGTH: 500000
+
+# CDS and DOMAIN
+# Specify at which overlap percentage (as a decimal) two CDS in a .gbk
+# are considered to overlap. This preserves longest overlapping CDS.
+CDS_OVERLAP_CUTOFF: 0.1
+# Specify at which overlap percentage (as a decimal) two domains
+# in a CDS are considered to overlap. Domain with the best score is kept.
+DOMAIN_OVERLAP_CUTOFF: 0.1
+
+# LCS
+# Minimum length percentage for accepting a Longest Common Subcluster (LCS),
+# which must be satisfied in at least one of the compared records, measured in fraction
+# of included domains, when comparing:
+# - Regions or Cand_clusters
+REGION_MIN_LCS_LEN: 0.1
+# - Protoclusters or Proto_cores
+PROTO_MIN_LCS_LEN: 0
+
+# EXTEND
+# Minimum length percentage for accepting an extended LCS slice, which must be
+# satisfied in at least one of the compared records, measured in fraction of
+# included domains, when comparing:
+# - Regions or Cand_clusters with no biosynthetic domains in the extended slice
+REGION_MIN_EXTEND_LEN: 0.3
+# - Regions or Cand_clusters with at least one biosynthetic domain in the extended slice
+REGION_MIN_EXTEND_LEN_BIO: 0.2
+# - Protoclusters or Proto_cores with at least one biosynthetic domain in the extended slice
+PROTO_MIN_EXTEND_LEN: 0.2
+# List of product classes that do not require a minimum length. In practice, this
+# means that an LCS and/or Extended slice of at least 1 domain will be accepted,
+# so long as this is a core biosynthetic domain.
+NO_MIN_CLASSES:
+  - terpene
+# Integer scoring metrics used in the LCS extension algorithm for match, mismatch and gap.
+EXTEND_MATCH_SCORE: 5
+EXTEND_MISMATCH_SCORE: -3
+EXTEND_GAP_SCORE: -2
+# Maximum distance to accept a matching domain as an actual match during LCS extension
+# as a percentage of total domains present in the compared record.
+EXTEND_MAX_MATCH_PERC: 0.1
+
+# GCF Calling
+# Internal parameter of the Affinity Propagation clustering algorithm, governs the number
+# of families created. Higher preference will result in more families and vice versa.
+PREFERENCE: 0.0
+# Connected component density threshold (incl.) and Affinity Propagation preference to be used
+# on dense connected components.
+DENSITY: 0.85
+DENSE_PREFERENCE: -5.0
+
+# GCF TREE
+# The number of common domains (present in the exemplar BGC record) used to
+# generate GCF trees in top frequencies of occurrence.
+TOP_FREQS: 3
+
+# ANCHOR DOMAINS
+# These domains are given higher weight in the DSS calculations
+ANCHOR_DOMAINS:
+  - PF02801  # Beta-ketoacyl synthase, C-terminal domain
+  - PF02624  # YcaO cyclodehydratase, ATP-ad Mg2+-binding
+  - PF00109  # Beta-ketoacyl synthase, N-terminal domain
+  - PF00501  # AMP-binding enzyme
+  - PF02797  # Chalcone and stilbene synthases, C-terminal domain
+  - PF01397  # Terpene synthase, N-terminal domain
+  - PF03936  # Terpene synthase family, metal binding domain
+  - PF00432  # Prenyltransferase and squalene oxidase repeat
+  - PF00195  # Chalcone and stilbene synthases, N-terminal domain
+  - PF00494  # Squalene/phytoene synthase
+  - PF00668  # Condensation domain
+  - PF05147  # Lanthionine synthetase C-like protein
+
+# LEGACY ANTISMASH CLASSES
+# List and groupings of the antiSMASH classes that are used in the
+# --classify legacy mode and for which --legacy-weights have been
+# optimized.  These have been updated up to antiSMASH version 7.0,
+# and will not be further maintained.
+LEGACY_ANTISMASH_CLASSES:
+    pks1_products:
+      - t1pks
+      - T1PKS
+    pksother_products:
+      - transatpks
+      - t2pks
+      - t3pks
+      - otherks
+      - hglks
+      - transAT-PKS
+      - transAT-PKS-like
+      - T2PKS
+      - T3PKS
+      - PKS-like
+      - hglE-KS
+    nrps_products:
+      - nrps
+      - NRPS
+      - NRPS-like
+      - thioamide-NRP
+      - NAPAA
+    ripps_products:
+      - lantipeptide
+      - thiopeptide
+      - bacteriocin
+      - linaridin
+      - cyanobactin
+      - glycocin
+      - LAP
+      - lassopeptide
+      - sactipeptide
+      - bottromycin
+      - head_to_tail
+      - microcin
+      - microviridin
+      - proteusin
+      - lanthipeptide
+      - lipolanthine
+      - RaS-RiPP
+      - fungal-RiPP
+      - TfuA-related
+      - guanidinotides
+      - RiPP-like
+      - lanthipeptide-class-i
+      - lanthipeptide-class-ii
+      - lanthipeptide-class-iii
+      - lanthipeptide-class-iv
+      - lanthipeptide-class-v
+      - ranthipeptide
+      - redox-cofactor
+      - thioamitides
+      - epipeptide
+      - cyclic-lactone-autoinducer
+      - spliceotide
+      - RRE-containing
+    saccharide_products:
+      - amglyccycl
+      - oligosaccharide
+      - cf_saccharide
+      - saccharide
+    others_products:
+      - acyl_amino_acids
+      - arylpolyene
+      - aminocoumarin
+      - ectoine
+      - butyrolactone
+      - nucleoside
+      - melanin
+      - phosphoglycolipid
+      - phenazine
+      - phosphonate
+      - other
+      - cf_putative
+      - resorcinol
+      - indole
+      - ladderane
+      - PUFA
+      - furan
+      - hserlactone
+      - fused
+      - cf_fatty_acid
+      - siderophore
+      - blactam
+      - fatty_acid
+      - PpyS-KS
+      - CDPS
+      - betalactone
+      - PBDE
+      - tropodithietic-acid
+      - NAGGN
+      - halogenated
+      - pyrrolidine

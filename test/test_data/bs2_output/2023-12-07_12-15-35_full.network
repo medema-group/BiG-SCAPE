@@ -1,0 +1,4 @@
+GBK_a	Record_Type_a	Record_Number_a	ORF_coords_a	GBK_b	Record_Type_b	Record_Number_b	ORF_coords_b	distance	jaccard	adjacency	dss	weights	aligmnent_mode
+../data/benchmark_antismash_files/extracted/Fusarium/Fusarium_96/HF679024.1.cluster011.gbk	protocluster	1	0:18	../data/benchmark_antismash_files/extracted/Fusarium/Fusarium_15/CM000602.2.cluster047.gbk	protocluster	1	0:5	0.98	0.05	0.00	0.01	mix	AUTO
+../data/benchmark_antismash_files/extracted/Fusarium/Fusarium_5/HG323944.1.cluster010.gbk	protocluster	1	0:6	../data/benchmark_antismash_files/extracted/Fusarium/Fusarium_48/HF679024.1.cluster050.gbk	protocluster	2	0:21	0.98	0.08	0.00	0.01	mix	AUTO
+../data/benchmark_antismash_files/extracted/Fusarium/Fusarium_73/HG323944.1.cluster012.gbk	protocluster	2	12:13	../data/benchmark_antismash_files/extracted/Fusarium/Fusarium_33/HG323944.1.cluster035.gbk	protocluster	1	9:10	0.97	0.10	0.00	0.02	mix	AUTO
