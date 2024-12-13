@@ -2,8 +2,9 @@
 name: Update Version Number
 
 on:
-  release:
-    types: [published, edited]
+  push:
+    branches:
+      - release/*
 
 jobs:
   update-version-number:
