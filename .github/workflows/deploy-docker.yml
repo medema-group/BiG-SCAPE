@@ -25,12 +25,6 @@ jobs:
       - name: Check out the repo
         uses: actions/checkout@v4
 
-      - name: Get Branch
-        run: |
-          branch=$(git branch -r --contains ${{ github.ref }} --format "%(refname:lstrip=3)")
-          echo ::set-env name=BRANCH::$branch
-      - run: echo ${{ env.BRANCH }}
-
       - name: Extract metadata (tags, labels) for Docker
         id: meta
         uses: docker/metadata-action@98669ae865ea3cffbcbaa878cf57c20bbf1c6c38
@@ -51,7 +45,7 @@ jobs:
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
           build-args: |
-            BRANCH_NAME=${{ env.BRANCH }}
+            TAG_NAME=${{ github.ref }}
 
       - name: Generate artifact attestation
         uses: actions/attest-build-provenance@v2

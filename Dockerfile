@@ -4,7 +4,7 @@ WORKDIR /home/$MAMBA_USER
 
 # default branch name is master, but
 # this is overridden by the build script
-ARG BRANCH_NAME=master
+ARG TAG_NAME=none
 
 # root level stuff
 USER root
@@ -17,7 +17,9 @@ RUN chown $MAMBA_USER /home/data
 USER $MAMBA_USER
 
 # get source code
-RUN git clone https://github.com/medema-group/BiG-SCAPE.git -b $BRANCH_NAME
+RUN git clone https://github.com/medema-group/BiG-SCAPE.git && \
+    cd BiG-SCAPE && \
+    git checkout $TAG_NAME
 
 WORKDIR /home/$MAMBA_USER/BiG-SCAPE
 
