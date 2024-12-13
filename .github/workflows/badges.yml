@@ -3,14 +3,7 @@ name: CI/CD
 on:
   push:
     branches:
-      - dev
-      - feature/*
-      - chore/*
-      - hotfix/*
-  pull_request:
-    branches:
       - master
-      - dev
 
 jobs:
   run_pytest:
