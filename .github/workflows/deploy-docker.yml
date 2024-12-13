@@ -4,6 +4,7 @@ on:
   release:
     types: [published, edited]
 
+
 env:
   REGISTRY: ghcr.io
   IMAGE_NAME: ${{ github.repository }}
@@ -38,8 +39,8 @@ jobs:
           context: .
           file: ./Dockerfile
           push: true
+          # set latest tag for master branch
           tags: |
-            # set latest tag for master branch
             type=raw,value=latest,enable=${{ github.ref == format('refs/heads/{0}', 'master') }}
           labels: ${{ steps.meta.outputs.labels }}
           build-args: |
