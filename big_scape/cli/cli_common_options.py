@@ -150,13 +150,14 @@ def common_cluster_query(fn):
             type=str,
             required=False,
             help=(
-                "MIBiG release number (from 3.1 onwards). If not provided, MIBiG will not be "
-                "included in the analysis. If required, BiG-SCAPE will download the "
+                "MIBiG release number (from 3.1 onwards, antiSMASH processed files of "
+                "recent MIBiG releases might not be immediately available). If not "
+                "provided, MIBiG will not be required, BiG-SCAPE will download the "
                 "MIBiG database to ./big_scape/MIBiG/mibig_antismash_<version>_gbk. "
-                "For advanced users: any custom (antiSMASH-processed) MIBiG collection"
-                " can be used as long as the expected folder is present, e.g. provide"
-                " -m mymibig with ./big_scape/MIBiG/mibig_antismash_mymibig_gbk."
-                "For more information, see the wiki."
+                "For advanced users: any custom (antiSMASH-processed) MIBiG collection "
+                "can be used as long as the expected folder is present, e.g. provide "
+                "-m mymibig with ./big_scape/MIBiG/mibig_antismash_mymibig_gbk. "
+                "If you wish to use a recent release, see the wiki on how to proceed."
             ),
         ),
         click.option(
