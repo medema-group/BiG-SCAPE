@@ -18,7 +18,7 @@ jobs:
         run: |
           OLD_VERSION=$(grep ^version pyproject.toml | cut -d '"' -f 2)
           OLD_VERSION="\"$OLD_VERSION\""
-          NEW_VERSION="\"$GITHUB_REF_NAME\""
+          NEW_VERSION=$($GITHUB_REF_NAME | cut -d '/' -f 2)
           sed -i "s+version = $OLD_VERSION+version = $NEW_VERSION+g" pyproject.toml
       - name: Commit Changes
         run: |
