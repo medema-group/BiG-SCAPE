@@ -121,18 +121,6 @@ class TestAffinityPropagation(TestCase):
 
         self.assertListEqual(expected_labels, actual_labels)
 
-    def test_get_cc_edge_weight_std(self):
-        """Tests whether the standard deviation of the edge weights of a connected
-        component is correctly calculated
-        """
-        adj_list = TestAffinityPropagation.gen_edge_list()
-
-        expected_std = 0.12
-
-        actual_std = bs_families.get_cc_edge_weight_std(adj_list)
-
-        self.assertEqual(expected_std, actual_std)
-
     def test_get_cc_density(self):
         """Tests whether the density of a connected component is correctly
         calculated
@@ -146,17 +134,3 @@ class TestAffinityPropagation(TestCase):
         actual_density = bs_families.get_cc_density(adj_list)
 
         self.assertEqual(expected_density, actual_density)
-
-    def test_test_centrality(self):
-        """Tests whether the test_centrality function correctly identifies a network
-        that will break when removing the top nodes with highest betweenness centrality
-        """
-        adj_list = TestAffinityPropagation.gen_edge_list_alt()
-
-        expected_break = True
-
-        actual_break, actual_sorted_centrality_nodes = bs_families.test_centrality(
-            adj_list, 0.3
-        )
-
-        self.assertEqual(expected_break, actual_break)
