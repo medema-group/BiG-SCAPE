@@ -35,7 +35,6 @@ dev = [
 
     # type stubs (https://mypy.readthedocs.io/en/stable/running_mypy.html#missing-imports)
     "types-psutil",
-    "networkx-stubs",
     "data-science-types",
     "types-tqdm",
     "types-setuptools"
