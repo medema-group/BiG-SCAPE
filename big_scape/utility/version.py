@@ -1,8 +1,7 @@
 """Module that contains helper functions specifically related to the bigscape version
 """
 
-import toml
-
+import tomllib
 from importlib import metadata
 from pathlib import Path
 
@@ -21,7 +20,8 @@ def get_bigscape_version() -> str:
     pyproject_toml = Path(__file__).parent.parent.parent / "pyproject.toml"
 
     if pyproject_toml.exists():
-        return toml.load(pyproject_toml)["project"]["version"]
+        with open(pyproject_toml, "rb") as fp:
+            return tomllib.load(fp)["project"]["version"]
 
     # if not, we're probably running as a package. get the version of the currently
     # installed big-scape package
