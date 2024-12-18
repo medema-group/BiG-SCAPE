@@ -481,8 +481,8 @@ class DB:
 
         if latest_config and BigscapeConfig.HASH != latest_config:
             raise RuntimeError(
-                "Config file values have changed from the previous run! "
-                "Existing data is not guarenteed to be reusable, please "
+                "Relevant config file values have changed (see config.log) from the "
+                "previous run! Existing data is not guarenteed to be reusable, please "
                 "run with a fresh output directory/database."
             )
 

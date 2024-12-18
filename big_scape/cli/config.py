@@ -165,7 +165,6 @@ class BigscapeConfig:
         """
         with open(config_file_path, "rb") as f:
             content = f.read()
-            BigscapeConfig.HASH = hashlib.sha256(content).hexdigest()
             config = yaml.load(content, Loader=yaml.FullLoader)
 
         # PROFILER
@@ -212,9 +211,35 @@ class BigscapeConfig:
                 legacy_classes[group] = set(classes)
         BigscapeConfig.LEGACY_ANTISMASH_CLASSES = legacy_classes
 
+        # store relevant hash
+        BigscapeConfig.generate_relevant_hash()
+
         # write config log
         if log_path is not None:
             BigscapeConfig.write_config_log(log_path, config)
+
+    @staticmethod
+    def generate_relevant_hash() -> None:
+        """Generates a config hash from values that might/will invalidate existing data"""
+        content = (
+            BigscapeConfig.MERGED_CAND_CLUSTER_TYPE,
+            BigscapeConfig.CDS_OVERLAP_CUTOFF,
+            BigscapeConfig.DOMAIN_OVERLAP_CUTOFF,
+            BigscapeConfig.REGION_MIN_LCS_LEN,
+            BigscapeConfig.PROTO_MIN_LCS_LEN,
+            BigscapeConfig.REGION_MIN_EXTEND_LEN,
+            BigscapeConfig.REGION_MIN_EXTEND_LEN_BIO,
+            BigscapeConfig.PROTO_MIN_EXTEND_LEN,
+            BigscapeConfig.NO_MIN_CLASSES,
+            BigscapeConfig.EXTEND_MATCH_SCORE,
+            BigscapeConfig.EXTEND_MISMATCH_SCORE,
+            BigscapeConfig.EXTEND_GAP_SCORE,
+            BigscapeConfig.EXTEND_MAX_MATCH_PERC,
+            BigscapeConfig.ANCHOR_DOMAINS,
+        )
+        BigscapeConfig.HASH = hashlib.sha256(
+            bytearray(str(content), "utf-8")
+        ).hexdigest()
 
     @staticmethod
     def write_config_log(log_path: Path, config: dict) -> None:
