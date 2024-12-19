@@ -4,9 +4,6 @@
 import sys
 from typing import Callable, Optional
 import warnings
-import numpy as np
-import networkx
-import math
 import logging
 
 # from dependencies
@@ -105,24 +102,6 @@ def generate_families(
     return regions_families
 
 
-def get_cc_edge_weight_std(connected_component) -> float:
-    """calculates the standard deviation of the edge weights of a connected component
-
-    Args:
-        connected_component (list[tuple[int, int, float, float, float, float, str]]):
-            connected component in the form of a list of edges
-
-    Returns:
-        float: standard deviation of the edge weights of the connected component
-    """
-
-    edge_weights = [edge[2] for edge in connected_component]
-    edge_std = np.std(edge_weights)
-    edge_std = round(edge_std, 2)
-
-    return edge_std
-
-
 def get_cc_density(
     connected_component: list[tuple[int, int, float, float, float, float, int]]
 ) -> float:
@@ -146,46 +125,6 @@ def get_cc_density(
     cc_density = round(cc_density, 2)
 
     return cc_density
-
-
-def test_centrality(connected_component, node_fraction) -> tuple[bool, list[int]]:
-    """tests if a network will break when removing the top nodes
-    with highest betweenness centrality
-
-    Args:
-        connected_component (list[tuple[int, int, float, float, float, float, str]]):
-            connected component in the form of a list of edges
-        node_fraction (float): fraction of nodes with highest betweenness centrality to remove
-
-    Returns:
-        tuple[bool, list[int]]: whether the network breaks and the list of nodes sorted by betweenness centrality
-    """
-
-    edgelist = [(edge[0], edge[1], edge[2]) for edge in connected_component]
-
-    graph = networkx.Graph()
-    graph.add_weighted_edges_from(edgelist)
-
-    betweeness_centrality_dict = networkx.betweenness_centrality(graph)
-    sorted_between_bentrality_nodes = sorted(
-        betweeness_centrality_dict, key=betweeness_centrality_dict.get, reverse=True
-    )
-
-    # round up to nearest integer
-    top_nodes = math.ceil(len(sorted_between_bentrality_nodes) * node_fraction)
-    nodes_to_remove = sorted_between_bentrality_nodes[:top_nodes]
-
-    for node in nodes_to_remove:
-        graph.remove_node(node)
-
-    nr_ccs = networkx.number_connected_components(graph)
-
-    del graph
-
-    if nr_ccs > 1:
-        return True, sorted_between_bentrality_nodes
-
-    return False, sorted_between_bentrality_nodes
 
 
 def aff_sim_matrix(matrix, preference: Optional[float] = None):
