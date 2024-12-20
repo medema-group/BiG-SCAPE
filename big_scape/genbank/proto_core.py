@@ -7,6 +7,7 @@ from typing import Optional, TYPE_CHECKING
 
 # from dependencies
 from Bio.SeqFeature import SeqFeature
+from sqlalchemy import Table, select
 
 # from other modules
 from big_scape.data import DB
@@ -110,7 +111,9 @@ class ProtoCore(BGCRecord):
         )
 
     @staticmethod
-    def load_all(protocluster_dict: dict[int, ProtoCluster]):
+    def load_all(
+        protocluster_dict: dict[int, ProtoCluster], temp_gbk_id_table: Table = None
+    ):
         """Load all ProtoCore objects from the database
 
         This function populates the region objects in the GBKs provided in the input
@@ -141,9 +144,14 @@ class ProtoCore(BGCRecord):
                 record_table.c.merged,
             )
             .where(record_table.c.record_type == "proto_core")
-            .where(record_table.c.parent_id.in_(protocluster_dict.keys()))
-            .compile()
         )
+
+        if temp_gbk_id_table is not None:
+            region_select_query = region_select_query.where(
+                record_table.c.gbk_id.in_(select(temp_gbk_id_table.c.gbk_id))
+            )
+
+        region_select_query = region_select_query.compile()
 
         cursor_result = DB.execute(region_select_query)
 
