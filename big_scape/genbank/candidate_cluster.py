@@ -7,6 +7,7 @@ from typing import Dict, Optional, TYPE_CHECKING
 
 # from dependencies
 from Bio.SeqFeature import SeqFeature
+from sqlalchemy import Table, select
 
 # from other modules
 from big_scape.data import DB
@@ -169,7 +170,7 @@ class CandidateCluster(BGCRecord):
         return f"{self.parent_gbk} Candidate cluster {self.number} {self.nt_start}-{self.nt_stop} "
 
     @staticmethod
-    def load_all(region_dict: dict[int, Region]):
+    def load_all(region_dict: dict[int, Region], temp_gbk_id_table: Table = None):
         """Load all CandidateCluster objects from the database
 
         This function populates the CandidateCluster lists in the Regions provided in
@@ -198,9 +199,14 @@ class CandidateCluster(BGCRecord):
                 record_table.c.product,
             )
             .where(record_table.c.record_type == "cand_cluster")
-            .where(record_table.c.parent_id.in_(region_dict.keys()))
-            .compile()
         )
+
+        if temp_gbk_id_table is not None:
+            candidate_cluster_select_query = candidate_cluster_select_query.where(
+                record_table.c.gbk_id.in_(select(temp_gbk_id_table.c.gbk_id))
+            )
+
+        candidate_cluster_select_query = candidate_cluster_select_query.compile()
 
         cursor_result = DB.execute(candidate_cluster_select_query)
 
@@ -230,4 +236,4 @@ class CandidateCluster(BGCRecord):
             # add to dictionary
             candidate_cluster_dict[result.id] = new_candidate_cluster
 
-        ProtoCluster.load_all(candidate_cluster_dict)
+        ProtoCluster.load_all(candidate_cluster_dict, temp_gbk_id_table)

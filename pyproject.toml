@@ -1,6 +1,6 @@
 [project]
 name ="big-scape"
-version = "2.0.0-beta.2"
+version = "2.0.0-beta.3"
 description = "Biosynthetic Gene Similarity Clustering and Prospecting Engine"
 requires-python = ">=3.11"
 license = { file = "LICENSE" }
@@ -35,7 +35,6 @@ dev = [
 
     # type stubs (https://mypy.readthedocs.io/en/stable/running_mypy.html#missing-imports)
     "types-psutil",
-    "networkx-stubs",
     "data-science-types",
     "types-tqdm",
     "types-setuptools"

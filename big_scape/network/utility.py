@@ -2,23 +2,6 @@
 
 # from dependencies
 import numpy as np
-import networkx as nx
-
-
-def sim_matrix_from_graph(graph: nx.Graph, edge_property: str) -> np.ndarray:
-    """Return a similarity matrix from a graph in the form of a numpy array
-
-    Args:
-        graph (Graph): graph
-        edge_property (str): _description_
-
-    Returns:
-        ndarray: _description_
-    """
-    matrix = nx.to_numpy_array(graph, weight=edge_property, nonedge=1.0)
-    # have to convert from distances to similarity
-    matrix = 1 - matrix
-    return matrix
 
 
 def edge_list_to_adj_list(

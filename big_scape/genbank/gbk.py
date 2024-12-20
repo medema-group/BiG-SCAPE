@@ -6,6 +6,8 @@ import logging
 
 # from enum import Enum
 from pathlib import Path
+import random
+import string
 from typing import Dict, Optional
 import hashlib
 
@@ -14,6 +16,7 @@ import hashlib
 from Bio import SeqIO
 from Bio.SeqRecord import SeqRecord
 from Bio.SeqFeature import SeqFeature
+from sqlalchemy import Column, ForeignKey, Integer, String, Table, select
 
 # from other modules
 from big_scape.errors import InvalidGBKError
@@ -33,6 +36,118 @@ from .cds import CDS
 #     QUERY = "query"
 #     MIBIG = "mibig"
 #     REFERENCE = "reference"
+
+# TODO: generalize creating temp tables. this is copied from network.py
+
+
+def create_temp_hash_table(gbks: list[GBK]) -> Table:
+    """Create a temporary table with ids of given records
+
+    Args:
+        include_records (list[BGCRecord]): the records to include in the connected component
+
+    Returns:
+        Table: the temporary table
+    """
+
+    # generate a short random string
+    temp_table_name = "temp_" + "".join(random.choices(string.ascii_lowercase, k=10))
+
+    temp_table = Table(
+        temp_table_name,
+        DB.metadata,
+        Column(
+            "hash",
+            String,
+            ForeignKey(DB.metadata.tables["gbk"].c.hash),
+            primary_key=True,
+            nullable=False,
+        ),
+        prefixes=["TEMPORARY"],
+    )
+
+    DB.metadata.create_all(DB.engine)
+
+    if DB.engine is None:
+        raise RuntimeError("DB engine is None")
+
+    cursor = DB.engine.raw_connection().driver_connection.cursor()
+
+    insert_query = f"""
+        INSERT INTO {temp_table_name} (hash) VALUES (?);
+    """
+
+    def batch_hash(gbks: list[GBK], n: int):
+        l = len(gbks)
+        for ndx in range(0, l, n):
+            yield [gbk.hash for gbk in gbks[ndx : min(ndx + n, l)]]
+
+    for hash_batch in batch_hash(gbks, 1000):
+        cursor.executemany(insert_query, [(x,) for x in hash_batch])  # type: ignore
+
+    cursor.close()
+
+    DB.commit()
+
+    if DB.metadata is None:
+        raise ValueError("DB metadata is None")
+
+    return temp_table
+
+
+def create_temp_gbk_id_table(gbks: list[GBK]) -> Table:
+    """Create a temporary table with ids of given gbks
+
+    Args:
+        gbks (list[GBK]): the gbks to include in the connected component
+
+    Returns:
+        Table: the temporary table
+    """
+
+    # generate a short random string
+    temp_table_name = "temp_" + "".join(random.choices(string.ascii_lowercase, k=10))
+
+    temp_table = Table(
+        temp_table_name,
+        DB.metadata,
+        Column(
+            "gbk_id",
+            Integer,
+            ForeignKey(DB.metadata.tables["gbk"].c.id),
+            primary_key=True,
+            nullable=False,
+        ),
+        prefixes=["TEMPORARY"],
+    )
+
+    DB.metadata.create_all(DB.engine)
+
+    if DB.engine is None:
+        raise RuntimeError("DB engine is None")
+
+    cursor = DB.engine.raw_connection().driver_connection.cursor()
+
+    insert_query = f"""
+        INSERT INTO {temp_table_name} (gbk_id) VALUES (?);
+    """
+
+    def batch_hash(gbks: list[GBK], n: int):
+        l = len(gbks)
+        for ndx in range(0, l, n):
+            yield [gbk._db_id for gbk in gbks[ndx : min(ndx + n, l)]]
+
+    for hash_batch in batch_hash(gbks, 1000):
+        cursor.executemany(insert_query, [(x,) for x in hash_batch])  # type: ignore
+
+    cursor.close()
+
+    DB.commit()
+
+    if DB.metadata is None:
+        raise ValueError("DB metadata is None")
+
+    return temp_table
 
 
 class GBK:
@@ -261,7 +376,7 @@ class GBK:
             list[GBK]: loaded GBK objects
         """
 
-        input_gbk_hashes = [gbk.hash for gbk in input_gbks]
+        temp_hash_table = create_temp_hash_table(input_gbks)
 
         if not DB.metadata:
             raise RuntimeError("DB.metadata is None")
@@ -278,7 +393,7 @@ class GBK:
                 gbk_table.c.taxonomy,
                 gbk_table.c.description,
             )
-            .where(gbk_table.c.hash.in_(input_gbk_hashes))
+            .where(gbk_table.c.hash.in_(select(temp_hash_table.c.hash)))
             .compile()
         )
 
@@ -297,9 +412,11 @@ class GBK:
         # load GBK regions. This will also populate all record levels below region
         # e.g. candidate cluster, protocore if they exist
 
-        Region.load_all(gbk_dict)
+        temp_gbk_id_table = create_temp_gbk_id_table(input_gbks)
 
-        CDS.load_all(gbk_dict)
+        Region.load_all(gbk_dict, temp_gbk_id_table)
+
+        CDS.load_all(gbk_dict, temp_gbk_id_table)
 
         return list(gbk_dict.values())
 

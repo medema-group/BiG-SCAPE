@@ -10,6 +10,7 @@ import warnings
 from Bio.SeqFeature import SeqFeature
 from Bio.Seq import Seq
 from Bio import BiopythonWarning
+from sqlalchemy import Table, select
 
 # from other modules
 from big_scape.errors import InvalidGBKError
@@ -320,7 +321,7 @@ class CDS:
         return max(0, right - left)
 
     @staticmethod
-    def load_all(gbk_dict: dict[int, GBK]) -> None:
+    def load_all(gbk_dict: dict[int, GBK], temp_gbk_id_table: Table = None) -> None:
         """Load all Region objects from the database
 
         This function populates the region objects in the GBKs provided in the input
@@ -349,9 +350,14 @@ class CDS:
                 cds_table.c.aa_seq,
             )
             .order_by(cds_table.c.orf_num)
-            .where(cds_table.c.gbk_id.in_(gbk_dict.keys()))
-            .compile()
         )
+
+        if temp_gbk_id_table is not None:
+            region_select_query = region_select_query.where(
+                cds_table.c.gbk_id.in_(select(temp_gbk_id_table.c.gbk_id))
+            )
+
+        region_select_query = region_select_query.compile()
 
         cursor_result = DB.execute(region_select_query)
 
