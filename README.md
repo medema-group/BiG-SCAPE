@@ -21,7 +21,7 @@ For installation instructions, see [here](https://github.com/medema-group/BiG-SC
 Learn more about BiG-SCAPE in the [wiki](https://github.com/medema-group/BiG-SCAPE/wiki).
 
 
-![BiG-SCAPE workflow](Figures/BiG-SCAPE-CORASON_Fig1_20171122_v01_MM_nocorason.png)
+![BiG-SCAPE workflow](figures/BiG-SCAPE-CORASON_Fig1_20171122_v01_MM_nocorason.png)
 
 
 If you find BiG-SCAPE useful, please cite us:
