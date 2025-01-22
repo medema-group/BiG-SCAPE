@@ -6,7 +6,7 @@
 ![Coverage](https://medema-group.github.io/BiG-SCAPE/badges/coverage.svg)
 ![Pylint](https://medema-group.github.io/BiG-SCAPE/badges/pylint.svg)
 
-## _Note: BiG-SCAPE 2.0 is still in beta. Please submit an issue if you find anything wrong with this release!_
+## _Notes:<br>BiG-SCAPE 2.0 is still in beta. Please submit an issue if you find anything wrong with this release!<br>BiG-SCAPE 2.0 features several updates to input validation and reference usage. We encourage both experienced BiG-SCAPE 1 users as well as new BiG-SCAPE users to read the updated [documentation](https://github.com/medema-group/BiG-SCAPE/wiki)._
 
 # BiG-SCAPE
 
@@ -21,7 +21,7 @@ For installation instructions, see [here](https://github.com/medema-group/BiG-SC
 Learn more about BiG-SCAPE in the [wiki](https://github.com/medema-group/BiG-SCAPE/wiki).
 
 
-![BiG-SCAPE workflow](Figures/BiG-SCAPE-CORASON_Fig1_20171122_v01_MM_nocorason.png)
+![BiG-SCAPE workflow](figures/BiG-SCAPE-CORASON_Fig1_20171122_v01_MM_nocorason.png)
 
 
 If you find BiG-SCAPE useful, please cite us:

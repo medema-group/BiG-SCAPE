@@ -548,7 +548,7 @@ def reference_only_connected_component(connected_component, bgc_records) -> bool
 
 
 def get_connected_component_id(
-    connected_component: list, cutoff: float, run_id: int
+    connected_component: list, bin_label: str, cutoff: float, run_id: int
 ) -> int:
     """Get the connected component id for the given connected component
         expects all edges to be in one connected component, if thats not the
@@ -575,33 +575,37 @@ def get_connected_component_id(
         .distinct()
         .where(
             and_(
-                cc_table.c.cutoff == cutoff,
                 cc_table.c.record_id == record_id,
+                cc_table.c.bin_label == bin_label,
+                cc_table.c.cutoff == cutoff,
                 cc_table.c.run_id == run_id,
             )
         )
         .limit(1)
     )
 
-    cc_ids = DB.execute(select_statement).fetchone()
+    cc_id = DB.execute(select_statement).scalar_one()
 
-    return cc_ids[0]
+    return cc_id
 
 
 def remove_connected_component(
-    connected_component: list, cutoff: float, run_id: int
+    connected_component: list, bin_label: str, cutoff: float, run_id: int
 ) -> None:
     """Removes a connected component from the cc table in the database"""
 
     if DB.metadata is None:
         raise RuntimeError("DB.metadata is None")
 
-    cc_id = get_connected_component_id(connected_component, cutoff, run_id)
+    cc_id = get_connected_component_id(connected_component, bin_label, cutoff, run_id)
 
     cc_table = DB.metadata.tables["connected_component"]
 
     delete_statement = delete(cc_table).where(
-        cc_table.c.id == cc_id, cc_table.c.cutoff == cutoff, cc_table.c.run_id == run_id
+        cc_table.c.id == cc_id,
+        cc_table.c.bin_label == bin_label,
+        cc_table.c.cutoff == cutoff,
+        cc_table.c.run_id == run_id,
     )
 
     DB.execute(delete_statement)

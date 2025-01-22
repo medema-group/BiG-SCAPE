@@ -269,6 +269,8 @@
             </div>
             <div style="margin:1em">
                 <button id="load-all" title="Load all CCs currently shown in the table">Visualize All</button>
+                <span class="w3-tiny" style="margin:0.5em">*On larger datasets (Upward 1000 BGCs), this might take a
+                    minute to load.</span>
             </div>
             <div id="topo-toggle-container" style="margin:1em">
             </div>
@@ -289,7 +291,14 @@
         <div class="w3-modal-content" style="width: 400px; text-align: center; padding: 1em; border-radius: 1em">
             <button id="close-db-select" class="showhide-btn active"></button>
             <div class="w3-container">
-                <img src="./html_content/img/loading.gif"></img>
+                <div id="loadingImg">
+                    <img src="./html_content/img/loading.gif">
+                    <br>
+                    If loading takes longer than a minute, your database is likely too
+                    large to be loaded. Use the output network tsv files to contruct your
+                    networks in a networking tool like Cytoscape.
+                    <br>
+                </div>
                 <br>
                 Select a database file to read from:
             </div>
@@ -358,9 +367,9 @@
         if (enable) {
             $("#loadingWindow").css("display", "block");
             if (spinner) {
-                $("#loadingWindow img").css("display", "inline");
+                $("#loadingImg").css("display", "inline");
             } else {
-                $("#loadingWindow img").css("display", "none");
+                $("#loadingImg").css("display", "none");
             }
         } else {
             $("#loadingWindow").css("display", "none");
@@ -453,7 +462,23 @@
 
     function dataLoaded() { // only called after a database is loaded
         showLoading(false, false);
+        createTmpTables();
         populateRunSelect();
+    }
+
+    function createTmpTables() {
+        // creates tmp db tables for large query building
+        window.db.run(`CREATE TABLE rec_ids (rec_id int)`)
+        window.db.run(`CREATE TABLE gbk_ids (gbk_id int)`)
+        window.db.run(`CREATE TABLE cds_ids (cds_id int)`)
+    }
+
+    function populateTmpTable(table_name, data) {
+        //populate tmp db tables in batches of 10k insertions
+        window.db.run(`DELETE FROM ${table_name}`) //clear table
+        for (i = 0; i < data.length; i += 10000) {
+            window.db.run(`INSERT INTO ${table_name} VALUES ${data.slice(i, i + 10000).map(idx => "(" + idx + ")")}`)
+        }
     }
 
     function populateRunSelect() {
@@ -637,7 +662,8 @@
         }
         var bs_families = bs_ccs.flatMap(cc => cc.families)
         var bs_records = bs_families.flatMap(fam => fam.members)
-        var bs_data = generate_bs_data(bs_records, run_data)
+        populateTmpTable("rec_ids", bs_records)
+        var bs_data = generate_bs_data(run_data)
         var bs_alignments = generate_bs_alignments(bs_families, bs_data)
         var bs_similarities = generate_bs_similarity(bs_records, run_data)
         var bs = new Bigscape(run_data, bs_data, bs_families, bs_alignments, bs_similarities, "network-container")
@@ -647,7 +673,7 @@
         // load a single connected component and topolinked ccs if present.
         // to distinguish between the selected cc and topolinked ones, pass
         // all topolinked record ids in render_options when creating a Bigscape object
-        var render_options = { "render_time": 1, "topo_records": [] }
+        var render_options = { "topo_records": [] }
         var bs_family = bs_cc["families"]
         if (topo_ccs.length && $("#topo-toggle").is(":checked")) {
             var topo_cc_ids = topo_ccs.map(cc => cc.id)
@@ -656,7 +682,8 @@
             bs_family = bs_family.concat(topo_fams)
         }
         var bs_records = bs_family.flatMap(fam => fam.members)
-        var bs_cc_data = generate_bs_data(bs_records, run_data)
+        populateTmpTable("rec_ids", bs_records)
+        var bs_cc_data = generate_bs_data(run_data)
         var bs_alignment = generate_bs_alignments(bs_family, bs_cc_data)
         var bs_similarity = generate_bs_similarity(bs_records, run_data)
         var bs = new Bigscape(run_data, bs_cc_data, bs_family, bs_alignment, bs_similarity, "network-container", render_options)
@@ -697,8 +724,9 @@ CC\tFamily\tGBK\tRecord_Type\tRecord_Number\tClass\tCategory\tOrganism\tTaxonomy
     }
 
     function generate_bs_data_domains(cds_ids) {
+        populateTmpTable("cds_ids", cds_ids)
         let dom_query = `SELECT hsp.cds_id, hsp.accession, hsp.env_start, hsp.env_stop, hsp.bit_score FROM hsp
-        WHERE hsp.cds_id IN (${cds_ids})`
+        WHERE hsp.cds_id IN (SELECT cds_id FROM cds_ids)`
         var domains = window.db.exec(dom_query)[0].values
         var dom_data = {}
         for (i in domains) {
@@ -710,9 +738,11 @@ CC\tFamily\tGBK\tRecord_Type\tRecord_Number\tClass\tCategory\tOrganism\tTaxonomy
         }
         return dom_data
     }
+
     function generate_bs_data_orfs(gbk_ids) {
+        populateTmpTable("gbk_ids", gbk_ids)
         let cds_query = `SELECT cds.gbk_id, cds.orf_num, cds.strand, cds.nt_start, cds.nt_stop, cds.id FROM cds
-                        WHERE cds.gbk_id IN (${gbk_ids})`
+                        WHERE cds.gbk_id IN (SELECT gbk_id FROM gbk_ids)`
         var cds = window.db.exec(cds_query)[0].values
 
         var dom_data = generate_bs_data_domains(cds.map(c => c[5]))
@@ -726,12 +756,13 @@ CC\tFamily\tGBK\tRecord_Type\tRecord_Number\tClass\tCategory\tOrganism\tTaxonomy
         }
         return cds_data
     }
-    function generate_bs_data(record_ids, run_data) {
+
+    function generate_bs_data(run_data) {
         var records_query = `SELECT gbk.id, gbk.description, length(gbk.nt_seq), gbk.hash, gbk.path,
                         bgc_record.record_type, bgc_record.nt_start, bgc_record.nt_stop,
                         bgc_record.record_number, bgc_record.id FROM bgc_record
                         INNER JOIN gbk ON bgc_record.gbk_id==gbk.id
-                        WHERE bgc_record.id IN (${record_ids})`
+                        WHERE bgc_record.id IN (SELECT rec_id FROM rec_ids)`
         var records = window.db.exec(records_query)[0].values
         cds_data = generate_bs_data_orfs(records.map(rec => rec[0]))
 
@@ -800,8 +831,8 @@ CC\tFamily\tGBK\tRecord_Type\tRecord_Number\tClass\tCategory\tOrganism\tTaxonomy
 
         var distances = window.db.exec(`SELECT distance.record_a_id, distance.record_b_id, distance.distance FROM distance
                             INNER JOIN edge_params ON edge_params.id==distance.edge_param_id
-                            WHERE distance.distance<${cutoff} AND distance.record_a_id IN (${record_ids})
-                            AND distance.record_b_id IN (${record_ids}) AND edge_params.weights=="${weight}"
+                            WHERE distance.distance<${cutoff} AND distance.record_a_id IN (SELECT rec_id FROM rec_ids)
+                            AND distance.record_b_id IN (SELECT rec_id FROM rec_ids) AND edge_params.weights=="${weight}"
                             AND edge_params.alignment_mode=="${alignment_mode}"
                             AND edge_params.extend_strategy=="${extend_strategy}"`)[0].values
         var bs_sim = {}

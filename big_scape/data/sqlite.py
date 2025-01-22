@@ -14,6 +14,7 @@ from sqlalchemy import (
     Compiled,
     Select,
     Insert,
+    Delete,
     CursorResult,
     create_engine,
     func,
@@ -283,7 +284,9 @@ class DB:
         return DB.connection.execute(text(query))
 
     @staticmethod
-    def execute(query: Compiled | Select[Any] | Insert, commit=True) -> CursorResult:
+    def execute(
+        query: Compiled | Select[Any] | Insert | Delete, commit=True
+    ) -> CursorResult:
         """Wrapper for SQLAlchemy.connection.execute expecting a Compiled query
 
         Arguments:

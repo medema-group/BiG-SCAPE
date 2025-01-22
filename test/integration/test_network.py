@@ -465,7 +465,7 @@ class TestComparison(TestCase):
                 cc, include_records
             )
             if is_ref_only:
-                bs_network.remove_connected_component(cc, 0.8, 1)
+                bs_network.remove_connected_component(cc, mix_bin.label, 0.8, 1)
 
         cc_table = bs_data.DB.metadata.tables["connected_component"]
 
@@ -488,7 +488,7 @@ class TestComparison(TestCase):
                 cc, include_records
             )
             if is_ref_only:
-                bs_network.remove_connected_component(cc, 0.5, 1)
+                bs_network.remove_connected_component(cc, mix_bin.label, 0.5, 1)
 
         cc_table = bs_data.DB.metadata.tables["connected_component"]
 
