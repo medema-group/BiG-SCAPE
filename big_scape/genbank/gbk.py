@@ -95,7 +95,7 @@ def create_temp_hash_table(gbks: list[GBK]) -> Table:
     return temp_table
 
 
-def create_temp_gbk_id_table(gbks: list[GBK]) -> Table:
+def create_temp_gbk_id_table(gbk_ids: list[int]) -> Table:
     """Create a temporary table with ids of given gbks
 
     Args:
@@ -132,12 +132,12 @@ def create_temp_gbk_id_table(gbks: list[GBK]) -> Table:
         INSERT INTO {temp_table_name} (gbk_id) VALUES (?);
     """
 
-    def batch_hash(gbks: list[GBK], n: int):
-        l = len(gbks)
+    def batch_hash(gbk_ids: list[int], n: int):
+        l = len(gbk_ids)
         for ndx in range(0, l, n):
-            yield [gbk._db_id for gbk in gbks[ndx : min(ndx + n, l)]]
+            yield [gbk_id for gbk_id in gbk_ids[ndx : min(ndx + n, l)]]
 
-    for hash_batch in batch_hash(gbks, 1000):
+    for hash_batch in batch_hash(gbk_ids, 1000):
         cursor.executemany(insert_query, [(x,) for x in hash_batch])  # type: ignore
 
     cursor.close()
@@ -412,7 +412,7 @@ class GBK:
         # load GBK regions. This will also populate all record levels below region
         # e.g. candidate cluster, protocore if they exist
 
-        temp_gbk_id_table = create_temp_gbk_id_table(input_gbks)
+        temp_gbk_id_table = create_temp_gbk_id_table(list(gbk_dict.keys()))
 
         Region.load_all(gbk_dict, temp_gbk_id_table)
 
