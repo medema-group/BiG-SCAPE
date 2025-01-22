@@ -270,7 +270,7 @@ class ProtoCluster(BGCRecord):
                 # add to dictionary
                 protocluster_dict[result.id] = new_proto_cluster
 
-        ProtoCore.load_all(protocluster_dict)
+        ProtoCore.load_all(protocluster_dict, temp_gbk_id_table)
 
 
 class MergedProtoCluster(ProtoCluster):
