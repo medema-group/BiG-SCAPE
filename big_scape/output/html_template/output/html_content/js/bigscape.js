@@ -487,7 +487,7 @@ function Bigscape(run_data, bs_data, bs_families, bs_alignment, bs_similarity, n
   showSingletons(true);
   updateDescription(highlighted_nodes);
   net_ui.find("svg").css("height", "100%").css("width", "100%");
-  var countDown = options["render_time"] ? options["render_time"] : 5 + parseInt(graph.getLinksCount() / 1000);
+  var countDown = options["render_time"] ? options["render_time"] : 1 + parseInt(graph.getNodesCount() / 300) + parseInt(graph.getLinksCount() / 1000);
   var perZoom = 5;
   var zoomCount = 0;
   info_ui.append("<div>Adjusting network layout for... <span class='network-layout-counter'>" + countDown + "</span> second(s)</div>");

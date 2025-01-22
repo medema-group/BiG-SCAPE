@@ -269,6 +269,8 @@
             </div>
             <div style="margin:1em">
                 <button id="load-all" title="Load all CCs currently shown in the table">Visualize All</button>
+                <span class="w3-tiny" style="margin:0.5em">*On larger datasets (Upward 1000 BGCs), this might take a
+                    minute to load.</span>
             </div>
             <div id="topo-toggle-container" style="margin:1em">
             </div>
@@ -289,7 +291,14 @@
         <div class="w3-modal-content" style="width: 400px; text-align: center; padding: 1em; border-radius: 1em">
             <button id="close-db-select" class="showhide-btn active"></button>
             <div class="w3-container">
-                <img src="./html_content/img/loading.gif"></img>
+                <div id="loadingImg">
+                    <img src="./html_content/img/loading.gif">
+                    <br>
+                    If loading takes longer than a minute, your database is likely too
+                    large to be loaded. Use the output network tsv files to contruct your
+                    networks in a networking tool like Cytoscape.
+                    <br>
+                </div>
                 <br>
                 Select a database file to read from:
             </div>
@@ -358,9 +367,9 @@
         if (enable) {
             $("#loadingWindow").css("display", "block");
             if (spinner) {
-                $("#loadingWindow img").css("display", "inline");
+                $("#loadingImg").css("display", "inline");
             } else {
-                $("#loadingWindow img").css("display", "none");
+                $("#loadingImg").css("display", "none");
             }
         } else {
             $("#loadingWindow").css("display", "none");
@@ -664,7 +673,7 @@
         // load a single connected component and topolinked ccs if present.
         // to distinguish between the selected cc and topolinked ones, pass
         // all topolinked record ids in render_options when creating a Bigscape object
-        var render_options = { "render_time": 1, "topo_records": [] }
+        var render_options = { "topo_records": [] }
         var bs_family = bs_cc["families"]
         if (topo_ccs.length && $("#topo-toggle").is(":checked")) {
             var topo_cc_ids = topo_ccs.map(cc => cc.id)
