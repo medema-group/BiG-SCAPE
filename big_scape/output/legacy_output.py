@@ -10,11 +10,12 @@ from pathlib import Path
 import click
 from sqlalchemy import select, alias
 from typing import Optional
+from itertools import combinations
 
 # from other modules
 from big_scape.data import DB
 from big_scape.comparison import RecordPairGenerator
-from big_scape.genbank import GBK, BGCRecord
+from big_scape.genbank import GBK, BGCRecord, CandidateCluster, ProtoCluster, ProtoCore
 from big_scape.trees import generate_newick_tree, save_trees
 from big_scape.comparison import lcs, get_record_category
 
@@ -259,7 +260,7 @@ def legacy_generate_bin_output(
         cutoff, pair_generator, run["run_id"]
     )
     write_clustering_file(run, cutoff, pair_generator)
-    write_cutoff_network_file(run, cutoff, pair_generator)
+    write_cutoff_network_files(run, cutoff, pair_generator)
 
     if click_context and click_context.obj["no_trees"]:
         return
@@ -498,11 +499,13 @@ def write_clustering_file(run, cutoff, pair_generator) -> None:
     return None
 
 
-def write_cutoff_network_file(
+def write_cutoff_network_files(
     run: dict, cutoff: float, pair_generator: RecordPairGenerator
 ) -> None:
-    """Writes the cutoff network file to the output directory
-    i.e. edge list for a given bin with edges above the cutoff
+    """Writes the cutoff network files to the output directory
+
+    This includes an edge list for a given bin with edges above the cutoff, as well as
+    topology links as an edge list, if relevant.
 
     Args:
         run (dict): run parameters
@@ -527,6 +530,10 @@ def write_cutoff_network_file(
         pair_generator.weights,
         cutoff,
     )
+
+    if run["record_type"] != bs_enums.RECORD_TYPE.REGION:
+        topolink_path = pair_generator_path / f"{bin_label}_c{cutoff}_topolinks.network"
+        write_topolink_file(pair_generator.source_records, topolink_path)
 
 
 def write_full_network_file(run: dict, all_bgc_records: list[BGCRecord]) -> None:
@@ -704,3 +711,61 @@ def write_network_file(
             )
 
             network_file.write(row + "\n")
+
+
+def write_topolink_file(bgc_records: list[BGCRecord], output_path: Path) -> None:
+    """Write topology links as edges to a network file
+
+    Args:
+        bgc_records (list[BGCRecord]): BGC records to find and write topolinks for
+        output_path (Path): output file path
+    """
+
+    def find_record_type(record):
+        """Helper function to correctly spelled record type"""
+        if isinstance(record, CandidateCluster):
+            return "cand_cluster"
+        elif isinstance(record, ProtoCluster):
+            return "protocluster"
+        elif isinstance(record, ProtoCore):
+            return "proto_core"
+        else:
+            # redundancy, should never reach this
+            return "region"
+
+    parent_dict: dict[GBK, list[BGCRecord]] = {}
+
+    for record in bgc_records:
+        if record.parent_gbk is not None:
+            parent_dict.setdefault(record.parent_gbk, []).append(record)
+
+    # don't create a file if there are no topolinks in this bin
+    if len(parent_dict) == len(bgc_records):
+        return
+
+    with open(output_path, "w") as topolink_file:
+        header = (
+            "GBK_a\tRecord_Type_a\tRecord_Number_a\tFull_Name_a\tGBK_b\t"
+            "Record_Type_b\tRecord_Number_b\tFull_Name_b\tType\n"
+        )
+        topolink_file.write(header)
+        for parent, records in parent_dict.items():
+            if len(records) > 1:
+                for rec_a, rec_b in combinations(records, 2):
+                    type_a = find_record_type(rec_a)
+                    type_b = find_record_type(rec_b)
+
+                    row = "\t".join(
+                        [
+                            parent.path.stem,
+                            type_a,
+                            str(rec_a.number),
+                            f"{parent.path.name}_{type_a}_{rec_a.number}",
+                            parent.path.stem,
+                            type_b,
+                            str(rec_b.number),
+                            f"{parent.path.name}_{type_b}_{rec_b.number}",
+                            "Topology",
+                        ]
+                    )
+                    topolink_file.write(row + "\n")
