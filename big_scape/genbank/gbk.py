@@ -99,7 +99,7 @@ def create_temp_gbk_id_table(gbk_ids: list[int]) -> Table:
     """Create a temporary table with ids of given gbks
 
     Args:
-        gbks (list[GBK]): the gbks to include in the connected component
+        gbk_ids (list[int]): the ids of the gbks to add to the temporary table
 
     Returns:
         Table: the temporary table
@@ -132,6 +132,7 @@ def create_temp_gbk_id_table(gbk_ids: list[int]) -> Table:
         INSERT INTO {temp_table_name} (gbk_id) VALUES (?);
     """
 
+    # local function for batching
     def batch_hash(gbk_ids: list[int], n: int):
         l = len(gbk_ids)
         for ndx in range(0, l, n):
