@@ -311,7 +311,7 @@ def run_family_assignments(
                     connected_component, bin.source_records
                 ):
                     bs_network.remove_connected_component(
-                        connected_component, cutoff, run["run_id"]
+                        connected_component, bin.label, cutoff, run["run_id"]
                     )
                     continue
 
