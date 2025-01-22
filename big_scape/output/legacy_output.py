@@ -502,8 +502,10 @@ def write_clustering_file(run, cutoff, pair_generator) -> None:
 def write_cutoff_network_files(
     run: dict, cutoff: float, pair_generator: RecordPairGenerator
 ) -> None:
-    """Writes the cutoff network file to the output directory
-    i.e. edge list for a given bin with edges above the cutoff
+    """Writes the cutoff network files to the output directory
+
+    This includes an edge list for a given bin with edges above the cutoff, as well as
+    topology links as an edge list, if relevant.
 
     Args:
         run (dict): run parameters
