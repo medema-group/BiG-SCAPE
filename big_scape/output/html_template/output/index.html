@@ -1617,7 +1617,7 @@ CC\tFamily\tGBK\tRecord_Type\tRecord_Number\tClass\tCategory\tOrganism\tTaxonomy
     }
 
     function downloadAbPresTsv() {
-        sendDownload(document.getElementById("abpres_tsv_text"), "absence_presence.tsv")
+        sendDownload(document.getElementById("abpres_tsv_text").value, "absence_presence.tsv")
     }
 
     function sendDownload(content, filename) {
