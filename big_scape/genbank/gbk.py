@@ -707,10 +707,10 @@ class GBK:
                 cand_cluster.add_proto_cluster(
                     updated_tmp_proto_clusters[proto_cluster_num]
                 )
-            cand_cluster.set_record_category(cand_cluster.get_categories())
+            cand_cluster.set_record_category()
             region.add_cand_cluster(cand_cluster)
 
-        region.set_record_category(region.get_categories())
+        region.set_record_category()
 
         del (
             tmp_proto_clusters,

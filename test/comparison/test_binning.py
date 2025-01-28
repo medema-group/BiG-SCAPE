@@ -621,7 +621,7 @@ class TestBinGenerators(TestCase):
 
         region = mock_region()
         cc = region.cand_clusters[1]
-        cc.set_record_category(cc.get_categories())
+        cc.set_record_category()
 
         self.assertEqual("PKS", cc.get_category())
 
@@ -649,7 +649,7 @@ class TestBinGenerators(TestCase):
         )
 
         cc = gbk.region.cand_clusters[1]
-        cc.set_record_category(cc.get_categories())
+        cc.set_record_category()
 
         self.assertIn("PKS", cc.get_category())
         self.assertIn("NRPS", cc.get_category())

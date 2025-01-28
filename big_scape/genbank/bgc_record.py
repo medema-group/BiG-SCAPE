@@ -192,15 +192,15 @@ class BGCRecord:
                 break
         return record_start, record_stop
 
-    def set_record_category(self, categories: set[str]) -> None:
+    def set_record_category(self) -> None:
         """Sets the category of a record to categories in this record and its subrecords
 
         Relevant for regions and candidate clusters. Protocluster and protocore category
         is set during parsing of their feature, since they have only one category.
-
-        Args:
-            categories (set[str]): set of unique categories occuring in (sub)records
         """
+        # obtain categories present in any sub-records
+        categories = self.get_categories()
+
         if len(categories) == 0:
             # if no categories given, category remains None
             return

@@ -197,7 +197,7 @@ class TestRegion(TestCase):
             None, 1, 0, 100, False, "T1PKS.NRPS", "", {1: pclust1, 2: pclust2}
         )
         # set cand_cluster category, based on protocluster categories
-        cand_cluster.set_record_category(cand_cluster.get_categories())
+        cand_cluster.set_record_category()
         self.assertEqual(cand_cluster.get_category(), "NRPS.PKS")
 
         region = Region(None, 1, 0, 1000, False, "T1PKS.NRPS")
@@ -209,7 +209,7 @@ class TestRegion(TestCase):
         self.assertEqual(set(["PKS", "NRPS"]), cats)
 
         # after setting region category is equal to its cand_cluster
-        region.set_record_category(cats)
+        region.set_record_category()
         self.assertEqual(region.get_category(), "NRPS.PKS")
 
     def test_get_category(self):
@@ -243,7 +243,7 @@ class TestRegion(TestCase):
         self.assertEqual(set([]), cats)
 
         # after setting, category should remain None
-        region.set_record_category(cats)
+        region.set_record_category()
         self.assertIsNone(region.category)
         self.assertEqual(region.get_category(), "Categoryless")
 
