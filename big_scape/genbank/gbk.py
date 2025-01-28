@@ -626,9 +626,9 @@ class GBK:
             InvalidGBKError: Invalid or missing fields in gbk record
         """
 
-        tmp_cand_clusters = {}
-        tmp_proto_clusters = {}
-        tmp_proto_cores = {}
+        tmp_cand_clusters: dict[int, CandidateCluster] = {}
+        tmp_proto_clusters: dict[int, ProtoCluster] = {}
+        tmp_proto_cores: dict[int, ProtoCore] = {}
 
         # go through features, load into tmp dicts indexed by feature number
         orf_num = 1
@@ -707,8 +707,10 @@ class GBK:
                 cand_cluster.add_proto_cluster(
                     updated_tmp_proto_clusters[proto_cluster_num]
                 )
-
+            cand_cluster.set_record_category(cand_cluster.get_categories())
             region.add_cand_cluster(cand_cluster)
+
+        region.set_record_category(region.get_categories())
 
         del (
             tmp_proto_clusters,

@@ -82,7 +82,9 @@ def calculate_distances_query(
     return query_bin_connected
 
 
-def get_query_records(run, all_bgc_records, query_record) -> list[bs_gbk.BGCRecord]:
+def get_query_records(
+    run: dict, all_bgc_records: list[bs_gbk.BGCRecord], query_record: bs_gbk.BGCRecord
+) -> list[bs_gbk.BGCRecord]:
     """returns the query records and checks if the query is a singleton
 
     Args:
@@ -130,8 +132,8 @@ def get_query_records(run, all_bgc_records, query_record) -> list[bs_gbk.BGCReco
                     query_records.append(record)
 
             if classify_mode == bs_enums.CLASSIFY_MODE.CATEGORY:
-                query_category = [bs_comparison.get_record_category(query_record)]
-                record_category = [bs_comparison.get_record_category(record)]
+                query_category = [query_record.get_category()]
+                record_category = [record.get_category()]
 
                 intersect_cats = list(set(query_category) & set(record_category))
                 if len(intersect_cats) > 0:

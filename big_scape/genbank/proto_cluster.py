@@ -61,8 +61,8 @@ class ProtoCluster(BGCRecord):
             nt_stop,
             contig_edge,
             product,
+            category,
         )
-        self.category: Optional[str] = category
         self.proto_core: Dict[int, Optional[ProtoCore]] = proto_core
         self.proto_core_cds_idx: set[int] = set()
 
