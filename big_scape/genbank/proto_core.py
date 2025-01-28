@@ -55,9 +55,8 @@ class ProtoCore(BGCRecord):
             nt_stop,
             contig_edge,
             product,
+            category,
         )
-
-        self.category: Optional[str] = category
 
     def save(self, parent_id: int, commit=True) -> None:
         """Stores this protocore in the database

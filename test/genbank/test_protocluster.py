@@ -60,6 +60,23 @@ class TestProtocluster(TestCase):
 
         self.assertEqual(expected_category, protocluster.category)
 
+    def test_get_category(self):
+        """Tests whether a Protocluster category is correctly fetched"""
+        pclust_nrps = ProtoCluster(None, 1, 0, 100, None, "NRPS", {}, "NRPS")
+
+        self.assertEqual(set(["NRPS"]), pclust_nrps.get_categories())
+        self.assertEqual("NRPS", pclust_nrps.get_category())
+
+        pclust_none = ProtoCluster(None, 1, 0, 100, None, "other", {}, None)
+
+        self.assertEqual(set([]), pclust_none.get_categories())
+        self.assertEqual("Categoryless", pclust_none.get_category())
+
+        pclust_categoryless = ProtoCluster(None, 1, 0, 10, None, "", {}, "Categoryless")
+
+        self.assertEqual(set(["Categoryless"]), pclust_categoryless.get_categories())
+        self.assertEqual("Categoryless", pclust_categoryless.get_category())
+
     def test_parse_no_number(self):
         """Tests whether parse correctly throws an error when given a feature
         lacking a protocluster_number qualifier
@@ -284,3 +301,47 @@ class TestProtocluster(TestCase):
         loaded_proto_cluster = cand_cluster.proto_clusters["1_2"]
 
         self.assertIsInstance(loaded_proto_cluster, MergedProtoCluster)
+
+    def test_merge_categories(self):
+        """tests whether two proto_clusters categories are correctly merged"""
+
+        feature_a = SeqFeature(FeatureLocation(0, 100), type="proto_core")
+        feature_a.qualifiers["protocluster_number"] = [str(1)]
+        feature_a.qualifiers["product"] = ["NRPS"]
+        proto_core_a = ProtoCore.parse(feature_a)
+
+        protocluster_feature_a = SeqFeature(
+            FeatureLocation(0, 100), type="protocluster"
+        )
+        protocluster_feature_a.qualifiers = {
+            "protocluster_number": ["1"],
+            "category": ["NRPS"],
+            "product": ["NRPS"],
+        }
+
+        protocluster_a = ProtoCluster.parse(protocluster_feature_a)
+        protocluster_a.add_proto_core(proto_core_a)
+
+        feature_b = SeqFeature(FeatureLocation(0, 100), type="proto_core")
+        feature_b.qualifiers["protocluster_number"] = [str(2)]
+        feature_b.qualifiers["product"] = ["PKS"]
+        proto_core_b = ProtoCore.parse(feature_b)
+
+        protocluster_feature_b = SeqFeature(
+            FeatureLocation(0, 100), type="protocluster"
+        )
+        protocluster_feature_b.qualifiers = {
+            "protocluster_number": ["2"],
+            "category": ["PKS"],
+            "product": ["PKS"],
+        }
+
+        protocluster_b = ProtoCluster.parse(protocluster_feature_b)
+        protocluster_b.add_proto_core(proto_core_b)
+
+        merged_protoclusters = MergedProtoCluster.merge(
+            [protocluster_a, protocluster_b]
+        )
+
+        self.assertEqual("NRPS.PKS", merged_protoclusters.get_category())
+        self.assertEqual(set(["NRPS", "PKS"]), merged_protoclusters.get_categories())

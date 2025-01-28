@@ -50,6 +50,7 @@ class Region(BGCRecord):
         nt_stop: int,
         contig_edge: Optional[bool],
         product: str,
+        category: Optional[str] = None,
     ):
         super().__init__(
             parent_gbk,
@@ -58,6 +59,7 @@ class Region(BGCRecord):
             nt_stop,
             contig_edge,
             product,
+            category,
         )
         self.cand_clusters: Dict[int, Optional[CandidateCluster]] = {}
 
@@ -96,6 +98,18 @@ class Region(BGCRecord):
                 raise RuntimeError("Region has no database id!")
 
             candidate_cluster.save_all(self._db_id)
+
+    def get_categories(self) -> set[str]:
+        """Grab categories that occur in a region"""
+        if self.category is not None:
+            return set(self.category.split("."))
+
+        # if category is not set, look through all child records
+        categories = set()
+        for cand_cluster in self.cand_clusters.values():
+            if cand_cluster is not None:
+                categories.update(cand_cluster.get_categories())
+        return categories
 
     @classmethod
     def parse_as5(cls, feature: SeqFeature, parent_gbk: Optional[GBK] = None) -> Region:
@@ -291,6 +305,7 @@ class Region(BGCRecord):
                 record_table.c.nt_start,
                 record_table.c.nt_stop,
                 record_table.c.product,
+                record_table.c.category,
             )
             .where(record_table.c.record_type == "region")
         )
@@ -316,6 +331,7 @@ class Region(BGCRecord):
                 result.nt_stop,
                 result.contig_edge,
                 result.product,
+                result.category,
             )
 
             new_region._db_id = result.id

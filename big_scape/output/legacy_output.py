@@ -17,7 +17,7 @@ from big_scape.data import DB
 from big_scape.comparison import RecordPairGenerator
 from big_scape.genbank import GBK, BGCRecord, CandidateCluster, ProtoCluster, ProtoCore
 from big_scape.trees import generate_newick_tree, save_trees
-from big_scape.comparison import lcs, get_record_category
+from big_scape.comparison import lcs
 
 import big_scape.paths as bs_paths
 import big_scape.enums as bs_enums
@@ -350,7 +350,7 @@ def write_record_annotations_file(run, cutoff, all_bgc_records) -> None:
 
     record_categories = {}
     for record in all_bgc_records:
-        record_categories[record._db_id] = get_record_category(record)
+        record_categories[record._db_id] = record.get_category()
 
     select_statement = (
         select(

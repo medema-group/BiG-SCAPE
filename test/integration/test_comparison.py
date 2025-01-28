@@ -114,6 +114,9 @@ def create_mock_complete_single_gbk(
     candidate_cluster.add_proto_cluster(protocluster)
     region.add_cand_cluster(candidate_cluster)
 
+    candidate_cluster.set_record_category(candidate_cluster.get_categories())
+    region.set_record_category(region.get_categories())
+
     cds = CDS(0, 100)
     cds.parent_gbk = gbk
     cds.orf_num = 1
