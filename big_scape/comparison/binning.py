@@ -23,7 +23,6 @@ from big_scape.data import DB
 from big_scape.genbank import (
     BGCRecord,
     Region,
-    CandidateCluster,
     ProtoCluster,
     ProtoCore,
 )
@@ -737,7 +736,7 @@ def as_class_bin_generator(
             record_class = record.product
 
         if classify_mode == CLASSIFY_MODE.CATEGORY:
-            record_class = get_record_category(record)
+            record_class = record.get_category()
 
         if run["hybrids_off"]:
             record_classes = record_class.split(".")
@@ -771,52 +770,6 @@ def as_class_bin_generator(
         )
         bin.add_records(records)
         yield bin
-
-
-def get_record_category(record: BGCRecord) -> str:
-    """Get the category of a BGC based on its antiSMASH product(s)
-
-    Args:
-        region (Region): region object
-
-    Returns:
-        str: BGC category
-    """
-
-    def cand_cluster_category(cand_cluster: CandidateCluster) -> set[str]:
-        """Grab categories that occur in a candidate cluster"""
-        categories = set()
-        for proto in cand_cluster.proto_clusters.values():
-            if proto is not None:
-                categories.update(proto_category(proto))
-        return categories
-
-    def proto_category(proto: ProtoCluster | ProtoCore) -> set[str]:
-        """Grab category(s) that occurs in Protocluster or Protocore"""
-        # merged protocluster/cores can contain multiple categories joined by "."
-        return set(proto.category.split(".") if proto.category is not None else [])
-
-    categories: set[str] = set()
-
-    if isinstance(record, Region):
-        # get categories from region object
-        for cand_cluster in record.cand_clusters.values():
-            if cand_cluster is not None:
-                categories.update(cand_cluster_category(cand_cluster))
-
-    if isinstance(record, CandidateCluster):
-        categories.update(cand_cluster_category(record))
-
-    if isinstance(record, ProtoCluster) or isinstance(record, ProtoCore):
-        categories.update(proto_category(record))
-
-    if len(categories) == 0:
-        return "Categoryless"
-
-    if len(categories) == 1:
-        return list(categories)[0]
-
-    return ".".join(categories)
 
 
 def get_legacy_weights_from_category(

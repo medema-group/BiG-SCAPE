@@ -15,7 +15,6 @@ from big_scape.comparison import (
     RecordPairGenerator,
     ConnectedComponentPairGenerator,
     QueryRecordPairGenerator,
-    get_record_category,
     get_legacy_weights_from_category,
     as_class_bin_generator,
 )
@@ -622,8 +621,9 @@ class TestBinGenerators(TestCase):
 
         region = mock_region()
         cc = region.cand_clusters[1]
+        cc.set_record_category()
 
-        self.assertEqual("PKS", get_record_category(cc))
+        self.assertEqual("PKS", cc.get_category())
 
     def test_get_record_category_chemhybrid_pc1(self):
         gbk = create_mock_complete_chemhyb_gbk(
@@ -632,7 +632,7 @@ class TestBinGenerators(TestCase):
 
         pc_1 = gbk.region.cand_clusters[1].proto_clusters[1]
 
-        self.assertEqual("PKS", get_record_category(pc_1))
+        self.assertEqual("PKS", pc_1.get_category())
 
     def test_get_record_category_chemhybrid_pc2(self):
         gbk = create_mock_complete_chemhyb_gbk(
@@ -641,7 +641,7 @@ class TestBinGenerators(TestCase):
 
         pc_2 = gbk.region.cand_clusters[1].proto_clusters[2]
 
-        self.assertEqual("NRPS", get_record_category(pc_2))
+        self.assertEqual("NRPS", pc_2.get_category())
 
     def test_get_record_category_chemhybrid_cc(self):
         gbk = create_mock_complete_chemhyb_gbk(
@@ -649,9 +649,10 @@ class TestBinGenerators(TestCase):
         )
 
         cc = gbk.region.cand_clusters[1]
+        cc.set_record_category()
 
-        self.assertIn("PKS", get_record_category(cc))
-        self.assertIn("NRPS", get_record_category(cc))
+        self.assertIn("PKS", cc.get_category())
+        self.assertIn("NRPS", cc.get_category())
 
     def test_get_legacy_weight_from_category(self):
         """Tests wether the correct legacy weight category is created from a region category"""

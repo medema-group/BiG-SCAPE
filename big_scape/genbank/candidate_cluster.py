@@ -51,6 +51,7 @@ class CandidateCluster(BGCRecord):
         product: str,
         kind: str,
         proto_clusters: dict[int, Optional[ProtoCluster]],
+        category: Optional[str] = None,
     ):
         super().__init__(
             parent_gbk,
@@ -59,6 +60,7 @@ class CandidateCluster(BGCRecord):
             nt_stop,
             contig_edge,
             product,
+            category,
         )
         self.kind: str = kind
         self.proto_clusters: Dict[int, Optional[ProtoCluster]] = proto_clusters
@@ -98,6 +100,18 @@ class CandidateCluster(BGCRecord):
                 raise RuntimeError("Candidate cluster has no database id!")
 
             proto_cluster.save_all(self._db_id)
+
+    def get_categories(self) -> set[str]:
+        """Get separate categorie(s) that are present in a candidate cluster"""
+        if self.category is not None:
+            return set(self.category.split("."))
+
+        # if category is not set, look through all child records
+        categories = set()
+        for proto in self.proto_clusters.values():
+            if proto is not None:
+                categories.update(proto.get_categories())
+        return categories
 
     @classmethod
     def parse(
@@ -197,6 +211,7 @@ class CandidateCluster(BGCRecord):
                 record_table.c.nt_start,
                 record_table.c.nt_stop,
                 record_table.c.product,
+                record_table.c.category,
             )
             .where(record_table.c.record_type == "cand_cluster")
         )
@@ -226,6 +241,7 @@ class CandidateCluster(BGCRecord):
                 result.product,
                 "",  # TODO: fix this
                 {},
+                result.category,
             )
 
             new_candidate_cluster._db_id = result.id

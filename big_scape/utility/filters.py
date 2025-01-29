@@ -4,7 +4,6 @@ import logging
 
 # from other modules
 import big_scape.genbank as bs_gbk
-from big_scape.comparison import get_record_category
 
 
 def domain_includelist_filter(run: dict, all_bgc_records: list[bs_gbk.BGCRecord]):
@@ -91,7 +90,7 @@ def category_filter(
 
     filtered_bgc_records = []
     for record in all_bgc_records:
-        record_categs = set(get_record_category(record).split("."))
+        record_categs = record.get_categories()
         if generic_category_class_filter(record_categs, include_categs, exclude_categs):
             filtered_bgc_records.append(record)
 

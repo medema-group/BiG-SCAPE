@@ -8,7 +8,7 @@ from pathlib import Path
 from Bio.SeqFeature import SeqFeature, FeatureLocation
 
 # from other modules
-from big_scape.genbank import Region, CandidateCluster, GBK
+from big_scape.genbank import Region, CandidateCluster, ProtoCluster, ProtoCore, GBK
 from big_scape.errors import InvalidGBKError
 from big_scape.data import DB
 from big_scape.enums import SOURCE_TYPE
@@ -187,3 +187,71 @@ class TestRegion(TestCase):
         actual_row_count = len(cursor_result.fetchall())
 
         self.assertEqual(expected_row_count, actual_row_count)
+
+    def test_set_record_category(self):
+        """Tests whether region category is set correctly"""
+        # protocores are not relevant, as protocores/clusters have the same category
+        pclust1 = ProtoCluster(None, 1, 0, 100, False, "T1PKS", {}, "PKS")
+        pclust2 = ProtoCluster(None, 2, 200, 300, False, "NRPS", {}, "NRPS")
+        cand_cluster = CandidateCluster(
+            None, 1, 0, 100, False, "T1PKS.NRPS", "", {1: pclust1, 2: pclust2}
+        )
+        # set cand_cluster category, based on protocluster categories
+        cand_cluster.set_record_category()
+        self.assertEqual(cand_cluster.get_category(), "NRPS.PKS")
+
+        region = Region(None, 1, 0, 1000, False, "T1PKS.NRPS")
+        region.cand_clusters = {1: cand_cluster}
+
+        # region category is None, but can be fetched from cand_cluster
+        cats = region.get_categories()
+        self.assertIsNone(region.category)
+        self.assertEqual(set(["PKS", "NRPS"]), cats)
+
+        # after setting region category is equal to its cand_cluster
+        region.set_record_category()
+        self.assertEqual(region.get_category(), "NRPS.PKS")
+
+    def test_get_category(self):
+        """Tests whether a Region category is correctly fetched"""
+        region_nrps = Region(None, 1, 0, 100, None, "NRPS", "NRPS")
+
+        self.assertEqual("NRPS", region_nrps.get_category())
+
+        region_none = Region(None, 1, 0, 100, None, "other", None)
+
+        self.assertEqual("Categoryless", region_none.get_category())
+
+        region_categoryless = Region(None, 1, 0, 10, None, "", "Categoryless")
+
+        self.assertEqual("Categoryless", region_categoryless.get_category())
+
+    def test_as5_set_and_get_category(self):
+        """Tests whether category is correctly set and read in as5 region"""
+        # AS5 does not have categories
+        core = ProtoCore(None, 1, 0, 100, False, "T1PKS")
+        pclust1 = ProtoCluster(None, 1, 0, 100, False, "T1PKS", {1: core})
+        pclust2 = ProtoCluster(None, 2, 200, 300, False, "NRPS", {})
+        cand_cluster = CandidateCluster(
+            None, 1, 0, 100, False, "T1PKS.NRPS", "", {1: pclust1, 2: pclust2}
+        )
+        region = Region(None, 1, 0, 1000, False, "T1PKS.NRPS")
+        region.cand_clusters = {1: cand_cluster}
+
+        # no categories in the region
+        cats = region.get_categories()
+        self.assertEqual(set([]), cats)
+
+        # after setting, category should remain None
+        region.set_record_category()
+        self.assertIsNone(region.category)
+        self.assertEqual(region.get_category(), "Categoryless")
+
+    def test_as4_set_and_get_category(self):
+        """Tests whether category is correctly read in as4 region"""
+        # AS4 does not have categories and there are no protoclusters to access
+        as4_region = Region(None, 1, 0, 100, None, "other")
+
+        self.assertEqual(as4_region.get_categories(), set([]))
+        self.assertIsNone(as4_region.category)
+        self.assertEqual(as4_region.get_category(), "Categoryless")

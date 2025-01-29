@@ -234,6 +234,8 @@ def run_bigscape(run: dict) -> None:
 
         bs_data.DB.commit()
 
+    bs_data.DB.save_to_disk(run["db_path"])
+
     # FAMILY GENERATION
     logging.info("Generating families")
 
