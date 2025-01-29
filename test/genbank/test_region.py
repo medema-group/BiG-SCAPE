@@ -190,8 +190,8 @@ class TestRegion(TestCase):
 
     def test_set_record_category(self):
         """Tests whether region category is set correctly"""
-        core = ProtoCore(None, 1, 0, 100, False, "T1PKS", "PKS")
-        pclust1 = ProtoCluster(None, 1, 0, 100, False, "T1PKS", {1: core}, "PKS")
+        # protocores are not relevant, as protocores/clusters have the same category
+        pclust1 = ProtoCluster(None, 1, 0, 100, False, "T1PKS", {}, "PKS")
         pclust2 = ProtoCluster(None, 2, 200, 300, False, "NRPS", {}, "NRPS")
         cand_cluster = CandidateCluster(
             None, 1, 0, 100, False, "T1PKS.NRPS", "", {1: pclust1, 2: pclust2}
