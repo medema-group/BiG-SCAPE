@@ -931,9 +931,11 @@ CC\tFamily\tGBK\tRecord_Type\tRecord_Number\tClass\tCategory\tOrganism\tTaxonomy
         // pie chart: BGC per Accession
         gbk_org_data = window.db.exec(`SELECT gbk.organism, COUNT(gbk.organism) FROM gbk
                                     INNER JOIN bgc_record ON bgc_record.gbk_id==gbk.id
-                                    INNER JOIN bgc_record_family ON bgc_record.id==bgc_record_family.record_id
-                                    INNER JOIN family ON bgc_record_family.family_id==family.id
-                                    WHERE family.run_id==${run_id} AND family.cutoff==${cutoff}
+                                    WHERE bgc_record.id IN (
+                                        SELECT bgc_record_family.record_id FROM bgc_record_family
+                                        INNER JOIN family ON bgc_record_family.family_id==family.id
+                                        WHERE family.run_id==${run_id} AND family.cutoff==${cutoff}
+                                        )
                                     GROUP BY gbk.organism`)[0]
         if (gbk_org_data === undefined) {
             throw Error("There were no networks created in this run;\nPlease select another run from the dropdown menu")
@@ -978,9 +980,11 @@ CC\tFamily\tGBK\tRecord_Type\tRecord_Number\tClass\tCategory\tOrganism\tTaxonomy
         });
         // pie chart: BGC per Class
         bgc_class_data = window.db.exec(`SELECT bgc_record.product, COUNT(bgc_record.product) as c
-                                        FROM bgc_record INNER JOIN bgc_record_family ON bgc_record.id==bgc_record_family.record_id
+                                        FROM bgc_record WHERE bgc_record.id IN (
+                                        SELECT bgc_record_family.record_id FROM bgc_record_family
                                         INNER JOIN family ON bgc_record_family.family_id==family.id
                                         WHERE family.run_id==${run_id} AND family.cutoff==${cutoff}
+                                        )
                                         GROUP BY bgc_record.product ORDER BY c DESC`)[0].values
         var pieLabels = [];
         var pieData = [];
