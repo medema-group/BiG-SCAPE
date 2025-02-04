@@ -62,8 +62,7 @@ def calculate_distances_mix(
                 run["cores"] * 2,
                 callback,
             )
-
-        bs_comparison.save_edges_to_db(save_batch)
+        bs_comparison.save_edges_to_db(save_batch, commit=True)
 
         bs_data.DB.commit()
 
