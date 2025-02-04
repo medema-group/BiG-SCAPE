@@ -33,9 +33,9 @@ class TestBenchmarkData(TestCase):
     def test_curated_gcf_loading_long_format(self):
         """Tests the loading of long format curated GCF assignments, e.g. protoclusters"""
         expected_data = {
-            "AGCF01000001.1.cluster077_protocluster_1": "ectoine",
-            "CM001149.1.cluster003_protocluster_1": "ectoine",
-            "CM001149.1.cluster001_protocluster_1": "FAS",
+            "AGCF01000001.1.cluster077.gbk_protocluster_1": "ectoine",
+            "CM001149.1.cluster003.gbk_protocluster_1": "ectoine",
+            "CM001149.1.cluster001.gbk_protocluster_1": "FAS",
             "CM002177.1.cluster025": "FAS",
         }
         curated_path = Path("test/test_data/curated_gcfs/valid_protocluster_gcfs.tsv")
@@ -87,15 +87,15 @@ class TestBenchmarkData(TestCase):
 
         expected_data = {
             "0.5": {
-                "CM000578.1.cluster047_protocluster_1": "00072",
-                "CM000578.1.cluster038_protocluster_1": "00077",
-                "CM000578.1.cluster038_protocluster_2": "00179",
+                "CM000578.1.cluster047.gbk_protocluster_1": "00072",
+                "CM000578.1.cluster038.gbk_protocluster_1": "00077",
+                "CM000578.1.cluster038.gbk_protocluster_2": "00179",
                 "CM000578.1.cluster033": "00167",
             },
             "0.7": {
-                "CM000578.1.cluster038_protocluster_1": "00006",
-                "CM000578.1.cluster038_protocluster_2": "00006",
-                "CM000578.1.cluster042_protocluster_1_2": "00010",
+                "CM000578.1.cluster038.gbk_protocluster_1": "00006",
+                "CM000578.1.cluster038.gbk_protocluster_2": "00006",
+                "CM000578.1.cluster042.gbk_protocluster_1_2": "00010",
                 "CM000578.1.cluster033": "00062",
             },
         }

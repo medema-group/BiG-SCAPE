@@ -65,7 +65,7 @@ def calculate_distances_legacy_classify(
                     callback,
                 )
 
-            bs_comparison.save_edges_to_db(save_batch)
+            bs_comparison.save_edges_to_db(save_batch, commit=True)
 
             bs_data.DB.commit()
 
