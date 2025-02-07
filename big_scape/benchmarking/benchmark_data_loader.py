@@ -13,7 +13,7 @@ class BenchmarkData:
 
     Atrributes:
         curated_path (Path): location of curated GCF assignments file
-        in_path (Path): location of BiG-SCAPE output database
+        in_path (Path): location of BiG-SCAPE/BiG-SLICE output folder
     """
 
     def __init__(self, curated_path: Path, in_path: Path) -> None:
@@ -23,7 +23,15 @@ class BenchmarkData:
     def read_gcf_short_tsv(self, infile: TextIO) -> dict[str, str]:
         """Read GCF assignments tsv file short format
 
-        Expects tsv file with BGC name and family per line and stores in {bgc_name: fam}
+        Expects tsv file with BGC name and family per line excluding a header, and
+        stores in {bgc_name: fam}. Regions should be named after their GBK (excluding
+        .gbk extension), while other record types should be formatted as
+        <GBK>.gbk_<recordtype>_<recordnumber>.
+
+        Example:
+            BGC	GCF
+            JK1.region010	NRPS_1
+            JK1.region05.gbk_protocluster_1 NRPS_2
 
         Args:
             infile (TextIO): opened tsv file object
@@ -40,12 +48,16 @@ class BenchmarkData:
     def read_gcf_long_tsv(self, infile: TextIO) -> dict[str, str]:
         """Read GCF assignment tsv file long format
 
-        Expects tsv file with BGC name, record type, record number and family per line.
-        Stores record information as BGC_record_number, if record type is region ignores
-        region number.
+        Expects tsv file with Record, GBK, record type, record number, CC and family
+        per line excluding a header line. Either stores BGC name as the GBK in case of
+        region record, or as <GBK>.gbk_<recordtype>_<recordnumber>.
+
+        Example:
+            Record	GBK	Record_Type	Record_Number	CC	Family
+            JK1.region05.gbk_region_1	JK1.region05	region	1	1	FAM_00005
 
         Args:
-            filename (TextIO): opened tsv file object
+            infile (TextIO): opened tsv file object
 
         Returns:
             dict[str, str]: dictionary linking BGC record to family
@@ -53,14 +65,14 @@ class BenchmarkData:
         data = {}
         for line in infile:
             parts = line.strip().split("\t")
-            clean_name = Path(parts[0]).name.replace(".gbk", "")
+            clean_name = Path(parts[1]).name.replace(".gbk", "")
 
-            if parts[1] == "region":
+            if parts[2] == "region":
                 bgc = clean_name
             else:
-                bgc = f"{clean_name}_{parts[1]}_{parts[2]}"
+                bgc = f"{clean_name}.gbk_{parts[2]}_{parts[3]}"
 
-            data[bgc] = parts[4].replace("FAM_", "")
+            data[bgc] = parts[5].replace("FAM_", "")
         return data
 
     def load_curated_labels(self) -> None:
