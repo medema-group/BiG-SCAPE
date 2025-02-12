@@ -109,7 +109,11 @@ def common_cluster_query(fn):
                 exists=True, file_okay=False, dir_okay=True, path_type=Path
             ),
             required=True,
-            help="Input directory containing .gbk files to be used by BiG-SCAPE. See the wiki for more details.",
+            help=(
+                "Input directory containing .gbk files to be used by BiG-SCAPE. "
+                "Duplicated filenames can be handled, but are not recommended. "
+                "See the wiki for more details."
+            ),
         ),
         click.option(
             "--config-file-path",
@@ -139,6 +143,7 @@ def common_cluster_query(fn):
             help=(
                 "Tells BiG-SCAPE where to look for input GBK files. "
                 "recursive: search for .gbk files recursively in input directory. "
+                "Duplicated filenames are not recommended. "
                 "flat: search for .gbk files in input directory only. "
                 "(default: recursive)."
             ),
@@ -168,7 +173,8 @@ def common_cluster_query(fn):
                 exists=True, file_okay=False, dir_okay=True, path_type=Path
             ),
             help=(
-                "Path to directory containing user defined, non-MIBiG, antiSMASH processed reference BGCs."
+                "Path to directory containing user defined, non-MIBiG, antiSMASH processed reference BGCs. "
+                "Duplicated filenames are not recommended. "
                 "For more information, see the wiki."
             ),
         ),

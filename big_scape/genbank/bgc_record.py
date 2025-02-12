@@ -53,6 +53,7 @@ class BGCRecord:
         nt_stop: int,
         contig_edge: Optional[bool],
         product: str,
+        category: Optional[str] = None,
     ):
         self.parent_gbk = parent_gbk
         self.number = number
@@ -61,6 +62,7 @@ class BGCRecord:
         self.nt_start = nt_start
         self.nt_stop = nt_stop
         self.product = product
+        self.category = category
         self.merged: bool = False
 
         # for database operations
@@ -189,6 +191,42 @@ class BGCRecord:
                 record_stop = idx
                 break
         return record_start, record_stop
+
+    def set_record_category(self) -> None:
+        """Sets the category of a record to categories in this record and its subrecords
+
+        Relevant for regions and candidate clusters. Protocluster and protocore category
+        is set during parsing of their feature, since they have only one category.
+        """
+        # obtain categories present in any sub-records
+        categories = self.get_categories()
+
+        if len(categories) == 0:
+            # if no categories given, category remains None
+            return
+        elif len(categories) == 1:
+            category = list(categories)[0]
+        else:
+            category = ".".join(sorted(categories))
+        self.category = category
+
+    def get_categories(self) -> set[str]:
+        """Obtain a set of unique categories associated with this record
+
+        Semi-template method, overwritten by Region and CandidateCluster classes.
+        Returns an empty set if no categories are associated.
+        """
+        return set(self.category.split(".") if self.category is not None else [])
+
+    def get_category(self) -> str:
+        """Returns the category of a record or 'Categoryless' if category is None
+
+        Should be used instead of directly accessing the category attribute
+        to ensure compatibility with as5 and below, as well as --force-gbk
+        """
+        if self.category is not None:
+            return self.category
+        return "Categoryless"
 
     def save_record(
         self, record_type: str, parent_id: Optional[int] = None, commit=True

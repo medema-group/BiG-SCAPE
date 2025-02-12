@@ -32,6 +32,7 @@ from big_scape.file_input.load_files import (
     is_included,
     bgc_length_contraint,
     remove_duplicate_gbk,
+    find_mibig_version_url,
 )
 
 
@@ -497,3 +498,25 @@ class TestLoadGBK(TestCase):
         all_bgc_records, query_record = get_all_bgc_records_query(run, gbks)
 
         self.assertEqual(exp_query_record, query_record)
+
+    def test_find_mibig_version_url(self):
+        """Tests correct fetching of mibig download urls"""
+
+        self.skipTest("Reduce sending requests")
+
+        version = "3.1"
+        url_31 = find_mibig_version_url(version)
+        self.assertEqual(
+            "https://dl.secondarymetabolites.org/mibig/mibig_antismash_3.1_gbk.tar.bz2",
+            url_31,
+        )
+
+        version = "4.0"
+        url_40 = find_mibig_version_url(version)
+        self.assertEqual(
+            "https://dl.secondarymetabolites.org/mibig/mibig_antismash_4.0_gbk_as8b1.tar.bz2",
+            url_40,
+        )
+
+        version = "1"
+        self.assertRaises(ValueError, find_mibig_version_url, version)

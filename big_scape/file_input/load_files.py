@@ -5,6 +5,7 @@ import logging
 from pathlib import Path
 from typing import List, Optional
 import os
+import re
 import glob
 import tarfile
 import multiprocessing
@@ -35,11 +36,7 @@ def get_mibig(mibig_version: str, bigscape_dir: Path):
         Path: path to MIBiG database (antismash processed gbks)
     """
 
-    mibig_url_base = "https://dl.secondarymetabolites.org/mibig/"
-    mibig_url = mibig_url_base + f"mibig_antismash_{mibig_version}_gbk.tar.bz2"
-    # TODO: this only works for 3.1, update to proper link once Kai makes it available
-    # https://dl.secondarymetabolites.org/mibig/mibig_antismash_3.1_gbk.tar.bz2
-    # https://dl.secondarymetabolites.org/mibig/mibig_antismash_3.1_json.tar.bz2
+    mibig_url = find_mibig_version_url(mibig_version)
 
     mibig_dir = Path(os.path.join(bigscape_dir, "MIBiG"))
     mibig_version_dir = Path(
@@ -60,6 +57,37 @@ def get_mibig(mibig_version: str, bigscape_dir: Path):
     mibig_dir_compressed = Path(f"{mibig_version_dir}.tar.bz2")
     download_dataset(mibig_url, mibig_dir, mibig_dir_compressed)
     return mibig_version_dir
+
+
+def find_mibig_version_url(mibig_version: str):
+    """Scrape the MIBiG downloads page for a link to a specific MIBiG version
+
+    Args:
+        mibig_version (str): requested MIBiG version
+
+    Raises:
+        ValueError: No download link found for specified version
+
+    Returns:
+        str: url to download a specified MIBiG version
+    """
+    # scrape the downloads page to find the download link to the requested MIBiG version
+    mibig_url_base = "https://dl.secondarymetabolites.org/mibig/"
+    dl_page = requests.get(mibig_url_base)
+
+    if dl_page.status_code != 200:
+        return RuntimeError("MIBiG Downloads page could not be reached")
+
+    # file pattern follows mibig_antismash_<version>_gbk[_<as_version>].tar.bz2
+    # [_<as_version>] being optional: present for 4.0, absent for 3.1
+    version_match = re.search(
+        f"mibig_antismash_{re.escape(mibig_version)}_gbk.*?\.tar\.bz2", dl_page.text
+    )
+
+    if not version_match:
+        raise ValueError(f"MIBiG version {mibig_version} was not found")
+
+    return mibig_url_base + version_match.group()
 
 
 def download_dataset(url: str, path: Path, path_compressed: Path) -> None:
@@ -94,6 +122,10 @@ def download_dataset(url: str, path: Path, path_compressed: Path) -> None:
         # TODO: deal with deprecation
         file.extractall(path)
 
+    # make sure directory naming is consistent
+    src = path / url.replace(".tar.bz2", "").split("/")[-1]
+    dst = str(path_compressed).replace(".tar.bz2", "")
+    os.rename(src, dst)
     os.remove(path_compressed)
 
 

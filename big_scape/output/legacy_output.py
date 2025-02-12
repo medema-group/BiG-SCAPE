@@ -17,7 +17,7 @@ from big_scape.data import DB
 from big_scape.comparison import RecordPairGenerator
 from big_scape.genbank import GBK, BGCRecord, CandidateCluster, ProtoCluster, ProtoCore
 from big_scape.trees import generate_newick_tree, save_trees
-from big_scape.comparison import lcs, get_record_category
+from big_scape.comparison import lcs
 
 import big_scape.paths as bs_paths
 import big_scape.enums as bs_enums
@@ -350,7 +350,7 @@ def write_record_annotations_file(run, cutoff, all_bgc_records) -> None:
 
     record_categories = {}
     for record in all_bgc_records:
-        record_categories[record._db_id] = get_record_category(record)
+        record_categories[record._db_id] = record.get_category()
 
     select_statement = (
         select(
@@ -375,10 +375,10 @@ def write_record_annotations_file(run, cutoff, all_bgc_records) -> None:
     with open(record_annotations_path, "w") as record_annotations_file:
         header = "\t".join(
             [
+                "Record",
                 "GBK",
                 "Record_Type",
                 "Record_Number",
-                "Full_Name",
                 "Class",
                 "Category",
                 "Organism",
@@ -402,10 +402,10 @@ def write_record_annotations_file(run, cutoff, all_bgc_records) -> None:
 
             row = "\t".join(
                 [
+                    f"{Path(gbk_path).name}_{record_type}_{record_number}",
                     Path(gbk_path).stem,
                     record_type,
                     str(record_number),
-                    f"{Path(gbk_path).name}_{record_type}_{record_number}",
                     product,
                     record_categories[rec_id],
                     organism,
@@ -477,7 +477,7 @@ def write_clustering_file(run, cutoff, pair_generator) -> None:
 
     with open(clustering_file_path, "w") as clustering_file:
         header = "\t".join(
-            ["GBK", "Record_Type", "Record_Number", "CC", "Family", "Full_Name"]
+            ["Record", "GBK", "Record_Type", "Record_Number", "CC", "Family"]
         )
         clustering_file.write(header + "\n")
 
@@ -486,12 +486,12 @@ def write_clustering_file(run, cutoff, pair_generator) -> None:
 
             row = "\t".join(
                 [
+                    f"{Path(gbk_path).name}_{record_type}_{record_number}",
                     Path(gbk_path).stem,
                     record_type,
                     str(record_number),
                     str(cc_number),
                     f"FAM_{family:0>5}",
-                    f"{Path(gbk_path).name}_{record_type}_{record_number}",
                 ]
             )
             clustering_file.write(row + "\n")
@@ -662,9 +662,9 @@ def write_network_file(
 
     with open(output_path, "w") as network_file:
         header = (
-            "GBK_a\tRecord_Type_a\tRecord_Number_a\tFull_Name_a\tORF_coords_a\tGBK_b\t"
-            "Record_Type_b\tRecord_Number_b\tFull_Name_b\tORF_coords_b\tdistance\t"
-            "jaccard\tadjacency\tdss\tweights\taligmnent_mode\textend_strategy\n"
+            "Record_a\tGBK_a\tRecord_Type_a\tRecord_Number_a\tORF_coords_a\t"
+            "Record_b\tGBK_b\tRecord_Type_b\tRecord_Number_b\tORF_coords_b\tdistance\t"
+            "jaccard\tadjacency\tdss\tweights\talignment_mode\textend_strategy\n"
         )
 
         network_file.write(header)
@@ -690,15 +690,15 @@ def write_network_file(
         ) in edgelist:
             row = "\t".join(
                 [
+                    f"{Path(gbk_path_a).name}_{record_type_a}_{record_number_a}",
                     Path(gbk_path_a).stem,
                     record_type_a,
                     str(record_number_a),
-                    f"{Path(gbk_path_a).name}_{record_type_a}_{record_number_a}",
                     f"{ext_a_start}:{ext_a_stop}",
+                    f"{Path(gbk_path_b).name}_{record_type_b}_{record_number_b}",
                     Path(gbk_path_b).stem,
                     record_type_b,
                     str(record_number_b),
-                    f"{Path(gbk_path_b).name}_{record_type_b}_{record_number_b}",
                     f"{ext_b_start}:{ext_b_stop}",
                     f"{distance:.2f}",
                     f"{jaccard:.2f}",
@@ -745,8 +745,8 @@ def write_topolink_file(bgc_records: list[BGCRecord], output_path: Path) -> None
 
     with open(output_path, "w") as topolink_file:
         header = (
-            "GBK_a\tRecord_Type_a\tRecord_Number_a\tFull_Name_a\tGBK_b\t"
-            "Record_Type_b\tRecord_Number_b\tFull_Name_b\tType\n"
+            "Record_a\tGBK_a\tRecord_Type_a\tRecord_Number_a\t"
+            "Record_b\tGBK_b\tRecord_Type_b\tRecord_Number_b\tType\n"
         )
         topolink_file.write(header)
         for parent, records in parent_dict.items():
@@ -757,14 +757,14 @@ def write_topolink_file(bgc_records: list[BGCRecord], output_path: Path) -> None
 
                     row = "\t".join(
                         [
+                            f"{parent.path.name}_{type_a}_{rec_a.number}",
                             parent.path.stem,
                             type_a,
                             str(rec_a.number),
-                            f"{parent.path.name}_{type_a}_{rec_a.number}",
+                            f"{parent.path.name}_{type_b}_{rec_b.number}",
                             parent.path.stem,
                             type_b,
                             str(rec_b.number),
-                            f"{parent.path.name}_{type_b}_{rec_b.number}",
                             "Topology",
                         ]
                     )
