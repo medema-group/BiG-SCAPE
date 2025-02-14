@@ -9,7 +9,7 @@ from big_scape.run_bigscape import run_bigscape
 from big_scape.diagnostics import init_logger, init_logger_file
 
 # from this module
-from .cli_common_options import common_all, common_cluster_query
+from .cli_common_options import common_all, common_cluster_query, common_cluster_query_dereplicate
 from .cli_validations import (
     validate_classify,
     validate_output_paths,
@@ -24,6 +24,7 @@ from .cli_validations import (
 
 @click.command()
 @common_all
+@common_cluster_query_dereplicate
 @common_cluster_query
 @click.option(
     "-q",
