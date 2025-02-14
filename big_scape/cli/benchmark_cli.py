@@ -6,8 +6,8 @@ import click
 from pathlib import Path
 
 # from other modules
-from big_scape.benchmark import run_bigscape_benchmark
 from big_scape.cli.config import BigscapeConfig
+from big_scape.benchmarking.benchmark import run_bigscape_benchmark
 from big_scape.diagnostics import init_logger, init_logger_file
 
 # from this module
