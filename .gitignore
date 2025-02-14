@@ -15,6 +15,7 @@ coverage.xml
 # misc temp files
 tmp/
 test/test_data/tmp
+__pycache__/
 
 
 # test hmm files
@@ -23,3 +24,9 @@ test/test_data/hmm/valid.hmm.h3*
 
 # mibig
 MIBiG/
+
+# local system tests
+system_tests.sh
+
+# mac stuff
+.DS_Store
