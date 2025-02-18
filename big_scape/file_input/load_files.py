@@ -16,6 +16,7 @@ import requests  # type: ignore
 # from other modules
 from big_scape.genbank.gbk import GBK
 from big_scape.cli.config import BigscapeConfig
+from big_scape.errors import InvalidGBKRegionChildError, InvalidGBKError
 import big_scape.enums as bs_enums
 import big_scape.genbank as bs_gbk
 import big_scape.data as bs_data
@@ -81,7 +82,7 @@ def find_mibig_version_url(mibig_version: str):
     # file pattern follows mibig_antismash_<version>_gbk[_<as_version>].tar.bz2
     # [_<as_version>] being optional: present for 4.0, absent for 3.1
     version_match = re.search(
-        f"mibig_antismash_{re.escape(mibig_version)}_gbk.*?\.tar\.bz2", dl_page.text
+        rf"mibig_antismash_{re.escape(mibig_version)}_gbk.*?\.tar\.bz2", dl_page.text
     )
 
     if not version_match:
@@ -192,7 +193,12 @@ def load_dataset_folder(
         [(file, source_type, run, cds_overlap_cutoff) for file in filtered_files],
     )
 
-    return gbk_list
+    # if any gbks encountered parsing errors, raise a generic invalid gbk error
+    # more detailed information will be present in the log
+    if any(gbk is None for gbk in gbk_list):
+        raise InvalidGBKError()
+
+    return gbk_list  # type: ignore
 
 
 def filter_files(
@@ -298,7 +304,7 @@ def load_gbk(
     source_type: bs_enums.SOURCE_TYPE,
     run: dict,
     cds_overlap_cutoff: Optional[float] = None,
-) -> GBK:
+) -> GBK | None:
     """Loads a GBK file. Returns a GBK object
 
     Args:
@@ -312,14 +318,20 @@ def load_gbk(
         IsADirectoryError: expected file path, got directory instead
 
     Returns:
-        GBK: gbk object
+        GBK: gbk object or None if encountered any parsing errors
     """
 
     if not path.is_file():
         logging.error("%s: GBK path does not point to a file!", path)
         raise IsADirectoryError()
-
-    return GBK.parse(path, source_type, run, cds_overlap_cutoff)
+    try:
+        return GBK.parse(path, source_type, run, cds_overlap_cutoff)
+    except InvalidGBKRegionChildError:
+        logging.error("%s: GBK Feature is not parented correctly", path)
+        return None
+    except InvalidGBKError:
+        logging.error("%s: Validation error occurred when parsing a GenBank file", path)
+        return None
 
 
 def load_gbks(run: dict, bigscape_dir: Path) -> list[GBK]:
@@ -362,6 +374,10 @@ def load_gbks(run: dict, bigscape_dir: Path) -> list[GBK]:
     else:
         gbks = load_dataset_folder(run["input_dir"], run, bs_enums.SOURCE_TYPE.QUERY)
         input_gbks.extend(gbks)
+
+    if len(input_gbks) == 0:
+        logging.error("No valid input GBKs were found in the input directory")
+        raise RuntimeError("No valid input GBKs were found in the input directory")
 
     # get reference if either MIBiG version or user-made reference dir passed
     if run["mibig_version"]:
