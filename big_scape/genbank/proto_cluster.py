@@ -77,6 +77,9 @@ class ProtoCluster(BGCRecord):
         """
 
         if proto_core.number not in self.proto_core:
+            logging.error(
+                "Protocore number does not match the number in the parent protocluster"
+            )
             raise InvalidGBKRegionChildError()
 
         proto_core.category = self.category
