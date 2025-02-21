@@ -5,7 +5,7 @@ import logging
 from pathlib import Path
 import os
 import glob
-from typing import Iterator, Tuple
+from collections.abc import Iterator, Tuple
 import hashlib
 
 # from dependencies
@@ -18,7 +18,18 @@ from big_scape.file_input.load_files import filter_files
 
 
 def load_input_folder(run: dict) -> list[Path]:
-    """Load all valid GBKs files from the input folder and return a list of paths"""
+    """Load all valid GBKs files from the input folder and return a list of paths
+
+    Args:
+        run (dict): run parameters
+
+    Raises:
+        NotADirectoryError: input path is not a directory
+        FileNotFoundError: no GBK files found 
+
+    Returns:
+        list[Path]: valid GBK paths in the input folder
+    """
 
     input_dir = run["input_dir"]
     input_mode = run["input_mode"]
@@ -61,8 +72,11 @@ def load_input_folder(run: dict) -> list[Path]:
 def parse_gbk_files(input_paths: list[Path]) -> Iterator[Tuple[Path, str, SeqRecord]]:
     """Parse GenBank files and yield their paths, content hashes and SeqIO records
 
+    Args:
+        input_paths (list[Path]): input GBK paths
+
     Yields:
-        tuple: Path to the file, content hash and SeqIO record
+        Iterator[Tuple[Path, str, SeqRecord]]: path, content hash, SeqIO record
     """
 
     for path in input_paths:
