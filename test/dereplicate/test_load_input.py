@@ -11,7 +11,7 @@ from Bio.SeqRecord import SeqRecord
 import big_scape.enums as bs_enums
 
 # from this module
-from big_scape.dereplicating.data_loading import load_input_folder, parse_gbk_files
+from big_scape.dereplicating.input_data_loading import load_input_folder, parse_gbk_files
 
 
 class TestLoadInput(TestCase):
