@@ -15,6 +15,7 @@ from Bio.SeqRecord import SeqRecord
 # from other modules
 import big_scape.enums as bs_enums
 from big_scape.file_input.load_files import filter_files
+from big_scape.dereplicating.gbk_feature_parsing import get_parser_functions
 from big_scape.dereplicating.gbk_components.gbk import GBK
 
 
@@ -106,20 +107,43 @@ def parse_gbk_files(input_paths: list[Path]) -> Iterator[tuple[Path, str, SeqRec
         yield (path, hash, record)
 
 
-def gbk_factory(path: Path, hash: str, seqIO_record: SeqRecord) -> GBK:
+def gbk_factory(gbk_data: tuple[Path, str, SeqRecord], run: dict) -> GBK:
     """Factory function to create a GBK object with all its components
 
     Args:
-        path (Path): GBK file path
-        hash (str): GBK file content hash
-        seqIO_record (SeqRecord): First SeqIO record in the GBK file
+        gbk_data (tuple[Path, str, SeqRecord]): GBK file path, hash and SeqIO record
+        run (dict): _description_
 
     Returns:
         GBK: GBK object component
     """
 
+    # get relevant run parameters
+    run_mode = run["mode"]
+
+    try:
+        force_gbk = run["force_gbk"]
+    except KeyError:
+        force_gbk = False
+
+    path, hash, seqIO_record = gbk_data
+
+    # create GBK object
     gbk = GBK.create(path, hash)
 
-    print(gbk)
+    # get antiSMASH version
+    try:
+        as_version = seqIO_record.annotations["structured_comment"]["antiSMASH-Data"]["Version"]
+    except KeyError:
+        # assume antiSMASH version 4 if no version is found
+        as_version = "4"
+
+    gbk.components["antiSMASH_version"] = as_version
+
+    # get relevant function dict for feature parsing
+
+    parser_functions = get_parser_functions(run_mode, as_version, force_gbk)
+
+    # parse SeqIO record and add components to GBK object
 
     return gbk
