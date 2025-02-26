@@ -41,9 +41,9 @@ def run_bigscape_dereplicate(run: dict) -> None:
 
     pool = multiprocessing.Pool(cores)
 
-    gbk_list = pool.starmap(gbk_factory, gbk_data)
+    data_package = map(lambda e: (e, run), gbk_data)
 
-    print(gbk_list)
+    gbk_list = pool.starmap(gbk_factory, data_package)
 
     # (log duplicated GBKs) and apply lenght constraints ???
 
