@@ -437,9 +437,19 @@ class GBK:
                 "antiSMASH-Data"
             ]["Version"]
         except KeyError:
-            # assume AS version 4
-            as_version = "4"
+            # additionally check for gutSMASH v2
+            if "gutSMASH-Data" in gbk_seq_record.annotations.get(
+                "structured_comment", []
+            ):
+                as_version = "5"
+            else:
+                # assume AS version 4
+                as_version = "4"
 
+        # antiSMASH did not add versions within gbks before v5, but gutSMASH v1 uses an
+        # antiSMASH version 1 annotation and should be the only case that triggers this
+        if as_version[0] == "1":
+            as_version = "5"
         return as_version
 
     @classmethod
