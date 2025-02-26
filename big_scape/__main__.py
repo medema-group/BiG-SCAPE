@@ -49,7 +49,6 @@ cli.add_command(dereplicate.dereplicate)
 cli.add_command(benchmark.benchmark)
 
 
-
 def main():
     cli()
 
