@@ -5,7 +5,7 @@ import logging
 from pathlib import Path
 import os
 import glob
-from collections.abc import Iterator, Tuple
+from collections.abc import Iterator
 import hashlib
 
 # from dependencies
@@ -15,6 +15,7 @@ from Bio.SeqRecord import SeqRecord
 # from other modules
 import big_scape.enums as bs_enums
 from big_scape.file_input.load_files import filter_files
+from big_scape.dereplicating.gbk_components.gbk import GBK
 
 
 def load_input_folder(run: dict) -> list[Path]:
@@ -25,7 +26,7 @@ def load_input_folder(run: dict) -> list[Path]:
 
     Raises:
         NotADirectoryError: input path is not a directory
-        FileNotFoundError: no GBK files found 
+        FileNotFoundError: no GBK files found
 
     Returns:
         list[Path]: valid GBK paths in the input folder
@@ -50,7 +51,8 @@ def load_input_folder(run: dict) -> list[Path]:
 
     if input_mode == bs_enums.INPUT_MODE.RECURSIVE:
         input_files = [
-            Path(f) for f in glob.glob(os.path.join(input_dir, "**/*.gbk"), recursive=True)
+            Path(f)
+            for f in glob.glob(os.path.join(input_dir, "**/*.gbk"), recursive=True)
         ]
 
     if input_mode == bs_enums.INPUT_MODE.FLAT:
@@ -64,12 +66,14 @@ def load_input_folder(run: dict) -> list[Path]:
     filtered_input_files = filter_files(input_files, include_gbk, exclude_gbk)
     num_files = len(filtered_input_files)
 
-    logging.info("Found %s GBK files with valid filenames in the input folder", num_files)
+    logging.info(
+        "Found %s GBK files with valid filenames in the input folder", num_files
+    )
 
     return filtered_input_files
 
 
-def parse_gbk_files(input_paths: list[Path]) -> Iterator[Tuple[Path, str, SeqRecord]]:
+def parse_gbk_files(input_paths: list[Path]) -> Iterator[tuple[Path, str, SeqRecord]]:
     """Parse GenBank files and yield their paths, content hashes and SeqIO records
 
     Args:
@@ -91,10 +95,31 @@ def parse_gbk_files(input_paths: list[Path]) -> Iterator[Tuple[Path, str, SeqRec
         # get SeqIO record
         records = list(SeqIO.parse(path, "genbank"))
         if len(records) > 1:
-            logging.warning("%s: GBK contains multiple sequence records, "
-                            "only the first one will be used.", path)
+            logging.warning(
+                "%s: GBK contains multiple sequence records, "
+                "only the first one will be used.",
+                path,
+            )
 
         record: SeqRecord = records.pop(0)
 
         yield (path, hash, record)
 
+
+def gbk_factory(path: Path, hash: str, seqIO_record: SeqRecord) -> GBK:
+    """Factory function to create a GBK object with all its components
+
+    Args:
+        path (Path): GBK file path
+        hash (str): GBK file content hash
+        seqIO_record (SeqRecord): First SeqIO record in the GBK file
+
+    Returns:
+        GBK: GBK object component
+    """
+
+    gbk = GBK.create(path, hash)
+
+    print(gbk)
+
+    return gbk
