@@ -14,8 +14,10 @@ almost certainly be abstracted somehow
 from __future__ import annotations
 import logging
 from itertools import combinations
+import random
+import string
 from typing import Generator, Iterator, Optional
-from sqlalchemy import and_, select, func, or_
+from sqlalchemy import Column, ForeignKey, Integer, Table, and_, select, func, or_
 
 # from other modules
 from big_scape.cli.config import BigscapeConfig
@@ -29,6 +31,64 @@ from big_scape.genbank import (
 from big_scape.enums import SOURCE_TYPE, CLASSIFY_MODE, RECORD_TYPE
 
 import big_scape.comparison as bs_comparison
+
+
+def create_temp_record_id_table(gbk_ids: list[int]) -> Table:
+    """Create a temporary table with ids of given records
+
+    Args:
+        record_ids (list[int]): the ids of the records to add to the temporary table
+
+    Returns:
+        Table: the temporary table
+    """
+
+    # generate a short random string
+    temp_table_name = "temp_" + "".join(random.choices(string.ascii_lowercase, k=10))
+
+    temp_table = Table(
+        temp_table_name,
+        DB.metadata,
+        Column(
+            "record_id",
+            Integer,
+            ForeignKey(DB.metadata.tables["region"].c.id),
+            primary_key=True,
+            nullable=False,
+        ),
+        prefixes=["TEMPORARY"],
+    )
+
+    DB.metadata.create_all(DB.engine)
+
+    if DB.engine is None:
+        raise RuntimeError("DB engine is None")
+
+    cursor = DB.engine.raw_connection().driver_connection.cursor()
+
+    insert_query = f"""
+        INSERT INTO {temp_table_name} (record_id) VALUES (?);
+    """
+
+    # local function for batching
+    def batch_hash(record_ids: list[int], n: int):
+        total_records = len(record_ids)
+        for ndx in range(0, total_records, n):
+            yield [
+                record_id for record_id in record_ids[ndx : min(ndx + n, total_records)]
+            ]
+
+    for hash_batch in batch_hash(gbk_ids, 1000):
+        cursor.executemany(insert_query, [(x,) for x in hash_batch])  # type: ignore
+
+    cursor.close()
+
+    DB.commit()
+
+    if DB.metadata is None:
+        raise ValueError("DB metadata is None")
+
+    return temp_table
 
 
 # weights are in the order JC, AI, DSS, Anchor boost
@@ -129,10 +189,12 @@ class RecordPairGenerator:
                 raise RuntimeError("DB metadata is None!")
             record_table = DB.metadata.tables["bgc_record"]
 
+            temp_record_id_table = create_temp_record_id_table(self.record_ids)
+
             # find a collection of gbks with more than one subrecord
             member_table = (
                 select(func.count(record_table.c.gbk_id).label("rec_count"))
-                .where(record_table.c.id.in_(self.record_ids))
+                .where(record_table.c.id.in_(select(temp_record_id_table.c.record_id)))
                 .group_by(record_table.c.gbk_id)
                 .having(func.count() > 1)
                 .subquery()
