@@ -383,43 +383,91 @@ class GBK:
             raise RuntimeError("DB.metadata is None")
 
         gbk_table = DB.metadata.tables["gbk"]
-        select_query = (
-            gbk_table.select()
-            .add_columns(
-                gbk_table.c.id,
-                gbk_table.c.hash,
-                gbk_table.c.path,
-                gbk_table.c.nt_seq,
-                gbk_table.c.organism,
-                gbk_table.c.taxonomy,
-                gbk_table.c.description,
-            )
-            .where(gbk_table.c.hash.in_(select(temp_hash_table.c.hash)))
-            .compile()
+        select_query = gbk_table.select().add_columns(
+            gbk_table.c.id,
+            gbk_table.c.hash,
         )
 
         cursor_result = DB.execute(select_query)
 
-        gbk_dict = {}
+        gbk_hash_to_id = {}
+
         for result in cursor_result.all():
-            new_gbk = GBK(Path(result.path), result.hash, "")
-            new_gbk._db_id = result.id
-            new_gbk.nt_seq = result.nt_seq
-            new_gbk.metadata["organism"] = result.organism
-            new_gbk.metadata["taxonomy"] = result.taxonomy
-            new_gbk.metadata["description"] = result.description
-            gbk_dict[result.id] = new_gbk
+            gbk_hash_to_id[result.hash] = result.id
+
+        bgc_record_table = DB.metadata.tables["bgc_record"]
+        select_query = bgc_record_table.select().add_columns(
+            gbk_table.c.id, gbk_table.c.gbk_id, gbk_table.c.record_number
+        )
+
+        cursor_result = DB.execute(select_query)
+
+        record_gbk_id_number_to_id = {}
+
+        for result in cursor_result.all():
+            record_gbk_id_number_to_id[
+                (result.gbk_id, result.record_number)
+            ] = result.id
+
+        # oh god
+        for input_gbk in input_gbks:
+            # set db ids for gbk and all records
+            input_gbk._db_id = gbk_hash_to_id[input_gbk.hash]
+
+            input_gbk.region._db_id = record_gbk_id_number_to_id[(input_gbk._db_id, 0)]
+
+            for cand_cluster in input_gbk.region.cand_clusters:
+                cand_cluster._db_id = record_gbk_id_number_to_id[
+                    (input_gbk._db_id, cand_cluster.number)
+                ]
+
+                for proto_cluster in cand_cluster.proto_clusters:
+                    proto_cluster._db_id = record_gbk_id_number_to_id[
+                        (input_gbk._db_id, proto_cluster.number)
+                    ]
+
+                    for proto_core in proto_cluster.proto_cores:
+                        proto_core._db_id = record_gbk_id_number_to_id[
+                            (input_gbk._db_id, proto_core.number)
+                        ]
+
+        return input_gbks
+
+        # select_query = (
+        #     gbk_table.select()
+        #     .add_columns(
+        #         gbk_table.c.id,
+        #         gbk_table.c.hash,
+        #         gbk_table.c.path,
+        #         gbk_table.c.nt_seq,
+        #         gbk_table.c.organism,
+        #         gbk_table.c.taxonomy,
+        #         gbk_table.c.description,
+        #     )
+        #     .where(gbk_table.c.hash.in_(select(temp_hash_table.c.hash)))
+        #     .compile()
+        # )
+
+        # gbk_dict = {}
+        # for result in cursor_result.all():
+        #     new_gbk = GBK(Path(result.path), result.hash, "")
+        #     new_gbk._db_id = result.id
+        #     new_gbk.nt_seq = result.nt_seq
+        #     new_gbk.metadata["organism"] = result.organism
+        #     new_gbk.metadata["taxonomy"] = result.taxonomy
+        #     new_gbk.metadata["description"] = result.description
+        #     gbk_dict[result.id] = new_gbk
 
         # load GBK regions. This will also populate all record levels below region
         # e.g. candidate cluster, protocore if they exist
 
-        temp_gbk_id_table = create_temp_gbk_id_table(list(gbk_dict.keys()))
+        # temp_gbk_id_table = create_temp_gbk_id_table(list(gbk_dict.keys()))
 
-        Region.load_all(gbk_dict, temp_gbk_id_table)
+        # Region.load_all(gbk_dict, temp_gbk_id_table)
 
-        CDS.load_all(gbk_dict, temp_gbk_id_table)
+        # CDS.load_all(gbk_dict, temp_gbk_id_table)
 
-        return list(gbk_dict.values())
+        # return list(gbk_dict.values())
 
     @staticmethod
     def get_as_version(gbk_seq_record: SeqRecord) -> str:
