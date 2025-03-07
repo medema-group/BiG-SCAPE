@@ -397,20 +397,25 @@ class GBK:
             gbk_hash_to_id[result.hash] = result.id
 
         bgc_record_table = DB.metadata.tables["bgc_record"]
-        select_query = bgc_record_table.select().add_columns(
+        select_query = select(
             bgc_record_table.c.id,
             bgc_record_table.c.gbk_id,
             bgc_record_table.c.record_number,
+            bgc_record_table.c.record_type,
         )
 
         cursor_result = DB.execute(select_query)
 
-        record_gbk_id_number_to_id = {}
+        record_gbk_id_number_type_to_id = {}
 
         for result in cursor_result.all():
-            record_gbk_id_number_to_id[(result.gbk_id, result.record_number)] = (
-                result.id
-            )
+            record_number = result.record_number
+            if type(record_number) is str:
+                record_number = int(min(record_number.split("_")))
+
+            record_gbk_id_number_type_to_id[
+                (result.gbk_id, record_number, result.record_type)
+            ] = result.id
 
         progress = tqdm.tqdm(input_gbks, desc="Adding db ids to GBK data", unit="gbk")
 
@@ -419,23 +424,23 @@ class GBK:
             # set db ids for gbk and all records
             input_gbk._db_id = gbk_hash_to_id[input_gbk.hash]
 
-            input_gbk.region._db_id = record_gbk_id_number_to_id[
-                (input_gbk._db_id, input_gbk.region.number)
+            input_gbk.region._db_id = record_gbk_id_number_type_to_id[
+                (input_gbk._db_id, input_gbk.region.number, "region")
             ]
 
             for cc_number, cand_cluster in input_gbk.region.cand_clusters.items():
-                cand_cluster._db_id = record_gbk_id_number_to_id[
-                    (input_gbk._db_id, cand_cluster.number)
+                cand_cluster._db_id = record_gbk_id_number_type_to_id[
+                    (input_gbk._db_id, cand_cluster.number, "cand_cluster")
                 ]
 
                 for pc_number, proto_cluster in cand_cluster.proto_clusters.items():
-                    proto_cluster._db_id = record_gbk_id_number_to_id[
-                        (input_gbk._db_id, proto_cluster.number)
+                    proto_cluster._db_id = record_gbk_id_number_type_to_id[
+                        (input_gbk._db_id, proto_cluster.number, "protocluster")
                     ]
 
                     for core_number, proto_core in proto_cluster.proto_core.items():
-                        proto_core._db_id = record_gbk_id_number_to_id[
-                            (input_gbk._db_id, proto_core.number)
+                        proto_core._db_id = record_gbk_id_number_type_to_id[
+                            (input_gbk._db_id, proto_core.number, "proto_core")
                         ]
 
         progress.close()
