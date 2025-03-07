@@ -423,19 +423,19 @@ class GBK:
                 (input_gbk._db_id, input_gbk.region.number)
             ]
 
-            for cand_cluster in input_gbk.region.cand_clusters:
+            for cc_number, cand_cluster in input_gbk.region.cand_clusters.items():
                 cand_cluster._db_id = record_gbk_id_number_to_id[
-                    (input_gbk._db_id, cand_cluster.number)
+                    (input_gbk._db_id, cc_number)
                 ]
 
-                for proto_cluster in cand_cluster.proto_clusters:
+                for pc_number, proto_cluster in cand_cluster.proto_clusters.items():
                     proto_cluster._db_id = record_gbk_id_number_to_id[
-                        (input_gbk._db_id, proto_cluster.number)
+                        (input_gbk._db_id, pc_number)
                     ]
 
-                    for proto_core in proto_cluster.proto_cores:
+                    for core_number, proto_core in proto_cluster.proto_core.items():
                         proto_core._db_id = record_gbk_id_number_to_id[
-                            (input_gbk._db_id, proto_core.number)
+                            (input_gbk._db_id, core_number)
                         ]
 
         progress.close()

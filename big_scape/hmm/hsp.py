@@ -193,7 +193,9 @@ class HSP:
         # for result in cursor_result.all():
         #     hsp_id_to_alignment_id[result.hsp_id] = result.id
 
-        progress = tqdm.tqdm(gbk_list, desc="Adding db ids to CDS data", unit="CDS")
+        progress = tqdm.tqdm(
+            gbk_list, desc="Adding db ids to GBK gene data", unit="GBK"
+        )
 
         for gbk in progress:
             for cds in gbk.genes:

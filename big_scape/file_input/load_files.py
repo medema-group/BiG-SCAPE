@@ -427,9 +427,9 @@ def load_gbks(run: dict, bigscape_dir: Path) -> list[GBK]:
     # now we have all new data in the database, we can load it all in to the correct
     # python objects
     input_gbks_from_db = GBK.load_many(input_gbks)
+    bs_hmm.HSP.load_all(input_gbks_from_db)
     for gbk in input_gbks_from_db:
         gbk.source_type = source_dict[gbk.hash]
-        bs_hmm.HSP.load_all(gbk.genes)
 
     return input_gbks_from_db
 
