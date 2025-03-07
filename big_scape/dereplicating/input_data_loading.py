@@ -7,6 +7,7 @@ import os
 import glob
 from collections.abc import Iterator
 import hashlib
+from typing import Optional
 
 # from dependencies
 from Bio import SeqIO
@@ -15,7 +16,7 @@ from Bio.SeqRecord import SeqRecord
 # from other modules
 import big_scape.enums as bs_enums
 from big_scape.file_input.load_files import filter_files
-from big_scape.dereplicating.gbk_feature_parsing import get_parser_functions
+from big_scape.dereplicating.gbk_component_parsing import get_parser_functions, validate_cds_component
 from big_scape.dereplicating.gbk_components.gbk import GBK
 
 
@@ -74,14 +75,17 @@ def load_input_folder(run: dict) -> list[Path]:
     return filtered_input_files
 
 
-def parse_gbk_files(input_paths: list[Path]) -> Iterator[tuple[Path, str, SeqRecord]]:
+def parse_gbk_files(
+    input_paths: list[Path], source_type: bs_enums.SOURCE_TYPE
+) -> Iterator[tuple[Path, str, SeqRecord, bs_enums.SOURCE_TYPE]]:
     """Parse GenBank files and yield their paths, content hashes and SeqIO records
 
     Args:
         input_paths (list[Path]): input GBK paths
+        source_type (bs_enums.SOURCE_TYPE): source type of the GBK
 
     Yields:
-        Iterator[Tuple[Path, str, SeqRecord]]: path, content hash, SeqIO record
+        Iterator[Tuple[Path, str, SeqRecord, bs_enums.SOURCE_TYPE]]: path, content hash, SeqIO record, source type
     """
 
     for path in input_paths:
@@ -104,10 +108,10 @@ def parse_gbk_files(input_paths: list[Path]) -> Iterator[tuple[Path, str, SeqRec
 
         record: SeqRecord = records.pop(0)
 
-        yield (path, hash, record)
+        yield (path, hash, record, source_type)
 
 
-def gbk_factory(gbk_data: tuple[Path, str, SeqRecord], run: dict) -> GBK:
+def gbk_factory(gbk_data: tuple[Path, str, SeqRecord], run: dict) -> Optional[GBK]:
     """Factory function to create a GBK object with all its components
 
     Args:
@@ -121,29 +125,102 @@ def gbk_factory(gbk_data: tuple[Path, str, SeqRecord], run: dict) -> GBK:
     # get relevant run parameters
     run_mode = run["mode"]
 
-    try:
-        force_gbk = run["force_gbk"]
-    except KeyError:
-        force_gbk = False
+    path, hash, seqIO_record, source_type = gbk_data
 
-    path, hash, seqIO_record = gbk_data
-
-    # create GBK object
-    gbk = GBK.create(path, hash)
+    # we dont need to store the entire nt_sequence, just the length
+    # so we can filter out the GBKs that are too long/short later on
+    nt_length = len(seqIO_record.seq)
 
     # get antiSMASH version
-    try:
-        as_version = seqIO_record.annotations["structured_comment"]["antiSMASH-Data"]["Version"]
-    except KeyError:
-        # assume antiSMASH version 4 if no version is found
-        as_version = "4"
+    as_version = get_as_version(seqIO_record)
 
-    gbk.components["antiSMASH_version"] = as_version
+    # create GBK object
+    gbk: GBK = GBK.create(path, hash, nt_length, as_version, source_type)
+
+    gbk = parse_seqIO(gbk, seqIO_record, run_mode)
+
+    if not validate_cds_component(gbk):
+        logging.error("This GBK file does not contain any CDS features, %s", path)
+        return None
+
+    # TODO: hybrid collapsing for protoclusters
+
+    # TODO: if run mode is not derep and force-gbk = True, create fake region if region not there 
+    #       if region not there and force-gbk = False, raise error
+
+    # TODO validate that all the parenting is there properly (follow top down hierarchy)
+
+    return gbk
+
+
+def parse_seqIO(gbk: GBK, seqIO_record: SeqRecord, run_mode) -> GBK:
+    """Parse SeqIO record and add components to GBK object
+
+    Args:
+        gbk (GBK): gbk object
+        seqIO_record (SeqRecord): SeqIO record
+
+    Returns:
+        GBK: gbk object with components added
+    """
 
     # get relevant function dict for feature parsing
 
-    parser_functions = get_parser_functions(run_mode, as_version, force_gbk)
+    parser_functions = get_parser_functions(run_mode)
 
     # parse SeqIO record and add components to GBK object
 
+    for feature in seqIO_record.features:
+
+        feature_type = feature.type
+
+        # skip features we dont ever want to parse
+        try:
+            feature_name = bs_enums.FEATURE_TYPE(feature_type)
+        except ValueError:
+            continue
+
+        feature_name = bs_enums.FEATURE_TYPE(feature_type)
+
+        # skip features we dont care about
+        if feature_name not in parser_functions:
+            continue
+
+        # get parser function for feature
+        parser_function = parser_functions[feature_name]
+
+        component = parser_function(feature, seqIO_record, gbk)
+
+        if not component:
+            continue
+
+        # remember that cluster type features are returned as region type components
+
+        component_type = type(component).__name__
+
+        component_name = bs_enums.COMPONENTS(component_type)
+
+        gbk.components.setdefault(component_name, []).append(component)
+
     return gbk
+
+
+def get_as_version(gbk_seq_record: SeqRecord) -> str:
+    """Get AS version from GBK record
+
+    Args:
+        gbk_seq_record (SeqRecord): gbk seqrecord
+
+    Returns:
+        str: antismash version
+    """
+
+    try:
+        as_version = gbk_seq_record.annotations["structured_comment"][
+            "antiSMASH-Data"
+        ]["Version"]
+    except KeyError:
+        # assume AS version 4
+        as_version = "4"
+
+    return as_version

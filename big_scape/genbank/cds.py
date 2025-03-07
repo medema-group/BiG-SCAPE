@@ -208,7 +208,7 @@ class CDS:
 
         if feature.type != "CDS":
             logging.error(
-                "Feature is not of correct type! (expected: region, was: %s)",
+                "Feature is not of correct type! (expected: CDS, was: %s)",
                 feature.type,
             )
             raise InvalidGBKError()
