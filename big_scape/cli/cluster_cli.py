@@ -9,6 +9,7 @@ import click
 from big_scape.cli.config import BigscapeConfig
 from big_scape.run_bigscape import run_bigscape
 from big_scape.diagnostics import init_logger, init_logger_file
+import big_scape.enums as bs_enums
 
 # from this module
 from .cli_common_options import common_all, common_cluster_query, common_cluster_query_dereplicate
@@ -140,7 +141,7 @@ def cluster(ctx, *args, **kwargs):
     ctx.obj.update(ctx.params)
     ctx.obj["query_bgc_path"] = None
     ctx.obj["propagate"] = True  # compatibility with query wrt cc generation
-    ctx.obj["mode"] = "Cluster"
+    ctx.obj["mode"] = bs_enums.input_parameters.RUN_MODE.CLUSTER
 
     # TODO: remove when reimplementing disk-only
     ctx.obj["disk_only"] = False
