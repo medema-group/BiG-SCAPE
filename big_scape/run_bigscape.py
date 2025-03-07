@@ -54,7 +54,7 @@ def run_bigscape(run: dict) -> None:
     logging.info(
         "Starting BiG-SCAPE %s %s run on %s level with %s alignment and %s weights",
         bigscape_version,
-        run["mode"],
+        run["mode"].value,
         run["record_type"].value,
         run["alignment_mode"].value,
         "legacy" if run["legacy_weights"] else "mix",
