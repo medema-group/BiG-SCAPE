@@ -410,9 +410,9 @@ def load_gbks(run: dict, bigscape_dir: Path) -> list[GBK]:
         logging.info("Loading existing run from disk...")
 
         input_gbks_from_db = GBK.load_many(input_gbks)
+        bs_hmm.HSP.load_all(input_gbks_from_db)
         for gbk in input_gbks_from_db:
             gbk.source_type = source_dict[gbk.hash]
-            bs_hmm.HSP.load_all(gbk.genes)
 
         return input_gbks_from_db
 

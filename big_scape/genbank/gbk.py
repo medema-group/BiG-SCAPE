@@ -17,6 +17,7 @@ from Bio import SeqIO
 from Bio.SeqRecord import SeqRecord
 from Bio.SeqFeature import SeqFeature
 from sqlalchemy import Column, ForeignKey, Integer, String, Table, select
+import tqdm
 
 # from other modules
 from big_scape.errors import InvalidGBKError
@@ -397,7 +398,9 @@ class GBK:
 
         bgc_record_table = DB.metadata.tables["bgc_record"]
         select_query = bgc_record_table.select().add_columns(
-            gbk_table.c.id, gbk_table.c.gbk_id, gbk_table.c.record_number
+            bgc_record_table.c.id,
+            bgc_record_table.c.gbk_id,
+            bgc_record_table.c.record_number,
         )
 
         cursor_result = DB.execute(select_query)
@@ -405,16 +408,20 @@ class GBK:
         record_gbk_id_number_to_id = {}
 
         for result in cursor_result.all():
-            record_gbk_id_number_to_id[
-                (result.gbk_id, result.record_number)
-            ] = result.id
+            record_gbk_id_number_to_id[(result.gbk_id, result.record_number)] = (
+                result.id
+            )
+
+        progress = tqdm.tqdm(input_gbks, desc="Adding db ids to GBK data", unit="gbk")
 
         # oh god
-        for input_gbk in input_gbks:
+        for input_gbk in progress:
             # set db ids for gbk and all records
             input_gbk._db_id = gbk_hash_to_id[input_gbk.hash]
 
-            input_gbk.region._db_id = record_gbk_id_number_to_id[(input_gbk._db_id, 0)]
+            input_gbk.region._db_id = record_gbk_id_number_to_id[
+                (input_gbk._db_id, input_gbk.region.number)
+            ]
 
             for cand_cluster in input_gbk.region.cand_clusters:
                 cand_cluster._db_id = record_gbk_id_number_to_id[
@@ -430,6 +437,8 @@ class GBK:
                         proto_core._db_id = record_gbk_id_number_to_id[
                             (input_gbk._db_id, proto_core.number)
                         ]
+
+        progress.close()
 
         return input_gbks
 
@@ -813,15 +822,15 @@ class GBK:
                     for number in cand_cluster.proto_clusters.keys()
                 ]
                 merged_protocluster = MergedProtoCluster.merge(protoclusters)
-                merged_tmp_proto_clusters[
-                    merged_protocluster.number
-                ] = merged_protocluster
+                merged_tmp_proto_clusters[merged_protocluster.number] = (
+                    merged_protocluster
+                )
 
                 # update the protocluster old:new ids for the merged protoclusters of this cand_cluster
                 for proto_cluster_num in cand_cluster.proto_clusters.keys():
-                    merged_protocluster_ids[
-                        proto_cluster_num
-                    ] = merged_protocluster.number
+                    merged_protocluster_ids[proto_cluster_num] = (
+                        merged_protocluster.number
+                    )
 
         # now we build a new version of the tmp_proto_clusters dict that contains the merged protoclusters
         # as well as protoclusters which did not need merging, with updated unique IDs/numbers
@@ -835,9 +844,9 @@ class GBK:
                     # this protocluster has been merged, so we need to add it to
                     # the dict with its new protocluster number
                     new_proto_cluster_num = merged_protocluster_ids[proto_cluster_num]
-                    updated_tmp_proto_clusters[
-                        new_proto_cluster_num
-                    ] = merged_tmp_proto_clusters[new_proto_cluster_num]
+                    updated_tmp_proto_clusters[new_proto_cluster_num] = (
+                        merged_tmp_proto_clusters[new_proto_cluster_num]
+                    )
                     updated_proto_cluster_dict[new_proto_cluster_num] = None
                 else:
                     # protoclusters which have not been merged are added to the dict as is
