@@ -7,6 +7,7 @@ from pathlib import Path
 # from dependencies
 
 # from other modules
+import big_scape.enums as bs_enums
 
 # from this module
 
@@ -21,13 +22,16 @@ class GBK:
         components (Dict): dictionary of components in the GBK file
     """
 
-    def __init__(self, path, hash) -> None:
+    def __init__(self, path, hash, nt_length, as_version, source_type) -> None:
         self.path: Path = path
         self.hash: str = hash
-        self.components: dict = {}
+        self.nt_length: int = nt_length
+        self.as_version: str = as_version
+        self.source_type: bs_enums.SOURCE_TYPE = source_type
+        self.components: dict[str, list] = {}
 
     @classmethod
-    def create(cls, path: Path, hash: str) -> GBK:
+    def create(cls, path: Path, hash: str, nt_length: int, as_version: str, source_type: bs_enums.SOURCE_TYPE) -> GBK:
         """Creates a new GBK object and returns it with its path and hash
 
         Args:
@@ -38,7 +42,7 @@ class GBK:
             GBK: new GBK object
         """
 
-        return cls(path, hash)
+        return cls(path, hash, nt_length, as_version, source_type)
 
     def __repr__(self) -> str:
         return f"{self.path}"
