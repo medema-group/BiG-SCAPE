@@ -430,11 +430,21 @@ class MissingRecordPairGenerator(RecordPairGenerator):
 
         distance_table = DB.metadata.tables["distance"]
 
+        record_id_temp_table = create_temp_record_id_table(self.bin.record_ids)
+
         # get all region._db_id in the bin
         select_statement = (
             select(distance_table.c.record_a_id, distance_table.c.record_b_id)
-            .where(distance_table.c.record_a_id.in_(self.bin.record_ids))
-            .where(distance_table.c.record_b_id.in_(self.bin.record_ids))
+            .where(
+                distance_table.c.record_a_id.in_(
+                    select(record_id_temp_table.c.record_id)
+                )
+            )
+            .where(
+                distance_table.c.record_b_id.in_(
+                    select(record_id_temp_table.c.record_id)
+                )
+            )
             .where(distance_table.c.edge_param_id == self.bin.edge_param_id)
         )
 
@@ -614,6 +624,10 @@ class QueryRecordPairGenerator(RecordPairGenerator):
         working_query_ids = [record._db_id for record in self.working_query_records]
         working_ref_ids = [record._db_id for record in self.working_ref_records]
 
+        temp_record_id_table = create_temp_record_id_table(
+            working_query_ids + working_ref_ids
+        )
+
         select_statement = select(
             distance_table.c.record_a_id,
             distance_table.c.record_b_id,
@@ -621,14 +635,16 @@ class QueryRecordPairGenerator(RecordPairGenerator):
         ).where(
             or_(
                 and_(
-                    distance_table.c.record_a_id.in_(working_query_ids),
-                    distance_table.c.record_b_id.in_(working_ref_ids),
+                    distance_table.c.record_a_id.in_(
+                        select(temp_record_id_table.c.record_id)
+                    ),
                     distance_table.c.edge_param_id == self.edge_param_id,
                     distance_table.c.distance < max_cutoff,
                 ),
                 and_(
-                    distance_table.c.record_a_id.in_(working_ref_ids),
-                    distance_table.c.record_b_id.in_(working_query_ids),
+                    distance_table.c.record_a_id.in_(
+                        select(temp_record_id_table.c.record_id)
+                    ),
                     distance_table.c.edge_param_id == self.edge_param_id,
                     distance_table.c.distance < max_cutoff,
                 ),
@@ -689,19 +705,22 @@ class QueryMissingRecordPairGenerator(RecordPairGenerator):
         working_query_ids = [record._db_id for record in self.bin.working_query_records]
         working_ref_ids = [record._db_id for record in self.bin.working_ref_records]
 
+        # create a temporary table with the ids of the records in the bin
+        temp_record_id_table = create_temp_record_id_table(
+            working_query_ids + working_ref_ids
+        )
+
         # get all region._db_id in the bin
         select_statement = select(
             distance_table.c.record_a_id, distance_table.c.record_b_id
         ).where(
             or_(
                 and_(
-                    distance_table.c.record_a_id.in_(working_query_ids),
-                    distance_table.c.record_b_id.in_(working_ref_ids),
+                    distance_table.c.record_a_id.in_(select(temp_record_id_table)),
                     distance_table.c.edge_param_id == self.bin.edge_param_id,
                 ),
                 and_(
-                    distance_table.c.record_a_id.in_(working_ref_ids),
-                    distance_table.c.record_b_id.in_(working_query_ids),
+                    distance_table.c.record_a_id.in_(select(temp_record_id_table)),
                     distance_table.c.edge_param_id == self.bin.edge_param_id,
                 ),
             )
