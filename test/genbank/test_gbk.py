@@ -730,7 +730,9 @@ class TestGBK(TestCase):
 
         gbk = GBK.parse(gbk_file_path, SOURCE_TYPE.QUERY, run)
 
-        gbk.save()
+        gbk.save_all()
+
+        DB.commit()
 
         loaded_gbks = GBK.load_many([gbk])
 
