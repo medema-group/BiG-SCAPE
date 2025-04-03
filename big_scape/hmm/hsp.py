@@ -146,8 +146,8 @@ class HSP:
         This function adds the HSP objects to the CDS objects in cds_list
 
         Args:
-            cds_list (list[CDS]): list of CDS objects that were previously loaded from
-            to populate with HSP objects from the database
+            gbk_list (list[GBK]): List of GBK objects to populate with HSP objects from
+            the database
         """
         # cds_dict = {cds._db_id: cds for cds in cds_list}
 
@@ -193,18 +193,6 @@ class HSP:
         for result in cursor_result.all():
             cds_id_to_hsp[result.cds_id].append(result)
 
-        # hsp_alignment_query = hsp_alignment_table.select().add_columns(
-        #     hsp_alignment_table.c.hsp_id,
-        #     hsp_alignment_table.c.alignment,
-        # )
-
-        # cursor_result = DB.execute(hsp_alignment_query)
-
-        # hsp_id_to_alignment_id = {}
-
-        # for result in cursor_result.all():
-        #     hsp_id_to_alignment_id[result.hsp_id] = result.id
-
         progress = tqdm.tqdm(
             gbk_list, desc="Adding db ids to GBK gene data", unit="GBK"
         )
@@ -225,37 +213,6 @@ class HSP:
                     new_hsp.alignment = HSPAlignment(new_hsp, hsp_result.alignment)
 
                     cds.hsps.append(new_hsp)
-
-        # hsp_select_query = (
-        #     hsp_table.select()
-        #     .add_columns(
-        #         hsp_table.c.id,
-        #         hsp_table.c.cds_id,
-        #         hsp_table.c.accession,
-        #         hsp_table.c.env_start,
-        #         hsp_table.c.env_stop,
-        #         hsp_table.c.bit_score,
-        #         hsp_alignment_table.c.alignment,
-        #     )
-        #     .join(hsp_alignment_table, hsp_alignment_table.c.hsp_id == hsp_table.c.id)
-        #     .where(hsp_table.c.cds_id.in_(cds_dict))
-        #     .compile()
-        # )
-
-        # cursor_result = DB.execute(hsp_select_query)
-
-        # for result in cursor_result.all():
-        #     cds = cds_dict[result.cds_id]
-        #     new_hsp = HSP(
-        #         cds,
-        #         result.accession,
-        #         result.bit_score,
-        #         result.env_start,
-        #         result.env_stop,
-        #     )
-        #     new_hsp.alignment = HSPAlignment(new_hsp, result.alignment)
-
-        #     cds.hsps.append(new_hsp)
 
     @staticmethod
     def has_overlap(hsp_a: HSP, hsp_b: HSP) -> bool:
