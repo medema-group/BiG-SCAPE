@@ -156,7 +156,7 @@ class HSP:
 
         cds_table = DB.metadata.tables["cds"]
         hsp_table = DB.metadata.tables["hsp"]
-        # hsp_alignment_table = DB.metadata.tables["hsp_alignment"]
+        hsp_alignment_table = DB.metadata.tables["hsp_alignment"]
 
         cds_query = cds_table.select().add_columns(
             cds_table.c.id, cds_table.c.gbk_id, cds_table.c.orf_num
@@ -165,21 +165,33 @@ class HSP:
         cursor_result = DB.execute(cds_query)
 
         cds_orf_to_id = {}
+        cds_id_to_hsp: dict[int, list] = {}
 
         for result in cursor_result.all():
             cds_orf_to_id[(result.gbk_id, result.orf_num)] = result.id
+            cds_id_to_hsp[result.id] = []
 
-        hsp_query = hsp_table.select().add_columns(
-            hsp_table.c.id,
-            hsp_table.c.cds_id,
+        hsp_query = (
+            hsp_table.select()
+            .add_columns(
+                hsp_table.c.id,
+                hsp_table.c.cds_id,
+                hsp_table.c.accession,
+                hsp_table.c.env_start,
+                hsp_table.c.env_stop,
+                hsp_table.c.bit_score,
+                hsp_alignment_table.c.alignment,
+            )
+            .join(
+                hsp_alignment_table,
+                hsp_alignment_table.c.hsp_id == hsp_table.c.id,
+            )
         )
 
         cursor_result = DB.execute(hsp_query)
 
-        cds_id_to_hsp_id = {}
-
         for result in cursor_result.all():
-            cds_id_to_hsp_id[result.cds_id] = result.id
+            cds_id_to_hsp[result.cds_id].append(result)
 
         # hsp_alignment_query = hsp_alignment_table.select().add_columns(
         #     hsp_alignment_table.c.hsp_id,
@@ -201,8 +213,18 @@ class HSP:
             for cds in gbk.genes:
                 cds._db_id = cds_orf_to_id[(cds.parent_gbk._db_id, cds.orf_num)]
 
-                for hsp in cds.hsps:
-                    hsp._db_id = cds_id_to_hsp_id[hsp.cds._db_id]
+                for hsp_result in cds_id_to_hsp[cds._db_id]:
+                    new_hsp = HSP(
+                        cds,
+                        hsp_result.accession,
+                        hsp_result.bit_score,
+                        hsp_result.env_start,
+                        hsp_result.env_stop,
+                    )
+                    new_hsp._db_id = hsp_result.id
+                    new_hsp.alignment = HSPAlignment(new_hsp, hsp_result.alignment)
+
+                    cds.hsps.append(new_hsp)
 
         # hsp_select_query = (
         #     hsp_table.select()

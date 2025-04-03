@@ -30,7 +30,7 @@ class TestHSP(TestCase):
         actual_hsp_count = 0
 
         for gbk in all_gbks:
-            HSP.load_all(gbk.genes)
+            HSP.load_all([gbk])
             actual_hsp_count += sum([len(cds.hsps) for cds in gbk.genes])
 
         self.assertEqual(expected_hsp_count, actual_hsp_count)
