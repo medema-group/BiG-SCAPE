@@ -18,6 +18,8 @@ from typing import Generator, Callable, Optional, TypeVar, Union
 from math import ceil
 from pathlib import Path
 
+import click
+
 from .record_pair import RecordPair
 
 # from dependencies
@@ -137,7 +139,12 @@ def generate_edges(
     pair_data: Generator[
         Union[tuple[int, int], tuple[BGCRecord, BGCRecord]], None, None
     ]
-    if platform.system() == "Darwin":
+    # if running on Mac or conserve_memory is set, we need to send the full records
+    # for conserve_memory, this is because we are using the 'spawn' method of creating
+    # processes, which does not copy the memory of the parent process
+    # for mac, I have no IDEA why this is necessary. I don't want to think about it
+    click_context = click.get_current_context().obj
+    if platform.system() == "Darwin" or click_context["conserve_memory"]:
         logging.debug(
             "Running on %s: sending full records",
             platform.system(),
@@ -411,7 +418,7 @@ def calculate_scores_pair(
         int,
         str,
         Path,
-    ]
+    ],
 ) -> list[
     tuple[
         Optional[int],

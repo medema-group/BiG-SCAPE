@@ -650,6 +650,8 @@ class TestComparison(TestCase):
         self.assertEqual(num_pairs, 0)
 
     def test_calculate_distances_mix(self):
+        ctx = MagicMock(obj={"conserve_memory": False})
+        push_context(ctx)
         bs_data.DB.create_in_mem()
 
         run = {
@@ -866,6 +868,8 @@ class TestComparison(TestCase):
         self.assertEqual(bin_pairs, [3, 3, 3])
 
     def test_calculate_distances_legacy_classify(self):
+        ctx = MagicMock(obj={"conserve_memory": False})
+        push_context(ctx)
         bs_data.DB.create_in_mem()
 
         run = {
@@ -944,6 +948,8 @@ class TestComparison(TestCase):
 
     def test_calculate_distances_classify(self):
         """Tests the distance calculation workflow for classify mode"""
+        ctx = MagicMock(obj={"conserve_memory": False})
+        push_context(ctx)
 
         bs_data.DB.create_in_mem()
 
@@ -1474,7 +1480,7 @@ class TestComparison(TestCase):
         self.assertEqual(missing_pair_generator.num_pairs(), 0)
 
     def test_generate_bins_query_workflow(self):
-        ctx = MagicMock(obj={"propagate": True})
+        ctx = MagicMock(obj={"propagate": True, "conserve_memory": False})
         push_context(ctx)
         bs_data.DB.create_in_mem()
 
@@ -1613,7 +1619,7 @@ class TestComparison(TestCase):
         self.assertEqual(rows, 6)
 
     def test_calculate_distances_query(self):
-        ctx = MagicMock(obj={"propagate": True})
+        ctx = MagicMock(obj={"propagate": True, "conserve_memory": False})
         push_context(ctx)
         bs_data.DB.create_in_mem()
 

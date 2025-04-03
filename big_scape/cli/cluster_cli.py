@@ -1,6 +1,7 @@
-""" Click parameters for the BiG-SCAPE Cluster CLI command """
+"""Click parameters for the BiG-SCAPE Cluster CLI command"""
 
 # from python
+import multiprocessing
 import click
 
 # from other modules
@@ -140,6 +141,10 @@ def cluster(ctx, *args, **kwargs):
 
     # TODO: remove when reimplementing disk-only
     ctx.obj["disk_only"] = False
+
+    # force spawn when trying to conserve memory
+    if ctx.obj["conserve_memory"]:
+        multiprocessing.set_start_method("spawn")
 
     # set start time and run label
     set_start(ctx.obj)
