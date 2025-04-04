@@ -37,8 +37,6 @@ def get_mibig(mibig_version: str, bigscape_dir: Path):
         Path: path to MIBiG database (antismash processed gbks)
     """
 
-    mibig_url = find_mibig_version_url(mibig_version)
-
     mibig_dir = Path(os.path.join(bigscape_dir, "MIBiG"))
     mibig_version_dir = Path(
         os.path.join(mibig_dir, f"mibig_antismash_{mibig_version}_gbk")
@@ -53,6 +51,8 @@ def get_mibig(mibig_version: str, bigscape_dir: Path):
         logging.info("MIBiG version %s already present", mibig_version)
         # we assume that if a folder is here, that it is uncompressed and ready to use
         return mibig_version_dir
+
+    mibig_url = find_mibig_version_url(mibig_version)
 
     logging.info("Downloading MIBiG version %s", mibig_version)
     mibig_dir_compressed = Path(f"{mibig_version_dir}.tar.bz2")
