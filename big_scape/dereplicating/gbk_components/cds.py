@@ -12,6 +12,7 @@ from Bio.SeqRecord import SeqRecord
 # from other modules
 from big_scape.errors import InvalidGBKError
 from big_scape.genbank.cds import check_translation, get_translation
+import big_scape.enums as bs_enums
 
 # from this module
 from .gbk import GBK
@@ -32,6 +33,7 @@ class CDS:
     def __init__(
         self, nt_start: int, nt_stop: int, strand: int, gene_kind: str, aa_sequence: str
     ) -> None:
+        self.name: bs_enums.COMPONENTS = bs_enums.COMPONENTS.CDS
         self.nt_start: int = nt_start
         self.nt_stop: int = nt_stop
         self.strand: int = strand

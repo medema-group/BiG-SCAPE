@@ -175,9 +175,7 @@ def parse_seqIO(gbk: GBK, seqIO_record: SeqRecord, run_mode) -> GBK:
         feature_type = feature.type
 
         # skip features we dont ever want to parse
-        try:
-            feature_name = bs_enums.FEATURE_TYPE(feature_type)
-        except ValueError:
+        if feature_type not in set(feature.value for feature in bs_enums.FEATURE_TYPE):
             continue
 
         feature_name = bs_enums.FEATURE_TYPE(feature_type)
@@ -196,11 +194,7 @@ def parse_seqIO(gbk: GBK, seqIO_record: SeqRecord, run_mode) -> GBK:
 
         # remember that cluster type features are returned as region type components
 
-        component_type = type(component).__name__
-
-        component_name = bs_enums.COMPONENTS(component_type)
-
-        gbk.components.setdefault(component_name, []).append(component)
+        gbk.components.setdefault(component.name, []).append(component)
 
     return gbk
 
