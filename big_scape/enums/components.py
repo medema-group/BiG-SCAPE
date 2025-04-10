@@ -5,6 +5,7 @@ from enum import Enum
 
 
 class COMPONENTS(Enum):
+    GBK = "gbk"
     REGION = "region"
     PROTOCLUSTER = "protocluster"
     PROTO_CORE = "proto_core"
