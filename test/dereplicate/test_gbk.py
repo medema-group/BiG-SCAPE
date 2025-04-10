@@ -22,7 +22,7 @@ class TestGBKComponent(TestCase):
         as_version = "1.0"
         source_type = bs_enums.SOURCE_TYPE.QUERY
 
-        gbk = GBK.create(gbk_file_path, gbk_hash, nt_length, as_version, source_type)
+        gbk = GBK(gbk_file_path, gbk_hash, nt_length, as_version, source_type)
 
         self.assertIsInstance(gbk, GBK)
 
@@ -35,6 +35,6 @@ class TestGBKComponent(TestCase):
         as_version = "1.0"
         source_type = bs_enums.SOURCE_TYPE.QUERY
 
-        gbk = GBK.create(gbk_file_path, gbk_hash, nt_length, as_version, source_type)
+        gbk = GBK(gbk_file_path, gbk_hash, nt_length, as_version, source_type)
 
         self.assertFalse(validate_cds_component(gbk))

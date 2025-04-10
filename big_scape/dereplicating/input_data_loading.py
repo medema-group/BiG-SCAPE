@@ -135,7 +135,7 @@ def gbk_factory(gbk_data: tuple[Path, str, SeqRecord], run: dict) -> Optional[GB
     as_version = get_as_version(seqIO_record)
 
     # create GBK object
-    gbk: GBK = GBK.create(path, hash, nt_length, as_version, source_type)
+    gbk: GBK = GBK(path, hash, nt_length, as_version, source_type)
 
     gbk = parse_seqIO(gbk, seqIO_record, run_mode)
 
