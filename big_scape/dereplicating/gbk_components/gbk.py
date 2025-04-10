@@ -31,20 +31,6 @@ class GBK:
         self.source_type: bs_enums.SOURCE_TYPE = source_type
         self.components: dict[str, list] = {}
 
-    @classmethod
-    def create(cls, path: Path, hash: str, nt_length: int, as_version: str, source_type: bs_enums.SOURCE_TYPE) -> GBK:
-        """Creates a new GBK object and returns it with its path and hash
-
-        Args:
-            path (Path): path to the GBK file
-            hash (str): content based hash of the entire GBK file
-
-        Returns:
-            GBK: new GBK object
-        """
-
-        return cls(path, hash, nt_length, as_version, source_type)
-
     def __repr__(self) -> str:
         return f"{self.path}"
 

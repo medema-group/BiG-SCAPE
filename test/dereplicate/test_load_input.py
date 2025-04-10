@@ -79,7 +79,7 @@ class TestLoadInput(TestCase):
     def test_parse_seqIO_record(self):
         """Tests whether the gbk_factory function correctly creates a GBK object"""
 
-        gbk = GBK.create(Path("test_path"), "hash", 10, "1", bs_enums.SOURCE_TYPE.QUERY)
+        gbk = GBK(Path("test_path"), "hash", 10, "1", bs_enums.SOURCE_TYPE.QUERY)
 
         nt_seq = Seq("ATGCAGCAGGACGGCACACAGCAGGACCGGATCAAGCAGAGTCCCGCCCCTCTCTGA")
         seqIO_record = SeqRecord(id="test", seq=nt_seq)
