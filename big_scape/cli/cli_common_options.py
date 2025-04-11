@@ -294,10 +294,12 @@ def common_cluster_query(fn):
             default=0.3,
             callback=validate_gcf_cutoffs,
             help=(
-                "A comma separated list of floats. "
-                "Generate networks using multiple distance cutoff values. "
-                "Values should be in the range [0.0, 1.0]. Example: --gcf-cutoffs 0.1,"
-                "0.25,0.5,1.0. For more detail see the wiki. (default: 0.3)."
+                "A comma separated list of distance cutoff(s) applied before family "
+                "generation. One or multiple can be provided in each run. If multiple "
+                "cutoffs are provided, BiG-SCAPE will generate one network for each "
+                "distance cutoff value. Values should be in the range `[0.0, 1.0]`. "
+                "Example (providing multiple cutoffs): `--gcf-cutoffs 0.1,0.25,0.5,1.0` "
+                "For more detail see the wiki. (default: 0.3)."
             ),
         ),
         # output parameters
