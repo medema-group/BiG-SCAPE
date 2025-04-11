@@ -6,6 +6,7 @@ import click
 # from other modules
 from big_scape.dereplicating.dereplicate import run_bigscape_dereplicate
 from big_scape.diagnostics import init_logger, init_logger_file
+import big_scape.enums as bs_enums
 
 
 # from this module
@@ -34,7 +35,7 @@ def dereplicate(ctx, *args, **kwargs):
 
     # get context parameters
     ctx.obj.update(ctx.params)
-    ctx.obj["mode"] = "Dereplicate"
+    ctx.obj["mode"] = bs_enums.input_parameters.RUN_MODE.DEREPLICATE
 
     # set start time and label
     set_start(ctx.obj)
