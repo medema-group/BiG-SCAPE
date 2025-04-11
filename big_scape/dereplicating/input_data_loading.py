@@ -168,14 +168,16 @@ def parse_seqIO(gbk: GBK, seqIO_record: SeqRecord, run_mode) -> GBK:
 
     parser_functions = get_parser_functions(run_mode)
 
-    # parse SeqIO record and add components to GBK object
+    # get all feature types that we want to parse
+    feature_set = set(feature.value for feature in bs_enums.FEATURE_TYPE)
 
+    # parse SeqIO record and add components to GBK object
     for feature in seqIO_record.features:
 
         feature_type = feature.type
 
         # skip features we dont ever want to parse
-        if feature_type not in set(feature.value for feature in bs_enums.FEATURE_TYPE):
+        if feature_type not in feature_set:
             continue
 
         feature_name = bs_enums.FEATURE_TYPE(feature_type)
