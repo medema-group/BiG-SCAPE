@@ -74,6 +74,9 @@ class Region(BGCRecord):
         """
 
         if cand_cluster.number not in self.cand_clusters:
+            logging.error(
+                "Candidate cluster number does not match the number in the parent region"
+            )
             raise InvalidGBKRegionChildError()
 
         self.cand_clusters[cand_cluster.number] = cand_cluster
