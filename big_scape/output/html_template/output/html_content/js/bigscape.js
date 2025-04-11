@@ -1,4 +1,4 @@
-/* Copyright 2017 Satria Kautsar */
+/* Copyright 2024 Satria Kautsar, Arjan Draisma, Nico Louwen, Catarina Loureiro */
 
 var BigscapeFunc = {
   ver: "2.0",
@@ -305,7 +305,7 @@ function Bigscape(run_data, bs_data, bs_families, bs_alignment, bs_similarity, n
   this.setHighlightedNodes = function (ids) { highlighted_nodes = ids; };
   this.getHighlightedNodes = function () { return highlighted_nodes; };
   var updateDescription = function (ids = highlighted_nodes) {
-    BigscapeFunc.updateDescription(ids, bs_svg, bs_data, bs_to_cl, bs_families, bs_similarity, bs_alignment, desc_ui, nav_ui, det_ui, bigscape);
+    BigscapeFunc.updateDescription(ids, bs_svg, bs_data, bs_to_cl, bs_families, bs_similarity, bs_alignment, desc_ui, nav_ui, det_ui, bigscape, run_data);
   };
   this.updateDescription = updateDescription;
 
@@ -691,7 +691,7 @@ BigscapeFunc.showSingletons = function (graph, graphics, net_ui, isOn) {
 }
 
 // ...
-BigscapeFunc.updateDescription = function (ids, bs_svg, bs_data, bs_to_cl, bs_families, bs_similarity, bs_alignment, desc_ui, nav_ui, det_ui, bigscape) {
+BigscapeFunc.updateDescription = function (ids, bs_svg, bs_data, bs_to_cl, bs_families, bs_similarity, bs_alignment, desc_ui, nav_ui, det_ui, bigscape, run_data) {
   if (desc_ui.children().length < 1) {
     // first time rendering desc_ui
     desc_ui.html("");
@@ -932,7 +932,7 @@ BigscapeFunc.updateDescription = function (ids, bs_svg, bs_data, bs_to_cl, bs_fa
           var highlightedNodes = handler.data.bigscape.getHighlightedNodes()
           if (highlightedNodes.length > 0) {
             var bs_sel_data = Object.fromEntries(Object.entries(handler.data.bs_data).filter(([k, v]) => highlightedNodes.indexOf(parseInt(k)) > -1))
-            BigscapeFunc.downloadSelection(bs_sel_data)
+            BigscapeFunc.downloadSelection(bs_sel_data, run_data)
           } else {
             alert("No nodes are selected to download!")
           }
@@ -1460,20 +1460,57 @@ BigscapeFunc.showHideDomains = function (cont_ui, isOn) {
   }
 }
 
-BigscapeFunc.downloadSelection = function (data) {
-  lines = []
+BigscapeFunc.downloadSelection = function (data, run_data) {
+  var lines = []
+  var node_db_ids = []
+  var node_db_id_to_columns = {}
   for (i in data) {
     var node = data[i]
     var id_parts = /^(.*)_(region|protocluster|cand_cluster|proto_core)_(.*)$/gm.exec(node["id"])
     var [gbk, rec_type, rec_num] = id_parts.slice(1)
-    lines.push(`${node["family"]}\t${gbk}\t${rec_type}\t${rec_num}\t${node["desc"]}`)
+    lines.push(`${gbk}\t${rec_type}\t${rec_num}\t${node["family"]}\t${node["desc"]}`)
+    node_db_ids.push(node["idx"])
+    node_db_id_to_columns[node["idx"]] = [gbk, rec_type, rec_num]
   }
   var tsv_text = `# Collection of selected nodes
 # Run info: ${$("#bigscape-runs option:selected").text()} ${$("#network-selection option:selected").text()}
 # Used search query: ${$("#search-input").val()}\n
-Family\tGBK\tRecord_Type\tRecord_Number\tDescription
+GBK\tRecord_Type\tRecord_Number\tFamily\tDescription
 ${lines.toSorted((a, b) => a > b).join("\n")}`
-  BigscapeFunc.sendDownload(tsv_text, `${$("#bigscape-runs option:selected").text()}_selection.tsv`)
+  BigscapeFunc.sendDownload(tsv_text, `${$("#bigscape-runs option:selected").text()}_selection_nodes.tsv`)
+
+  var cutoff = run_data["cutoff"]
+  var alignment_mode = run_data["alignment_mode"].toUpperCase()
+  var extend_strategy = run_data["extend_strategy"].toUpperCase()
+  if (run_data["weights"] == "Mix") {
+    var weight = "mix"
+  } else {
+    var weight = $("#network-selection option:selected").text()
+  }
+
+  var distances = window.db.exec(`SELECT distance.record_a_id, distance.record_b_id, distance.distance FROM distance
+    INNER JOIN edge_params ON edge_params.id==distance.edge_param_id
+    WHERE distance.record_a_id IN (${node_db_ids}) AND distance.record_b_id IN (${node_db_ids})
+    AND distance.record_a_id != distance.record_b_id
+    AND distance.distance<${cutoff}
+    AND edge_params.weights=="${weight}"
+    AND edge_params.alignment_mode=="${alignment_mode}"
+    AND edge_params.extend_strategy=="${extend_strategy}"`)[0].values
+
+  edge_lines = []
+
+  for (row of distances) {
+    var [record_a_id, record_b_id, distance] = row
+    var [node_a_gbk, node_a_rec_type, node_a_rec_num] = node_db_id_to_columns[record_a_id]
+    var [node_b_gbk, node_b_rec_type, node_b_rec_num] = node_db_id_to_columns[record_b_id]
+    edge_lines.push(`${node_a_gbk}\t${node_a_rec_type}\t${node_a_rec_num}\t${node_b_gbk}\t${node_b_rec_type}\t${node_b_rec_num}\t${distance}`)
+}
+var tsv_edges = `# Collection of edges betwen selected nodes
+# Run info: ${$("#bigscape-runs option:selected").text()} ${$("#network-selection option:selected").text()}
+# Used search query: ${$("#search-input").val()}\n
+GBK_a\tRecord_Type_a\tRecord_Number_a\tGBK_b\tRecord_Type_b\tRecord_Number_b\tDistance
+${edge_lines.toSorted((a, b) => a > b).join("\n")}`
+  BigscapeFunc.sendDownload(tsv_edges, `${$("#bigscape-runs option:selected").text()}_selection_edges.tsv`)
 }
 
 BigscapeFunc.sendDownload = function (content, filename) {
