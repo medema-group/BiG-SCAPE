@@ -145,4 +145,3 @@ class TestLoadInput(TestCase):
         gbk_list = gbk_factory(gbk_data, run)
 
         self.assertEqual(gbk_list, None)
-
