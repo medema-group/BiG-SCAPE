@@ -145,7 +145,7 @@ def gbk_factory(gbk_data: tuple[Path, str, SeqRecord], run: dict) -> Optional[GB
 
     # TODO: hybrid collapsing for protoclusters
 
-    # TODO: if run mode is not derep and force-gbk = True, create fake region if region not there 
+    # TODO: if run mode is not derep and force-gbk = True, create fake region if region not there
     #       if region not there and force-gbk = False, raise error
 
     # TODO validate that all the parenting is there properly (follow top down hierarchy)
