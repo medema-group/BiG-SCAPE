@@ -55,5 +55,5 @@ def validate_cds_component(gbk: GBK) -> bool:
     Returns:
         bool: True if the GBK contains at least 1 CDS component, False otherwise
     """
-    
+
     return bs_enums.COMPONENTS.CDS in gbk.components
