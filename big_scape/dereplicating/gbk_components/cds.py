@@ -13,6 +13,7 @@ from Bio.SeqRecord import SeqRecord
 from big_scape.errors import InvalidGBKError
 from big_scape.genbank.cds import check_translation, get_translation
 import big_scape.enums as bs_enums
+from big_scape.dereplicating.gbk_components.gbk import GBK
 
 # from this module
 from .gbk import GBK
@@ -39,6 +40,7 @@ class CDS:
         self.strand: int = strand
         self.gene_kind: Optional[str] = gene_kind
         self.aa_sequence: str = aa_sequence
+        self.orf_num: Optional[int] = None
 
     @classmethod
     def parse(cls, feature: SeqFeature, seqIO_record: SeqRecord, gbk: GBK) -> CDS:
@@ -125,6 +127,146 @@ class CDS:
             return None
 
         return cls(nt_start, nt_stop, strand, gene_kind, aa_seq)
+
+    @staticmethod
+    def process(gbk: GBK, cds_overlap_cutoff=0.1) -> None:
+        """Processes the CDS component of a GBK object
+
+        Args:
+            gbk (GBK): GBK object to process
+        """
+
+        # set orf number
+        CDS.set_orf_number(gbk)
+
+        # filter out overlapping CDSs
+        CDS.filter_overlap(gbk, cds_overlap_cutoff)
+
+        return None
+
+    @staticmethod
+    def set_orf_number(gbk: GBK) -> None:
+        """_summary_
+
+        Args:
+            gbk (GBK): _description_
+            cds_overlap_cutoff (float, optional): _description_. Defaults to 0.1.
+
+        Returns:
+            _type_: _description_
+        """
+
+        cds_list = gbk.components[bs_enums.COMPONENTS.CDS]
+
+        # add ORF number to each CDS, we need orf nums later on
+        # but trust the order of the gbk parsing
+        for i, cds in enumerate(cds_list):
+            cds.orf_num = i + 1
+
+        return None
+
+    @staticmethod
+    def filter_overlap(gbk: GBK, cds_overlap_cutoff=0.1) -> None:
+        """Takes a GBK and removes overlapping CDSs from its CDS component.
+        Performs overlap cutoff filtering by calculating the
+        percentage overlap of the incoming CDS with other CDS in this GBK.
+
+        If the percentage overlap is greater than the cutoff, this keeps whichever CDS
+        is longer. If scores are equal, this keeps the HSP with the earliest
+        start position. Bitscores are rounded to 1 decimal position when compared.
+
+        Args:
+            gbk (GBK): GBK object to filter
+            cds_overlap_cutoff (float, optional): Length threshold to define overlap. Defaults to 0.1.
+
+        Returns:
+           None
+        """
+
+        cds_list = gbk.components[bs_enums.COMPONENTS.CDS]
+
+        filtered_cds_list = [cds_list[0]]
+
+        for cds in cds_list[1:]:
+
+            replaced_cds = False
+
+            # for each cds we need to check if it overlaps with any of the already existing cds
+            for prev_cds_idx, prev_cds in enumerate(filtered_cds_list):
+
+                # if two cds are not in the same strand, they cant overlap
+                if cds.strand != prev_cds.strand:
+                    continue
+
+                overlap_nt = CDS.len_nt_overlap(cds, prev_cds)
+
+                if overlap_nt == 0:
+                    continue
+
+                overlap_aa = overlap_nt / 3
+
+                # we determine overlap as a percentage of shortest cds
+                prev_cds_aa_len = len(prev_cds.aa_sequence)
+                cds_aa_len = len(cds.aa_sequence)
+                shortest_aa_len = min(prev_cds_aa_len, cds_aa_len)
+
+                # if the overlap is less than the cutoff, we skip
+                if overlap_aa <= cds_overlap_cutoff * shortest_aa_len:
+                    continue
+
+                # there is sufficient overlap, so we will replace a cds
+                replaced_cds = True
+
+                # there is sufficient overlap but new cds is shorter, we skip
+                if cds_aa_len < prev_cds_aa_len:
+                    logging.debug(
+                        "%s: Removing %s because it overlaps with another CDS %s",
+                        gbk.path,
+                        cds,
+                        filtered_cds_list[prev_cds_idx],
+                    )
+                    continue
+
+                # there is sufficient overlap and new cds is longer, we replace
+                logging.debug(
+                    "%s: Removing %s because it overlaps with another CDS",
+                    gbk.path,
+                    filtered_cds_list[prev_cds_idx],
+                    cds,
+                )
+                del filtered_cds_list[prev_cds_idx]
+                filtered_cds_list.append(cds)
+
+            # if no cds was replaced, we add it to the list
+            if not replaced_cds:
+                filtered_cds_list.append(cds)
+
+        gbk.components[bs_enums.COMPONENTS.CDS] = filtered_cds_list
+
+        return None
+
+    @staticmethod
+    def len_nt_overlap(cds_a: CDS, cds_b: CDS) -> int:
+        """Return the length of the nucleotide seq overlap between two CDSs
+
+        Args:
+            cds_a,b (CDS): CDSs to compare
+
+        Returns:
+            int: length of the overlap between this CDS and another
+        """
+        if cds_a.nt_start < cds_b.nt_start:
+            left = cds_b.nt_start
+        else:
+            left = cds_a.nt_start
+
+        if cds_a.nt_stop > cds_b.nt_stop:
+            right = cds_b.nt_stop
+        else:
+            right = cds_a.nt_stop
+
+        # limit to > 0
+        return max(0, right - left)
 
     def __gt__(self, __o) -> bool:
         if not isinstance(__o, CDS):
