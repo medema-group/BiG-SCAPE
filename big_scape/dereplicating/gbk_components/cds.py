@@ -16,7 +16,6 @@ import big_scape.enums as bs_enums
 from big_scape.dereplicating.gbk_components.gbk import GBK
 
 # from this module
-from .gbk import GBK
 
 
 class CDS:
@@ -267,6 +266,23 @@ class CDS:
 
         # limit to > 0
         return max(0, right - left)
+
+    @staticmethod
+    def concatenate_cds(gbk: GBK) -> None:
+        """Concatenates the aa_seqs of all CDSs into a new component of the GBK object
+
+        Args:
+            gbk (GBK): gbk
+        """
+
+        cds_list = gbk.components[bs_enums.COMPONENTS.CDS]
+
+        # concatenate all aa_seqs
+        concat_aa_seq = "".join([cds.aa_sequence for cds in cds_list])
+
+        gbk.components[bs_enums.COMPONENTS.CONCAT_CDS] = concat_aa_seq
+
+        return None
 
     def __gt__(self, __o) -> bool:
         if not isinstance(__o, CDS):

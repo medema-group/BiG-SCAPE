@@ -222,3 +222,18 @@ class TestCDSComponent(TestCase):
 
         self.assertEqual(len(gbk.components[bs_enums.COMPONENTS.CDS]), 2)
         self.assertEqual(gbk.components[bs_enums.COMPONENTS.CDS], [cds_1, cds_2])
+
+    def test_cds_concat(self):
+        """Tests whether the concat function correctly concatenates two CDS components"""
+
+        cds_1 = CDS(0, 1, 1, None, "A"*2)
+        cds_2 = CDS(0, 1, 1, None, "B"*2)
+
+        gbk = GBK(Path(""), "hash", 10, "1", bs_enums.SOURCE_TYPE.QUERY)
+        gbk.components[bs_enums.COMPONENTS.CDS] = [cds_1, cds_2]
+
+        CDS.concatenate_cds(gbk)
+
+        expected_aa_seq = "A"*2 + "B"*2
+
+        self.assertEqual(gbk.components[bs_enums.COMPONENTS.CONCAT_CDS], expected_aa_seq)
