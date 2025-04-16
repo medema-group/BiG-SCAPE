@@ -3,11 +3,13 @@
 # from python
 from __future__ import annotations
 from pathlib import Path
+import logging
 
 # from dependencies
 
 # from other modules
 import big_scape.enums as bs_enums
+from big_scape.cli.config import BigscapeConfig
 
 # from this module
 
@@ -30,6 +32,44 @@ class GBK:
         self.as_version: str = as_version
         self.source_type: bs_enums.SOURCE_TYPE = source_type
         self.components: dict[str, list] = {}
+
+    @staticmethod
+    def length_filter(gbk_list: list[GBK]) -> list[GBK]:
+        """Filters out GBK objects that are too long or too short
+
+        Args:
+            gbk_list (list[GBK]): list of GBK objects
+
+        Returns:
+            list[GBK]: filtered list of GBK objects
+        """
+
+        orig_size = len(gbk_list)
+        filtered_gbks = [
+            gbk
+            for gbk in gbk_list
+            if BigscapeConfig.MIN_BGC_LENGTH
+            < gbk.nt_length
+            < BigscapeConfig.MAX_BGC_LENGTH
+        ]
+        filtered_size = len(filtered_gbks)
+
+        if filtered_size == 0:
+            logging.error(
+                "No GBKs remain after length constraint of min %s to max %s bp!",
+                BigscapeConfig.MIN_BGC_LENGTH,
+                BigscapeConfig.MAX_BGC_LENGTH,
+            )
+            raise RuntimeError()
+
+        if orig_size != filtered_size:
+            logging.info(
+                "%s GBKs remain after length constraint of min %s to max %s bp",
+                filtered_size,
+                BigscapeConfig.MIN_BGC_LENGTH,
+                BigscapeConfig.MAX_BGC_LENGTH,
+            )
+        return filtered_gbks
 
     def __repr__(self) -> str:
         return f"{self.path}"

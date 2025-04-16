@@ -15,6 +15,8 @@ from big_scape.dereplicating.input_data_loading import (
 )
 import big_scape.enums as bs_enums
 from big_scape.errors import InvalidGBKError
+from big_scape.dereplicating.gbk_components.gbk import GBK
+from big_scape.file_input.load_files import bgc_length_contraint
 
 
 def run_bigscape_dereplicate(run: dict) -> None:
@@ -52,9 +54,11 @@ def run_bigscape_dereplicate(run: dict) -> None:
     if any(gbk is None for gbk in gbk_list):
         raise InvalidGBKError()
 
-    logging.info("Succefully loaded %d input GBKs", len(gbk_list))
+    # apply length constraints (in this workflow we ommit
+    # duplicate logging since sourmash will handle these)
+    gbk_list = GBK.length_filter(gbk_list)
 
-    # (log duplicated GBKs) and apply lenght constraints ???
+    logging.info("Succefully loaded %d input GBKs", len(gbk_list))
 
     # concatenate CDSs
 
