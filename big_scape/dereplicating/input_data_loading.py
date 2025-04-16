@@ -18,6 +18,8 @@ import big_scape.enums as bs_enums
 from big_scape.file_input.load_files import filter_files
 from big_scape.dereplicating.gbk_component_parsing import get_parser_functions, validate_cds_component
 from big_scape.dereplicating.gbk_components.gbk import GBK
+from big_scape.dereplicating.gbk_components import CDS
+from big_scape.cli.config import BigscapeConfig
 
 
 def load_input_folder(run: dict) -> list[Path]:
@@ -90,6 +92,10 @@ def parse_gbk_files(
 
     for path in input_paths:
 
+        if not path.is_file():
+            logging.warning("%s: not a file, skipping it", path)
+            continue
+
         # get unique content hash
         f = open(path, "r")
         content = f.read()
@@ -142,6 +148,10 @@ def gbk_factory(gbk_data: tuple[Path, str, SeqRecord], run: dict) -> Optional[GB
     if not validate_cds_component(gbk):
         logging.error("This GBK file does not contain any CDS features, %s", path)
         return None
+
+    # number and filter overlap CDS
+    cds_overlap_cutoff = BigscapeConfig.CDS_OVERLAP_CUTOFF
+    CDS.process(gbk, cds_overlap_cutoff)
 
     # TODO: hybrid collapsing for protoclusters
 
