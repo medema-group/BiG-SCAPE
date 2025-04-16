@@ -16,7 +16,7 @@ from big_scape.dereplicating.input_data_loading import (
 import big_scape.enums as bs_enums
 from big_scape.errors import InvalidGBKError
 from big_scape.dereplicating.gbk_components.gbk import GBK
-from big_scape.file_input.load_files import bgc_length_contraint
+from big_scape.dereplicating.gbk_components import CDS
 
 
 def run_bigscape_dereplicate(run: dict) -> None:
@@ -60,9 +60,11 @@ def run_bigscape_dereplicate(run: dict) -> None:
 
     logging.info("Succefully loaded %d input GBKs", len(gbk_list))
 
-    # concatenate CDSs
+    # concatenate CDS aa sequences
+    for gbk in gbk_list:
+        CDS.concatenate_cds(gbk)
 
-    # write CDS fastas
+    # (write CDS fastas ?)
 
     # run (sour)mash
 
