@@ -89,3 +89,136 @@ class TestCDSComponent(TestCase):
 
         warning = any(str in log for log in cm.output)
         self.assertEqual(warning, True)
+    
+    def test_sort_cds_component(self):
+        """Tests whether the sort function correctly sorts the CDS component by start position"""
+
+        cds_1 = CDS(0, 9, 1, None, "M"*3)
+        cds_2 = CDS(3, 18, 1, None, "M"*5)
+        cds_3 = CDS(18, 36, 1, None, "M"*4)
+
+        cds_list = [cds_2, cds_1, cds_3]
+        cds_list.sort()
+
+        expected_cds_list = [cds_1, cds_2, cds_3]
+        self.assertEqual(cds_list, expected_cds_list)
+
+    def test_number_cds_component(self):
+        """Tests whether the number function correctly numbers the CDS component"""
+
+        cds_1 = CDS(0, 9, 1, None, "M"*3)
+        cds_2 = CDS(3, 18, 1, None, "M"*5)
+        cds_3 = CDS(18, 36, 1, None, "M"*4)
+
+        gbk = GBK(Path(""), "hash", 10, "1", bs_enums.SOURCE_TYPE.QUERY)
+
+        gbk.components[bs_enums.COMPONENTS.CDS] = [cds_2, cds_1, cds_3]
+        CDS.set_orf_number(gbk)
+
+        self.assertEqual(cds_1.orf_num, 2)
+        self.assertEqual(cds_2.orf_num, 1)
+        self.assertEqual(cds_3.orf_num, 3)
+
+    def test_len_overlap(self):
+        """Tests whether the len_overlap function returns a correct overlap len"""
+
+        cds_a = CDS(0, 50, 1, None, "M")
+        cds_b = CDS(10, 80, 1, None, "M")
+
+        expected_len = 40
+
+        actual_len = CDS.len_nt_overlap(cds_a, cds_b)
+
+        self.assertEqual(expected_len, actual_len)
+
+    def test_cds_filter_overlap(self):
+        """Tests whether the filter function correctly filters out overlapping CDS components"""
+
+        cds_1 = CDS(0, 9, 1, None, "M"*3)
+        cds_2 = CDS(3, 18, 1, None, "M"*5)
+        cds_3 = CDS(18, 36, 1, None, "M"*4)
+
+        gbk = GBK(Path(""), "hash", 10, "1", bs_enums.SOURCE_TYPE.QUERY)
+
+        gbk.components[bs_enums.COMPONENTS.CDS] = [cds_2, cds_1, cds_3]
+        CDS.filter_overlap(gbk)
+
+        self.assertEqual(len(gbk.components[bs_enums.COMPONENTS.CDS]), 2)
+        self.assertEqual(gbk.components[bs_enums.COMPONENTS.CDS], [cds_2, cds_3])
+
+    def test_cds_process(self):
+        """Tests whether the process function correctly processes the CDS component"""
+
+        cds_1 = CDS(0, 9, 1, None, "M"*3)  # orf_num = 2
+        cds_2 = CDS(3, 18, 1, None, "M"*5)  # orf_num = 1
+        cds_3 = CDS(18, 36, 1, None, "M"*4)  # orf_num = 3
+
+        # cds_1 and cds_2 overlap, and cds_2 is the largest of the two
+        # so that one is kept
+
+        gbk = GBK(Path(""), "hash", 10, "1", bs_enums.SOURCE_TYPE.QUERY)
+
+        gbk.components[bs_enums.COMPONENTS.CDS] = [cds_2, cds_1, cds_3]
+        CDS.process(gbk)
+
+        self.assertEqual(len(gbk.components[bs_enums.COMPONENTS.CDS]), 2)
+        self.assertEqual(gbk.components[bs_enums.COMPONENTS.CDS][0].orf_num, 1)
+        self.assertEqual(gbk.components[bs_enums.COMPONENTS.CDS][1].orf_num, 3)
+
+    def test_cds_filter_overlap_above_cutoff(self):
+        """Test whether add_cds_filter_overlap correctly throws out a cds"""
+
+        cds_1 = CDS(0, 18, 1, None, "M")
+        cds_2 = CDS(0, 9, 1, None, "M")
+
+        # nt_overlap_len_a_b = 9
+        # aa_overlap = 9/3 = 3
+        # 10% cds_b aa len = 0.1 * 3 = 0.3
+        # aa_overlap > 10% shortest cds: 3 > 0.3
+
+        gbk = GBK(Path(""), "hash", 10, "1", bs_enums.SOURCE_TYPE.QUERY)
+        gbk.components[bs_enums.COMPONENTS.CDS] = [cds_2, cds_1]
+        CDS.filter_overlap(gbk, 0.1)
+
+        self.assertEqual(len(gbk.components[bs_enums.COMPONENTS.CDS]), 1)
+        self.assertEqual(gbk.components[bs_enums.COMPONENTS.CDS], [cds_1])
+
+    def test_cds_filter_overlap_under_cutoff(self):
+        """Test whether filter_overlap correctly includes a new CDS if it overlaps with
+        another CDS but under the cutoff threshold
+        """
+
+        cds_1 = CDS(0, 18, 1, None, "M")
+        cds_2 = CDS(18, 36, 1, None, "M")
+
+        # nt_overlap_len_a_b = 1
+        # aa_overlap = 1/3 = 0.33
+        # 10% cds_b aa len = 0.1*4 = 0.4
+        # aa_overlap < 10% shortest cds: 0.33 < 0.4
+
+        gbk = GBK(Path(""), "hash", 10, "1", bs_enums.SOURCE_TYPE.QUERY)
+        gbk.components[bs_enums.COMPONENTS.CDS] = [cds_1, cds_2]
+        CDS.filter_overlap(gbk, 0.1)
+
+        self.assertEqual(len(gbk.components[bs_enums.COMPONENTS.CDS]), 2)
+        self.assertEqual(gbk.components[bs_enums.COMPONENTS.CDS], [cds_1, cds_2])
+
+    def test_cds_filter_overlap_above_cutoff_diff_strands(self):
+        """Test whether filter_overlap correclty preserves a CDS that is over the cds
+        cutoff threshold, but is on a different strand
+        """
+
+        cds_1 = CDS(0, 18, 1, None, "M")
+        cds_2 = CDS(0, 9, -1, None, "M")
+
+        # nt_overlap_len_a_b = 9
+        # aa_overlap = 9/3 = 3
+        # 10% cds_b aa len = 0.1 * 3 = 0.3
+        # aa_overlap > 10% shortest cds: 3 > 0.3
+
+        gbk = GBK(Path(""), "hash", 10, "1", bs_enums.SOURCE_TYPE.QUERY)
+        gbk.components[bs_enums.COMPONENTS.CDS] = [cds_1, cds_2]
+        CDS.filter_overlap(gbk, 0.1)
+
+        self.assertEqual(len(gbk.components[bs_enums.COMPONENTS.CDS]), 2)
+        self.assertEqual(gbk.components[bs_enums.COMPONENTS.CDS], [cds_1, cds_2])
