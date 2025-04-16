@@ -11,3 +11,4 @@ class COMPONENTS(Enum):
     PROTO_CORE = "proto_core"
     CAND_CLUSTER = "cand_cluster"
     CDS = "CDS"
+    CONCAT_CDS = "concat_cds"
