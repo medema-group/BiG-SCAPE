@@ -13,6 +13,7 @@ from typing import Optional
 from itertools import combinations
 
 # from other modules
+from big_scape.comparison.binning import create_temp_record_id_table
 from big_scape.data import DB
 from big_scape.comparison import RecordPairGenerator
 from big_scape.genbank import GBK, BGCRecord, CandidateCluster, ProtoCluster, ProtoCore
@@ -108,6 +109,8 @@ def generate_bs_families_members(
     family_table = DB.metadata.tables["family"]
     bgc_families_table = DB.metadata.tables["bgc_record_family"]
 
+    temp_record_table = create_temp_record_id_table(pair_generator.record_ids)
+
     select_statement = (
         select(
             bgc_families_table.c.record_id,
@@ -116,7 +119,9 @@ def generate_bs_families_members(
             family_table.c.bin_label,
         )
         .join(family_table, bgc_families_table.c.family_id == family_table.c.id)
-        .where(bgc_families_table.c.record_id.in_(pair_generator.record_ids))
+        .where(
+            bgc_families_table.c.record_id.in_(select(temp_record_table.c.record_id))
+        )
         .where(family_table.c.cutoff == cutoff)
         .where(family_table.c.bin_label == pair_generator.label)
         .where(family_table.c.run_id == run_id)
@@ -450,7 +455,7 @@ def write_clustering_file(run, cutoff, pair_generator) -> None:
     rec_fam_table = DB.metadata.tables["bgc_record_family"]
     cc_table = DB.metadata.tables["connected_component"]
 
-    record_ids = pair_generator.record_ids
+    temp_record_table = create_temp_record_id_table(pair_generator.record_ids)
     select_statement = (
         select(
             gbk_table.c.path,
@@ -463,7 +468,7 @@ def write_clustering_file(run, cutoff, pair_generator) -> None:
         .join(rec_fam_table, bgc_record_table.c.id == rec_fam_table.c.record_id)
         .join(family_table, rec_fam_table.c.family_id == family_table.c.id)
         .join(cc_table, cc_table.c.record_id == bgc_record_table.c.id)
-        .where(rec_fam_table.c.record_id.in_(record_ids))
+        .where(rec_fam_table.c.record_id.in_(select(temp_record_table.c.record_id)))
         .where(family_table.c.cutoff == cutoff)
         .where(family_table.c.bin_label == bin_label)
         .where(family_table.c.run_id == run_id)
@@ -604,6 +609,8 @@ def write_network_file(
 
     record_ids = [record._db_id for record in bgc_records]
 
+    temp_record_table = create_temp_record_id_table(record_ids)
+
     if not DB.metadata:
         raise RuntimeError("DB.metadata is None")
 
@@ -645,8 +652,8 @@ def write_network_file(
             edge_params_table,
             distance_table.c.edge_param_id == edge_params_table.c.id,
         )
-        .where(distance_table.c.record_a_id.in_(record_ids))
-        .where(distance_table.c.record_b_id.in_(record_ids))
+        .where(distance_table.c.record_a_id.in_(select(temp_record_table.c.record_id)))
+        .where(distance_table.c.record_b_id.in_(select(temp_record_table.c.record_id)))
         .where(edge_params_table.c.weights.in_(incl_weights))
         .where(edge_params_table.c.alignment_mode == aln_mode)
         .where(edge_params_table.c.extend_strategy == ext_strat)
