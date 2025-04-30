@@ -267,7 +267,7 @@ class TestLoadFiles(TestCase):
         input_gbks_from_db = GBK.load_many(input_gbks)
         for gbk in input_gbks_from_db:
             gbk.source_type = source_dict[gbk.hash]
-            bs_hmm.HSP.load_all(gbk.genes)
+            bs_hmm.HSP.load_all([gbk])
 
         self.assertEqual(len(input_gbks), len(input_gbks_from_db))
 

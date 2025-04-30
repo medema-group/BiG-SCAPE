@@ -11,7 +11,8 @@ import tarfile
 import multiprocessing
 
 # from dependencies
-import requests  # type: ignore
+import requests
+import tqdm  # type: ignore
 
 # from other modules
 from big_scape.genbank.gbk import GBK
@@ -410,9 +411,9 @@ def load_gbks(run: dict, bigscape_dir: Path) -> list[GBK]:
         logging.info("Loading existing run from disk...")
 
         input_gbks_from_db = GBK.load_many(input_gbks)
+        bs_hmm.HSP.load_all(input_gbks_from_db)
         for gbk in input_gbks_from_db:
             gbk.source_type = source_dict[gbk.hash]
-            bs_hmm.HSP.load_all(gbk.genes)
 
         return input_gbks_from_db
 
@@ -421,15 +422,16 @@ def load_gbks(run: dict, bigscape_dir: Path) -> list[GBK]:
     missing_gbks = bs_data.get_missing_gbks(input_gbks)
     logging.info("Found %d new GBKs to process", len(missing_gbks))
 
-    for gbk in missing_gbks:
-        gbk.save_all()
+    with tqdm.tqdm(missing_gbks, desc="Saving new GBKs", unit="GBK") as progress:
+        for gbk in progress:
+            gbk.save_all()
 
     # now we have all new data in the database, we can load it all in to the correct
     # python objects
     input_gbks_from_db = GBK.load_many(input_gbks)
+    bs_hmm.HSP.load_all(input_gbks_from_db)
     for gbk in input_gbks_from_db:
         gbk.source_type = source_dict[gbk.hash]
-        bs_hmm.HSP.load_all(gbk.genes)
 
     return input_gbks_from_db
 

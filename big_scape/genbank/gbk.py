@@ -17,6 +17,7 @@ from Bio import SeqIO
 from Bio.SeqRecord import SeqRecord
 from Bio.SeqFeature import SeqFeature
 from sqlalchemy import Column, ForeignKey, Integer, String, Table, select
+import tqdm
 
 # from other modules
 from big_scape.errors import InvalidGBKError
@@ -323,7 +324,7 @@ class GBK:
         """Load all GBK, CDS and BGCRecord objects from the database
 
         Returns:
-            list[GBK]: _description_
+            list[GBK]: A list of GBKs loaded from the database
         """
 
         if not DB.metadata:
@@ -371,55 +372,80 @@ class GBK:
         """Load a list of GBK objects from the database
 
         Args:
-            gbk_ids (list[int]): list of ids of gbk to load
+            input_gbks (list[int]): list of ids of gbk to load
 
         Returns:
             list[GBK]: loaded GBK objects
         """
 
-        temp_hash_table = create_temp_hash_table(input_gbks)
-
         if not DB.metadata:
             raise RuntimeError("DB.metadata is None")
 
         gbk_table = DB.metadata.tables["gbk"]
-        select_query = (
-            gbk_table.select()
-            .add_columns(
-                gbk_table.c.id,
-                gbk_table.c.hash,
-                gbk_table.c.path,
-                gbk_table.c.nt_seq,
-                gbk_table.c.organism,
-                gbk_table.c.taxonomy,
-                gbk_table.c.description,
-            )
-            .where(gbk_table.c.hash.in_(select(temp_hash_table.c.hash)))
-            .compile()
+        select_query = gbk_table.select().add_columns(
+            gbk_table.c.id,
+            gbk_table.c.hash,
         )
 
         cursor_result = DB.execute(select_query)
 
-        gbk_dict = {}
+        gbk_hash_to_id = {}
+
         for result in cursor_result.all():
-            new_gbk = GBK(Path(result.path), result.hash, "")
-            new_gbk._db_id = result.id
-            new_gbk.nt_seq = result.nt_seq
-            new_gbk.metadata["organism"] = result.organism
-            new_gbk.metadata["taxonomy"] = result.taxonomy
-            new_gbk.metadata["description"] = result.description
-            gbk_dict[result.id] = new_gbk
+            gbk_hash_to_id[result.hash] = result.id
 
-        # load GBK regions. This will also populate all record levels below region
-        # e.g. candidate cluster, protocore if they exist
+        bgc_record_table = DB.metadata.tables["bgc_record"]
+        select_query = select(
+            bgc_record_table.c.id,
+            bgc_record_table.c.gbk_id,
+            bgc_record_table.c.record_number,
+            bgc_record_table.c.record_type,
+        )
 
-        temp_gbk_id_table = create_temp_gbk_id_table(list(gbk_dict.keys()))
+        cursor_result = DB.execute(select_query)
 
-        Region.load_all(gbk_dict, temp_gbk_id_table)
+        record_gbk_id_number_type_to_id = {}
 
-        CDS.load_all(gbk_dict, temp_gbk_id_table)
+        for result in cursor_result.all():
+            record_number = result.record_number
+            # special case for merged records
+            if type(record_number) is str:
+                # take the lower number as a record number
+                record_number = int(min(record_number.split("_")))
 
-        return list(gbk_dict.values())
+            record_gbk_id_number_type_to_id[
+                (result.gbk_id, record_number, result.record_type)
+            ] = result.id
+
+        progress = tqdm.tqdm(input_gbks, desc="Adding db ids to GBK data", unit="gbk")
+
+        # oh god
+        for input_gbk in progress:
+            # set db ids for gbk and all records
+            input_gbk._db_id = gbk_hash_to_id[input_gbk.hash]
+
+            input_gbk.region._db_id = record_gbk_id_number_type_to_id[
+                (input_gbk._db_id, input_gbk.region.number, "region")
+            ]
+
+            for cc_number, cand_cluster in input_gbk.region.cand_clusters.items():
+                cand_cluster._db_id = record_gbk_id_number_type_to_id[
+                    (input_gbk._db_id, cand_cluster.number, "cand_cluster")
+                ]
+
+                for pc_number, proto_cluster in cand_cluster.proto_clusters.items():
+                    proto_cluster._db_id = record_gbk_id_number_type_to_id[
+                        (input_gbk._db_id, proto_cluster.number, "protocluster")
+                    ]
+
+                    for core_number, proto_core in proto_cluster.proto_core.items():
+                        proto_core._db_id = record_gbk_id_number_type_to_id[
+                            (input_gbk._db_id, proto_core.number, "proto_core")
+                        ]
+
+        progress.close()
+
+        return input_gbks
 
     @staticmethod
     def get_as_version(gbk_seq_record: SeqRecord) -> str:
