@@ -324,7 +324,7 @@ class GBK:
         """Load all GBK, CDS and BGCRecord objects from the database
 
         Returns:
-            list[GBK]: _description_
+            list[GBK]: A list of GBKs loaded from the database
         """
 
         if not DB.metadata:
@@ -372,13 +372,11 @@ class GBK:
         """Load a list of GBK objects from the database
 
         Args:
-            gbk_ids (list[int]): list of ids of gbk to load
+            input_gbks (list[int]): list of ids of gbk to load
 
         Returns:
             list[GBK]: loaded GBK objects
         """
-
-        temp_hash_table = create_temp_hash_table(input_gbks)
 
         if not DB.metadata:
             raise RuntimeError("DB.metadata is None")
@@ -410,7 +408,9 @@ class GBK:
 
         for result in cursor_result.all():
             record_number = result.record_number
+            # special case for merged records
             if type(record_number) is str:
+                # take the lower number as a record number
                 record_number = int(min(record_number.split("_")))
 
             record_gbk_id_number_type_to_id[
@@ -446,42 +446,6 @@ class GBK:
         progress.close()
 
         return input_gbks
-
-        # select_query = (
-        #     gbk_table.select()
-        #     .add_columns(
-        #         gbk_table.c.id,
-        #         gbk_table.c.hash,
-        #         gbk_table.c.path,
-        #         gbk_table.c.nt_seq,
-        #         gbk_table.c.organism,
-        #         gbk_table.c.taxonomy,
-        #         gbk_table.c.description,
-        #     )
-        #     .where(gbk_table.c.hash.in_(select(temp_hash_table.c.hash)))
-        #     .compile()
-        # )
-
-        # gbk_dict = {}
-        # for result in cursor_result.all():
-        #     new_gbk = GBK(Path(result.path), result.hash, "")
-        #     new_gbk._db_id = result.id
-        #     new_gbk.nt_seq = result.nt_seq
-        #     new_gbk.metadata["organism"] = result.organism
-        #     new_gbk.metadata["taxonomy"] = result.taxonomy
-        #     new_gbk.metadata["description"] = result.description
-        #     gbk_dict[result.id] = new_gbk
-
-        # load GBK regions. This will also populate all record levels below region
-        # e.g. candidate cluster, protocore if they exist
-
-        # temp_gbk_id_table = create_temp_gbk_id_table(list(gbk_dict.keys()))
-
-        # Region.load_all(gbk_dict, temp_gbk_id_table)
-
-        # CDS.load_all(gbk_dict, temp_gbk_id_table)
-
-        # return list(gbk_dict.values())
 
     @staticmethod
     def get_as_version(gbk_seq_record: SeqRecord) -> str:
@@ -827,15 +791,15 @@ class GBK:
                     for number in cand_cluster.proto_clusters.keys()
                 ]
                 merged_protocluster = MergedProtoCluster.merge(protoclusters)
-                merged_tmp_proto_clusters[merged_protocluster.number] = (
-                    merged_protocluster
-                )
+                merged_tmp_proto_clusters[
+                    merged_protocluster.number
+                ] = merged_protocluster
 
                 # update the protocluster old:new ids for the merged protoclusters of this cand_cluster
                 for proto_cluster_num in cand_cluster.proto_clusters.keys():
-                    merged_protocluster_ids[proto_cluster_num] = (
-                        merged_protocluster.number
-                    )
+                    merged_protocluster_ids[
+                        proto_cluster_num
+                    ] = merged_protocluster.number
 
         # now we build a new version of the tmp_proto_clusters dict that contains the merged protoclusters
         # as well as protoclusters which did not need merging, with updated unique IDs/numbers
@@ -849,9 +813,9 @@ class GBK:
                     # this protocluster has been merged, so we need to add it to
                     # the dict with its new protocluster number
                     new_proto_cluster_num = merged_protocluster_ids[proto_cluster_num]
-                    updated_tmp_proto_clusters[new_proto_cluster_num] = (
-                        merged_tmp_proto_clusters[new_proto_cluster_num]
-                    )
+                    updated_tmp_proto_clusters[
+                        new_proto_cluster_num
+                    ] = merged_tmp_proto_clusters[new_proto_cluster_num]
                     updated_proto_cluster_dict[new_proto_cluster_num] = None
                 else:
                     # protoclusters which have not been merged are added to the dict as is

@@ -149,7 +149,6 @@ class HSP:
             gbk_list (list[GBK]): List of GBK objects to populate with HSP objects from
             the database
         """
-        # cds_dict = {cds._db_id: cds for cds in cds_list}
 
         if not DB.metadata:
             raise RuntimeError("DB.metadata is None")
@@ -171,6 +170,7 @@ class HSP:
             cds_orf_to_id[(result.gbk_id, result.orf_num)] = result.id
             cds_id_to_hsp[result.id] = []
 
+        # TODO: filter based on gbk_list
         hsp_query = (
             hsp_table.select()
             .add_columns(
