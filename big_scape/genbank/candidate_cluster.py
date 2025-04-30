@@ -76,6 +76,9 @@ class CandidateCluster(BGCRecord):
         """
 
         if proto_cluster.number not in self.proto_clusters:
+            logging.error(
+                "Protocluster number does not match the number in the parent candidate cluster"
+            )
             raise InvalidGBKRegionChildError()
 
         self.proto_clusters[proto_cluster.number] = proto_cluster

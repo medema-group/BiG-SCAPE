@@ -499,7 +499,7 @@
                 $("#bigscape-runs").append("<option value='" + val + "'>" + inc + data["label"] + "_c" + cutoff + "</option>");
             }
             // set default loaded run to the most recent finished run
-            if (!inc) {
+            if (inc == "") {
                 $("#bigscape-runs").val(val)
             }
         }

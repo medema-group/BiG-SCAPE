@@ -5,6 +5,7 @@
 ![Test workflow](https://github.com/medema-group/BiG-SCAPE/actions/workflows/deploy-docker.yml/badge.svg)
 ![Coverage](https://medema-group.github.io/BiG-SCAPE/badges/coverage.svg)
 ![Pylint](https://medema-group.github.io/BiG-SCAPE/badges/pylint.svg)
+[![fair-software.eu](https://img.shields.io/badge/fair--software.eu-%E2%97%8F%20%20%E2%97%8F%20%20%E2%97%8F%20%20%E2%97%8B%20%20%E2%97%8B-orange)](https://fair-software.eu)
 
 ## _Notes:<br>BiG-SCAPE 2.0 is still in beta. Please submit an issue if you find anything wrong with this release!<br>BiG-SCAPE 2.0 features several updates to input validation and reference usage. We encourage both experienced BiG-SCAPE 1 users as well as new BiG-SCAPE users to read the updated [documentation](https://github.com/medema-group/BiG-SCAPE/wiki)._
 
