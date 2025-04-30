@@ -182,3 +182,7 @@ LEGACY_ANTISMASH_CLASSES:
       - NAGGN
       - halogenated
       - pyrrolidine
+
+# MEMORY CONSERVATION
+# If set to true, the program will use less memory at the cost of speed.
+CONSERVE_MEMORY: false

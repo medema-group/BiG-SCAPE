@@ -136,15 +136,6 @@ def common_cluster_query(fn):
             ),
         ),
         click.option(
-            "--conserve-memory",
-            is_flag=True,
-            type=bool,
-            help=(
-                "Use less memory by forcing subprocesses to be created using spawn instead of fork."
-                "This is considerably slower, but can be useful for large runs or limited memory."
-            ),
-        ),
-        click.option(
             "--input-mode",
             default="recursive",
             callback=validate_input_mode,

@@ -1,10 +1,12 @@
 """Click parameters for the BiG-SCAPE Cluster CLI command"""
 
 # from python
+import logging
 import multiprocessing
 import click
 
 # from other modules
+from big_scape.cli.config import BigscapeConfig
 from big_scape.run_bigscape import run_bigscape
 from big_scape.diagnostics import init_logger, init_logger_file
 
@@ -142,10 +144,6 @@ def cluster(ctx, *args, **kwargs):
     # TODO: remove when reimplementing disk-only
     ctx.obj["disk_only"] = False
 
-    # force spawn when trying to conserve memory
-    if ctx.obj["conserve_memory"]:
-        multiprocessing.set_start_method("spawn")
-
     # set start time and run label
     set_start(ctx.obj)
 
@@ -159,6 +157,14 @@ def cluster(ctx, *args, **kwargs):
     # initialize logger
     init_logger(ctx.obj)
     init_logger_file(ctx.obj)
+
+    # parse config file
+    logging.info("Using config file %s", ctx.obj["config_file_path"])
+    BigscapeConfig.parse_config(ctx.obj["config_file_path"], ctx.obj["log_path"])
+
+    # force spawn when trying to conserve memory
+    if BigscapeConfig.CONSERVE_MEMORY:
+        multiprocessing.set_start_method("spawn")
 
     # run BiG-SCAPE cluster
     run_bigscape(ctx.obj)

@@ -1,4 +1,4 @@
-"""Contains config class and method to parse config file """
+"""Contains config class and method to parse config file"""
 
 # from python
 import yaml
@@ -210,6 +210,9 @@ class BigscapeConfig:
             if isinstance(classes, list):
                 legacy_classes[group] = set(classes)
         BigscapeConfig.LEGACY_ANTISMASH_CLASSES = legacy_classes
+
+        # MEMORY CONSERVATION
+        BigscapeConfig.CONSERVE_MEMORY = config["CONSERVE_MEMORY"]
 
         # store relevant hash
         BigscapeConfig.generate_relevant_hash()

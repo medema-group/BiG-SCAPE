@@ -18,8 +18,6 @@ from typing import Generator, Callable, Optional, TypeVar, Union
 from math import ceil
 from pathlib import Path
 
-import click
-
 from .record_pair import RecordPair
 
 # from dependencies
@@ -143,8 +141,7 @@ def generate_edges(
     # for conserve_memory, this is because we are using the 'spawn' method of creating
     # processes, which does not copy the memory of the parent process
     # for mac, I have no IDEA why this is necessary. I don't want to think about it
-    click_context = click.get_current_context().obj
-    if platform.system() == "Darwin" or click_context["conserve_memory"]:
+    if platform.system() == "Darwin" or BigscapeConfig.CONSERVE_MEMORY:
         logging.debug(
             "Running on %s: sending full records",
             platform.system(),

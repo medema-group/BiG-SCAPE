@@ -12,7 +12,6 @@ from datetime import datetime
 from pathlib import Path
 
 # from other modules
-from big_scape.cli.config import BigscapeConfig
 from big_scape.hmm import HMMer, run_hmmscan, run_hmmalign
 from big_scape.diagnostics import Profiler
 from big_scape.output import (
@@ -64,10 +63,6 @@ def run_bigscape(run: dict) -> None:
     bigscape_dir = Path(os.path.dirname(os.path.abspath(__file__)))
 
     main_pid = os.getpid()
-
-    # parse config file
-    logging.info("Using config file %s", run["config_file_path"])
-    BigscapeConfig.parse_config(run["config_file_path"], run["log_path"])
 
     # capture ctrl-c for database saving and other cleanup
     def signal_handler(sig, frame):
