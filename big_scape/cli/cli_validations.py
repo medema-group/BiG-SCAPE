@@ -111,7 +111,9 @@ def validate_output_dir(ctx, param, output_dir) -> Path:
                 f"Output directory {output_dir} does not exist, and parent directory neither. Please create either."
             )
 
-    return output_dir
+    abs_dir = Path(os.path.abspath(output_dir))
+
+    return abs_dir
 
 
 def validate_output_paths(ctx) -> None:

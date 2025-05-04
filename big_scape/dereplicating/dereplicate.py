@@ -16,7 +16,11 @@ from big_scape.dereplicating.input_data_loading import (
 import big_scape.enums as bs_enums
 from big_scape.errors import InvalidGBKError
 from big_scape.dereplicating.gbk_components.gbk import GBK
-from big_scape.dereplicating.gbk_components import CDS
+from big_scape.dereplicating.sourmash_utilities import (
+    make_sourmash_input,
+    run_sourmash_branchwater,
+    parse_sourmash_results,
+)
 
 
 def run_bigscape_dereplicate(run: dict) -> None:
@@ -61,20 +65,29 @@ def run_bigscape_dereplicate(run: dict) -> None:
     logging.info("Succefully loaded %d input GBKs", len(gbk_list))
 
     # concatenate CDS aa sequences
-    for gbk in gbk_list:
-        CDS.concatenate_cds(gbk)
+    # for gbk in gbk_list:
+    #     CDS.concatenate_cds(gbk)
 
-    # (write CDS fastas ?)
+    # write CDS fastas
+    # NOTE: this is currently being implemented for testing sourmash
+    # (API, cmdline, branchwater plugin) and might be removed in final version
 
-    # run (sour)mash
+    sourmash_dir, cds_fasta_dir, manysketch_csv_path = make_sourmash_input(gbk_list, run)
+
+    # run sourmash branchwater plugin in cmdline
+    sourmash_pairwise_csv_path = run_sourmash_branchwater(run, sourmash_dir, cds_fasta_dir, manysketch_csv_path)
 
     # parse (sour)mash results
+    #edges = parse_sourmash_results(sourmash_pairwise_csv_path)
 
     # generate connected components
-
     # find cluster center
 
-    # generate output
+    # network = generate_network(edges)
+
+    # write output
+
+    # write_output(network, run)
 
     time_elapsed = datetime.now() - start_time
 
