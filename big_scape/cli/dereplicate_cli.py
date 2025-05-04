@@ -20,6 +20,15 @@ from .cli_validations import (
 @click.command()
 @common_all
 @common_cluster_query_dereplicate
+@click.option(
+    "--cutoff",
+    type=click.FloatRange(min=0.0, max=1.0),
+    default=0.8,
+    help=(
+        "Similarity threshold for sourmash distances. Only pairs with a"
+        "similarity equal or above this value will be considered for clustering."
+    ),
+)
 @click.pass_context
 def dereplicate(ctx, *args, **kwargs):
     """

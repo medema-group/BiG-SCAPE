@@ -7,6 +7,7 @@ from .sourmash_utilities import (
     run_sourmash_branchwater,
     parse_sourmash_results,
 )
+from .networking import Edge, Network
 
 __all__ = [
     "load_input_data",
@@ -17,4 +18,6 @@ __all__ = [
     "make_sourmash_input",
     "run_sourmash_branchwater",
     "parse_sourmash_results",
+    "Edge",
+    "Network",
 ]
