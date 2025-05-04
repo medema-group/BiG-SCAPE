@@ -145,7 +145,7 @@ def write_concat_cds_fasta(gbk: GBK, gbk_name: str, fasta_file_path: Path) -> No
         return None
 
     seq = "\n".join(
-        str(concat_cds)[i : i + 80] for i in range(0, len(str(concat_cds)), 80)
+        str(concat_cds)[i: i + 80] for i in range(0, len(str(concat_cds)), 80)
     )
 
     with open(fasta_file_path, "w") as fasta_file:
@@ -164,7 +164,7 @@ def run_sourmash_branchwater(
     """Run sourmash branchwater plugin
 
     Args:
-        run_dict (dict): run dictionary 
+        run_dict (dict): run dictionary
         sourmash_dir (Path): path to the sourmash directory
         CDS_fastas_dir (Path): path to the CDS fasta directory
         manysketch_csv_path (Path): path to the manysketch csv file

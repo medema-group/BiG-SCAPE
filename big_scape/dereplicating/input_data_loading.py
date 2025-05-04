@@ -8,18 +8,51 @@ import glob
 from collections.abc import Iterator
 import hashlib
 from typing import Optional
+import multiprocessing
 
 # from dependencies
 from Bio import SeqIO
 from Bio.SeqRecord import SeqRecord
 
 # from other modules
+from big_scape.errors import InvalidGBKError
 import big_scape.enums as bs_enums
 from big_scape.file_input.load_files import filter_files
 from big_scape.dereplicating.gbk_component_parsing import get_parser_functions, validate_cds_component
 from big_scape.dereplicating.gbk_components.gbk import GBK
 from big_scape.dereplicating.gbk_components import CDS
 from big_scape.cli.config import BigscapeConfig
+
+
+def load_input_data(run: dict) -> list[Path]:
+
+    input_gbk_files = load_input_folder(run)
+
+    logging.info("Loading %d input GBKs", len(input_gbk_files))
+
+    gbk_data = parse_gbk_files(input_gbk_files, bs_enums.SOURCE_TYPE.QUERY)
+
+    # parse input GBKs
+
+    cores = run["cores"]
+    if cores is None:
+        cores = multiprocessing.cpu_count()
+
+    pool = multiprocessing.Pool(cores)
+
+    data_package = map(lambda e: (e, run), gbk_data)
+
+    gbk_list = pool.starmap(gbk_factory, data_package)
+
+    if any(gbk is None for gbk in gbk_list):
+        raise InvalidGBKError()
+
+    # apply length constraints (in this workflow we ommit
+    # duplicate logging since sourmash will handle these)
+    gbk_list = GBK.length_filter(gbk_list)
+    logging.info("Succefully loaded %d input GBKs", len(gbk_list))
+
+    return gbk_list
 
 
 def load_input_folder(run: dict) -> list[Path]:
