@@ -11,6 +11,7 @@ from subprocess import CalledProcessError
 from big_scape.dereplicating.gbk_components.gbk import GBK
 from big_scape.dereplicating.gbk_components.cds import CDS
 import big_scape.enums as bs_enums
+from big_scape.dereplicating.networking import Edge
 
 
 def make_sourmash_input(gbk_list: list[GBK], run: dict) -> Path:
@@ -27,9 +28,6 @@ def make_sourmash_input(gbk_list: list[GBK], run: dict) -> Path:
     if not output_dir.is_dir():
         output_dir.mkdir(parents=False, exist_ok=False)
 
-    # TODO: consider desired behaviour if sourmash_dir already exists
-    # re-write files? crash the run? something in between?
-
     sourmash_dir: Path = Path(os.path.join(output_dir, "sourmash"))
 
     # crash the run if sourmash_dir already exists
@@ -38,9 +36,11 @@ def make_sourmash_input(gbk_list: list[GBK], run: dict) -> Path:
             "Sourmash output folder %s already exists, exiting.",
             sourmash_dir,
         )
-        raise FileExistsError(
-            f"Sourmash output folder {sourmash_dir} already exists, exiting."
-        )
+        # TODO: consider desired behaviour if sourmash_dir already exists
+        # re-write files? crash the run? something in between?
+        # raise FileExistsError(
+        #     f"Sourmash output folder {sourmash_dir} already exists, exiting."
+        # )
 
     else:
         sourmash_dir.mkdir(parents=False, exist_ok=False)
@@ -315,5 +315,33 @@ def sourmash_compare(
     return pairwise_file_path
 
 
-def parse_sourmash_results(pairwise_file_path: Path) -> None:
-    pass
+def parse_sourmash_results(pairwise_file_path: Path, cutoff: float) -> None:
+    """Parse the sourmash pairwise results, and return a list of edges
+
+    Args:
+        pairwise_file_path (Path): path to the sourmash pairwise file
+        cutoff (float): jaccard similarity cutoff for edges
+    Returns:
+        edges (list[Edge]): list of edges
+    """
+
+    if not pairwise_file_path.is_file():
+        logging.error("Sourmash pairwise file %s does not exist", pairwise_file_path)
+        raise FileNotFoundError()
+
+    edges = []
+
+    with open(pairwise_file_path, "r") as pairwise_file:
+        for line in pairwise_file:
+            if line.startswith("query"):
+                continue
+
+            nodeA, _, nodeB, _, _, _, distance, _, _, _, _ = line.strip().split(",")
+            edge = Edge(nodeA, nodeB, float(distance))
+            if edge.jaccard_similarity >= cutoff:
+                edges.append(edge)
+
+    logging.info("Parsed %d edges from sourmash results", len(edges))
+
+    return edges
+

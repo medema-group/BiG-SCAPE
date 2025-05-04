@@ -14,6 +14,7 @@ from big_scape.dereplicating.sourmash_utilities import (
     run_sourmash_branchwater,
     parse_sourmash_results,
 )
+from big_scape.dereplicating.networking import Network
 
 
 def run_bigscape_dereplicate(run: dict) -> None:
@@ -38,10 +39,11 @@ def run_bigscape_dereplicate(run: dict) -> None:
     sourmash_pairwise_csv_path = run_sourmash_branchwater(run, sourmash_dir, cds_fasta_dir, manysketch_csv_path)
 
     # parse (sour)mash results
-    edges = parse_sourmash_results(sourmash_pairwise_csv_path)
+    edges = parse_sourmash_results(sourmash_pairwise_csv_path, run['cutoff'])
 
     # generate connected components & find cluster center
-    # network = generate_network(edges)
+    network = Network(edges)
+    print(network)
 
     # write output
     # write_output(network, run)
