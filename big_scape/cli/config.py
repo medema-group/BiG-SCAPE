@@ -155,6 +155,9 @@ class BigscapeConfig:
         },
     }
 
+    # MEMORY CONSERVATION
+    CONSERVE_MEMORY: bool = False
+
     @staticmethod
     def parse_config(config_file_path: Path, log_path: Optional[Path] = None) -> None:
         """parses config file and writes a config.log if log_path is given
