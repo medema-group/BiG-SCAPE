@@ -69,7 +69,7 @@ class Network:
         self.nodes: set = sorted(
             set(edge.nodeA for edge in edges).union(edge.nodeB for edge in edges)
         )
-        self.connected_components: dict[str:set[str]] = self.build_network()
+        self.connected_components: dict[str: set[str]] = self.build_network()
 
     def build_network(self) -> None:
         """Build the network from the edges and generate the connected components"""
@@ -215,8 +215,8 @@ class Network:
 
     def format_matrix(self, matrix: np.ndarray) -> str:
         """
-        Format the distance matrix to be a string representation.
-        We'll keep it compact by formatting the numbers to 2 decimal places.
+        Format the distance matrix to be a string representation,
+        formatting the numbers to 2 decimal places.
         """
         matrix_str = ""
         for row in matrix:
