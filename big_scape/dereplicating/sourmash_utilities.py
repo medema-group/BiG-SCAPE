@@ -160,7 +160,7 @@ def write_concat_cds_fasta(gbk: GBK, gbk_name: str, fasta_file_path: Path) -> No
 
 def run_sourmash_branchwater(
     run_dict: dict, sourmash_dir: Path, CDS_fastas_dir: Path, manysketch_csv_path: Path
-) -> None:
+) -> Path:
     """Run sourmash branchwater plugin
 
     Args:
@@ -185,7 +185,7 @@ def run_sourmash_branchwater(
 
 def sourmash_sketch(
     run_dict: dict, sourmash_dir: Path, CDS_fastas_dir: Path, manysketch_csv_path: Path
-) -> None:
+) -> Path:
     """Run sourmash sketch
 
     Args:

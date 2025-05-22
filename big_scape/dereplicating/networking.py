@@ -161,7 +161,7 @@ class Network:
         Args:
             parent (str): The parent node to find the medoid for
         Returns:
-            str: The medoid of the connected component of the given parent node
+            defaultdict: The medoid of the connected component: connected component
         """
 
         cc_nodes = sorted(connected_components[parent])

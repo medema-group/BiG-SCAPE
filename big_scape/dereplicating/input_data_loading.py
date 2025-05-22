@@ -50,7 +50,7 @@ def load_input_data(run: dict) -> list[Path]:
     # apply length constraints (in this workflow we ommit
     # duplicate logging since sourmash will handle these)
     gbk_list = GBK.length_filter(gbk_list)
-    logging.info("Succefully loaded %d input GBKs", len(gbk_list))
+    logging.info("Successfully loaded %d input GBKs", len(gbk_list))
 
     return gbk_list
 
