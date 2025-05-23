@@ -242,6 +242,7 @@ class BigscapeConfig:
             BigscapeConfig.EXTEND_GAP_SCORE,
             BigscapeConfig.EXTEND_MAX_MATCH_PERC,
             BigscapeConfig.ANCHOR_DOMAINS,
+            BigscapeConfig.CONSERVE_MEMORY,
         )
         BigscapeConfig.HASH = hashlib.sha256(
             bytearray(str(content), "utf-8")
