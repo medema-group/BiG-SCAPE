@@ -377,8 +377,6 @@ def write_record_annotations_file(run, cutoff, all_bgc_records) -> None:
         .distinct()
     )
 
-    record_data = DB.execute(select_statement).fetchall()
-
     with open(record_annotations_path, "w") as record_annotations_file:
         header = "\t".join(
             [
@@ -395,32 +393,40 @@ def write_record_annotations_file(run, cutoff, all_bgc_records) -> None:
         )
         record_annotations_file.write(header + "\n")
 
-        for record in record_data:
-            (
-                gbk_path,
-                organism,
-                taxonomy,
-                description,
-                rec_id,
-                record_number,
-                record_type,
-                product,
-            ) = record
+        cursor = DB.execute(select_statement)
+        cursor.yield_per(10000)
 
-            row = "\t".join(
-                [
-                    f"{Path(gbk_path).name}_{record_type}_{record_number}",
-                    Path(gbk_path).stem,
-                    record_type,
-                    str(record_number),
-                    product,
-                    record_categories[rec_id],
+        with tqdm(
+            total=cursor.rowcount, desc="Writing record annotations file"
+        ) as progress:
+            for record in cursor:
+                (
+                    gbk_path,
                     organism,
                     taxonomy,
                     description,
-                ]
-            )
-            record_annotations_file.write(row + "\n")
+                    rec_id,
+                    record_number,
+                    record_type,
+                    product,
+                ) = record
+
+                row = "\t".join(
+                    [
+                        f"{Path(gbk_path).name}_{record_type}_{record_number}",
+                        Path(gbk_path).stem,
+                        record_type,
+                        str(record_number),
+                        product,
+                        record_categories[rec_id],
+                        organism,
+                        taxonomy,
+                        description,
+                    ]
+                )
+                record_annotations_file.write(row + "\n")
+
+                progress.update(1)
 
     return None
 
@@ -699,7 +705,6 @@ def write_network_file(
                 alignment_mode,
                 extend_strategy,
             ) in cursor:
-                progress.update(1)
                 row = "\t".join(
                     [
                         f"{Path(gbk_path_a).name}_{record_type_a}_{record_number_a}",
@@ -723,6 +728,8 @@ def write_network_file(
                 )
 
                 network_file.write(row + "\n")
+
+                progress.update(1)
 
 
 def write_topolink_file(bgc_records: list[BGCRecord], output_path: Path) -> None:
