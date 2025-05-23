@@ -12,7 +12,7 @@ from sqlalchemy import select, alias
 from typing import Optional
 from itertools import combinations
 
-import tqdm
+from tqdm import tqdm
 
 # from other modules
 from big_scape.comparison.binning import create_temp_record_id_table
@@ -258,6 +258,8 @@ def legacy_generate_bin_output(
         network (BSNetwork): the network object for the pair_generator
     """
 
+    logging.info(f"Generating output for {pair_generator.label} at cutoff {cutoff}")
+
     click_context = click.get_current_context(silent=True)
 
     if click_context and click_context.obj["db_only_output"]:
@@ -396,9 +398,7 @@ def write_record_annotations_file(run, cutoff, all_bgc_records) -> None:
         cursor = DB.execute(select_statement)
         cursor.yield_per(10000)
 
-        with tqdm(
-            total=cursor.rowcount, desc="Writing record annotations file"
-        ) as progress:
+        with tqdm(total=-1, desc="Writing record annotations file") as progress:
             for record in cursor:
                 (
                     gbk_path,
@@ -486,28 +486,32 @@ def write_clustering_file(run, cutoff, pair_generator) -> None:
         .order_by(rec_fam_table.c.family_id)
     )
 
-    record_data = DB.execute(select_statement).fetchall()
-
     with open(clustering_file_path, "w") as clustering_file:
         header = "\t".join(
             ["Record", "GBK", "Record_Type", "Record_Number", "CC", "Family"]
         )
         clustering_file.write(header + "\n")
 
-        for record in record_data:
-            gbk_path, record_type, record_number, cc_number, family = record
+        cursor = DB.execute(select_statement)
+        cursor.yield_per(10000)
 
-            row = "\t".join(
-                [
-                    f"{Path(gbk_path).name}_{record_type}_{record_number}",
-                    Path(gbk_path).stem,
-                    record_type,
-                    str(record_number),
-                    str(cc_number),
-                    f"FAM_{family:0>5}",
-                ]
-            )
-            clustering_file.write(row + "\n")
+        with tqdm(total=-1, desc="Writing clustering file") as progress:
+            for record in cursor:
+                gbk_path, record_type, record_number, cc_number, family = record
+
+                row = "\t".join(
+                    [
+                        f"{Path(gbk_path).name}_{record_type}_{record_number}",
+                        Path(gbk_path).stem,
+                        record_type,
+                        str(record_number),
+                        str(cc_number),
+                        f"FAM_{family:0>5}",
+                    ]
+                )
+                clustering_file.write(row + "\n")
+
+                progress.update(1)
 
     return None
 
@@ -685,7 +689,7 @@ def write_network_file(
         cursor = DB.execute(select_statement)
         cursor.yield_per(10000)
 
-        with tqdm(total=cursor.rowcount, desc="Writing network file") as progress:
+        with tqdm(total=-1, desc="Writing network file") as progress:
             for (
                 gbk_path_a,
                 record_type_a,
