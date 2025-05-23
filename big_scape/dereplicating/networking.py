@@ -21,6 +21,21 @@ class Edge:
     def __repr__(self) -> str:
         return f"Edge({self.nodeA}, {self.nodeB}, {self.jaccard_similarity})"
 
+    def __eq__(self, value):
+        """Check if two edges are equal, ignoring the order of nodeA and nodeB"""
+        # two edges are equal if they have the same nodes, regardless of the order
+        # and if they have the same jaccard similarity
+        # TODO: is this fine?
+
+        if not isinstance(value, Edge):
+            return False
+        if self.jaccard_similarity != value.jaccard_similarity:
+            return False
+        return (
+            (self.nodeA == value.nodeA and self.nodeB == value.nodeB)
+            or (self.nodeA == value.nodeB and self.nodeB == value.nodeA)
+        )
+
 
 class UnionFind:
     """Class to represent a union-find data structure for connected components"""

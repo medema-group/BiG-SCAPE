@@ -10,6 +10,7 @@ import big_scape.enums as bs_enums
 from big_scape.dereplicating.gbk_component_parsing import validate_cds_component
 from big_scape.cli.config import BigscapeConfig
 
+
 class TestGBKComponent(TestCase):
     """Test class for the GBK component"""
 

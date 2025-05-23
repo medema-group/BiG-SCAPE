@@ -85,7 +85,8 @@ def get_fasta_names_paths(gbk: GBK, run: dict, sourmash_dir: Path) -> tuple:
     # get path from input dir onwards
     gbk_path = gbk.path.relative_to(input_dir)
 
-    # gbk name will be the path from input dir onwards
+    # TODO: consider if this is the best way to name the fasta files
+    # gbk name will be: path from input dir onwards
     # and the hash of the gbk
     gbk_name = ".".join(gbk_path.parts)
 
