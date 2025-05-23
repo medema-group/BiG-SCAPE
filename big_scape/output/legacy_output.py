@@ -398,7 +398,9 @@ def write_record_annotations_file(run, cutoff, all_bgc_records) -> None:
         cursor = DB.execute(select_statement)
         cursor.yield_per(10000)
 
-        with tqdm(total=-1, desc="Writing record annotations file") as progress:
+        with tqdm(
+            total=-1, desc="Writing record annotations file", unit="lines"
+        ) as progress:
             for record in cursor:
                 (
                     gbk_path,
@@ -495,7 +497,7 @@ def write_clustering_file(run, cutoff, pair_generator) -> None:
         cursor = DB.execute(select_statement)
         cursor.yield_per(10000)
 
-        with tqdm(total=-1, desc="Writing clustering file") as progress:
+        with tqdm(total=-1, desc="Writing clustering file", unit="lines") as progress:
             for record in cursor:
                 gbk_path, record_type, record_number, cc_number, family = record
 
@@ -689,7 +691,7 @@ def write_network_file(
         cursor = DB.execute(select_statement)
         cursor.yield_per(10000)
 
-        with tqdm(total=-1, desc="Writing network file") as progress:
+        with tqdm(total=-1, desc="Writing network file", unit="lines") as progress:
             for (
                 gbk_path_a,
                 record_type_a,
