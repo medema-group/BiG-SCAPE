@@ -391,7 +391,7 @@ class DB:
             .values(
                 label=run["label"],
                 start_time=str(run["start_time"])[:-7],
-                mode=run["mode"],
+                mode=str(run["mode"]),
                 input_dir=str(run["input_dir"].name) if run["input_dir"] else "None",
                 output_dir=str(run["output_dir"].name) if run["output_dir"] else "None",
                 reference_dir=(

@@ -51,14 +51,14 @@ def validate_not_empty_dir(ctx, param, dir) -> Path:
     """Validates that a given directory is not empty.
     Raises a BadParameter"""
 
-    abs_dir = Path(os.path.abspath(dir))
-
-    if abs_dir and abs_dir.exists():
+    if dir and dir.exists():
+        abs_dir = Path(os.path.abspath(dir))
         contents = os.listdir(abs_dir)
         if len(contents) == 0:
             logging.error(f"{abs_dir}/ directory is empty!")
             raise click.BadParameter(f"{abs_dir}/ directory is empty!")
-    return abs_dir
+        return abs_dir
+    return dir
 
 
 def validate_input_mode(ctx, param, input_mode) -> Optional[bs_enums.INPUT_MODE]:
