@@ -1,4 +1,4 @@
-"""Contains functions for running pyhmmer's hmmscan workflow."""
+"""Contains functions for running pyhmmer's hmmsearch workflow."""
 
 # from python
 from datetime import datetime
@@ -14,8 +14,8 @@ from big_scape.hmm import HMMer, HSP
 import big_scape.data as bs_data
 
 
-def run_hmmscan(run: dict[str, Any], gbks: list[Any], start_time: Any) -> None:
-    """Runs the hmmscan workflow
+def run_hmmsearch(run: dict[str, Any], gbks: list[Any], start_time: Any) -> None:
+    """Runs the hmmsearch workflow
 
     Args:
         run (dict): run parameters
@@ -44,7 +44,7 @@ def run_hmmscan(run: dict[str, Any], gbks: list[Any], start_time: Any) -> None:
             platform.system(),
             run["cores"],
         )
-        with tqdm.tqdm(unit="CDS", total=len(HMMer.profiles), desc="HMMSCAN") as t:
+        with tqdm.tqdm(unit="CDS", total=len(HMMer.profiles), desc="hmmsearch") as t:
             HMMer.hmmsearch_simple(
                 cds_to_scan,
                 domain_overlap_cutoff=BigscapeConfig.DOMAIN_OVERLAP_CUTOFF,
@@ -59,7 +59,7 @@ def run_hmmscan(run: dict[str, Any], gbks: list[Any], start_time: Any) -> None:
             run["cores"],
         )
 
-        with tqdm.tqdm(unit="CDS", total=len(cds_to_scan), desc="HMMSCAN") as t:
+        with tqdm.tqdm(unit="CDS", total=len(cds_to_scan), desc="hmmsearch") as t:
 
             def callback(tasks_done):
                 t.update(tasks_done)

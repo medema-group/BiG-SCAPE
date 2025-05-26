@@ -47,7 +47,7 @@ def add_mock_hsp_alignment_hsp(hsp: bs_hmm.HSP) -> None:
     hsp.alignment = hsp_alignment
 
 
-class TestHMMScan(TestCase):
+class TestHMMSearch(TestCase):
     """Test class for hmm search/scan workflow"""
 
     def clean_db(self):
@@ -142,7 +142,7 @@ class TestHMMScan(TestCase):
         run_state = bs_data.find_minimum_task([gbk])
         self.assertEqual(run_state, bs_enums.TASK.HMM_ALIGN)
 
-    def test_hmmscan_simple_workflow_file(self):
+    def test_hmmsearch_simple_workflow_file(self):
         """Tests the entire hmm scan workflow with a file as input"""
 
         bs_data.DB.create_in_mem()
@@ -198,7 +198,7 @@ class TestHMMScan(TestCase):
         run_state = bs_data.find_minimum_task([gbk])
         self.assertEqual(run_state, bs_enums.TASK.COMPARISON)
 
-    def test_hmmscan_multiprocess_workflow_file(self):
+    def test_hmmsearch_multiprocess_workflow_file(self):
         """Tests the entire hmm scan workflow with a file as input"""
 
         bs_data.DB.create_in_mem()

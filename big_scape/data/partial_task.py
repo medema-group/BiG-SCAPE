@@ -153,7 +153,7 @@ def get_hmm_data_state() -> bs_enums.HMM_TASK:
 
 
 def get_cds_to_scan(gbks: list[GBK]) -> list[CDS]:
-    """Find which cds within a list of GBK objects need to be scanned using hmmscan
+    """Find which cds within a list of GBK objects need to be scanned using hmmsearch
 
     Args:
         gbks (list[GBK]): List of GBKs

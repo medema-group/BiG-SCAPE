@@ -1,5 +1,5 @@
 # type: ignore # mypy doesn't like pyhmmer
-"""Contains methods to press an input .hmm file into more optimal formats for hmmscan
+"""Contains methods to press an input .hmm file into more optimal formats for hmmsearch
 and hmmalign
 """
 
@@ -108,7 +108,7 @@ class HMMer:
         # create an index so we can quickly get profiles by accession
         HMMer.profile_index = gen_profile_index(HMMer.profiles)
 
-        # this pipeline is used to perform hmmscan and hmmalign in more memory efficient
+        # this pipeline is used to perform hmmsearch and hmmalign in more memory efficient
         # use cases. This pipeline functions as a wrapper for hmmsearch etc. and can be
         # used to pass arguments that you can otherwise pass to these functions
         HMMer.pipeline = Pipeline(
@@ -265,7 +265,7 @@ class HMMer:
         batch_size: Optional[int] = None,
         callback: Optional[Callable] = None,
     ) -> None:
-        """Runs hmmscan using pyhmmer in several subprocesses. Passes batches of input
+        """Runs hmmsearch using pyhmmer in several subprocesses. Passes batches of input
         cds list to the subprocesses in an attempt to optimize memory usage
 
         Args:
@@ -508,7 +508,7 @@ class HMMer:
             domain_hsp: HSP
             for hsp_idx, domain_hsp in enumerate(hsp_list):
                 # we can cut the alignment down to only the range of the domain as found
-                # in hmmscan to speed up the process
+                # in hmmsearch to speed up the process
                 # different versions of pyhmmer have a different starting offset that we may or may
                 # not need to apply.
 
