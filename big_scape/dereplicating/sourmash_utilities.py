@@ -316,14 +316,14 @@ def sourmash_compare(
     return pairwise_file_path
 
 
-def parse_sourmash_results(pairwise_file_path: Path, cutoff: float) -> None:
+def parse_sourmash_results(pairwise_file_path: Path, cutoff: float) -> set[Edge]:
     """Parse the sourmash pairwise results, and return a list of edges
 
     Args:
         pairwise_file_path (Path): path to the sourmash pairwise file
         cutoff (float): jaccard similarity cutoff for edges
     Returns:
-        edges (list[Edge]): list of edges
+        edges (set[Edge]): list of edges
     """
 
     if not pairwise_file_path.is_file():
@@ -338,11 +338,14 @@ def parse_sourmash_results(pairwise_file_path: Path, cutoff: float) -> None:
                 continue
 
             nodeA, _, nodeB, _, _, _, distance, _, _, _, _ = line.strip().split(",")
+            if nodeA == nodeB:
+                continue
             edge = Edge(nodeA, nodeB, float(distance))
             if edge.jaccard_similarity >= cutoff:
                 edges.append(edge)
 
     logging.info("Parsed %d edges from sourmash results", len(edges))
 
+    edges = set(edges)  # remove duplicates
     return edges
 

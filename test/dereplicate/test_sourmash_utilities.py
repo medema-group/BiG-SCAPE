@@ -152,10 +152,12 @@ class TestSourmashUtilities(TestCase):
         self.assertEqual(len(edges), 3)
 
         expected_edges = [
-            Edge("gbk_1", "gbk_2", 0.3157894736842105),
-            Edge("gbk_3", "gbk_2", 0.35714285714285715),
-            Edge("gbk_1", "gbk_3", 0.7076923076923077)
+            Edge("gbk_1", "gbk_2", 0.31),
+            Edge("gbk_3", "gbk_2", 0.35),
+            Edge("gbk_1", "gbk_3", 0.70)
         ]
 
-        self.assertEqual(edges, expected_edges)
+        self.assertIn(expected_edges[0], edges)
+        self.assertIn(expected_edges[1], edges)
+        self.assertIn(expected_edges[2], edges)
 

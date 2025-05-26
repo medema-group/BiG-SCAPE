@@ -31,10 +31,14 @@ class Edge:
             return False
         if self.jaccard_similarity != value.jaccard_similarity:
             return False
-        return (
-            (self.nodeA == value.nodeA and self.nodeB == value.nodeB)
-            or (self.nodeA == value.nodeB and self.nodeB == value.nodeA)
-        )
+        same_nodes = {self.nodeA, self.nodeB} == {value.nodeA, value.nodeB}
+        return same_nodes
+
+    def __hash__(self):
+        """Hash function for the edge, so it can be used in sets and dicts"""
+        # we use a tuple of the nodes and the jaccard similarity as the hash
+        # Use frozenset to make the node pair order-insensitive
+        return hash((frozenset([self.nodeA, self.nodeB]), self.jaccard_similarity))
 
 
 class UnionFind:
