@@ -156,6 +156,8 @@ class BigscapeConfig:
     PROFILER_UPDATE_INTERVAL: float = 0.5
 
     # MEMORY CONSERVATION
+    # This forces linux runs to use a different method for creating subprocesses,
+    # which is more memory efficient but slower. This has no effect on Mac.
     CONSERVE_MEMORY: bool = False
 
     @staticmethod
