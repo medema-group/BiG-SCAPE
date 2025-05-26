@@ -156,8 +156,26 @@ class BigscapeConfig:
     PROFILER_UPDATE_INTERVAL: float = 0.5
 
     # MEMORY CONSERVATION
-    # This forces linux runs to use a different method for creating subprocesses,
-    # which is more memory efficient but slower. This has no effect on Mac.
+    # There are three ways of creating subprocesses of the main process in python, two of which are relevant for us:
+    # fork and spawn.
+
+    # Fork copies the entire memory of the main process to a new subprocess
+    # Spawn does not. It only loads the python stuff (modules and such).
+
+    # Fork incurs a heavy memory penalty for each process.
+    # For BiG-SCAPE, that means each core you set with the -c option, It copies THE ENTIRE MEMORY SPACE to a new
+    # process.
+    # So if you have a large dataset that takes up 10GB, and you start 6 processes, you now have 60GB or so loaded in
+    # memory. Sort of.
+
+    # Spawn doesn't. In BiG-SCAPE, we need whatever is in memory for a large chunk of our workflow. The two big
+    # players here are HMMScan and distance calculation. In these processes, packages of data need to be transferred
+    # to the subprocesses, worked on, then transfered back. Slow. Slow slow slow. Like orders of magnitude slow. But
+    # much lighter on the memory.
+
+    # Fork is what is used by default on Linux. Spawn is used on Windows (if bigscape even works there) and Mac.
+
+    # This just adds the ability to choose spawn on Linux. Good for large datasets.
     CONSERVE_MEMORY: bool = False
 
     @staticmethod
