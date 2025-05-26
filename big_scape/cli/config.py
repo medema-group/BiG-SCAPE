@@ -12,9 +12,6 @@ class BigscapeConfig:
     # static default properties
     HASH: str = ""
 
-    # PROFILER
-    PROFILER_UPDATE_INTERVAL: float = 0.5
-
     # INPUT
     MERGED_CAND_CLUSTER_TYPE: list[str] = ["chemical_hybrid", "interleaved"]
     MIN_BGC_LENGTH: int = 0
@@ -154,6 +151,9 @@ class BigscapeConfig:
             "pyrrolidine",
         },
     }
+
+    # PROFILER
+    PROFILER_UPDATE_INTERVAL: float = 0.5
 
     # MEMORY CONSERVATION
     CONSERVE_MEMORY: bool = False
