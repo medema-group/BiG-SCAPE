@@ -34,7 +34,11 @@ def run_hmmscan(run: dict[str, Any], gbks: list[Any], start_time: Any) -> None:
 
     logging.info("Scanning %d CDS", len(cds_to_scan))
 
-    if platform.system() == "Darwin":
+    # if running on Mac or conserve_memory is set, we need to send the full records
+    # for conserve_memory, this is because we are using the 'spawn' method of creating
+    # processes, which does not copy the memory of the parent process
+    # for mac, I have no IDEA why this is necessary. I don't want to think about it
+    if platform.system() == "Darwin" or BigscapeConfig.CONSERVE_MEMORY:
         logging.debug(
             "Running on %s: hmmsearch_simple with %d cores",
             platform.system(),

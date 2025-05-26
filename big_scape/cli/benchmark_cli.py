@@ -1,11 +1,13 @@
-""" Click parameters for the BiG-SCAPE Benchmark CLI command """
+"""Click parameters for the BiG-SCAPE Benchmark CLI command"""
 
 # from python
+import logging
 import click
 from pathlib import Path
 
 # from other modules
 from big_scape.benchmark import run_bigscape_benchmark
+from big_scape.cli.config import BigscapeConfig
 from big_scape.diagnostics import init_logger, init_logger_file
 
 # from this module
@@ -61,6 +63,11 @@ def benchmark(ctx, *args, **kwargs):
     # initialize logger
     init_logger(ctx.obj)
     init_logger_file(ctx.obj)
+
+    # parse config file
+    # not sure if this is needed for benchmark, but putting it here just in case
+    logging.info("Using config file %s", ctx.obj["config_file_path"])
+    BigscapeConfig.parse_config(ctx.obj["config_file_path"], ctx.obj["log_path"])
 
     # run BiG-SCAPE benchmark
     run_bigscape_benchmark(ctx.obj)
