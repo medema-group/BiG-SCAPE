@@ -103,7 +103,7 @@ class Network:
 
         rep_connected_components = {}
         # for each connected component, we need to set the medoid representative
-        # TODO: parallelize this step?
+        # TODO: parallelize this step? what's the best way to do this?
         for parent in connected_components:
             # set the medoid representative for each connected component
             self.set_medoid_representative(
