@@ -25,13 +25,13 @@ class GBK:
     """
 
     def __init__(self, path, hash, nt_length, as_version, source_type) -> None:
-        self.name: bs_enums.COMPONENTS = bs_enums.COMPONENTS.GBK
+        self.enum: bs_enums.COMPONENTS = bs_enums.COMPONENTS.GBK
         self.path: Path = path
         self.hash: str = hash
         self.nt_length: int = nt_length
         self.as_version: str = as_version
         self.source_type: bs_enums.SOURCE_TYPE = source_type
-        self.components: dict[str, list] = {}
+        self.components: dict[bs_enums.COMPONENTS, list] = {}
 
     @staticmethod
     def length_filter(gbk_list: list[GBK]) -> list[GBK]:

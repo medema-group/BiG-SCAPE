@@ -33,7 +33,7 @@ class CDS:
     def __init__(
         self, nt_start: int, nt_stop: int, strand: int, gene_kind: str, aa_sequence: str
     ) -> None:
-        self.name: bs_enums.COMPONENTS = bs_enums.COMPONENTS.CDS
+        self.enum: bs_enums.COMPONENTS = bs_enums.COMPONENTS.CDS
         self.nt_start: int = nt_start
         self.nt_stop: int = nt_stop
         self.strand: int = strand

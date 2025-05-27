@@ -28,7 +28,7 @@ def make_sourmash_input(gbk_list: list[GBK], run: dict) -> Path:
     if not output_dir.is_dir():
         output_dir.mkdir(parents=False, exist_ok=False)
 
-    sourmash_dir: Path = Path(os.path.join(output_dir, "sourmash"))
+    sourmash_dir: Path = output_dir/"sourmash"
 
     # crash the run if sourmash_dir already exists
     if sourmash_dir.is_dir():
