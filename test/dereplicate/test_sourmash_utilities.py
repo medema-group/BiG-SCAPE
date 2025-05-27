@@ -147,14 +147,31 @@ class TestSourmashUtilities(TestCase):
 
         sourmash_pairwise_csv = Path("test/test_data/sourmash_output/sourmash_branchwater_pairwise_output.csv")
 
+        # Relevant data in the CSV:
+        # none_1,none_2,jaccard_similarity
+        # gbk_1,gbk_2,0.31
+        # gbk_1,gbk_3,0.70
+        # gbk_1,gbk_4,0.12
+        # gbk_3,gbk_2,0.35
+        # gbk_3,gbk_4,0.21
+        # gbk_2,gbk_4,0.21
+        # gbk_4,gbk_4,1.0
+        # gbk_2,gbk_2,1.0
+        # gbk_3,gbk_3,1.0
+        # gbk_1,gbk_1,1.0
+
         edges = parse_sourmash_results(sourmash_pairwise_csv, 0.3)
 
-        self.assertEqual(len(edges), 3)
+        self.assertEqual(len(edges), 7)
 
         expected_edges = [
             Edge("gbk_1", "gbk_2", 0.31),
             Edge("gbk_3", "gbk_2", 0.35),
-            Edge("gbk_1", "gbk_3", 0.70)
+            Edge("gbk_1", "gbk_3", 0.70),
+            Edge("gbk_1", "gbk_1", 1.0),
+            Edge("gbk_2", "gbk_2", 1.0),
+            Edge("gbk_3", "gbk_3", 1.0),
+            Edge("gbk_4", "gbk_4", 1.0)
         ]
 
         self.assertIn(expected_edges[0], edges)

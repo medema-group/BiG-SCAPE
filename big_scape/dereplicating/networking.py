@@ -76,7 +76,7 @@ class UnionFind:
 
         # Find the roots of the sets in which elements nodeA and nodeB are located
         # and set the parent of the root of nodeA to be the root of nodeB
-        # effecltively merging the two sets
+        # effectively merging the two sets
         self.parent[self.find(nodeA)] = self.find(nodeB)
 
 
@@ -90,8 +90,13 @@ class Network:
         )
         self.connected_components: dict[str: set[str]] = self.build_network()
 
-    def build_network(self) -> None:
-        """Build the network from the edges and generate the connected components"""
+    def build_network(self) -> dict[str, set[str]]:
+        """Build the network from the edges and generate the connected components
+
+        Returns:
+            dict[str, set[str]]: dictionary of connected components, where the key is the medoid representative
+            and the value is a set of nodes in the connected component
+        """
 
         # generate the connected components of the network
         connected_components = self.generate_connected_components()
@@ -101,14 +106,19 @@ class Network:
         # TODO: parallelize this step?
         for parent in connected_components:
             # set the medoid representative for each connected component
-            rep_connected_components = self.set_medoid_representative(
+            self.set_medoid_representative(
                 parent, connected_components, rep_connected_components
             )
 
         return rep_connected_components
 
     def generate_connected_components(self) -> defaultdict[str, set[str]]:
-        """Generate the connected components of the network using the union-find algorithm"""
+        """Generate the connected components of the network using the union-find algorithm
+
+        Returns:
+            defaultdict[str, set[str]]: connected component dict, where the key is the parent node,
+            and the value is a set of nodes in the connected component
+        """
 
         uf = UnionFind()
 
@@ -121,15 +131,55 @@ class Network:
 
         return connected_components
 
-    # TODO: considerations for performance
-    # this will loop through edges for each connected component. this way we can
-    # parallelize the building of the similarity matrix for each connected component
-    # alternatively, we can loop through the edges just one, and add to the respective
-    # matrix. this instead cannot be parallelized.
-    # which one is better?
+    def set_medoid_representative(
+        self,
+        parent: str,
+        connected_components: defaultdict[str, set[str]],
+        rep_connected_components: dict[str, set[str]],
+    ) -> None:
+        """Find the medoid of the connected component of the given parent node
+        Args:
+            parent (str): The parent node to find the medoid for
+            connected_components (dict): The connected components of the network
+            rep_connected_components (dict): The connected components with medoid representatives
+        Returns:
+            None: The function modifies the rep_connected_components in place
+        """
+
+        if len(connected_components[parent]) == 1:
+            # if there is only one node in the connected component, we don't need to do anything
+            rep_connected_components[parent] = connected_components[parent]
+            return rep_connected_components
+
+        medoid = self.get_medoid(connected_components[parent])
+
+        rep_connected_components[medoid] = connected_components[parent]
+
+        return None
+
+    def get_medoid(self, connected_component: set[str]) -> str:
+        """Get the index of the medoid in the similarity matrix
+
+        Args:
+            connected_component (set[str]): The connected component to find the medoid for
+
+        Returns:
+            str: medoid of the connected component, which is the node with the highest sum of similarities
+        """
+        # The medoid is the node with the highest sum of similarities
+
+        cc_nodes = sorted(connected_component)
+        # get the similarity matrix for the connected component
+        similarity_matrix = self.build_cc_matrix(connected_component)
+
+        # get the medoid of the connected component
+        medoid_index = np.argmax(similarity_matrix.sum(axis=0))
+        medoid = cc_nodes[medoid_index]
+
+        return medoid
 
     def build_cc_matrix(
-        self, parent: str, connected_components: defaultdict[str, set[str]]
+        self, connected_component: set[str]
     ) -> np.ndarray:
         """Build a similarity matrix for the connected component of the given parent node
         Args:
@@ -138,7 +188,7 @@ class Network:
             np.ndarray: The similarity matrix for the connected component of the given parent node
         """
 
-        cc_nodes = sorted(connected_components[parent])
+        cc_nodes = sorted(connected_component)
         node_to_index = {node: i for i, node in enumerate(cc_nodes)}
 
         # fill it all with 1.0 so missing edges get similarity of 0
@@ -156,6 +206,12 @@ class Network:
         max_count_edges = len(cc_nodes) * (len(cc_nodes) - 1) / 2
         edge_count = 0
 
+    # TODO: considerations for performance
+    # this will loop through edges for each connected component. this way we can
+    # parallelize the building of the similarity matrix for each connected component
+    # alternatively, we can loop through the edges just one, and add to the respective
+    # matrix. this instead cannot be parallelized.
+    # which one is better?
         for edge in self.edges:
             if edge.nodeA in cc_nodes and edge.nodeB in cc_nodes:
                 edge_count += 1
@@ -170,38 +226,6 @@ class Network:
 
         return similarity_matrix
 
-    def set_medoid_representative(
-        self,
-        parent: str,
-        connected_components: defaultdict[str, set[str]],
-        rep_connected_components: dict[str, set[str]],
-    ) -> defaultdict[str, set[str]]:
-        """Find the medoid of the connected component of the given parent node
-        Args:
-            parent (str): The parent node to find the medoid for
-        Returns:
-            defaultdict: The medoid of the connected component: connected component
-        """
-
-        cc_nodes = sorted(connected_components[parent])
-
-        if len(cc_nodes) == 1:
-            # if there is only one node in the connected component, we don't need to do anything
-            rep_connected_components[parent] = connected_components[parent]
-            return rep_connected_components
-
-        # get the similarity matrix for the connected component
-        similarity_matrix = self.build_cc_matrix(parent, connected_components)
-
-        # get the medoid of the connected component
-        medoid_index = np.argmax(similarity_matrix.sum(axis=0))
-        medoid = cc_nodes[medoid_index]
-
-        rep_connected_components[medoid] = connected_components[parent]
-
-        return rep_connected_components
-
-    # TODO: simplify this once proper unit testing is in place
     def __repr__(self) -> str:
         """String representation of the network"""
         connected_components = self.connected_components
@@ -226,7 +250,7 @@ class Network:
             nodes = connected_components[rep]
             repr_str += f"Nodes: {', '.join(sorted(nodes))}\n"
             repr_str += "Jaccard similarity matrix:\n"
-            matrix = self.build_cc_matrix(rep, connected_components)
+            matrix = self.build_cc_matrix(nodes)
             repr_str += self.format_matrix(matrix) + "\n"
             component_count += 1
 

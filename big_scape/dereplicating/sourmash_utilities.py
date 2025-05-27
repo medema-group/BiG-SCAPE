@@ -339,10 +339,21 @@ def parse_sourmash_results(pairwise_file_path: Path, cutoff: float) -> set[Edge]
 
             nodeA, _, nodeB, _, _, _, distance, _, _, _, _ = line.strip().split(",")
             if nodeA == nodeB:
+                # we dont want to rely on this being present in the file
                 continue
             edge = Edge(nodeA, nodeB, float(distance))
             if edge.jaccard_similarity >= cutoff:
                 edges.append(edge)
+            else:
+                # TODO: consider if this is the best way to make sure
+                # that all nodes are present in the network, i.e.
+                # if the edge is below the cutoff, we still want to add
+                # the nodes to the network
+                singletonA = Edge(nodeA, nodeA, 1.0)
+                edges.append(singletonA)
+
+                singletonB = Edge(nodeB, nodeB, 1.0)
+                edges.append(singletonB)
 
     logging.info("Parsed %d edges from sourmash results", len(edges))
 

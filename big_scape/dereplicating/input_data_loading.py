@@ -30,9 +30,6 @@ def load_input_data(run: dict) -> list[Path]:
 
     logging.info("Loading %d input GBKs", len(input_gbk_files))
 
-    # TODO: this will not collapse duplicated GBKs that share
-    # the same content hash, but are not the same file
-    # consider if we want to do this or not
     gbk_data = parse_gbk_files(input_gbk_files, bs_enums.SOURCE_TYPE.QUERY)
 
     # parse input GBKs
