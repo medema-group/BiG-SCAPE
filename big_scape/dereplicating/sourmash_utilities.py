@@ -207,13 +207,14 @@ def sourmash_sketch(
         )
         return sketch_file_path
 
-    # TODO: get sourmash params from config file
+    # TODO: consider adding sourmash params from config file
+    # needs some discussion however on wether this is desireable
     sketch_cmd = [
         "sourmash scripts manysketch",
         "-o",
         str(sketch_file_path),
         "-p",
-        "protein,k=10,scaled=200,noabund",
+        "protein,k=10,scaled=200,noabund",  # defailt params for protein sketch
         "--singleton",
         "-c",
         str(run_dict["cores"]),
@@ -270,7 +271,6 @@ def sourmash_compare(
         )
         return pairwise_file_path
 
-    # TODO: get sourmash params from config file
     pairwise_cmd = [
         "sourmash scripts pairwise",
         "-o",
