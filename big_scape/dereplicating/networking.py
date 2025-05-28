@@ -83,11 +83,9 @@ class UnionFind:
 class Network:
     """Class to represent a network"""
 
-    def __init__(self, edges: list[Edge]):
+    def __init__(self, edges: list[Edge], nodes: list[str]) -> None:
         self.edges: list[Edge] = edges
-        self.nodes: set = sorted(
-            set(edge.nodeA for edge in edges).union(edge.nodeB for edge in edges)
-        )
+        self.nodes: list[str] = nodes
         self.connected_components: dict[str: set[str]] = self.build_network()
 
     def build_network(self) -> dict[str, set[str]]:

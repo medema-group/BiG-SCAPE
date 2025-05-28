@@ -95,7 +95,10 @@ class TestNetworking(TestCase):
             Edge("F", "G", 0.5),
             Edge("X", "X", 1),
         ]
-        network = Network(edges)
+
+        nodes = set(["A", "B", "D", "E", "F", "G", "X"])
+
+        network = Network(edges, nodes)
 
         expected_connected_components = {
             "B": {"A", "B"},
@@ -116,7 +119,9 @@ class TestNetworking(TestCase):
             Edge("B", "C", 0.7),
             Edge("B", "D", 0.4),
         ]
-        network = Network(edges)
+        nodes = ["A", "B", "C", "D"]
+
+        network = Network(edges, nodes)
 
         connected_components = network.generate_connected_components()
 
@@ -125,13 +130,15 @@ class TestNetworking(TestCase):
         # root parent
         cc_matrix = network.build_cc_matrix(connected_components["D"])
 
-        expected_matrix = np.array([
-            # A, B, C, D
-            [1.0, 0.5, 0.0, 0.0],  # A
-            [0.5, 1.0, 0.7, 0.4],  # B
-            [0.0, 0.7, 1.0, 0.0],  # C
-            [0.0, 0.4, 0.0, 1.0],  # D
-        ])
+        expected_matrix = np.array(
+            [
+                # A, B, C, D
+                [1.0, 0.5, 0.0, 0.0],  # A
+                [0.5, 1.0, 0.7, 0.4],  # B
+                [0.0, 0.7, 1.0, 0.0],  # C
+                [0.0, 0.4, 0.0, 1.0],  # D
+            ]
+        )
 
         self.assertTrue(np.array_equal(cc_matrix, expected_matrix))
 
@@ -141,15 +148,18 @@ class TestNetworking(TestCase):
         edges = [
             Edge("A", "A", 1),
         ]
+        nodes = ["A"]
 
-        network = Network(edges)
+        network = Network(edges, nodes)
 
         connected_components = network.generate_connected_components()
 
         cc_matrix = network.build_cc_matrix(connected_components["A"])
-        expected_matrix = np.array([
-            [1.0],
-        ])
+        expected_matrix = np.array(
+            [
+                [1.0],
+            ]
+        )
         self.assertTrue(np.array_equal(cc_matrix, expected_matrix))
 
     def test_get_medoid(self):
@@ -160,18 +170,22 @@ class TestNetworking(TestCase):
             Edge("B", "C", 0.7),
             Edge("B", "D", 0.4),
         ]
-        network = Network(edges)
+        nodes = ["A", "B", "C", "D"]
+        network = Network(edges, nodes)
 
         nodes = ["A", "B", "C", "D"]
-        expected_matrix = np.array([
-            # A, B, C, D
-            [1.0, 0.5, 0.0, 0.0],  # A
-            [0.5, 1.0, 0.7, 0.4],  # B
-            [0.0, 0.7, 1.0, 0.0],  # C
-            [0.0, 0.4, 0.0, 1.0],  # D
-        ])
+        expected_matrix = np.array(
+            [
+                # A, B, C, D
+                [1.0, 0.5, 0.0, 0.0],  # A
+                [0.5, 1.0, 0.7, 0.4],  # B
+                [0.0, 0.7, 1.0, 0.0],  # C
+                [0.0, 0.4, 0.0, 1.0],  # D
+            ]
+        )
 
         connected_components = network.generate_connected_components()
+
         medoid = network.get_medoid(connected_components["D"])
 
         self.assertEqual(medoid, "B")
@@ -186,10 +200,15 @@ class TestNetworking(TestCase):
         """Tests whether the get_medoid function correctly identifies the medoid of a singleton connected component."""
 
         edges_singleton = [Edge("A", "A", 1)]
-        network_singleton = Network(edges_singleton)
-        connected_components_singleton = network_singleton.generate_connected_components()
+        nodes_singleton = ["A"]
+        network_singleton = Network(edges_singleton, nodes_singleton)
+        connected_components_singleton = (
+            network_singleton.generate_connected_components()
+        )
 
-        medoid_singleton = network_singleton.get_medoid(connected_components_singleton["A"])
+        medoid_singleton = network_singleton.get_medoid(
+            connected_components_singleton["A"]
+        )
         self.assertEqual(medoid_singleton, "A")
 
     def test_set_medoid_representative(self):
@@ -200,7 +219,8 @@ class TestNetworking(TestCase):
             Edge("B", "C", 0.7),
             Edge("B", "D", 0.4),
         ]
-        network = Network(edges)
+        nodes = ["A", "B", "C", "D"]
+        network = Network(edges, nodes)
 
         connected_components = network.generate_connected_components()
 
@@ -222,8 +242,9 @@ class TestNetworking(TestCase):
         edges = [
             Edge("A", "A", 1),
         ]
+        nodes = ["A"]
 
-        network = Network(edges)
+        network = Network(edges, nodes)
 
         connected_components = network.generate_connected_components()
 
@@ -254,15 +275,16 @@ class TestNetworking(TestCase):
             Edge("A", "C", 1),  # CC-A
             Edge("B", "B", 1),  # CC-A
         ]
+        nodes = ["A", "B", "C", "D", "E", "F", "X"]
 
-        network = Network(edges)
+        network = Network(edges, nodes)
 
         rep_connected_components = network.build_network()
 
         expected_rep_cronnected_components = {
             "C": {"A", "B", "C", "D"},  # CC-A
-            "E": {"E", "F"},            # CC-B
-            "X": {"X"},                 # CC-C (singleton)
+            "E": {"E", "F"},  # CC-B
+            "X": {"X"},  # CC-C (singleton)
         }
 
         self.assertEqual(rep_connected_components, expected_rep_cronnected_components)
@@ -282,15 +304,14 @@ class TestNetworking(TestCase):
             Edge("B", "C", 1),  # CC-A
             Edge("D", "D", 1),  # CC-A
         ]
-
-        network = Network(edges)
+        nodes = ["A", "B", "C", "D", "X", "Y", "Z"]
+        network = Network(edges, nodes)
 
         rep_connected_components = network.build_network()
 
         expected_rep_connected_components = {
             "C": {"A", "B", "C", "D"},  # CC-A
-            "X": {"X", "Y"},            # CC-B
-            "Z": {"Z"},                 # CC-C (singleton)
+            "X": {"X", "Y"},  # CC-B
+            "Z": {"Z"},  # CC-C (singleton)
         }
         self.assertEqual(rep_connected_components, expected_rep_connected_components)
-

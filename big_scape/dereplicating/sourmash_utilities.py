@@ -210,7 +210,7 @@ def sourmash_sketch(
     # TODO: consider adding sourmash params from config file
     # needs some discussion however on wether this is desireable
     sketch_cmd = [
-        "sourmashscripts manysketch",
+        "sourmash scripts manysketch",
         "-o",
         str(sketch_file_path),
         "-p",
@@ -332,7 +332,8 @@ def parse_sourmash_results(pairwise_file_path: Path, cutoff: float) -> set[Edge]
         logging.error("Sourmash pairwise file %s does not exist", pairwise_file_path)
         raise FileNotFoundError()
 
-    edges = []
+    edges = set()
+    nodes = set()
 
     with open(pairwise_file_path, "r") as pairwise_file:
         for line in pairwise_file:
@@ -340,25 +341,22 @@ def parse_sourmash_results(pairwise_file_path: Path, cutoff: float) -> set[Edge]
                 continue
 
             nodeA, _, nodeB, _, _, _, distance, _, _, _, _ = line.strip().split(",")
+
+            # skip self-comparisons
+            # we dont want to rely on this being present in the file
             if nodeA == nodeB:
-                # we dont want to rely on this being present in the file
                 continue
+
+            # add nodes to the set of nodes
+            nodes.update((nodeA, nodeB))
+
             edge = Edge(nodeA, nodeB, float(distance))
             if edge.jaccard_similarity >= cutoff:
-                edges.append(edge)
-            else:
-                # TODO: consider if this is the best way to make sure
-                # that all nodes are present in the network, i.e.
-                # if the edge is below the cutoff, we still want to add
-                # the nodes to the network
-                singletonA = Edge(nodeA, nodeA, 1.0)
-                edges.append(singletonA)
-
-                singletonB = Edge(nodeB, nodeB, 1.0)
-                edges.append(singletonB)
+                edges.add(edge)
 
     logging.info("Parsed %d edges from sourmash results", len(edges))
+    
+    edges = list(edges)
+    nodes = list(nodes)
 
-    edges = set(edges)  # remove duplicates
-    return edges
-
+    return edges, nodes

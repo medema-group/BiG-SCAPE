@@ -160,9 +160,10 @@ class TestSourmashUtilities(TestCase):
         # gbk_3,gbk_3,1.0
         # gbk_1,gbk_1,1.0
 
-        edges = parse_sourmash_results(sourmash_pairwise_csv, 0.3)
+        edges, nodes = parse_sourmash_results(sourmash_pairwise_csv, 0.3)
 
-        self.assertEqual(len(edges), 7)
+        self.assertEqual(len(edges), 3)
+        self.assertEqual(len(nodes), 4)
 
         expected_edges = [
             Edge("gbk_1", "gbk_2", 0.31),
