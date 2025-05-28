@@ -210,7 +210,7 @@ def sourmash_sketch(
     # TODO: consider adding sourmash params from config file
     # needs some discussion however on wether this is desireable
     sketch_cmd = [
-        "sourmash scripts manysketch",
+        "sourmashscripts manysketch",
         "-o",
         str(sketch_file_path),
         "-p",
@@ -234,7 +234,7 @@ def sourmash_sketch(
                 check=True,
                 text=True,
                 stdout=sketch_log_file,
-                stderr=sketch_log_file,
+                stderr=subprocess.PIPE,
                 encoding="utf-8",
             )
         except CalledProcessError as e:
@@ -243,6 +243,7 @@ def sourmash_sketch(
                 e.returncode,
                 e.stderr,
             )
+            sketch_log_file.write(e.stderr)
             raise e
     logging.info("Sourmash branchwater sketch completed successfully")
 
@@ -301,7 +302,7 @@ def sourmash_compare(
                 check=True,
                 text=True,
                 stdout=pairwise_log_file,
-                stderr=pairwise_log_file,
+                stderr=subprocess.PIPE,
                 encoding="utf-8",
             )
         except CalledProcessError as e:
@@ -310,6 +311,7 @@ def sourmash_compare(
                 e.returncode,
                 e.stderr,
             )
+            pairwise_log_file.write(e.stderr)
             raise e
     logging.info("Sourmash branchwater pairwise completed successfully")
 
