@@ -4,7 +4,6 @@
 import logging
 from datetime import datetime
 
-
 # from other modules
 from big_scape.utility.version import get_bigscape_version
 from big_scape.cli.config import BigscapeConfig

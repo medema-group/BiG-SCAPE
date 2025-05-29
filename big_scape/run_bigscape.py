@@ -12,8 +12,7 @@ from datetime import datetime
 from pathlib import Path
 
 # from other modules
-from big_scape.cli.config import BigscapeConfig
-from big_scape.hmm import HMMer, run_hmmscan, run_hmmalign
+from big_scape.hmm import HMMer, run_hmmsearch, run_hmmalign
 from big_scape.diagnostics import Profiler
 from big_scape.output import (
     legacy_prepare_output,
@@ -64,10 +63,6 @@ def run_bigscape(run: dict) -> None:
     bigscape_dir = Path(os.path.dirname(os.path.abspath(__file__)))
 
     main_pid = os.getpid()
-
-    # parse config file
-    logging.info("Using config file %s", run["config_file_path"])
-    BigscapeConfig.parse_config(run["config_file_path"], run["log_path"])
 
     # capture ctrl-c for database saving and other cleanup
     def signal_handler(sig, frame):
@@ -156,7 +151,7 @@ def run_bigscape(run: dict) -> None:
 
     logging.info("First task: %s", run_state)
 
-    # we will need this later. this can be set in hmmscan, hmmalign or not at all
+    # we will need this later. this can be set in hmmsearch, hmmalign or not at all
     pfam_info = None
 
     # HMMER - Search/scan
@@ -166,7 +161,7 @@ def run_bigscape(run: dict) -> None:
         # first opportunity to set this is here
         pfam_info = HMMer.get_pfam_info()
 
-        run_hmmscan(run, gbks, start_time)
+        run_hmmsearch(run, gbks, start_time)
 
         # set new run state
         run_state = bs_data.find_minimum_task(gbks)

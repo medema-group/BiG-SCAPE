@@ -1,10 +1,12 @@
-""" Click parameters for the BiG-SCAPE Query CLI command """
+"""Click parameters for the BiG-SCAPE Query CLI command"""
 
 # from python
+import logging
 import click
 from pathlib import Path
 
 # from other modules
+from big_scape.cli.config import BigscapeConfig
 from big_scape.run_bigscape import run_bigscape
 from big_scape.diagnostics import init_logger, init_logger_file
 import big_scape.enums as bs_enums
@@ -117,6 +119,10 @@ def query(ctx, *args, **kwarg):
     # initialize logger
     init_logger(ctx.obj)
     init_logger_file(ctx.obj)
+
+    # parse config file
+    logging.info("Using config file %s", ctx.obj["config_file_path"])
+    BigscapeConfig.parse_config(ctx.obj["config_file_path"], ctx.obj["log_path"])
 
     # run BiG-SCAPE
     run_bigscape(ctx.obj)
