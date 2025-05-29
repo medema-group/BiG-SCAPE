@@ -41,7 +41,7 @@ def load_input_data(run: dict) -> list[GBK]:
 
     logging.info("Loading %d input GBKs", len(input_gbk_files))
 
-    gbk_data = parse_gbk_files(input_gbk_files, bs_enums.SOURCE_TYPE.QUERY)
+    gbk_data = parse_gbk_files(input_gbk_files, bs_enums.SOURCE_TYPE.QUERY, run)
 
     # parse input GBKs
 
@@ -122,13 +122,14 @@ def load_input_folder(run: dict) -> list[Path]:
 
 
 def parse_gbk_files(
-    input_paths: list[Path], source_type: bs_enums.SOURCE_TYPE
+    input_paths: list[Path], source_type: bs_enums.SOURCE_TYPE, run: dict
 ) -> Iterator[tuple[Path, str, SeqRecord, bs_enums.SOURCE_TYPE]]:
     """Parse GenBank files and yield their paths, content hashes and SeqIO records
 
     Args:
         input_paths (list[Path]): input GBK paths
         source_type (bs_enums.SOURCE_TYPE): source type of the GBK
+        run (dict): run parameters
 
     Yields:
         Iterator[Tuple[Path, str, SeqRecord, bs_enums.SOURCE_TYPE]]: path, content hash, SeqIO record, source type
@@ -158,7 +159,33 @@ def parse_gbk_files(
 
         record: SeqRecord = records.pop(0)
 
-        yield (path, hash, record, source_type)
+        name = make_gbk_name(run, path, hash)
+
+        yield (name, path, hash, record, source_type)
+
+
+def make_gbk_name(run: dict, gbk_path: Path, gbk_hash: str) -> str:
+    """Make a unique name for the GBK file based on its path and hash
+
+    Args:
+        run (dict): run parameters
+        gbk_path (Path): path to the GBK file
+        gbk_hash (str): hash of the GBK file content
+
+    Returns:
+        str: name of the GBK
+    """
+
+    # make gbk unique name
+    # this is the path relative to the input directory + the hash
+    # TODO: consider using a more robust naming scheme
+
+    input_dir: Path = run["input_dir"]
+    gbk_path_rel = gbk_path.relative_to(input_dir)
+    path_parts = ".".join(gbk_path_rel.parts)
+    gbk_name = f"{path_parts}.{gbk_hash}"
+
+    return gbk_name
 
 
 def gbk_factory(gbk_data: tuple[Path, bs_enums.SOURCE_TYPE, SeqRecord], run: dict) -> Optional[GBK]:
@@ -175,7 +202,7 @@ def gbk_factory(gbk_data: tuple[Path, bs_enums.SOURCE_TYPE, SeqRecord], run: dic
     # get relevant run parameters
     run_mode = run["mode"]
 
-    path, hash, seqIO_record, source_type = gbk_data
+    name, path, hash, seqIO_record, source_type = gbk_data
 
     # we dont need to store the entire nt_sequence, just the length
     # so we can filter out the GBKs that are too long/short later on
@@ -185,7 +212,7 @@ def gbk_factory(gbk_data: tuple[Path, bs_enums.SOURCE_TYPE, SeqRecord], run: dic
     as_version = get_as_version(seqIO_record)
 
     # create GBK object
-    gbk: GBK = GBK(path, hash, nt_length, as_version, source_type)
+    gbk: GBK = GBK(name, path, hash, nt_length, as_version, source_type)
 
     gbk = parse_seqIO(gbk, seqIO_record, run_mode)
 

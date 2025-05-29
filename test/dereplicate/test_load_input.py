@@ -22,7 +22,8 @@ from big_scape.dereplicating.input_data_loading import (
     gbk_factory,
     get_parser_functions,
     parse_seqIO,
-    load_input_data
+    load_input_data,
+    make_gbk_name
 )
 
 
@@ -55,14 +56,32 @@ class TestLoadInput(TestCase):
 
         input_gbk_paths = load_input_folder(run)
 
-        gbk_data = parse_gbk_files(input_gbk_paths, bs_enums.SOURCE_TYPE.QUERY)
+        gbk_data = parse_gbk_files(input_gbk_paths, bs_enums.SOURCE_TYPE.QUERY, run)
 
         gbk_data_list = list(gbk_data)
 
         self.assertIsInstance(gbk_data_list[0], tuple)
-        self.assertIsInstance(gbk_data_list[0][0], Path)
-        self.assertIsInstance(gbk_data_list[0][1], str)
-        self.assertIsInstance(gbk_data_list[0][2], SeqRecord)
+        self.assertIsInstance(gbk_data_list[0][0], str)
+        self.assertIsInstance(gbk_data_list[0][1], Path)
+        self.assertIsInstance(gbk_data_list[0][2], str)
+        self.assertIsInstance(gbk_data_list[0][3], SeqRecord)
+
+    def test_make_gbk_name(self):
+        """tests whether the make_gbk_name function correctly creates a GBK name"""
+
+        run = {
+            "input_dir": Path("test/test_data/"),
+        }
+
+        gbk_path_abs = Path("test/test_data/valid_gbk_folder/valid_input_region.gbk")
+        gbk_hash = "hash"
+
+        gbk_name = make_gbk_name(run, gbk_path_abs, gbk_hash)
+
+        expected_name = "valid_gbk_folder.valid_input_region.gbk.hash"
+
+        self.assertIsInstance(gbk_name, str)
+        self.assertEqual(gbk_name, expected_name)
 
     def test_get_parser_functions(self):
         """Tests whether the get_parser_functions function correctly returns the correct parser functions"""
@@ -81,7 +100,7 @@ class TestLoadInput(TestCase):
     def test_parse_seqIO_record(self):
         """Tests whether the gbk_factory function correctly creates a GBK object"""
 
-        gbk = GBK(Path("test_path"), "hash", 10, "1", bs_enums.SOURCE_TYPE.QUERY)
+        gbk = GBK("name", Path("test_path"), "hash", 10, "1", bs_enums.SOURCE_TYPE.QUERY)
 
         nt_seq = Seq("ATGCAGCAGGACGGCACACAGCAGGACCGGATCAAGCAGAGTCCCGCCCCTCTCTGA")
         seqIO_record = SeqRecord(id="test", seq=nt_seq)
@@ -122,7 +141,7 @@ class TestLoadInput(TestCase):
 
         input_gbk_paths = load_input_folder(run)
 
-        gbk_data = parse_gbk_files(input_gbk_paths, bs_enums.SOURCE_TYPE.QUERY)
+        gbk_data = parse_gbk_files(input_gbk_paths, bs_enums.SOURCE_TYPE.QUERY, run)
 
         gbk_1 = next(gbk_data)
 
@@ -142,7 +161,7 @@ class TestLoadInput(TestCase):
 
         seqIO_record = SeqRecord(id="test", seq=Seq("ATG"))
 
-        gbk_data = (Path("path"), "hash", seqIO_record, bs_enums.SOURCE_TYPE.QUERY)
+        gbk_data = ("name", Path("path"), "hash", seqIO_record, bs_enums.SOURCE_TYPE.QUERY)
 
         gbk_list = gbk_factory(gbk_data, run)
 
