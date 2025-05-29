@@ -6,7 +6,6 @@ from datetime import datetime
 
 # from other modules
 from big_scape.utility.version import get_bigscape_version
-from big_scape.cli.config import BigscapeConfig
 from big_scape.dereplicating.input_data_loading import load_input_data
 from big_scape.dereplicating.sourmash_utilities import (
     make_sourmash_input,
@@ -22,9 +21,6 @@ def run_bigscape_dereplicate(run: dict) -> None:
     bigscape_version = get_bigscape_version()
 
     logging.info(f"Running BiG-SCAPE {bigscape_version} dereplicate")
-
-    logging.info("Using config file %s", run["config_file_path"])
-    BigscapeConfig.parse_config(run["config_file_path"], run["log_path"])
 
     start_time = run["start_time"]
 
