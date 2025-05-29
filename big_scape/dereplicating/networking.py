@@ -147,7 +147,7 @@ class Network:
         if len(connected_components[parent]) == 1:
             # if there is only one node in the connected component, we don't need to do anything
             rep_connected_components[parent] = connected_components[parent]
-            return rep_connected_components
+            return None
 
         medoid = self.get_medoid(connected_components[parent])
 

@@ -248,8 +248,10 @@ class TestNetworking(TestCase):
 
         connected_components = network.generate_connected_components()
 
-        rep_connected_components = network.set_medoid_representative(
-            "A", connected_components, {}
+        rep_connected_components = {}
+
+        network.set_medoid_representative(
+            "A", connected_components, rep_connected_components
         )
 
         expected_representatives = {

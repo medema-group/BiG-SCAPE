@@ -24,7 +24,18 @@ from big_scape.dereplicating.gbk_components import CDS
 from big_scape.cli.config import BigscapeConfig
 
 
-def load_input_data(run: dict) -> list[Path]:
+def load_input_data(run: dict) -> list[GBK]:
+    """Load input GBK files and return a list of GBK objects
+
+    Args:
+        run (dict): run params
+
+    Raises:
+        InvalidGBKError: if any of the GBK files have issues and parsing returns None
+
+    Returns:
+        list[GBK]: list of GBK objects created from input files
+    """
 
     input_gbk_files = load_input_folder(run)
 
@@ -150,12 +161,12 @@ def parse_gbk_files(
         yield (path, hash, record, source_type)
 
 
-def gbk_factory(gbk_data: tuple[Path, str, SeqRecord], run: dict) -> Optional[GBK]:
+def gbk_factory(gbk_data: tuple[Path, bs_enums.SOURCE_TYPE, SeqRecord], run: dict) -> Optional[GBK]:
     """Factory function to create a GBK object with all its components
 
     Args:
         gbk_data (tuple[Path, str, SeqRecord]): GBK file path, hash and SeqIO record
-        run (dict): _description_
+        run (dict): run params
 
     Returns:
         GBK: GBK object component
