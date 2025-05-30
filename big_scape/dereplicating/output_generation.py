@@ -41,9 +41,8 @@ def write_output(network: Network, run: dict, gbk_list: list[GBK]) -> None:
     # so we can get the actual GBK objects with their full paths
     name_to_gbk = {}
     for gbk in gbk_list:
-        # get the hash of the gbk
-        gbk_hash = gbk.name
-        name_to_gbk[gbk_hash] = gbk
+        gbk_name = gbk.name
+        name_to_gbk[gbk_name] = gbk
 
     # create clustering tsv file
     clustering_tsv_path = output_dir / "clustering.tsv"
