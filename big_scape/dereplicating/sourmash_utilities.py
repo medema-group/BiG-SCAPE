@@ -195,14 +195,14 @@ def sourmash_sketch(
         return sketch_file_path
 
     # TODO: consider adding sourmash params from config file
-    # needs some discussion however on wether this is desireable
+    # needs some discussion however on whether this is desireable
     sketch_cmd = [
         "sourmash scripts manysketch",
         "-o",
         str(sketch_file_path),
         "-p",
-        "protein,k=10,scaled=200,noabund",  # defailt params for protein sketch
-        "--singleton",
+        "protein,k=10,scaled=200,noabund",  # default params for protein sketch
+        "--singleton",  # one sketch per protein sequence
         "-c",
         str(run_dict["cores"]),
         str(manysketch_csv_path),
@@ -263,12 +263,12 @@ def sourmash_compare(
         "sourmash scripts pairwise",
         "-o",
         str(pairwise_file_path),
-        "-k",
+        "-k",  # kmer size (default params for protein sketch)
         "10",
-        "-s",
+        "-s",  # scaling factor (# default params for protein sketch)
         "200",
         "-m",
-        "protein",
+        "protein",  # sequence type
         "--write-all",  # write self comparisons for all sketches
         "-A",  # ignore containment threshold and output all comparisons
         "-c",
@@ -327,7 +327,10 @@ def parse_sourmash_results(pairwise_file_path: Path, cutoff: float) -> set[Edge]
             if line.startswith("query"):
                 continue
 
-            nodeA, _, nodeB, _, _, _, distance, _, _, _, _ = line.strip().split(",")
+            parts = line.strip().split(",")
+            nodeA = parts[0]
+            nodeB = parts[2]
+            distance = parts[6]  # jaccard similarity
 
             # skip self-comparisons
             # we dont want to rely on this being present in the file

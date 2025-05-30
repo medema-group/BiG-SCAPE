@@ -51,6 +51,7 @@ def load_input_data(run: dict) -> list[GBK]:
 
     pool = multiprocessing.Pool(cores)
 
+    # creates an iterator of tuples of (name, path, hash, record, source_type, run) for each GBK
     data_package = map(lambda e: (e, run), gbk_data)
 
     gbk_list = pool.starmap(gbk_factory, data_package)
@@ -123,7 +124,7 @@ def load_input_folder(run: dict) -> list[Path]:
 
 def parse_gbk_files(
     input_paths: list[Path], source_type: bs_enums.SOURCE_TYPE, run: dict
-) -> Iterator[tuple[Path, str, SeqRecord, bs_enums.SOURCE_TYPE]]:
+) -> Iterator[tuple[str, Path, str, SeqRecord, bs_enums.SOURCE_TYPE]]:
     """Parse GenBank files and yield their paths, content hashes and SeqIO records
 
     Args:
