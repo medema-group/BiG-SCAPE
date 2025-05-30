@@ -1,0 +1,11 @@
+query_name,query_md5,match_name,match_md5,containment,max_containment,jaccard,intersect_hashes,ksize,scaled,moltype
+gbk_1,md5a,gbk_2,md5b,0.32,0.94,0.31,18.0,30,200,protein
+gbk_1,md5a,gbk_3,md5b,0.82,0.83,0.70,46.0,30,200,protein
+gbk_1,md5a,gbk_4,md5b,0.16,0.34,0.12,9.0,30,200,protein
+gbk_3,md5a,gbk_2,md5b,0.35,1.0,0.35,20.0,30,200,protein
+gbk_3,md5a,gbk_4,md5b,0.42,0.42,0.21,8.0,30,200,protein
+gbk_2,md5a,gbk_4,md5b,0.42,0.42,0.21,8.0,30,200,protein
+gbk_4,md5a,gbk_4,md5b,1.0,1.0,1.0,2.0,30,200,protein
+gbk_2,md5a,gbk_2,md5b,1.0,1.0,1.0,2.0,30,200,protein
+gbk_3,md5a,gbk_3,md5b,1.0,1.0,1.0,2.0,30,200,protein
+gbk_1,md5a,gbk_1,md5b,1.0,1.0,1.0,2.0,30,200,protein

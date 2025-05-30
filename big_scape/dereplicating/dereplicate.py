@@ -3,20 +3,17 @@
 # from python
 import logging
 from datetime import datetime
-import multiprocessing
 
 # from other modules
 from big_scape.utility.version import get_bigscape_version
 from big_scape.cli.config import BigscapeConfig
-from big_scape.dereplicating.input_data_loading import (
-    load_input_folder,
-    parse_gbk_files,
-    gbk_factory,
+from big_scape.dereplicating.input_data_loading import load_input_data
+from big_scape.dereplicating.sourmash_utilities import (
+    make_sourmash_input,
+    run_sourmash_branchwater,
+    parse_sourmash_results,
 )
-import big_scape.enums as bs_enums
-from big_scape.errors import InvalidGBKError
-from big_scape.dereplicating.gbk_components.gbk import GBK
-from big_scape.dereplicating.gbk_components import CDS
+from big_scape.dereplicating.networking import Network
 
 
 def run_bigscape_dereplicate(run: dict) -> None:
@@ -32,49 +29,23 @@ def run_bigscape_dereplicate(run: dict) -> None:
     start_time = run["start_time"]
 
     # load input folder
+    gbk_list = load_input_data(run)
 
-    input_gbk_files = load_input_folder(run)
+    # generate sourmash input files
+    sourmash_dir, cds_fasta_dir, manysketch_csv_path = make_sourmash_input(gbk_list, run)
 
-    logging.info("Loading %d input GBKs", len(input_gbk_files))
-
-    gbk_data = parse_gbk_files(input_gbk_files, bs_enums.SOURCE_TYPE.QUERY)
-
-    # parse input GBKs
-
-    cores = run["cores"]
-    if cores is None:
-        cores = multiprocessing.cpu_count()
-
-    pool = multiprocessing.Pool(cores)
-
-    data_package = map(lambda e: (e, run), gbk_data)
-
-    gbk_list = pool.starmap(gbk_factory, data_package)
-
-    if any(gbk is None for gbk in gbk_list):
-        raise InvalidGBKError()
-
-    # apply length constraints (in this workflow we ommit
-    # duplicate logging since sourmash will handle these)
-    gbk_list = GBK.length_filter(gbk_list)
-
-    logging.info("Succefully loaded %d input GBKs", len(gbk_list))
-
-    # concatenate CDS aa sequences
-    for gbk in gbk_list:
-        CDS.concatenate_cds(gbk)
-
-    # (write CDS fastas ?)
-
-    # run (sour)mash
+    # run sourmash branchwater plugin in cmdline
+    sourmash_pairwise_csv_path = run_sourmash_branchwater(run, sourmash_dir, cds_fasta_dir, manysketch_csv_path)
 
     # parse (sour)mash results
+    edges, nodes = parse_sourmash_results(sourmash_pairwise_csv_path, run['cutoff'])
 
-    # generate connected components
+    # generate connected components & find cluster center
+    network = Network(edges, nodes)
+    print(network)
 
-    # find cluster center
-
-    # generate output
+    # write output
+    # write_output(network, run)
 
     time_elapsed = datetime.now() - start_time
 
