@@ -4,6 +4,7 @@
 import os
 from pathlib import Path
 import logging
+import shutil
 
 # from dependencies
 
@@ -29,13 +30,12 @@ def write_output(network: Network, run: dict, gbk_list: list[GBK]) -> None:
 
     rep_bgc_dir: Path = output_dir / "representative_clusters"
 
-    # TODO: standardize existing output directory decisions
-    # i.e. when to re-use and when to re-write.
     if not rep_bgc_dir.exists():
         logging.info("Creating representative BGCs directory: %s", rep_bgc_dir)
-        rep_bgc_dir.mkdir(parents=False, exist_ok=True)
     else:
-        logging.info("Representative BGCs directory already exists: %s", rep_bgc_dir)
+        logging.info("Representative BGCs directory already exists, overwriting: %s", rep_bgc_dir)
+        shutil.rmtree(rep_bgc_dir)
+    rep_bgc_dir.mkdir(parents=True, exist_ok=False)
 
     # create a mapping from the name of the GBK to the GBK object
     # so we can get the actual GBK objects with their full paths
@@ -46,7 +46,8 @@ def write_output(network: Network, run: dict, gbk_list: list[GBK]) -> None:
 
     # create clustering tsv file
     clustering_tsv_path = output_dir / "clustering.tsv"
-    logging.info("Writing clustering tsv file: %s", clustering_tsv_path)
+    if clustering_tsv_path.exists():
+        logging.info("Clustering tsv file already exists, overwriting: %s", clustering_tsv_path)
 
     with clustering_tsv_path.open("w") as clustering_file:
         # write header

@@ -33,14 +33,9 @@ def make_sourmash_input(gbk_list: list[GBK], run: dict) -> Path:
     # crash the run if sourmash_dir already exists
     if sourmash_dir.is_dir():
         logging.warning(
-            "Sourmash output folder %s already exists:",
+            "Sourmash output folder already exists: %s",
             sourmash_dir,
         )
-        # TODO: consider desired behaviour if sourmash_dir already exists
-        # re-write files? crash the run? something in between?
-        # raise FileExistsError(
-        #     f"Sourmash output folder {sourmash_dir} already exists, exiting."
-        # )
 
     else:
         sourmash_dir.mkdir(parents=False, exist_ok=False)
@@ -53,6 +48,11 @@ def make_sourmash_input(gbk_list: list[GBK], run: dict) -> Path:
 
     # create manysketch csv file
     manysketch_csv_path = Path(os.path.join(sourmash_dir, "manysketch.csv"))
+    if manysketch_csv_path.is_file():
+        logging.warning(
+            "Manysketch csv file %s already exists, overwriting.",
+            manysketch_csv_path,
+        )
     with open(manysketch_csv_path, "w") as manysketch_csv_file:
         manysketch_csv_file.write("name,genome_filename,protein_filename\n")
         logging.info("Created manysketch csv file %s", manysketch_csv_path)
@@ -133,7 +133,7 @@ def write_concat_cds_fasta(gbk: GBK, fasta_file_path: Path) -> None:
         return None
 
     seq = "\n".join(
-        str(concat_cds)[i : i + 80] for i in range(0, len(str(concat_cds)), 80)
+        str(concat_cds)[i: i + 80] for i in range(0, len(str(concat_cds)), 80)
     )
 
     with open(fasta_file_path, "w") as fasta_file:
@@ -189,10 +189,9 @@ def sourmash_sketch(
 
     if sketch_file_path.is_file():
         logging.warning(
-            "Sourmash sketch file %s already exists, skipping.",
+            "Sourmash sketch file %s already exists, overwriting.",
             sketch_file_path,
         )
-        return sketch_file_path
 
     # TODO: consider adding sourmash params from config file
     # needs some discussion however on whether this is desireable
@@ -254,10 +253,9 @@ def sourmash_compare(
 
     if pairwise_file_path.is_file():
         logging.warning(
-            "Sourmash pairwise distance file %s already exists, skipping.",
+            "Sourmash pairwise distance file %s already exists, overwriting.",
             pairwise_file_path,
         )
-        return pairwise_file_path
 
     pairwise_cmd = [
         "sourmash scripts pairwise",
@@ -344,7 +342,7 @@ def parse_sourmash_results(pairwise_file_path: Path, cutoff: float) -> set[Edge]
             if edge.jaccard_similarity >= cutoff:
                 edges.add(edge)
 
-    logging.info("Parsed %d edges from sourmash results equal or above the %.2f threshold", len(edges), cutoff)
+    logging.info("Parsed %d edges from sourmash results (similarity threshold: %.2f)", len(edges), cutoff)
 
     edges = list(edges)
     nodes = list(nodes)
