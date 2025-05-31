@@ -23,7 +23,7 @@ class TestGBKComponent(TestCase):
         as_version = "1.0"
         source_type = bs_enums.SOURCE_TYPE.QUERY
 
-        gbk = GBK(gbk_file_path, gbk_hash, nt_length, as_version, source_type)
+        gbk = GBK("name", gbk_file_path, gbk_hash, nt_length, as_version, source_type)
 
         self.assertIsInstance(gbk, GBK)
 
@@ -36,16 +36,16 @@ class TestGBKComponent(TestCase):
         as_version = "1.0"
         source_type = bs_enums.SOURCE_TYPE.QUERY
 
-        gbk = GBK(gbk_file_path, gbk_hash, nt_length, as_version, source_type)
+        gbk = GBK("name", gbk_file_path, gbk_hash, nt_length, as_version, source_type)
 
         self.assertFalse(validate_cds_component(gbk))
 
     def test_bgc_len_filter_below(self):
         """Tests whether BGCs are correctly filtered out by length constraint"""
 
-        gbk_10 = GBK(Path("gbk_path"), "gbk_hash", 10, "as_version", bs_enums.SOURCE_TYPE.QUERY)
-        gbk_20 = GBK(Path("gbk_path"), "gbk_hash", 20, "as_version", bs_enums.SOURCE_TYPE.QUERY)
-        gbk_30 = GBK(Path("gbk_path"), "gbk_hash", 30, "as_version", bs_enums.SOURCE_TYPE.QUERY)
+        gbk_10 = GBK("name", Path("gbk_path"), "gbk_hash", 10, "as_version", bs_enums.SOURCE_TYPE.QUERY)
+        gbk_20 = GBK("name", Path("gbk_path"), "gbk_hash", 20, "as_version", bs_enums.SOURCE_TYPE.QUERY)
+        gbk_30 = GBK("name", Path("gbk_path"), "gbk_hash", 30, "as_version", bs_enums.SOURCE_TYPE.QUERY)
 
         gbk_list = [gbk_10, gbk_20, gbk_30]
 
@@ -58,9 +58,9 @@ class TestGBKComponent(TestCase):
     def test_bgc_len_filter_none_left(self):
         """Tests whether BGCs are correctly filtered out by length constraint"""
 
-        gbk_10 = GBK(Path("gbk_path"), "gbk_hash", 10, "as_version", bs_enums.SOURCE_TYPE.QUERY)
-        gbk_20 = GBK(Path("gbk_path"), "gbk_hash", 20, "as_version", bs_enums.SOURCE_TYPE.QUERY)
-        gbk_30 = GBK(Path("gbk_path"), "gbk_hash", 30, "as_version", bs_enums.SOURCE_TYPE.QUERY)
+        gbk_10 = GBK("name", Path("gbk_path"), "gbk_hash", 10, "as_version", bs_enums.SOURCE_TYPE.QUERY)
+        gbk_20 = GBK("name", Path("gbk_path"), "gbk_hash", 20, "as_version", bs_enums.SOURCE_TYPE.QUERY)
+        gbk_30 = GBK("name", Path("gbk_path"), "gbk_hash", 30, "as_version", bs_enums.SOURCE_TYPE.QUERY)
 
         gbk_list = [gbk_10, gbk_20, gbk_30]
 

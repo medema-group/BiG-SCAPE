@@ -24,7 +24,8 @@ class GBK:
         components (Dict): dictionary of components in the GBK file
     """
 
-    def __init__(self, path, hash, nt_length, as_version, source_type) -> None:
+    def __init__(self, name, path, hash, nt_length, as_version, source_type) -> None:
+        self.name: str = name
         self.enum: bs_enums.COMPONENTS = bs_enums.COMPONENTS.GBK
         self.path: Path = path
         self.hash: str = hash

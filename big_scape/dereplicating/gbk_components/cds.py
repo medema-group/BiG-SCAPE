@@ -125,7 +125,7 @@ class CDS:
             )
             return None
 
-        return cls(nt_start, nt_stop, strand, gene_kind, aa_seq)
+        return cls(nt_start, nt_stop, strand, gene_kind, transl_nt_seq)
 
     @staticmethod
     def process(gbk: GBK, cds_overlap_cutoff=0.1) -> None:

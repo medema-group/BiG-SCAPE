@@ -28,19 +28,14 @@ def make_sourmash_input(gbk_list: list[GBK], run: dict) -> Path:
     if not output_dir.is_dir():
         output_dir.mkdir(parents=False, exist_ok=False)
 
-    sourmash_dir: Path = output_dir/"sourmash"
+    sourmash_dir: Path = output_dir / "sourmash"
 
     # crash the run if sourmash_dir already exists
     if sourmash_dir.is_dir():
         logging.warning(
-            "Sourmash output folder %s already exists, exiting.",
+            "Sourmash output folder already exists: %s",
             sourmash_dir,
         )
-        # TODO: consider desired behaviour if sourmash_dir already exists
-        # re-write files? crash the run? something in between?
-        # raise FileExistsError(
-        #     f"Sourmash output folder {sourmash_dir} already exists, exiting."
-        # )
 
     else:
         sourmash_dir.mkdir(parents=False, exist_ok=False)
@@ -49,10 +44,15 @@ def make_sourmash_input(gbk_list: list[GBK], run: dict) -> Path:
     CDS_fasta_dir: Path = Path(os.path.join(sourmash_dir, "CDS_fastas"))
     if not CDS_fasta_dir.is_dir():  # this should always be the case
         CDS_fasta_dir.mkdir(parents=False, exist_ok=False)
-        logging.info("Created sourmash CDS fasta output folder %s", CDS_fasta_dir)
+        logging.info("Created sourmash CDS fasta folder %s", CDS_fasta_dir)
 
     # create manysketch csv file
     manysketch_csv_path = Path(os.path.join(sourmash_dir, "manysketch.csv"))
+    if manysketch_csv_path.is_file():
+        logging.warning(
+            "Manysketch csv file %s already exists, overwriting.",
+            manysketch_csv_path,
+        )
     with open(manysketch_csv_path, "w") as manysketch_csv_file:
         manysketch_csv_file.write("name,genome_filename,protein_filename\n")
         logging.info("Created manysketch csv file %s", manysketch_csv_path)
@@ -60,51 +60,39 @@ def make_sourmash_input(gbk_list: list[GBK], run: dict) -> Path:
     logging.info("Concatenating CDSs and writing FASTA files to %s", CDS_fasta_dir)
     for gbk in gbk_list:
         CDS.concatenate_cds(gbk)
-        gbk_name, fasta_file_path = get_fasta_names_paths(gbk, run, CDS_fasta_dir)
-        write_concat_cds_fasta(gbk, gbk_name, fasta_file_path)
+        fasta_file_path = get_fasta_path(gbk.name, CDS_fasta_dir)
+        write_concat_cds_fasta(gbk, fasta_file_path)
         update_sourmash_fasta_manyketch_csv(
-            manysketch_csv_path, gbk_name, gbk.hash, fasta_file_path
+            manysketch_csv_path, gbk.name, fasta_file_path
         )
 
     return (sourmash_dir, CDS_fasta_dir, manysketch_csv_path)
 
 
-def get_fasta_names_paths(gbk: GBK, run: dict, sourmash_dir: Path) -> tuple:
+def get_fasta_path(gbk_name: str, sourmash_dir: Path) -> tuple:
     """Get the names and paths of the fasta files
 
     Args:
-        gbk (GBK): GBK object
-        run (dict): run dictionary containing the input and output directories
+        gbk_name (GBK): GBK object
         sourmash_dir (Path): path to the sourmash directory
     Returns:
         tuple: (gbk_name, fasta_file_path)
     """
 
-    input_dir = run["input_dir"]
-
-    # get path from input dir onwards
-    gbk_path = gbk.path.relative_to(input_dir)
-
-    # TODO: consider if this is the best way to name the fasta files
-    # gbk name will be: path from input dir onwards
-    # and the hash of the gbk
-    gbk_name = ".".join(gbk_path.parts)
-
-    fasta_file_name = f"{gbk_name}.{gbk.hash}.fasta"
+    fasta_file_name = f"{gbk_name}.fasta"
     fasta_file_path = Path(os.path.join(sourmash_dir, fasta_file_name))
 
-    return (gbk_name, fasta_file_path)
+    return fasta_file_path
 
 
 def update_sourmash_fasta_manyketch_csv(
-    manysketch_csv_path: Path, gbk_name: str, gbk_hash: str, fasta_file_path: Path
+    manysketch_csv_path: Path, gbk_name: str, fasta_file_path: Path
 ) -> None:
     """Update the manysketch csv file with the new fasta file
 
     Args:
         manysketch_csv_path (Path): _path to the manysketch csv file
         gbk_name (str): gbk name
-        gbk_hash (str): gbk hash
         fasta_file_path (Path): path to the fasta file
 
     Returns:
@@ -115,17 +103,16 @@ def update_sourmash_fasta_manyketch_csv(
     with open(manysketch_csv_path, "a") as manysketch_csv_file:
         # name, genome_filename, protein_filename
         # genome_filename is empty since we have only protein
-        manysketch_csv_file.write(f"{gbk_name}.{gbk_hash},,{fasta_file_path}\n")
+        manysketch_csv_file.write(f"{gbk_name},,{fasta_file_path}\n")
 
     return None
 
 
-def write_concat_cds_fasta(gbk: GBK, gbk_name: str, fasta_file_path: Path) -> None:
+def write_concat_cds_fasta(gbk: GBK, fasta_file_path: Path) -> None:
     """Write the concatenated CDS FASTA file for the given GBK object
 
     Args:
         gbk (GBK): GBK object
-        gbk_name (str): name of the GBK object
         fasta_file_path (Path): path to the FASTA file
     Returns:
         None
@@ -153,7 +140,7 @@ def write_concat_cds_fasta(gbk: GBK, gbk_name: str, fasta_file_path: Path) -> No
         logging.debug(
             "Writing concatenated CDS sequence of %s to %s", gbk.path, fasta_file_path
         )
-        fasta_file.write(f">{gbk_name}.{gbk.hash}\n")
+        fasta_file.write(f">{gbk.name}\n")
         fasta_file.write(f"{seq}\n")
 
     return None
@@ -202,20 +189,19 @@ def sourmash_sketch(
 
     if sketch_file_path.is_file():
         logging.warning(
-            "Sourmash sketch file %s already exists, skipping.",
+            "Sourmash sketch file %s already exists, overwriting.",
             sketch_file_path,
         )
-        return sketch_file_path
 
     # TODO: consider adding sourmash params from config file
-    # needs some discussion however on wether this is desireable
+    # needs some discussion however on whether this is desireable
     sketch_cmd = [
         "sourmash scripts manysketch",
         "-o",
         str(sketch_file_path),
         "-p",
-        "protein,k=10,scaled=200,noabund",  # defailt params for protein sketch
-        "--singleton",
+        "protein,k=10,scaled=200,noabund",  # default params for protein sketch
+        "--singleton",  # one sketch per protein sequence
         "-c",
         str(run_dict["cores"]),
         str(manysketch_csv_path),
@@ -225,7 +211,7 @@ def sourmash_sketch(
 
     sketch_log_path = Path(os.path.join(sourmash_dir, "sketch.log"))
     with open(sketch_log_path, "w") as sketch_log_file:
-        logging.info("Running branchwater sourmash sketch")
+        logging.info("Running sourmash sketch")
         logging.debug("Sourmash branchwater sketch command: %s", sketch_cmd)
         try:
             subprocess.run(
@@ -239,13 +225,13 @@ def sourmash_sketch(
             )
         except CalledProcessError as e:
             logging.error(
-                "Sourmash branchwater sketch failed with error code %d: %s",
+                "Sourmash sketch failed with error code %d: %s",
                 e.returncode,
                 e.stderr,
             )
             sketch_log_file.write(e.stderr)
             raise e
-    logging.info("Sourmash branchwater sketch completed successfully")
+    logging.info("Sourmash sketch completed successfully")
 
     return sketch_file_path
 
@@ -267,21 +253,20 @@ def sourmash_compare(
 
     if pairwise_file_path.is_file():
         logging.warning(
-            "Sourmash pairwise distance file %s already exists, skipping.",
+            "Sourmash pairwise distance file %s already exists, overwriting.",
             pairwise_file_path,
         )
-        return pairwise_file_path
 
     pairwise_cmd = [
         "sourmash scripts pairwise",
         "-o",
         str(pairwise_file_path),
-        "-k",
+        "-k",  # kmer size (default params for protein sketch)
         "10",
-        "-s",
+        "-s",  # scaling factor (# default params for protein sketch)
         "200",
         "-m",
-        "protein",
+        "protein",  # sequence type
         "--write-all",  # write self comparisons for all sketches
         "-A",  # ignore containment threshold and output all comparisons
         "-c",
@@ -293,8 +278,8 @@ def sourmash_compare(
 
     pairwise_log_path = Path(os.path.join(sourmash_dir, "pairwise.log"))
     with open(pairwise_log_path, "w") as pairwise_log_file:
-        logging.info("Running sourmash branchwater pairwise")
-        logging.debug("Sourmash branchwater pairwise command: %s", pairwise_cmd)
+        logging.info("Running sourmash pairwise")
+        logging.debug("Sourmash pairwise command: %s", pairwise_cmd)
         try:
             subprocess.run(
                 pairwise_cmd,
@@ -307,13 +292,13 @@ def sourmash_compare(
             )
         except CalledProcessError as e:
             logging.error(
-                "Sourmash branchwater pairwise failed with error code %d: %s",
+                "Sourmash pairwise failed with error code %d: %s",
                 e.returncode,
                 e.stderr,
             )
             pairwise_log_file.write(e.stderr)
             raise e
-    logging.info("Sourmash branchwater pairwise completed successfully")
+    logging.info("Sourmash pairwise completed successfully")
 
     return pairwise_file_path
 
@@ -340,7 +325,10 @@ def parse_sourmash_results(pairwise_file_path: Path, cutoff: float) -> set[Edge]
             if line.startswith("query"):
                 continue
 
-            nodeA, _, nodeB, _, _, _, distance, _, _, _, _ = line.strip().split(",")
+            parts = line.strip().split(",")
+            nodeA = parts[0]
+            nodeB = parts[2]
+            distance = parts[6]  # jaccard similarity
 
             # skip self-comparisons
             # we dont want to rely on this being present in the file
@@ -354,8 +342,8 @@ def parse_sourmash_results(pairwise_file_path: Path, cutoff: float) -> set[Edge]
             if edge.jaccard_similarity >= cutoff:
                 edges.add(edge)
 
-    logging.info("Parsed %d edges from sourmash results", len(edges))
-    
+    logging.info("Parsed %d edges from sourmash results (similarity threshold: %.2f)", len(edges), cutoff)
+
     edges = list(edges)
     nodes = list(nodes)
 
