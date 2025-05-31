@@ -89,6 +89,8 @@ class TestCDSComponent(TestCase):
 
         warning = any(str in log for log in cm.output)
         self.assertEqual(warning, True)
+
+        self.assertEqual(cds, None)
     
     def test_sort_cds_component(self):
         """Tests whether the sort function correctly sorts the CDS component by start position"""
