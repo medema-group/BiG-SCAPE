@@ -188,3 +188,12 @@ PROFILER_UPDATE_INTERVAL: 0.5
 # This forces linux runs to use a different method for creating subprocesses,
 # which is more memory efficient but slower. This has no effect on Mac.
 CONSERVE_MEMORY: false
+
+# DEREPLICATE
+# Length of kmers used in comparisons between BGC regions. Sourmash default for protein
+# comparisons is 10 amino acids.
+KMER_SIZE: 10
+# Sourmash `scaled` parameter that governs how many kmer hashes are kept and compared
+# per BGC. With lower values, comparisons are based on more kmers. We've lowered the
+# sourmash default (200) to increase sensitivity, especially for shorter sequences.
+SCALED: 100

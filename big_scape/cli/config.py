@@ -178,6 +178,10 @@ class BigscapeConfig:
     # This just adds the ability to choose spawn on Linux. Good for large datasets.
     CONSERVE_MEMORY: bool = False
 
+    # DEREPLICATE
+    KMER_SIZE: int = 10
+    SCALED: int = 100
+
     @staticmethod
     def parse_config(config_file_path: Path, log_path: Optional[Path] = None) -> None:
         """parses config file and writes a config.log if log_path is given
@@ -236,6 +240,10 @@ class BigscapeConfig:
 
         # MEMORY CONSERVATION
         BigscapeConfig.CONSERVE_MEMORY = config["CONSERVE_MEMORY"]
+
+        # DEREPLICATE
+        BigscapeConfig.KMER_SIZE = config["KMER_SIZE"]
+        BigscapeConfig.SCALED = config["SCALED"]
 
         # store relevant hash
         BigscapeConfig.generate_relevant_hash()
