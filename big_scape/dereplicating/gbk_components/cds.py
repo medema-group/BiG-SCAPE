@@ -65,6 +65,7 @@ class CDS:
         nt_stop = int(feature.location.end)
         strand = int(feature.location.strand)
 
+        gene_kind = ""
         if "gene_kind" in feature.qualifiers:
             gene_kind = feature.qualifiers["gene_kind"][0]
 
@@ -80,7 +81,6 @@ class CDS:
                 nt_stop,
                 gbk.path,
             )
-            gene_kind = None
 
         nt_seq = feature.location.extract(seqIO_record.seq)
 
@@ -187,12 +187,10 @@ class CDS:
         filtered_cds_list = [cds_list[0]]
 
         for cds in cds_list[1:]:
-
             replaced_cds = False
 
             # for each cds we need to check if it overlaps with any of the already existing cds
             for prev_cds_idx, prev_cds in enumerate(filtered_cds_list):
-
                 # if two cds are not in the same strand, they cant overlap
                 if cds.strand != prev_cds.strand:
                     continue
