@@ -196,4 +196,5 @@ KMER_SIZE: 10
 # Sourmash `scaled` parameter that governs how many kmer hashes are kept and compared
 # per BGC. With lower values, comparisons are based on more kmers. We've lowered the
 # sourmash default (200) to increase sensitivity, especially for shorter sequences.
+# See the wiki for a more detailed description.
 SCALED: 100
