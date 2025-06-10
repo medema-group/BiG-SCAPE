@@ -8,6 +8,7 @@ import subprocess
 from subprocess import CalledProcessError
 
 # from other modules
+from big_scape.cli.config import BigscapeConfig
 from big_scape.dereplicating.gbk_components.gbk import GBK
 from big_scape.dereplicating.gbk_components.cds import CDS
 import big_scape.enums as bs_enums
@@ -193,14 +194,14 @@ def sourmash_sketch(
             sketch_file_path,
         )
 
-    # TODO: consider adding sourmash params from config file
-    # needs some discussion however on whether this is desireable
+    kmer_size = BigscapeConfig.KMER_SIZE
+    scaled = BigscapeConfig.SCALED
     sketch_cmd = [
         "sourmash scripts manysketch",
         "-o",
         str(sketch_file_path),
         "-p",
-        "protein,k=10,scaled=200,noabund",  # default params for protein sketch
+        f"protein,k={kmer_size},scaled={scaled},noabund",
         "--singleton",  # one sketch per protein sequence
         "-c",
         str(run_dict["cores"]),
@@ -257,14 +258,16 @@ def sourmash_compare(
             pairwise_file_path,
         )
 
+    kmer_size = BigscapeConfig.KMER_SIZE
+    scaled = BigscapeConfig.SCALED
     pairwise_cmd = [
         "sourmash scripts pairwise",
         "-o",
         str(pairwise_file_path),
-        "-k",  # kmer size (default params for protein sketch)
-        "10",
-        "-s",  # scaling factor (# default params for protein sketch)
-        "200",
+        "-k",  # kmer size
+        str(kmer_size),
+        "-s",  # scaling factor
+        str(scaled),
         "-m",
         "protein",  # sequence type
         "--write-all",  # write self comparisons for all sketches
