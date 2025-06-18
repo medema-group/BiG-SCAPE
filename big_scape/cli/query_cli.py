@@ -9,9 +9,10 @@ from pathlib import Path
 from big_scape.cli.config import BigscapeConfig
 from big_scape.run_bigscape import run_bigscape
 from big_scape.diagnostics import init_logger, init_logger_file
+import big_scape.enums as bs_enums
 
 # from this module
-from .cli_common_options import common_all, common_cluster_query
+from .cli_common_options import common_all, common_cluster_query, common_cluster_query_dereplicate
 from .cli_validations import (
     validate_classify,
     validate_output_paths,
@@ -26,6 +27,7 @@ from .cli_validations import (
 
 @click.command()
 @common_all
+@common_cluster_query_dereplicate
 @common_cluster_query
 @click.option(
     "-q",
@@ -95,7 +97,7 @@ def query(ctx, *args, **kwarg):
     ctx.obj.update(ctx.params)
     ctx.obj["mix"] = None
     ctx.obj["hybrids_off"] = False
-    ctx.obj["mode"] = "Query"
+    ctx.obj["mode"] = bs_enums.input_parameters.RUN_MODE.QUERY
     ctx.obj["exclude_categories"] = None
     ctx.obj["include_categories"] = None
     ctx.obj["exclude_classes"] = None

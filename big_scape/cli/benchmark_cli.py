@@ -5,8 +5,9 @@ import click
 from pathlib import Path
 
 # from other modules
-from big_scape.benchmark import run_bigscape_benchmark
+from big_scape.benchmarking.benchmark import run_bigscape_benchmark
 from big_scape.diagnostics import init_logger, init_logger_file
+import big_scape.enums as bs_enums
 
 # from this module
 from .cli_common_options import common_all
@@ -50,7 +51,7 @@ def benchmark(ctx, *args, **kwargs):
     """
     # get context parameters
     ctx.obj.update(ctx.params)
-    ctx.obj["mode"] = "Benchmark"
+    ctx.obj["mode"] = bs_enums.input_parameters.RUN_MODE.BENCHMARK
 
     # set start time and label
     set_start(ctx.obj)
