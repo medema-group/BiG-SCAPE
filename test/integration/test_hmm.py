@@ -47,7 +47,7 @@ def add_mock_hsp_alignment_hsp(hsp: bs_hmm.HSP) -> None:
     hsp.alignment = hsp_alignment
 
 
-class TestHMMScan(TestCase):
+class TestHMMSearch(TestCase):
     """Test class for hmm search/scan workflow"""
 
     def clean_db(self):
@@ -142,7 +142,7 @@ class TestHMMScan(TestCase):
         run_state = bs_data.find_minimum_task([gbk])
         self.assertEqual(run_state, bs_enums.TASK.HMM_ALIGN)
 
-    def test_hmmscan_workflow_file(self):
+    def test_hmmsearch_simple_workflow_file(self):
         """Tests the entire hmm scan workflow with a file as input"""
 
         bs_data.DB.create_in_mem()
@@ -172,7 +172,63 @@ class TestHMMScan(TestCase):
         bs_hmm.HMMer.align_simple(hsps_to_align)
 
         expected_alignment = (
-            "-DGMYYSFWTDGGGSVSMTLNGGGSYSTQWTNCGNFVAGKGWSTGGRRTVRYNGYFNPSGNGYGCLYGWTSNPL"
+            "--GMYYSFWTDGGGSVSMTLNGGGSYSTQWTNCGNFVAGKGWSTGGRRTVRYNGYFNPSGNGYGCLYGWTSNPL"
+            "VEYYIVDNWGSYRP--TGTYKGTVSSDGGTYDIYQTTRYNAPSVEGTKTFQQYWSVRQSKVTSGTITTGNHFDA"
+            "WARAGMNMGQFRYMIMATEGYQSSGSSNIT"
+        )
+
+        expected_result = bs_hmm.HSPAlignment(hsps_to_align[0], expected_alignment)
+
+        hsp = hsps_to_align[0]
+        actual_result = hsp.alignment
+
+        run_state = bs_data.find_minimum_task([gbk])
+
+        self.assertEqual(expected_result, actual_result)
+
+        for hsp in hsps_to_align:
+            if hsp.alignment is None:
+                continue
+            hsp.alignment.save(False)
+
+        cds_to_scan = bs_data.get_cds_to_scan([gbk])
+        expected_cds_to_scan = []
+        self.assertEqual(expected_cds_to_scan, cds_to_scan)
+
+        run_state = bs_data.find_minimum_task([gbk])
+        self.assertEqual(run_state, bs_enums.TASK.COMPARISON)
+
+    def test_hmmsearch_multiprocess_workflow_file(self):
+        """Tests the entire hmm scan workflow with a file as input"""
+
+        bs_data.DB.create_in_mem()
+
+        gbk = create_mock_gbk(1)
+        gbk.save_all()
+
+        cds_to_scan = bs_data.get_cds_to_scan([gbk])
+
+        hmm_path = Path("test/test_data/hmm/PF00457.19.hmm")
+        bs_hmm.HMMer.init(hmm_path, False)
+
+        bs_hmm.HMMer.hmmsearch_multiprocess(cds_to_scan, cores=1)
+
+        for cds in cds_to_scan:
+            for hsp in cds.hsps:
+                hsp.save(False)
+
+        run_state = bs_data.find_minimum_task([gbk])
+        self.assertEqual(run_state, bs_enums.TASK.HMM_ALIGN)
+
+        hsps_to_align = bs_data.get_hsp_to_align([gbk])
+        expected_hsps_to_align = [cds_to_scan[0].hsps[0]]
+
+        self.assertEqual(expected_hsps_to_align, hsps_to_align)
+
+        bs_hmm.HMMer.align_simple(hsps_to_align)
+
+        expected_alignment = (
+            "--GMYYSFWTDGGGSVSMTLNGGGSYSTQWTNCGNFVAGKGWSTGGRRTVRYNGYFNPSGNGYGCLYGWTSNPL"
             "VEYYIVDNWGSYRP--TGTYKGTVSSDGGTYDIYQTTRYNAPSVEGTKTFQQYWSVRQSKVTSGTITTGNHFDA"
             "WARAGMNMGQFRYMIMATEGYQSSGSSNIT"
         )

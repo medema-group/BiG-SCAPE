@@ -12,6 +12,8 @@ from sqlalchemy import select, alias
 from typing import Optional
 from itertools import combinations
 
+from tqdm import tqdm
+
 # from other modules
 from big_scape.comparison.binning import create_temp_record_id_table
 from big_scape.data import DB
@@ -256,6 +258,8 @@ def legacy_generate_bin_output(
         network (BSNetwork): the network object for the pair_generator
     """
 
+    logging.info(f"Generating output for {pair_generator.label} at cutoff {cutoff}")
+
     click_context = click.get_current_context(silent=True)
 
     if click_context and click_context.obj["db_only_output"]:
@@ -375,8 +379,6 @@ def write_record_annotations_file(run, cutoff, all_bgc_records) -> None:
         .distinct()
     )
 
-    record_data = DB.execute(select_statement).fetchall()
-
     with open(record_annotations_path, "w") as record_annotations_file:
         header = "\t".join(
             [
@@ -393,32 +395,40 @@ def write_record_annotations_file(run, cutoff, all_bgc_records) -> None:
         )
         record_annotations_file.write(header + "\n")
 
-        for record in record_data:
-            (
-                gbk_path,
-                organism,
-                taxonomy,
-                description,
-                rec_id,
-                record_number,
-                record_type,
-                product,
-            ) = record
+        cursor = DB.execute(select_statement)
+        cursor.yield_per(10000)
 
-            row = "\t".join(
-                [
-                    f"{Path(gbk_path).name}_{record_type}_{record_number}",
-                    Path(gbk_path).stem,
-                    record_type,
-                    str(record_number),
-                    product,
-                    record_categories[rec_id],
+        with tqdm(
+            total=-1, desc="Writing record annotations file", unit="lines"
+        ) as progress:
+            for record in cursor:
+                (
+                    gbk_path,
                     organism,
                     taxonomy,
                     description,
-                ]
-            )
-            record_annotations_file.write(row + "\n")
+                    rec_id,
+                    record_number,
+                    record_type,
+                    product,
+                ) = record
+
+                row = "\t".join(
+                    [
+                        f"{Path(gbk_path).name}_{record_type}_{record_number}",
+                        Path(gbk_path).stem,
+                        record_type,
+                        str(record_number),
+                        product,
+                        record_categories[rec_id],
+                        organism,
+                        taxonomy,
+                        description,
+                    ]
+                )
+                record_annotations_file.write(row + "\n")
+
+                progress.update(1)
 
     return None
 
@@ -478,28 +488,32 @@ def write_clustering_file(run, cutoff, pair_generator) -> None:
         .order_by(rec_fam_table.c.family_id)
     )
 
-    record_data = DB.execute(select_statement).fetchall()
-
     with open(clustering_file_path, "w") as clustering_file:
         header = "\t".join(
             ["Record", "GBK", "Record_Type", "Record_Number", "CC", "Family"]
         )
         clustering_file.write(header + "\n")
 
-        for record in record_data:
-            gbk_path, record_type, record_number, cc_number, family = record
+        cursor = DB.execute(select_statement)
+        cursor.yield_per(10000)
 
-            row = "\t".join(
-                [
-                    f"{Path(gbk_path).name}_{record_type}_{record_number}",
-                    Path(gbk_path).stem,
-                    record_type,
-                    str(record_number),
-                    str(cc_number),
-                    f"FAM_{family:0>5}",
-                ]
-            )
-            clustering_file.write(row + "\n")
+        with tqdm(total=-1, desc="Writing clustering file", unit="lines") as progress:
+            for record in cursor:
+                gbk_path, record_type, record_number, cc_number, family = record
+
+                row = "\t".join(
+                    [
+                        f"{Path(gbk_path).name}_{record_type}_{record_number}",
+                        Path(gbk_path).stem,
+                        record_type,
+                        str(record_number),
+                        str(cc_number),
+                        f"FAM_{family:0>5}",
+                    ]
+                )
+                clustering_file.write(row + "\n")
+
+                progress.update(1)
 
     return None
 
@@ -665,8 +679,6 @@ def write_network_file(
         # still do not include edges with a distance of 1
         select_statement = select_statement.where(distance_table.c.distance < 1)
 
-    edgelist = set(DB.execute(select_statement).fetchall())
-
     with open(output_path, "w") as network_file:
         header = (
             "Record_a\tGBK_a\tRecord_Type_a\tRecord_Number_a\tORF_coords_a\t"
@@ -676,48 +688,54 @@ def write_network_file(
 
         network_file.write(header)
 
-        for (
-            gbk_path_a,
-            record_type_a,
-            record_number_a,
-            gbk_path_b,
-            record_type_b,
-            record_number_b,
-            distance,
-            jaccard,
-            adjacency,
-            dss,
-            ext_a_start,
-            ext_a_stop,
-            ext_b_start,
-            ext_b_stop,
-            weights,
-            alignment_mode,
-            extend_strategy,
-        ) in edgelist:
-            row = "\t".join(
-                [
-                    f"{Path(gbk_path_a).name}_{record_type_a}_{record_number_a}",
-                    Path(gbk_path_a).stem,
-                    record_type_a,
-                    str(record_number_a),
-                    f"{ext_a_start}:{ext_a_stop}",
-                    f"{Path(gbk_path_b).name}_{record_type_b}_{record_number_b}",
-                    Path(gbk_path_b).stem,
-                    record_type_b,
-                    str(record_number_b),
-                    f"{ext_b_start}:{ext_b_stop}",
-                    f"{distance:.2f}",
-                    f"{jaccard:.2f}",
-                    f"{adjacency:.2f}",
-                    f"{dss:.2f}",
-                    weights,
-                    alignment_mode,
-                    extend_strategy,
-                ]
-            )
+        cursor = DB.execute(select_statement)
+        cursor.yield_per(10000)
 
-            network_file.write(row + "\n")
+        with tqdm(total=-1, desc="Writing network file", unit="lines") as progress:
+            for (
+                gbk_path_a,
+                record_type_a,
+                record_number_a,
+                gbk_path_b,
+                record_type_b,
+                record_number_b,
+                distance,
+                jaccard,
+                adjacency,
+                dss,
+                ext_a_start,
+                ext_a_stop,
+                ext_b_start,
+                ext_b_stop,
+                weights,
+                alignment_mode,
+                extend_strategy,
+            ) in cursor:
+                row = "\t".join(
+                    [
+                        f"{Path(gbk_path_a).name}_{record_type_a}_{record_number_a}",
+                        Path(gbk_path_a).stem,
+                        record_type_a,
+                        str(record_number_a),
+                        f"{ext_a_start}:{ext_a_stop}",
+                        f"{Path(gbk_path_b).name}_{record_type_b}_{record_number_b}",
+                        Path(gbk_path_b).stem,
+                        record_type_b,
+                        str(record_number_b),
+                        f"{ext_b_start}:{ext_b_stop}",
+                        f"{distance:.2f}",
+                        f"{jaccard:.2f}",
+                        f"{adjacency:.2f}",
+                        f"{dss:.2f}",
+                        weights,
+                        alignment_mode,
+                        extend_strategy,
+                    ]
+                )
+
+                network_file.write(row + "\n")
+
+                progress.update(1)
 
 
 def write_topolink_file(bgc_records: list[BGCRecord], output_path: Path) -> None:

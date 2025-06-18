@@ -81,7 +81,7 @@ def create_temp_hash_table(gbks: list[GBK]) -> Table:
     def batch_hash(gbks: list[GBK], n: int):
         l = len(gbks)
         for ndx in range(0, l, n):
-            yield [gbk.hash for gbk in gbks[ndx : min(ndx + n, l)]]
+            yield [gbk.hash for gbk in gbks[ndx: min(ndx + n, l)]]
 
     for hash_batch in batch_hash(gbks, 1000):
         cursor.executemany(insert_query, [(x,) for x in hash_batch])  # type: ignore
@@ -137,7 +137,7 @@ def create_temp_gbk_id_table(gbk_ids: list[int]) -> Table:
     def batch_hash(gbk_ids: list[int], n: int):
         l = len(gbk_ids)
         for ndx in range(0, l, n):
-            yield [gbk_id for gbk_id in gbk_ids[ndx : min(ndx + n, l)]]
+            yield [gbk_id for gbk_id in gbk_ids[ndx: min(ndx + n, l)]]
 
     for hash_batch in batch_hash(gbk_ids, 1000):
         cursor.executemany(insert_query, [(x,) for x in hash_batch])  # type: ignore

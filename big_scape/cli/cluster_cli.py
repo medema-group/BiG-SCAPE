@@ -1,14 +1,18 @@
-""" Click parameters for the BiG-SCAPE Cluster CLI command """
+"""Click parameters for the BiG-SCAPE Cluster CLI command"""
 
 # from python
+import logging
+import multiprocessing
 import click
 
 # from other modules
+from big_scape.cli.config import BigscapeConfig
 from big_scape.run_bigscape import run_bigscape
 from big_scape.diagnostics import init_logger, init_logger_file
+import big_scape.enums as bs_enums
 
 # from this module
-from .cli_common_options import common_all, common_cluster_query
+from .cli_common_options import common_all, common_cluster_query, common_cluster_query_dereplicate
 from .cli_validations import (
     validate_classify,
     validate_class_category_filter,
@@ -23,6 +27,7 @@ from .cli_validations import (
 
 @click.command()
 @common_all
+@common_cluster_query_dereplicate
 @common_cluster_query
 # binning parameters
 @click.option(
@@ -136,7 +141,7 @@ def cluster(ctx, *args, **kwargs):
     ctx.obj.update(ctx.params)
     ctx.obj["query_bgc_path"] = None
     ctx.obj["propagate"] = True  # compatibility with query wrt cc generation
-    ctx.obj["mode"] = "Cluster"
+    ctx.obj["mode"] = bs_enums.input_parameters.RUN_MODE.CLUSTER
 
     # TODO: remove when reimplementing disk-only
     ctx.obj["disk_only"] = False
@@ -154,6 +159,14 @@ def cluster(ctx, *args, **kwargs):
     # initialize logger
     init_logger(ctx.obj)
     init_logger_file(ctx.obj)
+
+    # parse config file
+    logging.info("Using config file %s", ctx.obj["config_file_path"])
+    BigscapeConfig.parse_config(ctx.obj["config_file_path"], ctx.obj["log_path"])
+
+    # force spawn when trying to conserve memory
+    if BigscapeConfig.CONSERVE_MEMORY:
+        multiprocessing.set_start_method("spawn")
 
     # run BiG-SCAPE cluster
     run_bigscape(ctx.obj)

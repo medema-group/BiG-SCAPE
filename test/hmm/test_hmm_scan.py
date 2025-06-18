@@ -18,8 +18,8 @@ from big_scape.hmm import HSP
 import big_scape.enums as bs_enums
 
 
-class TestHMMScan(TestCase):
-    """Contains tests to check the hmmscan functionality"""
+class TestHMMSearch(TestCase):
+    """Contains tests to check the hmmsearch functionality"""
 
     def clean_db(self):
         if DB.opened():

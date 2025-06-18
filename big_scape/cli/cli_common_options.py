@@ -83,8 +83,8 @@ def common_all(fn):
     return fn
 
 
-def common_cluster_query(fn):
-    """Decorator incorporating common command line options in cluster and query modules
+def common_cluster_query_dereplicate(fn):
+    """Decorator incorporating common command line options in cluster, query and dereplicate modules
 
     Args:
         fn (function): Function to be decorated
@@ -92,14 +92,8 @@ def common_cluster_query(fn):
     Returns:
         function decorated with new click options
     """
+
     options = [
-        # diagnostic parameters
-        click.option(
-            "--profiling",
-            callback=validate_profiling,
-            is_flag=True,
-            help="Run profiler and output profile report. Note: currently only available for Linux systems.",
-        ),
         click.option(
             "-i",
             "--input-dir",
@@ -148,6 +142,53 @@ def common_cluster_query(fn):
                 "(default: recursive)."
             ),
         ),
+        click.option(
+            "--include-gbk",
+            type=str,
+            default="cluster,region",
+            callback=validate_filter_gbk,
+            help=(
+                "A comma separated list of strings. Only .gbk files that have "
+                "the string(s) in their filename will be used for the analysis. "
+                "Use an asterisk to accept every file ('*' overrides '--exclude_gbk_str'). "
+                "(default: cluster,region)."
+            ),
+        ),
+        click.option(
+            "--exclude-gbk",
+            type=str,
+            default="final",
+            callback=validate_filter_gbk,
+            help=(
+                "A comma separated list of strings. "
+                "If any string in this list occurs in the .gbk filename, this "
+                "file will not be used for the analysis (default: final)."
+            ),
+        ),
+    ]
+
+    for opt in options[::-1]:
+        fn = opt(fn)
+    return fn
+
+
+def common_cluster_query(fn):
+    """Decorator incorporating common command line options in cluster and query modules
+
+    Args:
+        fn (function): Function to be decorated
+
+    Returns:
+        function decorated with new click options
+    """
+    options = [
+        # diagnostic parameters
+        click.option(
+            "--profiling",
+            callback=validate_profiling,
+            is_flag=True,
+            help="Run profiler and output profile report. Note: currently only available for Linux systems.",
+        ),
         # TODO: adjust choices
         click.option(
             "-m",
@@ -176,29 +217,6 @@ def common_cluster_query(fn):
                 "Path to directory containing user defined, non-MIBiG, antiSMASH processed reference BGCs. "
                 "Duplicated filenames are not recommended. "
                 "For more information, see the wiki."
-            ),
-        ),
-        click.option(
-            "--include-gbk",
-            type=str,
-            default="cluster,region",
-            callback=validate_filter_gbk,
-            help=(
-                "A comma separated list of strings. Only .gbk files that have "
-                "the string(s) in their filename will be used for the analysis. "
-                "Use an asterisk to accept every file ('*' overrides '--exclude_gbk_str'). "
-                "(default: cluster,region)."
-            ),
-        ),
-        click.option(
-            "--exclude-gbk",
-            type=str,
-            default="final",
-            callback=validate_filter_gbk,
-            help=(
-                "A comma separated list of strings. "
-                "If any string in this list occurs in the .gbk filename, this "
-                "file will not be used for the analysis (default: final)."
             ),
         ),
         click.option(

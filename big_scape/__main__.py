@@ -7,6 +7,7 @@ import click
 # from other modules
 from big_scape.cli import cluster_cli as cluster
 from big_scape.cli import query_cli as query
+from big_scape.cli import dereplicate_cli as dereplicate
 from big_scape.cli import benchmark_cli as benchmark
 from big_scape.cli.cli_config import CommandOrder
 from big_scape.utility.version import get_bigscape_version
@@ -32,7 +33,7 @@ def cli(ctx, *args, **kwargs):
     Biosynthetic Gene Similarity Clustering and Prospecting Engine.
 
     \b
-    BiG-SCAPE can be run in three modes: cluster, query, and benchmark.
+    BiG-SCAPE can be run in four modes: cluster, query, dereplicate and benchmark.
     See the help menu for each mode for more information.
     For a more comprehensive help menu and tutorials see GitHub Wiki.
     \f
@@ -44,6 +45,7 @@ def cli(ctx, *args, **kwargs):
 
 cli.add_command(cluster.cluster)
 cli.add_command(query.query)
+cli.add_command(dereplicate.dereplicate)
 cli.add_command(benchmark.benchmark)
 
 
