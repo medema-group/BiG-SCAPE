@@ -1110,7 +1110,8 @@ CC\tFamily\tGBK\tRecord_Type\tRecord_Number\tClass\tCategory\tOrganism\tTaxonomy
     }
 
     function renderHeatmap(idx, run_data) {
-        var genome_nr = parseInt($("#total_accession").text())
+        // first collect the number of unique genome accessions in this bin
+        var genome_nr = new Set(run_data["networks"][idx]["families"].flatMap(f => f.members)).size
         if (genome_nr <= 1) { // showing a heatmap with one row is not possible (or desired)
             $("#abpres_heatmap").html("<span>Dataset contains only one genome identifier, no heatmap is shown.</span>");
             $("#abpres_tsv_text").val("Dataset contains only one genome identifier, no heatmap was generated.");
