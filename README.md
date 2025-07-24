@@ -1,10 +1,7 @@
 ![License](https://img.shields.io/github/license/medema-group/BiG-SCAPE)
-![Github downloads](https://img.shields.io/github/downloads/medema-group/BiG-SCAPE/latest/total?label=Github%20downloads%20%28latest%29)
 ![Conda downloads](https://img.shields.io/conda/dn/bioconda/bigscape?label=Conda%20downloads)
 ![Test workflow](https://github.com/medema-group/BiG-SCAPE/actions/workflows/run-tests.yml/badge.svg)
 ![Test workflow](https://github.com/medema-group/BiG-SCAPE/actions/workflows/deploy-docker.yml/badge.svg)
-![Coverage](https://medema-group.github.io/BiG-SCAPE/badges/coverage.svg)
-![Pylint](https://medema-group.github.io/BiG-SCAPE/badges/pylint.svg)
 [![fair-software.eu](https://img.shields.io/badge/fair--software.eu-%E2%97%8F%20%20%E2%97%8F%20%20%E2%97%8F%20%20%E2%97%8B%20%20%E2%97%8B-orange)](https://fair-software.eu)
 
 ## _Notes:<br>BiG-SCAPE 2.0 is still in beta. Please submit an issue if you find anything wrong with this release!<br>BiG-SCAPE 2.0 features several updates to input validation and reference usage. We encourage both experienced BiG-SCAPE 1 users as well as new BiG-SCAPE users to read the updated [documentation](https://github.com/medema-group/BiG-SCAPE/wiki)._
