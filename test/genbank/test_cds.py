@@ -97,6 +97,21 @@ class TestCDS(TestCase):
 
         self.assertEqual(expected_gene_kind, cds.gene_kind)
 
+    def test_cds_is_core(self):
+        """Tests whether cds is correctly assigned as core"""
+        cds_biosynth = CDS(0, 100)
+        cds_biosynth.gene_kind = "biosynthetic"
+
+        cds_catab = CDS(0, 100)
+        cds_catab.gene_kind = "catabolic"
+
+        cds_bio_add = CDS(0, 100)
+        cds_bio_add.gene_kind = "biosynthetic-additional"
+
+        self.assertTrue(cds_biosynth.is_core())
+        self.assertTrue(cds_catab.is_core())
+        self.assertFalse(cds_bio_add.is_core())
+
     def test_parse_wrong_type(self):
         """Tests whether create_region correctly throws an error when given a feature of
         a wrong type
