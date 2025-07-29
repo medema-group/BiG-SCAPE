@@ -220,7 +220,7 @@ class ComparableRegion:
         )
 
     @staticmethod
-    def cds_range_contains_biosynthetic(
+    def cds_range_contains_core(
         record: BGCRecord,
         cds_start: int,
         cds_stop: int,
@@ -228,7 +228,7 @@ class ComparableRegion:
         reverse=False,
     ) -> bool:
         """Return true if a range of cds within this record contains a gene that is
-        marked as biosynthetic
+        marked as core
 
         Args:
             record (BGCRecord): BGC record object
@@ -240,7 +240,7 @@ class ComparableRegion:
             cds_start and cds_stop. Defaults to False.
 
         Returns:
-            bool: True if the given range contains a biosynthetic gene
+            bool: True if the given range contains a core gene
         """
         stop = cds_stop
         if end_inclusive:
@@ -252,7 +252,7 @@ class ComparableRegion:
             if cds.gene_kind is None:
                 continue
 
-            if cds.gene_kind == "biosynthetic":
+            if cds.is_core():
                 return True
 
         return False

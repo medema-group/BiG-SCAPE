@@ -44,107 +44,6 @@ def find_lcs(list_a: list[Any], list_b: list[Any]) -> tuple[Match, list[Match]]:
     return match, matching_blocks
 
 
-def find_bio_or_middle_lcs(
-    a_cds: list[bs_genbank.CDS],
-    b_cds: list[bs_genbank.CDS],
-    a_domains: list[bs_hmm.HSP],
-    b_domains: list[bs_hmm.HSP],
-    matching_blocks: list[Match],
-    matching_blocks_rev: list[Match],
-    a_domain_cds_idx: dict[int, int],
-    b_domain_cds_idx: dict[int, int],
-) -> tuple[int, int, int, int, bool]:
-    """Find the most central match out of all LCS matches, or a match containing a
-    biosynthetic gene
-
-    This is done by first selecting the shorter record in terms of CDS, and then
-    finding the match that is closest to the middle of the CDS
-
-    Args:
-        a_cds (list[CDS]): List of CDS for A
-        b_cds (list[CDS]): List of CDS for B
-        a_domains (list[HSP]): List of domains for A
-        b_domains (list[HSP]): List of domains for B
-        matching_blocks (list[Match]): List of matching blocks
-        matching_blocks_rev (list[Match]): List of matching blocks in reverse
-        a_domain_cds_idx (dict[int, int]): Dictionary of domain idx to cds idx for A
-        b_domain_cds_idx (dict[int, int]): Dictionary of domain idx to cds idx for B
-
-    Returns:
-        tuple[int, int, int, int, bool]: a_start, a_stop, b_start, b_stop, reverse
-    """
-
-    # first find which region is shorter in terms of cds
-    a_cds_len = len(a_cds)
-    b_cds_len = len(b_cds)
-
-    # default to A. if B is shorter, use B
-    if a_cds_len <= b_cds_len:
-        use_cds = a_cds
-        use_domains = a_domains
-        matching_block_idx = 0
-    else:
-        use_cds = b_cds
-        use_domains = b_domains
-        matching_block_idx = 1
-
-    # generate a CDS to index dict
-    cds_idx_dict = {cds: i for i, cds in enumerate(use_cds)}
-
-    # go through all LCS matches and find the one with the most central CDS
-    middle = len(use_cds) / 2
-    min = None
-    for matching_block in matching_blocks:
-        # I don't even know why there is a match of len 0 when there are matches
-        # of len 1
-        if matching_block[2] == 0:
-            continue
-
-        idx = matching_block[matching_block_idx]
-
-        domain = use_domains[idx]
-        cds_idx = cds_idx_dict[domain.cds]
-
-        # find the distance to the middle
-        distance = abs(middle - cds_idx)
-
-        if min is None or distance < min:
-            min = distance
-            a_start = matching_block[0]
-            a_stop = matching_block[0] + matching_block[2]
-            b_start = matching_block[1]
-            b_stop = matching_block[1] + matching_block[2]
-            reverse = False
-
-    # go through all reverse, too
-    for matching_block in matching_blocks_rev:
-        if matching_block[2] == 0:
-            continue
-
-        idx = matching_block[matching_block_idx]
-
-        domain = use_domains[idx]
-        cds_idx = cds_idx_dict[domain.cds]
-
-        # find the distance to the middle
-        distance = abs(middle - cds_idx)
-
-        if min is None or distance < min:
-            min = distance
-            a_start = matching_block[0]
-            a_stop = matching_block[0] + matching_block[2]
-            b_start = len(b_domains) - matching_block[1] - matching_block[2]
-            b_stop = len(b_domains) - matching_block[1]
-            reverse = True
-
-    a_cds_start = a_domain_cds_idx[a_start]
-    a_cds_stop = a_domain_cds_idx[a_stop - 1] + 1
-    b_cds_start = b_domain_cds_idx[b_start]
-    b_cds_stop = b_domain_cds_idx[b_stop - 1] + 1
-
-    return a_cds_start, a_cds_stop, b_cds_start, b_cds_stop, reverse
-
-
 def find_domain_lcs_region(
     pair: bs_comparison.RecordPair,
 ) -> tuple[int, int, int, int, int, int, int, int, bool]:
@@ -156,10 +55,10 @@ def find_domain_lcs_region(
     These slices need to be converted to full CDS ranges later
 
     Approach:
-    - Pick the largest LCS with a biosynthetic gene
-    - If there are multiple LCS with a biosynthetic gene of equal length, pick the one
+    - Pick the largest LCS with a core gene
+    - If there are multiple LCS with a core gene of equal length, pick the one
         that is closest to the middle of the region
-    - If there are no LCS with a biosynthetic gene, pick the largest
+    - If there are no LCS with a core gene, pick the largest
     - If there are multiple LCS of equal length, pick the one that is closest to the
         middle of the region
 
@@ -185,10 +84,10 @@ def find_domain_lcs_region(
     a_domain_cds_idx = {}
     b_domain_cds_idx = {}
 
-    # list of domain idx whose genes are biosynthetic, to quickly find if a domain is
-    # part of a biosynthetic gene
-    a_biosynthetic_domain_cds: list[int] = []
-    b_biosynthetic_domain_cds: list[int] = []
+    # list of domain idx whose genes are core, to quickly find if a domain is
+    # part of a core gene
+    a_core_domain_cds: list[int] = []
+    b_core_domain_cds: list[int] = []
 
     for cds_idx, cds in enumerate(a_cds):
         for i in range(len(a_domains), len(a_domains) + len(cds.hsps)):
@@ -199,8 +98,8 @@ def find_domain_lcs_region(
         elif cds.strand == -1:
             a_domains.extend(cds.hsps[::-1])
 
-        if cds.gene_kind == "biosynthetic":
-            a_biosynthetic_domain_cds.append(cds_idx)
+        if cds.is_core():
+            a_core_domain_cds.append(cds_idx)
 
     for cds_idx, cds in enumerate(b_cds):
         for i in range(len(b_domains), len(b_domains) + len(cds.hsps)):
@@ -211,8 +110,8 @@ def find_domain_lcs_region(
         elif cds.strand == -1:
             b_domains.extend(cds.hsps[::-1])
 
-        if cds.gene_kind == "biosynthetic":
-            b_biosynthetic_domain_cds.append(cds_idx)
+        if cds.is_core():
+            b_core_domain_cds.append(cds_idx)
 
     # forward
     match, matching_blocks_fwd = find_lcs(a_domains, b_domains)
@@ -243,10 +142,10 @@ def find_domain_lcs_region(
     # return later
 
     # tuple is idx, length, reverse
-    longest_biosynthetic: list[tuple[int, int, bool]] = []
+    longest_core: list[tuple[int, int, bool]] = []
     longest: list[tuple[int, int, bool]] = []
     # tuple is idx, distance to middle, reverse
-    central_biosynthetic: list[tuple[int, int, bool]] = []
+    central_core: list[tuple[int, int, bool]] = []
     central: list[tuple[int, int, bool]] = []
 
     for match_idx, matching_block_dir in enumerate(matching_block_dirs):
@@ -261,29 +160,21 @@ def find_domain_lcs_region(
         if length == 0:
             continue
 
-        # check if the match contains a biosynthetic gene
-        has_biosynthetic = False
-        for biosynthetic_idx in a_biosynthetic_domain_cds:
-            if (
-                a_domain_cds_idx[start_a]
-                <= biosynthetic_idx
-                < a_domain_cds_idx[stop_a - 1] + 1
-            ):
-                has_biosynthetic = True
+        # check if the match contains a core gene
+        has_core = False
+        for core_idx in a_core_domain_cds:
+            if a_domain_cds_idx[start_a] <= core_idx < a_domain_cds_idx[stop_a - 1] + 1:
+                has_core = True
                 break
 
-        for biosynthetic_idx in b_biosynthetic_domain_cds:
-            if (
-                b_domain_cds_idx[start_b]
-                <= biosynthetic_idx
-                < b_domain_cds_idx[stop_b - 1] + 1
-            ):
-                has_biosynthetic = True
+        for core_idx in b_core_domain_cds:
+            if b_domain_cds_idx[start_b] <= core_idx < b_domain_cds_idx[stop_b - 1] + 1:
+                has_core = True
                 break
 
-        # select for biosynthetic or normal list
-        use_longest_list = longest_biosynthetic if has_biosynthetic else longest
-        use_central_list = central_biosynthetic if has_biosynthetic else central
+        # select for core or normal list
+        use_longest_list = longest_core if has_core else longest
+        use_central_list = central_core if has_core else central
 
         # Length
 
@@ -329,11 +220,11 @@ def find_domain_lcs_region(
     # just go top to bottom and return the first match in the list
     # remember that the lists are [match_idx, length/dist, reverse]
     # refer to docstring for decision making here
-    if len(longest_biosynthetic) == 1:
-        match_idx = longest_biosynthetic[0][0]
+    if len(longest_core) == 1:
+        match_idx = longest_core[0][0]
 
-    elif len(central_biosynthetic) > 0:
-        match_idx = central_biosynthetic[0][0]
+    elif len(central_core) > 0:
+        match_idx = central_core[0][0]
 
     elif len(longest) == 1:
         match_idx = longest[0][0]
@@ -520,7 +411,7 @@ def find_domain_lcs_protocluster(
                 in_protocore = True
                 break
 
-        # select for biosynthetic or normal list
+        # select for protocore or normal list
         use_longest_list = longest_protocore if in_protocore else longest
         use_central_list = central_protocore if in_protocore else central
 

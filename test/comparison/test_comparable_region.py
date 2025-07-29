@@ -39,7 +39,7 @@ class TestComparibleRegions(TestCase):
 
     def test_cds_range_contains_biosyntetic_true(self):
         """tests whether the cds_range_contains_biosyntetic function returns true for a
-        record in which a region contains a biosynthetic gene
+        record in which a region contains a core gene
         """
 
         gbk = GBK(None, "test", "test")
@@ -68,15 +68,13 @@ class TestComparibleRegions(TestCase):
 
         record.parent_gbk = gbk
 
-        has_biosynthetic = ComparableRegion.cds_range_contains_biosynthetic(
-            record, 0, 4
-        )
+        has_core = ComparableRegion.cds_range_contains_core(record, 0, 4)
 
-        self.assertTrue(has_biosynthetic)
+        self.assertTrue(has_core)
 
     def test_cds_range_contains_biosyntetic_false(self):
         """tests whether the cds_range_contains_biosyntetic function returns true for a
-        record in which a region contains a biosynthetic gene
+        record in which a region contains a core gene
         """
 
         gbk = GBK(None, "test", "test")
@@ -101,11 +99,9 @@ class TestComparibleRegions(TestCase):
 
         record.parent_gbk = gbk
 
-        has_biosynthetic = ComparableRegion.cds_range_contains_biosynthetic(
-            record, 0, 4
-        )
+        has_core = ComparableRegion.cds_range_contains_core(record, 0, 4)
 
-        self.assertFalse(has_biosynthetic)
+        self.assertFalse(has_core)
 
     def test_get_domain_dicts(self):
         """Tests whether get_dom_dict will return the correct dictionaries of domains"""
