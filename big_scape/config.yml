@@ -31,15 +31,15 @@ PROTO_MIN_LCS_LEN: 0
 # Minimum length percentage for accepting an extended LCS slice, which must be
 # satisfied in at least one of the compared records, measured in fraction of
 # included domains, when comparing:
-# - Regions or Cand_clusters with no biosynthetic domains in the extended slice
+# - Regions or Cand_clusters with no core domains in the extended slice
 REGION_MIN_EXTEND_LEN: 0.3
-# - Regions or Cand_clusters with at least one biosynthetic domain in the extended slice
+# - Regions or Cand_clusters with at least one core domain in the extended slice
 REGION_MIN_EXTEND_LEN_BIO: 0.2
-# - Protoclusters or Proto_cores with at least one biosynthetic domain in the extended slice
+# - Protoclusters or Proto_cores with at least one core domain in the extended slice
 PROTO_MIN_EXTEND_LEN: 0.2
 # List of product classes that do not require a minimum length. In practice, this
 # means that an LCS and/or Extended slice of at least 1 domain will be accepted,
-# so long as this is a core biosynthetic domain.
+# so long as this is a core domain.
 NO_MIN_CLASSES:
   - terpene
 # Integer scoring metrics used in the LCS extension algorithm for match, mismatch and gap.

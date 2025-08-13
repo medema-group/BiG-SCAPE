@@ -215,7 +215,7 @@ class TestExtendUtilities(unittest.TestCase):
 
     def test_check_too_short(self):
         """Test for check method when a region is too short and contains no
-        biosynthetic genes
+        core genes
         """
 
         cds_a, cds_b = generate_mock_cds_lists(10, 10, [0, 1, 2], [0, 1, 2], False)
@@ -236,13 +236,13 @@ class TestExtendUtilities(unittest.TestCase):
         )
         actual_result = (
             bs_comp.extend.len_check(record_pair, 0.3),
-            bs_comp.extend.biosynthetic_check(record_pair),
+            bs_comp.extend.core_check(record_pair),
         )
 
         self.assertEqual(expected_result, actual_result)
 
     def test_check_too_short_biosynth(self):
-        """Test for check method when the region contains a biosynthetic cds"""
+        """Test for check method when the region contains a core cds"""
 
         cds_a, cds_b = generate_mock_cds_lists(10, 10, [0, 1, 2], [0, 1, 2], False)
 
@@ -264,13 +264,13 @@ class TestExtendUtilities(unittest.TestCase):
         )
         actual_result = (
             bs_comp.extend.len_check(record_pair, 0.3),
-            bs_comp.extend.biosynthetic_check(record_pair),
+            bs_comp.extend.core_check(record_pair),
         )
 
         self.assertEqual(expected_result, actual_result)
 
     def test_check_pass(self):
-        """Test for check method when the region is long enough without a biosynthetic
+        """Test for check method when the region is long enough without a core
         cds
         """
         cds_a, cds_b = generate_mock_cds_lists(10, 10, [0, 1, 2], [0, 1, 2], False)
@@ -291,7 +291,7 @@ class TestExtendUtilities(unittest.TestCase):
         )
         actual_result = (
             bs_comp.extend.len_check(record_pair, 0.3),
-            bs_comp.extend.biosynthetic_check(record_pair),
+            bs_comp.extend.core_check(record_pair),
         )
 
         self.assertEqual(expected_result, actual_result)
