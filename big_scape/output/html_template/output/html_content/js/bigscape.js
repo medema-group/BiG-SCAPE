@@ -364,7 +364,7 @@ function Bigscape(run_data, bs_data, bs_families, bs_alignment, bs_similarity, n
       ui.attr("stroke", "blue");
       ui.attr("stroke-width", "4px");
     }
-    if (run_data["mode"] == "Query") {
+    if (run_data["mode"] == "query") {
       if (bs_data[node.id]["source"] == "query") {
         // ui.attr("r", "20")
         ui.attr("stroke", "green");
@@ -1504,8 +1504,8 @@ ${lines.toSorted((a, b) => a > b).join("\n")}`
     var [node_a_gbk, node_a_rec_type, node_a_rec_num] = node_db_id_to_columns[record_a_id]
     var [node_b_gbk, node_b_rec_type, node_b_rec_num] = node_db_id_to_columns[record_b_id]
     edge_lines.push(`${node_a_gbk}\t${node_a_rec_type}\t${node_a_rec_num}\t${node_b_gbk}\t${node_b_rec_type}\t${node_b_rec_num}\t${distance}`)
-}
-var tsv_edges = `# Collection of edges betwen selected nodes
+  }
+  var tsv_edges = `# Collection of edges betwen selected nodes
 # Run info: ${$("#bigscape-runs option:selected").text()} ${$("#network-selection option:selected").text()}
 # Used search query: ${$("#search-input").val()}\n
 GBK_a\tRecord_Type_a\tRecord_Number_a\tGBK_b\tRecord_Type_b\tRecord_Number_b\tDistance

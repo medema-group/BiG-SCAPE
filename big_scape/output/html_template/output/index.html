@@ -805,7 +805,7 @@ CC\tFamily\tGBK\tRecord_Type\tRecord_Number\tClass\tCategory\tOrganism\tTaxonomy
             if (gbk_path.indexOf(`mibig_antismash_${run_data["mibig_version"]}_gbk`) > -1) {
                 new_row["source"] = "mibig"
             }
-            if (run_data["mode"] == "Query") {
+            if (run_data["mode"] == "query") {
                 if (filename == run_data["query_path"]) {
                     new_row["source"] = "query"
                 }
