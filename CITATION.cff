@@ -1,0 +1,23 @@
+cff-version: 1.2.0
+message: "If you use this software, please cite it as below"
+authors:
+  - family-names: Draisma
+    given-names: Arjan
+    orcid: 0009-0004-0503-6261
+  - family-names: Loureiro
+    given-names: Catarina
+    orcid: 0000-0002-6258-2080
+  - family-names: Louwen
+    given-names: Nico L.L.
+    orcid: 0000-0002-4431-5499
+  - family-names: Medema
+    given-names: Marnix H.
+    orcid: 0000-0002-2191-2821
+title: "BiG-SCAPE: Biosynthetic Gene Similarity Clustering and Prospecting Engine"
+version: 2.0.0
+identifiers:
+  - type: doi
+    value: 10.1101/2025.08.20.671210
+  - type: doi
+    value: 10.1038/s41589-019-0400-9
+date-released: 24-07-2025

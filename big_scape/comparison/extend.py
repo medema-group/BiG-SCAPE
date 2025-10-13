@@ -53,17 +53,17 @@ def len_check(pair: RecordPair, min_len_perc: float) -> bool:
     return False
 
 
-def biosynthetic_check(pair: RecordPair) -> bool:
-    """Checks if any element of a pair contains a biosynthetic domain
+def core_check(pair: RecordPair) -> bool:
+    """Checks if any element of a pair contains a rule-triggering core domain
 
     returns true if
-    - the comparable region contains a biosynthetic gene
+    - the comparable region contains a core gene
 
     Args:
         pair: The record pair to check
     """
 
-    if ComparableRegion.cds_range_contains_biosynthetic(
+    if ComparableRegion.cds_range_contains_core(
         pair.record_a,
         pair.comparable_region.a_start,
         pair.comparable_region.a_stop,
@@ -72,7 +72,7 @@ def biosynthetic_check(pair: RecordPair) -> bool:
     ):
         return True
 
-    if ComparableRegion.cds_range_contains_biosynthetic(
+    if ComparableRegion.cds_range_contains_core(
         pair.record_b,
         pair.comparable_region.b_start,
         pair.comparable_region.b_stop,

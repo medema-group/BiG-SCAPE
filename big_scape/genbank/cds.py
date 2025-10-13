@@ -1,4 +1,4 @@
-""" Module containing code to load and store antiSMASH CDSs"""
+"""Module containing code to load and store antiSMASH CDSs"""
 
 # from python
 from __future__ import annotations
@@ -116,6 +116,16 @@ class CDS:
         # if we got through all of that without the function, we never replaced an HSP
         # so add a new one here
         self.hsps.append(new_hsp)
+
+    def is_core(self):
+        """Check if this CDS is part of the rule-triggering core of the gene cluster
+
+        antiSMASH, fungiSMASH, gutSMASH use 'biosynthetic' to denote core;
+        rhizoSMASH uses 'catabolic'.
+        """
+        if self.gene_kind == "biosynthetic" or self.gene_kind == "catabolic":
+            return True
+        return False
 
     def save(self, commit=True):
         """Saves this CDS to the database and optionally executes a commit
