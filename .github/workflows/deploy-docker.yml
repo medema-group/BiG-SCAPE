@@ -2,8 +2,7 @@ name: Publish Docker image
 
 on:
   release:
-    types: [published, edited]
-
+    types: [published]
 
 env:
   REGISTRY: ghcr.io
@@ -31,8 +30,8 @@ jobs:
         # set latest tag for master branch
         with:
           tags: |
-            type=semver,pattern={{version}}
-            type=raw,value=latest,enable=${{ github.ref == format('refs/heads/{0}', 'master') }}
+            type=semver,pattern={{GITHUB_REF}}
+            type=raw,value=latest
           images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
 
       - name: Login to GitHub Container Registry
