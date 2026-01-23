@@ -123,7 +123,7 @@ based on the generic 'mix' weights. For more detail, see wiki.
     "--include-singletons",
     is_flag=True,
     help=(
-        "Include singletons in the networ and all respective output."
+        "Include singletons in the network and all respective output."
         " Reference singletons will not be included even if this is toggled."
     ),
 )
