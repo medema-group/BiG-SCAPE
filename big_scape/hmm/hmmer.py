@@ -137,9 +137,9 @@ class HMMer:
         for profile in HMMer.profiles:
             pfam_info.append(
                 (
-                    profile.accession.decode(),
-                    profile.name.decode(),
-                    profile.description.decode(),
+                    profile.accession,
+                    profile.name,
+                    profile.description,
                 )
             )
 
@@ -230,8 +230,8 @@ class HMMer:
                         continue
 
                     # name is actually the list index of the original CDS
-                    cds_idx = int(hit.name.decode())
-                    accession = domain.alignment.hmm_accession.decode()
+                    cds_idx = int(hit.name)
+                    accession = domain.alignment.hmm_accession
                     score = domain.score
                     env_start = domain.env_from
                     env_stop = domain.env_to
@@ -413,8 +413,8 @@ class HMMer:
                         continue
 
                     # name is actually the list index of the original CDS
-                    cds_idx = int(top_hit.name.decode())
-                    accession = domain.alignment.hmm_accession.decode()
+                    cds_idx = int(top_hit.name)
+                    accession = domain.alignment.hmm_accession
                     score = domain.score
                     env_start = domain.env_from
                     env_stop = domain.env_to
@@ -527,7 +527,7 @@ class HMMer:
 
             for idx, alignment in enumerate(msa.alignment):
                 # name is actually the list index of the original HSP
-                sequence_name = msa.sequences[idx].name.decode()
+                sequence_name = msa.sequences[idx].name
                 source_hsp_idx = int(sequence_name)
 
                 algn_string = process_algn_string(alignment)
@@ -551,7 +551,7 @@ def gen_profile_index(profiles: list[OptimizedProfile]) -> dict[str, int]:
     """
     index = {}
     for idx, profile in enumerate(profiles):
-        index[profile.accession.decode()[:7]] = idx
+        index[profile.accession[:7]] = idx
 
     return index
 
