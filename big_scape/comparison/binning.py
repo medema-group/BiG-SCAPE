@@ -945,10 +945,10 @@ def get_legacy_weights_from_category(
         category = categories[0]
 
     if len(categories) > 1:
-        if "NRPS" and ("PKS" or "T1PKS") in categories:
+        if "NRPS" in categories and ("PKS" in categories or "T1PKS" in categories):
             category = "PKS-NRP_Hybrids"
 
-        if "PKS" or ("PKS" and "T1PKS") in categories:
+        if "PKS" in categories or ("PKS" in categories and "T1PKS" in categories):
             category = "PKSother"  # PKS hybrids
 
         else:
