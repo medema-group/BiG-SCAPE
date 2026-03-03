@@ -159,5 +159,5 @@ CREATE TABLE IF NOT EXISTS edge_params (
 );
 
 CREATE INDEX IF NOT EXISTS record_id_index ON bgc_record(id);
-CREATE INDEX IF NOT EXISTS distance_record_id_index ON distance(record_a_id);
-CREATE INDEX IF NOT EXISTS distance_record_id_index ON distance(record_b_id);
+CREATE INDEX IF NOT EXISTS distance_record_a_id_index ON distance(record_a_id);
+CREATE INDEX IF NOT EXISTS distance_record_b_id_index ON distance(record_b_id);
