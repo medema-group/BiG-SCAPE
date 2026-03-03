@@ -1,6 +1,5 @@
 """Contains code to calculate adjacency indexes of set pairs"""
 
-
 # from other modules
 import logging
 from big_scape.comparison.record_pair import RecordPair
@@ -63,8 +62,7 @@ def calc_ai_pair(bgc_pair: RecordPair) -> float:
     Returns:
         float: adjacency index
     """
-    # for some reason, we are not reversing the list here.
-    a_domains, b_domains = bgc_pair.get_domain_lists(reverse=False)
+    a_domains, b_domains = bgc_pair.get_domain_lists()
 
     if len(a_domains) == 1 and len(b_domains) == 1:
         if a_domains[0].domain == b_domains[0].domain:
