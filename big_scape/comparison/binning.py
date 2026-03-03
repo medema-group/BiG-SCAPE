@@ -720,7 +720,7 @@ class QueryMissingRecordPairGenerator(RecordPairGenerator):
                     distance_table.c.edge_param_id == self.bin.edge_param_id,
                 ),
                 and_(
-                    distance_table.c.record_a_id.in_(select(temp_record_id_table)),
+                    distance_table.c.record_b_id.in_(select(temp_record_id_table)),
                     distance_table.c.edge_param_id == self.bin.edge_param_id,
                 ),
             )
@@ -948,7 +948,7 @@ def get_legacy_weights_from_category(
         if "NRPS" in categories and ("PKS" in categories or "T1PKS" in categories):
             category = "PKS-NRP_Hybrids"
 
-        if "PKS" in categories or ("PKS" in categories and "T1PKS" in categories):
+        elif "PKS" in categories:
             category = "PKSother"  # PKS hybrids
 
         else:
