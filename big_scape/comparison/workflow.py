@@ -168,14 +168,14 @@ def generate_edges(
     new_results = Condition()
 
     def on_complete(future: Future):
-        exception = future.exception()
-        if exception is not None:
-            raise exception
         with new_results:
             new_results.notify_all()
-            if callback:
+            exception = future.exception()
+            if callback and not exception:
                 callback(future.result())
             running_futures.discard(future)
+            if exception:
+                raise exception
 
     with ProcessPoolExecutor(cores) as executor:
         while True:
@@ -201,8 +201,8 @@ def generate_edges(
                     ),
                 )
 
-                future.add_done_callback(on_complete)
                 running_futures.add(future)
+                future.add_done_callback(on_complete)
 
             with new_results:
                 new_results.wait()
