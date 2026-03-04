@@ -525,6 +525,9 @@ class QueryRecordPairGenerator(RecordPairGenerator):
 
         num_pairs = num_query_records * num_ref_records
 
+        if num_pairs == 0:
+            return num_pairs
+
         # delete pairs originating from the same parent gbk
         if self.record_type is not None and self.record_type != RECORD_TYPE.REGION:
             query_ids = [record._db_id for record in self.working_query_records]
@@ -633,22 +636,10 @@ class QueryRecordPairGenerator(RecordPairGenerator):
             distance_table.c.record_b_id,
             distance_table.c.distance,
         ).where(
-            or_(
-                and_(
-                    distance_table.c.record_a_id.in_(
-                        select(temp_record_id_table.c.record_id)
-                    ),
-                    distance_table.c.edge_param_id == self.edge_param_id,
-                    distance_table.c.distance < max_cutoff,
-                ),
-                and_(
-                    distance_table.c.record_a_id.in_(
-                        select(temp_record_id_table.c.record_id)
-                    ),
-                    distance_table.c.edge_param_id == self.edge_param_id,
-                    distance_table.c.distance < max_cutoff,
-                ),
-            )
+            distance_table.c.record_a_id.in_(select(temp_record_id_table.c.record_id)),
+            distance_table.c.record_b_id.in_(select(temp_record_id_table.c.record_id)),
+            distance_table.c.edge_param_id == self.edge_param_id,
+            distance_table.c.distance < max_cutoff,
         )
 
         # generate a set of tuples of region id pairs
@@ -714,16 +705,9 @@ class QueryMissingRecordPairGenerator(RecordPairGenerator):
         select_statement = select(
             distance_table.c.record_a_id, distance_table.c.record_b_id
         ).where(
-            or_(
-                and_(
-                    distance_table.c.record_a_id.in_(select(temp_record_id_table)),
-                    distance_table.c.edge_param_id == self.bin.edge_param_id,
-                ),
-                and_(
-                    distance_table.c.record_b_id.in_(select(temp_record_id_table)),
-                    distance_table.c.edge_param_id == self.bin.edge_param_id,
-                ),
-            )
+            distance_table.c.record_a_id.in_(select(temp_record_id_table)),
+            distance_table.c.record_b_id.in_(select(temp_record_id_table)),
+            distance_table.c.edge_param_id == self.bin.edge_param_id,
         )
 
         # generate a set of tuples of region id pairs
