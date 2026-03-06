@@ -22,12 +22,7 @@ from sqlalchemy import Column, ForeignKey, Integer, Table, and_, select, func, o
 # from other modules
 from big_scape.cli.config import BigscapeConfig
 from big_scape.data import DB
-from big_scape.genbank import (
-    BGCRecord,
-    Region,
-    ProtoCluster,
-    ProtoCore,
-)
+from big_scape.genbank import BGCRecord
 from big_scape.enums import SOURCE_TYPE, CLASSIFY_MODE, RECORD_TYPE
 
 import big_scape.comparison as bs_comparison
@@ -817,15 +812,9 @@ def as_class_bin_generator(
         Iterator[RecordPairGenerator]: Generator that yields bins. Order is not guarenteed to be
         consistent
     """
-    if run["legacy_weights"]:
-        weight_type = "legacy_weights"
-    else:
-        weight_type = "mix"
-
     classify_mode = run["classify"]
 
     class_idx: dict[str, list[BGCRecord]] = {}
-    category_weights: dict[str, str] = {}
 
     for record in all_records:
         # get region class for bin label and index
@@ -847,20 +836,15 @@ def as_class_bin_generator(
             if record_class in class_idx and record not in class_idx[record_class]:
                 class_idx[record_class].append(record)
 
-            if weight_type == "legacy_weights":
-                # get region category for weights
-                region_weight_cat = get_legacy_weights_from_category(
-                    record, record_class, run
-                )
-
-                if record_class not in category_weights.keys():
-                    category_weights[record_class] = region_weight_cat
-
-            if weight_type == "mix":
-                category_weights[record_class] = "mix"
-
     for class_name, records in class_idx.items():
-        weight_category = category_weights[class_name]
+        if run["legacy_weights"]:
+            if classify_mode == CLASSIFY_MODE.CLASS:
+                weight_category = legacy_get_class(class_name)
+            elif classify_mode == CLASSIFY_MODE.CATEGORY:
+                weight_category = legacy_get_category(class_name)
+        else:
+            weight_category = "mix"
+
         edge_param_id = bs_comparison.get_edge_param_id(run, weight_category)
         bin = RecordPairGenerator(
             class_name, edge_param_id, weight_category, run["record_type"]
@@ -869,76 +853,32 @@ def as_class_bin_generator(
         yield bin
 
 
-def get_legacy_weights_from_category(
-    record: BGCRecord, record_class: str, run: dict
-) -> str:
-    """Get the category of a BGC based on its antiSMASH product(s)
-    and match it to the legacy weights classes
+def legacy_get_category(category: str) -> str:
+    """Find the legacy weight label congruent with a record antiSMASH category
 
     Args:
-        region (BGCRecord): region object
+        category (str): record product category
 
     Returns:
-        str: class category to be used in weight selection
+        str: legacy weight label
     """
+    categories = category.split(".")
+    unique_categories = set(categories)
 
-    categories: list[str] = []
+    # single categories can be directly mapped to the legacy weight
+    if len(unique_categories) == 1:
+        # from the PKS category we cannot distinguish between PKSI and PKSother
+        if categories[0] == "PKS":
+            return "PKSother"
+        if categories[0] == "Categoryless":
+            return "other"
+        return categories[0]
 
-    if isinstance(record, ProtoCluster) or isinstance(record, ProtoCore):
-        # T1PKS is the only case in which a antiSMASH category does not
-        # correspond to a legacy_weights class
-        if (
-            record.category is not None
-        ):  # for typing, we assume antismash 6 and up always have it
-            if record.product == "T1PKS":
-                categories.append(record.product)
-            else:
-                categories.append(record.category)
+    # in the case of hybrids, determine the correct weight
+    if len(unique_categories - set(["NRPS", "PKS"])) == 0:
+        return "PKS-NRP_Hybrids"
 
-    if isinstance(record, Region):
-        # get categories from region object
-        for idx, cand_cluster in record.cand_clusters.items():
-            if cand_cluster is not None:
-                for idx, protocluster in cand_cluster.proto_clusters.items():
-                    if protocluster is not None and protocluster.category is not None:
-                        if protocluster.product == "T1PKS":
-                            pc_category = protocluster.product
-                        else:
-                            pc_category = protocluster.category
-                        # avoid duplicates, hybrids of the same kind use the same weight class
-                        if run["hybrids_off"] and protocluster.product == record_class:
-                            if pc_category not in categories:
-                                categories.append(pc_category)
-                        else:
-                            if pc_category not in categories:
-                                categories.append(pc_category)
-
-    # for versions that dont have category information
-    if len(categories) == 0:
-        logging.warning(
-            "No category found for %s",
-            record,
-            "This should not happen as long as antiSMASH is run with"
-            "version 6 or up, consider whether there is something"
-            "special about this region",
-        )
-        category = "other"
-
-    # process into legacy_weights classes
-    if len(categories) == 1:
-        category = categories[0]
-
-    if len(categories) > 1:
-        if "NRPS" in categories and ("PKS" in categories or "T1PKS" in categories):
-            category = "PKS-NRP_Hybrids"
-
-        elif "PKS" in categories:
-            category = "PKSother"  # PKS hybrids
-
-        else:
-            category = "other"  # other hybrids
-
-    return category
+    return "other"
 
 
 def legacy_bin_generator(
@@ -989,8 +929,7 @@ def legacy_bin_generator(
 
 
 # one of the few direct copy-and-pastes!
-# TODO: test
-def legacy_get_class(product):  # pragma no cover
+def legacy_get_class(product: str) -> str:  # pragma no cover
     """Sort BGC by its type. Uses AntiSMASH annotations
     (see https://docs.antismash.secondarymetabolites.org/glossary/#cluster-types)
 

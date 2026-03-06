@@ -710,9 +710,13 @@ class TestComparison(TestCase):
             for i in range(3, 6)
         ]
         nrps_pks_gbks = [
-            create_mock_complete_chemhyb_gbk(i, bs_enums.SOURCE_TYPE.QUERY, "NRPS.PKS")
+            create_mock_complete_chemhyb_gbk(
+                i, bs_enums.SOURCE_TYPE.QUERY, "NRPS.T2PKS"
+            )
             for i in range(6, 9)
         ]
+        for gbk in nrps_pks_gbks:
+            gbk.region.category = "NRPS.PKS"
 
         gbks = pks_gbks + nrps_gbks + nrps_pks_gbks
 
@@ -731,11 +735,11 @@ class TestComparison(TestCase):
 
         bin_labels = [bin.label for bin in as_class_bins]
 
-        self.assertEqual(bin_labels, ["T1PKS", "NRPS", "PKS"])
+        self.assertEqual(bin_labels, ["T1PKS", "NRPS", "T2PKS"])
 
         bin_weights = [bin.weights for bin in as_class_bins]
 
-        self.assertEqual(bin_weights, ["T1PKS", "NRPS", "PKSother"])
+        self.assertEqual(bin_weights, ["PKSI", "NRPS", "PKSother"])
 
         bin_edge_param_ids = [bin.edge_param_id for bin in as_class_bins]
 
@@ -762,7 +766,7 @@ class TestComparison(TestCase):
 
         bin_labels = [bin.label for bin in as_class_bins]
 
-        self.assertEqual(bin_labels, ["T1PKS", "NRPS", "NRPS.PKS"])
+        self.assertEqual(bin_labels, ["T1PKS", "NRPS", "NRPS.T2PKS"])
 
         bin_weights = [bin.weights for bin in as_class_bins]
 
@@ -775,6 +779,43 @@ class TestComparison(TestCase):
         bin_pairs = [bin.num_pairs() for bin in as_class_bins]
 
         self.assertEqual(bin_pairs, [3, 3, 3])
+
+        run["hybrids_off"] = False
+        run["legacy_weights"] = True
+
+        as_class_bins = list(
+            bs_comparison.as_class_bin_generator(list_bgc_records, run)
+        )
+
+        bin_labels = [bin.label for bin in as_class_bins]
+        self.assertEqual(bin_labels, ["T1PKS", "NRPS", "NRPS.T2PKS"])
+
+        bin_weights = [bin.weights for bin in as_class_bins]
+        self.assertEqual(bin_weights, ["PKSI", "NRPS", "PKS-NRP_Hybrids"])
+
+        run["classify"] = bs_enums.CLASSIFY_MODE.CATEGORY
+
+        as_class_bins = list(
+            bs_comparison.as_class_bin_generator(list_bgc_records, run)
+        )
+
+        bin_labels = [bin.label for bin in as_class_bins]
+        self.assertEqual(bin_labels, ["PKS", "NRPS", "NRPS.PKS"])
+
+        bin_weights = [bin.weights for bin in as_class_bins]
+        self.assertEqual(bin_weights, ["PKSother", "NRPS", "PKS-NRP_Hybrids"])
+
+        run["hybrids_off"] = True
+
+        as_class_bins = list(
+            bs_comparison.as_class_bin_generator(list_bgc_records, run)
+        )
+
+        bin_labels = [bin.label for bin in as_class_bins]
+        self.assertEqual(bin_labels, ["PKS", "NRPS"])
+
+        bin_weights = [bin.weights for bin in as_class_bins]
+        self.assertEqual(bin_weights, ["PKSother", "NRPS"])
 
     def test_generate_bins_legacy_classify_worflow(self):
         bs_data.DB.create_in_mem()

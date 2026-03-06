@@ -34,9 +34,7 @@ def calculate_distances_query(
 
     # if legacy weights are on, then use the legacy weights and pass as label to bin generator
     if run["legacy_weights"]:
-        weights = bs_comparison.get_legacy_weights_from_category(
-            query_record, query_record.product, run
-        )
+        weights = bs_comparison.legacy_get_class(query_record.product)
     else:
         weights = "mix"
 
