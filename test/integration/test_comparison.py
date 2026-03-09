@@ -727,6 +727,7 @@ class TestComparison(TestCase):
 
         self.assertEqual(len(list_bgc_records), 9)
 
+        # classify on class, legacy weights, hybrids off
         as_class_bins = list(
             bs_comparison.as_class_bin_generator(list_bgc_records, run)
         )
@@ -758,6 +759,7 @@ class TestComparison(TestCase):
             "hybrids_off": False,
         }
 
+        # classify on class, no legacy weights, with hybrids
         as_class_bins = list(
             bs_comparison.as_class_bin_generator(list_bgc_records, run)
         )
@@ -783,6 +785,7 @@ class TestComparison(TestCase):
         run["hybrids_off"] = False
         run["legacy_weights"] = True
 
+        # classify on class, legacy weights, with hybrids
         as_class_bins = list(
             bs_comparison.as_class_bin_generator(list_bgc_records, run)
         )
@@ -795,6 +798,7 @@ class TestComparison(TestCase):
 
         run["classify"] = bs_enums.CLASSIFY_MODE.CATEGORY
 
+        # classify on category, legacy weights, with hybrids
         as_class_bins = list(
             bs_comparison.as_class_bin_generator(list_bgc_records, run)
         )
@@ -802,11 +806,13 @@ class TestComparison(TestCase):
         bin_labels = [bin.label for bin in as_class_bins]
         self.assertEqual(bin_labels, ["PKS", "NRPS", "NRPS.PKS"])
 
+        # the 'PKS' bin contains only T1PKS records -> PKSI weights
         bin_weights = [bin.weights for bin in as_class_bins]
-        self.assertEqual(bin_weights, ["PKSother", "NRPS", "PKS-NRP_Hybrids"])
+        self.assertEqual(bin_weights, ["PKSI", "NRPS", "PKS-NRP_Hybrids"])
 
         run["hybrids_off"] = True
 
+        # classify on category, legacy weights, hybrids off
         as_class_bins = list(
             bs_comparison.as_class_bin_generator(list_bgc_records, run)
         )
@@ -814,6 +820,7 @@ class TestComparison(TestCase):
         bin_labels = [bin.label for bin in as_class_bins]
         self.assertEqual(bin_labels, ["PKS", "NRPS"])
 
+        # without hybrids, the 'PKS' bin now also has T2PKS records -> PKSther weights
         bin_weights = [bin.weights for bin in as_class_bins]
         self.assertEqual(bin_weights, ["PKSother", "NRPS"])
 

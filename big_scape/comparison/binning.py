@@ -839,9 +839,16 @@ def as_class_bin_generator(
     for class_name, records in class_idx.items():
         if run["legacy_weights"]:
             if classify_mode == CLASSIFY_MODE.CLASS:
-                weight_category = legacy_get_class(class_name)
+                weight_category = legacy_weights_from_class(class_name)
             elif classify_mode == CLASSIFY_MODE.CATEGORY:
-                weight_category = legacy_get_category(class_name)
+                weight_category = legacy_weights_from_category(class_name)
+                # if a PKS bin contains only T1PKS, switch to PKSI instead of PKSother
+                if weight_category == "PKSother" and all(
+                    record.product
+                    in BigscapeConfig.LEGACY_ANTISMASH_CLASSES["pks1_products"]
+                    for record in records
+                ):
+                    weight_category = "PKSI"
         else:
             weight_category = "mix"
 
@@ -853,11 +860,17 @@ def as_class_bin_generator(
         yield bin
 
 
-def legacy_get_category(category: str) -> str:
+def legacy_weights_from_category(category: str) -> str:
     """Find the legacy weight label congruent with a record antiSMASH category
 
+    Legacy weights groupings:
+    PKSI, PKSother, NRPS, RiPP, saccharide, terpene, PKS-NRP_Hybrids, other.
+    All overlap directly with antiSMASH categories, except for PKS. The PKS category
+    groups all PKS types, we therefore cannot distinguish between PKSI and PKSother, and
+    default all PKS to use PKSother weights.
+
     Args:
-        category (str): record product category
+        category (str): record product category, can be hybrids, e.g. NRPS.PKS
 
     Returns:
         str: legacy weight label
@@ -911,7 +924,7 @@ def legacy_bin_generator(
             record_products = [product]
 
         for product in record_products:
-            record_class = legacy_get_class(product)
+            record_class = legacy_weights_from_class(product)
 
             if record_class not in class_idx:
                 class_idx[record_class] = [record]
@@ -929,7 +942,7 @@ def legacy_bin_generator(
 
 
 # one of the few direct copy-and-pastes!
-def legacy_get_class(product: str) -> str:  # pragma no cover
+def legacy_weights_from_class(product: str) -> str:  # pragma no cover
     """Sort BGC by its type. Uses AntiSMASH annotations
     (see https://docs.antismash.secondarymetabolites.org/glossary/#cluster-types)
 

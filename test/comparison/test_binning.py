@@ -17,8 +17,8 @@ from big_scape.comparison import (
     QueryRecordPairGenerator,
     QueryMissingRecordPairGenerator,
     as_class_bin_generator,
-    legacy_get_class,
-    legacy_get_category,
+    legacy_weights_from_class,
+    legacy_weights_from_category,
 )
 from big_scape.comparison import generate_mix_bin
 from big_scape.genbank.candidate_cluster import CandidateCluster
@@ -309,9 +309,10 @@ class TestBGCBin(TestCase):
             self.assertIn(expected_pair, actual_pairs)
 
     def test_query_record_pair_generator_cycle_records(self):
-        """Tests whether records are correctly cycled"""
+        """Tests whether records are correctly cycled during query propagation"""
         bs_data.DB.create_in_mem()
 
+        # create one query gbk and three references
         query_gbk = create_mock_gbk(1, bs_enums.SOURCE_TYPE.QUERY)
         query_gbk.save_all()
         ref_gbks = [
@@ -329,34 +330,44 @@ class TestBGCBin(TestCase):
 
         query_bin.add_records(source_records)
 
+        # add a gbk into the database that is NOT part of this run/query_bin
         ref_gbk_not_in_run = create_mock_gbk(5, bs_enums.SOURCE_TYPE.REFERENCE)
         ref_gbk_not_in_run.save_all()
 
-        # add mock edges between query and refs
+        # add mock edges between query (id=1) and refs: 1->2, 1->3
         mock_comp_region = bs_comparison.ComparableRegion(0, 0, 0, 0, 0, 0, 0, 0, False)
         bs_comparison.save_edge_to_db((1, 2, 0, 0, 0, 0, 1, mock_comp_region))
         bs_comparison.save_edge_to_db((1, 3, 0, 0, 0, 0, 1, mock_comp_region))
-        # edge left over from a previous run between query and gbk_not_in_run
-        # should be ignored while cycling
+        # simulate an edge left over from previous run between query and gbk_not_in_run
+        # should be ignored while cycling as this gbk is not included in the query_bin
         bs_comparison.save_edge_to_db((1, 5, 0, 0, 0, 0, 1, mock_comp_region))
 
-        # cycle refs with an edge into working queries
+        # cycle records:
+        # analyzed queries move to done_records
+        # ref records that are connected to any query record move to working_query_records
+        # ref records without any edges remain in working_ref_records for the next comparison
         query_bin.cycle_records(0.9)
+
+        # new queries are refs with an edge to the old query
         expected_queries = set([ref_gbks[0].region, ref_gbks[1].region])
         self.assertEqual(query_bin.working_query_records, expected_queries)
+        # new refs are any that did not connect to the query (yet)
         self.assertEqual(query_bin.working_ref_records, {ref_gbks[2].region})
 
         # add mock edge between new queries and remaining ref
         bs_comparison.save_edge_to_db((4, 3, 0, 0, 0, 0, 1, mock_comp_region))
 
+        # cycle records again
         query_bin.cycle_records(0.9)
         self.assertEqual(query_bin.working_query_records, {ref_gbks[2].region})
+        # no more refs without edges are left
         self.assertEqual(query_bin.working_ref_records, set())
 
     def test_query_missing_record_pair_generator_num_pairs(self):
         """Tests whether num_pairs is correctly generated in QueryMissingRecordPairGenerator"""
         bs_data.DB.create_in_mem()
 
+        # create a query gbk with two protoclusters
         gbk1 = create_mock_gbk(0, bs_enums.SOURCE_TYPE.QUERY)
         pclust1 = ProtoCluster(gbk1, 1, 10, 100, False, "", {})
         pclust2 = ProtoCluster(gbk1, 2, 50, 200, False, "", {})
@@ -365,6 +376,7 @@ class TestBGCBin(TestCase):
         )
         gbk1.save_all()
 
+        # add references: gbk2 with three protoclusters, and gbk3 with one region
         gbk2 = create_mock_gbk(1, bs_enums.SOURCE_TYPE.REFERENCE)
         pclust3 = ProtoCluster(gbk2, 1, 10, 100, False, "", {})
         pclust4 = ProtoCluster(gbk2, 2, 50, 200, False, "", {})
@@ -388,6 +400,7 @@ class TestBGCBin(TestCase):
 
         query_missing_bin = QueryMissingRecordPairGenerator(query_bin)
 
+        # add an extra gbk into the database that is NOT present in this run/bin
         ref_gbk_not_in_run = create_mock_gbk(5, bs_enums.SOURCE_TYPE.REFERENCE)
         ref_gbk_not_in_run.save_all()
 
@@ -405,10 +418,10 @@ class TestBGCBin(TestCase):
         # should be ignored during num_pairs
         bs_comparison.save_edge_to_db((3, 11, 0, 0, 0, 0, 1, mock_comp_region))
 
-        # two of th eight pairs have an edge present 8-2=6
+        # two of the previous eight pairs now have an edge present 8-2=6
         self.assertEqual(query_missing_bin.num_pairs(), 6)
 
-        # once all ref records are cycled, num_pairs should be 0
+        # if all ref records are analysed/cycled, num_pairs should be 0
         query_missing_bin.bin.working_ref_records = set()
         self.assertEqual(query_missing_bin.num_pairs(), 0)
 
@@ -762,36 +775,41 @@ class TestBinGenerators(TestCase):
 
         expected_weight_category = "PKSother"
         self.assertEqual(
-            expected_weight_category, legacy_get_category(region.get_category())
+            expected_weight_category,
+            legacy_weights_from_category(region.get_category()),
         )
 
         expected_weight_class = "PKSI"
-        self.assertEqual(expected_weight_class, legacy_get_class(region.product))
+        self.assertEqual(
+            expected_weight_class, legacy_weights_from_class(region.product)
+        )
 
-        self.assertEqual("PKSother", legacy_get_category("PKS"))
-        self.assertEqual("terpene", legacy_get_category("terpene"))
-        self.assertEqual("NRPS", legacy_get_category("NRPS"))
-        self.assertEqual("RiPP", legacy_get_category("RiPP"))
-        self.assertEqual("saccharide", legacy_get_category("saccharide"))
-        self.assertEqual("other", legacy_get_category("other"))
+        self.assertEqual("PKSother", legacy_weights_from_category("PKS"))
+        self.assertEqual("terpene", legacy_weights_from_category("terpene"))
+        self.assertEqual("NRPS", legacy_weights_from_category("NRPS"))
+        self.assertEqual("RiPP", legacy_weights_from_category("RiPP"))
+        self.assertEqual("saccharide", legacy_weights_from_category("saccharide"))
+        self.assertEqual("other", legacy_weights_from_category("other"))
 
-        self.assertEqual("PKSother", legacy_get_class("T2PKS"))
-        self.assertEqual("terpene", legacy_get_class("terpene"))
-        self.assertEqual("NRPS", legacy_get_class("NRPS-like"))
-        self.assertEqual("RiPP", legacy_get_class("thiopeptide"))
-        self.assertEqual("saccharide", legacy_get_class("amglyccycl"))
-        self.assertEqual("other", legacy_get_class("ectoine"))
+        self.assertEqual("PKSother", legacy_weights_from_class("T2PKS"))
+        self.assertEqual("terpene", legacy_weights_from_class("terpene"))
+        self.assertEqual("NRPS", legacy_weights_from_class("NRPS-like"))
+        self.assertEqual("RiPP", legacy_weights_from_class("thiopeptide"))
+        self.assertEqual("saccharide", legacy_weights_from_class("amglyccycl"))
+        self.assertEqual("other", legacy_weights_from_class("ectoine"))
 
     def test_get_legacy_weight_hybrids(self):
         """Tests whether correct legacy weights are selected in hybrid class/categories"""
-        self.assertEqual("PKS-NRP_Hybrids", legacy_get_category("NRPS.PKS"))
-        self.assertEqual("PKS-NRP_Hybrids", legacy_get_class("NRPS.T1PKS.T2PKS"))
-        self.assertEqual("PKSother", legacy_get_category("PKS.PKS"))
-        self.assertEqual("PKSother", legacy_get_class("T1PKS.T2PKS"))
-        self.assertEqual("other", legacy_get_category("PKS.other"))
-        self.assertEqual("other", legacy_get_class("T1PKS.other"))
-        self.assertEqual("other", legacy_get_category("terpene.saccharide"))
-        self.assertEqual("other", legacy_get_class("terpene.amglyccycl"))
+        self.assertEqual("PKS-NRP_Hybrids", legacy_weights_from_category("NRPS.PKS"))
+        self.assertEqual(
+            "PKS-NRP_Hybrids", legacy_weights_from_class("NRPS.T1PKS.T2PKS")
+        )
+        self.assertEqual("PKSother", legacy_weights_from_category("PKS.PKS"))
+        self.assertEqual("PKSother", legacy_weights_from_class("T1PKS.T2PKS"))
+        self.assertEqual("other", legacy_weights_from_category("PKS.other"))
+        self.assertEqual("other", legacy_weights_from_class("T1PKS.other"))
+        self.assertEqual("other", legacy_weights_from_category("terpene.saccharide"))
+        self.assertEqual("other", legacy_weights_from_class("terpene.amglyccycl"))
 
     def test_as_class_bin_generator(self):
         """Tests whether an antismash bin is correclty generated given a weight label"""
@@ -823,7 +841,7 @@ class TestBinGenerators(TestCase):
             "classmix": "T1PKSmix",
             "categorymix": "PKSmix",
             "classlegacy_weights": "T1PKSPKSI",
-            "categorylegacy_weights": "PKSPKSother",
+            "categorylegacy_weights": "PKSPKSI",
         }
 
         # run_class_mix = {
