@@ -15,8 +15,10 @@ from big_scape.comparison import (
     RecordPairGenerator,
     ConnectedComponentPairGenerator,
     QueryRecordPairGenerator,
-    get_legacy_weights_from_category,
+    QueryMissingRecordPairGenerator,
     as_class_bin_generator,
+    legacy_weights_from_class,
+    legacy_weights_from_category,
 )
 from big_scape.comparison import generate_mix_bin
 from big_scape.genbank.candidate_cluster import CandidateCluster
@@ -307,10 +309,121 @@ class TestBGCBin(TestCase):
             self.assertIn(expected_pair, actual_pairs)
 
     def test_query_record_pair_generator_cycle_records(self):
-        self.skipTest("Not implemented")
+        """Tests whether records are correctly cycled during query propagation"""
+        bs_data.DB.create_in_mem()
+
+        # create one query gbk and three references
+        query_gbk = create_mock_gbk(1, bs_enums.SOURCE_TYPE.QUERY)
+        query_gbk.save_all()
+        ref_gbks = [
+            create_mock_gbk(i, bs_enums.SOURCE_TYPE.REFERENCE) for i in range(2, 5)
+        ]
+
+        query_bin = QueryRecordPairGenerator(
+            "mix", 1, "mix", bs_enums.RECORD_TYPE.PROTO_CLUSTER
+        )
+        source_records = [query_gbk.region]
+
+        for ref_gbk in ref_gbks:
+            ref_gbk.save_all()
+            source_records.append(ref_gbk.region)
+
+        query_bin.add_records(source_records)
+
+        # add a gbk into the database that is NOT part of this run/query_bin
+        ref_gbk_not_in_run = create_mock_gbk(5, bs_enums.SOURCE_TYPE.REFERENCE)
+        ref_gbk_not_in_run.save_all()
+
+        # add mock edges between query (id=1) and refs: 1->2, 1->3
+        mock_comp_region = bs_comparison.ComparableRegion(0, 0, 0, 0, 0, 0, 0, 0, False)
+        bs_comparison.save_edge_to_db((1, 2, 0, 0, 0, 0, 1, mock_comp_region))
+        bs_comparison.save_edge_to_db((1, 3, 0, 0, 0, 0, 1, mock_comp_region))
+        # simulate an edge left over from previous run between query and gbk_not_in_run
+        # should be ignored while cycling as this gbk is not included in the query_bin
+        bs_comparison.save_edge_to_db((1, 5, 0, 0, 0, 0, 1, mock_comp_region))
+
+        # cycle records:
+        # analyzed queries move to done_records
+        # ref records that are connected to any query record move to working_query_records
+        # ref records without any edges remain in working_ref_records for the next comparison
+        query_bin.cycle_records(0.9)
+
+        # new queries are refs with an edge to the old query
+        expected_queries = set([ref_gbks[0].region, ref_gbks[1].region])
+        self.assertEqual(query_bin.working_query_records, expected_queries)
+        # new refs are any that did not connect to the query (yet)
+        self.assertEqual(query_bin.working_ref_records, {ref_gbks[2].region})
+
+        # add mock edge between new queries and remaining ref
+        bs_comparison.save_edge_to_db((4, 3, 0, 0, 0, 0, 1, mock_comp_region))
+
+        # cycle records again
+        query_bin.cycle_records(0.9)
+        self.assertEqual(query_bin.working_query_records, {ref_gbks[2].region})
+        # no more refs without edges are left
+        self.assertEqual(query_bin.working_ref_records, set())
 
     def test_query_missing_record_pair_generator_num_pairs(self):
-        self.skipTest("Not implemented")
+        """Tests whether num_pairs is correctly generated in QueryMissingRecordPairGenerator"""
+        bs_data.DB.create_in_mem()
+
+        # create a query gbk with two protoclusters
+        gbk1 = create_mock_gbk(0, bs_enums.SOURCE_TYPE.QUERY)
+        pclust1 = ProtoCluster(gbk1, 1, 10, 100, False, "", {})
+        pclust2 = ProtoCluster(gbk1, 2, 50, 200, False, "", {})
+        gbk1.region.cand_clusters[1] = CandidateCluster(
+            gbk1, 0, 10, 100, False, "", "", {1: pclust1, 2: pclust2}
+        )
+        gbk1.save_all()
+
+        # add references: gbk2 with three protoclusters, and gbk3 with one region
+        gbk2 = create_mock_gbk(1, bs_enums.SOURCE_TYPE.REFERENCE)
+        pclust3 = ProtoCluster(gbk2, 1, 10, 100, False, "", {})
+        pclust4 = ProtoCluster(gbk2, 2, 50, 200, False, "", {})
+        pclust5 = ProtoCluster(gbk2, 3, 200, 300, False, "", {})
+        gbk2.region.cand_clusters[1] = CandidateCluster(
+            gbk1, 0, 10, 100, False, "", "", {1: pclust3, 2: pclust4, 3: pclust5}
+        )
+        gbk2.save_all()
+
+        gbk3 = create_mock_gbk(2, bs_enums.SOURCE_TYPE.REFERENCE)
+        gbk3.save_all()
+
+        # records in this run: db ids 3, 4, 7, 8, 9, 10
+        records = [pclust1, pclust2, pclust3, pclust4, pclust5, gbk3.region]
+
+        query_bin = QueryRecordPairGenerator(
+            "mix", 1, "mix", bs_enums.RECORD_TYPE.PROTO_CLUSTER
+        )
+
+        query_bin.add_records(records)
+
+        query_missing_bin = QueryMissingRecordPairGenerator(query_bin)
+
+        # add an extra gbk into the database that is NOT present in this run/bin
+        ref_gbk_not_in_run = create_mock_gbk(5, bs_enums.SOURCE_TYPE.REFERENCE)
+        ref_gbk_not_in_run.save_all()
+
+        # each query pclust has 4 other ref records to pair with 2*4=8
+        self.assertEqual(query_missing_bin.num_pairs(), 8)
+
+        # add mock edges between query and refs
+        mock_comp_region = bs_comparison.ComparableRegion(0, 0, 0, 0, 0, 0, 0, 0, False)
+        # add two edges between query and refs
+        bs_comparison.save_edge_to_db((3, 7, 0, 0, 0, 0, 1, mock_comp_region))
+        bs_comparison.save_edge_to_db((4, 9, 0, 0, 0, 0, 1, mock_comp_region))
+        # add an edge between two refs, should be ignored by during num_pairs
+        bs_comparison.save_edge_to_db((9, 10, 0, 0, 0, 0, 1, mock_comp_region))
+        # edge left over from a previous run between query and gbk_not_in_run
+        # should be ignored during num_pairs
+        bs_comparison.save_edge_to_db((3, 11, 0, 0, 0, 0, 1, mock_comp_region))
+
+        # two of the previous eight pairs now have an edge present 8-2=6
+        self.assertEqual(query_missing_bin.num_pairs(), 6)
+
+        # if all ref records are analysed/cycled, num_pairs should be 0
+        query_missing_bin.bin.working_ref_records = set()
+        self.assertEqual(query_missing_bin.num_pairs(), 0)
 
     def test_connected_component_pair_generator(self):
         """Tests whether the ConnectedComponenetPairGenerator correctly generates a set of
@@ -657,22 +770,46 @@ class TestBinGenerators(TestCase):
     def test_get_legacy_weight_from_category(self):
         """Tests wether the correct legacy weight category is created from a region category"""
 
-        run = {
-            "alignment_mode": bs_enums.ALIGNMENT_MODE.AUTO,
-            "legacy_weights": True,
-            "classify": bs_enums.CLASSIFY_MODE.CLASS,
-            "record_type": bs_enums.RECORD_TYPE.REGION,
-            "hybrids_off": False,
-        }
-
         region = mock_region()
-        cc = region.cand_clusters[1]
-        pc = cc.proto_clusters[1]
+        region.set_record_category()
 
-        expected_category = "T1PKS"
-        category = get_legacy_weights_from_category(pc, "T1PKS", run)
+        expected_weight_category = "PKSother"
+        self.assertEqual(
+            expected_weight_category,
+            legacy_weights_from_category(region.get_category()),
+        )
 
-        self.assertEqual(expected_category, category)
+        expected_weight_class = "PKSI"
+        self.assertEqual(
+            expected_weight_class, legacy_weights_from_class(region.product)
+        )
+
+        self.assertEqual("PKSother", legacy_weights_from_category("PKS"))
+        self.assertEqual("terpene", legacy_weights_from_category("terpene"))
+        self.assertEqual("NRPS", legacy_weights_from_category("NRPS"))
+        self.assertEqual("RiPP", legacy_weights_from_category("RiPP"))
+        self.assertEqual("saccharide", legacy_weights_from_category("saccharide"))
+        self.assertEqual("other", legacy_weights_from_category("other"))
+
+        self.assertEqual("PKSother", legacy_weights_from_class("T2PKS"))
+        self.assertEqual("terpene", legacy_weights_from_class("terpene"))
+        self.assertEqual("NRPS", legacy_weights_from_class("NRPS-like"))
+        self.assertEqual("RiPP", legacy_weights_from_class("thiopeptide"))
+        self.assertEqual("saccharide", legacy_weights_from_class("amglyccycl"))
+        self.assertEqual("other", legacy_weights_from_class("ectoine"))
+
+    def test_get_legacy_weight_hybrids(self):
+        """Tests whether correct legacy weights are selected in hybrid class/categories"""
+        self.assertEqual("PKS-NRP_Hybrids", legacy_weights_from_category("NRPS.PKS"))
+        self.assertEqual(
+            "PKS-NRP_Hybrids", legacy_weights_from_class("NRPS.T1PKS.T2PKS")
+        )
+        self.assertEqual("PKSother", legacy_weights_from_category("PKS.PKS"))
+        self.assertEqual("PKSother", legacy_weights_from_class("T1PKS.T2PKS"))
+        self.assertEqual("other", legacy_weights_from_category("PKS.other"))
+        self.assertEqual("other", legacy_weights_from_class("T1PKS.other"))
+        self.assertEqual("other", legacy_weights_from_category("terpene.saccharide"))
+        self.assertEqual("other", legacy_weights_from_class("terpene.amglyccycl"))
 
     def test_as_class_bin_generator(self):
         """Tests whether an antismash bin is correclty generated given a weight label"""
@@ -703,8 +840,8 @@ class TestBinGenerators(TestCase):
         expected_dict = {
             "classmix": "T1PKSmix",
             "categorymix": "PKSmix",
-            "classlegacy_weights": "T1PKST1PKS",
-            "categorylegacy_weights": "PKST1PKS",
+            "classlegacy_weights": "T1PKSPKSI",
+            "categorylegacy_weights": "PKSPKSI",
         }
 
         # run_class_mix = {
@@ -724,6 +861,13 @@ class TestBinGenerators(TestCase):
 
         bin = next(as_class_bin_generator(gbks, run_category_weights))
         expected_combo = expected_dict["categorylegacy_weights"]
+        seen_combo = bin.label + bin.weights
+
+        self.assertEqual(expected_combo, seen_combo)
+
+        run_category_weights["classify"] = bs_enums.CLASSIFY_MODE.CLASS
+        bin = next(as_class_bin_generator(gbks, run_category_weights))
+        expected_combo = expected_dict["classlegacy_weights"]
         seen_combo = bin.label + bin.weights
 
         self.assertEqual(expected_combo, seen_combo)
