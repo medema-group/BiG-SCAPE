@@ -170,6 +170,14 @@ class Region(BGCRecord):
                 # above dont always have features beyond region
                 return region
 
+            # also doublecheck for sideloaded non-rule-triggering antiSMASH processed
+            # MIBiG BGCs that are directly supplied through '-i' instead of '-m'
+            if (
+                "subregion_numbers" in feature.qualifiers
+                and "antismash" in feature.qualifiers.get("tool")
+            ):
+                return region
+
             logging.error(
                 "%s: candidate_cluster_numbers qualifier not found in region feature! "
                 "Consider checking whether there is something special about this gbk",
