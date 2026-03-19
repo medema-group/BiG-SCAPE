@@ -13,7 +13,7 @@ COMMENT     Annotation was added by the NCBI Prokaryotic Genome Annotation
             Pipeline (released 2013). Information about the Pipeline can be
             found here: https://www.ncbi.nlm.nih.gov/genome/annotation_prok/
             ##antiSMASH-Data-START##
-            Version      :: False
+            Version      :: NotAValue
             Run date     :: 2022-10-08 13:21:44
             NOTE: This is a single region extracted from a larger record!
             Orig. start  :: 224544
