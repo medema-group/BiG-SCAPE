@@ -569,6 +569,9 @@
                 AND cc1.run_id==${run_id} AND cc2.run_id==${run_id}
                 AND cc1.cutoff==${cutoff} AND cc2.cutoff==${cutoff}
                 AND cc1.bin_label=="${bin_label}" AND cc2.bin_label=="${bin_label}"`
+            if (cc_ids) {
+                topolink_ccs_query += ` AND cc1.id IN (${cc_ids}) AND cc2.id IN (${cc_ids})`
+            }
             var topo_data = window.db.exec(topolink_ccs_query)[0]
             if (topo_data) {
                 for (topolink of topo_data.values) {
