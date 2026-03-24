@@ -544,7 +544,9 @@ class GBK:
         # check if found version number is valid
         if not as_version[0].isnumeric():
             # raw MIBiG files (non-antiSMASH processed) technically have an invalid
-            # version but can still be processed
+            # version 'False' but can still be processed since they have a 'region'
+            # annotation. However, no additional record types, product or category.
+            # Will result in a record similar to using --force-gbk
             if as_version == "False":
                 gbk.parse_as5up(record, cds_overlap_cutoff)
                 gbk.as_version = "5"
