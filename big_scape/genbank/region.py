@@ -165,9 +165,20 @@ class Region(BGCRecord):
         )
 
         if "candidate_cluster_numbers" not in feature.qualifiers:
+            # we know that MIBiG BGCs, although processed with versions of AS7 and above
+            # dont always have features beyond region in BGCs that do not trigger any
+            # antiSMASH rules
             if parent_gbk is not None and parent_gbk.source_type == SOURCE_TYPE.MIBIG:
-                # we know that MIBiG BGCs, although processed with versions of AS7 and
-                # above dont always have features beyond region
+                return region
+
+            # if supplied via '-i' instead of '-m', we cannot check via SOURCE_TYPE.
+            # sideloaded non-rule-triggering antiSMASH processed MIBiG BGCs and raw
+            # MIBiG BGCs contain a 'region' feature with a 'tool=antismash' and a
+            # unique 'subregion_numbers' qualifier.
+            if (
+                "subregion_numbers" in feature.qualifiers
+                and "antismash" in feature.qualifiers.get("tool")
+            ):
                 return region
 
             logging.error(

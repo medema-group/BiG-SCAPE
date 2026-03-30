@@ -569,6 +569,9 @@
                 AND cc1.run_id==${run_id} AND cc2.run_id==${run_id}
                 AND cc1.cutoff==${cutoff} AND cc2.cutoff==${cutoff}
                 AND cc1.bin_label=="${bin_label}" AND cc2.bin_label=="${bin_label}"`
+            if (cc_ids) {
+                topolink_ccs_query += ` AND cc1.id IN (${cc_ids}) AND cc2.id IN (${cc_ids})`
+            }
             var topo_data = window.db.exec(topolink_ccs_query)[0]
             if (topo_data) {
                 for (topolink of topo_data.values) {
@@ -1246,6 +1249,7 @@ CC\tFamily\tGBK\tRecord_Type\tRecord_Number\tClass\tCategory\tOrganism\tTaxonomy
         var acc_features = {};
         var acc_labels = {};
         var feature_names = [];
+        var mibig_metadata = [];
         for (var i in input_data["accession"]) {
             var accId = input_data["accession"][i]["id"];
             acc_features[accId] = [];
@@ -1260,7 +1264,7 @@ CC\tFamily\tGBK\tRecord_Type\tRecord_Number\tClass\tCategory\tOrganism\tTaxonomy
                 var accId = fam_data["members"][j];
                 acc_features[accId][i] += 1;
             }
-            result["column_metadata"]["features"][0].push(fam_data["mibig"].length + (fam_data["mibig"].length > 1 ? " hits" : " hit"));
+            mibig_metadata.push(fam_data["mibig"].length + (fam_data["mibig"].length > 1 ? " hits" : " hit"));
         }
         // apply Genomes filtering (only shows genomes with filtered GCFs, unless using custom newick)
         var included_accessions = [];
@@ -1404,11 +1408,14 @@ CC\tFamily\tGBK\tRecord_Type\tRecord_Number\tClass\tCategory\tOrganism\tTaxonomy
             colidx_dendrosorted.push(feature_names.indexOf(famId));
         }
         var feature_names_dendrosorted = [];
+        var mibig_hits_metadata_sorted = [];
         for (i in colidx_dendrosorted) {
             feature_names_dendrosorted.push(feature_names[colidx_dendrosorted[i]]);
+            mibig_hits_metadata_sorted.push(mibig_metadata[colidx_dendrosorted[i]])
         }
         feature_names = feature_names_dendrosorted;
         result["data"]["feature_names"] = feature_names;
+        result["column_metadata"]["features"][0] = mibig_hits_metadata_sorted;
         for (nodeId in result["data"]["nodes"]) {
             var node = result["data"]["nodes"][nodeId];
             if (node.hasOwnProperty("features")) {
