@@ -8,9 +8,9 @@ from .binning import (
     ConnectedComponentPairGenerator,
     generate_mix_bin,
     legacy_bin_generator,
-    legacy_get_class,
+    legacy_weights_from_class,
+    legacy_weights_from_category,
     as_class_bin_generator,
-    get_legacy_weights_from_category,
 )
 from .comparable_region import ComparableRegion
 from .workflow import generate_edges
@@ -37,9 +37,9 @@ __all__ = [
     "ComparableRegion",
     "generate_edges",
     "legacy_bin_generator",
-    "legacy_get_class",
+    "legacy_weights_from_class",
+    "legacy_weights_from_category",
     "as_class_bin_generator",
-    "get_legacy_weights_from_category",
     "save_edge_to_db",
     "save_edges_to_db",
     "lcs",

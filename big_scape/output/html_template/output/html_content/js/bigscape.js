@@ -138,7 +138,7 @@ function Bigscape(run_data, bs_data, bs_families, bs_alignment, bs_similarity, n
       var div_bgc_hits = $("<div>" + sels_nodes.length + " Hits in " + uniq_fam.size +
         " Families (<a class='selectbgcs' href='##'>select</a>)</div>");
       div_bgc_hits.find("a.selectbgcs").click({ bigscape: handler.data.bigscape, sels: sels_nodes }, function (handler) {
-        handler.data.bigscape.setHighlightedNodes(handler.data.sels);
+        handler.data.bigscape.setHighlightedNodes(handler.data.sels.slice());
         handler.data.bigscape.highlightNodes(handler.data.sels);
         handler.data.bigscape.updateDescription(handler.data.sels);
       });

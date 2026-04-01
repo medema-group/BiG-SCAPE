@@ -97,7 +97,7 @@ class RecordPair:
         return self.domain_sets
 
     def get_domain_lists(
-        self, regenerate=False, cache=True, reverse=None
+        self, regenerate=False, cache=True
     ) -> tuple[list[HSP], list[HSP]]:
         """Returns a tuple corresponding (ordered) lists of CDS domains within the
         comparable region of two BGCs
@@ -106,14 +106,13 @@ class RecordPair:
         regenerate is set to True. This is done to minimize the computational cost of
         intializing a set from a list at the cost of memory.
 
-        If reverse is set to none, uses the reverse propoerty on comparable region
+        Uses the reverse property on comparable region to reverse the cds/domain order
+        in record b of the record pair.
 
         Args:
             regenerate (bool): whether to replace the cached result set with a newly
             generated one,
             cache (bool): whether to cache the result for faster retrieval
-            reverse (bool, optional): Whether to return a reversed list for region B.
-            Defaults to None.
 
         Returns:
             tuple[list[HSP], list[HSP]]

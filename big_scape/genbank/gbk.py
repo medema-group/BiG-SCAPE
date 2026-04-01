@@ -543,6 +543,15 @@ class GBK:
         as_version = GBK.get_as_version(record)
         # check if found version number is valid
         if not as_version[0].isnumeric():
+            # raw MIBiG files (non-antiSMASH processed) technically have an invalid
+            # version 'False' but can still be processed since they have a 'region'
+            # annotation. However, no additional record types, product or category.
+            # Will result in a record similar to using --force-gbk
+            if as_version == "False":
+                gbk.parse_as5up(record, cds_overlap_cutoff)
+                gbk.as_version = "5"
+                return gbk
+
             logging.error("%s: Invalid antiSMASH version in GBK header", gbk.path)
             raise InvalidGBKError()
         gbk.as_version = as_version

@@ -14,7 +14,7 @@ BiG-SCAPE uses [antiSMASH](https://antismash.secondarymetabolites.org) processed
 
 In principle, BiG-SCAPE can also be used on any other gene clusters, such as pathogenicity islands, secretion system-encoding gene clusters, or even whole viral genomes.
 
-For installation instructions, see [here](https://github.com/medema-group/BiG-SCAPE/wiki/Installing-and-Running-BiG-SCAPE).
+For installation instructions, see [here](https://github.com/medema-group/BiG-SCAPE/wiki/01.-Installing-and-Running-BiG-SCAPE).
 
 Learn more about BiG-SCAPE in the [wiki](https://github.com/medema-group/BiG-SCAPE/wiki).
 
@@ -24,4 +24,6 @@ Learn more about BiG-SCAPE in the [wiki](https://github.com/medema-group/BiG-SCA
 
 If you find BiG-SCAPE useful, please cite us:
 
-[A computational framework to explore large-scale biosynthetic diversity](https://doi.org/10.1038/s41589-019-0400-9)
+(1) [BiG-SCAPE 2.0 and BiG-SLiCE 2.0: scalable, accurate and interactive sequence clustering of metabolic gene clusters](https://doi.org/10.1038/s41467-026-68733-5)
+
+(2) [A computational framework to explore large-scale biosynthetic diversity](https://doi.org/10.1038/s41589-019-0400-9)

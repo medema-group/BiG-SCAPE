@@ -322,6 +322,66 @@ class TestGBK(TestCase):
 
         self.assertIsInstance(gbk, GBK)
 
+    def test_parse_mibig_raw(self):
+        """Tests whether a raw MIBiG gbk (non-antiSMASH processed) is parsed correctly"""
+        gbk_file_path = Path("test/test_data/MIBiG_gbk/BGC0001570_raw.gbk")
+        run = {
+            "cds_overlap_cutoff": None,
+        }
+
+        # when supplied through '-m' -> SOURCE_TYPE.MIBIG
+        with self.assertLogs(level=logging.INFO) as cm:
+            logging.info("nonsense")
+            gbk_m = GBK.parse(gbk_file_path, SOURCE_TYPE.MIBIG, run)
+
+        # cm.output a list of strings of all the logs
+        expected_str = "does not contain any cand_cluster features"
+        warning = any(expected_str in log for log in cm.output)
+
+        # when supplied through '-m' the warning should be suppressed
+        self.assertFalse(warning)
+        self.assertIsInstance(gbk_m, GBK)
+
+        # when supplied through '-i' -> SOURCE_TYPE.QUERY
+        with self.assertLogs(level=logging.INFO) as cm:
+            logging.info("nonsense")
+            gbk_q = GBK.parse(gbk_file_path, SOURCE_TYPE.QUERY, run)
+        warning = any(expected_str in log for log in cm.output)
+
+        # when supplied through '-i' the warning should be present
+        self.assertTrue(warning)
+        self.assertIsInstance(gbk_q, GBK)
+
+    def test_parse_mibig_sideloaded(self):
+        """Tests whether a sideloaded antiSMASH MIBiG gbk is parsed correctly"""
+        gbk_file_path = Path("test/test_data/MIBiG_gbk/BGC0001315_sideloaded.gbk")
+        run = {
+            "cds_overlap_cutoff": None,
+        }
+
+        # when supplied through '-m' -> SOURCE_TYPE.MIBIG
+        with self.assertLogs(level=logging.INFO) as cm:
+            logging.info("nonsense")
+            gbk_m = GBK.parse(gbk_file_path, SOURCE_TYPE.MIBIG, run)
+
+        # cm.output a list of strings of all the logs
+        expected_str = "does not contain any cand_cluster features"
+        warning = any(expected_str in log for log in cm.output)
+
+        # when supplied through '-m' the warning should be suppressed
+        self.assertFalse(warning)
+        self.assertIsInstance(gbk_m, GBK)
+
+        # when supplied through '-i' -> SOURCE_TYPE.QUERY
+        with self.assertLogs(level=logging.INFO) as cm:
+            logging.info("nonsense")
+            gbk_q = GBK.parse(gbk_file_path, SOURCE_TYPE.QUERY, run)
+        warning = any(expected_str in log for log in cm.output)
+
+        # when supplied through '-i' the warning should be present
+        self.assertTrue(warning)
+        self.assertIsInstance(gbk_q, GBK)
+
     def test_parse_gbk_multiple_regions(self):
         """Tests whether a GBK file has more than one region"""
 
