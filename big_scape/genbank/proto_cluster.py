@@ -224,8 +224,6 @@ class ProtoCluster(BGCRecord):
                 record_table.c.gbk_id.in_(select(temp_gbk_id_table.c.gbk_id))
             )
 
-        protocluster_select_query = protocluster_select_query.compile()
-
         cursor_result = DB.execute(protocluster_select_query)
 
         protocluster_dict = {}

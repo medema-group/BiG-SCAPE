@@ -286,7 +286,6 @@ class GBK:
                 description=description,
             )
             .returning(gbk_table.c.id)
-            .compile()
         )
 
         # in the above query we add a returning statement. This makes it so that the
@@ -343,7 +342,6 @@ class GBK:
                 gbk_table.c.taxonomy,
                 gbk_table.c.description,
             )
-            .compile()
         )
 
         cursor_result = DB.execute(select_query)

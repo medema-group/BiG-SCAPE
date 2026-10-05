@@ -280,7 +280,6 @@ def edge_params_insert(
             extend_strategy=extend_strategy.name,
         )
         .returning(edge_params_table.c.id)
-        .compile()
     )
     cursor_result = DB.execute(edge_params_insert, False)
     edge_param_id = cursor_result.fetchone()
