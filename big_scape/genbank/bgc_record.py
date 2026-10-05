@@ -279,7 +279,6 @@ class BGCRecord:
                 merged=self.merged,
             )
             .returning(bgc_record_table.c.id)
-            .compile()
         )
 
         cursor_result = DB.execute(insert_query, False)

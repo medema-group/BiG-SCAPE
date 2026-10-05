@@ -153,7 +153,6 @@ class CDS:
                 gene_kind=self.gene_kind,
                 aa_seq=self.aa_seq,
             )
-            .compile()
         )
 
         # in the above query we add a returning statement. This makes it so that the
@@ -366,8 +365,6 @@ class CDS:
             region_select_query = region_select_query.where(
                 cds_table.c.gbk_id.in_(select(temp_gbk_id_table.c.gbk_id))
             )
-
-        region_select_query = region_select_query.compile()
 
         cursor_result = DB.execute(region_select_query)
 

@@ -329,8 +329,6 @@ class Region(BGCRecord):
                 record_table.c.gbk_id.in_(select(temp_gbk_id_table.c.gbk_id))
             )
 
-        region_select_query = region_select_query.compile()
-
         cursor_result = DB.execute(region_select_query)
 
         region_dict = {}

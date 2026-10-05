@@ -188,7 +188,6 @@ def save_to_db(regions_families: list[tuple[int, int, float, str, int]]):
                 .values(
                     center_id=family, cutoff=cutoff, bin_label=bin_label, run_id=run_id
                 )
-                .compile()
             )
 
             cursor_result = DB.execute(insert_query, False)

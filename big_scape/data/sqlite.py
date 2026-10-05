@@ -440,7 +440,6 @@ class DB:
                 config_hash=BigscapeConfig.HASH,
             )
             .returning(run_table.c.id)
-            .compile()
         )
 
         cursor_result = DB.execute(run_insert, False).fetchone()
@@ -467,7 +466,7 @@ class DB:
             update(run_table)
             .where(run_table.c.id == run_id)
             .values(end_time=str(end)[:-7], duration=str(end - start)[:-7])
-        ).compile()
+        )
         DB.execute(update_stmt, False)
         DB.commit()
 

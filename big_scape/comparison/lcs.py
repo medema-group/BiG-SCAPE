@@ -611,5 +611,4 @@ def construct_missing_global_lcs(records: list[bs_genbank.BGCRecord], exemplar: 
                 lcs_domain_b_start=lcs_data[2],
                 reverse=lcs_data[8],
             )
-            .compile()
         )

@@ -415,7 +415,7 @@ def get_edges(
         )
         # equivalent to AND distance < ...
         .where(distance_table.c.distance < distance_cutoff)
-    ).compile()
+    )
 
     edges = DB.execute(select_statement).fetchall()
 

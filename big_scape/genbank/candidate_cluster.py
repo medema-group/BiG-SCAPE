@@ -224,8 +224,6 @@ class CandidateCluster(BGCRecord):
                 record_table.c.gbk_id.in_(select(temp_gbk_id_table.c.gbk_id))
             )
 
-        candidate_cluster_select_query = candidate_cluster_select_query.compile()
-
         cursor_result = DB.execute(candidate_cluster_select_query)
 
         candidate_cluster_dict = {}
